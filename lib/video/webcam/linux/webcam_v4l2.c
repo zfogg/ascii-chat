@@ -409,7 +409,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     if (image_calc_rgb_size((size_t)ctx->width, (size_t)ctx->height, &frame_size) != ASCIICHAT_OK) {
       log_error("Failed to calculate frame size: width=%d, height=%d (would overflow)", ctx->width, ctx->height);
       image_destroy(img);
-      return -1;
+      return NULL;
     }
     memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
   }
