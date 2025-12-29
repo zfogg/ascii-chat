@@ -197,6 +197,13 @@ if(NOT webrtc_aec3_POPULATED)
         # Visual Studio generator ignores CMAKE_C_COMPILER and uses cl.exe
         if(WIN32)
             list(PREPEND WEBRTC_CMAKE_ARGS -G Ninja)
+            # Add WIN32_LEAN_AND_MEAN to prevent winsock.h/winsock2.h conflicts
+            set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
+            set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
+            list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
+            list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_win_c_flags}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_win_cxx_flags}")
             message(STATUS "WebRTC Windows build: forcing Ninja generator to use Clang")
         endif()
 
