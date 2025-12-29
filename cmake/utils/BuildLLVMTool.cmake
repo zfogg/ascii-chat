@@ -82,25 +82,8 @@ function(build_llvm_tool)
     set(_tool_depends "")
 
     # ==========================================================================
-    # Clean Incomplete Cache (optional)
-    # ==========================================================================
-    # If CLEAN_INCOMPLETE_CACHE is set, remove partial cache state that could
-    # cause ExternalProject to fail (e.g., executable exists but CMakeCache.txt
-    # is missing from partial GitHub Actions cache restore)
-    if(_TOOL_CLEAN_INCOMPLETE_CACHE)
-        # Check if directory exists but is incomplete (has exe but no CMakeCache.txt)
-        if(EXISTS "${_cache_dir}" AND EXISTS "${_cached_exe}" AND NOT EXISTS "${_cache_dir}/CMakeCache.txt")
-            message(STATUS "Cleaning incomplete ${_TOOL_NAME} cache (missing CMakeCache.txt): ${_cache_dir}")
-            file(REMOVE_RECURSE "${_cache_dir}")
-            file(MAKE_DIRECTORY "${_cache_dir}")
-        endif()
-    endif()
-
-    # ==========================================================================
     # Priority 1: Check for Pre-built Tool (MUST be checked FIRST)
     # ==========================================================================
-    # Check this BEFORE clean cache logic, otherwise CLEAN_INCOMPLETE_CACHE
-    # will delete the pre-built binary (it has no CMakeCache.txt)
     if(_TOOL_PREBUILT_VAR AND ${_TOOL_PREBUILT_VAR} AND EXISTS "${${_TOOL_PREBUILT_VAR}}")
         set(_tool_exe "${${_TOOL_PREBUILT_VAR}}")
         message(STATUS "Using external ${_TOOL_NAME} tool: ${_tool_exe}")
@@ -114,11 +97,22 @@ function(build_llvm_tool)
             file(REMOVE_RECURSE "${_ep_prefix_dir}")
         endif()
     # ==========================================================================
-    # Priority 2: Check for Cached Build
+    # Priority 2: Check for Cached Executable
     # ==========================================================================
-    elseif(EXISTS "${_cached_exe}" AND EXISTS "${_cache_dir}/CMakeCache.txt")
+    # Use cached executable if it exists - we don't need CMakeCache.txt to USE
+    # the tool, only to BUILD it. CI may cache just the binary for efficiency.
+    elseif(EXISTS "${_cached_exe}")
         set(_tool_exe "${_cached_exe}")
         message(STATUS "Using cached ${_TOOL_NAME} tool: ${_tool_exe}")
+
+        # Clean up any stale ExternalProject artifacts from previous builds
+        # This prevents ninja from trying to rebuild the tool when the build
+        # directory is cached but ExternalProject stamps exist from a prior run
+        set(_ep_prefix_dir "${CMAKE_BINARY_DIR}/${_TOOL_OUTPUT_EXECUTABLE}-external-prefix")
+        if(EXISTS "${_ep_prefix_dir}")
+            message(STATUS "Cleaning stale ExternalProject artifacts: ${_ep_prefix_dir}")
+            file(REMOVE_RECURSE "${_ep_prefix_dir}")
+        endif()
     # ==========================================================================
     # Priority 3: Build from Source
     # ==========================================================================
