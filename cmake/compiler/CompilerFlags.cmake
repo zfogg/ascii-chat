@@ -598,7 +598,9 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             add_link_options(-fno-plt)
 
             # Fortify source for additional runtime checks (not compatible with musl)
+            # Undefine first to avoid redefinition warnings when makepkg/CFLAGS already set it
             if(NOT USE_MUSL)
+                add_compile_options("-Wp,-U_FORTIFY_SOURCE")
                 add_definitions(-D_FORTIFY_SOURCE=3)
             else()
                 # Musl doesn't provide __*_chk fortify wrappers
