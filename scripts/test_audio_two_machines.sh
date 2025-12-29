@@ -10,11 +10,19 @@ set -e
 cleanup() {
   echo ""
   echo "Caught interrupt, cleaning up..."
-  run_on_one "pkill -x ascii-chat" 2>/dev/null || true
-  run_on_two "pkill -x ascii-chat" 2>/dev/null || true
+  run_local "pkill -x ascii-chat" 2>/dev/null || true
+  run_remote "pkill -x ascii-chat" 2>/dev/null || true
+  # Pop stash if we created one on the remote machine
+  if [[ $STASHED_REMOTE -eq 1 ]]; then
+    echo "Restoring stashed changes on remote..."
+    run_remote "git stash pop" 2>/dev/null || true
+  fi
   echo "Cleanup complete."
   exit 130
 }
+
+# Track if we stashed on remote (for cleanup)
+STASHED_REMOTE=0
 
 PORT=27228
 HOST_ONE="workbook-pro"
@@ -34,9 +42,19 @@ CURRENT_HOST=$(hostname)
 shopt -s nocasematch
 if [[ "$CURRENT_HOST" == "WorkBook-Pro" ]] || [[ "$CURRENT_HOST" == "$HOST_ONE" ]]; then
   LOCAL_IS_ONE=1
+  LOCAL_REPO="$REPO_ONE"
+  LOCAL_BIN="$BIN_ONE"
+  REMOTE_HOST="$HOST_TWO"
+  REMOTE_REPO="$REPO_TWO"
+  REMOTE_BIN="$BIN_TWO"
   echo "Running on HOST_ONE ($CURRENT_HOST) - local commands here, SSH to $HOST_TWO"
 elif [[ "$CURRENT_HOST" == "manjaro-twopal" ]] || [[ "$CURRENT_HOST" == "$HOST_TWO" ]]; then
   LOCAL_IS_ONE=0
+  LOCAL_REPO="$REPO_TWO"
+  LOCAL_BIN="$BIN_TWO"
+  REMOTE_HOST="$HOST_ONE"
+  REMOTE_REPO="$REPO_ONE"
+  REMOTE_BIN="$BIN_ONE"
   echo "Running on HOST_TWO ($CURRENT_HOST) - local commands here, SSH to $HOST_ONE"
 else
   echo "ERROR: Unknown host: $CURRENT_HOST"
@@ -57,10 +75,27 @@ echo "HOST 2 (client 2):          $HOST_TWO"
 echo "Duration: $DURATION seconds"
 echo ""
 
-# Helper functions
+# Helper functions - local/remote based on where script is running
+run_local() {
+  (cd $LOCAL_REPO && eval "$1")
+}
+
+run_remote() {
+  ssh $REMOTE_HOST "cd $REMOTE_REPO && $1"
+}
+
+run_bg_local() {
+  (cd $LOCAL_REPO && nohup bash -c "$1" > /dev/null 2>&1 &)
+}
+
+run_bg_remote() {
+  ssh -f $REMOTE_HOST "cd $REMOTE_REPO && nohup bash -c '$1' > /dev/null 2>&1"
+}
+
+# Helper functions - target specific host regardless of where we're running
 run_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-    (cd $REPO_ONE && eval "$1")
+    run_local "$1"
   else
     ssh $HOST_ONE "cd $REPO_ONE && $1"
   fi
@@ -68,16 +103,15 @@ run_on_one() {
 
 run_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-    (cd $REPO_TWO && eval "$1")
+    run_local "$1"
   else
     ssh $HOST_TWO "cd $REPO_TWO && $1"
   fi
 }
 
-# Background process helpers - use nohup to survive parent exit
 run_bg_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-    (cd $REPO_ONE && nohup bash -c "$1" > /dev/null 2>&1 &)
+    run_bg_local "$1"
   else
     ssh -f $HOST_ONE "cd $REPO_ONE && nohup bash -c '$1' > /dev/null 2>&1"
   fi
@@ -85,7 +119,7 @@ run_bg_on_one() {
 
 run_bg_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-    (cd $REPO_TWO && nohup bash -c "$1" > /dev/null 2>&1 &)
+    run_bg_local "$1"
   else
     ssh -f $HOST_TWO "cd $REPO_TWO && nohup bash -c '$1' > /dev/null 2>&1"
   fi
@@ -127,11 +161,13 @@ safe_git_pull() {
 
 # Pull latest code on remote machine only (local already has latest)
 echo "[3/8] Pulling latest code on remote machine..."
-if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-  run_on_two "$(safe_git_pull $REPO_TWO)"
-else
-  run_on_one "$(safe_git_pull $REPO_ONE)"
+# Check if remote has uncommitted changes (will need stash)
+if ! run_remote "git diff --quiet && git diff --staged --quiet" 2>/dev/null; then
+  STASHED_REMOTE=1
 fi
+run_remote "$(safe_git_pull $REMOTE_REPO)"
+# If we get here, safe_git_pull succeeded and popped the stash
+STASHED_REMOTE=0
 
 # Rebuild on HOST_ONE
 echo "[4/8] Rebuilding on $HOST_ONE..."
