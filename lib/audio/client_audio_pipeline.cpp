@@ -196,8 +196,20 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Residual echo suppression via spectral subtraction
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
-    // Use default AEC3 config
+    // Configure AEC3 for better low-frequency (bass) echo cancellation
     webrtc::EchoCanceller3Config aec3_config;
+
+    // Increase filter length for bass frequencies (default 13 blocks = ~17ms)
+    // Bass at 80Hz has 12.5ms period, so we need at least 50+ blocks (~67ms)
+    // to properly model the echo path for low frequencies
+    aec3_config.filter.main.length_blocks = 50;          // ~67ms (was 13)
+    aec3_config.filter.shadow.length_blocks = 50;        // ~67ms (was 13)
+    aec3_config.filter.main_initial.length_blocks = 25;  // ~33ms (was 12)
+    aec3_config.filter.shadow_initial.length_blocks = 25; // ~33ms (was 12)
+
+    // More aggressive low-frequency suppression thresholds
+    // Lower values = more aggressive echo suppression
+    aec3_config.echo_audibility.audibility_threshold_lf = 5;  // (was 10)
 
     // Create AEC3 using the factory
     auto factory = webrtc::EchoCanceller3Factory(aec3_config);
@@ -218,7 +230,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       wrapper->config = aec3_config;
       p->echo_canceller = wrapper;
 
-      log_info("✓ WebRTC AEC3 initialized (500ms filter, adaptive delay)");
+      log_info("✓ WebRTC AEC3 initialized (67ms filter for bass, adaptive delay)");
 
       // Create persistent AudioBuffer instances for AEC3
       p->aec3_render_buffer = new webrtc::AudioBuffer(48000, 1, 48000, 1, 48000, 1);
