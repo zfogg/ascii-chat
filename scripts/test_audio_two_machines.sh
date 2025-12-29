@@ -6,6 +6,16 @@
 
 set -e
 
+# Cleanup function for Ctrl+C
+cleanup() {
+  echo ""
+  echo "Caught interrupt, cleaning up..."
+  run_on_one "pkill -x ascii-chat" 2>/dev/null || true
+  run_on_two "pkill -x ascii-chat" 2>/dev/null || true
+  echo "Cleanup complete."
+  exit 130
+}
+
 PORT=27228
 HOST_ONE="workbook-pro"
 HOST_ONE_IP="100.113.140.51"  # Tailscale IP for cross-machine connectivity
@@ -35,6 +45,8 @@ else
 fi
 shopt -u nocasematch
 
+# Now set up the trap since LOCAL_IS_ONE is determined
+trap cleanup SIGINT SIGTERM
 
 echo ""
 echo "Cross-machine audio analysis test"
