@@ -61,11 +61,16 @@ echo ""
 echo "=== Building arm64 ==="
 cd "$ARM64_DIR"
 
+# Use system clang for portable binaries (no rpath to Homebrew libc++)
+MACOS_SDK="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+
 cmake "$TOOL_SOURCE_DIR" \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_CXX_COMPILER=/usr/local/bin/clang++ \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+    -DCMAKE_C_COMPILER=/usr/bin/clang \
     -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_OSX_SYSROOT="$MACOS_SDK" \
     -DLLVM_CONFIG_EXECUTABLE="$LLVM_ARM64_CONFIG" \
     -DOUTPUT_DIR="$ARM64_DIR"
 
@@ -73,6 +78,14 @@ cmake --build . --target "$TOOL_NAME"
 
 echo "arm64 build complete:"
 file "$ARM64_DIR/$TOOL_NAME"
+
+# Fix rpaths to use system libc++ instead of Homebrew paths
+echo "Fixing arm64 rpaths for portability..."
+install_name_tool -change @rpath/libc++.1.dylib /usr/lib/libc++.1.dylib "$ARM64_DIR/$TOOL_NAME"
+# Remove Homebrew-specific rpaths
+install_name_tool -delete_rpath /usr/local/lib "$ARM64_DIR/$TOOL_NAME" 2>/dev/null || true
+install_name_tool -delete_rpath /usr/local/lib/c++ "$ARM64_DIR/$TOOL_NAME" 2>/dev/null || true
+install_name_tool -delete_rpath /usr/local/lib/unwind "$ARM64_DIR/$TOOL_NAME" 2>/dev/null || true
 
 # Build x86_64 using cmake
 echo ""
@@ -142,8 +155,6 @@ chmod +x "$X86_LLVM_CONFIG"
 # 1. Prevent cmake from finding arm64 Homebrew libraries
 # 2. Use SDK libraries which support both architectures
 # 3. Point to x86_64 LLVM libraries for linking
-MACOS_SDK="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-
 cmake "$TOOL_SOURCE_DIR" \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
@@ -167,6 +178,14 @@ cmake --build . --target "$TOOL_NAME"
 
 echo "x86_64 build complete:"
 file "$X86_64_DIR/$TOOL_NAME"
+
+# Fix rpaths to use system libc++ instead of build-specific paths
+echo "Fixing x86_64 rpaths for portability..."
+install_name_tool -change @rpath/libc++.1.dylib /usr/lib/libc++.1.dylib "$X86_64_DIR/$TOOL_NAME"
+# Remove build-specific rpaths
+install_name_tool -delete_rpath "$LLVM_X86_64_ROOT/lib" "$X86_64_DIR/$TOOL_NAME" 2>/dev/null || true
+install_name_tool -delete_rpath "$LLVM_X86_64_ROOT/lib/c++" "$X86_64_DIR/$TOOL_NAME" 2>/dev/null || true
+install_name_tool -delete_rpath "$LLVM_X86_64_ROOT/lib/unwind" "$X86_64_DIR/$TOOL_NAME" 2>/dev/null || true
 
 # Create universal binary
 echo ""
