@@ -109,6 +109,7 @@ typedef unsigned long long uint64_t;
 #ifdef _WIN32
 #undef ERROR_BUFFER_OVERFLOW
 #undef ERROR_INVALID_STATE
+#undef ERROR_FILE_NOT_FOUND
 #endif
 
 /**
