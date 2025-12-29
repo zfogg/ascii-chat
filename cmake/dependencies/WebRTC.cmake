@@ -61,9 +61,37 @@ if(NOT webrtc_aec3_POPULATED)
     set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
     file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
-    # Only build if libraries don't exist in cache
+    # Create a SIMD configuration string to detect when rebuild is needed
+    # This ensures cached WebRTC libs match the current SIMD settings
+    set(WEBRTC_SIMD_CONFIG "SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
+    set(WEBRTC_SIMD_MARKER "${WEBRTC_BUILD_DIR}/.simd_config")
+
+    # Check if cached build exists with matching SIMD config
+    set(WEBRTC_NEEDS_REBUILD FALSE)
     if(NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/libAudioProcess.a" OR NOT EXISTS "${WEBRTC_BUILD_DIR}/lib/libaec3.a")
-        message(STATUS "${BoldYellow}WebRTC AEC3${ColorReset} libraries not found in cache, building from source...")
+        set(WEBRTC_NEEDS_REBUILD TRUE)
+        message(STATUS "WebRTC AEC3 libraries not found, will build from source")
+    elseif(NOT EXISTS "${WEBRTC_SIMD_MARKER}")
+        set(WEBRTC_NEEDS_REBUILD TRUE)
+        message(STATUS "WebRTC AEC3 SIMD config marker not found, will rebuild to ensure correct SIMD support")
+    else()
+        file(READ "${WEBRTC_SIMD_MARKER}" CACHED_SIMD_CONFIG)
+        string(STRIP "${CACHED_SIMD_CONFIG}" CACHED_SIMD_CONFIG)
+        if(NOT "${CACHED_SIMD_CONFIG}" STREQUAL "${WEBRTC_SIMD_CONFIG}")
+            set(WEBRTC_NEEDS_REBUILD TRUE)
+            message(STATUS "WebRTC AEC3 SIMD config changed (was: ${CACHED_SIMD_CONFIG}, now: ${WEBRTC_SIMD_CONFIG}), will rebuild")
+        endif()
+    endif()
+
+    if(WEBRTC_NEEDS_REBUILD)
+        message(STATUS "${BoldYellow}WebRTC AEC3${ColorReset} building from source...")
+
+        # Clean old build to ensure fresh compilation with new SIMD config
+        if(EXISTS "${WEBRTC_BUILD_DIR}/lib")
+            file(REMOVE_RECURSE "${WEBRTC_BUILD_DIR}/lib")
+            message(STATUS "Cleaned old WebRTC AEC3 build artifacts")
+        endif()
+        file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}/lib")
 
         # Prepare CMake args for WebRTC build
         set(WEBRTC_CMAKE_ARGS
@@ -165,6 +193,13 @@ if(NOT webrtc_aec3_POPULATED)
             message(STATUS "WebRTC macOS build: libc++ include=${LIBCXX_INCLUDE_DIR}")
         endif()
 
+        # On Windows, force Ninja generator to use Clang instead of MSVC
+        # Visual Studio generator ignores CMAKE_C_COMPILER and uses cl.exe
+        if(WIN32)
+            list(PREPEND WEBRTC_CMAKE_ARGS -G Ninja)
+            message(STATUS "WebRTC Windows build: forcing Ninja generator to use Clang")
+        endif()
+
         # Build WebRTC at configure time (not part of main build)
         execute_process(
             COMMAND ${CMAKE_COMMAND}
@@ -189,7 +224,9 @@ if(NOT webrtc_aec3_POPULATED)
             message(FATAL_ERROR "Failed to build WebRTC AEC3")
         endif()
 
-        message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries built and cached successfully")
+        # Write SIMD config marker for future cache validation
+        file(WRITE "${WEBRTC_SIMD_MARKER}" "${WEBRTC_SIMD_CONFIG}")
+        message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries built and cached successfully (SIMD: ${WEBRTC_SIMD_CONFIG})")
     else()
         message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries found in cache: ${BoldCyan}${WEBRTC_BUILD_DIR}/lib${ColorReset}")
     endif()
@@ -215,6 +252,15 @@ if(APPLE)
         -force_load "${WEBRTC_API_LIB}"
         -force_load "${WEBRTC_BASE_LIB}"
         c++
+    )
+elseif(WIN32)
+    # Windows with Clang: Use /WHOLEARCHIVE linker flag via -Wl
+    # lld-link accepts /WHOLEARCHIVE:<lib> to include all symbols
+    target_link_libraries(webrtc_audio_processing INTERFACE
+        -Wl,/WHOLEARCHIVE:${WEBRTC_AUDIO_PROCESS_LIB}
+        -Wl,/WHOLEARCHIVE:${WEBRTC_AEC3_LIB}
+        -Wl,/WHOLEARCHIVE:${WEBRTC_API_LIB}
+        -Wl,/WHOLEARCHIVE:${WEBRTC_BASE_LIB}
     )
 else()
     # Linux/Unix: Use WHOLE_ARCHIVE wrapper to embed all symbols
