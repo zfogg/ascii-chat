@@ -82,10 +82,10 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   int result = receive_packet(server_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
     if (payload)
-      buffer_pool_free(payload, payload_len);
+      POOL_FREE(payload, payload_len);
     return -1;
   }
-  buffer_pool_free(payload, payload_len);
+  POOL_FREE(payload, payload_len);
 
   // Step 2: Send server's PROTOCOL_VERSION
   protocol_version_packet_t server_version = {0};
@@ -101,10 +101,10 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   result = receive_packet(server_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
     if (payload)
-      buffer_pool_free(payload, payload_len);
+      POOL_FREE(payload, payload_len);
     return -1;
   }
-  buffer_pool_free(payload, payload_len);
+  POOL_FREE(payload, payload_len);
 
   // Step 4: Send server's CRYPTO_PARAMETERS
   crypto_parameters_packet_t server_params = {0};
@@ -147,10 +147,10 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   result = receive_packet(client_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
     if (payload)
-      buffer_pool_free(payload, payload_len);
+      POOL_FREE(payload, payload_len);
     return -1;
   }
-  buffer_pool_free(payload, payload_len);
+  POOL_FREE(payload, payload_len);
 
   // Step 3: Send client's CRYPTO_CAPABILITIES
   crypto_capabilities_packet_t client_caps = {0};
@@ -166,13 +166,13 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   result = receive_packet(client_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
     if (payload)
-      buffer_pool_free(payload, payload_len);
+      POOL_FREE(payload, payload_len);
     return -1;
   }
 
   crypto_parameters_packet_t server_params;
   memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
-  buffer_pool_free(payload, payload_len);
+  POOL_FREE(payload, payload_len);
 
   // Set parameters in client context (client converts from network byte order)
   return crypto_handshake_set_parameters(client_ctx, &server_params);
