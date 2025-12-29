@@ -98,13 +98,19 @@
  * Common options (see `usage()` function for complete list):
  * - `--width`, `-w`: Set terminal width in characters
  * - `--height`, `-h`: Set terminal height in characters
- * - `--address`, `-a`: Server address (client) or bind address (server)
- * - `--port`, `-p`: Server port
+ * - `--address`, `-a`: Bind address (server only)
+ * - `--port`, `-p`: Server port (or override positional argument port for client)
  * - `--key`, `-k`: SSH key file path for encryption
  * - `--password`: Password for authentication
  * - `--color`, `--256`, `--truecolor`: Force color mode
  * - `--palette`: Select ASCII palette
  * - `--help`: Print usage information and exit
+ *
+ * **Client address syntax** (positional argument, not option flag):
+ * - `ascii-chat client` → connects to localhost:27224
+ * - `ascii-chat client example.com` → connects to example.com:27224
+ * - `ascii-chat client 192.168.1.1:8080` → connects to 192.168.1.1:8080
+ * - `ascii-chat client [::1]:8080` → connects to IPv6 [::1]:8080
  *
  * **Thread Safety**:
  *
@@ -318,23 +324,37 @@ extern ASCIICHAT_API bool auto_height;
 /** @brief Server address (client) or IPv4 bind address (server)
  *
  * Network address used for connections:
- * - **Client mode**: Address of the server to connect to
+ * - **Client mode**: Address of the server to connect to (from positional argument)
  * - **Server mode**: IPv4 address to bind to (use "0.0.0.0" for all interfaces)
  *
- * **Default**: `"localhost"` (both client and server)
+ * **Default**: `"localhost"` (client) or `"127.0.0.1"` (server)
  *
- * **Supported formats**:
- * - IPv4 addresses: `"192.168.1.100"`, `"127.0.0.1"`
- * - Hostnames: `"example.com"`, `"localhost"`
- * - IPv6 addresses: Use `opt_address6` for IPv6
+ * **Client mode - Positional argument syntax**:
+ * The client address is specified as a positional argument (not an option flag):
+ * ```
+ * ascii-chat client [address][:port] [options...]
+ * ```
  *
- * **Command-line**: `--address <addr>` or `-a <addr>`
+ * **Supported formats for client**:
+ * - No argument: connects to `localhost:27224`
+ * - Hostname: `"localhost"`, `"example.com"` → port defaults to 27224
+ * - Hostname with port: `"example.com:8080"`
+ * - IPv4: `"192.168.1.1"` → port defaults to 27224
+ * - IPv4 with port: `"192.168.1.1:8080"`
+ * - IPv6: `"::1"`, `"2001:db8::1"` → port defaults to 27224
+ * - IPv6 with port: `"[::1]:8080"` (brackets required when port is specified)
  *
- * **Example**: `--address 192.168.1.100` or `-a localhost`
+ * **Server mode - Command-line option**:
+ * Server uses `--address <addr>` or `-a <addr>` for bind address.
+ *
+ * **Examples**:
+ * - Client: `ascii-chat client 192.168.1.100:8080`
+ * - Server: `ascii-chat server --address 0.0.0.0`
  *
  * @note Maximum length: `OPTIONS_BUFF_SIZE` (256 characters)
+ * @note Client mode: Use positional argument, not --address flag
  * @note Server mode: Use `"0.0.0.0"` to bind to all IPv4 interfaces
- * @note For IPv6 addresses, use `opt_address6` instead
+ * @note For IPv6 bind addresses (server), use `opt_address6` instead
  *
  * @ingroup options
  */

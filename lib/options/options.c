@@ -312,9 +312,8 @@ unsigned short int RED[ASCII_LUMINANCE_LEVELS], GREEN[ASCII_LUMINANCE_LEVELS], B
     GRAY[ASCII_LUMINANCE_LEVELS];
 
 // Client-only options
-static struct option client_options[] = {{"address", required_argument, NULL, 'a'},
-                                         {"host", required_argument, NULL, 'H'},
-                                         {"port", required_argument, NULL, 'p'},
+// Note: -a/--address and -H/--host are replaced by positional argument [address][:port]
+static struct option client_options[] = {{"port", required_argument, NULL, 'p'},
                                          {"width", required_argument, NULL, 'x'},
                                          {"height", required_argument, NULL, 'y'},
                                          {"webcam-index", required_argument, NULL, 'c'},
@@ -691,7 +690,21 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       }
       break;
 
-    case 'a': {
+    case 'a': { // --address (server only - for bind address)
+      // Client mode: -a/--address is deprecated, use positional argument instead
+      if (is_client) {
+        (void)fprintf(stderr, "Error: --address/-a is not available for client mode.\n");
+        (void)fprintf(stderr, "Use positional argument instead:\n");
+        (void)fprintf(stderr, "  ascii-chat client [address][:port]\n");
+        (void)fprintf(stderr, "Examples:\n");
+        (void)fprintf(stderr, "  ascii-chat client                     (connects to localhost:27224)\n");
+        (void)fprintf(stderr, "  ascii-chat client 192.168.1.1         (connects to 192.168.1.1:27224)\n");
+        (void)fprintf(stderr, "  ascii-chat client example.com:8080    (connects to example.com:8080)\n");
+        (void)fprintf(stderr, "  ascii-chat client [::1]:8080          (connects to IPv6 ::1:8080)\n");
+        return option_error_invalid();
+      }
+
+      // Server mode: parse bind address
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
       if (!value_str)
         return option_error_invalid();
@@ -705,34 +718,13 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       // Check if it's a valid IPv4 or IPv6 address
       if (is_valid_ipv4(value_str) || is_valid_ipv6(value_str)) {
         SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
-      }
-      // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
-      // This prevents trying to resolve malformed IPs like "192.168.1" as hostnames
-      else if (strchr(value_str, '.') != NULL) {
-        // Has dots but not valid IPv4 - reject immediately
-        (void)fprintf(stderr, "Invalid IP address format '%s'.\n", value_str);
-        (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (e.g., 192.0.2.1).\n");
+      } else {
+        (void)fprintf(stderr, "Invalid bind address format '%s'.\n", value_str);
+        (void)fprintf(stderr, "Server bind address must be a valid IP address.\n");
         (void)fprintf(stderr, "Supported formats:\n");
-        (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
-        (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
-        (void)fprintf(stderr, "  Hostname: example.com\n");
+        (void)fprintf(stderr, "  IPv4: 0.0.0.0 or 127.0.0.1\n");
+        (void)fprintf(stderr, "  IPv6: :: or ::1 or [::1]\n");
         return option_error_invalid();
-      }
-      // Otherwise, try to resolve as hostname
-      else {
-        // Try to resolve hostname to IPv4 first (for backward compatibility)
-        char resolved_ip[OPTIONS_BUFF_SIZE];
-        if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
-          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
-        } else {
-          (void)fprintf(stderr, "Failed to resolve hostname '%s' to IP address.\n", value_str);
-          (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
-          (void)fprintf(stderr, "Supported formats:\n");
-          (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
-          (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
-          (void)fprintf(stderr, "  Hostname: example.com\n");
-          return option_error_invalid();
-        }
       }
       break;
     }
@@ -759,20 +751,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         (void)fprintf(stderr, "Error: Invalid IPv6 address '%s'.\n", value_str);
         return option_error_invalid();
       }
-      break;
-    }
-
-    case 'H': { // --host (DNS lookup)
-      char *hostname = get_required_argument(optarg, argbuf, sizeof(argbuf), "host", is_client);
-      if (!hostname)
-        return option_error_invalid();
-      char resolved_ip[OPTIONS_BUFF_SIZE];
-      if (platform_resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
-        (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", hostname);
-        (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
-        return option_error_invalid();
-      }
-      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
       break;
     }
 
@@ -1474,6 +1452,57 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
   }
 
+  // Client mode: Parse positional argument for address[:port]
+  // This replaces the old -a/--address and -H/--host options
+  if (is_client) {
+    // Check if there's a remaining positional argument after options
+    if (optind < argc && argv[optind] != NULL) {
+      const char *addr_arg = argv[optind];
+
+      // Skip if it looks like an option (starts with -)
+      if (addr_arg[0] != '-') {
+        char parsed_address[OPTIONS_BUFF_SIZE];
+        uint16_t parsed_port = 0;
+
+        // Parse address with optional port
+        if (parse_address_with_optional_port(addr_arg, parsed_address, sizeof(parsed_address), &parsed_port, 27224) !=
+            0) {
+          (void)fprintf(stderr, "Error: Invalid address format '%s'.\n", addr_arg);
+          (void)fprintf(stderr, "Supported formats:\n");
+          (void)fprintf(stderr, "  hostname          (e.g., localhost, example.com)\n");
+          (void)fprintf(stderr, "  hostname:port     (e.g., example.com:8080)\n");
+          (void)fprintf(stderr, "  IPv4              (e.g., 192.168.1.1)\n");
+          (void)fprintf(stderr, "  IPv4:port         (e.g., 192.168.1.1:8080)\n");
+          (void)fprintf(stderr, "  IPv6              (e.g., ::1, 2001:db8::1)\n");
+          (void)fprintf(stderr, "  [IPv6]:port       (e.g., [::1]:8080)\n");
+          return option_error_invalid();
+        }
+
+        // Store parsed address
+        // For hostname, try to resolve it to IP
+        if (is_valid_ipv4(parsed_address) || is_valid_ipv6(parsed_address)) {
+          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", parsed_address);
+        } else {
+          // Try to resolve hostname to IP address
+          char resolved_ip[OPTIONS_BUFF_SIZE];
+          if (platform_resolve_hostname_to_ipv4(parsed_address, resolved_ip, sizeof(resolved_ip)) == 0) {
+            SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
+          } else {
+            // DNS resolution failed - print error and exit
+            (void)fprintf(stderr, "Error: Failed to resolve hostname '%s' to IP address.\n", parsed_address);
+            (void)fprintf(stderr, "Check that the hostname is correct and DNS is working.\n");
+            return option_error_invalid();
+          }
+        }
+
+        // Store parsed port (overrides any previous --port setting)
+        SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%u", parsed_port);
+
+        optind++; // Consume this argument
+      }
+    }
+  }
+
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic
   update_dimensions_to_terminal_size();
@@ -1524,12 +1553,20 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
   (void)fprintf(desc, ASCII_CHAT_DESCRIPTION "\n\n");
+  (void)fprintf(desc, "USAGE:\n");
+  (void)fprintf(desc, "  ascii-chat client [address][:port] [options...]\n\n");
+  (void)fprintf(desc, "ADDRESS FORMATS:\n");
+  (void)fprintf(desc, "  (none)                     connect to localhost:27224\n");
+  (void)fprintf(desc, "  hostname                   connect to hostname:27224\n");
+  (void)fprintf(desc, "  hostname:port              connect to hostname:port\n");
+  (void)fprintf(desc, "  192.168.1.1                connect to IPv4:27224\n");
+  (void)fprintf(desc, "  192.168.1.1:8080           connect to IPv4:port\n");
+  (void)fprintf(desc, "  ::1                        connect to IPv6:27224\n");
+  (void)fprintf(desc, "  [::1]:8080                 connect to IPv6:port (brackets required with port)\n\n");
+  (void)fprintf(desc, "OPTIONS:\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
-  (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
-                                   "hostname for DNS lookup (alternative to --address)\n");
-  (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
+  (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT
+                                   "override port from address (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "   --reconnect VALUE         " USAGE_INDENT
                                    "reconnection behavior: off, auto, or 1-999 (default: auto)\n");
   (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");

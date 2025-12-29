@@ -915,7 +915,7 @@ void *client_audio_render_thread(void *arg) {
     // DEBUG: Log samples mixed every iteration
     // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
     mixer_debug_count++;
-    if (mixer_debug_count <= 3 || mixer_debug_count % 50 == 0) {
+    if (samples_mixed > 0 && (mixer_debug_count <= 3 || mixer_debug_count % 50 == 0)) {
       log_info("Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
                mixer_debug_count, client_id_snapshot, samples_mixed, opus_frame_accumulated, OPUS_FRAME_SAMPLES);
     }
