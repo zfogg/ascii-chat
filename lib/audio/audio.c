@@ -19,7 +19,10 @@
 #include <math.h>
 #include <stdatomic.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <malloc.h> // For _alloca on Windows
+#define alloca _alloca
+#else
 #include <unistd.h> // For dup, dup2, close, STDERR_FILENO
 #include <fcntl.h>  // For O_WRONLY
 #endif

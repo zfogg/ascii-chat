@@ -10,8 +10,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
