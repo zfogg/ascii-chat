@@ -789,6 +789,9 @@ int main(int argc, const char **argv) {
   // Capture CWD before anything else can change it
   g_originalCwd = fs::current_path();
 
+  // Hide all the LLVM internal options that aren't relevant to our tool
+  cl::HideUnrelatedOptions(ToolCategory);
+
   cl::ParseCommandLineOptions(argc, argv, "ascii-defer transformation tool\n");
 
   fs::path outputDir = fs::path(OutputDirectoryOption.getValue());
