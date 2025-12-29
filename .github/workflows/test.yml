@@ -60,6 +60,7 @@ jobs:
       with:
         os: ${{ matrix.os-name }}
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache build, dependencies, and ccache
       id: cache-build
@@ -284,6 +285,7 @@ jobs:
       with:
         os: ${{ matrix.os-name }}
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr' || 'gcovr' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache build, dependencies, and ccache
       id: cache-build
@@ -399,6 +401,7 @@ jobs:
       uses: ./.github/actions/install-deps
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache build, dependencies, and ccache
       id: cache-build
@@ -524,6 +527,7 @@ jobs:
       with:
         os: ubuntu
         extra-packages: valgrind
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache build, dependencies, and ccache
       id: cache-build
@@ -619,6 +623,7 @@ jobs:
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
         extra-packages: ${{ startsWith(matrix.os, 'macos') && 'coreutils' || '' }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Cache build, dependencies, and ccache
       id: cache-build
