@@ -286,6 +286,12 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
 
     float *render = (float *)alloca(num_samples * sizeof(float));
 
+    // Static buffer to keep last render samples when timing between callbacks is off
+    // This ensures AEC3 always has a render reference, even if slightly stale
+    static float last_render[960]; // Max 20ms at 48kHz
+    static size_t last_render_count = 0;
+    static bool last_render_valid = false;
+
     if (needs_resample) {
       // Render buffer is at internal sample_rate (48kHz), we need samples at input_device_rate
       // Calculate how many samples to read from render buffer
@@ -296,18 +302,66 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
       size_t render_read = audio_ring_buffer_read(ctx->render_buffer, render_raw, num_render_samples);
 
       if (render_read == 0) {
+        // Try peeking for any available samples
+        render_read = audio_ring_buffer_peek(ctx->render_buffer, render_raw, num_render_samples);
+        if (render_read > 0) {
+          log_debug_every(1000000, "AEC3 separate: Using peeked render (%zu samples)", render_read);
+        }
+      }
+
+      if (render_read == 0 && last_render_valid) {
+        // Use last known render samples as fallback
+        size_t copy_count = (last_render_count < num_samples) ? last_render_count : num_samples;
+        SAFE_MEMCPY(render, copy_count * sizeof(float), last_render, copy_count * sizeof(float));
+        if (copy_count < num_samples) {
+          SAFE_MEMSET(render + copy_count, (num_samples - copy_count) * sizeof(float), 0,
+                      (num_samples - copy_count) * sizeof(float));
+        }
+        log_debug_every(1000000, "AEC3 separate: Using cached last_render (%zu samples)", copy_count);
+      } else if (render_read == 0) {
         SAFE_MEMSET(render, num_samples * sizeof(float), 0, num_samples * sizeof(float));
       } else {
         // Resample from internal sample_rate to input_device_rate
         resample_linear(render_raw, render_read, render, num_samples, ctx->sample_rate, ctx->input_device_rate);
+        // Cache for future use
+        size_t cache_count = (num_samples < 960) ? num_samples : 960;
+        SAFE_MEMCPY(last_render, cache_count * sizeof(float), render, cache_count * sizeof(float));
+        last_render_count = cache_count;
+        last_render_valid = true;
       }
     } else {
       // No resampling needed - direct read (both at 48kHz)
       size_t render_samples = audio_ring_buffer_read(ctx->render_buffer, render, num_samples);
-      if (render_samples < num_samples) {
-        // Not enough render samples - zero-pad
+
+      if (render_samples == 0) {
+        // Try peeking
+        render_samples = audio_ring_buffer_peek(ctx->render_buffer, render, num_samples);
+        if (render_samples > 0) {
+          log_debug_every(1000000, "AEC3 separate: Using peeked render (%zu samples)", render_samples);
+        }
+      }
+
+      if (render_samples == 0 && last_render_valid) {
+        // Use cached render
+        size_t copy_count = (last_render_count < num_samples) ? last_render_count : num_samples;
+        SAFE_MEMCPY(render, copy_count * sizeof(float), last_render, copy_count * sizeof(float));
+        if (copy_count < num_samples) {
+          SAFE_MEMSET(render + copy_count, (num_samples - copy_count) * sizeof(float), 0,
+                      (num_samples - copy_count) * sizeof(float));
+        }
+        log_debug_every(1000000, "AEC3 separate: Using cached last_render (%zu samples)", copy_count);
+      } else if (render_samples < num_samples) {
+        // Zero-pad if not enough
         SAFE_MEMSET(render + render_samples, (num_samples - render_samples) * sizeof(float), 0,
                     (num_samples - render_samples) * sizeof(float));
+      }
+
+      // Cache for future use
+      if (render_samples > 0) {
+        size_t cache_count = (num_samples < 960) ? num_samples : 960;
+        SAFE_MEMCPY(last_render, cache_count * sizeof(float), render, cache_count * sizeof(float));
+        last_render_count = cache_count;
+        last_render_valid = true;
       }
     }
 
