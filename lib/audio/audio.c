@@ -962,9 +962,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       return SET_ERRNO(ERROR_AUDIO, "Failed to open output stream: %s", Pa_GetErrorText(err));
     }
 
-    // Open input stream at NATIVE device rate (typically 48kHz which matches our internal rate)
-    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, inputInfo->defaultSampleRate, AUDIO_FRAMES_PER_BUFFER,
-                        paClipOff, input_callback, ctx);
+    // Open input stream at PIPELINE rate (48kHz) - let PortAudio resample from device if needed
+    // This ensures input matches sample_rate for AEC3, avoiding resampling in our callback
+    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                        input_callback, ctx);
     if (err != paNoError) {
       Pa_CloseStream(ctx->output_stream);
       ctx->output_stream = NULL;
