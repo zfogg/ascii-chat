@@ -151,10 +151,12 @@ if(NOT webrtc_aec3_POPULATED)
             # This ensures libc++'s C header wrappers (stddef.h, stdio.h) are found first,
             # so their #include_next chains work correctly.
             #
-            # IMPORTANT: We DON'T use -isysroot because it adds SDK headers at even
-            # higher priority, breaking the include_next chains.
-            set(_webrtc_c_flags "-w")
-            set(_webrtc_cxx_flags "-stdlib=libc++ ${_libcxx_include_flag} -w")
+            # IMPORTANT: We use --no-default-config to prevent clang from loading
+            # config files (e.g., ~/.config/clang/<triple>.cfg) that may contain
+            # -isysroot or -isystem flags with higher priority than our flags.
+            # CI workflows often create these config files with SDK paths.
+            set(_webrtc_c_flags "--no-default-config -w")
+            set(_webrtc_cxx_flags "--no-default-config -stdlib=libc++ ${_libcxx_include_flag} -w")
             # Remove any inherited CMAKE_*_FLAGS that might contain -resource-dir or -isysroot
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
