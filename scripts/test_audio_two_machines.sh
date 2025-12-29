@@ -39,6 +39,7 @@ shopt -u nocasematch
 echo ""
 echo "Cross-machine audio analysis test"
 echo "=================================="
+echo "Current host: $CURRENT_HOST"
 echo "HOST 1 (server + client 1): $HOST_ONE"
 echo "HOST 2 (client 2):          $HOST_TWO"
 echo "Duration: $DURATION seconds"
@@ -140,7 +141,6 @@ sleep 2  # Wait for server to start
 # Start client 1 on HOST_ONE
 echo "[7/8] Starting client 1 on $HOST_ONE with audio analysis..."
 run_bg_on_one "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE client localhost:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION --log-file /tmp/client1_debug.log"
-sleep 1  # Give client 1 time to connect
 
 # Start client 2 on HOST_TWO
 echo "[8/8] Starting client 2 on $HOST_TWO..."
@@ -155,7 +155,7 @@ echo ""
 # Wait for the test duration
 # Note: We can't use 'wait' on PIDs from SSH/subshells - they're remote PIDs
 # The processes will self-terminate via 'timeout' command
-sleep $((DURATION + 5))
+sleep $((DURATION))
 
 # Clean up any remaining processes on both hosts
 echo "Cleaning up processes..."
@@ -167,13 +167,13 @@ echo ""
 echo "=========================================================================="
 echo "                    CLIENT 1 ($HOST_ONE) AUDIO ANALYSIS"
 echo "=========================================================================="
-run_on_one "grep -A 30 'AUDIO ANALYSIS REPORT' /tmp/client1_debug.log 2>/dev/null" || echo "Report not found"
+run_on_one "grep -A 40 'AUDIO ANALYSIS REPORT' /tmp/client1_debug.log 2>/dev/null" || echo "Report not found"
 
 echo ""
 echo "=========================================================================="
 echo "                    CLIENT 2 ($HOST_TWO) AUDIO ANALYSIS"
 echo "=========================================================================="
-run_on_two "grep -A 30 'AUDIO ANALYSIS REPORT' /tmp/client2_debug.log 2>/dev/null" || echo "Report not found"
+run_on_two "grep -A 40 'AUDIO ANALYSIS REPORT' /tmp/client2_debug.log 2>/dev/null" || echo "Report not found"
 
 echo ""
 echo "=========================================================================="
