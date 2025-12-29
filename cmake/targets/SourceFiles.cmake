@@ -109,6 +109,9 @@ if(WIN32)
         lib/platform/windows/symbols.c
         lib/platform/windows/getopt.c
         lib/platform/windows/pipe.c
+        lib/platform/windows/memory.c
+        lib/platform/windows/process.c
+        lib/platform/windows/fs.c
         lib/video/webcam/windows/webcam_mediafoundation.c
     )
 elseif(PLATFORM_POSIX)
@@ -127,6 +130,9 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/mmap.c
         lib/platform/posix/symbols.c
         lib/platform/posix/pipe.c
+        lib/platform/posix/memory.c
+        lib/platform/posix/process.c
+        lib/platform/posix/fs.c
     )
 
     if(PLATFORM_DARWIN)

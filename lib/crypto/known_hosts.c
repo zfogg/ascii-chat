@@ -8,24 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#ifdef _WIN32
-#include <direct.h>
 #include <fcntl.h>
-#include <io.h> // For _fileno() and STDIN_FILENO on Windows
-#define mkdir(path, mode) _mkdir(path)
-#define strncasecmp _strnicmp
-#ifndef EEXIST
-#define EEXIST 17 // Standard errno value for "File exists"
-#endif
-#ifndef STDIN_FILENO
-#define STDIN_FILENO 0
-#endif
-#else
-#include <fcntl.h> // For O_RDONLY, O_WRONLY, O_CREAT, O_APPEND on POSIX
-#include <sys/stat.h>
-#include <strings.h>
-#include <unistd.h> // For STDIN_FILENO on POSIX
-#endif
 
 #include "crypto/known_hosts.h"
 #include "crypto/crypto.h"   // Includes <sodium.h>, CRYPTO_* constants
@@ -35,6 +18,7 @@
 #include "util/ip.h"
 #include "platform/util.h"
 #include "platform/system.h"   // For platform_isatty() and FILE_PERM_* constants
+#include "platform/fs.h"       // For platform_mkdir(), platform_stat()
 #include "platform/question.h" // For platform_prompt_yes_no
 #include "options/options.h"   // For opt_snapshot_mode
 #include "util/path.h"
@@ -341,29 +325,20 @@ static asciichat_error_t mkdir_recursive(const char *path) {
     if (*p == '/' || *p == '\\') {
       *p = '\0'; // Temporarily truncate
 
-      // Try to create this directory level
-      int result = mkdir(tmp, DIR_PERM_PRIVATE);
-      if (result != 0 && errno != EEXIST) {
-        // mkdir failed - check if directory actually exists (Windows quirk)
-        int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
-        if (test_fd < 0) {
-          return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
-        }
-        platform_close(test_fd);
+      // Try to create this directory level using platform abstraction
+      asciichat_error_t mkdir_result = platform_mkdir(tmp, DIR_PERM_PRIVATE);
+      if (mkdir_result != ASCIICHAT_OK && mkdir_result != ERROR_FILE_OPERATION) {
+        return mkdir_result;
       }
 
       *p = PATH_DELIM; // Restore path separator (use platform-specific separator)
     }
   }
 
-  // Create the final directory
-  int result = mkdir(tmp, DIR_PERM_PRIVATE);
-  if (result != 0 && errno != EEXIST) {
-    int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
-    if (test_fd < 0) {
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
-    }
-    platform_close(test_fd);
+  // Create the final directory using platform abstraction
+  asciichat_error_t mkdir_result = platform_mkdir(tmp, DIR_PERM_PRIVATE);
+  if (mkdir_result != ASCIICHAT_OK && mkdir_result != ERROR_FILE_OPERATION) {
+    return mkdir_result;
   }
 
   return ASCIICHAT_OK;

@@ -16,23 +16,9 @@
 #include "asciichat_errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
+#include "platform/memory.h"
 #include "util/format.h"
 #include "util/path.h"
-
-#ifdef _WIN32
-#if defined(_MSC_VER)
-#include <excpt.h>
-#endif
-#include <malloc.h>
-#elif defined(__APPLE__)
-#include <malloc/malloc.h>
-#elif defined(__linux__)
-#include <features.h>
-#include <malloc.h>
-#if !defined(_GNU_SOURCE) || !defined(__GLIBC__)
-extern size_t malloc_usable_size(void *ptr);
-#endif
-#endif
 
 typedef struct mem_block {
   void *ptr;
@@ -252,22 +238,7 @@ void debug_free(void *ptr, const char *file, int line) {
     atomic_fetch_add(&g_mem.total_freed, freed_size);
     atomic_fetch_sub(&g_mem.current_usage, freed_size);
   } else {
-    size_t real_size = 0;
-#ifdef _WIN32
-#if defined(_MSC_VER)
-    __try {
-      real_size = _msize(ptr);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-      real_size = 0;
-    }
-#else
-    real_size = _msize(ptr);
-#endif
-#elif defined(__APPLE__)
-    real_size = malloc_size(ptr);
-#elif defined(__linux__)
-    real_size = malloc_usable_size(ptr);
-#endif
+    size_t real_size = platform_malloc_size(ptr);
 
     if (real_size > 0) {
       atomic_fetch_add(&g_mem.total_freed, real_size);
