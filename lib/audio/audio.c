@@ -224,15 +224,15 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       if (samples_read == 0) {
         SAFE_MEMSET(output, num_output_samples * sizeof(float), 0, num_output_samples * sizeof(float));
       } else {
-        // Resample from 48kHz to output device rate
+        // Store 48kHz signal in render buffer BEFORE resampling (for AEC3)
+        // This avoids double resampling (48→44.1→48) and preserves quality
+        if (ctx->render_buffer) {
+          audio_ring_buffer_write(ctx->render_buffer, src_buffer, (int)samples_read);
+        }
+
+        // THEN resample from 48kHz to output device rate
         resample_linear(src_buffer, samples_read, output, num_output_samples, ctx->sample_rate,
                         ctx->output_device_rate);
-      }
-
-      // Copy resampled output to render buffer for AEC3 reference
-      // (AEC3 needs to know what's actually playing to speakers)
-      if (ctx->render_buffer) {
-        audio_ring_buffer_write(ctx->render_buffer, output, (int)num_output_samples);
       }
     } else {
       // No resampling needed - direct read
@@ -279,16 +279,17 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
 
   // Process AEC3 with render reference from render_buffer
   if (ctx->audio_pipeline && input && ctx->render_buffer) {
-    // Check if we need to resample render (render_buffer is at output_device_rate, input is at input_device_rate)
-    bool needs_resample = (ctx->output_device_rate > 0 && ctx->input_device_rate > 0 &&
-                           ctx->output_device_rate != ctx->input_device_rate);
+    // Render buffer now stores samples at internal sample_rate (48kHz), not output device rate
+    // Check if we need to resample render (render_buffer is at sample_rate, input is at input_device_rate)
+    bool needs_resample =
+        (ctx->input_device_rate > 0 && ctx->sample_rate > 0 && ctx->sample_rate != ctx->input_device_rate);
 
     float *render = (float *)alloca(num_samples * sizeof(float));
 
     if (needs_resample) {
-      // Render buffer is at output_device_rate, we need samples at input_device_rate
+      // Render buffer is at internal sample_rate (48kHz), we need samples at input_device_rate
       // Calculate how many samples to read from render buffer
-      double ratio = ctx->output_device_rate / ctx->input_device_rate; // e.g., 44100/48000 = 0.919
+      double ratio = ctx->sample_rate / ctx->input_device_rate; // e.g., 48000/44100 = 1.088
       size_t num_render_samples = (size_t)((double)num_samples * ratio) + 2;
 
       float *render_raw = (float *)alloca(num_render_samples * sizeof(float));
@@ -297,11 +298,11 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
       if (render_read == 0) {
         SAFE_MEMSET(render, num_samples * sizeof(float), 0, num_samples * sizeof(float));
       } else {
-        // Resample from output_device_rate to input_device_rate
-        resample_linear(render_raw, render_read, render, num_samples, ctx->output_device_rate, ctx->input_device_rate);
+        // Resample from internal sample_rate to input_device_rate
+        resample_linear(render_raw, render_read, render, num_samples, ctx->sample_rate, ctx->input_device_rate);
       }
     } else {
-      // No resampling needed - direct read
+      // No resampling needed - direct read (both at 48kHz)
       size_t render_samples = audio_ring_buffer_read(ctx->render_buffer, render, num_samples);
       if (render_samples < num_samples) {
         // Not enough render samples - zero-pad
