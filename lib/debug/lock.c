@@ -13,6 +13,7 @@
 // Without DEBUG_LOCKS, lock_debug.h provides inline no-op stubs
 
 #include "common.h"
+#include "asciichat_errno.h"
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
 #include "util/time.h"
@@ -206,37 +207,20 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
                         record->acquisition_time.tv_nsec);
   }
 
-  // Print backtrace using platform symbol resolution
+  // Print backtrace using platform symbol resolution with colored format
   if (record->backtrace_size > 0) {
-    *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Call stack (%d frames):\n",
-                        record->backtrace_size);
+    // Header with color
+    *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  %sCall stack:%s\n",
+                        log_level_color(LOG_COLOR_WARN), log_level_color(LOG_COLOR_RESET));
 
     // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
 
-    // Check if we got useful symbols (not just addresses)
-    bool has_symbols = false;
-    if (symbols && symbols[0]) {
-      // Check if symbol contains more than just the address
-      char addr_str[32];
-      (void)snprintf(addr_str, sizeof(addr_str), "%p", record->backtrace_buffer[0]);
-      has_symbols = (strstr(symbols[0], "(") != NULL) || (strstr(symbols[0], "+") != NULL);
-    }
-
     for (int j = 0; j < record->backtrace_size; j++) {
-      // Build the full line for each stack frame
-      if (symbols && symbols[j] && has_symbols) {
-        *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "    %2d: %s\n", j, symbols[j]);
-      } else {
-        *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "    %2d: %p\n", j,
-                            record->backtrace_buffer[j]);
-      }
-    }
-
-    // For static binaries, provide helpful message
-    if (!has_symbols) {
-      *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset),
-                          "  Resolve symbols with: addr2line -e <binary> -f -C <addresses>\n");
+      // Build the full line for each stack frame with colored frame numbers
+      const char *symbol = (symbols && symbols[j]) ? symbols[j] : "<unresolved>";
+      *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "    [%s%d%s] %s\n",
+                          log_level_color(LOG_COLOR_FATAL), j, log_level_color(LOG_COLOR_RESET), symbol);
     }
 
     // Clean up symbols
@@ -363,20 +347,17 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
   log_info("  Released at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
            record->acquisition_time.tv_nsec);
 
-  // Print backtrace for the orphaned release
+  // Print backtrace for the orphaned release with colored format
   if (record->backtrace_size > 0) {
-    log_info("  Release call stack (%d frames):", record->backtrace_size);
+    log_labeled("  Release call stack", LOG_COLOR_WARN, "");
 
     // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
 
     for (int j = 0; j < record->backtrace_size; j++) {
-      // Build the full line for each stack frame
-      if (symbols && symbols[j]) {
-        log_info("    %2d: %p %s", j, record->backtrace_buffer[j], symbols[j]);
-      } else {
-        log_info("    %2d: %p <unresolved>", j, record->backtrace_buffer[j]);
-      }
+      // Build the full line for each stack frame with colored frame numbers
+      const char *symbol = (symbols && symbols[j]) ? symbols[j] : "<unresolved>";
+      log_plain("    [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), j, log_level_color(LOG_COLOR_RESET), symbol);
     }
 
     // Clean up symbols
@@ -924,15 +905,13 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
                  duration_str, LOCK_HOLD_TIME_WARNING_MS, file_name, line_number, function_name, lock_type_str,
                  lock_ptr);
 
-        // Print backtrace from when lock was acquired
+        // Print backtrace from when lock was acquired with colored format
         if (record->backtrace_size > 0 && record->backtrace_symbols) {
-          char backtrace_str[1024];
-          int offset = 0;
+          log_labeled("Backtrace from lock acquisition", LOG_COLOR_WARN, "");
           for (int i = 0; i < record->backtrace_size && i < 10; i++) { // Limit to first 10 frames
-            offset += snprintf(backtrace_str + offset, sizeof(backtrace_str) - offset, "    #%d: %s\n", i,
-                               record->backtrace_symbols[i]);
+            log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i, log_level_color(LOG_COLOR_RESET),
+                      record->backtrace_symbols[i]);
           }
-          log_warn("Backtrace from lock acquisition:\n%s", backtrace_str);
         } else {
           // No backtrace available, print current backtrace
           log_warn("No backtrace available. Current backtrace:");
@@ -1343,33 +1322,20 @@ void lock_debug_print_state(void) {
                        "  Released at: %lld.%09ld seconds (monotonic)\n",
                        (long long)orphan_entry->acquisition_time.tv_sec, orphan_entry->acquisition_time.tv_nsec);
 
-    // Print backtrace for orphaned release
+    // Print backtrace for orphaned release with colored format
     if (orphan_entry->backtrace_size > 0) {
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  Release call stack (%d frames):\n", orphan_entry->backtrace_size);
+      // Header with color
+      offset +=
+          snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  %sRelease call stack:%s\n",
+                   log_level_color(LOG_COLOR_WARN), log_level_color(LOG_COLOR_RESET));
 
       char **symbols = platform_backtrace_symbols(orphan_entry->backtrace_buffer, orphan_entry->backtrace_size);
 
-      bool has_symbols = false;
-      if (symbols && symbols[0]) {
-        char addr_str[32];
-        (void)snprintf(addr_str, sizeof(addr_str), "%p", orphan_entry->backtrace_buffer[0]);
-        has_symbols = (strstr(symbols[0], "(") != NULL) || (strstr(symbols[0], "+") != NULL);
-      }
-
       for (int j = 0; j < orphan_entry->backtrace_size; j++) {
-        if (symbols && symbols[j] && has_symbols) {
-          offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "    %2d: %s\n", j,
-                             symbols[j]);
-        } else {
-          offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "    %2d: %p\n", j,
-                             orphan_entry->backtrace_buffer[j]);
-        }
-      }
-
-      if (!has_symbols) {
-        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                           "  Resolve symbols with: addr2line -e <binary> -f -C <addresses>\n");
+        // Colored frame numbers
+        const char *symbol = (symbols && symbols[j]) ? symbols[j] : "<unresolved>";
+        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "    [%s%d%s] %s\n",
+                           log_level_color(LOG_COLOR_FATAL), j, log_level_color(LOG_COLOR_RESET), symbol);
       }
 
       if (symbols) {

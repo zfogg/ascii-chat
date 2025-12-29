@@ -268,6 +268,20 @@ void log_plain_stderr_nonewline_msg(const char *fmt, ...);
 void log_file_msg(const char *fmt, ...);
 
 /**
+ * @brief Print a labeled message with color
+ * @param label The label text to print (appears before the message)
+ * @param color Color for the label (from log_color_t enum)
+ * @param message Format string (printf-style) for the message
+ * @param ... Format arguments
+ *
+ * Used for consistent formatting of section headers and labeled output.
+ * The label is colored, followed by the message content.
+ * Output goes to both stderr and log file.
+ * @ingroup logging
+ */
+void log_labeled(const char *label, log_color_t color, const char *message, ...);
+
+/**
  * @brief Get color string for a given color enum
  * @param color Color enum value
  * @return ANSI color code string

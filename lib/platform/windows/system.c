@@ -864,7 +864,11 @@ void platform_backtrace_symbols_free(char **strings) {
 // ============================================================================
 
 /**
- * @brief Print backtrace using log_plain
+ * @brief Print backtrace using log_plain with syntax highlighting
+ *
+ * Uses the same colored format as library error backtraces for consistency:
+ *   [5] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
+ *
  * @param skip_frames Number of additional frames to skip (beyond platform_print_backtrace itself)
  */
 void platform_print_backtrace(int skip_frames) {
@@ -872,29 +876,20 @@ void platform_print_backtrace(int skip_frames) {
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    char backtrace_buffer[BUFFER_SIZE_HUGE];
-    int offset = 0;
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     int start_frame = 1 + skip_frames;
 
-    // Build header
-    offset +=
-        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=== BACKTRACE ===\n");
+    // Print header with color
+    log_labeled("\nBacktrace", LOG_COLOR_WARN, "");
 
-    // Build backtrace frames
-    for (int i = start_frame; i < size && offset < (int)sizeof(backtrace_buffer) - 256; i++) {
-      offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "  #%2d: %s\n",
-                                  i - start_frame, symbols ? symbols[i] : "???");
+    // Print backtrace frames with colored frame numbers
+    for (int i = start_frame; i < size; i++) {
+      const char *symbol = (symbols && symbols[i]) ? symbols[i] : "???";
+      log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i - start_frame, log_level_color(LOG_COLOR_RESET),
+                symbol);
     }
-
-    // Build footer
-    offset +=
-        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=================");
-
-    // Single log_plain call with complete backtrace
-    log_plain("%s", backtrace_buffer);
 
     platform_backtrace_symbols_free(symbols);
   }
