@@ -305,14 +305,9 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
   if (size > 0) {
-    log_labeled("\nFATAL BACKTRACE", LOG_COLOR_FATAL, "");
     char **symbols = platform_backtrace_symbols(buffer, size);
     if (symbols) {
-      for (int i = 0; i < size; i++) {
-        if (symbols[i] && !skip_backtrace_frame(symbols[i])) {
-          log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i, log_level_color(LOG_COLOR_RESET), symbols[i]);
-        }
-      }
+      platform_print_backtrace_symbols("\nFATAL BACKTRACE", symbols, size, 0, 0, skip_backtrace_frame);
       platform_backtrace_symbols_free(symbols);
     }
   }
@@ -362,16 +357,9 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   // Print stack trace from library error
-  if (context->stack_depth > 0) {
-    log_labeled("\nBacktrace from library error", LOG_COLOR_ERROR, "");
-    // Print stack trace starting from the first non-internal frame
-    for (int i = 0; i < context->stack_depth; i++) {
-      if (context->backtrace_symbols && context->backtrace_symbols[i] &&
-          !skip_backtrace_frame(context->backtrace_symbols[i])) {
-        log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i, log_level_color(LOG_COLOR_RESET),
-                  context->backtrace_symbols[i]);
-      }
-    }
+  if (context->stack_depth > 0 && context->backtrace_symbols) {
+    platform_print_backtrace_symbols("\nBacktrace from library error", context->backtrace_symbols, context->stack_depth,
+                                     0, 0, skip_backtrace_frame);
   }
 }
 

@@ -29,11 +29,11 @@ extern "C" {
  * @ingroup platform
  */
 typedef struct {
-  size_t size;           ///< File size in bytes
-  int mode;              ///< File mode (permissions and type)
-  int is_regular_file;   ///< Non-zero if file is a regular file
-  int is_directory;      ///< Non-zero if file is a directory
-  int is_symlink;        ///< Non-zero if file is a symbolic link
+  size_t size;         ///< File size in bytes
+  int mode;            ///< File mode (permissions and type)
+  int is_regular_file; ///< Non-zero if file is a regular file
+  int is_directory;    ///< Non-zero if file is a directory
+  int is_symlink;      ///< Non-zero if file is a symbolic link
 } platform_stat_t;
 
 /**

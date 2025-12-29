@@ -17,7 +17,7 @@
  * @brief Create a directory (Windows implementation)
  */
 asciichat_error_t platform_mkdir(const char *path, int mode) {
-  UNUSED(mode);  // Windows doesn't use Unix-style permissions
+  UNUSED(mode); // Windows doesn't use Unix-style permissions
 
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir");
@@ -61,7 +61,7 @@ asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
   size.HighPart = attr.nFileSizeHigh;
 
   stat_out->size = (size_t)size.QuadPart;
-  stat_out->mode = 0;  // Windows doesn't have Unix-style modes
+  stat_out->mode = 0; // Windows doesn't have Unix-style modes
 
   // Check file type
   stat_out->is_directory = (attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
