@@ -158,41 +158,41 @@ function(generate_compilation_database)
     # Build the cmake build command
     set(_cmake_build_cmd "${CMAKE_COMMAND} --build ${_DB_TEMP_DIR} --target generate_version")
 
-    if(WIN32)
-        # Windows: use PowerShell for proper stdout/stderr redirection
-        # cmd /c has quoting issues with -D arguments containing paths
-        add_custom_command(
-            OUTPUT "${_DB_OUTPUT}"
-            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_DB_TEMP_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${_DB_TEMP_DIR}"
-            COMMAND powershell -Command "${CMAKE_COMMAND} ${_cmake_args_str} *> ${_DB_LOG_FILE}"
-            COMMAND powershell -Command "${_cmake_build_cmd} *>> ${_DB_LOG_FILE}"
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${_DB_TEMP_DIR}/compile_commands.json"
-                "${_DB_OUTPUT}"
-            COMMAND ${CMAKE_COMMAND} -DINPUT_FILE=${_DB_OUTPUT} -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake
-            COMMENT "${_DB_COMMENT}"
-            VERBATIM
-        )
-    else()
-        # Unix: use shell redirection and CMake script to fix directory field
-        add_custom_command(
-            OUTPUT "${_DB_OUTPUT}"
-            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_DB_TEMP_DIR}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${_DB_TEMP_DIR}"
-            COMMAND sh -c "${CMAKE_COMMAND} ${_cmake_args_str} > ${_DB_LOG_FILE} 2>&1"
-            COMMAND sh -c "${_cmake_build_cmd} >> ${_DB_LOG_FILE} 2>&1"
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${_DB_TEMP_DIR}/compile_commands.json"
-                "${_DB_OUTPUT}"
-            COMMAND sh -c "${CMAKE_COMMAND} -DINPUT_FILE='${_DB_OUTPUT}' -DSOURCE_DIR='${CMAKE_SOURCE_DIR}' -P '${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake'"
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${_DB_OUTPUT}"
-                "${_DB_TEMP_DIR}/compile_commands.json"
-            COMMENT "${_DB_COMMENT}"
-            VERBATIM
-        )
-    endif()
+    # Write cmake arguments to a response file for the helper script
+    # This avoids issues with complex quoting and special characters
+    set(_args_file "${CMAKE_BINARY_DIR}/compile_db_args.txt")
+    list(JOIN _cmake_configure_args "\n" _args_content)
+    file(WRITE "${_args_file}" "${_args_content}")
+
+    # Use CMake script helper for consistent error handling on all platforms
+    # This properly captures output, shows log on failure, and propagates exit codes
+    add_custom_command(
+        OUTPUT "${_DB_OUTPUT}"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${_DB_TEMP_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${_DB_TEMP_DIR}"
+        COMMAND ${CMAKE_COMMAND}
+            -DARGS_FILE=${_args_file}
+            -DLOG_FILE=${_DB_LOG_FILE}
+            -DAPPEND_TO_LOG=FALSE
+            -DOPERATION_NAME=CMake_configure_for_compilation_database
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunCMakeWithLog.cmake
+        COMMAND ${CMAKE_COMMAND}
+            -DBUILD_DIR=${_DB_TEMP_DIR}
+            -DBUILD_TARGET=generate_version
+            -DLOG_FILE=${_DB_LOG_FILE}
+            -DAPPEND_TO_LOG=TRUE
+            -DOPERATION_NAME=CMake_build_generate_version
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunCMakeBuildWithLog.cmake
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${_DB_TEMP_DIR}/compile_commands.json"
+            "${_DB_OUTPUT}"
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT_FILE=${_DB_OUTPUT}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake
+        COMMENT "${_DB_COMMENT}"
+        VERBATIM
+    )
 endfunction()
 
 # =============================================================================
