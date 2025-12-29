@@ -78,6 +78,16 @@ static void print_mimalloc_stats(void);
 #endif
 
 asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client) {
+  // Register memory debugging stats FIRST so it runs LAST at exit
+  // (atexit callbacks run in LIFO order - last registered runs first)
+  // This ensures all cleanup handlers run before the memory report is printed
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  (void)atexit(debug_memory_report);
+#elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  (void)atexit(print_mimalloc_stats);
+  UNUSED(print_mimalloc_stats);
+#endif
+
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != ASCIICHAT_OK) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
@@ -114,14 +124,9 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   // Truncate log if it's already too large
   log_truncate_if_large();
 
-  // Print memory debugging stats at exit (only in debug builds)
+  // Set quiet mode for memory debugging (registration done at function start)
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   debug_memory_set_quiet_mode(opt_quiet);
-  (void)atexit(debug_memory_report);
-#elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-  // Register mimalloc stats printer at exit
-  (void)atexit(print_mimalloc_stats);
-  UNUSED(print_mimalloc_stats);
 #endif
 
   return ASCIICHAT_OK;
