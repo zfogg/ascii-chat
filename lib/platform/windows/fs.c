@@ -65,8 +65,9 @@ asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
 
   // Check file type
   stat_out->is_directory = (attr.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
-  stat_out->is_regular_file = stat_out->is_directory ? 0 : 1;
   stat_out->is_symlink = (attr.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) ? 1 : 0;
+  // Regular file excludes directories and symlinks (matches POSIX S_ISREG behavior)
+  stat_out->is_regular_file = (stat_out->is_directory || stat_out->is_symlink) ? 0 : 1;
 
   return ASCIICHAT_OK;
 }
