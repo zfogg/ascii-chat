@@ -96,11 +96,12 @@ if(NOT webrtc_aec3_POPULATED)
             endif()
             set(WEBRTC_MUSL_TARGET "${MUSL_ARCH}-linux-musl")
 
-            # Append musl-specific flags to CMAKE_C_FLAGS and CMAKE_CXX_FLAGS
-            # These ensure WebRTC is compiled for musl, not glibc
-            # IMPORTANT: Our flags must come AFTER existing flags to override any FORTIFY_SOURCE settings
-            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS} -target ${WEBRTC_MUSL_TARGET} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0")
-            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -target ${WEBRTC_MUSL_TARGET} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0")
+            # Completely replace CMAKE_C_FLAGS and CMAKE_CXX_FLAGS for WebRTC musl builds
+            # Don't inherit any FORTIFY_SOURCE settings from parent build environment
+            # The musl target triple ensures glibc-specific code paths are not used
+            set(_webrtc_base_flags "-O3 -target ${WEBRTC_MUSL_TARGET}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_base_flags}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_base_flags}")
             message(STATUS "WebRTC will be built for musl target: ${WEBRTC_MUSL_TARGET}")
         endif()
 
