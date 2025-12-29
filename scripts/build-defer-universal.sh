@@ -82,7 +82,8 @@ file "$ARM64_DIR/$TOOL_NAME"
 # Fix rpaths to use system libraries instead of Homebrew paths
 echo "Fixing arm64 rpaths for portability..."
 install_name_tool -change @rpath/libc++.1.dylib /usr/lib/libc++.1.dylib "$ARM64_DIR/$TOOL_NAME"
-install_name_tool -change @rpath/libunwind.1.dylib /usr/lib/libunwind.1.dylib "$ARM64_DIR/$TOOL_NAME"
+# Use Homebrew LLVM's libunwind (available on CI runners with Homebrew LLVM installed)
+install_name_tool -change @rpath/libunwind.1.dylib /opt/homebrew/opt/llvm/lib/unwind/libunwind.1.dylib "$ARM64_DIR/$TOOL_NAME"
 # Remove Homebrew-specific rpaths
 install_name_tool -delete_rpath /usr/local/lib "$ARM64_DIR/$TOOL_NAME" 2>/dev/null || true
 install_name_tool -delete_rpath /usr/local/lib/c++ "$ARM64_DIR/$TOOL_NAME" 2>/dev/null || true
@@ -183,7 +184,9 @@ file "$X86_64_DIR/$TOOL_NAME"
 # Fix rpaths to use system libraries instead of build-specific paths
 echo "Fixing x86_64 rpaths for portability..."
 install_name_tool -change @rpath/libc++.1.dylib /usr/lib/libc++.1.dylib "$X86_64_DIR/$TOOL_NAME"
-install_name_tool -change @rpath/libunwind.1.dylib /usr/lib/libunwind.1.dylib "$X86_64_DIR/$TOOL_NAME"
+# Use Homebrew LLVM's libunwind (available on CI runners with Homebrew LLVM installed)
+# Note: x86_64 uses /usr/local/opt/llvm path on Intel macs
+install_name_tool -change @rpath/libunwind.1.dylib /usr/local/opt/llvm/lib/unwind/libunwind.1.dylib "$X86_64_DIR/$TOOL_NAME"
 # Remove build-specific rpaths
 install_name_tool -delete_rpath "$LLVM_X86_64_ROOT/lib" "$X86_64_DIR/$TOOL_NAME" 2>/dev/null || true
 install_name_tool -delete_rpath "$LLVM_X86_64_ROOT/lib/c++" "$X86_64_DIR/$TOOL_NAME" 2>/dev/null || true
