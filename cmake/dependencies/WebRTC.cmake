@@ -164,7 +164,8 @@ else()
         "${WEBRTC_API_LIB}"
         "${WEBRTC_BASE_LIB}"
         -Wl,--no-whole-archive
-        $<IF:$<BOOL:${USE_MUSL}>,c++,stdc++>
+        # Don't link stdlib for musl builds - Alpine libc++ is linked via link_alpine_libcxx()
+        $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
     )
 endif()
 
