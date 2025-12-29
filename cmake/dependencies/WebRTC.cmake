@@ -151,12 +151,15 @@ if(NOT webrtc_aec3_POPULATED)
                     # CRITICAL: Must explicitly set -stdlib=libc++, -isysroot, and -isystem for macOS builds
                     # The clang config files (~/.config/clang/*.cfg) may not be picked up by
                     # the WebRTC sub-build, so we need to pass all these explicitly:
+                    # - -nostdinc++: Disable automatic C++ include path detection (REQUIRED!)
+                    #   Without this, -resource-dir causes <resource-dir>/include to be searched
+                    #   BEFORE -isystem paths, breaking libc++'s header wrapper order
+                    # - -isystem: libc++ headers (must come before SDK headers)
                     # - -resource-dir: clang compiler builtins
                     # - -isysroot: macOS SDK path
-                    # - -isystem: libc++ headers (must come before SDK headers)
                     # - -stdlib=libc++: use LLVM's libc++ instead of libstdc++
                     set(_webrtc_c_flags "-resource-dir ${CLANG_VERSION_DIR} ${_sysroot_flag} -w")
-                    set(_webrtc_cxx_flags "-resource-dir ${CLANG_VERSION_DIR} ${_libcxx_include_flag} ${_sysroot_flag} -stdlib=libc++ -w")
+                    set(_webrtc_cxx_flags "-nostdinc++ ${_libcxx_include_flag} -resource-dir ${CLANG_VERSION_DIR} ${_sysroot_flag} -stdlib=libc++ -w")
                     # Remove the old CMAKE_*_FLAGS entries and add our clean ones
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
