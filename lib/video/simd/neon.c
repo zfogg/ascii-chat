@@ -908,10 +908,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
     for (; x < width;) {
       const rgb_pixel_t *p = &row[x];
       uint32_t R = p->r, G = p->g, B = p->b;
-      uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + 128u) >> 8);
-      uint8_t luma_idx = Y >> 2;                                // 0-63 index
-      uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index
-      const utf8_char_t *char_info = &utf8_cache->cache64[char_idx];
+      uint8_t Y = (uint8_t)((LUMA_RED * R + LUMA_GREEN * G + LUMA_BLUE * B + LUMA_THRESHOLD) >> 8);
+      uint8_t luma_idx = Y >> 2; // 0-63 index (matches SIMD: cache64 is indexed by luminance bucket)
+      const utf8_char_t *char_info = &utf8_cache->cache64[luma_idx];
 
       if (use_256color) {
         // 256-color scalar tail
@@ -921,10 +920,10 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
         while (j < width) {
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
-          uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + 128u) >> 8);
-          uint8_t char_idx2 = utf8_cache->char_index_ramp[Y2 >> 2];
+          uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
+          uint8_t luma_idx2 = Y2 >> 2; // Compare luminance buckets (matches SIMD)
           uint8_t color_idx2 = rgb_to_256color((uint8_t)R2, (uint8_t)G2, (uint8_t)B2);
-          if (char_idx2 != char_idx || color_idx2 != color_idx)
+          if (luma_idx2 != luma_idx || color_idx2 != color_idx)
             break;
           j++;
         }
@@ -956,8 +955,8 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
           const rgb_pixel_t *q = &row[j];
           uint32_t R2 = q->r, G2 = q->g, B2 = q->b;
           uint8_t Y2 = (uint8_t)((LUMA_RED * R2 + LUMA_GREEN * G2 + LUMA_BLUE * B2 + LUMA_THRESHOLD) >> 8);
-          uint8_t char_idx2 = utf8_cache->char_index_ramp[Y2 >> 2];
-          if (char_idx2 != char_idx || R2 != R || G2 != G || B2 != B)
+          uint8_t luma_idx2 = Y2 >> 2; // Compare luminance buckets (matches SIMD)
+          if (luma_idx2 != luma_idx || R2 != R || G2 != G || B2 != B)
             break;
           j++;
         }
