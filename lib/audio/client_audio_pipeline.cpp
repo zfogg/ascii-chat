@@ -111,8 +111,8 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
 
       // Jitter margin: wait this long before starting playback
       // Lower = less latency but more risk of underruns
-      // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in audio.c!
-      .jitter_margin_ms = 100,  // 100ms (was 200ms)
+      // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in ringbuffer.h!
+      .jitter_margin_ms = 60,  // 60ms = 3 Opus packets (reduced from 200ms)
 
       // Higher cutoff to cut low-frequency rumble and feedback
       .highpass_hz = 150.0f,   // Was 80Hz, increased to break rumble feedback loop

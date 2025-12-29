@@ -305,7 +305,7 @@ Test(framebuffer, write_and_read_frame) {
   cr_assert_eq(strcmp(frame.data, test_frame), 0);
 
   // Clean up the frame data
-  POOL_FREE(frame.data, frame.size);
+  buffer_pool_free(NULL, frame.data, frame.size);
 
   framebuffer_destroy(fb);
 }
@@ -363,12 +363,12 @@ Test(framebuffer, buffer_overflow) {
   result = framebuffer_read_frame(fb, &frame);
   cr_assert(result);
   cr_assert_eq(strcmp(frame.data, "frame2"), 0);
-  POOL_FREE(frame.data, frame.size);
+  buffer_pool_free(NULL, frame.data, frame.size);
 
   result = framebuffer_read_frame(fb, &frame);
   cr_assert(result);
   cr_assert_eq(strcmp(frame.data, "frame3"), 0);
-  POOL_FREE(frame.data, frame.size);
+  buffer_pool_free(NULL, frame.data, frame.size);
 
   // Should be empty now
   result = framebuffer_read_frame(fb, &frame);
@@ -429,7 +429,7 @@ Test(framebuffer, multi_source_write_and_read) {
   cr_assert_eq(memcmp(frame.data, test_frame, frame_size), 0);
 
   // Clean up the frame data
-  POOL_FREE(frame.data, frame.size);
+  buffer_pool_free(NULL, frame.data, frame.size);
 
   framebuffer_destroy(fb);
 }
@@ -456,8 +456,8 @@ Test(framebuffer, multi_source_peek) {
   cr_assert_eq(memcmp(frame2.data, test_frame, frame_size), 0);
 
   // Clean up
-  POOL_FREE(frame.data, frame.size);
-  POOL_FREE(frame2.data, frame2.size);
+  buffer_pool_free(NULL, frame.data, frame.size);
+  buffer_pool_free(NULL, frame2.data, frame2.size);
 
   framebuffer_destroy(fb);
 }

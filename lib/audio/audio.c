@@ -81,11 +81,35 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     // Allocate processed buffer on stack
     float *processed = (float *)alloca(num_samples * sizeof(float));
 
-    // This does: AnalyzeRender(output) + ProcessCapture(input) + filters + compressor
-    // All in one call, perfect synchronization, no ring buffer
+    // CRITICAL FIX: For AEC3 render signal, peek at jitter buffer even if not ready for playback yet
+    // This prevents AEC3 from getting silence during jitter fill period
+    float *aec3_render = output; // Default: use actual output
+    float *peeked_audio = NULL;
+
+    if (samples_read == 0 && ctx->playback_buffer) {
+      // Jitter buffer not ready for playback, but peek at available audio for AEC3
+      peeked_audio = (float *)alloca(num_samples * sizeof(float));
+      size_t peeked = audio_ring_buffer_peek(ctx->playback_buffer, peeked_audio, num_samples);
+
+      if (peeked > 0) {
+        // Zero-pad if we didn't get enough samples
+        if (peeked < num_samples) {
+          SAFE_MEMSET(peeked_audio + peeked, (num_samples - peeked) * sizeof(float), 0,
+                      (num_samples - peeked) * sizeof(float));
+        }
+        aec3_render = peeked_audio; // Use peeked audio for AEC3
+
+        // Log when we're using peeked audio (helpful for debugging)
+        log_debug_every(1000000, "AEC3: Using peeked audio (%zu samples) - jitter buffer filling", peeked);
+      }
+      // else: no audio available at all, aec3_render stays as silence
+    }
+
+    // This does: AnalyzeRender(aec3_render) + ProcessCapture(input) + filters + compressor
+    // All in one call, perfect synchronization
     client_audio_pipeline_process_duplex(
         (client_audio_pipeline_t *)ctx->audio_pipeline, // NOLINT(readability-suspicious-call-argument)
-        output,                                         // render_samples (what's playing to speakers)
+        aec3_render,                                    // render_samples (peeked OR playing audio for AEC3)
         (int)num_samples,                               // render_count
         input,                                          // capture_samples (microphone input)
         (int)num_samples,                               // capture_count
@@ -535,6 +559,49 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   mutex_unlock(&rb->mutex);
   return samples; // Always return full buffer (with silence padding if needed)
+}
+
+/**
+ * @brief Peek at available samples without consuming them (for AEC3 render signal)
+ *
+ * This function reads samples from the jitter buffer WITHOUT advancing the read_index.
+ * Used to feed audio to AEC3 for echo cancellation even during jitter buffer fill period.
+ *
+ * @param rb Ring buffer to peek from
+ * @param data Output buffer for samples
+ * @param samples Number of samples to peek
+ * @return Number of samples actually peeked (may be less than requested)
+ */
+size_t audio_ring_buffer_peek(audio_ring_buffer_t *rb, float *data, size_t samples) {
+  if (!rb || !data || samples <= 0) {
+    return 0;
+  }
+
+  mutex_lock(&rb->mutex);
+
+  size_t available = audio_ring_buffer_available_read(rb);
+  size_t to_peek = (samples > available) ? available : samples;
+
+  if (to_peek == 0) {
+    mutex_unlock(&rb->mutex);
+    return 0;
+  }
+
+  size_t read_idx = rb->read_index;
+
+  // Copy samples in chunks (handle wraparound)
+  size_t first_chunk = (read_idx + to_peek <= AUDIO_RING_BUFFER_SIZE) ? to_peek : (AUDIO_RING_BUFFER_SIZE - read_idx);
+
+  SAFE_MEMCPY(data, first_chunk * sizeof(float), rb->data + read_idx, first_chunk * sizeof(float));
+
+  if (first_chunk < to_peek) {
+    // Wraparound: copy second chunk from beginning of buffer
+    size_t second_chunk = to_peek - first_chunk;
+    SAFE_MEMCPY(data + first_chunk, second_chunk * sizeof(float), rb->data, second_chunk * sizeof(float));
+  }
+
+  mutex_unlock(&rb->mutex);
+  return to_peek;
 }
 
 size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
