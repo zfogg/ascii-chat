@@ -114,33 +114,56 @@ if(NOT webrtc_aec3_POPULATED)
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
             get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
             set(CLANG_RESOURCE_DIR "${LLVM_ROOT}/lib/clang")
+
+            # Get SDK path - needed for libc++ headers
+            # CMAKE_OSX_SYSROOT is set by the main build
+            if(CMAKE_OSX_SYSROOT)
+                set(_sysroot_flag "-isysroot ${CMAKE_OSX_SYSROOT}")
+            else()
+                # Fallback: try to detect SDK
+                execute_process(
+                    COMMAND xcrun --show-sdk-path
+                    OUTPUT_VARIABLE _detected_sdk
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(_detected_sdk)
+                    set(_sysroot_flag "-isysroot ${_detected_sdk}")
+                else()
+                    set(_sysroot_flag "")
+                endif()
+            endif()
+
             if(EXISTS "${CLANG_RESOURCE_DIR}")
                 file(GLOB CLANG_VERSION_DIRS "${CLANG_RESOURCE_DIR}/*")
                 list(LENGTH CLANG_VERSION_DIRS CLANG_VERSION_COUNT)
                 if(CLANG_VERSION_COUNT GREATER 0)
                     list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
                     # Set fresh flags - don't inherit from parent to avoid duplicate -resource-dir
-                    # CRITICAL: Must explicitly set -stdlib=libc++ for macOS builds
+                    # CRITICAL: Must explicitly set -stdlib=libc++ and -isysroot for macOS builds
                     # The clang config files (~/.config/clang/*.cfg) may not be picked up by
                     # the WebRTC sub-build, so we need to pass this explicitly
-                    set(_webrtc_c_flags "-resource-dir ${CLANG_VERSION_DIR} -w")
-                    set(_webrtc_cxx_flags "-resource-dir ${CLANG_VERSION_DIR} -stdlib=libc++ -w")
+                    set(_webrtc_c_flags "-resource-dir ${CLANG_VERSION_DIR} ${_sysroot_flag} -w")
+                    set(_webrtc_cxx_flags "-resource-dir ${CLANG_VERSION_DIR} ${_sysroot_flag} -stdlib=libc++ -w")
                     # Remove the old CMAKE_*_FLAGS entries and add our clean ones
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
                     list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
                     list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_c_flags}")
                     message(STATUS "Fixed -resource-dir for WebRTC: ${CLANG_VERSION_DIR}")
+                    if(_sysroot_flag)
+                        message(STATUS "Using SDK for WebRTC: ${CMAKE_OSX_SYSROOT}")
+                    endif()
                 else()
                     # No version directories found, just add -stdlib=libc++
-                    set(_webrtc_cxx_flags "-stdlib=libc++ -w")
+                    set(_webrtc_cxx_flags "${_sysroot_flag} -stdlib=libc++ -w")
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
                     list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
                     message(STATUS "WebRTC: Added -stdlib=libc++ (no clang version dir found)")
                 endif()
             else()
                 # Clang resource directory doesn't exist, just add -stdlib=libc++
-                set(_webrtc_cxx_flags "-stdlib=libc++ -w")
+                set(_webrtc_cxx_flags "${_sysroot_flag} -stdlib=libc++ -w")
                 list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
                 list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
                 message(STATUS "WebRTC: Added -stdlib=libc++ (clang resource dir not found)")
