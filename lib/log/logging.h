@@ -89,22 +89,17 @@ typedef enum {
 /* ============================================================================
  * Compile-Time Log Level Stripping
  * ============================================================================
- * In release builds (NDEBUG defined), LOG_DEV and LOG_DEBUG calls are
- * completely compiled out, eliminating any runtime overhead.
+ * By default, all log levels are compiled in (LOG_DEV) so that runtime
+ * verbosity flags like -vvv work in both debug and release builds.
  *
- * Define LOG_COMPILE_LEVEL to override:
+ * Define LOG_COMPILE_LEVEL to strip logs at compile-time for smaller binaries:
  *   -DLOG_COMPILE_LEVEL=LOG_INFO  -> Strip DEV and DEBUG
  *   -DLOG_COMPILE_LEVEL=LOG_WARN  -> Strip DEV, DEBUG, and INFO
- *   -DLOG_COMPILE_LEVEL=LOG_DEV   -> Keep all log levels (debug builds)
+ *   -DLOG_COMPILE_LEVEL=LOG_DEV   -> Keep all log levels (default)
  */
 #ifndef LOG_COMPILE_LEVEL
-#ifdef NDEBUG
-/** @brief Compile-time minimum log level (release: INFO, strips DEV/DEBUG) */
-#define LOG_COMPILE_LEVEL LOG_INFO
-#else
-/** @brief Compile-time minimum log level (debug: DEV, keeps all) */
+/** @brief Compile-time minimum log level (DEV keeps all, allowing runtime -vvv) */
 #define LOG_COMPILE_LEVEL LOG_DEV
-#endif
 #endif
 
 /** @brief A single buffered log entry */
