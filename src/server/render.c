@@ -846,20 +846,34 @@ void *client_audio_render_thread(void *arg) {
     // Check source buffer levels to decide
     int samples_to_read = 480; // Default: 10ms worth
 
+    // Log latency at each stage in the server pipeline
     if (g_audio_mixer) {
-      // Check if any source buffer is getting full (> 50% = 96000 samples at 192000 buffer)
+      // Check source buffer latency for all sources
       for (int i = 0; i < g_audio_mixer->max_sources; i++) {
         if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
             g_audio_mixer->source_buffers[i]) {
           size_t available = audio_ring_buffer_available_read(g_audio_mixer->source_buffers[i]);
-          if (available > 96000) { // Buffer > 50% full (2 seconds)
+          float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
+
+          // Log source buffer latency
+          log_debug_every(500000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
+                          g_audio_mixer->source_ids[i], buffer_latency_ms, available);
+
+          // If buffer is getting too full, read faster to reduce latency
+          if (available > 1920) {  // > 40ms buffered - read faster!
             samples_to_read = 960; // Double read to catch up (20ms worth)
-            log_debug_every(LOG_RATE_DEFAULT, "Audio catchup for client %u: buffer has %zu samples, reading %d",
-                            client_id_snapshot, available, samples_to_read);
-            break;
+            log_debug_every(LOG_RATE_DEFAULT,
+                            "LATENCY WARNING: Server buffer too full for client %u: %.1fms, reading double",
+                            g_audio_mixer->source_ids[i], buffer_latency_ms);
           }
         }
       }
+
+      // Log outgoing queue latency
+      size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+      float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
+      log_debug_every(500000, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)", client_id_snapshot,
+                      queue_latency_ms, queue_depth);
     }
 
     int samples_mixed = 0;
@@ -958,11 +972,13 @@ void *client_audio_render_thread(void *arg) {
       if (++backpressure_check_counter >= 100) {
         backpressure_check_counter = 0;
         size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-        apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
+        // Opus frames are produced at ~50 FPS (20ms each), so 50 packets = 1 second
+        // Keep latency bounded to ~1s max in the send queue
+        apply_backpressure = (queue_depth > 50); // > 50 packets = ~1s buffered at 50 FPS
 
         if (apply_backpressure) {
           log_warn("Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)", client_id_snapshot,
-                   queue_depth, (float)queue_depth / 172.0f);
+                   queue_depth, (float)queue_depth / 50.0f);
         }
       }
 
