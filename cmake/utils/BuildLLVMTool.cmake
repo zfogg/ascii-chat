@@ -82,36 +82,10 @@ function(build_llvm_tool)
     set(_tool_depends "")
 
     # ==========================================================================
-    # Clean Incomplete Cache State (optional)
+    # Priority 1: Check for Pre-built Tool (MUST be checked FIRST)
     # ==========================================================================
-    if(_TOOL_CLEAN_INCOMPLETE_CACHE)
-        set(_stamp_dir "${CMAKE_BINARY_DIR}/${_TOOL_OUTPUT_EXECUTABLE}-external-prefix/src/${_TOOL_OUTPUT_EXECUTABLE}-external-stamp")
-        set(_needs_rebuild FALSE)
-
-        if(EXISTS "${_cache_dir}")
-            if(NOT EXISTS "${_cache_dir}/CMakeCache.txt")
-                message(STATUS "Cleaning incomplete ${_TOOL_NAME} tool cache (no CMakeCache.txt): ${_cache_dir}")
-                file(REMOVE_RECURSE "${_cache_dir}")
-                set(_needs_rebuild TRUE)
-            elseif(NOT EXISTS "${_cached_exe}")
-                message(STATUS "Cleaning incomplete ${_TOOL_NAME} tool cache (no exe): ${_cache_dir}")
-                file(REMOVE_RECURSE "${_cache_dir}")
-                set(_needs_rebuild TRUE)
-            endif()
-        else()
-            set(_needs_rebuild TRUE)
-        endif()
-
-        # Clean stale stamp files if we need a rebuild
-        if(_needs_rebuild AND EXISTS "${_stamp_dir}")
-            message(STATUS "Cleaning stale ${_TOOL_NAME} tool stamp files: ${_stamp_dir}")
-            file(REMOVE_RECURSE "${_stamp_dir}")
-        endif()
-    endif()
-
-    # ==========================================================================
-    # Priority 1: Check for Pre-built Tool
-    # ==========================================================================
+    # Check this BEFORE clean cache logic, otherwise CLEAN_INCOMPLETE_CACHE
+    # will delete the pre-built binary (it has no CMakeCache.txt)
     if(_TOOL_PREBUILT_VAR AND ${_TOOL_PREBUILT_VAR} AND EXISTS "${${_TOOL_PREBUILT_VAR}}")
         set(_tool_exe "${${_TOOL_PREBUILT_VAR}}")
         message(STATUS "Using external ${_TOOL_NAME} tool: ${_tool_exe}")
