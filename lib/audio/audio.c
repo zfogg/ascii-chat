@@ -390,9 +390,20 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
                      AUDIO_RING_BUFFER_SIZE);
   }
 
-  mutex_lock(&rb->mutex);
+  // LOCK-FREE: Load indices with proper memory ordering
+  // - Load our own write_index with relaxed (no sync needed with ourselves)
+  // - Load reader's read_index with acquire (see reader's updates to free space)
+  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_relaxed);
+  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_acquire);
 
-  int available = audio_ring_buffer_available_write(rb);
+  // Calculate available write space
+  int available;
+  if (write_idx >= read_idx) {
+    available = AUDIO_RING_BUFFER_SIZE - (int)(write_idx - read_idx);
+  } else {
+    available = (int)(read_idx - write_idx);
+  }
+
   // Note: Removed aggressive buffer discard logic that was causing clicks.
   // Instead, we let the normal overflow handling below drop incoming samples
   // when the buffer is full. This causes less audible artifacts than discarding
@@ -410,8 +421,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   // Write only the samples that fit (preserves existing data integrity)
   if (samples_to_write > 0) {
-    int write_idx = rb->write_index;
-    int remaining = AUDIO_RING_BUFFER_SIZE - write_idx;
+    int remaining = AUDIO_RING_BUFFER_SIZE - (int)write_idx;
 
     if (samples_to_write <= remaining) {
       // Can copy in one chunk
@@ -423,12 +433,14 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
                   (samples_to_write - remaining) * sizeof(float));
     }
 
-    rb->write_index = (write_idx + samples_to_write) % AUDIO_RING_BUFFER_SIZE;
+    // LOCK-FREE: Store new write_index with release ordering
+    // This ensures all data writes above are visible before the index update
+    unsigned int new_write_idx = (write_idx + (unsigned int)samples_to_write) % AUDIO_RING_BUFFER_SIZE;
+    atomic_store_explicit(&rb->write_index, new_write_idx, memory_order_release);
   }
 
   // Note: jitter buffer fill check is now done in read function for better control
 
-  mutex_unlock(&rb->mutex);
   return ASCIICHAT_OK; // Success
 }
 
@@ -438,21 +450,35 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     return 0; // Return 0 samples read on error
   }
 
-  mutex_lock(&rb->mutex);
+  // LOCK-FREE: Load indices with proper memory ordering
+  // - Load writer's write_index with acquire (see writer's data updates)
+  // - Load our own read_index with relaxed (no sync needed with ourselves)
+  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_acquire);
+  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
 
-  size_t available = audio_ring_buffer_available_read(rb);
+  // Calculate available samples
+  size_t available;
+  if (write_idx >= read_idx) {
+    available = write_idx - read_idx;
+  } else {
+    available = AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
+  }
+
+  // LOCK-FREE: Load jitter buffer state with acquire ordering
+  bool jitter_filled = atomic_load_explicit(&rb->jitter_buffer_filled, memory_order_acquire);
+  int crossfade_remaining = atomic_load_explicit(&rb->crossfade_samples_remaining, memory_order_acquire);
+  bool fade_in = atomic_load_explicit(&rb->crossfade_fade_in, memory_order_acquire);
 
   // Jitter buffer: don't read until initial fill threshold is reached
   // (only for playback buffers - capture buffers have jitter_buffer_enabled = false)
-  if (!rb->jitter_buffer_filled && rb->jitter_buffer_enabled) {
+  if (!jitter_filled && rb->jitter_buffer_enabled) {
     // First, check if we're in the middle of a fade-out that needs to continue
     // This happens when fade-out spans multiple buffer reads
-    if (!rb->crossfade_fade_in && rb->crossfade_samples_remaining > 0) {
+    if (!fade_in && crossfade_remaining > 0) {
       // Continue fade-out from where we left off
-      int fade_start = AUDIO_CROSSFADE_SAMPLES - rb->crossfade_samples_remaining;
-      size_t fade_samples =
-          (samples < (size_t)rb->crossfade_samples_remaining) ? samples : (size_t)rb->crossfade_samples_remaining;
-      float last = rb->last_sample;
+      int fade_start = AUDIO_CROSSFADE_SAMPLES - crossfade_remaining;
+      size_t fade_samples = (samples < (size_t)crossfade_remaining) ? samples : (size_t)crossfade_remaining;
+      float last = rb->last_sample; // NOT atomic - only written by reader
       for (size_t i = 0; i < fade_samples; i++) {
         float fade_factor = 1.0f - ((float)(fade_start + (int)i) / (float)AUDIO_CROSSFADE_SAMPLES);
         data[i] = last * fade_factor;
@@ -461,26 +487,30 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       for (size_t i = fade_samples; i < samples; i++) {
         data[i] = 0.0f;
       }
-      rb->crossfade_samples_remaining -= (int)fade_samples;
-      if (rb->crossfade_samples_remaining <= 0) {
+      // Update crossfade state atomically
+      atomic_store_explicit(&rb->crossfade_samples_remaining, crossfade_remaining - (int)fade_samples,
+                            memory_order_release);
+      if (crossfade_remaining - (int)fade_samples <= 0) {
         rb->last_sample = 0.0f;
       }
 
-      mutex_unlock(&rb->mutex);
       return samples; // Return full buffer (with continued fade-out)
     }
 
     // Check if we've accumulated enough samples to start playback
     if (available >= AUDIO_JITTER_BUFFER_THRESHOLD) {
-      rb->jitter_buffer_filled = true;
-      rb->crossfade_samples_remaining = AUDIO_CROSSFADE_SAMPLES;
-      rb->crossfade_fade_in = true;
+      atomic_store_explicit(&rb->jitter_buffer_filled, true, memory_order_release);
+      atomic_store_explicit(&rb->crossfade_samples_remaining, AUDIO_CROSSFADE_SAMPLES, memory_order_release);
+      atomic_store_explicit(&rb->crossfade_fade_in, true, memory_order_release);
       log_info("Jitter buffer filled (%zu samples), starting playback with fade-in", available);
+      // Reload state for processing below
+      jitter_filled = true;
+      crossfade_remaining = AUDIO_CROSSFADE_SAMPLES;
+      fade_in = true;
     } else {
       // Log buffer fill progress every second
       log_debug_every(1000000, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
                       AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
-      mutex_unlock(&rb->mutex);
       return 0; // Return silence until buffer is filled
     }
   }
@@ -488,8 +518,9 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // Periodic buffer health logging (every 5 seconds when healthy)
   static unsigned int health_log_counter = 0;
   if (++health_log_counter % 250 == 0) { // ~5 seconds at 50Hz callback rate
+    unsigned int underruns = atomic_load_explicit(&rb->underrun_count, memory_order_relaxed);
     log_debug("Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE,
-              (100.0f * available) / AUDIO_RING_BUFFER_SIZE, rb->underrun_count);
+              (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
   }
 
   // Low buffer handling: DON'T pause playback - continue reading what's available
@@ -499,17 +530,16 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   //
   // Instead: always consume samples to prevent overflow, use silence for missing data
   if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK) {
-    rb->underrun_count++;
+    unsigned int underrun_count = atomic_fetch_add_explicit(&rb->underrun_count, 1, memory_order_relaxed) + 1;
     log_warn_every(LOG_RATE_FAST,
                    "Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence",
-                   rb->underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
+                   underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
     // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
   }
 
   size_t to_read = (samples > available) ? available : samples;
 
   // Optimize: copy in chunks instead of one sample at a time
-  int read_idx = rb->read_index;
   size_t remaining = AUDIO_RING_BUFFER_SIZE - read_idx;
 
   if (to_read <= remaining) {
@@ -522,28 +552,32 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
                 (to_read - remaining) * sizeof(float));
   }
 
-  rb->read_index = (read_idx + (int)to_read) % AUDIO_RING_BUFFER_SIZE;
+  // LOCK-FREE: Store new read_index with release ordering
+  // This ensures all data reads above complete before the index update
+  unsigned int new_read_idx = (read_idx + (unsigned int)to_read) % AUDIO_RING_BUFFER_SIZE;
+  atomic_store_explicit(&rb->read_index, new_read_idx, memory_order_release);
 
   // Apply fade-in if recovering from underrun
-  if (rb->crossfade_fade_in && rb->crossfade_samples_remaining > 0) {
-    int fade_start = AUDIO_CROSSFADE_SAMPLES - rb->crossfade_samples_remaining;
-    size_t fade_samples =
-        (to_read < (size_t)rb->crossfade_samples_remaining) ? to_read : (size_t)rb->crossfade_samples_remaining;
+  if (fade_in && crossfade_remaining > 0) {
+    int fade_start = AUDIO_CROSSFADE_SAMPLES - crossfade_remaining;
+    size_t fade_samples = (to_read < (size_t)crossfade_remaining) ? to_read : (size_t)crossfade_remaining;
 
     for (size_t i = 0; i < fade_samples; i++) {
       float fade_factor = (float)(fade_start + (int)i + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
       data[i] *= fade_factor;
     }
 
-    rb->crossfade_samples_remaining -= (int)fade_samples;
-    if (rb->crossfade_samples_remaining <= 0) {
-      rb->crossfade_fade_in = false;
+    int new_crossfade_remaining = crossfade_remaining - (int)fade_samples;
+    atomic_store_explicit(&rb->crossfade_samples_remaining, new_crossfade_remaining, memory_order_release);
+    if (new_crossfade_remaining <= 0) {
+      atomic_store_explicit(&rb->crossfade_fade_in, false, memory_order_release);
       log_debug("Audio fade-in complete");
     }
   }
 
   // Save last sample for potential fade-out
   // Note: only update if we actually read some data
+  // This is NOT atomic - only the reader thread writes this
   if (to_read > 0) {
     rb->last_sample = data[to_read - 1];
   }
@@ -557,7 +591,6 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     SAFE_MEMSET(data + to_read, silence_samples * sizeof(float), 0, silence_samples * sizeof(float));
   }
 
-  mutex_unlock(&rb->mutex);
   return samples; // Always return full buffer (with silence padding if needed)
 }
 
@@ -577,17 +610,23 @@ size_t audio_ring_buffer_peek(audio_ring_buffer_t *rb, float *data, size_t sampl
     return 0;
   }
 
-  mutex_lock(&rb->mutex);
+  // LOCK-FREE: Load indices with proper memory ordering
+  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_acquire);
+  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
 
-  size_t available = audio_ring_buffer_available_read(rb);
+  // Calculate available samples
+  size_t available;
+  if (write_idx >= read_idx) {
+    available = write_idx - read_idx;
+  } else {
+    available = AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
+  }
+
   size_t to_peek = (samples > available) ? available : samples;
 
   if (to_peek == 0) {
-    mutex_unlock(&rb->mutex);
     return 0;
   }
-
-  size_t read_idx = rb->read_index;
 
   // Copy samples in chunks (handle wraparound)
   size_t first_chunk = (read_idx + to_peek <= AUDIO_RING_BUFFER_SIZE) ? to_peek : (AUDIO_RING_BUFFER_SIZE - read_idx);
@@ -600,7 +639,6 @@ size_t audio_ring_buffer_peek(audio_ring_buffer_t *rb, float *data, size_t sampl
     SAFE_MEMCPY(data + first_chunk, second_chunk * sizeof(float), rb->data, second_chunk * sizeof(float));
   }
 
-  mutex_unlock(&rb->mutex);
   return to_peek;
 }
 
@@ -608,11 +646,11 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   if (!rb)
     return 0;
 
-  // NOTE: This function is safe to call without the mutex for approximate values.
-  // The volatile indices provide atomic reads on aligned 32-bit integers.
-  // For exact values during concurrent modification, hold rb->mutex first.
-  int write_idx = rb->write_index;
-  int read_idx = rb->read_index;
+  // LOCK-FREE: Load indices with proper memory ordering
+  // Use acquire for write_index to see writer's updates
+  // Use relaxed for read_index (our own index)
+  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_acquire);
+  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
 
   if (write_idx >= read_idx) {
     return write_idx - read_idx;

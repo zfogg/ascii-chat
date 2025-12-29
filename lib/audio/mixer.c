@@ -561,16 +561,34 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       combined_gains[i] = mixer->ducking.gain[slot] * pre_bus;
     }
 
-    // Fast mixing loop - simple multiply-add with pre-calculated gains
+    // OPTIMIZATION: Fast mixing loop - simple multiply-add with pre-calculated gains
+    // NO per-sample compressor to avoid expensive log/pow calls (480x per iteration)
     for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
         mix += source_samples[i][s] * combined_gains[i];
       }
 
-      // Apply bus compression (still per-sample for smooth dynamics)
-      float comp_gain = compressor_process_sample(&mixer->compressor, mix);
-      mix *= comp_gain;
+      // Store in mix buffer for frame-level compression below
+      mixer->mix_buffer[s] = mix;
+    }
+
+    // OPTIMIZATION: Apply compression ONCE per frame instead of per-sample
+    // This reduces expensive log10f/powf calls from 480x to 1x per iteration
+    // Calculate frame peak for compressor sidechain
+    float frame_peak = 0.0f;
+    for (int s = 0; s < frame_size; s++) {
+      float abs_val = fabsf(mixer->mix_buffer[s]);
+      if (abs_val > frame_peak)
+        frame_peak = abs_val;
+    }
+
+    // Process compressor with frame peak (1 call instead of 480)
+    float comp_gain = compressor_process_sample(&mixer->compressor, frame_peak);
+
+    // Apply compression gain and soft clipping to all samples
+    for (int s = 0; s < frame_size; s++) {
+      float mix = mixer->mix_buffer[s] * comp_gain;
 
       // Compressor provides +6dB makeup gain for better audibility
       // Soft clip threshold 1.0f allows full range without premature clipping
@@ -616,13 +634,20 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     uint64_t mask_without_excluded = active_mask & ~(1ULL << exclude_index);
     if (mask_without_excluded == 0 && mixer->source_buffers[exclude_index]) {
       // Solo client: drain their buffer to prevent overflow (discard samples)
-      // Read in chunks of MIXER_FRAME_SIZE to match the rest of the mixer
-      float discard_buffer[MIXER_FRAME_SIZE];
-      for (int i = 0; i < num_samples; i += MIXER_FRAME_SIZE) {
-        int chunk = (i + MIXER_FRAME_SIZE > num_samples) ? (num_samples - i) : MIXER_FRAME_SIZE;
-        audio_ring_buffer_read(mixer->source_buffers[exclude_index], discard_buffer, chunk);
+      // LOCK-FREE: Skip samples directly using atomic operations
+      audio_ring_buffer_t *rb = mixer->source_buffers[exclude_index];
+      if (rb) {
+        size_t available = audio_ring_buffer_available_read(rb);
+        size_t to_skip = ((size_t)num_samples < available) ? (size_t)num_samples : available;
+
+        // LOCK-FREE: Atomically advance read_index with release ordering
+        unsigned int old_read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
+        unsigned int new_read_idx = (old_read_idx + to_skip) % AUDIO_RING_BUFFER_SIZE;
+        atomic_store_explicit(&rb->read_index, new_read_idx, memory_order_release);
+
+        log_debug_every(LOG_RATE_DEFAULT, "Mixer: Drained %zu samples for solo client %u (lock-free skip)", to_skip,
+                        exclude_client_id);
       }
-      log_debug_every(LOG_RATE_DEFAULT, "Mixer: Draining solo client %u buffer to prevent overflow", exclude_client_id);
     }
     active_mask = mask_without_excluded;
   }
@@ -639,6 +664,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // Process in frames for efficiency
   for (int frame_start = 0; frame_start < num_samples; frame_start += MIXER_FRAME_SIZE) {
     int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
+
+    struct timespec read_start, read_end;
+    (void)clock_gettime(CLOCK_MONOTONIC, &read_start);
 
     // Clear mix buffer
     SAFE_MEMSET(mixer->mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
@@ -674,6 +702,15 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
           source_count++;
         }
       }
+    }
+
+    (void)clock_gettime(CLOCK_MONOTONIC, &read_end);
+    uint64_t read_time_us = ((uint64_t)read_end.tv_sec * 1000000 + (uint64_t)read_end.tv_nsec / 1000) -
+                            ((uint64_t)read_start.tv_sec * 1000000 + (uint64_t)read_start.tv_nsec / 1000);
+
+    if (read_time_us > 10000) { // Log if reading sources takes > 10ms
+      log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %lluus (%.2fms) for %d sources", read_time_us,
+                     (float)read_time_us / 1000.0f, source_count);
     }
 
     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
@@ -719,16 +756,34 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       combined_gains[i] = mixer->ducking.gain[slot] * pre_bus;
     }
 
-    // Fast mixing loop - simple multiply-add with pre-calculated gains
+    // OPTIMIZATION: Fast mixing loop - simple multiply-add with pre-calculated gains
+    // NO per-sample compressor to avoid expensive log/pow calls (480x per iteration)
     for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
         mix += source_samples[i][s] * combined_gains[i];
       }
 
-      // Apply bus compression (still per-sample for smooth dynamics)
-      float comp_gain = compressor_process_sample(&mixer->compressor, mix);
-      mix *= comp_gain;
+      // Store in mix buffer for frame-level compression below
+      mixer->mix_buffer[s] = mix;
+    }
+
+    // OPTIMIZATION: Apply compression ONCE per frame instead of per-sample
+    // This reduces expensive log10f/powf calls from 480x to 1x per iteration
+    // Calculate frame peak for compressor sidechain
+    float frame_peak = 0.0f;
+    for (int s = 0; s < frame_size; s++) {
+      float abs_val = fabsf(mixer->mix_buffer[s]);
+      if (abs_val > frame_peak)
+        frame_peak = abs_val;
+    }
+
+    // Process compressor with frame peak (1 call instead of 480)
+    float comp_gain = compressor_process_sample(&mixer->compressor, frame_peak);
+
+    // Apply compression gain and soft clipping to all samples
+    for (int s = 0; s < frame_size; s++) {
+      float mix = mixer->mix_buffer[s] * comp_gain;
 
       // Compressor provides +6dB makeup gain for better audibility
       // Soft clip threshold 1.0f allows full range without premature clipping
