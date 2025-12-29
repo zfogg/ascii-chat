@@ -126,7 +126,15 @@ jobs:
       - name: Configure (Unix)
         if: matrix.os != 'Windows'
         run: |
-          cmake --preset release
+          DEFER_TOOL="${{ steps.install-deps.outputs.defer-tool-path }}"
+          CMAKE_ARGS="--preset release"
+          if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
+            echo "Using pre-built defer tool: $DEFER_TOOL"
+            CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
+          else
+            echo "No pre-built defer tool available - CMake will build from source"
+          fi
+          cmake $CMAKE_ARGS
 
       - name: Configure (Windows)
         if: matrix.os == 'Windows'
