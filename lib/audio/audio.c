@@ -107,7 +107,13 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 /**
  * Simple linear interpolation resampler.
  * Resamples from src_rate to dst_rate using linear interpolation.
- * See audio.h for full documentation.
+ *
+ * @param src Source samples at src_rate
+ * @param src_samples Number of source samples
+ * @param dst Destination buffer at dst_rate
+ * @param dst_samples Number of destination samples to produce
+ * @param src_rate Source sample rate (e.g., 48000)
+ * @param dst_rate Destination sample rate (e.g., 44100)
  */
 void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
                      double dst_rate) {

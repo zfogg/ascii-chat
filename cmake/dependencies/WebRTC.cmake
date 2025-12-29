@@ -75,6 +75,12 @@ if(NOT webrtc_aec3_POPULATED)
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/lib
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/lib
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${WEBRTC_BUILD_DIR}/bin
+            # Pass SIMD flags to WebRTC build
+            -DENABLE_SIMD_SSE2=${ENABLE_SIMD_SSE2}
+            -DENABLE_SIMD_SSSE3=${ENABLE_SIMD_SSSE3}
+            -DENABLE_SIMD_AVX2=${ENABLE_SIMD_AVX2}
+            -DENABLE_SIMD_NEON=${ENABLE_SIMD_NEON}
+            -DENABLE_SIMD_SVE=${ENABLE_SIMD_SVE}
         )
 
         # On macOS with Homebrew LLVM, fix -resource-dir to point to actual Cellar path
