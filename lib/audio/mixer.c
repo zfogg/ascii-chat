@@ -338,19 +338,6 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
   compressor_init(&mixer->compressor, (float)sample_rate);
 
-  // Allocate mix buffer
-  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
-  if (!mixer->mix_buffer) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate mix buffer");
-    ducking_free(&mixer->ducking);
-    rwlock_destroy(&mixer->source_lock);
-    SAFE_FREE(mixer->source_buffers);
-    SAFE_FREE(mixer->source_ids);
-    SAFE_FREE(mixer->source_active);
-    SAFE_FREE(mixer);
-    return NULL;
-  }
-
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
   return mixer;
