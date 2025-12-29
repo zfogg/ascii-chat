@@ -39,10 +39,11 @@ if(WIN32)
     endif()
 
     # Try to find Opus from Vcpkg
+    # VCPKG_LIB_PATH and VCPKG_INCLUDE_PATH are set by Vcpkg.cmake
     find_library(OPUS_LIB NAMES opus libopus
-                 PATHS "${_VCPKG_INSTALLED_DIR}" NO_DEFAULT_PATH)
+                 PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
     find_path(OPUS_INC NAMES opus/opus.h
-              PATHS "${_VCPKG_INSTALLED_DIR}" NO_DEFAULT_PATH)
+              PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
 
     if(OPUS_LIB AND OPUS_INC)
         set(OPUS_FOUND TRUE)
