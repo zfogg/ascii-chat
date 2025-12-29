@@ -53,7 +53,7 @@ jobs:
         id: cache-build
         uses: ./.github/actions/cache-build
         with:
-          cache-version: v6
+          cache-version: v7  # Bumped to force WebRTC rebuild with correct SIMD support
 
       - name: Clean build directory to force reconfigure
         run: |
