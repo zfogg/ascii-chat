@@ -108,6 +108,7 @@ if(NOT webrtc_aec3_POPULATED)
         endif()
 
         # On macOS with Homebrew LLVM, fix -resource-dir to point to actual Cellar path
+        # We need to preserve existing CMAKE_CXX_FLAGS while adding the resource-dir
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
             get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
@@ -117,8 +118,14 @@ if(NOT webrtc_aec3_POPULATED)
                 list(LENGTH CLANG_VERSION_DIRS CLANG_VERSION_COUNT)
                 if(CLANG_VERSION_COUNT GREATER 0)
                     list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
-                    list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=-resource-dir ${CLANG_VERSION_DIR} -w")
-                    list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=-resource-dir ${CLANG_VERSION_DIR} -w")
+                    # Append to existing flags instead of replacing them
+                    set(_webrtc_c_flags "${CMAKE_C_FLAGS} -resource-dir ${CLANG_VERSION_DIR} -w")
+                    set(_webrtc_cxx_flags "${CMAKE_CXX_FLAGS} -resource-dir ${CLANG_VERSION_DIR} -w")
+                    # Remove the old CMAKE_*_FLAGS entries and add the new combined ones
+                    list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
+                    list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
+                    list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
+                    list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_c_flags}")
                     message(STATUS "Fixed -resource-dir for WebRTC: ${CLANG_VERSION_DIR}")
                 endif()
             endif()
@@ -131,8 +138,6 @@ if(NOT webrtc_aec3_POPULATED)
                 ${webrtc_aec3_SOURCE_DIR}
             WORKING_DIRECTORY "${WEBRTC_BUILD_DIR}"
             RESULT_VARIABLE WEBRTC_CONFIG_RESULT
-            OUTPUT_QUIET
-            ERROR_QUIET
         )
 
         if(NOT WEBRTC_CONFIG_RESULT EQUAL 0)
@@ -144,8 +149,6 @@ if(NOT webrtc_aec3_POPULATED)
             COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} -j${CMAKE_BUILD_PARALLEL_LEVEL}
             WORKING_DIRECTORY "${WEBRTC_BUILD_DIR}"
             RESULT_VARIABLE WEBRTC_BUILD_RESULT
-            OUTPUT_QUIET
-            ERROR_QUIET
         )
 
         if(NOT WEBRTC_BUILD_RESULT EQUAL 0)
