@@ -131,6 +131,9 @@ jobs:
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
+            # Force reconfigure to pick up the pre-built defer tool
+            # (cached build_release may have been created without it)
+            CMAKE_ARGS="$CMAKE_ARGS --fresh"
           else
             echo "No pre-built defer tool available - CMake will build from source"
           fi

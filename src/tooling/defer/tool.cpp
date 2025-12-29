@@ -874,6 +874,30 @@ int main(int argc, const char **argv) {
   }
 #endif
 
+  // Add target triple - LibTooling needs this to validate architecture-specific flags
+  // Without a target, flags like -mavx2 cause "unsupported option for target ''" errors
+#ifdef __APPLE__
+  #ifdef __arm64__
+    prependArgs.push_back("-target");
+    prependArgs.push_back("arm64-apple-darwin");
+    llvm::errs() << "Using target: arm64-apple-darwin\n";
+  #else
+    prependArgs.push_back("-target");
+    prependArgs.push_back("x86_64-apple-darwin");
+    llvm::errs() << "Using target: x86_64-apple-darwin\n";
+  #endif
+#elif defined(__linux__)
+  #ifdef __aarch64__
+    prependArgs.push_back("-target");
+    prependArgs.push_back("aarch64-linux-gnu");
+    llvm::errs() << "Using target: aarch64-linux-gnu\n";
+  #else
+    prependArgs.push_back("-target");
+    prependArgs.push_back("x86_64-linux-gnu");
+    llvm::errs() << "Using target: x86_64-linux-gnu\n";
+  #endif
+#endif
+
   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
   // to CommandLineTools SDK, but we strip that from compile_commands.json and
   // set our own explicitly to ensure consistent behavior.
