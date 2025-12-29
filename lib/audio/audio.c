@@ -410,23 +410,44 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_relaxed);
   unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_acquire);
 
-  // Calculate available write space
-  int available;
+  // Calculate current buffer level (how many samples are buffered)
+  int buffer_level;
   if (write_idx >= read_idx) {
-    available = AUDIO_RING_BUFFER_SIZE - (int)(write_idx - read_idx);
+    buffer_level = (int)(write_idx - read_idx);
   } else {
-    available = (int)(read_idx - write_idx);
+    buffer_level = AUDIO_RING_BUFFER_SIZE - (int)(read_idx - write_idx);
+  }
+  int available = AUDIO_RING_BUFFER_SIZE - buffer_level;
+
+  // HIGH WATER MARK: Drop OLD samples to prevent latency accumulation
+  // This is critical for real-time audio - we always want the NEWEST data
+  if (rb->jitter_buffer_enabled && buffer_level + samples > AUDIO_JITTER_HIGH_WATER_MARK) {
+    // Calculate how many old samples to drop to bring buffer to target level
+    int excess = (buffer_level + samples) - AUDIO_JITTER_TARGET_LEVEL;
+    if (excess > 0) {
+      // Advance read_index to drop old samples
+      // Note: This is safe because the reader checks for underrun and handles it gracefully
+      unsigned int new_read_idx = (read_idx + (unsigned int)excess) % AUDIO_RING_BUFFER_SIZE;
+      atomic_store_explicit(&rb->read_index, new_read_idx, memory_order_release);
+
+      log_warn_every(LOG_RATE_FAST,
+                     "Audio buffer high water mark exceeded: dropping %d OLD samples to reduce latency "
+                     "(buffer was %d, target %d)",
+                     excess, buffer_level, AUDIO_JITTER_TARGET_LEVEL);
+
+      // Recalculate available space after dropping old samples
+      read_idx = new_read_idx;
+      buffer_level = AUDIO_JITTER_TARGET_LEVEL - samples;
+      if (buffer_level < 0)
+        buffer_level = 0;
+      available = AUDIO_RING_BUFFER_SIZE - buffer_level;
+    }
   }
 
-  // Note: Removed aggressive buffer discard logic that was causing clicks.
-  // Instead, we let the normal overflow handling below drop incoming samples
-  // when the buffer is full. This causes less audible artifacts than discarding
-  // large chunks of buffered audio.
-
-  // Now write the new samples
+  // Now write the new samples - should always have enough space after above
   int samples_to_write = samples;
   if (samples > available) {
-    // Still not enough space after cleanup - drop some incoming samples
+    // This should rarely happen after the high water mark logic above
     int samples_dropped = samples - available;
     samples_to_write = available;
     log_warn_every(LOG_RATE_FAST, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",

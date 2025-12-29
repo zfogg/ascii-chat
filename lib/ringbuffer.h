@@ -149,6 +149,29 @@ typedef struct {
  */
 #define AUDIO_JITTER_LOW_WATER_MARK 960
 
+/** @brief High water mark - drop OLD samples when buffer exceeds this
+ *
+ * When the playback buffer grows beyond this level, we have accumulated
+ * too much latency. We drop OLD samples to keep latency bounded.
+ * This prevents the "latency grows over time" problem where network bursts
+ * fill the buffer faster than playback can drain it.
+ *
+ * Set to 2x jitter threshold = 120ms. This gives enough headroom for
+ * network jitter while preventing unbounded latency accumulation.
+ * 5760 samples @ 48kHz = 120ms = 6 Opus frames
+ */
+#define AUDIO_JITTER_HIGH_WATER_MARK (AUDIO_JITTER_BUFFER_THRESHOLD * 2)
+
+/** @brief Target buffer level after dropping old samples
+ *
+ * When we drop old samples due to exceeding HIGH_WATER_MARK, we bring
+ * the buffer back down to this level. Set slightly above jitter threshold
+ * to avoid immediately triggering underrun detection.
+ *
+ * 3840 samples @ 48kHz = 80ms = 4 Opus frames
+ */
+#define AUDIO_JITTER_TARGET_LEVEL (AUDIO_JITTER_BUFFER_THRESHOLD + 960)
+
 /** @brief Crossfade duration in samples for smooth underrun recovery
  *
  * When recovering from an underrun, we fade in the audio over this many samples
