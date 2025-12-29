@@ -105,6 +105,19 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // else: no audio available at all, aec3_render stays as silence
     }
 
+    // DIAGNOSTIC: Calculate RMS of render signal being fed to AEC3
+    float render_rms = 0.0f;
+    if (aec3_render) {
+      float sum_squares = 0.0f;
+      for (size_t i = 0; i < num_samples; i++) {
+        sum_squares += aec3_render[i] * aec3_render[i];
+      }
+      render_rms = sqrtf(sum_squares / (float)num_samples);
+    }
+    log_info_every(1000000, "AEC3 RENDER SIGNAL: RMS=%.6f, samples_read=%zu, using_peeked=%s, buffer_available=%zu",
+                   render_rms, samples_read, (peeked_audio != NULL) ? "YES" : "NO",
+                   ctx->playback_buffer ? audio_ring_buffer_available_read(ctx->playback_buffer) : 0);
+
     // This does: AnalyzeRender(aec3_render) + ProcessCapture(input) + filters + compressor
     // All in one call, perfect synchronization
     client_audio_pipeline_process_duplex(

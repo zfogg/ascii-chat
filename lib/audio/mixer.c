@@ -650,6 +650,18 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       }
     }
     active_mask = mask_without_excluded;
+
+    // DIAGNOSTIC: Log which client was excluded and which remain active
+    log_info_every(
+        1000000,
+        "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
+        exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL << exclude_index)),
+        (unsigned long long)active_mask);
+  } else {
+    // DIAGNOSTIC: Failed to exclude - log why
+    log_warn_every(1000000, "MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u",
+                   exclude_client_id, exclude_index, valid_exclude,
+                   (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF) ? mixer->source_ids[exclude_index] : 0);
   }
 
   // Fast check: any sources to mix?
@@ -696,6 +708,18 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
           if (samples_read < frame_size) {
             SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
                         (frame_size - samples_read) * sizeof(float));
+          }
+
+          // DIAGNOSTIC: Calculate RMS of this source's audio
+          float source_rms = 0.0f;
+          if (frame_start == 0) { // Only log for first frame to reduce spam
+            float sum_squares = 0.0f;
+            for (int s = 0; s < samples_read; s++) {
+              sum_squares += source_samples[source_count][s] * source_samples[source_count][s];
+            }
+            source_rms = sqrtf(sum_squares / (float)samples_read);
+            log_info_every(1000000, "MIXER SOURCE READ: client_id=%u, slot=%d, samples_read=%d, RMS=%.6f",
+                           mixer->source_ids[i], i, samples_read, source_rms);
           }
 
           source_map[source_count] = i;
