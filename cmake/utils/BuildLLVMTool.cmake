@@ -115,6 +115,15 @@ function(build_llvm_tool)
     if(_TOOL_PREBUILT_VAR AND ${_TOOL_PREBUILT_VAR} AND EXISTS "${${_TOOL_PREBUILT_VAR}}")
         set(_tool_exe "${${_TOOL_PREBUILT_VAR}}")
         message(STATUS "Using external ${_TOOL_NAME} tool: ${_tool_exe}")
+
+        # Clean up any stale ExternalProject artifacts from previous builds
+        # This prevents ninja from trying to rebuild the tool when the build
+        # directory is cached from a previous run that built from source
+        set(_ep_prefix_dir "${CMAKE_BINARY_DIR}/${_TOOL_OUTPUT_EXECUTABLE}-external-prefix")
+        if(EXISTS "${_ep_prefix_dir}")
+            message(STATUS "Cleaning stale ExternalProject artifacts: ${_ep_prefix_dir}")
+            file(REMOVE_RECURSE "${_ep_prefix_dir}")
+        endif()
     # ==========================================================================
     # Priority 2: Check for Cached Build
     # ==========================================================================
