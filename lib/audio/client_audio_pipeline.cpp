@@ -592,16 +592,9 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
                 wrapper->aec3->AnalyzeCapture(capture_buf);
                 capture_buf->SplitIntoFrequencyBands();
 
-                // CRITICAL: Calculate ACTUAL delay including jitter buffer
-                // The render signal has gone through:
-                // 1. Network transmission (~20-40ms)
-                // 2. Jitter buffer (AUDIO_JITTER_BUFFER_THRESHOLD = 2880 samples = 60ms @ 48kHz)
-                // 3. Hardware latency (~5ms)
-                // Total: ~85-105ms
-                //
-                // AEC3 MUST know the correct delay or echo cancellation will fail!
-                // Use 100ms estimate: jitter buffer (60ms) + network (30ms) + hardware (10ms)
-                wrapper->aec3->SetAudioBufferDelay(100);
+                // NOTE: SetAudioBufferDelay() is just an initial hint when use_external_delay_estimator=false (default).
+                // AEC3's internal delay estimator will find the actual delay (~144ms in practice).
+                // We don't call it here - let AEC3 estimate delay automatically.
 
                 wrapper->aec3->ProcessCapture(capture_buf, false);
                 capture_buf->MergeFrequencyBands();
