@@ -205,11 +205,15 @@ echo ""
 # The processes will self-terminate via 'timeout' command
 sleep $((DURATION))
 
-# Clean up any remaining processes on both hosts
-echo "Cleaning up processes..."
-run_on_one "pkill -9 -x ascii-chat" 2>/dev/null || true
-run_on_two "pkill -9 -x ascii-chat" 2>/dev/null || true
-sleep 1
+# Give clients time to write analysis report on graceful exit
+echo "Waiting for clients to finish and write analysis reports..."
+sleep 3
+
+# Clean up any remaining processes on both hosts (use SIGTERM for graceful shutdown)
+echo "Cleaning up any remaining processes..."
+run_on_one "pkill -x ascii-chat" 2>/dev/null || true
+run_on_two "pkill -x ascii-chat" 2>/dev/null || true
+sleep 2
 
 echo ""
 echo "=========================================================================="
