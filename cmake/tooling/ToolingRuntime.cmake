@@ -95,7 +95,7 @@ function(ascii_build_tooling_runtime)
         endif()
         # Add musl dependency ordering for proper build sequencing
         if(USE_MUSL)
-            add_dependencies(ascii-panic-report portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl speexdsp-musl)
+            add_dependencies(ascii-panic-report portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl)
             # Link Alpine libc++ for musl builds (function defined in Musl.cmake)
             link_alpine_libcxx(ascii-panic-report)
         endif()

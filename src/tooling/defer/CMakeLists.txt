@@ -501,11 +501,35 @@ else()
         target_link_directories(ascii-instr-defer PRIVATE ${LLVM_LIBDIR})
     endif()
 
-    # First, try to find bundled shared Clang libraries (common on Arch Linux, Debian, etc.)
-    # These provide all Clang functionality in a single library
-    find_library(CLANG_CPP_LIB NAMES clang-cpp libclang-cpp PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    # Option to prefer static Clang libraries over shared libclang-cpp.so
+    # When ON (default), prefer static libraries for a self-contained binary (~44MB)
+    # When OFF, prefer libclang-cpp.so for a smaller binary (~300K)
+    # Note: Falls back to whatever is available if preferred type isn't found
+    option(DEFER_TOOL_PREFER_STATIC "Prefer static Clang libraries over libclang-cpp.so" ON)
 
-    if(CLANG_CPP_LIB)
+    # Try to find both static and shared libraries
+    find_library(CLANG_CPP_LIB NAMES clang-cpp libclang-cpp PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_TOOLING_STATIC_LIB NAMES clangTooling.a clangTooling PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+
+    # Determine which to use based on preference and availability
+    set(_use_shared_clang FALSE)
+    if(DEFER_TOOL_PREFER_STATIC)
+        if(CLANG_TOOLING_STATIC_LIB)
+            message(STATUS "Using static Clang libraries (preferred)")
+        elseif(CLANG_CPP_LIB)
+            message(STATUS "Static Clang libraries not found, falling back to libclang-cpp.so")
+            set(_use_shared_clang TRUE)
+        endif()
+    else()
+        if(CLANG_CPP_LIB)
+            message(STATUS "Using shared libclang-cpp.so (preferred)")
+            set(_use_shared_clang TRUE)
+        elseif(CLANG_TOOLING_STATIC_LIB)
+            message(STATUS "libclang-cpp.so not found, falling back to static libraries")
+        endif()
+    endif()
+
+    if(_use_shared_clang)
         # Found bundled shared library - use it
         message(STATUS "Found bundled Clang library: ${CLANG_CPP_LIB}")
         # Find the LLVM shared library directly

@@ -7,6 +7,11 @@ include_guard(GLOBAL)
 # The temp cmake build for generating compile_commands.json sets this to OFF to prevent recursion.
 option(ASCIICHAT_ENABLE_DEFER_TRANSFORM "Enable defer() source transformation" ON)
 
+# Option to prefer static Clang libraries over shared libclang-cpp.so
+# When ON, produces a larger (~44MB) but self-contained binary
+# When OFF (default), prefers smaller binary (~300K) using shared libs
+option(ASCIICHAT_DEFER_PREFER_STATIC "Prefer static Clang libraries for defer tool (larger binary)" OFF)
+
 set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
@@ -20,6 +25,12 @@ function(ascii_defer_prepare)
         return()
     endif()
 
+    # Build extra cmake args for the defer tool
+    set(_defer_extra_args "")
+    if(ASCIICHAT_DEFER_PREFER_STATIC)
+        list(APPEND _defer_extra_args -DDEFER_TOOL_PREFER_STATIC=ON)
+    endif()
+
     # Build/find the defer tool using the common utility
     build_llvm_tool(
         NAME defer
@@ -30,6 +41,7 @@ function(ascii_defer_prepare)
         PASS_LLVM_CONFIG
         ENABLE_LOG_OUTPUT
         ISOLATE_FROM_ENV
+        EXTRA_CMAKE_ARGS ${_defer_extra_args}
     )
 
     set(_defer_tool_exe "${DEFER_TOOL_EXECUTABLE}")
