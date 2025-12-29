@@ -600,8 +600,8 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
                 // Total: ~85-105ms
                 //
                 // AEC3 MUST know the correct delay or echo cancellation will fail!
-                // Use a conservative estimate of 100ms (matches empirical echo correlation data)
-                wrapper->aec3->SetAudioBufferDelay(100);  // Jitter buffer (60ms) + network (30ms) + hardware (10ms)
+                // Use 100ms estimate: jitter buffer (60ms) + network (30ms) + hardware (10ms)
+                wrapper->aec3->SetAudioBufferDelay(100);
 
                 wrapper->aec3->ProcessCapture(capture_buf, false);
                 capture_buf->MergeFrequencyBands();
