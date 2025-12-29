@@ -861,18 +861,81 @@ int main(int argc, const char **argv) {
   // system include paths for LibTooling's CompilerInvocation.
   std::vector<std::string> prependArgs;
 
+  // Try to find clang resource directory at runtime
+  // Priority: 1) CLANG_RESOURCE_DIR compile-time path, 2) Runtime detection via common paths
+  std::string resourceDir;
+
 #ifdef CLANG_RESOURCE_DIR
-  {
-    const char* resourceDir = CLANG_RESOURCE_DIR;
-    if (llvm::sys::fs::exists(resourceDir)) {
-      // Add -resource-dir for clang internals
-      prependArgs.push_back(std::string("-resource-dir=") + resourceDir);
-      llvm::errs() << "Using clang resource directory: " << resourceDir << "\n";
-    } else {
-      llvm::errs() << "Warning: Clang resource directory does not exist: " << resourceDir << "\n";
-    }
+  if (llvm::sys::fs::exists(CLANG_RESOURCE_DIR)) {
+    resourceDir = CLANG_RESOURCE_DIR;
+    llvm::errs() << "Using embedded clang resource directory: " << resourceDir << "\n";
+  } else {
+    llvm::errs() << "Embedded clang resource directory not found: " << CLANG_RESOURCE_DIR << "\n";
   }
 #endif
+
+  // Runtime detection if embedded path doesn't work
+  if (resourceDir.empty()) {
+    // Common locations for clang resource directories
+    std::vector<std::string> searchPaths;
+
+#ifdef __APPLE__
+    // Homebrew LLVM on Apple Silicon
+    searchPaths.push_back("/opt/homebrew/opt/llvm/lib/clang");
+    // Homebrew LLVM on Intel Mac
+    searchPaths.push_back("/usr/local/opt/llvm/lib/clang");
+    // Xcode's clang
+    searchPaths.push_back("/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang");
+    // CommandLineTools clang
+    searchPaths.push_back("/Library/Developer/CommandLineTools/usr/lib/clang");
+#endif
+#ifdef __linux__
+    // System LLVM installations
+    searchPaths.push_back("/usr/lib/llvm-22/lib/clang");
+    searchPaths.push_back("/usr/lib/llvm-21/lib/clang");
+    searchPaths.push_back("/usr/lib/llvm-20/lib/clang");
+    searchPaths.push_back("/usr/lib/clang");
+    searchPaths.push_back("/usr/local/lib/clang");
+#endif
+    // Universal fallback
+    searchPaths.push_back("/usr/local/lib/clang");
+
+    for (const auto& basePath : searchPaths) {
+      if (!llvm::sys::fs::exists(basePath)) {
+        continue;
+      }
+
+      // Find the highest version subdirectory
+      std::error_code ec;
+      std::string bestVersion;
+      int bestMajor = 0;
+
+      for (llvm::sys::fs::directory_iterator dir(basePath, ec), dirEnd;
+           !ec && dir != dirEnd; dir.increment(ec)) {
+        std::string name = llvm::sys::path::filename(dir->path()).str();
+        // Parse version number (e.g., "22", "21.1.0", "21")
+        int major = 0;
+        if (sscanf(name.c_str(), "%d", &major) == 1 && major > bestMajor) {
+          bestMajor = major;
+          bestVersion = dir->path();
+        }
+      }
+
+      if (!bestVersion.empty()) {
+        resourceDir = bestVersion;
+        llvm::errs() << "Found clang resource directory at runtime: " << resourceDir << "\n";
+        break;
+      }
+    }
+
+    if (resourceDir.empty()) {
+      llvm::errs() << "Warning: Could not find clang resource directory\n";
+    }
+  }
+
+  if (!resourceDir.empty()) {
+    prependArgs.push_back(std::string("-resource-dir=") + resourceDir);
+  }
 
   // Add target triple - LibTooling needs this to validate architecture-specific flags
   // Without a target, flags like -mavx2 cause "unsupported option for target ''" errors
@@ -935,16 +998,14 @@ int main(int argc, const char **argv) {
   // 1. Clang's builtin headers (stdbool.h, stddef.h, etc.) - FIRST so they shadow SDK builtins
   // 2. SDK's usr/include (stdio.h, stdlib.h, etc.) - for system headers
   std::vector<std::string> appendArgs;
-#ifdef CLANG_RESOURCE_DIR
-  {
-    std::string builtinInclude = std::string(CLANG_RESOURCE_DIR) + "/include";
+  if (!resourceDir.empty()) {
+    std::string builtinInclude = resourceDir + "/include";
     if (llvm::sys::fs::exists(builtinInclude)) {
       appendArgs.push_back("-isystem");
       appendArgs.push_back(builtinInclude);
       llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
     }
   }
-#endif
   // NOTE: We intentionally do NOT add SDK's usr/include to the -isystem path.
   // LibTooling on LLVM 21 has a bug where __has_include_next() evaluates even
   // in non-taken preprocessor branches and creates VFS entries that can't be opened.
