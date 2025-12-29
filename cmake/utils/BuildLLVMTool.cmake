@@ -84,6 +84,15 @@ function(build_llvm_tool)
     # ==========================================================================
     # Priority 1: Check for Pre-built Tool (MUST be checked FIRST)
     # ==========================================================================
+    # Debug: Show what we're checking
+    if(_TOOL_PREBUILT_VAR)
+        message(STATUS "${_TOOL_NAME} tool: Checking pre-built var '${_TOOL_PREBUILT_VAR}' = '${${_TOOL_PREBUILT_VAR}}'")
+        if(EXISTS "${${_TOOL_PREBUILT_VAR}}")
+            message(STATUS "${_TOOL_NAME} tool: Pre-built file EXISTS")
+        else()
+            message(STATUS "${_TOOL_NAME} tool: Pre-built file does NOT exist at '${${_TOOL_PREBUILT_VAR}}'")
+        endif()
+    endif()
     if(_TOOL_PREBUILT_VAR AND ${_TOOL_PREBUILT_VAR} AND EXISTS "${${_TOOL_PREBUILT_VAR}}")
         set(_tool_exe "${${_TOOL_PREBUILT_VAR}}")
         message(STATUS "Using external ${_TOOL_NAME} tool: ${_tool_exe}")
