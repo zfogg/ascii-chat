@@ -91,8 +91,8 @@ jobs:
           - os: Windows
             arch: amd64
             runner: windows-latest
-            vcpkg-packages: "zstd portaudio libsodium"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
+            vcpkg-packages: "zstd portaudio libsodium opus"
+            vcpkg-static-packages: "zstd portaudio libsodium mimalloc opus"
             vcpkg-triplet: "x64-windows"
             vcpkg-static-triplet: "x64-windows-static"
 
@@ -100,8 +100,8 @@ jobs:
           - os: Windows
             arch: arm64
             runner: windows-11-arm
-            vcpkg-packages: "zstd portaudio libsodium"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
+            vcpkg-packages: "zstd portaudio libsodium opus"
+            vcpkg-static-packages: "zstd portaudio libsodium mimalloc opus"
             vcpkg-triplet: "arm64-windows"
             vcpkg-static-triplet: "arm64-windows-static"
 
