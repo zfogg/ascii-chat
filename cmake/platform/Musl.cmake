@@ -212,8 +212,9 @@ function(configure_musl_post_project)
     # Use lld for LTO support (lld has built-in LTO, doesn't need LLVMgold.so plugin)
     # Force retention of custom sections with -Wl,--undefined to prevent LTO from removing them
     # Apply RELRO hardening: -Wl,-z,relro enables GOT read-only relocation, -Wl,-z,now enables full RELRO (BIND_NOW)
+    # Add -nostdlib++ to prevent automatic linking of system libc++ (we link Alpine libc++ explicitly)
     set(CMAKE_EXE_LINKER_FLAGS
-        "-target ${MUSL_TARGET} -fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section -Wl,--undefined=ascii_chat_comment_string -Wl,--undefined=ascii_chat_version_string -Wl,-z,relro -Wl,-z,now"
+        "-target ${MUSL_TARGET} -fuse-ld=lld -static-pie -nostdlib -nostdlib++ -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section -Wl,--undefined=ascii_chat_comment_string -Wl,--undefined=ascii_chat_version_string -Wl,-z,relro -Wl,-z,now"
         CACHE STRING "Linker flags for musl static-PIE linking" FORCE
     )
 
