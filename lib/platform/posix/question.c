@@ -60,7 +60,7 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
     if (tcgetattr(STDIN_FILENO, &old_termios) == 0) {
       new_termios = old_termios;
       // Disable canonical mode (line buffering) and echo
-      new_termios.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL);
+      new_termios.c_lflag &= ~(tcflag_t)(ICANON | ECHO | ECHOE | ECHOK | ECHONL);
       // Set minimum characters for read
       new_termios.c_cc[VMIN] = 1;
       new_termios.c_cc[VTIME] = 0;
