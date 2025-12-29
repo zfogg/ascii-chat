@@ -619,6 +619,9 @@ void *client_video_render_thread(void *arg) {
   log_debug("Video render thread stopped for client %u", thread_client_id);
 #endif
 
+  // Clean up thread-local error context before exit
+  asciichat_errno_cleanup();
+
   return NULL;
 }
 
@@ -1107,6 +1110,9 @@ void *client_audio_render_thread(void *arg) {
   if (opus_encoder) {
     opus_codec_destroy(opus_encoder);
   }
+
+  // Clean up thread-local error context before exit
+  asciichat_errno_cleanup();
 
   return NULL;
 }

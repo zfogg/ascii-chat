@@ -1165,6 +1165,10 @@ void *client_receive_thread(void *arg) {
   // The main cleanup code will handle client removal after threads exit
 
   log_debug("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
+
+  // Clean up thread-local error context before exit
+  asciichat_errno_cleanup();
+
   return NULL;
 }
 
@@ -1548,6 +1552,10 @@ void *client_send_thread_func(void *arg) {
   // Mark thread as stopped
   atomic_store(&client->send_thread_running, false);
   log_debug("Send thread for client %u terminated", client->client_id);
+
+  // Clean up thread-local error context before exit
+  asciichat_errno_cleanup();
+
   return NULL;
 }
 
