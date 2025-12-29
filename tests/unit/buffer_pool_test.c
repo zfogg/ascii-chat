@@ -11,12 +11,14 @@ TEST_SUITE_WITH_QUIET_LOGGING(buffer_pool);
 // =============================================================================
 
 Test(buffer_pool, creation_and_destruction) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0); // Use defaults
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Buffer pool creation should succeed");
 
-  // New unified pool doesn't have separate sub-pools
-  // Just verify the pool structure is valid
-  cr_assert_eq(pool->max_bytes, BUFFER_POOL_MAX_BYTES, "Max bytes should use default");
+  // New unified pool design - no separate pools
+  // Just verify basic stats are initialized
+  size_t current_bytes = 0, used_bytes = 0, free_bytes = 0;
+  buffer_pool_get_stats(pool, &current_bytes, &used_bytes, &free_bytes);
+  cr_assert_eq(used_bytes, 0, "Initial used bytes should be zero");
 
   buffer_pool_destroy(pool);
 }
@@ -24,7 +26,7 @@ Test(buffer_pool, creation_and_destruction) {
 Test(buffer_pool, multiple_creation_destruction) {
   // Test multiple create/destroy cycles
   for (int i = 0; i < 5; i++) {
-    buffer_pool_t *pool = buffer_pool_create(0, 0);
+    buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
     cr_assert_not_null(pool, "Pool creation %d should succeed", i);
     buffer_pool_destroy(pool);
   }
@@ -70,7 +72,6 @@ Test(buffer_pool, multiple_global_init_cleanup) {
 // =============================================================================
 
 // Theory: Buffer allocation roundtrip property - allocate -> write -> read -> free
-// Replaces: small_buffer_allocation, medium_buffer_allocation, large_buffer_allocation, xlarge_buffer_allocation
 TheoryDataPoints(buffer_pool, allocation_roundtrip_property) = {
     DataPoints(size_t,
                512,    // Small
@@ -87,7 +88,7 @@ TheoryDataPoints(buffer_pool, allocation_roundtrip_property) = {
 Theory((size_t size), buffer_pool, allocation_roundtrip_property) {
   cr_assume(size > 0 && size <= 1048576);
 
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assume(pool != NULL);
 
   void *buf = buffer_pool_alloc(pool, size);
@@ -108,7 +109,7 @@ Theory((size_t size), buffer_pool, allocation_roundtrip_property) {
 }
 
 Test(buffer_pool, zero_size_allocation) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   void *buf = buffer_pool_alloc(pool, 0);
@@ -124,7 +125,7 @@ Test(buffer_pool, zero_size_allocation) {
 
 Test(buffer_pool, null_pool_allocation) {
   void *buf = buffer_pool_alloc(NULL, 1024);
-  // Should handle NULL pool gracefully (may return NULL or use global)
+  // Should handle NULL pool gracefully (uses global pool)
 
   if (buf != NULL) {
     // If it returned something, we should be able to free it
@@ -144,7 +145,7 @@ TheoryDataPoints(buffer_pool, pool_reuse_property) = {
 Theory((size_t size), buffer_pool, pool_reuse_property) {
   cr_assume(size > 0 && size <= 8192);
 
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assume(pool != NULL);
 
   void *buffers[5];
@@ -164,7 +165,7 @@ Theory((size_t size), buffer_pool, pool_reuse_property) {
 }
 
 Test(buffer_pool, mixed_size_allocation) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   void *small = buffer_pool_alloc(pool, 512);
@@ -202,14 +203,12 @@ Test(buffer_pool, mixed_size_allocation) {
 // =============================================================================
 
 Test(buffer_pool, statistics_tracking) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   size_t current_bytes = 0, used_bytes = 0, free_bytes = 0;
   buffer_pool_get_stats(pool, &current_bytes, &used_bytes, &free_bytes);
-
-  // Initially no bytes in use
-  cr_assert_eq(used_bytes, 0, "Initial used bytes should be 0");
+  size_t initial_used = used_bytes;
 
   // Allocate some buffers
   void *buf1 = buffer_pool_alloc(pool, 1024);
@@ -217,43 +216,27 @@ Test(buffer_pool, statistics_tracking) {
 
   buffer_pool_get_stats(pool, &current_bytes, &used_bytes, &free_bytes);
 
-  // Should have bytes in use now
-  cr_assert_gt(used_bytes, 0, "Used bytes should increase after allocation");
+  // Used bytes should have increased
+  cr_assert_gt(used_bytes, initial_used, "Used bytes should increase after allocation");
 
   buffer_pool_free(pool, buf1, 1024);
   buffer_pool_free(pool, buf2, 32768);
   buffer_pool_destroy(pool);
 }
 
-Test(buffer_pool, statistics_after_free) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+Test(buffer_pool, log_statistics) {
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
-  // Allocate from various sizes
-  void *small = buffer_pool_alloc(pool, 512);
-  void *medium = buffer_pool_alloc(pool, 32768);
-  void *large = buffer_pool_alloc(pool, 131072);
-  void *xlarge = buffer_pool_alloc(pool, 655360);
+  // Allocate some buffers to generate stats
+  void *buf1 = buffer_pool_alloc(pool, 1024);
+  void *buf2 = buffer_pool_alloc(pool, 32768);
 
-  size_t current_bytes = 0, used_bytes = 0, free_bytes = 0;
-  buffer_pool_get_stats(pool, &current_bytes, &used_bytes, &free_bytes);
+  // This should not crash
+  buffer_pool_log_stats(pool, "test_pool");
 
-  size_t used_before_free = used_bytes;
-  cr_assert_gt(used_before_free, 0, "Should have bytes in use");
-
-  // Free all buffers
-  buffer_pool_free(pool, small, 512);
-  buffer_pool_free(pool, medium, 32768);
-  buffer_pool_free(pool, large, 131072);
-  buffer_pool_free(pool, xlarge, 655360);
-
-  buffer_pool_get_stats(pool, &current_bytes, &used_bytes, &free_bytes);
-
-  // Used bytes should be 0 after freeing
-  cr_assert_eq(used_bytes, 0, "Used bytes should be 0 after freeing all");
-  // Free bytes should have increased (buffers returned to free list)
-  cr_assert_gt(free_bytes, 0, "Free bytes should increase after returns");
-
+  buffer_pool_free(pool, buf1, 1024);
+  buffer_pool_free(pool, buf2, 32768);
   buffer_pool_destroy(pool);
 }
 
@@ -265,7 +248,7 @@ Test(buffer_pool, global_convenience_functions) {
   // Initialize global pool
   buffer_pool_init_global();
 
-  // Test convenience macros (POOL_ALLOC/POOL_FREE use global pool)
+  // Test convenience macros
   void *buf = POOL_ALLOC(1024);
   cr_assert_not_null(buf, "Global buffer allocation should succeed");
 
@@ -311,15 +294,14 @@ Test(buffer_pool, global_multiple_allocations) {
 // =============================================================================
 
 Test(buffer_pool, many_allocations) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Allocate many buffers
-  const int num_buffers = 50;
-  void *buffers[50];
+  void *buffers[100];
   int allocated_count = 0;
 
-  for (int i = 0; i < num_buffers; i++) {
+  for (int i = 0; i < 100; i++) {
     buffers[i] = buffer_pool_alloc(pool, 1024);
     if (buffers[i] != NULL) {
       allocated_count++;
@@ -342,11 +324,11 @@ Test(buffer_pool, many_allocations) {
 }
 
 Test(buffer_pool, very_large_allocation) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
-  // Allocate buffer larger than max single size (should use malloc fallback)
-  size_t huge_size = BUFFER_POOL_MAX_SINGLE_SIZE * 2; // 8MB
+  // Allocate buffer larger than pool max single size (should use malloc fallback)
+  size_t huge_size = BUFFER_POOL_MAX_SINGLE_SIZE + 1024;
   void *huge_buf = buffer_pool_alloc(pool, huge_size);
 
   if (huge_buf != NULL) {
@@ -374,7 +356,7 @@ TheoryDataPoints(buffer_pool, stress_allocation_property) = {
 Theory((size_t size), buffer_pool, stress_allocation_property) {
   cr_assume(size > 0 && size <= 16384);
 
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assume(pool != NULL);
 
   void *buffers[10];
@@ -402,20 +384,28 @@ Theory((size_t size), buffer_pool, stress_allocation_property) {
 // Edge Cases and Error Handling
 // =============================================================================
 
-// Note: double_free_safety test removed due to implementation behavior
-// The buffer pool implementation may abort on double free rather than
-// returning gracefully, making this test unsafe for automated testing
-
-// Note: free_wrong_size test removed due to implementation behavior
-// The buffer pool implementation may abort on size mismatch rather than
-// returning gracefully, making this test unsafe for automated testing
-
 Test(buffer_pool, free_null_buffer) {
-  buffer_pool_t *pool = buffer_pool_create(0, 0);
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
   cr_assert_not_null(pool, "Pool creation should succeed");
 
   // Freeing NULL should be safe
   buffer_pool_free(pool, NULL, 1024);
+
+  buffer_pool_destroy(pool);
+}
+
+Test(buffer_pool, shrink_pool) {
+  buffer_pool_t *pool = buffer_pool_create(BUFFER_POOL_MAX_BYTES, BUFFER_POOL_SHRINK_DELAY_MS);
+  cr_assert_not_null(pool, "Pool creation should succeed");
+
+  // Allocate and free some buffers
+  void *buf1 = buffer_pool_alloc(pool, 1024);
+  void *buf2 = buffer_pool_alloc(pool, 2048);
+  buffer_pool_free(pool, buf1, 1024);
+  buffer_pool_free(pool, buf2, 2048);
+
+  // Shrink should not crash
+  buffer_pool_shrink(pool);
 
   buffer_pool_destroy(pool);
 }

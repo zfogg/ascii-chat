@@ -124,16 +124,19 @@ typedef struct {
  */
 #define AUDIO_RING_BUFFER_SIZE 192000
 
-/** @brief Jitter buffer threshold (wait for ~100ms before starting playback = 4800 samples @ 48kHz)
+/** @brief Jitter buffer threshold - samples needed before starting playback
  *
  * This threshold determines how much audio must be buffered before playback starts.
  * Too small = underruns and audio gaps when network packets arrive late
- * Too large = excessive latency
+ * Too large = excessive latency + AEC3 gets silence during fill period
  *
- * Increased to 200ms for cross-machine audio stability.
- * 9600 samples @ 48kHz = 200ms = 10 Opus frames (20ms each)
+ * REDUCED to 60ms (3 Opus packets) to minimize AEC3 echo cancellation delay.
+ * During fill period, audio is still fed to AEC3 for echo cancellation even
+ * though playback hasn't started yet (see duplex_callback modification).
+ *
+ * 2880 samples @ 48kHz = 60ms = 3 Opus frames (20ms each)
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD 9600
+#define AUDIO_JITTER_BUFFER_THRESHOLD 2880
 
 /** @brief Low water mark - warn when available drops below this
  *
@@ -141,10 +144,10 @@ typedef struct {
  * keep playing to avoid choppy audio. The jitter buffer should absorb
  * network jitter without constantly pausing/resuming.
  *
- * Set to 25% of threshold (50ms when threshold is 200ms).
- * 2400 samples @ 48kHz = 50ms = 2.5 Opus frames
+ * Set to 33% of threshold (20ms when threshold is 60ms).
+ * 960 samples @ 48kHz = 20ms = 1 Opus frame
  */
-#define AUDIO_JITTER_LOW_WATER_MARK 2400
+#define AUDIO_JITTER_LOW_WATER_MARK 960
 
 /** @brief Crossfade duration in samples for smooth underrun recovery
  *

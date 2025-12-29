@@ -530,6 +530,21 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t samples);
 
 /**
+ * @brief Peek at available samples without consuming them (for AEC3 render signal)
+ *
+ * This function reads samples from the jitter buffer WITHOUT advancing the read_index.
+ * Used to feed audio to AEC3 for echo cancellation even during jitter buffer fill period.
+ *
+ * @param rb Ring buffer to peek from
+ * @param data Output buffer for samples
+ * @param samples Number of samples to peek
+ * @return Number of samples actually peeked (may be less than requested)
+ *
+ * @ingroup audio
+ */
+size_t audio_ring_buffer_peek(audio_ring_buffer_t *rb, float *data, size_t samples);
+
+/**
  * @brief Get number of samples available for reading
  * @param rb Audio ring buffer (must not be NULL)
  * @return Number of samples available to read
