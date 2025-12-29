@@ -61,10 +61,9 @@ if(NOT webrtc_aec3_POPULATED)
     set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
     file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
-    # Create a configuration string to detect when rebuild is needed
-    # This ensures cached WebRTC libs match the current build settings
-    # v2: Added WIN32 flag to force rebuild with WIN32_LEAN_AND_MEAN
-    set(WEBRTC_SIMD_CONFIG "v2;SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE};WIN32=${WIN32}")
+    # Create a SIMD configuration string to detect when rebuild is needed
+    # This ensures cached WebRTC libs match the current SIMD settings
+    set(WEBRTC_SIMD_CONFIG "SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
     set(WEBRTC_SIMD_MARKER "${WEBRTC_BUILD_DIR}/.simd_config")
 
     # Check if cached build exists with matching SIMD config
@@ -87,15 +86,10 @@ if(NOT webrtc_aec3_POPULATED)
     if(WEBRTC_NEEDS_REBUILD)
         message(STATUS "${BoldYellow}WebRTC AEC3${ColorReset} building from source...")
 
-        # Clean old build to ensure fresh compilation with new config
+        # Clean old build to ensure fresh compilation with new SIMD config
         if(EXISTS "${WEBRTC_BUILD_DIR}/lib")
             file(REMOVE_RECURSE "${WEBRTC_BUILD_DIR}/lib")
             message(STATUS "Cleaned old WebRTC AEC3 build artifacts")
-        endif()
-        # Also remove CMakeCache.txt to force reconfigure with new flags
-        if(EXISTS "${WEBRTC_BUILD_DIR}/CMakeCache.txt")
-            file(REMOVE "${WEBRTC_BUILD_DIR}/CMakeCache.txt")
-            message(STATUS "Cleaned WebRTC AEC3 CMakeCache.txt to force reconfigure")
         endif()
         file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}/lib")
 
