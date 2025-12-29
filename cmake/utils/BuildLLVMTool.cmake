@@ -130,6 +130,30 @@ function(build_llvm_tool)
         set(_tool_exe "${_build_dir}/${_TOOL_OUTPUT_EXECUTABLE}${CMAKE_EXECUTABLE_SUFFIX}")
 
         # ------------------------------------------------------------------
+        # Clean Incomplete Cache Directory
+        # ------------------------------------------------------------------
+        # If the cache directory exists but has no CMakeCache.txt, it's an
+        # incomplete build from a previous failed run. Clean it so ExternalProject
+        # starts fresh with configure step instead of skipping to build step.
+        if(EXISTS "${_cache_dir}" AND NOT EXISTS "${_cache_dir}/CMakeCache.txt")
+            message(STATUS "${_TOOL_NAME} tool: Cleaning incomplete cache directory: ${_cache_dir}")
+            file(REMOVE_RECURSE "${_cache_dir}")
+            file(MAKE_DIRECTORY "${_cache_dir}")
+        endif()
+
+        # ------------------------------------------------------------------
+        # Clean Stale ExternalProject Artifacts
+        # ------------------------------------------------------------------
+        # If build directory cache was restored with ExternalProject stamps from
+        # a previous run, Ninja will think the configure/build steps are done.
+        # Clean the prefix so ExternalProject starts fresh.
+        set(_ep_prefix_dir "${CMAKE_BINARY_DIR}/${_TOOL_OUTPUT_EXECUTABLE}-external-prefix")
+        if(EXISTS "${_ep_prefix_dir}")
+            message(STATUS "${_TOOL_NAME} tool: Cleaning stale ExternalProject stamps: ${_ep_prefix_dir}")
+            file(REMOVE_RECURSE "${_ep_prefix_dir}")
+        endif()
+
+        # ------------------------------------------------------------------
         # Detect C++ Compiler
         # ------------------------------------------------------------------
         # Use the C++ compiler from the detected LLVM installation (found via llvm-config)
