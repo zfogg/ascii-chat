@@ -142,24 +142,25 @@ if(NOT webrtc_aec3_POPULATED)
                 set(_libcxx_include_flag "")
             endif()
 
-            # For Homebrew LLVM: DON'T specify -resource-dir or -isysroot.
-            # The Homebrew clang knows where its headers are and sets up include paths
-            # correctly. We only need:
-            # - -stdlib=libc++: use LLVM's libc++ instead of libstdc++
-            # - -w: suppress warnings
+            # For Homebrew LLVM: explicitly add libc++ include path but NOT -isysroot.
             #
-            # IMPORTANT: -isysroot adds SDK headers (including stdlib.h, stdio.h) at
-            # HIGH priority, which causes them to be found BEFORE libc++'s C header
-            # wrappers. This breaks the #include_next chains that libc++ relies on.
-            # Homebrew clang auto-detects the SDK location, so we don't need -isysroot.
+            # Key insight: ARM Macs (Homebrew in /opt/homebrew/) auto-detect paths,
+            # but Intel Macs (Homebrew in /usr/local/) need explicit -isystem for libc++.
+            #
+            # We use -isystem to add libc++ headers at high priority, BEFORE SDK headers.
+            # This ensures libc++'s C header wrappers (stddef.h, stdio.h) are found first,
+            # so their #include_next chains work correctly.
+            #
+            # IMPORTANT: We DON'T use -isysroot because it adds SDK headers at even
+            # higher priority, breaking the include_next chains.
             set(_webrtc_c_flags "-w")
-            set(_webrtc_cxx_flags "-stdlib=libc++ -w")
+            set(_webrtc_cxx_flags "-stdlib=libc++ ${_libcxx_include_flag} -w")
             # Remove any inherited CMAKE_*_FLAGS that might contain -resource-dir or -isysroot
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_c_flags}")
-            message(STATUS "WebRTC macOS build: letting Homebrew clang auto-detect paths")
+            message(STATUS "WebRTC macOS build: libc++ include=${LIBCXX_INCLUDE_DIR}")
         endif()
 
         # Build WebRTC at configure time (not part of main build)
