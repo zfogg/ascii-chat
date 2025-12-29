@@ -8,6 +8,7 @@
 #include "tests/logging.h"
 #include "network/packet_queue.h"
 #include "network/crc32.h" // For CRC calculation
+#include "buffer_pool.h"   // For buffer_pool_init_global/cleanup_global
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);
@@ -635,7 +636,7 @@ Test(packet_queue, node_pool_integration) {
 
 Test(packet_queue, buffer_pool_integration) {
   // Initialize global buffer pool for testing
-  data_buffer_pool_init_global();
+  buffer_pool_init_global();
 
   packet_queue_t *queue = packet_queue_create_with_pools(5, 10, true);
   cr_assert_not_null(queue, "Queue with buffer pool should be created");
@@ -658,5 +659,5 @@ Test(packet_queue, buffer_pool_integration) {
   }
 
   packet_queue_destroy(queue);
-  data_buffer_pool_cleanup_global();
+  buffer_pool_cleanup_global();
 }
