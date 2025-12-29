@@ -134,17 +134,29 @@ if(NOT webrtc_aec3_POPULATED)
                 endif()
             endif()
 
+            # Check for libc++ include path (needed for C++ wrapper headers)
+            set(LIBCXX_INCLUDE_DIR "${LLVM_ROOT}/include/c++/v1")
+            if(EXISTS "${LIBCXX_INCLUDE_DIR}")
+                set(_libcxx_include_flag "-isystem ${LIBCXX_INCLUDE_DIR}")
+            else()
+                set(_libcxx_include_flag "")
+            endif()
+
             if(EXISTS "${CLANG_RESOURCE_DIR}")
                 file(GLOB CLANG_VERSION_DIRS "${CLANG_RESOURCE_DIR}/*")
                 list(LENGTH CLANG_VERSION_DIRS CLANG_VERSION_COUNT)
                 if(CLANG_VERSION_COUNT GREATER 0)
                     list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
                     # Set fresh flags - don't inherit from parent to avoid duplicate -resource-dir
-                    # CRITICAL: Must explicitly set -stdlib=libc++ and -isysroot for macOS builds
+                    # CRITICAL: Must explicitly set -stdlib=libc++, -isysroot, and -isystem for macOS builds
                     # The clang config files (~/.config/clang/*.cfg) may not be picked up by
-                    # the WebRTC sub-build, so we need to pass this explicitly
+                    # the WebRTC sub-build, so we need to pass all these explicitly:
+                    # - -resource-dir: clang compiler builtins
+                    # - -isysroot: macOS SDK path
+                    # - -isystem: libc++ headers (must come before SDK headers)
+                    # - -stdlib=libc++: use LLVM's libc++ instead of libstdc++
                     set(_webrtc_c_flags "-resource-dir ${CLANG_VERSION_DIR} ${_sysroot_flag} -w")
-                    set(_webrtc_cxx_flags "-resource-dir ${CLANG_VERSION_DIR} ${_sysroot_flag} -stdlib=libc++ -w")
+                    set(_webrtc_cxx_flags "-resource-dir ${CLANG_VERSION_DIR} ${_libcxx_include_flag} ${_sysroot_flag} -stdlib=libc++ -w")
                     # Remove the old CMAKE_*_FLAGS entries and add our clean ones
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
