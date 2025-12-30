@@ -100,7 +100,7 @@
 #include "util/endian.h"
 #include "util/thread.h"
 #include "util/endian.h"
-#include "fps.h"
+#include "util/fps.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>

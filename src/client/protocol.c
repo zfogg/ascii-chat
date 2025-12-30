@@ -94,7 +94,7 @@
 #include "util/format.h"
 #include "options/options.h"
 #include "network/crc32.h"
-#include "fps.h"
+#include "util/fps.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
