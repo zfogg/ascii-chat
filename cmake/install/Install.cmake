@@ -256,6 +256,15 @@ else()
     )
 endif()
 
+# Install uthash.h dependency header
+# lib/util/uthash.h includes "../../deps/uthash/src/uthash.h"
+# From include/ascii-chat/util/, ../../ resolves to include/
+# So we install to include/deps/uthash/src/
+install(FILES "${CMAKE_SOURCE_DIR}/deps/uthash/src/uthash.h"
+    DESTINATION include/deps/uthash/src
+    COMPONENT Development
+)
+
 # Install pkg-config file (only when shared library is built)
 if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
     # Set mimalloc requirement conditionally

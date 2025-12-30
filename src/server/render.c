@@ -169,6 +169,7 @@
 #include "audio/audio.h"
 #include "audio/opus_codec.h"
 #include "util/format.h"
+#include "util/fps.h"
 
 // Global client manager lock for thread-safe access
 extern rwlock_t g_client_manager_rwlock;
@@ -392,11 +393,8 @@ void *client_video_render_thread(void *arg) {
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
   // FPS tracking for video render thread
-  uint64_t video_frame_count = 0;
-  struct timespec last_video_fps_report_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_video_fps_report_time);
-  struct timespec last_video_frame_time = last_render_time;
-  int expected_video_fps = client_fps;
+  fps_t video_fps_tracker = {0};
+  fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
@@ -542,44 +540,8 @@ void *client_video_render_thread(void *arg) {
             log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
           }
 
-          // FPS tracking - frame successfully generated
-          video_frame_count++;
-
-          // Calculate time since last frame
-          uint64_t frame_interval_us =
-              ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-              ((uint64_t)last_video_frame_time.tv_sec * 1000000 + (uint64_t)last_video_frame_time.tv_nsec / 1000);
-          last_video_frame_time = current_time;
-
-          // Expected frame interval in microseconds
-          uint64_t expected_interval_us = 1000000 / expected_video_fps;
-          uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
-
-          // Log error if frame took too long to generate
-          static int lag_counter = 0;
-          if (video_frame_count > 1 && frame_interval_us > lag_threshold_us) {
-            lag_counter++;
-            if (lag_counter % 10 == 0) {
-              log_warn_every(
-                  LOG_RATE_FAST,
-                  "SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
-                  "fps: %.1f)",
-                  thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
-                  (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
-                  1000000.0f / frame_interval_us);
-            }
-          }
-
-          // Report FPS every 5 seconds
-          uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                                ((uint64_t)last_video_fps_report_time.tv_sec * 1000000 +
-                                 (uint64_t)last_video_fps_report_time.tv_nsec / 1000);
-
-          if (elapsed_us >= 5000000) { // 5 seconds
-            // Reset counters for next interval
-            video_frame_count = 0;
-            last_video_fps_report_time = current_time;
-          }
+          // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
+          fps_frame(&video_fps_tracker, &current_time, "frame rendered");
         }
       }
 
@@ -778,12 +740,10 @@ void *client_audio_render_thread(void *arg) {
   }
 
   // FPS tracking for audio render thread
-  uint64_t audio_packet_count = 0;
-  struct timespec last_audio_packet_time;
+  fps_t audio_fps_tracker = {0};
+  fps_init(&audio_fps_tracker, AUDIO_RENDER_FPS, "SERVER AUDIO");
   struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
-  int expected_audio_fps = AUDIO_RENDER_FPS; // 100fps = 10ms intervals (480 samples @ 48kHz)
 
   // Per-thread counters (NOT static - each thread instance gets its own)
   int mixer_debug_count = 0;
@@ -1057,32 +1017,10 @@ void *client_audio_render_thread(void *arg) {
         if (result < 0) {
           log_debug("Failed to queue Opus audio for client %u", client_id_snapshot);
         } else {
-          // FPS tracking - audio packet successfully queued
-          audio_packet_count++;
-
+          // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
           struct timespec current_time;
           (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-          // Calculate time since last packet
-          uint64_t packet_interval_us =
-              ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-              ((uint64_t)last_audio_packet_time.tv_sec * 1000000 + (uint64_t)last_audio_packet_time.tv_nsec / 1000);
-          last_audio_packet_time = current_time;
-
-          // Expected packet interval in microseconds (5800us for 172fps)
-          uint64_t expected_interval_us = 1000000 / expected_audio_fps;
-          uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
-
-          // Log warning if packet took too long to process
-          if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
-            log_warn_every(
-                LOG_RATE_FAST,
-                "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
-                "fps: %.1f)",
-                thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
-                (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
-                1000000.0f / packet_interval_us);
-          }
+          fps_frame(&audio_fps_tracker, &current_time, "audio packet queued");
         }
       }
       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt

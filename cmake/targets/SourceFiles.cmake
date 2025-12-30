@@ -34,7 +34,7 @@ set(UTIL_SRCS
     lib/util/image.c
     lib/util/audio.c
     lib/util/password.c
-    lib/fps.c
+    lib/util/fps.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
