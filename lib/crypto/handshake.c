@@ -13,6 +13,7 @@
 #include "crypto.h"
 #include "crypto/crypto.h"
 #include "known_hosts.h"
+#include "gpg.h"
 #include "network/packet.h"
 #include "util/password.h"
 #include <stdio.h>
@@ -316,6 +317,16 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 
     // Sign the ephemeral key with our identity key
     log_debug("Signing ephemeral key with server identity key");
+    fprintf(stderr, "[SERVER DEBUG] Signing ephemeral key (32 bytes): ");
+    for (int i = 0; i < 32; i++) {
+      fprintf(stderr, "%02x", ctx->crypto_ctx.public_key[i]);
+    }
+    fprintf(stderr, "\n[SERVER DEBUG] Using identity public key: ");
+    for (int i = 0; i < 32; i++) {
+      fprintf(stderr, "%02x", ctx->server_private_key.public_key[i]);
+    }
+    fprintf(stderr, "\n");
+
     if (ed25519_sign_message(&ctx->server_private_key, ctx->crypto_ctx.public_key, ctx->crypto_ctx.public_key_size,
                              extended_packet + ctx->crypto_ctx.public_key_size +
                                  ctx->crypto_ctx.auth_public_key_size) != 0) {
@@ -449,6 +460,20 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
     // Verify signature: server identity signed the ephemeral key
     log_debug("Verifying server's signature over ephemeral key");
+    fprintf(stderr, "[CLIENT DEBUG] Verifying ephemeral key (32 bytes): ");
+    for (int i = 0; i < 32; i++) {
+      fprintf(stderr, "%02x", server_ephemeral_key[i]);
+    }
+    fprintf(stderr, "\n[CLIENT DEBUG] Using identity public key: ");
+    for (int i = 0; i < 32; i++) {
+      fprintf(stderr, "%02x", server_identity_key[i]);
+    }
+    fprintf(stderr, "\n[CLIENT DEBUG] With signature: ");
+    for (int i = 0; i < 64; i++) {
+      fprintf(stderr, "%02x", server_signature[i]);
+    }
+    fprintf(stderr, "\n");
+
     if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, ctx->crypto_ctx.public_key_size,
                                  server_signature) != 0) {
       if (payload) {
@@ -727,8 +752,10 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
   // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret
   crypto_result_t crypto_result = crypto_set_peer_public_key(&ctx->crypto_ctx, server_ephemeral_key);
+  fprintf(stderr, "[CLEANUP] About to free payload=%p, payload_len=%zu\n", (void *)payload, payload_len);
   if (payload) {
     buffer_pool_free(NULL, payload, payload_len);
+    fprintf(stderr, "[CLEANUP] Payload freed successfully\n");
   }
   if (crypto_result != CRYPTO_OK) {
     SAFE_FREE(server_ephemeral_key);
@@ -1562,21 +1589,40 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       const uint8_t *signature = payload;
       const uint8_t *client_nonce = payload + ctx->crypto_ctx.signature_size;
 
-      // Actually verify the Ed25519 signature on the challenge nonce
+      // Actually verify the Ed25519/GPG signature on the challenge nonce
       // This was missing, allowing authentication bypass
       if (ctx->client_ed25519_key_verified) {
-        if (crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce, ctx->crypto_ctx.auth_challenge_size,
-                                        ctx->client_ed25519_key.key) != 0) {
+        int verify_result = -1;
+
+        // Use appropriate verification method based on key type
+        if (ctx->client_ed25519_key.type == KEY_TYPE_GPG) {
+          log_debug("Verifying GPG signature on challenge nonce using gpg --verify binary");
+          // GPG keys: use gpg_verify_signature_with_binary() workaround for Format 2 signatures
+          verify_result =
+              gpg_verify_signature_with_binary(signature, ctx->crypto_ctx.signature_size, ctx->crypto_ctx.auth_nonce,
+                                               ctx->crypto_ctx.auth_challenge_size,
+                                               NULL // expected_key_id - optional for now
+              );
+        } else {
+          log_debug("Verifying Ed25519 signature on challenge nonce using libsodium");
+          // Ed25519 keys: use standard libsodium verification
+          verify_result = crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce,
+                                                      ctx->crypto_ctx.auth_challenge_size, ctx->client_ed25519_key.key);
+        }
+
+        if (verify_result != 0) {
           if (payload) {
             buffer_pool_free(NULL, payload, payload_len);
           }
           auth_failure_packet_t failure = {0};
           failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
-          SET_ERRNO(ERROR_CRYPTO_AUTH, "Ed25519 signature verification failed on challenge nonce");
+          SET_ERRNO(ERROR_CRYPTO_AUTH, "%s signature verification failed on challenge nonce",
+                    ctx->client_ed25519_key.type == KEY_TYPE_GPG ? "GPG" : "Ed25519");
           send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
           return ERROR_CRYPTO_AUTH;
         }
-        log_debug("Ed25519 signature on challenge nonce verified successfully");
+        log_info("%s signature on challenge nonce verified successfully",
+                 ctx->client_ed25519_key.type == KEY_TYPE_GPG ? "GPG" : "Ed25519");
       }
 
       memcpy(ctx->client_challenge_nonce, client_nonce, ctx->crypto_ctx.auth_challenge_size);

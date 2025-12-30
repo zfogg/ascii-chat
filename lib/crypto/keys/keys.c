@@ -12,6 +12,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
+#include "../gpg.h" // For gpg_get_public_key()
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -111,6 +112,57 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
   // Clear output structure
   memset(key_out, 0, sizeof(private_key_t));
+
+  // Check for GPG key format: "gpg:KEYID" where KEYID is 16-char hex string
+  if (strncmp(key_path, "gpg:", 4) == 0) {
+    const char *key_id = key_path + 4; // Skip "gpg:" prefix
+
+    // Validate key ID format (must be 16 hex characters)
+    size_t key_id_len = strlen(key_id);
+    if (key_id_len != 16) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID length: %zu (expected 16 hex chars)", key_id_len);
+    }
+
+    // Validate hex characters
+    for (size_t i = 0; i < 16; i++) {
+      char c = key_id[i];
+      if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+        return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID: contains non-hex character '%c'", c);
+      }
+    }
+
+    // Get public key and keygrip from GPG keyring
+    uint8_t public_key[32];
+    char keygrip[64];
+    if (gpg_get_public_key(key_id, public_key, keygrip) != 0) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to get public key from GPG for key ID: %s", key_id);
+    }
+
+    // Populate private_key_t structure for GPG agent use
+    key_out->type = KEY_TYPE_ED25519;
+    key_out->use_gpg_agent = true;
+    key_out->use_ssh_agent = false;
+
+    // Store public key (for handshake and verification)
+    memcpy(key_out->public_key, public_key, 32);
+
+    // Store keygrip (for GPG agent signing operations)
+    platform_strncpy(key_out->gpg_keygrip, sizeof(key_out->gpg_keygrip), keygrip, sizeof(key_out->gpg_keygrip) - 1);
+
+    // Store comment for display
+    safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG key %s", key_id);
+
+    // Clear the key.ed25519 field (we don't have the private key in memory)
+    // The private key stays protected in GPG agent
+    memset(key_out->key.ed25519, 0, 64);
+
+    // Set the public key in the second half of ed25519 key (standard Ed25519 format)
+    // This is for compatibility with code that expects the public key at offset 32
+    memcpy(key_out->key.ed25519 + 32, public_key, 32);
+
+    log_info("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
+    return ASCIICHAT_OK;
+  }
 
   // Try SSH private key parsing
   char *normalized_path = NULL;

@@ -51,11 +51,11 @@ set(CRYPTO_SRCS
     lib/crypto/known_hosts.c
     lib/crypto/handshake.c
     lib/crypto/pem_utils.c
-    # lib/crypto/gpg.c  # Temporarily excluded
+    lib/crypto/gpg.c  # GPG agent support (signing only, verification with libsodium)
     lib/crypto/ssh_agent.c
     lib/crypto/keys/ssh_keys.c
-    # lib/crypto/keys/gpg_keys.c  # Temporarily excluded
-    lib/crypto/keys/gpg_stubs.c  # Stub implementations for disabled GPG support
+    lib/crypto/keys/gpg_keys.c  # GPG key parsing
+    # lib/crypto/keys/gpg_stubs.c  # Stub implementations (disabled - using real GPG support)
     lib/crypto/keys/https_keys.c
     lib/crypto/keys/validation.c
     # libsodium-bcrypt-pbkdf (OpenBSD implementation)

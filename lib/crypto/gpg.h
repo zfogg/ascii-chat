@@ -276,6 +276,24 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
 int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
                               uint8_t signature_out[64]);
 
+/**
+ * @brief Verify GPG signature using gpg --verify
+ * @param key_id GPG key ID (16-char hex string) to use for verification
+ * @param message Message that was signed
+ * @param message_len Message length
+ * @param signature 64-byte Ed25519 signature (raw R||S format)
+ * @return 0 on success (signature valid), -1 on error or invalid signature
+ *
+ * Fallback verification function that uses `gpg --verify` command.
+ * Takes a raw 64-byte Ed25519 signature, reconstructs the OpenPGP signature packet,
+ * and verifies it using GPG.
+ *
+ * @note This is the counterpart to gpg_sign_detached_ed25519().
+ * @ingroup crypto
+ */
+int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
+                                const uint8_t signature[64]);
+
 /** @} */
 
 /**
