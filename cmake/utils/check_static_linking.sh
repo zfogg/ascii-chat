@@ -35,7 +35,8 @@ case "$PLATFORM" in
         fi
         ;;
     macos)
-        NON_SYSTEM=$(otool -L "$BINARY" | grep -v '/usr/lib\|/System/Library\|@rpath' | tail -n +2)
+        # Allow /usr/lib, /System/Library, @rpath, and /opt/homebrew (for Homebrew LLVM libunwind)
+        NON_SYSTEM=$(otool -L "$BINARY" | grep -v '/usr/lib\|/System/Library\|@rpath\|/opt/homebrew' | tail -n +2)
         if [ -n "$NON_SYSTEM" ]; then
             echo -e "${YELLOW}WARNING: Release build links against non-system libraries!${RESET}"
             echo "$NON_SYSTEM"
