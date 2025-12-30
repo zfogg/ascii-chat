@@ -224,6 +224,58 @@ int gpg_agent_sign(int sock, const char *keygrip, const uint8_t *message, size_t
  */
 int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygrip_out);
 
+/**
+ * @brief Sign a message using GPG key (via gpg --detach-sign)
+ * @param key_id GPG key ID (e.g., "7FE90A79F2E80ED3")
+ * @param message Message to sign (must not be NULL)
+ * @param message_len Message length (must be > 0)
+ * @param signature_out Output buffer for signature (must provide at least 512 bytes)
+ * @param signature_len_out Actual signature length written
+ * @return 0 on success, -1 on error
+ *
+ * Creates a GPG detached signature by calling `gpg --detach-sign`.
+ * Uses gpg-agent internally, so no passphrase prompt if key is cached.
+ *
+ * @note Signature format: Returns OpenPGP packet format signature (~119 bytes for Ed25519).
+ *       This is compatible with `gpg --verify` for verification.
+ *
+ * @note GPG Agent: This function uses `gpg --detach-sign` which uses gpg-agent internally.
+ *       If the key is unlocked in gpg-agent, no passphrase prompt will appear.
+ *
+ * @note Process safety: Uses process-specific temp files to support concurrent signing.
+ *
+ * @warning Buffer size: Caller must provide at least 512 bytes in signature_out buffer.
+ *          Typical Ed25519 signature is ~119 bytes in OpenPGP format.
+ *
+ * @warning GPG dependency: Requires GPG to be installed and in PATH.
+ *
+ * @ingroup crypto
+ */
+int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out,
+                      size_t *signature_len_out);
+
+/**
+ * @brief Sign message using gpg --detach-sign and extract raw Ed25519 signature
+ * @param key_id GPG key ID (16-char hex string)
+ * @param message Message to sign
+ * @param message_len Message length
+ * @param signature_out Output buffer for 64-byte Ed25519 signature (must not be NULL)
+ * @return 0 on success, -1 on error
+ *
+ * Fallback function used when GPG agent is not available.
+ * Uses `gpg --detach-sign` to create an OpenPGP signature packet,
+ * then parses the packet to extract the raw 64-byte Ed25519 signature.
+ *
+ * @note This function is used as a fallback when GPG agent connection fails.
+ *       It allows signing operations to work even when gpg-agent is not running.
+ *
+ * @warning Requires GPG binary in PATH and key must be unlocked or have no passphrase.
+ *
+ * @ingroup crypto
+ */
+int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
+                              uint8_t signature_out[64]);
+
 /** @} */
 
 /**
@@ -266,5 +318,65 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
  */
 int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len,
                          const uint8_t *signature);
+
+/**
+ * @brief Verify a GPG signature using gpg --verify binary
+ * @param signature GPG signature in OpenPGP packet format (must not be NULL)
+ * @param signature_len Signature length (typically ~119 bytes for Ed25519, max 512 bytes)
+ * @param message Message that was signed (must not be NULL)
+ * @param message_len Message length (must be > 0)
+ * @param expected_key_id Expected GPG key ID (16-char hex, optional, can be NULL)
+ * @return 0 on success (signature valid), -1 on error or invalid signature
+ *
+ * Verifies a GPG signature by calling `gpg --verify` binary.
+ * This approach uses GPG's internal verification which handles OpenPGP packet format.
+ *
+ * @note Workaround for issue #92: This function works with signatures created by
+ *       `gpg --detach-sign` which uses gpg-agent internally and creates proper
+ *       OpenPGP packet format signatures.
+ *
+ * @note Same approach as Git: Git uses `gpg --verify` for commit signature verification
+ *       instead of calling libgcrypt API directly.
+ *
+ * @note Signature format: Expects OpenPGP packet format signature (not raw 64-byte Ed25519).
+ *       Typical Ed25519 detached signature is ~119 bytes in OpenPGP format.
+ *       Function writes this to temporary file for GPG verification.
+ *
+ * @note Verification flow:
+ *       1. Write signature to /tmp/asciichat_sig_<PID>_XXXXXX (Unix) or %TEMP%\asc_sig_<PID>_*.tmp (Windows)
+ *       2. Write message to /tmp/asciichat_msg_<PID>_XXXXXX (Unix) or %TEMP%\asc_msg_<PID>_*.tmp (Windows)
+ *       3. Call `gpg --verify /tmp/sig /tmp/msg`
+ *       4. Parse GPG output for "Good signature"
+ *       5. Verify key ID matches expected_key_id (if provided)
+ *       6. Cleanup temp files
+ *
+ * @note Process safety: Temp files include process ID (PID) in their names to ensure concurrent
+ *       ascii-chat processes can run GPG verification simultaneously without conflicts.
+ *
+ * @note Output parsing: Looks for "Good signature" in GPG output and verifies exit code is 0.
+ *       If expected_key_id is provided, also checks that GPG output contains the key ID.
+ *
+ * @note Performance: ~10-50ms overhead per verification due to shell execution and temp file I/O.
+ *       Acceptable for authentication (infrequent) but not suitable for per-packet verification.
+ *
+ * @note Security considerations:
+ *       - Uses mkstemp() to create temp files with mode 0600 (owner-only)
+ *       - Signature/message written to temp files, not passed as shell arguments (no command injection)
+ *       - Temp files cleaned up even on error (RAII pattern)
+ *       - Validates GPG exit code and output parsing
+ *
+ * @warning Requires GPG binary: Function shells out to `gpg --verify`.
+ *          Returns error if GPG is not installed or not in PATH.
+ *
+ * @warning Temp file I/O: Creates temporary files in /tmp.
+ *          May fail if /tmp is full or not writable.
+ *
+ * @warning Platform-specific: Uses mkstemp() (Unix) or equivalent (Windows).
+ *          Temp file paths differ by platform.
+ *
+ * @ingroup crypto
+ */
+int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_len, const uint8_t *message,
+                                     size_t message_len, const char *expected_key_id);
 
 /** @} */

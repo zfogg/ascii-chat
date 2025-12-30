@@ -14,6 +14,7 @@
 #include "util/path.h"
 #include "util/bytes.h"
 #include "../ssh_agent.h"
+#include "../gpg.h" // For GPG agent signing support
 #include <bearssl.h>
 #include <sodium_bcrypt_pbkdf.h>
 #include <string.h>
@@ -1073,7 +1074,56 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Key is not an Ed25519 key");
   }
 
-  // Sign the message with Ed25519
+  // If using GPG agent, delegate signing to GPG agent
+  if (key->use_gpg_agent) {
+    log_debug("Using GPG agent for Ed25519 signing (keygrip: %.40s)", key->gpg_keygrip);
+
+    // Connect to GPG agent
+    int agent_sock = gpg_agent_connect();
+    if (agent_sock < 0) {
+      log_info("GPG agent not available, falling back to gpg --detach-sign for signing");
+
+      // Extract GPG key ID from key comment ("GPG key <key_id>")
+      const char *key_id_prefix = "GPG key ";
+      const char *key_id = NULL;
+      if (strncmp(key->key_comment, key_id_prefix, strlen(key_id_prefix)) == 0) {
+        key_id = key->key_comment + strlen(key_id_prefix);
+      }
+
+      if (!key_id || strlen(key_id) != 16) {
+        return SET_ERRNO(ERROR_CRYPTO, "Cannot extract GPG key ID from comment for fallback signing");
+      }
+
+      // Use gpg --detach-sign fallback
+      int result = gpg_sign_detached_ed25519(key_id, message, message_len, signature);
+      if (result != 0) {
+        return SET_ERRNO(ERROR_CRYPTO, "GPG fallback signing failed (both agent and gpg command failed)");
+      }
+
+      log_info("Successfully signed message with gpg --detach-sign fallback (64 bytes)");
+      return ASCIICHAT_OK;
+    }
+
+    // Sign the message using GPG agent
+    size_t sig_len = 0;
+    int result = gpg_agent_sign(agent_sock, key->gpg_keygrip, message, message_len, signature, &sig_len);
+
+    // Disconnect from agent
+    gpg_agent_disconnect(agent_sock);
+
+    if (result != 0) {
+      return SET_ERRNO(ERROR_CRYPTO, "GPG agent signing failed");
+    }
+
+    if (sig_len != 64) {
+      return SET_ERRNO(ERROR_CRYPTO, "GPG agent returned invalid signature length: %zu (expected 64)", sig_len);
+    }
+
+    log_info("Successfully signed message with GPG agent (64 bytes)");
+    return ASCIICHAT_OK;
+  }
+
+  // Sign the message with Ed25519 (in-memory key)
   if (crypto_sign_detached(signature, NULL, message, message_len, key->key.ed25519) != 0) {
     return SET_ERRNO(ERROR_CRYPTO, "Failed to sign message with Ed25519");
   }
