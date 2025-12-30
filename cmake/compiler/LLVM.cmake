@@ -32,6 +32,12 @@
 # =============================================================================
 
 function(configure_llvm_pre_project)
+    # Save whether CMAKE_OSX_SYSROOT was user-provided (before any auto-detection)
+    # If user explicitly passed -DCMAKE_OSX_SYSROOT=..., we shouldn't clear it later
+    if(CMAKE_OSX_SYSROOT AND NOT CMAKE_OSX_SYSROOT STREQUAL "")
+        set(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT TRUE CACHE INTERNAL "User provided CMAKE_OSX_SYSROOT")
+    endif()
+
     # Check for ccache and use it if available (from centralized FindPrograms.cmake)
     if(ASCIICHAT_CCACHE_EXECUTABLE)
         set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
@@ -209,10 +215,11 @@ function(configure_llvm_post_project)
         return()
     endif()
 
-    # Allow temp compilation database builds to keep CMAKE_OSX_SYSROOT for tool integration
-    set(_keep_osx_sysroot_for_tools FALSE)
-    if(ASCIICHAT_KEEP_SYSROOT_FOR_TOOLS)
-        set(_keep_osx_sysroot_for_tools TRUE)
+    # Check if user explicitly provided CMAKE_OSX_SYSROOT on command line
+    # If so, we should respect their choice and not clear it
+    set(_user_provided_sysroot FALSE)
+    if(ASCIICHAT_USER_PROVIDED_OSX_SYSROOT)
+        set(_user_provided_sysroot TRUE)
     endif()
 
     # Determine LLVM_ROOT_PREFIX from CMAKE_C_COMPILER or from LLVM_ROOT_PREFIX cache
@@ -305,19 +312,19 @@ function(configure_llvm_post_project)
         set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_macos_sdk_for_tools}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
     endif()
 
-    # Only clear CMAKE_OSX_SYSROOT for main build; temp builds for compilation database generation
-    # should keep it so that tool integration (defer, panic, query) can find system headers
-    # EXCEPTION: In CI environments (GitHub Actions), keep CMAKE_OSX_SYSROOT even for main build
-    # to ensure libc++ can find C standard library headers when clang configs aren't picked up
+    # Only clear CMAKE_OSX_SYSROOT if:
+    # 1. User didn't explicitly provide it on command line
+    # 2. We're not in a CI environment (GitHub Actions sets CI=true)
+    # This allows Homebrew builds and other environments to explicitly set the SDK path
     set(_is_ci_environment "$ENV{CI}")
-    if(NOT _keep_osx_sysroot_for_tools AND NOT _is_ci_environment)
+    if(NOT _user_provided_sysroot AND NOT _is_ci_environment)
         set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
         message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset}: disabling SDK root (-isysroot)")
     else()
-        if(_is_ci_environment)
+        if(_user_provided_sysroot)
+            message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} (user-provided)")
+        elseif(_is_ci_environment)
             message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for CI environment (GitHub Actions)")
-        else()
-            message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for tool integration (defer, panic, etc.)")
         endif()
     endif()
 
