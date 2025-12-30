@@ -9,6 +9,7 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../platform/string.h"
+#include "../gpg.h" // For gpg_get_public_key()
 #include <sodium.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,21 +19,34 @@
 // GPG Key Parsing Implementation
 // =============================================================================
 
-asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out) {
-  if (!gpg_key_text || !key_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, key_out=%p", gpg_key_text, key_out);
+asciichat_error_t parse_gpg_key(const char *gpg_key_id, public_key_t *key_out) {
+  if (!gpg_key_id || !key_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_id=%p, key_out=%p", gpg_key_id, key_out);
     return ERROR_INVALID_PARAM;
   }
 
-  // Validate GPG key format first
-  asciichat_error_t validation_result = validate_gpg_key_format(gpg_key_text);
-  if (validation_result != ASCIICHAT_OK) {
-    return validation_result;
+  // Validate key ID format (must be 16 hex characters or start with 0x)
+  const char *key_id = gpg_key_id;
+  if (strncmp(key_id, "0x", 2) == 0 || strncmp(key_id, "0X", 2) == 0) {
+    key_id += 2; // Skip 0x prefix
   }
 
-  // Extract Ed25519 public key from GPG key
+  size_t key_id_len = strlen(key_id);
+  if (key_id_len != 16) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID length: %zu (expected 16 hex chars)", key_id_len);
+  }
+
+  // Validate hex characters
+  for (size_t i = 0; i < 16; i++) {
+    char c = key_id[i];
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID: contains non-hex character '%c'", c);
+    }
+  }
+
+  // Extract Ed25519 public key from GPG keyring using gpg --list-keys
   uint8_t ed25519_pk[32];
-  asciichat_error_t extract_result = extract_ed25519_from_gpg(gpg_key_text, ed25519_pk);
+  asciichat_error_t extract_result = extract_ed25519_from_gpg(key_id, ed25519_pk);
   if (extract_result != ASCIICHAT_OK) {
     return extract_result;
   }
@@ -42,11 +56,8 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out)
   key_out->type = KEY_TYPE_GPG;
   memcpy(key_out->key, ed25519_pk, 32);
 
-  // Extract key comment/email for display
-  char comment[256];
-  if (extract_gpg_key_comment(gpg_key_text, comment, sizeof(comment)) == ASCIICHAT_OK) {
-    SAFE_STRNCPY(key_out->comment, comment, sizeof(key_out->comment) - 1);
-  }
+  // Set comment for display
+  safe_snprintf(key_out->comment, sizeof(key_out->comment), "GPG key %s", key_id);
 
   return ASCIICHAT_OK;
 }
@@ -68,21 +79,20 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
   return ERROR_CRYPTO_KEY;
 }
 
-asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed25519_pk[32]) {
-  if (!gpg_key_text || !ed25519_pk) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_text=%p, ed25519_pk=%p", gpg_key_text, ed25519_pk);
+asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed25519_pk[32]) {
+  if (!gpg_key_id || !ed25519_pk) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: gpg_key_id=%p, ed25519_pk=%p", gpg_key_id, ed25519_pk);
     return ERROR_INVALID_PARAM;
   }
 
-  // TODO: Implement Ed25519 extraction from GPG key
-  // This requires:
-  // 1. Parse the OpenPGP packet structure
-  // 2. Find the public key packet
-  // 3. Extract the Ed25519 public key material
-  // 4. Convert to our 32-byte format
+  // Use gpg_get_public_key() to extract Ed25519 public key from GPG keyring
+  // Note: gpg_key_id should be the key ID (e.g., "7FE90A79F2E80ED3")
+  char keygrip[64];
+  if (gpg_get_public_key(gpg_key_id, ed25519_pk, keygrip) != 0) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to extract Ed25519 public key from GPG for key ID: %s", gpg_key_id);
+  }
 
-  SET_ERRNO(ERROR_CRYPTO_KEY, "Ed25519 extraction from GPG key not yet implemented");
-  return ERROR_CRYPTO_KEY;
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[32]) {

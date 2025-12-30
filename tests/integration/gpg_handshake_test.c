@@ -25,7 +25,7 @@
 #include "tests/logging.h"
 
 // Use verbose logging for debugging
-TEST_SUITE_WITH_QUIET_LOGGING(gpg_handshake);
+TEST_SUITE_WITH_DEBUG_LOGGING(gpg_handshake);
 
 // Test GPG key ID - obtained from environment variable set by setup script
 // If not set, tests will be skipped
@@ -76,7 +76,7 @@ void teardown_gpg_test_network(void) {
 // Protocol Negotiation Helpers
 // =============================================================================
 
-static int server_protocol_negotiation(int server_fd) {
+static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t *server_ctx) {
   packet_type_t packet_type;
   void *payload = NULL;
   size_t payload_len = 0;
@@ -114,10 +114,33 @@ static int server_protocol_negotiation(int server_fd) {
   server_caps.supported_kex_algorithms = htons(KEX_ALGO_X25519);
   server_caps.supported_auth_algorithms = htons(AUTH_ALGO_ED25519);
   server_caps.supported_cipher_algorithms = htons(CIPHER_ALGO_XSALSA20_POLY1305);
-  return send_crypto_capabilities_packet(server_fd, &server_caps);
+  result = send_crypto_capabilities_packet(server_fd, &server_caps);
+  if (result != 0)
+    return -1;
+
+  // Send server's CRYPTO_PARAMETERS with authentication enabled
+  crypto_parameters_packet_t server_params = {0};
+  server_params.selected_kex = KEX_ALGO_X25519;
+  server_params.selected_auth = AUTH_ALGO_ED25519; // GPG key authentication
+  server_params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+  server_params.verification_enabled = 1;
+  server_params.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE;
+  server_params.auth_public_key_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 identity key
+  server_params.signature_size = ED25519_SIGNATURE_SIZE;        // Ed25519 signature
+  server_params.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE;
+  server_params.nonce_size = CRYPTO_NONCE_SIZE;
+  server_params.mac_size = CRYPTO_MAC_SIZE;
+  server_params.hmac_size = CRYPTO_HMAC_SIZE;
+
+  result = send_crypto_parameters_packet(server_fd, &server_params);
+  if (result != 0)
+    return -1;
+
+  // Set parameters in server context (server uses host byte order)
+  return crypto_handshake_set_parameters(server_ctx, &server_params);
 }
 
-static int client_protocol_negotiation(int client_fd) {
+static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t *client_ctx) {
   // Send client's PROTOCOL_VERSION
   protocol_version_packet_t client_version = {0};
   client_version.protocol_version = htons(1);
@@ -158,7 +181,21 @@ static int client_protocol_negotiation(int client_fd) {
   }
   buffer_pool_free(NULL, payload, payload_len);
 
-  return ASCIICHAT_OK;
+  // Receive server's CRYPTO_PARAMETERS
+  payload = NULL;
+  result = receive_packet(client_fd, &packet_type, &payload, &payload_len);
+  if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
+    if (payload)
+      buffer_pool_free(NULL, payload, payload_len);
+    return -1;
+  }
+
+  crypto_parameters_packet_t server_params;
+  memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
+  buffer_pool_free(NULL, payload, payload_len);
+
+  // Set parameters in client context (client converts from network byte order)
+  return crypto_handshake_set_parameters(client_ctx, &server_params);
 }
 
 // =============================================================================
@@ -176,21 +213,31 @@ static void *client_handshake_thread(void *arg) {
   args->result = -1;
 
   // Protocol negotiation
-  if (client_protocol_negotiation(args->client_fd) != ASCIICHAT_OK) {
+  fprintf(stderr, "[TEST] Client: Starting protocol negotiation\n");
+  if (client_protocol_negotiation(args->client_fd, args->ctx) != ASCIICHAT_OK) {
+    fprintf(stderr, "[TEST] Client: Protocol negotiation FAILED\n");
     return NULL;
   }
+  fprintf(stderr, "[TEST] Client: Protocol negotiation OK\n");
 
   // Key exchange
+  fprintf(stderr, "[TEST] Client: Starting key exchange\n");
   if (crypto_handshake_client_key_exchange(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+    fprintf(stderr, "[TEST] Client: Key exchange FAILED\n");
     return NULL;
   }
+  fprintf(stderr, "[TEST] Client: Key exchange OK\n");
 
   // Respond to auth challenge
+  fprintf(stderr, "[TEST] Client: Starting auth response\n");
   if (crypto_handshake_client_auth_response(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+    fprintf(stderr, "[TEST] Client: Auth response FAILED\n");
     return NULL;
   }
+  fprintf(stderr, "[TEST] Client: Auth response OK\n");
 
   args->result = 0;
+  fprintf(stderr, "[TEST] Client: Handshake complete!\n");
   return NULL;
 }
 
@@ -246,7 +293,7 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
   cr_assert_eq(thread_result, 0, "Failed to create client thread");
 
   // Server-side: protocol negotiation
-  int server_nego_result = server_protocol_negotiation(g_network.server_fd);
+  int server_nego_result = server_protocol_negotiation(g_network.server_fd, &server_ctx);
   cr_assert_eq(server_nego_result, ASCIICHAT_OK, "Server protocol negotiation failed: %d", server_nego_result);
 
   // Server starts key exchange
