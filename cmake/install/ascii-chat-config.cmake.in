@@ -1,49 +1,101 @@
-@PACKAGE_INIT@
-
 # ascii-chat CMake Package Config
-# Provides the ascii-chat::ascii-chat target for use with find_package()
 #
 # Usage:
 #   find_package(ascii-chat REQUIRED)
-#   target_link_libraries(your-target PRIVATE ascii-chat::ascii-chat)
+#   target_link_libraries(your-target PRIVATE ascii-chat::shared)  # dynamic
+#   target_link_libraries(your-target PRIVATE ascii-chat::static)  # static
 #
-# Components:
-#   - Development: Headers and shared library (default)
-#
-# This package provides:
-#   ascii-chat::ascii-chat - Imported target for the shared library
+# Targets:
+#   ascii-chat::shared - Shared library (requires runtime deps)
+#   ascii-chat::static - Static library (self-contained, no external deps)
 
-include(CMakeFindDependencyMacro)
+cmake_minimum_required(VERSION 3.16)
 
-# Find required dependencies
-find_dependency(Threads REQUIRED)
-find_dependency(PkgConfig REQUIRED)
+# Compute install prefix from this file's location
+get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)
+get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)
+get_filename_component(_IMPORT_PREFIX "${_IMPORT_PREFIX}" PATH)
 
-# Use pkg-config for dependencies (these don't provide CMake configs)
-pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium>=1.0.18)
-pkg_check_modules(LIBZSTD REQUIRED IMPORTED_TARGET libzstd)
-pkg_check_modules(PORTAUDIO REQUIRED IMPORTED_TARGET portaudio-2.0)
+set(_INCLUDE_DIRS "${_IMPORT_PREFIX}/include" "${_IMPORT_PREFIX}/include/ascii-chat")
 
-# Include the targets file (defines ascii-chat::ascii-chat-shared)
-include("${CMAKE_CURRENT_LIST_DIR}/ascii-chat-targets.cmake")
+# =============================================================================
+# ascii-chat::shared - Dynamic library
+# =============================================================================
+if(NOT TARGET ascii-chat::shared)
+    add_library(ascii-chat::shared SHARED IMPORTED)
+    set_target_properties(ascii-chat::shared PROPERTIES
+        IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat@CMAKE_SHARED_LIBRARY_SUFFIX@"
+        INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
+    )
 
-# Create convenient alias target
-if(NOT TARGET ascii-chat::ascii-chat)
-    add_library(ascii-chat::ascii-chat ALIAS ascii-chat::ascii-chat-shared)
+    # Shared library needs runtime dependencies
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
+        pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
+        pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
+
+        if(_LIBSODIUM_FOUND AND _ZSTD_FOUND AND _PORTAUDIO_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES
+                    PkgConfig::_LIBSODIUM
+                    PkgConfig::_ZSTD
+                    PkgConfig::_PORTAUDIO
+            )
+        endif()
+    endif()
 endif()
 
-# Provide package information
+# =============================================================================
+# ascii-chat::static - FAT Static library (self-contained)
+# =============================================================================
+# All external dependencies (libsodium, zstd, portaudio, opus, mimalloc, webrtc)
+# are baked into the archive. Only platform system libraries need to be linked.
+if(NOT TARGET ascii-chat::static)
+    add_library(ascii-chat::static STATIC IMPORTED)
+    set_target_properties(ascii-chat::static PROPERTIES
+        IMPORTED_LOCATION "${_IMPORT_PREFIX}/lib/libasciichat.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
+    )
+
+    # Static library only needs system libs (everything else is baked in)
+    find_package(Threads QUIET)
+    if(Threads_FOUND)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES Threads::Threads
+        )
+    endif()
+
+    # Platform-specific system libraries
+    if(APPLE)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES
+                "-framework Foundation"
+                "-framework AVFoundation"
+                "-framework CoreMedia"
+                "-framework CoreVideo"
+                "-framework CoreAudio"
+                "-framework AudioUnit"
+                "-framework AudioToolbox"
+                "-framework CoreServices"
+                c++
+        )
+    elseif(UNIX)
+        set_property(TARGET ascii-chat::static APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES m dl stdc++
+        )
+    endif()
+endif()
+
+# Package info
 set(ascii-chat_FOUND TRUE)
 set(ascii-chat_VERSION "@PROJECT_VERSION@")
-# Two include dirs needed:
-# - include/ for <ascii-chat/...> style includes
-# - include/ascii-chat/ for internal relative includes (e.g., ../../deps/uthash/src/uthash.h)
-set(ascii-chat_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include" "${PACKAGE_PREFIX_DIR}/include/ascii-chat")
-set(ascii-chat_LIBRARIES ascii-chat::ascii-chat)
+set(ascii-chat_INCLUDE_DIRS ${_INCLUDE_DIRS})
 
-# Print found message
+unset(_IMPORT_PREFIX)
+unset(_INCLUDE_DIRS)
+
 if(NOT ascii-chat_FIND_QUIETLY)
-    message(STATUS "Found ascii-chat: ${PACKAGE_PREFIX_DIR} (version @PROJECT_VERSION@)")
+    message(STATUS "Found ascii-chat: ${ascii-chat_VERSION}")
 endif()
-
-check_required_components(ascii-chat)

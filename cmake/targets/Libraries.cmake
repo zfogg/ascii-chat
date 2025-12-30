@@ -865,41 +865,131 @@ endif()
 # =============================================================================
 # Combined Static Library (only when building STATIC libs, not OBJECT libs)
 # =============================================================================
-# Create libasciichat.a by combining all module static libraries
+# Create libasciichat.a by combining all module static libraries AND all
+# external dependencies into a single fat archive.
 # Only available when modules are STATIC libraries (not OBJECT libraries)
 # On Windows Debug/Dev/Coverage, modules are OBJECT libraries for DLL building
 if(NOT BUILDING_OBJECT_LIBS)
+    # Build list of MRI commands for external dependencies
+    # These need to be resolved at configure time for path-based deps
+    set(_STATIC_LIB_MRI_COMMANDS "")
+    set(_STATIC_LIB_DEPS "")
+
+    # Internal module libraries (always present)
+    list(APPEND _STATIC_LIB_MRI_COMMANDS
+        "ADDLIB $<TARGET_FILE:ascii-chat-util>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-data-structures>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-platform>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-crypto>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-simd>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-video>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-audio>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-network>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-core>"
+    )
+    list(APPEND _STATIC_LIB_DEPS
+        ascii-chat-util ascii-chat-data-structures ascii-chat-platform
+        ascii-chat-crypto ascii-chat-simd ascii-chat-video
+        ascii-chat-audio ascii-chat-network ascii-chat-core
+    )
+
+    # External dependencies - add static libraries to create fat archive
+    # libsodium
+    if(LIBSODIUM_LIBRARIES AND EXISTS "${LIBSODIUM_LIBRARIES}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${LIBSODIUM_LIBRARIES}")
+        message(STATUS "Fat static lib will include: libsodium (${LIBSODIUM_LIBRARIES})")
+    endif()
+
+    # BearSSL - could be a target (bearssl_static) or a path
+    if(BEARSSL_FOUND)
+        if(TARGET bearssl_static)
+            list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB $<TARGET_FILE:bearssl_static>")
+            list(APPEND _STATIC_LIB_DEPS bearssl_static)
+            message(STATUS "Fat static lib will include: BearSSL (target: bearssl_static)")
+        elseif(BEARSSL_LIBRARIES AND EXISTS "${BEARSSL_LIBRARIES}")
+            list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${BEARSSL_LIBRARIES}")
+            message(STATUS "Fat static lib will include: BearSSL (${BEARSSL_LIBRARIES})")
+        endif()
+    endif()
+
+    # zstd
+    if(ZSTD_LIBRARIES AND EXISTS "${ZSTD_LIBRARIES}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${ZSTD_LIBRARIES}")
+        message(STATUS "Fat static lib will include: zstd (${ZSTD_LIBRARIES})")
+    endif()
+
+    # PortAudio
+    if(PORTAUDIO_LIBRARIES AND EXISTS "${PORTAUDIO_LIBRARIES}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${PORTAUDIO_LIBRARIES}")
+        message(STATUS "Fat static lib will include: PortAudio (${PORTAUDIO_LIBRARIES})")
+    endif()
+
+    # Opus
+    if(OPUS_LIBRARIES AND EXISTS "${OPUS_LIBRARIES}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${OPUS_LIBRARIES}")
+        message(STATUS "Fat static lib will include: Opus (${OPUS_LIBRARIES})")
+    endif()
+
+    # mimalloc - could be a target or a path
+    if(TARGET mimalloc-static)
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB $<TARGET_FILE:mimalloc-static>")
+        list(APPEND _STATIC_LIB_DEPS mimalloc-static)
+        message(STATUS "Fat static lib will include: mimalloc (target: mimalloc-static)")
+    elseif(MIMALLOC_LIBRARIES AND EXISTS "${MIMALLOC_LIBRARIES}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${MIMALLOC_LIBRARIES}")
+        message(STATUS "Fat static lib will include: mimalloc (${MIMALLOC_LIBRARIES})")
+    endif()
+
+    # WebRTC AEC3 libraries
+    if(DEFINED WEBRTC_AUDIO_PROCESS_LIB AND EXISTS "${WEBRTC_AUDIO_PROCESS_LIB}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_AUDIO_PROCESS_LIB}")
+        message(STATUS "Fat static lib will include: WebRTC AudioProcess")
+    endif()
+    if(DEFINED WEBRTC_AEC3_LIB AND EXISTS "${WEBRTC_AEC3_LIB}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_AEC3_LIB}")
+        message(STATUS "Fat static lib will include: WebRTC AEC3")
+    endif()
+    if(DEFINED WEBRTC_API_LIB AND EXISTS "${WEBRTC_API_LIB}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_API_LIB}")
+        message(STATUS "Fat static lib will include: WebRTC API")
+    endif()
+    if(DEFINED WEBRTC_BASE_LIB AND EXISTS "${WEBRTC_BASE_LIB}")
+        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_BASE_LIB}")
+        message(STATUS "Fat static lib will include: WebRTC Base")
+    endif()
+
+    # Generate the MRI script content with generator expressions
+    # file(GENERATE) evaluates generator expressions at generate time
+    set(_MRI_CONTENT "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a\n")
+    foreach(_cmd IN LISTS _STATIC_LIB_MRI_COMMANDS)
+        string(APPEND _MRI_CONTENT "${_cmd}\n")
+    endforeach()
+    string(APPEND _MRI_CONTENT "SAVE\nEND\n")
+
+    # file(GENERATE) evaluates generator expressions like $<TARGET_FILE:...>
+    file(GENERATE
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/combine.mri"
+        CONTENT "${_MRI_CONTENT}"
+    )
+
     # Use ar MRI script to combine archives across platforms
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
         COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_COMMAND} -E echo "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a" > ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-util>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-data-structures>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-platform>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-crypto>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-simd>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-video>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-audio>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-network>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-core>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "SAVE" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -E echo "END" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        DEPENDS
-            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-        COMMENT "Combining static libraries into libasciichat.a"
+        DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMENT "Combining static libraries into fat libasciichat.a"
         COMMAND_EXPAND_LISTS
     )
 
 # Create a custom target that depends on the static library file
 add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
 
-# Create interface library target that wraps the combined static library
-# and propagates all external dependencies
+# Create interface library target that wraps the combined FAT static library
+# External dependencies (libsodium, zstd, portaudio, opus, mimalloc, webrtc) are
+# baked into the archive - only platform system libraries need to be linked
 add_library(ascii-chat-static-lib INTERFACE)
 add_dependencies(ascii-chat-static-lib ascii-chat-static-lib-combined)
 target_link_libraries(ascii-chat-static-lib INTERFACE
@@ -907,38 +997,8 @@ target_link_libraries(ascii-chat-static-lib INTERFACE
     $<INSTALL_INTERFACE:lib/libasciichat.a>
 )
 
-# Propagate external dependencies from individual libraries
-# These are needed because the combined library only contains object files
-# External dependencies must be linked separately
-
-# Cryptography dependencies (from ascii-chat-crypto)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${LIBSODIUM_LIBRARIES})
-if(BEARSSL_FOUND)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${BEARSSL_LIBRARIES})
-endif()
-
-# Network dependencies (from ascii-chat-network)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
-
-# Audio dependencies (from ascii-chat-audio)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
-if(APPLE)
-    target_link_libraries(ascii-chat-static-lib INTERFACE
-        ${COREAUDIO_FRAMEWORK}
-        ${AUDIOUNIT_FRAMEWORK}
-        ${AUDIOTOOLBOX_FRAMEWORK}
-        ${CORESERVICES_FRAMEWORK}
-    )
-endif()
-# Note: PORTAUDIO_LIBRARIES from pkg-config already includes all dependencies.
-# If PortAudio was built with JACK support, -ljack is already included.
-
-# Memory allocator (mimalloc)
-if(MIMALLOC_LIBRARIES)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
-endif()
-
-# Platform-specific system libraries (from ascii-chat-platform)
+# Platform-specific system libraries only
+# External deps (libsodium, zstd, portaudio, opus, mimalloc, webrtc) are in the fat archive
 if(WIN32)
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${WS2_32_LIB}
@@ -952,19 +1012,26 @@ if(WIN32)
         ${OLE32_LIB}
         crypt32
     )
+elseif(APPLE)
+    target_link_libraries(ascii-chat-static-lib INTERFACE
+        ${FOUNDATION_FRAMEWORK}
+        ${AVFOUNDATION_FRAMEWORK}
+        ${COREMEDIA_FRAMEWORK}
+        ${COREVIDEO_FRAMEWORK}
+        ${COREAUDIO_FRAMEWORK}
+        ${AUDIOUNIT_FRAMEWORK}
+        ${AUDIOTOOLBOX_FRAMEWORK}
+        ${CORESERVICES_FRAMEWORK}
+        c++
+    )
 else()
-    if(PLATFORM_DARWIN)
-        target_link_libraries(ascii-chat-static-lib INTERFACE
-            ${FOUNDATION_FRAMEWORK}
-            ${AVFOUNDATION_FRAMEWORK}
-            ${COREMEDIA_FRAMEWORK}
-            ${COREVIDEO_FRAMEWORK}
-        )
-    elseif(PLATFORM_LINUX)
-        target_link_libraries(ascii-chat-static-lib INTERFACE ${CMAKE_THREAD_LIBS_INIT})
-    endif()
-    # Math library (from ascii-chat-core)
-    target_link_libraries(ascii-chat-static-lib INTERFACE m)
+    # Linux
+    target_link_libraries(ascii-chat-static-lib INTERFACE
+        ${CMAKE_THREAD_LIBS_INIT}
+        m
+        dl
+        stdc++
+    )
 endif()
 
 # =============================================================================
