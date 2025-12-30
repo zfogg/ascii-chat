@@ -278,7 +278,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
  * @ingroup keys
  */
 asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64]);
+                                           const uint8_t signature[64], const char *gpg_key_id);
 
 /** @} */
 

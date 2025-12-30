@@ -474,8 +474,18 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
     fprintf(stderr, "\n");
 
+    // Extract GPG key ID from expected_server_key if it's a GPG key (gpg:KEYID format)
+    const char *gpg_key_id = NULL;
+    if (ctx->expected_server_key[0] != '\0' && strncmp(ctx->expected_server_key, "gpg:", 4) == 0) {
+      const char *key_id_start = ctx->expected_server_key + 4;
+      if (strlen(key_id_start) == 16) {
+        gpg_key_id = key_id_start;
+        log_debug("Using GPG key ID from --server-key for verification: %s", gpg_key_id);
+      }
+    }
+
     if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, ctx->crypto_ctx.public_key_size,
-                                 server_signature) != 0) {
+                                 server_signature, gpg_key_id) != 0) {
       if (payload) {
         buffer_pool_free(NULL, payload, payload_len);
       }
@@ -967,8 +977,10 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     } else {
       // Client has a real identity key - verify signature
       log_debug("Verifying client's signature");
+      // Server-side: we don't have client's GPG key ID unless there's a whitelist
+      // For now, pass NULL - GPG fallback will use TEST_GPG_KEY_ID env var for tests
       if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, ctx->crypto_ctx.public_key_size,
-                                   client_signature) != 0) {
+                                   client_signature, NULL) != 0) {
         if (payload) {
           buffer_pool_free(NULL, payload, payload_len);
         }
