@@ -291,3 +291,151 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
     return SET_ERRNO(ERROR_CRYPTO, "ssh-agent returned unexpected response: %d", response_type);
   }
 }
+
+asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len,
+                                 uint8_t signature[64]) {
+  if (!public_key || !message || !signature) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
+                     message, signature);
+  }
+
+  if (public_key->type != KEY_TYPE_ED25519) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Only Ed25519 keys are supported for SSH agent signing");
+  }
+
+  // Connect to SSH agent
+  pipe_t pipe = ssh_agent_open_pipe();
+  if (pipe == INVALID_PIPE_VALUE) {
+    return SET_ERRNO(ERROR_CRYPTO, "Cannot connect to ssh-agent");
+  }
+
+  // Build SSH2_AGENTC_SIGN_REQUEST message (type 13)
+  // Format: uint32 length, byte type, string key_blob, string data, uint32 flags
+  // For Ed25519, key_blob is: string "ssh-ed25519", string public_key(32 bytes)
+
+  const char *key_type = "ssh-ed25519";
+  uint32_t key_type_len = (uint32_t)strlen(key_type);
+
+  // Calculate total message length
+  // 1 (type) + 4 (key_blob_len) + key_blob_size + 4 (data_len) + data_size + 4 (flags)
+  uint32_t key_blob_size = 4 + key_type_len + 4 + 32; // string(key_type) + string(pubkey)
+  uint32_t total_len = 1 + 4 + key_blob_size + 4 + message_len + 4;
+
+  uint8_t *buf = SAFE_MALLOC(total_len + 4, uint8_t *); // +4 for length prefix
+  if (!buf) {
+    platform_pipe_close(pipe);
+    return SET_ERRNO(ERROR_CRYPTO, "Out of memory for SSH agent sign request");
+  }
+
+  uint32_t offset = 0;
+
+  // Write total message length (excluding this 4-byte length field)
+  write_u32_be(buf + offset, total_len);
+  offset += 4;
+
+  // Write message type (13 = SSH2_AGENTC_SIGN_REQUEST)
+  buf[offset++] = 13;
+
+  // Write key_blob length
+  write_u32_be(buf + offset, key_blob_size);
+  offset += 4;
+
+  // Write key_blob: string(key_type)
+  write_u32_be(buf + offset, key_type_len);
+  offset += 4;
+  memcpy(buf + offset, key_type, key_type_len);
+  offset += key_type_len;
+
+  // Write key_blob: string(public_key)
+  write_u32_be(buf + offset, 32);
+  offset += 4;
+  memcpy(buf + offset, public_key->key, 32);
+  offset += 32;
+
+  // Write data to sign
+  write_u32_be(buf + offset, (uint32_t)message_len);
+  offset += 4;
+  memcpy(buf + offset, message, message_len);
+  offset += (uint32_t)message_len;
+
+  // Write flags (0 = default)
+  write_u32_be(buf + offset, 0);
+  offset += 4;
+
+  // Send request
+  ssize_t written = platform_pipe_write(pipe, buf, total_len + 4);
+  sodium_memzero(buf, total_len + 4);
+  SAFE_FREE(buf);
+
+  if (written < 0 || (size_t)written != total_len + 4) {
+    platform_pipe_close(pipe);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to write SSH agent sign request");
+  }
+
+  // Read response
+  uint8_t response[BUFFER_SIZE_XXLARGE];
+  ssize_t read_bytes = platform_pipe_read(pipe, response, sizeof(response));
+  platform_pipe_close(pipe);
+
+  if (read_bytes < 5) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to read SSH agent sign response (read %zd bytes)", read_bytes);
+  }
+
+  uint32_t response_len = read_u32_be(response);
+  uint8_t response_type = response[4];
+
+  // Check for SSH2_AGENT_SIGN_RESPONSE (14)
+  if (response_type != 14) {
+    if (response_type == 5) {
+      return SET_ERRNO(ERROR_CRYPTO, "ssh-agent refused to sign (SSH_AGENT_FAILURE)");
+    }
+    return SET_ERRNO(ERROR_CRYPTO, "ssh-agent returned unexpected response type: %d (expected 14)", response_type);
+  }
+
+  // Parse signature blob
+  // Response format: uint32 len, byte type(14), string signature_blob
+  if (read_bytes < 9) {
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent response too short (no signature blob length)");
+  }
+
+  uint32_t sig_blob_len = read_u32_be(response + 5);
+  uint32_t expected_total = 4 + 1 + 4 + sig_blob_len;
+
+  if ((size_t)read_bytes < expected_total) {
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent response truncated (expected %u bytes, got %zd)", expected_total,
+                     read_bytes);
+  }
+
+  // Signature blob format for Ed25519: string "ssh-ed25519", string signature(64 bytes)
+  uint32_t offset_sig = 9;
+  uint32_t sig_type_len = read_u32_be(response + offset_sig);
+  offset_sig += 4;
+
+  if (offset_sig + sig_type_len + 4 > (uint32_t)read_bytes) {
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent signature blob truncated at signature type");
+  }
+
+  // Verify signature type is "ssh-ed25519"
+  if (sig_type_len != 11 || memcmp(response + offset_sig, "ssh-ed25519", 11) != 0) {
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent returned non-Ed25519 signature");
+  }
+  offset_sig += sig_type_len;
+
+  // Read signature bytes
+  uint32_t sig_len = read_u32_be(response + offset_sig);
+  offset_sig += 4;
+
+  if (sig_len != 64) {
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent returned invalid Ed25519 signature length: %u (expected 64)", sig_len);
+  }
+
+  if (offset_sig + 64 > (uint32_t)read_bytes) {
+    return SET_ERRNO(ERROR_CRYPTO, "SSH agent signature blob truncated at signature bytes");
+  }
+
+  // Copy signature to output
+  memcpy(signature, response + offset_sig, 64);
+
+  log_debug("SSH agent successfully signed %zu bytes with Ed25519 key", message_len);
+  return ASCIICHAT_OK;
+}

@@ -239,9 +239,10 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
           log_info("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
           key_out->type = KEY_TYPE_ED25519;
+          key_out->use_ssh_agent = true;
           memcpy(key_out->key.ed25519 + 32, pub_key.key, 32); // Copy public key to second half
-          // Note: We don't have the private key material, but for signing we'll use the agent
-          // For now, mark it as loaded from agent by setting a flag or returning success
+          memcpy(key_out->public_key, pub_key.key, 32);       // Also store in public_key field
+          // Note: We don't have the private key seed, but ssh-agent will sign for us
           return ASCIICHAT_OK;
         } else {
           log_debug("Key not found in ssh-agent - will decrypt from file");
@@ -1133,6 +1134,25 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     }
 
     log_info("Successfully signed message with GPG agent (64 bytes)");
+    return ASCIICHAT_OK;
+  }
+
+  // If using SSH agent, delegate signing to SSH agent
+  if (key->use_ssh_agent) {
+    log_debug("Using SSH agent for Ed25519 signing");
+
+    // Create a public_key_t from the stored public key
+    public_key_t pub_key = {0};
+    pub_key.type = KEY_TYPE_ED25519;
+    memcpy(pub_key.key, key->public_key, 32);
+
+    // Sign using SSH agent
+    asciichat_error_t result = ssh_agent_sign(&pub_key, message, message_len, signature);
+    if (result != ASCIICHAT_OK) {
+      return result; // Error already set by ssh_agent_sign
+    }
+
+    log_info("Successfully signed message with SSH agent (64 bytes)");
     return ASCIICHAT_OK;
   }
 
