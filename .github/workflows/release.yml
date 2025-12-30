@@ -231,7 +231,8 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-latest
-          - runner: ubuntu-latest-arm64
+          - runner: ubuntu-24.04-arm
+          #- runner: ubuntu-latest-arm64
 
     steps:
       - name: Checkout code
