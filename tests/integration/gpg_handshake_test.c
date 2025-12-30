@@ -50,6 +50,9 @@ static test_network_t g_network = {0};
 void setup_gpg_test_network(void) {
   memset(&g_network, 0, sizeof(g_network));
 
+  // Initialize global buffer pool for packet allocations
+  buffer_pool_init_global();
+
   // Create socket pair for testing
   int sv[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
@@ -235,6 +238,14 @@ static void *client_handshake_thread(void *arg) {
     return NULL;
   }
   fprintf(stderr, "[TEST] Client: Auth response OK\n");
+
+  // Wait for handshake complete confirmation
+  fprintf(stderr, "[TEST] Client: Waiting for handshake complete\n");
+  if (crypto_handshake_client_complete(args->ctx, args->client_fd) != ASCIICHAT_OK) {
+    fprintf(stderr, "[TEST] Client: Handshake complete FAILED\n");
+    return NULL;
+  }
+  fprintf(stderr, "[TEST] Client: Handshake complete confirmation received\n");
 
   args->result = 0;
   fprintf(stderr, "[TEST] Client: Handshake complete!\n");
