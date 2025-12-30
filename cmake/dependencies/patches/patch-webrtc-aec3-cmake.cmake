@@ -521,27 +521,14 @@ if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt")
     file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt" ABSEIL_RANDOM_CONTENT)
 
     # The original code unconditionally sets these x86 SIMD flags.
-    # Replace it with architecture-conditional logic.
-    # Pattern: target_compile_options(absl_random_internal_randen_hwaes_impl
-    #   PRIVATE
-    #     -maes
-    #     -msse4.1
-    # )
+    # We need to wrap the target_compile_options block in an if() for x86 only.
+    # Use regex to handle varying whitespace in the original file.
     if(ABSEIL_RANDOM_CONTENT MATCHES "target_compile_options\\(absl_random_internal_randen_hwaes_impl")
-        string(REPLACE
-            "target_compile_options(absl_random_internal_randen_hwaes_impl
-    PRIVATE
-      -maes
-      -msse4.1
-  )"
-            "# Only add x86 AES/SSE flags on x86 architectures (not ARM64)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES \"x86_64|AMD64|i[3-6]86\")
-  target_compile_options(absl_random_internal_randen_hwaes_impl
-    PRIVATE
-      -maes
-      -msse4.1
-  )
-endif()"
+        # Use regex replace to wrap the entire target_compile_options block
+        # Pattern matches: target_compile_options(absl_random_internal_randen_hwaes_impl ... -maes ... -msse4.1 ... )
+        string(REGEX REPLACE
+            "([ \t]*)(target_compile_options\\(absl_random_internal_randen_hwaes_impl[^)]*-maes[^)]*-msse4\\.1[^)]*\\))"
+            "\\1# Only add x86 AES/SSE flags on x86 architectures (not ARM64)\n\\1if(CMAKE_SYSTEM_PROCESSOR MATCHES \"x86_64|AMD64|i[3-6]86\")\n\\1\\2\n\\1endif()"
             ABSEIL_RANDOM_CONTENT
             "${ABSEIL_RANDOM_CONTENT}"
         )
