@@ -1727,26 +1727,17 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       // Actually verify the Ed25519/GPG signature on the challenge nonce
       // This was missing, allowing authentication bypass
       if (ctx->client_ed25519_key_verified) {
-        int verify_result = -1;
+        // Use unified verification function that handles both Ed25519 and GPG keys
+        // This matches the KEY_EXCHANGE verification path
+        log_debug("Verifying %s signature on challenge nonce",
+                  ctx->client_ed25519_key.type == KEY_TYPE_GPG ? "GPG" : "Ed25519");
 
-        // Use appropriate verification method based on key type
-        if (ctx->client_ed25519_key.type == KEY_TYPE_GPG) {
-          log_debug("Verifying GPG signature on challenge nonce using gpg --verify binary");
-          // GPG keys: use gpg_verify_signature_with_binary() workaround for Format 2 signatures
-          // Pass client_gpg_key_id if available
-          verify_result =
-              gpg_verify_signature_with_binary(signature, ctx->crypto_ctx.signature_size, ctx->crypto_ctx.auth_nonce,
-                                               ctx->crypto_ctx.auth_challenge_size,
-                                               client_gpg_key_id // Use client's GPG key ID from AUTH_RESPONSE
-              );
-        } else {
-          log_debug("Verifying Ed25519 signature on challenge nonce using libsodium");
-          // Ed25519 keys: use standard libsodium verification
-          verify_result = crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce,
-                                                      ctx->crypto_ctx.auth_challenge_size, ctx->client_ed25519_key.key);
-        }
+        asciichat_error_t verify_result = ed25519_verify_signature(
+            ctx->client_ed25519_key.key, ctx->crypto_ctx.auth_nonce, ctx->crypto_ctx.auth_challenge_size, signature,
+            client_gpg_key_id // GPG key ID for fallback verification
+        );
 
-        if (verify_result != 0) {
+        if (verify_result != ASCIICHAT_OK) {
           if (payload) {
             buffer_pool_free(NULL, payload, payload_len);
           }

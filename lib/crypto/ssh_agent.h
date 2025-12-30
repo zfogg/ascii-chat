@@ -172,4 +172,24 @@ bool ssh_agent_has_key(const public_key_t *public_key);
  */
 asciichat_error_t ssh_agent_get_key(const public_key_t *public_key, private_key_t *key_out);
 
+/**
+ * @brief Sign data using SSH agent with the specified public key
+ * @param public_key Public key to use for signing (must not be NULL)
+ * @param message Data to sign (must not be NULL)
+ * @param message_len Length of data to sign
+ * @param signature Output buffer for signature (must be 64 bytes for Ed25519)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Signs message data using SSH agent protocol SSH2_AGENTC_SIGN_REQUEST (message type 13).
+ *
+ * @note Agent requirement: SSH agent must be running and accessible, and must have the private key corresponding to
+ * public_key.
+ * @note Only Ed25519 signatures are supported (64 bytes).
+ * @note The public key must already be in the ssh-agent (check with ssh_agent_has_key first).
+ *
+ * @ingroup crypto
+ */
+asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *message, size_t message_len,
+                                 uint8_t signature[64]);
+
 /** @} */
