@@ -103,6 +103,7 @@ if(USE_MIMALLOC)
                     if(_mimalloc_inc)
                         set_target_properties(mimalloc-static PROPERTIES
                             INTERFACE_INCLUDE_DIRECTORIES "${_mimalloc_inc}"
+                            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_mimalloc_inc}"
                         )
                     endif()
                     add_library(mimalloc-shared ALIAS mimalloc-static)
@@ -151,16 +152,19 @@ if(USE_MIMALLOC)
                     IMPORTED_LOCATION_RELEASE "${MIMALLOC_LIBRARY_RELEASE}"
                     IMPORTED_LOCATION_DEBUG "${MIMALLOC_LIBRARY_DEBUG}"
                     INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
+                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
                 )
             elseif(MIMALLOC_LIBRARY_RELEASE)
                 set_target_properties(mimalloc-static PROPERTIES
                     IMPORTED_LOCATION "${MIMALLOC_LIBRARY_RELEASE}"
                     INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
+                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
                 )
             else()
                 set_target_properties(mimalloc-static PROPERTIES
                     IMPORTED_LOCATION "${MIMALLOC_LIBRARY_DEBUG}"
                     INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
+                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
                 )
             endif()
 
@@ -222,6 +226,7 @@ if(USE_MIMALLOC)
             set_target_properties(mimalloc-static PROPERTIES
                 IMPORTED_LOCATION "${_MIMALLOC_LIB_PATH}"
                 INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
+                INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
             )
 
             # Propagate cached static library location to downstream consumers
@@ -243,6 +248,7 @@ if(USE_MIMALLOC)
                 set_target_properties(mimalloc-shared PROPERTIES
                     IMPORTED_LOCATION "${_MIMALLOC_SHARED_LIB_PATH}"
                     INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
+                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
                 )
                 set(MIMALLOC_SHARED_LIBRARIES "${_MIMALLOC_SHARED_LIB_PATH}")
                 if(NOT ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
@@ -351,7 +357,7 @@ if(USE_MIMALLOC)
 
         # Target 1: mimalloc-static (for executables, uses global -fPIE)
         add_library(mimalloc-static STATIC ${MIMALLOC_SRCS})
-        target_include_directories(mimalloc-static PUBLIC
+        target_include_directories(mimalloc-static SYSTEM PUBLIC
             "${MIMALLOC_SOURCE_DIR}/include"
         )
         target_compile_options(mimalloc-static PRIVATE ${MIMALLOC_COMMON_OPTIONS})
@@ -370,7 +376,7 @@ if(USE_MIMALLOC)
 
         # Target 2: mimalloc-shared (for shared library, uses -fPIC and global-dynamic TLS on Unix)
         add_library(mimalloc-shared STATIC ${MIMALLOC_SRCS})
-        target_include_directories(mimalloc-shared PUBLIC
+        target_include_directories(mimalloc-shared SYSTEM PUBLIC
             "${MIMALLOC_SOURCE_DIR}/include"
         )
         target_compile_options(mimalloc-shared PRIVATE
