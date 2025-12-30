@@ -377,108 +377,131 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     return -1;
   }
 
-  // 2. Set the data to sign using INQUIRE protocol
-  // IMPORTANT: For Ed25519 (EdDSA), use SETHASH --inquire!
-  // This tells GPG agent to send "INQUIRE TBSDATA" asking for the raw message.
-  // GPG agent then wraps it as: (data(flags eddsa)(hash-algo sha512)(value <message>))
-  // This produces a standard RFC 8032 compatible Ed25519 signature.
+  // 2. For EdDSA/Ed25519, use SETHASH --inquire to pass raw data
+  // This matches how SSH agent works - it passes raw data, not pre-hashed data
+  // GPG agent will create the proper Ed25519 S-expression internally
 
-  // Send SETHASH --inquire to initiate the INQUIRE protocol
-  log_debug("Sending SETHASH --inquire for Ed25519 signing");
-
+  // Send SETHASH --inquire command
   if (send_agent_command(handle, "SETHASH --inquire") != 0) {
     log_error("Failed to send SETHASH --inquire command");
     return -1;
   }
 
-  // Read response - may get status lines (S INQUIRE_MAXLEN) before INQUIRE
-  // Keep reading until we get the INQUIRE line
-  bool got_inquire = false;
-  for (int i = 0; i < 5; i++) { // Max 5 lines to avoid infinite loop
+  // Read status lines until we get INQUIRE TBSDATA
+  for (int attempts = 0; attempts < 10; attempts++) {
     if (read_agent_line(handle, response, sizeof(response)) != 0) {
-      log_error("Failed to read SETHASH --inquire response");
+      log_error("Failed to read SETHASH response");
       return -1;
     }
 
-    // Skip status lines (start with "S ")
+    log_debug("SETHASH response line %d: %s", attempts + 1, response);
+
+    // Skip status lines (S INQUIRE_MAXLEN)
     if (response[0] == 'S' && response[1] == ' ') {
       log_debug("Skipping status line: %s", response);
       continue;
     }
 
-    // Check for INQUIRE response
+    // Check for INQUIRE TBSDATA
     if (strncmp(response, "INQUIRE TBSDATA", 15) == 0) {
-      got_inquire = true;
+      log_debug("Got INQUIRE TBSDATA, sending raw message data");
       break;
     }
-
-    log_error("Expected 'INQUIRE TBSDATA', got: %s", response);
-    return -1;
   }
 
-  if (!got_inquire) {
-    log_error("Did not receive INQUIRE TBSDATA after multiple lines");
-    return -1;
-  }
-
-  // Convert message to hex string for sending
-  char *hex_message;
-  hex_message = SAFE_MALLOC(message_len * 2 + 1, char *);
+  // Send the raw message data as hex via D command
+  char *hex_message = SAFE_MALLOC(message_len * 2 + 3, char *);
   if (!hex_message) {
     log_error("Failed to allocate hex message buffer");
     return -1;
   }
 
+  hex_message[0] = 'D';
+  hex_message[1] = ' ';
   for (size_t i = 0; i < message_len; i++) {
-    snprintf(hex_message + i * 2, 3, "%02X", message[i]);
+    snprintf(hex_message + 2 + i * 2, 3, "%02X", message[i]);
   }
-  hex_message[message_len * 2] = '\0';
+  hex_message[2 + message_len * 2] = '\0';
 
-  // Send the data using D command
-  char data_cmd[GPG_AGENT_MAX_RESPONSE];
-  safe_snprintf(data_cmd, sizeof(data_cmd), "D %s", hex_message);
-
-  log_debug("Sending %zu-byte message in response to INQUIRE", message_len);
-
-  SAFE_FREE(hex_message);
-
-  if (send_agent_command(handle, data_cmd) != 0) {
+  if (send_agent_command(handle, hex_message) != 0) {
+    SAFE_FREE(hex_message);
     log_error("Failed to send D command with message data");
     return -1;
   }
+  SAFE_FREE(hex_message);
 
-  // Send END to complete the INQUIRE
+  // Send END command to finish INQUIRE
   if (send_agent_command(handle, "END") != 0) {
     log_error("Failed to send END command");
     return -1;
   }
 
-  // Read OK response
+  // Read OK response for SETHASH completion
   if (read_agent_line(handle, response, sizeof(response)) != 0) {
-    log_error("Failed to read INQUIRE completion response");
+    log_error("Failed to read SETHASH completion response");
     return -1;
   }
 
   if (!is_ok_response(response)) {
-    log_error("INQUIRE completion failed: %s", response);
-    return -1;
+    log_debug("SETHASH completion response: %s", response);
   }
 
-  // 3. Request signature
+  // 3. Request signature using PKSIGN
   if (send_agent_command(handle, "PKSIGN") != 0) {
     log_error("Failed to send PKSIGN command");
     return -1;
   }
 
-  // Read response (could be D line with signature data, then OK)
-  if (read_agent_line(handle, response, sizeof(response)) != 0) {
-    log_error("Failed to read PKSIGN response");
-    return -1;
+  // Read response - skip status/error lines and wait for data line (D ...)
+  // GPG agent sends informational ERR lines that are not fatal (e.g., "Not implemented")
+  // Keep reading until we get the actual signature data
+  bool found_data = false;
+  for (int attempts = 0; attempts < 20; attempts++) {
+    if (read_agent_line(handle, response, sizeof(response)) != 0) {
+      log_error("Failed to read PKSIGN response");
+      return -1;
+    }
+
+    log_debug("PKSIGN response line %d: %s", attempts + 1, response);
+
+    // Skip status lines (S INQUIRE_MAXLEN, etc)
+    if (response[0] == 'S' && response[1] == ' ') {
+      log_debug("Skipping PKSIGN status line: %s", response);
+      continue;
+    }
+
+    // Skip informational ERR lines (GPG agent sends these even on success)
+    // Common ERR codes: 67109141 (IPC cancelled), 67108933 (Not implemented)
+    if (strncmp(response, "ERR", 3) == 0) {
+      log_debug("Skipping PKSIGN error line (informational): %s", response);
+      continue;
+    }
+
+    // Check if it's a data line (D followed by space)
+    if (response[0] == 'D' && response[1] == ' ') {
+      log_debug("Found signature data line");
+      found_data = true;
+      break;
+    }
+
+    // Check for OK (success without data would be unexpected)
+    if (strncmp(response, "OK", 2) == 0) {
+      log_warn("PKSIGN returned OK without data line");
+      continue; // Keep trying in case D line follows
+    }
+
+    // Check if GPG agent is sending another INQUIRE (shouldn't happen)
+    if (strncmp(response, "INQUIRE", 7) == 0) {
+      log_error("Unexpected INQUIRE after PKSIGN: %s", response);
+      return -1;
+    }
+
+    // Unknown response type
+    log_warn("Unexpected PKSIGN response (attempt %d): %s", attempts + 1, response);
   }
 
-  // Check if it's a data line (D followed by space and hex data)
-  if (response[0] != 'D' || response[1] != ' ') {
-    log_error("Expected D line from PKSIGN, got: %s", response);
+  if (!found_data) {
+    log_error("Expected D line from PKSIGN after %d attempts", 20);
     return -1;
   }
 
@@ -654,60 +677,75 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   log_debug("Found keygrip for key %s: %s", key_id, found_keygrip);
 
-  // Export the public key in ASCII armor format and parse it with existing parse_gpg_key()
-  // Use escaped_key_id (already validated and escaped above)
-#ifdef _WIN32
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>nul", escaped_key_id);
-#else
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>/dev/null", escaped_key_id);
-#endif
-  fp = SAFE_POPEN(cmd, "r");
-  if (!fp) {
-    log_error("Failed to export GPG public key - GPG may not be installed");
-#ifdef _WIN32
-    log_error("To install GPG on Windows, download Gpg4win from:");
-    log_error("  https://www.gpg4win.org/download.html");
-#elif defined(__APPLE__)
-    log_error("To install GPG on macOS, use Homebrew:");
-    log_error("  brew install gnupg");
-#else
-    log_error("To install GPG on Linux:");
-    log_error("  Debian/Ubuntu: sudo apt-get install gnupg");
-    log_error("  Fedora/RHEL:   sudo dnf install gnupg2");
-    log_error("  Arch Linux:    sudo pacman -S gnupg");
-    log_error("  Alpine Linux:  sudo apk add gnupg");
-#endif
+  // Use GPG agent API to read the public key directly via READKEY command
+  int agent_sock = gpg_agent_connect();
+  if (agent_sock < 0) {
+    log_error("Failed to connect to GPG agent for reading public key");
     return -1;
   }
 
-  // Read the exported key (PGP ASCII armor)
-  char exported_key[BUFFER_SIZE_XXXLARGE] = {0};
-  size_t offset = 0;
-  char line_buf[BUFFER_SIZE_MEDIUM];
-  while (fgets(line_buf, sizeof(line_buf), fp)) {
-    size_t line_len = strlen(line_buf);
-    if (offset + line_len < sizeof(exported_key) - 1) {
-      memcpy(exported_key + offset, line_buf, line_len);
-      offset += line_len;
-    }
-  }
-  SAFE_PCLOSE(fp);
+  // Send READKEY command with keygrip to get the public key S-expression
+  char readkey_cmd[256];
+  safe_snprintf(readkey_cmd, sizeof(readkey_cmd), "READKEY %s\n", found_keygrip);
 
-  if (offset == 0) {
-    log_error("Failed to read exported GPG key");
+  ssize_t bytes_written = platform_pipe_write(agent_sock, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
+  if (bytes_written != (ssize_t)strlen(readkey_cmd)) {
+    log_error("Failed to send READKEY command to GPG agent");
+    gpg_agent_disconnect(agent_sock);
     return -1;
   }
 
-  // Parse using the existing parse_gpg_key() function
-  public_key_t temp_key;
-  if (parse_gpg_key(exported_key, &temp_key) != 0) {
-    log_error("Failed to parse GPG key from export");
+  // Read the response (public key S-expression)
+  char response[BUFFER_SIZE_XXXLARGE];
+  memset(response, 0, sizeof(response));
+  ssize_t bytes_read = platform_pipe_read(agent_sock, (unsigned char *)response, sizeof(response) - 1);
+
+  gpg_agent_disconnect(agent_sock);
+
+  if (bytes_read <= 0) {
+    log_error("Failed to read READKEY response from GPG agent");
     return -1;
   }
 
-  // Extract the public key
-  memcpy(public_key_out, temp_key.key, 32);
-  log_info("Extracted Ed25519 public key from GPG keyring using parse_gpg_key()");
+  // Parse the S-expression to extract Ed25519 public key (q value)
+  // GPG agent returns binary S-expressions in format: (1:q<length>:<binary-data>)
+  // Example: (1:q33:<33-bytes>) where first byte is 0x40 (Ed25519 prefix), then 32-byte key
+  const char *q_marker = strstr(response, "(1:q");
+  if (!q_marker) {
+    log_error("Failed to find public key (1:q) in GPG agent READKEY response");
+    log_debug("Response was: %.*s", (int)(bytes_read < 200 ? bytes_read : 200), response);
+    return -1;
+  }
+
+  // Skip "(1:q" to get to the length field
+  const char *len_start = q_marker + 4;
+
+  // Parse the length (e.g., "33:")
+  char *colon = strchr(len_start, ':');
+  if (!colon) {
+    log_error("Malformed S-expression: missing colon after length");
+    return -1;
+  }
+
+  size_t key_len = strtoul(len_start, NULL, 10);
+  if (key_len != 33) {
+    log_error("Unexpected Ed25519 public key length: %zu bytes (expected 33)", key_len);
+    return -1;
+  }
+
+  // Skip the colon to get to the binary data
+  const unsigned char *binary_start = (const unsigned char *)(colon + 1);
+
+  // Ed25519 public keys in GPG format have a 0x40 prefix byte, then 32 bytes of actual key
+  if (binary_start[0] != 0x40) {
+    log_error("Invalid Ed25519 public key prefix: 0x%02x (expected 0x40)", binary_start[0]);
+    return -1;
+  }
+
+  // Copy the 32-byte public key (skip the 0x40 prefix)
+  memcpy(public_key_out, binary_start + 1, 32);
+
+  log_info("Extracted Ed25519 public key from GPG agent via READKEY command");
   return 0;
 }
 
@@ -718,6 +756,155 @@ bool gpg_agent_is_available(void) {
   }
   gpg_agent_disconnect(sock);
   return true;
+}
+
+/**
+ * @brief Sign a message using GPG key (via gpg --detach-sign)
+ *
+ * This function uses `gpg --detach-sign` which internally uses gpg-agent,
+ * so no passphrase prompt if the key is cached in the agent.
+ *
+ * @param key_id GPG key ID (e.g., "7FE90A79F2E80ED3")
+ * @param message Message to sign
+ * @param message_len Message length
+ * @param signature_out Output buffer for signature (caller must provide at least 512 bytes)
+ * @param signature_len_out Actual signature length written
+ * @return 0 on success, -1 on error
+ */
+int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message_len, uint8_t *signature_out,
+                      size_t *signature_len_out) {
+  if (!key_id || !message || message_len == 0 || !signature_out || !signature_len_out) {
+    log_error("Invalid parameters to gpg_sign_with_key");
+    return -1;
+  }
+
+  char msg_path[512];
+  char sig_path[512];
+  int msg_fd = -1;
+  int result = -1;
+
+#ifdef _WIN32
+  // Windows: use GetTempPath + GetTempFileName with process ID
+  char temp_dir[MAX_PATH];
+  if (GetTempPathA(sizeof(temp_dir), temp_dir) == 0) {
+    log_error("Failed to get temp directory");
+    return -1;
+  }
+
+  char msg_prefix[32];
+  char sig_prefix[32];
+  safe_snprintf(msg_prefix, sizeof(msg_prefix), "asc_msg_%lu_", GetCurrentProcessId());
+  safe_snprintf(sig_prefix, sizeof(sig_prefix), "asc_sig_%lu_", GetCurrentProcessId());
+
+  if (GetTempFileNameA(temp_dir, msg_prefix, 0, msg_path) == 0) {
+    log_error("Failed to create temp message file");
+    return -1;
+  }
+  if (GetTempFileNameA(temp_dir, sig_prefix, 0, sig_path) == 0) {
+    log_error("Failed to create temp signature file");
+    unlink(msg_path);
+    return -1;
+  }
+
+  msg_fd = platform_open(msg_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+#else
+  // Unix: use mkstemp with process ID in template
+  safe_snprintf(msg_path, sizeof(msg_path), "/tmp/asciichat_msg_%d_XXXXXX", getpid());
+  safe_snprintf(sig_path, sizeof(sig_path), "/tmp/asciichat_sig_%d_XXXXXX", getpid());
+
+  msg_fd = mkstemp(msg_path);
+  if (msg_fd < 0) {
+    log_error("Failed to create temp message file: %s", SAFE_STRERROR(errno));
+    return -1;
+  }
+
+  // Create signature file path (will be created by gpg)
+  int sig_fd = mkstemp(sig_path);
+  if (sig_fd < 0) {
+    log_error("Failed to create temp signature file: %s", SAFE_STRERROR(errno));
+    close(msg_fd);
+    unlink(msg_path);
+    return -1;
+  }
+  close(sig_fd);    // Close and let gpg overwrite it
+  unlink(sig_path); // Remove it so gpg can create it fresh
+#endif
+
+  if (msg_fd < 0) {
+    log_error("Failed to open temp message file");
+    goto cleanup;
+  }
+
+  // Write message to temp file
+  ssize_t written = write(msg_fd, message, message_len);
+  close(msg_fd);
+  msg_fd = -1;
+
+  if (written != (ssize_t)message_len) {
+    log_error("Failed to write message to temp file");
+    goto cleanup;
+  }
+
+  // Escape key ID for shell command (prevent injection)
+  char escaped_key_id[64];
+  if (!escape_path_for_shell(key_id, escaped_key_id, sizeof(escaped_key_id))) {
+    log_error("Failed to escape GPG key ID for shell command");
+    goto cleanup;
+  }
+
+  // Call gpg --detach-sign
+  char cmd[BUFFER_SIZE_LARGE];
+#ifdef _WIN32
+  safe_snprintf(cmd, sizeof(cmd), "gpg --local-user 0x%s --detach-sign --output \"%s\" \"%s\" 2>nul", escaped_key_id,
+                sig_path, msg_path);
+#else
+  safe_snprintf(cmd, sizeof(cmd), "gpg --local-user 0x%s --detach-sign --output \"%s\" \"%s\" 2>/dev/null",
+                escaped_key_id, sig_path, msg_path);
+#endif
+
+  log_debug("Signing with GPG: %s", cmd);
+  int status = system(cmd);
+  if (status != 0) {
+    log_error("GPG signing failed (exit code %d)", status);
+    goto cleanup;
+  }
+
+  // Read signature file
+  FILE *sig_fp = fopen(sig_path, "rb");
+  if (!sig_fp) {
+    log_error("Failed to open signature file: %s", SAFE_STRERROR(errno));
+    goto cleanup;
+  }
+
+  fseek(sig_fp, 0, SEEK_END);
+  long sig_size = ftell(sig_fp);
+  fseek(sig_fp, 0, SEEK_SET);
+
+  if (sig_size <= 0 || sig_size > 512) {
+    log_error("Invalid signature size: %ld bytes", sig_size);
+    fclose(sig_fp);
+    goto cleanup;
+  }
+
+  size_t bytes_read = fread(signature_out, 1, sig_size, sig_fp);
+  fclose(sig_fp);
+
+  if (bytes_read != (size_t)sig_size) {
+    log_error("Failed to read signature file");
+    goto cleanup;
+  }
+
+  *signature_len_out = sig_size;
+  log_info("GPG signature created successfully (%zu bytes)", *signature_len_out);
+  result = 0;
+
+cleanup:
+  if (msg_fd >= 0) {
+    close(msg_fd);
+  }
+  unlink(msg_path);
+  unlink(sig_path);
+  return result;
 }
 
 int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size_t message_len,
@@ -810,4 +997,225 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   log_error("gpg_verify_signature: libgcrypt not available");
   return -1;
 #endif
+}
+
+int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_len, const uint8_t *message,
+                                     size_t message_len, const char *expected_key_id) {
+  // Validate inputs
+  if (!signature || signature_len == 0 || signature_len > 512) {
+    log_error("gpg_verify_signature_with_binary: Invalid signature (expected 1-512 bytes, got %zu)", signature_len);
+    return -1;
+  }
+  if (!message || message_len == 0) {
+    log_error("gpg_verify_signature_with_binary: Invalid message");
+    return -1;
+  }
+
+  // Create temporary files for signature and message
+  char sig_path[PLATFORM_MAX_PATH_LENGTH];
+  char msg_path[PLATFORM_MAX_PATH_LENGTH];
+  int sig_fd = -1;
+  int msg_fd = -1;
+  int result = -1;
+
+#ifdef _WIN32
+  // Windows temp file creation with process ID for concurrent process safety
+  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
+  DWORD temp_dir_len = GetTempPathA(sizeof(temp_dir), temp_dir);
+  if (temp_dir_len == 0 || temp_dir_len >= sizeof(temp_dir)) {
+    log_error("Failed to get Windows temp directory");
+    return -1;
+  }
+
+  // Create process-specific temp file prefixes (e.g., "asc_sig_12345_")
+  char sig_prefix[32];
+  char msg_prefix[32];
+  safe_snprintf(sig_prefix, sizeof(sig_prefix), "asc_sig_%lu_", GetCurrentProcessId());
+  safe_snprintf(msg_prefix, sizeof(msg_prefix), "asc_msg_%lu_", GetCurrentProcessId());
+
+  // Create signature temp file
+  if (GetTempFileNameA(temp_dir, sig_prefix, 0, sig_path) == 0) {
+    log_error("Failed to create signature temp file: %lu", GetLastError());
+    return -1;
+  }
+
+  // Create message temp file
+  if (GetTempFileNameA(temp_dir, msg_prefix, 0, msg_path) == 0) {
+    log_error("Failed to create message temp file: %lu", GetLastError());
+    DeleteFileA(sig_path);
+    return -1;
+  }
+
+  // Open files for writing (Windows CreateFile for binary mode)
+  HANDLE sig_handle = CreateFileA(sig_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
+  if (sig_handle == INVALID_HANDLE_VALUE) {
+    log_error("Failed to open signature temp file: %lu", GetLastError());
+    DeleteFileA(sig_path);
+    DeleteFileA(msg_path);
+    return -1;
+  }
+
+  DWORD bytes_written;
+  if (!WriteFile(sig_handle, signature, (DWORD)signature_len, &bytes_written, NULL) || bytes_written != signature_len) {
+    log_error("Failed to write signature to temp file: %lu", GetLastError());
+    CloseHandle(sig_handle);
+    DeleteFileA(sig_path);
+    DeleteFileA(msg_path);
+    return -1;
+  }
+  CloseHandle(sig_handle);
+
+  HANDLE msg_handle = CreateFileA(msg_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
+  if (msg_handle == INVALID_HANDLE_VALUE) {
+    log_error("Failed to open message temp file: %lu", GetLastError());
+    DeleteFileA(sig_path);
+    DeleteFileA(msg_path);
+    return -1;
+  }
+
+  if (!WriteFile(msg_handle, message, (DWORD)message_len, &bytes_written, NULL) || bytes_written != message_len) {
+    log_error("Failed to write message to temp file: %lu", GetLastError());
+    CloseHandle(msg_handle);
+    DeleteFileA(sig_path);
+    DeleteFileA(msg_path);
+    return -1;
+  }
+  CloseHandle(msg_handle);
+
+#else
+  // Unix temp file creation with mkstemp() - include PID for concurrent process safety
+  safe_snprintf(sig_path, sizeof(sig_path), "/tmp/asciichat_sig_%d_XXXXXX", getpid());
+  safe_snprintf(msg_path, sizeof(msg_path), "/tmp/asciichat_msg_%d_XXXXXX", getpid());
+
+  sig_fd = mkstemp(sig_path);
+  if (sig_fd < 0) {
+    log_error("Failed to create signature temp file: %s", SAFE_STRERROR(errno));
+    return -1;
+  }
+
+  msg_fd = mkstemp(msg_path);
+  if (msg_fd < 0) {
+    log_error("Failed to create message temp file: %s", SAFE_STRERROR(errno));
+    close(sig_fd);
+    unlink(sig_path);
+    return -1;
+  }
+
+  // Write signature to temp file
+  ssize_t sig_written = write(sig_fd, signature, signature_len);
+  if (sig_written != (ssize_t)signature_len) {
+    log_error("Failed to write signature to temp file: %s", SAFE_STRERROR(errno));
+    close(sig_fd);
+    close(msg_fd);
+    unlink(sig_path);
+    unlink(msg_path);
+    return -1;
+  }
+  close(sig_fd);
+
+  // Write message to temp file
+  ssize_t msg_written = write(msg_fd, message, message_len);
+  if (msg_written != (ssize_t)message_len) {
+    log_error("Failed to write message to temp file: %s", SAFE_STRERROR(errno));
+    close(msg_fd);
+    unlink(sig_path);
+    unlink(msg_path);
+    return -1;
+  }
+  close(msg_fd);
+#endif
+
+  // Build gpg --verify command
+  char cmd[BUFFER_SIZE_LARGE];
+#ifdef _WIN32
+  safe_snprintf(cmd, sizeof(cmd), "gpg --verify \"%s\" \"%s\" 2>&1", sig_path, msg_path);
+#else
+  safe_snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
+#endif
+
+  log_debug("Running GPG verify command: %s", cmd);
+
+  // Execute gpg --verify command
+  FILE *fp = SAFE_POPEN(cmd, "r");
+  if (!fp) {
+    log_error("Failed to execute gpg --verify command");
+    goto cleanup;
+  }
+
+  // Parse output for "Good signature" and verify key ID
+  char line[BUFFER_SIZE_MEDIUM];
+  bool found_good_sig = false;
+  bool found_key_id = false;
+
+  while (fgets(line, sizeof(line), fp)) {
+    log_debug("GPG output: %s", line);
+
+    // Check for "Good signature"
+    if (strstr(line, "Good signature")) {
+      found_good_sig = true;
+    }
+
+    // Check if this line contains the expected key ID (GPG outputs key ID on separate line)
+    if (expected_key_id && strlen(expected_key_id) > 0) {
+      if (strstr(line, expected_key_id)) {
+        found_key_id = true;
+        log_debug("Found expected key ID in GPG output: %s", expected_key_id);
+      }
+    }
+
+    // Check for signature errors
+    if (strstr(line, "BAD signature")) {
+      log_error("GPG reports BAD signature");
+      SAFE_PCLOSE(fp);
+      fp = NULL;
+      goto cleanup;
+    }
+  }
+
+  // Check exit code
+  int status = SAFE_PCLOSE(fp);
+  fp = NULL;
+
+#ifdef _WIN32
+  int exit_code = status;
+#else
+  int exit_code = WEXITSTATUS(status);
+#endif
+
+  if (exit_code != 0) {
+    log_error("GPG verify failed with exit code: %d", exit_code);
+    goto cleanup;
+  }
+
+  if (!found_good_sig) {
+    log_error("GPG verify did not report 'Good signature'");
+    goto cleanup;
+  }
+
+  // If expected_key_id was provided, verify we found it in the output
+  if (expected_key_id && strlen(expected_key_id) > 0) {
+    if (!found_key_id) {
+      log_error("GPG signature key ID does not match expected key ID: %s", expected_key_id);
+      goto cleanup;
+    }
+  }
+
+  log_info("GPG signature verified successfully via gpg --verify binary");
+  result = 0;
+
+cleanup:
+  // Clean up temp files
+#ifdef _WIN32
+  DeleteFileA(sig_path);
+  DeleteFileA(msg_path);
+#else
+  unlink(sig_path);
+  unlink(msg_path);
+#endif
+
+  if (fp) {
+    SAFE_PCLOSE(fp);
+  }
+
+  return result;
 }
