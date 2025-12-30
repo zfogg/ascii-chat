@@ -36,10 +36,10 @@ endif()
 # Enable component-based packaging - creates separate .rpm for each component group
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
-# Determine architecture
-set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+# Determine architecture (use normalized amd64/arm64 naming for consistency with DEB packages)
+set(CPACK_RPM_PACKAGE_ARCHITECTURE "amd64")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-    set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "arm64")
 endif()
 
 # =============================================================================
