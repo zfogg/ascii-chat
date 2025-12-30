@@ -16,24 +16,13 @@
 include(CMakeFindDependencyMacro)
 
 # Find required dependencies
-# These are needed to link against libasciichat.so
 find_dependency(Threads REQUIRED)
-find_dependency(PkgConfig)
-find_dependency(Libsodium QUIET)
-find_dependency(Zstd QUIET)
-find_dependency(PortAudio QUIET)
+find_dependency(PkgConfig REQUIRED)
 
-if(PkgConfig_FOUND)
-    if(NOT TARGET Libsodium::Libsodium)
-        pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium>=1.0.18)
-    endif()
-    if(NOT TARGET Zstd::Zstd)
-        pkg_check_modules(LIBZSTD REQUIRED IMPORTED_TARGET libzstd)
-    endif()
-    if(NOT TARGET PortAudio::PortAudio)
-        pkg_check_modules(PORTAUDIO REQUIRED IMPORTED_TARGET portaudio-2.0)
-    endif()
-endif()
+# Use pkg-config for dependencies (these don't provide CMake configs)
+pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium>=1.0.18)
+pkg_check_modules(LIBZSTD REQUIRED IMPORTED_TARGET libzstd)
+pkg_check_modules(PORTAUDIO REQUIRED IMPORTED_TARGET portaudio-2.0)
 
 # Include the targets file (defines ascii-chat::ascii-chat-shared)
 include("${CMAKE_CURRENT_LIST_DIR}/ascii-chat-targets.cmake")
