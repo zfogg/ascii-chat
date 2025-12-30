@@ -32,8 +32,12 @@
 using std::atomic_compare_exchange_weak_explicit;
 using std::atomic_load_explicit;
 using std::memory_order_relaxed;
+// C11 _Atomic(T) syntax doesn't work in C++ - use std::atomic<T> instead
+#define LOG_ATOMIC_UINT64 std::atomic<uint64_t>
 #else
 #include <stdatomic.h>
+// C11 _Atomic type qualifier syntax
+#define LOG_ATOMIC_UINT64 _Atomic uint64_t
 #endif
 #include <stdbool.h>
 #include <stdint.h>
@@ -558,7 +562,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 #ifdef NDEBUG
 #define log_every(log_level, interval_us, fmt, ...)                                                                    \
   do {                                                                                                                 \
-    static _Atomic uint64_t _log_every_last_time = 0;                                                                  \
+    static LOG_ATOMIC_UINT64 _log_every_last_time = {0};                                                               \
     uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
     uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                      \
     if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
@@ -571,7 +575,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 #else
 #define log_every(log_level, interval_us, fmt, ...)                                                                    \
   do {                                                                                                                 \
-    static _Atomic uint64_t _log_every_last_time = 0;                                                                  \
+    static LOG_ATOMIC_UINT64 _log_every_last_time = {0};                                                               \
     uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
     uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                      \
     if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
