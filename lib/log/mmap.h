@@ -29,7 +29,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+#else
 #include <stdatomic.h>
+#endif
 #include "common.h"
 #include "platform/mmap.h"
 

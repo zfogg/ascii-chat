@@ -58,7 +58,12 @@
  */
 
 #include <stdbool.h>
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+#else
 #include <stdatomic.h>
+#endif
 #include <portaudio.h>
 #ifdef __linux__
 #include <sched.h>

@@ -28,7 +28,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+using std::atomic_size_t;
+#else
 #include <stdatomic.h>
+#endif
 #include "platform/mutex.h"
 
 /* ============================================================================
