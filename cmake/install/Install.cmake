@@ -71,14 +71,9 @@ foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
             continue()
         endif()
         install(TARGETS ${_ascii_target}
-            EXPORT ascii-chat-targets
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib
-            # Two include dirs needed:
-            # - include for <ascii-chat/...> style includes
-            # - include/ascii-chat for internal relative includes
-            INCLUDES DESTINATION include include/ascii-chat
             COMPONENT Development
         )
     endif()
@@ -218,10 +213,8 @@ else()
             OPTIONAL
         )
 
-        # Install the namelink to Development AND export it for cmake config files
-        # This allows find_package(ascii-chat) to work while keeping everything in Development
+        # Install the namelink to Development
         install(TARGETS ascii-chat-shared
-            EXPORT ascii-chat-targets
             LIBRARY DESTINATION lib
                 NAMELINK_ONLY
                 COMPONENT Development
@@ -290,43 +283,21 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
     message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file installation")
 endif()
 
-# Install CMake package config files (for find_package support)
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
-    include(CMakePackageConfigHelpers)
-
-    # Generate the config file that includes the exports
-    configure_package_config_file(
+# Install CMake package config file (for find_package support)
+# Single file defines both ascii-chat::shared and ascii-chat::static targets
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Configure the single cmake config file
+    configure_file(
         "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat-config.cmake.in"
         "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
-        INSTALL_DESTINATION lib/cmake/ascii-chat
+        @ONLY
     )
 
-    # Generate the version file for the config file
-    write_basic_package_version_file(
-        "${CMAKE_BINARY_DIR}/ascii-chat-config-version.cmake"
-        VERSION ${PROJECT_VERSION}
-        COMPATIBILITY SameMajorVersion
-    )
-
-    # Install the config files
     install(FILES
         "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
-        "${CMAKE_BINARY_DIR}/ascii-chat-config-version.cmake"
         DESTINATION lib/cmake/ascii-chat
         COMPONENT Development
     )
-
-    # Export targets to a script
-    install(EXPORT ascii-chat-targets
-        FILE ascii-chat-targets.cmake
-        NAMESPACE ascii-chat::
-        DESTINATION lib/cmake/ascii-chat
-        COMPONENT Development
-    )
-
-    export(EXPORT ascii-chat-targets
-        FILE ${CMAKE_BINARY_DIR}/ascii-chat-targets.cmake
-        NAMESPACE ascii-chat::)
 
     message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}CMake${ColorReset} package config installation")
 endif()
