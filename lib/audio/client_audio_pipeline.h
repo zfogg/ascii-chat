@@ -48,7 +48,17 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+// When compiling C++ with MSVC runtime headers (even with Clang), we must not
+// include stdatomic.h as the MSVC <atomic> header already provides the same
+// functionality and the declarations conflict.
+#if defined(__cplusplus) && defined(_WIN32)
+// C++ mode on Windows: use <atomic> from MSVC runtime
+#include <atomic>
+#else
 #include <stdatomic.h>
+#endif
 
 #include "audio/mixer.h"
 #include "platform/mutex.h"
