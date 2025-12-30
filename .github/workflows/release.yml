@@ -143,9 +143,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           name: ascii-chat ${{ steps.version.outputs.version }}
           body: |
-            # ascii-chat ${{ steps.version.outputs.version }}
-
-            Terminal-based video chat with ASCII art conversion. Supports multiple clients with real-time video mixing and audio streaming.
+            Video chat in your terminal
 
             ## Download
 
@@ -155,8 +153,8 @@ jobs:
 
             **Linux Installers (x86_64 & arm64):**
             - Runtime: `ascii-chat-*.deb` or `ascii-chat-*.rpm`
-            - Development: `libasciichat-dev-*.deb` or `libasciichat-devel-*.rpm`
-            - Documentation: `libasciichat-doc-*.deb` or `libasciichat-doc-*.rpm` (optional)
+            - .deb: `ascii-chat-*.deb`, `libasciichat-dev-*.deb`
+            - .rpm: `ascii-chat-*.rpm`,`libasciichat-devel-*.rpm`
             - Archives: `ascii-chat-*.tar.gz`, `libasciichat-*.tar.gz`
             - Self-extracting: `ascii-chat-*.sh`, `libasciichat-*.sh`
 
