@@ -46,7 +46,10 @@ endif()
 # Provide package information
 set(ascii-chat_FOUND TRUE)
 set(ascii-chat_VERSION "@PROJECT_VERSION@")
-set(ascii-chat_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include")
+# Two include dirs needed:
+# - include/ for <ascii-chat/...> style includes
+# - include/ascii-chat/ for internal relative includes (e.g., ../../deps/uthash/src/uthash.h)
+set(ascii-chat_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include" "${PACKAGE_PREFIX_DIR}/include/ascii-chat")
 set(ascii-chat_LIBRARIES ascii-chat::ascii-chat)
 
 # Print found message
