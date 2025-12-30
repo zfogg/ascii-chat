@@ -573,6 +573,226 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   return 0;
 }
 
+/**
+ * @brief Extract Ed25519 public key from GPG using gpg --export (fallback when agent unavailable)
+ *
+ * This function uses `gpg --export` to get the public key in OpenPGP packet format,
+ * then parses the packet to extract the raw Ed25519 public key bytes.
+ *
+ * @param key_id GPG key ID (e.g., "7FE90A79F2E80ED3")
+ * @param public_key_out Output buffer for 32-byte Ed25519 public key
+ * @return 0 on success, -1 on error
+ */
+static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
+  if (!key_id || !public_key_out) {
+    log_error("Invalid arguments to gpg_export_public_key");
+    return -1;
+  }
+
+  // Escape key_id for safe use in shell command
+  char escaped_key_id[BUFFER_SIZE_MEDIUM];
+  if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
+    log_error("Failed to escape GPG key ID for shell command");
+    return -1;
+  }
+
+  // Create temp file for exported key
+  char temp_path[256];
+  safe_snprintf(temp_path, sizeof(temp_path), "/tmp/asciichat_gpg_export_%d_XXXXXX", getpid());
+  int temp_fd = mkstemp(temp_path);
+  if (temp_fd < 0) {
+    log_error("Failed to create temp file for GPG export: %s", SAFE_STRERROR(errno));
+    return -1;
+  }
+  close(temp_fd);
+
+  // Use gpg --export to export the public key in binary format
+  char cmd[BUFFER_SIZE_LARGE];
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" 2>/dev/null", escaped_key_id, temp_path);
+
+  log_debug("Running GPG export command: gpg --export 0x%s", key_id);
+  int result = system(cmd);
+  if (result != 0) {
+    log_error("Failed to export GPG public key for key ID: %s (exit code: %d)", key_id, result);
+    unlink(temp_path);
+    return -1;
+  }
+  log_debug("GPG export completed successfully");
+
+  // Read the exported key file
+  FILE *fp = fopen(temp_path, "rb");
+  if (!fp) {
+    log_error("Failed to open exported GPG key file");
+    unlink(temp_path);
+    return -1;
+  }
+
+  // Read up to 8KB (should be more than enough for a public key packet)
+  uint8_t packet_data[8192];
+  size_t bytes_read = fread(packet_data, 1, sizeof(packet_data), fp);
+  fclose(fp);
+  unlink(temp_path);
+
+  if (bytes_read == 0) {
+    log_error("GPG export produced empty output - key may not exist");
+    return -1;
+  }
+
+  log_debug("Read %zu bytes from GPG export", bytes_read);
+
+  // Parse OpenPGP packet to extract Ed25519 public key
+  // OpenPGP public key packet format (simplified):
+  // - Packet tag (1 byte): 0x99 for public key packet (old format) or 0xC6 (new format)
+  // - Packet length (variable)
+  // - Version (1 byte): 0x04 for modern keys
+  // - Creation time (4 bytes)
+  // - Algorithm (1 byte): 22 (0x16) for EdDSA
+  // - Curve OID length + OID
+  // - Public key material (MPI format)
+
+  size_t offset = 0;
+
+  // Skip to public key packet (tag 6 - public key, or tag 14 - public subkey)
+  while (offset < bytes_read) {
+    uint8_t tag = packet_data[offset];
+
+    // Check if this is a public key packet (old or new format)
+    bool is_public_key = false;
+    size_t packet_len = 0;
+
+    if ((tag & 0x80) == 0) {
+      // Not a valid packet tag
+      offset++;
+      continue;
+    }
+
+    if ((tag & 0x40) == 0) {
+      // Old format packet
+      uint8_t packet_type = (tag >> 2) & 0x0F;
+      is_public_key = (packet_type == 6 || packet_type == 14); // Public key or subkey
+
+      uint8_t length_type = tag & 0x03;
+      offset++; // Move past tag
+
+      if (length_type == 0) {
+        packet_len = packet_data[offset++];
+      } else if (length_type == 1) {
+        packet_len = (packet_data[offset] << 8) | packet_data[offset + 1];
+        offset += 2;
+      } else if (length_type == 2) {
+        packet_len = (packet_data[offset] << 24) | (packet_data[offset + 1] << 16) | (packet_data[offset + 2] << 8) |
+                     packet_data[offset + 3];
+        offset += 4;
+      } else {
+        // Indeterminate length - skip
+        break;
+      }
+    } else {
+      // New format packet
+      uint8_t packet_type = tag & 0x3F;
+      is_public_key = (packet_type == 6 || packet_type == 14); // Public key or subkey
+      offset++;                                                // Move past tag
+
+      // Parse new format length
+      if (offset >= bytes_read)
+        break;
+      uint8_t first_len = packet_data[offset++];
+
+      if (first_len < 192) {
+        packet_len = first_len;
+      } else if (first_len < 224) {
+        if (offset >= bytes_read)
+          break;
+        packet_len = ((first_len - 192) << 8) + packet_data[offset++] + 192;
+      } else if (first_len == 255) {
+        if (offset + 4 > bytes_read)
+          break;
+        packet_len = (packet_data[offset] << 24) | (packet_data[offset + 1] << 16) | (packet_data[offset + 2] << 8) |
+                     packet_data[offset + 3];
+        offset += 4;
+      } else {
+        // Partial body length - not expected for key packets
+        break;
+      }
+    }
+
+    if (!is_public_key || packet_len == 0 || offset + packet_len > bytes_read) {
+      offset += packet_len;
+      continue;
+    }
+
+    // Parse the public key packet content
+    size_t packet_start = offset;
+
+    // Check version (should be 4)
+    if (packet_data[offset] != 0x04) {
+      offset += packet_len;
+      continue;
+    }
+    offset++; // Skip version
+
+    offset += 4; // Skip creation time
+
+    // Check algorithm (22 = EdDSA/Ed25519)
+    if (offset >= packet_start + packet_len) {
+      offset = packet_start + packet_len;
+      continue;
+    }
+
+    uint8_t algorithm = packet_data[offset++];
+    if (algorithm != 22) { // Not EdDSA
+      offset = packet_start + packet_len;
+      continue;
+    }
+
+    // Skip curve OID (should be Ed25519 OID)
+    if (offset >= packet_start + packet_len) {
+      offset = packet_start + packet_len;
+      continue;
+    }
+
+    uint8_t oid_len = packet_data[offset++];
+    offset += oid_len; // Skip OID bytes
+
+    // Now we should have the MPI-encoded public key
+    // MPI format: 2-byte bit count, then key data
+    if (offset + 2 > packet_start + packet_len) {
+      offset = packet_start + packet_len;
+      continue;
+    }
+
+    uint16_t mpi_bits = (packet_data[offset] << 8) | packet_data[offset + 1];
+    offset += 2;
+
+    // Ed25519 public keys should be 263 bits (0x0107) - includes 0x40 prefix byte
+    // Or 256 bits for just the key without prefix
+    size_t mpi_bytes = (mpi_bits + 7) / 8;
+
+    if (offset + mpi_bytes > packet_start + packet_len) {
+      offset = packet_start + packet_len;
+      continue;
+    }
+
+    // Ed25519 keys in OpenPGP have a 0x40 prefix byte
+    if (mpi_bytes == 33 && packet_data[offset] == 0x40) {
+      // Found it! Extract the 32-byte public key (skip 0x40 prefix)
+      memcpy(public_key_out, &packet_data[offset + 1], 32);
+      log_info("Extracted Ed25519 public key from gpg --export (fallback method)");
+      return 0;
+    } else if (mpi_bytes == 32) {
+      // Key without prefix (less common but valid)
+      memcpy(public_key_out, &packet_data[offset], 32);
+      log_info("Extracted Ed25519 public key from gpg --export (fallback method)");
+      return 0;
+    }
+
+    offset = packet_start + packet_len;
+  }
+
+  log_error("Failed to find Ed25519 public key in GPG export data");
+  return -1;
+}
+
 int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygrip_out) {
   if (!key_id || !public_key_out) {
     log_error("Invalid arguments to gpg_get_public_key");
@@ -677,11 +897,18 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   log_debug("Found keygrip for key %s: %s", key_id, found_keygrip);
 
-  // Use GPG agent API to read the public key directly via READKEY command
+  // Try to use GPG agent API to read the public key directly via READKEY command
   int agent_sock = gpg_agent_connect();
   if (agent_sock < 0) {
-    log_error("Failed to connect to GPG agent for reading public key");
-    return -1;
+    log_info("GPG agent not available, falling back to gpg --export for public key extraction");
+    // Fallback: Use gpg --export to get the public key
+    int export_result = gpg_export_public_key(key_id, public_key_out);
+    if (export_result == 0) {
+      log_info("Successfully extracted public key using fallback method");
+    } else {
+      log_error("Fallback public key extraction failed for key ID: %s", key_id);
+    }
+    return export_result;
   }
 
   // Send READKEY command with keygrip to get the public key S-expression
