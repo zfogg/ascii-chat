@@ -1,11 +1,11 @@
-# ascii-chat pkg-config file (SHARED library)
+# ascii-chat pkg-config file
 # For use with pkg-config to get compile and link flags
 #
-# Usage:
+# Usage (shared library):
 #   pkg-config --cflags --libs ascii-chat
 #
-# For static linking, use ascii-chat-static instead:
-#   pkg-config --cflags --libs ascii-chat-static
+# Usage (static library):
+#   pkg-config --cflags --libs --static ascii-chat
 
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=${prefix}
@@ -13,17 +13,17 @@ libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
 Name: ascii-chat
-Description: Real-time terminal-based video chat with ASCII art conversion (shared library)
+Description: Real-time terminal-based video chat with ASCII art conversion
 Version: @PROJECT_VERSION@
 URL: @PROJECT_HOMEPAGE_URL@
 
-# Shared library needs runtime dependencies
-Requires.private: @MIMALLOC_REQUIREMENT@libsodium >= 1.0.18, libzstd, portaudio-2.0
+# Required dependencies - users must install these via their package manager
+Requires.private: @MIMALLOC_REQUIREMENT@libsodium >= 1.0.18, libzstd, portaudio-2.0, opus
 
-# Main shared library to link
+# Main library to link
 Libs: -L${libdir} -lasciichat
 
-# System libraries
+# System libraries (and bundled deps: BearSSL, WebRTC AEC3 are in libasciichat.a)
 Libs.private: -lm -lpthread
 
 # Include directories

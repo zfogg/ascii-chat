@@ -6,8 +6,14 @@
 #   target_link_libraries(your-target PRIVATE ascii-chat::static)  # static
 #
 # Targets:
-#   ascii-chat::shared - Shared library (requires runtime deps)
-#   ascii-chat::static - Static library (self-contained, no external deps)
+#   ascii-chat::shared - Shared library
+#   ascii-chat::static - Static library
+#
+# Required dependencies (install via package manager):
+#   libsodium, zstd, portaudio, opus, mimalloc
+#
+# Bundled in libasciichat.a (not required to install):
+#   BearSSL, WebRTC AEC3
 
 cmake_minimum_required(VERSION 3.16)
 
@@ -35,23 +41,37 @@ if(NOT TARGET ascii-chat::shared)
         pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
         pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
         pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
+        pkg_check_modules(_OPUS QUIET IMPORTED_TARGET opus)
+        pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
 
-        if(_LIBSODIUM_FOUND AND _ZSTD_FOUND AND _PORTAUDIO_FOUND)
+        if(_LIBSODIUM_FOUND)
             set_property(TARGET ascii-chat::shared APPEND PROPERTY
-                INTERFACE_LINK_LIBRARIES
-                    PkgConfig::_LIBSODIUM
-                    PkgConfig::_ZSTD
-                    PkgConfig::_PORTAUDIO
-            )
+                INTERFACE_LINK_LIBRARIES PkgConfig::_LIBSODIUM)
+        endif()
+        if(_ZSTD_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_ZSTD)
+        endif()
+        if(_PORTAUDIO_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_PORTAUDIO)
+        endif()
+        if(_OPUS_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_OPUS)
+        endif()
+        if(_MIMALLOC_FOUND)
+            set_property(TARGET ascii-chat::shared APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_MIMALLOC)
         endif()
     endif()
 endif()
 
 # =============================================================================
-# ascii-chat::static - FAT Static library (self-contained)
+# ascii-chat::static - Static library
 # =============================================================================
-# All external dependencies (libsodium, zstd, portaudio, opus, mimalloc, webrtc)
-# are baked into the archive. Only platform system libraries need to be linked.
+# Bundled: BearSSL, WebRTC AEC3 (baked into the archive)
+# Required: libsodium, zstd, portaudio, opus, mimalloc (install via package manager)
 if(NOT TARGET ascii-chat::static)
     add_library(ascii-chat::static STATIC IMPORTED)
     set_target_properties(ascii-chat::static PROPERTIES
@@ -59,7 +79,38 @@ if(NOT TARGET ascii-chat::static)
         INTERFACE_INCLUDE_DIRECTORIES "${_INCLUDE_DIRS}"
     )
 
-    # Static library only needs system libs (everything else is baked in)
+    # External dependencies - users must install these
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(_LIBSODIUM QUIET IMPORTED_TARGET libsodium)
+        pkg_check_modules(_ZSTD QUIET IMPORTED_TARGET libzstd)
+        pkg_check_modules(_PORTAUDIO QUIET IMPORTED_TARGET portaudio-2.0)
+        pkg_check_modules(_OPUS QUIET IMPORTED_TARGET opus)
+        pkg_check_modules(_MIMALLOC QUIET IMPORTED_TARGET mimalloc)
+
+        if(_LIBSODIUM_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_LIBSODIUM)
+        endif()
+        if(_ZSTD_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_ZSTD)
+        endif()
+        if(_PORTAUDIO_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_PORTAUDIO)
+        endif()
+        if(_OPUS_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_OPUS)
+        endif()
+        if(_MIMALLOC_FOUND)
+            set_property(TARGET ascii-chat::static APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES PkgConfig::_MIMALLOC)
+        endif()
+    endif()
+
+    # System libraries
     find_package(Threads QUIET)
     if(Threads_FOUND)
         set_property(TARGET ascii-chat::static APPEND PROPERTY

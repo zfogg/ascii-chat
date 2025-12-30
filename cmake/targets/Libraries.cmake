@@ -865,8 +865,9 @@ endif()
 # =============================================================================
 # Combined Static Library (only when building STATIC libs, not OBJECT libs)
 # =============================================================================
-# Create libasciichat.a by combining all module static libraries AND all
-# external dependencies into a single fat archive.
+# Create libasciichat.a by combining all module static libraries plus
+# bundled dependencies that aren't available via package managers (BearSSL, WebRTC AEC3).
+# Users must install: libsodium, zstd, portaudio, opus, mimalloc
 # Only available when modules are STATIC libraries (not OBJECT libraries)
 # On Windows Debug/Dev/Coverage, modules are OBJECT libraries for DLL building
 if(NOT BUILDING_OBJECT_LIBS)
@@ -893,69 +894,41 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-audio ascii-chat-network ascii-chat-core
     )
 
-    # External dependencies - add static libraries to create fat archive
-    # libsodium
-    if(LIBSODIUM_LIBRARIES AND EXISTS "${LIBSODIUM_LIBRARIES}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${LIBSODIUM_LIBRARIES}")
-        message(STATUS "Fat static lib will include: libsodium (${LIBSODIUM_LIBRARIES})")
-    endif()
+    # =============================================================================
+    # Bundled dependencies (not available via package managers)
+    # =============================================================================
+    # Only include libraries that users cannot install themselves.
+    # Standard deps (libsodium, zstd, portaudio, opus, mimalloc) are NOT included -
+    # users must install those via their package manager.
 
-    # BearSSL - could be a target (bearssl_static) or a path
+    # BearSSL - not available in brew/apt, we build from source
     if(BEARSSL_FOUND)
         if(TARGET bearssl_static)
             list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB $<TARGET_FILE:bearssl_static>")
             list(APPEND _STATIC_LIB_DEPS bearssl_static)
-            message(STATUS "Fat static lib will include: BearSSL (target: bearssl_static)")
+            message(STATUS "Static lib will include: BearSSL (target: bearssl_static)")
         elseif(BEARSSL_LIBRARIES AND EXISTS "${BEARSSL_LIBRARIES}")
             list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${BEARSSL_LIBRARIES}")
-            message(STATUS "Fat static lib will include: BearSSL (${BEARSSL_LIBRARIES})")
+            message(STATUS "Static lib will include: BearSSL (${BEARSSL_LIBRARIES})")
         endif()
     endif()
 
-    # zstd
-    if(ZSTD_LIBRARIES AND EXISTS "${ZSTD_LIBRARIES}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${ZSTD_LIBRARIES}")
-        message(STATUS "Fat static lib will include: zstd (${ZSTD_LIBRARIES})")
-    endif()
-
-    # PortAudio
-    if(PORTAUDIO_LIBRARIES AND EXISTS "${PORTAUDIO_LIBRARIES}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${PORTAUDIO_LIBRARIES}")
-        message(STATUS "Fat static lib will include: PortAudio (${PORTAUDIO_LIBRARIES})")
-    endif()
-
-    # Opus
-    if(OPUS_LIBRARIES AND EXISTS "${OPUS_LIBRARIES}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${OPUS_LIBRARIES}")
-        message(STATUS "Fat static lib will include: Opus (${OPUS_LIBRARIES})")
-    endif()
-
-    # mimalloc - could be a target or a path
-    if(TARGET mimalloc-static)
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB $<TARGET_FILE:mimalloc-static>")
-        list(APPEND _STATIC_LIB_DEPS mimalloc-static)
-        message(STATUS "Fat static lib will include: mimalloc (target: mimalloc-static)")
-    elseif(MIMALLOC_LIBRARIES AND EXISTS "${MIMALLOC_LIBRARIES}")
-        list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${MIMALLOC_LIBRARIES}")
-        message(STATUS "Fat static lib will include: mimalloc (${MIMALLOC_LIBRARIES})")
-    endif()
-
-    # WebRTC AEC3 libraries
+    # WebRTC AEC3 libraries - not available in brew/apt, we build from source
     if(DEFINED WEBRTC_AUDIO_PROCESS_LIB AND EXISTS "${WEBRTC_AUDIO_PROCESS_LIB}")
         list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_AUDIO_PROCESS_LIB}")
-        message(STATUS "Fat static lib will include: WebRTC AudioProcess")
+        message(STATUS "Static lib will include: WebRTC AudioProcess")
     endif()
     if(DEFINED WEBRTC_AEC3_LIB AND EXISTS "${WEBRTC_AEC3_LIB}")
         list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_AEC3_LIB}")
-        message(STATUS "Fat static lib will include: WebRTC AEC3")
+        message(STATUS "Static lib will include: WebRTC AEC3")
     endif()
     if(DEFINED WEBRTC_API_LIB AND EXISTS "${WEBRTC_API_LIB}")
         list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_API_LIB}")
-        message(STATUS "Fat static lib will include: WebRTC API")
+        message(STATUS "Static lib will include: WebRTC API")
     endif()
     if(DEFINED WEBRTC_BASE_LIB AND EXISTS "${WEBRTC_BASE_LIB}")
         list(APPEND _STATIC_LIB_MRI_COMMANDS "ADDLIB ${WEBRTC_BASE_LIB}")
-        message(STATUS "Fat static lib will include: WebRTC Base")
+        message(STATUS "Static lib will include: WebRTC Base")
     endif()
 
     # Generate the MRI script content with generator expressions
@@ -980,16 +953,16 @@ if(NOT BUILDING_OBJECT_LIBS)
         COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMENT "Combining static libraries into fat libasciichat.a"
+        COMMENT "Combining static libraries into libasciichat.a"
         COMMAND_EXPAND_LISTS
     )
 
 # Create a custom target that depends on the static library file
 add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
 
-# Create interface library target that wraps the combined FAT static library
-# External dependencies (libsodium, zstd, portaudio, opus, mimalloc, webrtc) are
-# baked into the archive - only platform system libraries need to be linked
+# Create interface library target that wraps the combined static library
+# Includes: our code + BearSSL + WebRTC AEC3 (not available via package managers)
+# Requires: libsodium, zstd, portaudio, opus, mimalloc (user must install)
 add_library(ascii-chat-static-lib INTERFACE)
 add_dependencies(ascii-chat-static-lib ascii-chat-static-lib-combined)
 target_link_libraries(ascii-chat-static-lib INTERFACE
@@ -997,8 +970,21 @@ target_link_libraries(ascii-chat-static-lib INTERFACE
     $<INSTALL_INTERFACE:lib/libasciichat.a>
 )
 
-# Platform-specific system libraries only
-# External deps (libsodium, zstd, portaudio, opus, mimalloc, webrtc) are in the fat archive
+# External dependencies - users must install these via package manager
+# These are NOT bundled in the static library
+target_link_libraries(ascii-chat-static-lib INTERFACE
+    ${LIBSODIUM_LIBRARIES}
+    ${ZSTD_LIBRARIES}
+    ${PORTAUDIO_LIBRARIES}
+    ${OPUS_LIBRARIES}
+)
+if(TARGET mimalloc-static)
+    target_link_libraries(ascii-chat-static-lib INTERFACE mimalloc-static)
+elseif(MIMALLOC_LIBRARIES)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
+endif()
+
+# Platform-specific system libraries
 if(WIN32)
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${WS2_32_LIB}

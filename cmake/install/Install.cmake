@@ -269,31 +269,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(MIMALLOC_REQUIREMENT "")
     endif()
 
-    # Configure the shared library pkgconfig file (requires external deps at runtime)
-    if(TARGET ascii-chat-shared)
-        configure_file(
-            "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.pc.in"
-            "${CMAKE_BINARY_DIR}/ascii-chat.pc"
-            @ONLY
-        )
-        install(FILES "${CMAKE_BINARY_DIR}/ascii-chat.pc"
-            DESTINATION lib/pkgconfig
-            COMPONENT Development
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file: ascii-chat.pc (shared library)")
-    endif()
-
-    # Configure the fat static library pkgconfig file (all deps baked in)
+    # Configure the pkgconfig file (works for both shared and static library)
+    # Both require external dependencies: libsodium, zstd, portaudio, opus, mimalloc
     configure_file(
-        "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat-static.pc.in"
-        "${CMAKE_BINARY_DIR}/ascii-chat-static.pc"
+        "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.pc.in"
+        "${CMAKE_BINARY_DIR}/ascii-chat.pc"
         @ONLY
     )
-    install(FILES "${CMAKE_BINARY_DIR}/ascii-chat-static.pc"
+    install(FILES "${CMAKE_BINARY_DIR}/ascii-chat.pc"
         DESTINATION lib/pkgconfig
         COMPONENT Development
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file: ascii-chat-static.pc (fat static library)")
+    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file: ascii-chat.pc")
 endif()
 
 # Install CMake package config file (for find_package support)
