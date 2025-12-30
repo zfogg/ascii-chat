@@ -24,4 +24,7 @@ Libs: -L${libdir} -lasciichat
 Libs.private: -lm -lpthread
 
 # Include directories
-Cflags: -I${includedir}
+# Two include dirs needed:
+# - includedir for <ascii-chat/...> style includes
+# - includedir/ascii-chat for internal relative includes (e.g., ../../deps/uthash/src/uthash.h)
+Cflags: -I${includedir} -I${includedir}/ascii-chat
