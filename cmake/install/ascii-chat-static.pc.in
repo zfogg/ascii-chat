@@ -22,13 +22,13 @@ URL: @PROJECT_HOMEPAGE_URL@
 
 # No Requires - all dependencies are baked into the fat static archive
 
-# Fat static library (includes libsodium, zstd, portaudio, opus, mimalloc, webrtc)
-Libs: -L${libdir} -lasciichat
+# Fat static library - use full path to .a to avoid linking dylib
+# Includes: libsodium, zstd, portaudio, opus, mimalloc, webrtc
+Libs: ${libdir}/libasciichat.a
 
-# Platform system libraries only
-# macOS: Add frameworks via LDFLAGS or in your build system
-# Linux: pthread, math, dl, stdc++
-Libs.private: -lm -lpthread -ldl -lstdc++
+# Platform system libraries (required for static linking)
+# These cannot be statically linked and must be provided by the system
+Libs.private: -lm -lpthread
 
 # Include directories
 Cflags: -I${includedir} -I${includedir}/ascii-chat
