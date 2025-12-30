@@ -563,7 +563,23 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
 
     // Check known_hosts for this server (if we have server IP and port)
-    if (ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
+    // Check if known_hosts verification should be skipped
+    bool skip_known_hosts = false;
+    const char *env_skip = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+    if (env_skip && strcmp(env_skip, STR_ONE) == 0) {
+      log_warn(
+          "Skipping known_hosts checking for authenticated connection (ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1)");
+      skip_known_hosts = true;
+    }
+#ifndef NDEBUG
+    // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
+    else if (platform_getenv("CLAUDECODE")) {
+      log_warn("Skipping known_hosts checking (CLAUDECODE set in debug build)");
+      skip_known_hosts = true;
+    }
+#endif
+
+    if (!skip_known_hosts && ctx->server_ip[0] != '\0' && ctx->server_port > 0) {
       asciichat_error_t known_host_result = check_known_host(ctx->server_ip, ctx->server_port, server_identity_key);
       if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
         // Key mismatch - MITM attack detected! Prompt user for confirmation
@@ -752,10 +768,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
   // Set peer's public key (EPHEMERAL X25519) - this also derives the shared secret
   crypto_result_t crypto_result = crypto_set_peer_public_key(&ctx->crypto_ctx, server_ephemeral_key);
-  fprintf(stderr, "[CLEANUP] About to free payload=%p, payload_len=%zu\n", (void *)payload, payload_len);
   if (payload) {
     buffer_pool_free(NULL, payload, payload_len);
-    fprintf(stderr, "[CLEANUP] Payload freed successfully\n");
   }
   if (crypto_result != CRYPTO_OK) {
     SAFE_FREE(server_ephemeral_key);
@@ -1256,7 +1270,18 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
 
   // Parse auth requirement flags
   uint8_t auth_flags = payload[0];
-  const uint8_t *nonce = payload + 1;
+
+  // Copy nonce to local buffer before freeing payload
+  // Use auth_challenge_size since that's what the server sent
+  uint8_t nonce_buffer[256]; // Maximum nonce size
+  if (ctx->crypto_ctx.auth_challenge_size > sizeof(nonce_buffer)) {
+    if (payload) {
+      buffer_pool_free(NULL, payload, payload_len);
+    }
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Auth challenge size too large: %u", ctx->crypto_ctx.auth_challenge_size);
+  }
+  memcpy(nonce_buffer, payload + 1, ctx->crypto_ctx.auth_challenge_size);
+  const uint8_t *nonce = nonce_buffer;
 
   log_debug("Server auth requirements: password=%s, client_key=%s",
             (auth_flags & AUTH_REQUIRE_PASSWORD) ? "required" : "no",
