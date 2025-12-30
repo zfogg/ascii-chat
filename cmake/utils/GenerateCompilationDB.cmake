@@ -84,6 +84,14 @@ function(generate_compilation_database)
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
+    # Pass dependency cache directory so temp build finds cached dependencies (mimalloc, etc.)
+    if(ASCIICHAT_DEPS_CACHE_DIR)
+        list(APPEND _cmake_configure_args "-DASCIICHAT_DEPS_CACHE_DIR=${ASCIICHAT_DEPS_CACHE_DIR}")
+    endif()
+    if(ASCIICHAT_DEPS_CACHE_ROOT)
+        list(APPEND _cmake_configure_args "-DASCIICHAT_DEPS_CACHE_ROOT=${ASCIICHAT_DEPS_CACHE_ROOT}")
+    endif()
+
     # On macOS, detect and pass SDK path for proper system header resolution
     # The defer tool (ascii-instr-defer) uses libclang which needs the SDK path
     # to find system headers like stdbool.h

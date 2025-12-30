@@ -1042,7 +1042,11 @@ int main(int argc, const char **argv) {
       // Check if the path starts with the root
       std::string pathStr = normalizedPath.string();
       std::string rootStr = normalizedRoot.string();
-      return pathStr.find(rootStr) == 0;
+      if (pathStr.find(rootStr) != 0) return false;
+      // Exclude .deps-cache directory - these are cached dependencies that use
+      // angled includes (<header.h>) and need -isystem, not -iquote
+      if (pathStr.find("/.deps-cache/") != std::string::npos) return false;
+      return true;
     };
     tooling::CommandLineArguments result;
 
