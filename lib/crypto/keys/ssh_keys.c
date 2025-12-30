@@ -1145,7 +1145,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
 }
 
 asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message, size_t message_len,
-                                           const uint8_t signature[64]) {
+                                           const uint8_t signature[64], const char *gpg_key_id) {
   if (!public_key || !message || !signature) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: public_key=%p, message=%p, signature=%p", public_key,
                      message, signature);
@@ -1157,12 +1157,16 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const u
   }
 
   // If standard verification fails, try GPG fallback (for GPG-signed messages)
-  // Check if we're in a test environment with GPG keys
-  const char *test_key_id = platform_getenv("TEST_GPG_KEY_ID");
-  if (test_key_id && strlen(test_key_id) == 16) {
+  // Use provided gpg_key_id if available, otherwise check environment variable (for tests)
+  const char *key_id_to_use = gpg_key_id;
+  if (!key_id_to_use || strlen(key_id_to_use) != 16) {
+    key_id_to_use = platform_getenv("TEST_GPG_KEY_ID");
+  }
+
+  if (key_id_to_use && strlen(key_id_to_use) == 16) {
     fprintf(stderr, "[VERIFY DEBUG] Standard Ed25519 verification failed, trying GPG fallback with key %s\n",
-            test_key_id);
-    int gpg_result = gpg_verify_detached_ed25519(test_key_id, message, message_len, signature);
+            key_id_to_use);
+    int gpg_result = gpg_verify_detached_ed25519(key_id_to_use, message, message_len, signature);
     if (gpg_result == 0) {
       fprintf(stderr, "[VERIFY DEBUG] GPG verification succeeded!\n");
       return ASCIICHAT_OK;
