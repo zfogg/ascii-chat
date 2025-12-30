@@ -121,6 +121,7 @@ jobs:
           vcpkg-triplet: ${{ matrix.vcpkg-triplet }}
           vcpkg-static-packages: ${{ matrix.vcpkg-static-packages }}
           vcpkg-static-triplet: ${{ matrix.vcpkg-static-triplet }}
+          windows-libs-mode: static
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure (Unix)
