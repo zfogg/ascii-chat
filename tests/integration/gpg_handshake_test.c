@@ -27,8 +27,15 @@
 // Use verbose logging for debugging
 TEST_SUITE_WITH_QUIET_LOGGING(gpg_handshake);
 
-// Test GPG key ID (must exist in keyring)
-#define TEST_GPG_KEY_ID "7FE90A79F2E80ED3"
+// Test GPG key ID - obtained from environment variable set by setup script
+// If not set, tests will be skipped
+static const char *get_test_gpg_key_id(void) {
+    const char *key_id = getenv("TEST_GPG_KEY_ID");
+    if (!key_id || strlen(key_id) != 16) {
+        return NULL;
+    }
+    return key_id;
+}
 
 // Network state for testing
 typedef struct {
@@ -192,6 +199,11 @@ static void *client_handshake_thread(void *arg) {
 // =============================================================================
 
 Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
+  const char *test_key_id = get_test_gpg_key_id();
+  if (!test_key_id) {
+    cr_skip_test("TEST_GPG_KEY_ID environment variable not set");
+  }
+
   setup_gpg_test_network();
 
   // Initialize contexts
@@ -207,7 +219,7 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
 
   // Configure server with GPG key
   char server_key_input[128];
-  snprintf(server_key_input, sizeof(server_key_input), "gpg:%s", TEST_GPG_KEY_ID);
+  snprintf(server_key_input, sizeof(server_key_input), "gpg:%s", test_key_id);
 
   asciichat_error_t server_key_result = parse_private_key(server_key_input, &server_ctx.server_private_key);
   cr_assert_eq(server_key_result, ASCIICHAT_OK, "Failed to parse server GPG key: %d", server_key_result);
@@ -216,7 +228,7 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
 
   // Configure client with GPG key
   char client_key_input[128];
-  snprintf(client_key_input, sizeof(client_key_input), "gpg:%s", TEST_GPG_KEY_ID);
+  snprintf(client_key_input, sizeof(client_key_input), "gpg:%s", test_key_id);
 
   asciichat_error_t client_key_result = parse_private_key(client_key_input, &client_ctx.client_private_key);
   cr_assert_eq(client_key_result, ASCIICHAT_OK, "Failed to parse client GPG key: %d", client_key_result);
@@ -270,9 +282,14 @@ Test(gpg_handshake, complete_gpg_handshake_with_authentication) {
 // =============================================================================
 
 Test(gpg_handshake, gpg_key_parsing_and_verification) {
+  const char *test_key_id = get_test_gpg_key_id();
+  if (!test_key_id) {
+    cr_skip_test("TEST_GPG_KEY_ID environment variable not set");
+  }
+
   // Parse GPG public key
   char pub_key_input[128];
-  snprintf(pub_key_input, sizeof(pub_key_input), "gpg:%s", TEST_GPG_KEY_ID);
+  snprintf(pub_key_input, sizeof(pub_key_input), "gpg:%s", test_key_id);
 
   public_key_t public_key;
   memset(&public_key, 0, sizeof(public_key));
@@ -292,7 +309,7 @@ Test(gpg_handshake, gpg_key_parsing_and_verification) {
 
   // Parse GPG private key
   char priv_key_input[128];
-  snprintf(priv_key_input, sizeof(priv_key_input), "gpg:%s", TEST_GPG_KEY_ID);
+  snprintf(priv_key_input, sizeof(priv_key_input), "gpg:%s", test_key_id);
 
   private_key_t private_key;
   memset(&private_key, 0, sizeof(private_key));
