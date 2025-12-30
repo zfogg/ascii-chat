@@ -568,6 +568,9 @@ jobs:
           os: windows
           vcpkg-packages: "zstd portaudio libsodium opus"
           vcpkg-static-packages: "zstd portaudio libsodium opus mimalloc"
+          vcpkg-triplet: "x64-windows"
+          vcpkg-static-triplet: "x64-windows-static"
+          windows-libs-mode: static
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install WiX toolset

@@ -28,6 +28,10 @@ inputs:
     description: 'GitHub token for downloading pre-built tools from releases (Windows only)'
     required: false
     default: ''
+  windows-libs-mode:
+    description: 'Windows library linking mode: "static" (Release builds), "dynamic" (Debug builds), or "both"'
+    required: false
+    default: 'both'
 
 outputs:
   defer-tool-path:
@@ -781,8 +785,21 @@ runs:
           }
         }
 
-        Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-packages }}' -Triplet '${{ inputs.vcpkg-triplet }}'
-        Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-static-packages }}' -Triplet '${{ inputs.vcpkg-static-triplet }}'
+        $libsMode = '${{ inputs.windows-libs-mode }}'
+        Write-Host "Windows libs mode: $libsMode"
+
+        # Install packages based on windows-libs-mode
+        # - "dynamic": Only install dynamic (non-static) packages
+        # - "static": Only install static packages
+        # - "both": Install both dynamic and static packages
+        if ($libsMode -eq 'dynamic' -or $libsMode -eq 'both') {
+          Write-Host "Installing dynamic vcpkg packages..."
+          Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-packages }}' -Triplet '${{ inputs.vcpkg-triplet }}'
+        }
+        if ($libsMode -eq 'static' -or $libsMode -eq 'both') {
+          Write-Host "Installing static vcpkg packages..."
+          Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-static-packages }}' -Triplet '${{ inputs.vcpkg-static-triplet }}'
+        }
 
 
     # =========================================================================
