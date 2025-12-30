@@ -68,7 +68,12 @@
  * @date August 2025
  */
 
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+#else
 #include <stdatomic.h>
+#endif
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
