@@ -524,7 +524,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
   static int bypass_aec3 = -1;
   if (bypass_aec3 == -1) {
     const char *env = platform_getenv("BYPASS_AEC3");
-    bypass_aec3 = (env && (platform_strcasecmp(env, "1") == 0 || platform_strcasecmp(env, "true") == 0)) ? 1 : 0;
+    bypass_aec3 = (env && (strcmp(env, "1") == 0 || strcmp(env, "true") == 0)) ? 1 : 0;
     if (bypass_aec3) {
       log_warn("AEC3 BYPASSED (full-duplex mode) via BYPASS_AEC3=1");
     }
