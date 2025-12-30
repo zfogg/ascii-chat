@@ -512,51 +512,51 @@ message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - added -w to suppress all wa
 # Patch 16: Abseil random library - Fix ARM64 processor detection
 # =============================================================================
 # Abseil's AbseilConfigureCopts.cmake sets ABSL_RANDOM_RANDEN_COPTS based on
-# CMAKE_SYSTEM_PROCESSOR. It checks for "ARM" to detect ARM architecture.
-# However, Windows ARM64 reports CMAKE_SYSTEM_PROCESSOR as "ARM64" not "ARM",
-# so the detection fails and falls through to x86 flags (-maes, -msse4.1).
+# CMAKE_SYSTEM_PROCESSOR using STREQUAL for exact match.
+#
+# Original code:
+#   if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64" OR ... STREQUAL "AMD64")
+#     set(ABSL_RANDOM_RANDEN_COPTS "${ABSL_RANDOM_HWAES_X64_FLAGS}")  # -maes -msse4.1
+#   elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm")
+#     set(ABSL_RANDOM_RANDEN_COPTS "${ABSL_RANDOM_HWAES_ARM64_FLAGS}")
+#
+# Problem: Windows ARM64 reports CMAKE_SYSTEM_PROCESSOR as "ARM64", not "arm".
+# This causes Abseil to fall through to the else() block, which sets empty copts,
+# BUT the x64 check happens first and x64 flags get added somehow.
 #
 # Error: "unsupported option '-maes' for target 'aarch64-pc-windows-msvc'"
 #
-# Fix: Modify the processor check pattern from "ARM" to "ARM|ARM64|aarch64"
-# to recognize all ARM variants including Windows ARM64.
+# Fix: Add explicit check for "ARM64" and "aarch64" before the x64 check.
 
 set(ABSEIL_COPTS_FILE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/copts/AbseilConfigureCopts.cmake")
 if(EXISTS "${ABSEIL_COPTS_FILE}")
     file(READ "${ABSEIL_COPTS_FILE}" ABSEIL_COPTS_CONTENT)
 
-    # Check if file has the processor detection pattern
-    if(ABSEIL_COPTS_CONTENT MATCHES "CMAKE_SYSTEM_PROCESSOR MATCHES")
-        # Replace processor detection: "ARM" -> "ARM|ARM64|aarch64"
-        # This ensures Windows ARM64 (reports "ARM64") is recognized as ARM architecture
-        # Original pattern: if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^ARM")
-        # The ^ anchor means "starts with ARM" but ARM64 starts with ARM so that should work...
-        # Let's check if there's a more specific pattern being matched
-
-        # Pattern 1: Fix any pattern that matches "arm" case-insensitively but misses "ARM64"
-        # Some Abseil versions use exact match or different patterns
-        string(REGEX REPLACE
-            "(CMAKE_SYSTEM_PROCESSOR[^)]*MATCHES[^)]*\")(ARM|arm)(\")"
-            "\\1ARM|ARM64|aarch64\\3"
-            ABSEIL_COPTS_CONTENT
-            "${ABSEIL_COPTS_CONTENT}"
-        )
-
-        # Pattern 2: Add explicit ARM64 handling at the beginning of the processor detection
-        # Insert a check for ARM64 before other processor checks
+    # Check if file has the processor detection pattern (uses STREQUAL, not MATCHES)
+    if(ABSEIL_COPTS_CONTENT MATCHES "CMAKE_SYSTEM_PROCESSOR.*STREQUAL.*x86_64")
+        # Check if already patched
         if(NOT ABSEIL_COPTS_CONTENT MATCHES "ARM64")
-            string(REGEX REPLACE
-                "(if\\(\\$\\{CMAKE_SYSTEM_PROCESSOR\\} MATCHES \")(x86_64|AMD64)"
-                "# Added by ascii-chat: Recognize Windows ARM64\nif(\${CMAKE_SYSTEM_PROCESSOR} MATCHES \"ARM64|aarch64\")\n  set(ABSL_RANDOM_RANDEN_COPTS \"\${ABSL_RANDOM_HWAES_ARM64_FLAGS}\")\nelse\\1\\2"
+            # Add ARM64/aarch64 check before the x86_64 check
+            # Replace: if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64"
+            # With: if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "ARM64|aarch64")
+            #         set(ABSL_RANDOM_RANDEN_COPTS "${ABSL_RANDOM_HWAES_ARM64_FLAGS}")
+            #       elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64"
+            string(REPLACE
+                "if(\"\${CMAKE_SYSTEM_PROCESSOR}\" STREQUAL \"x86_64\""
+                "# Added by ascii-chat: Recognize Windows ARM64 (reports ARM64) and Linux ARM64 (reports aarch64)
+if(\"\${CMAKE_SYSTEM_PROCESSOR}\" MATCHES \"ARM64|aarch64\")
+  set(ABSL_RANDOM_RANDEN_COPTS \"\${ABSL_RANDOM_HWAES_ARM64_FLAGS}\")
+elseif(\"\${CMAKE_SYSTEM_PROCESSOR}\" STREQUAL \"x86_64\""
                 ABSEIL_COPTS_CONTENT
                 "${ABSEIL_COPTS_CONTENT}"
             )
+            file(WRITE "${ABSEIL_COPTS_FILE}" "${ABSEIL_COPTS_CONTENT}")
+            message(STATUS "Patched Abseil AbseilConfigureCopts.cmake - added ARM64/aarch64 processor detection")
+        else()
+            message(STATUS "Abseil AbseilConfigureCopts.cmake already has ARM64 detection")
         endif()
-
-        file(WRITE "${ABSEIL_COPTS_FILE}" "${ABSEIL_COPTS_CONTENT}")
-        message(STATUS "Patched Abseil AbseilConfigureCopts.cmake - added ARM64 processor detection")
     else()
-        message(STATUS "Abseil AbseilConfigureCopts.cmake - processor detection pattern not found, may already be patched or different version")
+        message(STATUS "Abseil AbseilConfigureCopts.cmake - processor detection pattern not found (expected STREQUAL x86_64)")
     endif()
 else()
     message(STATUS "Abseil AbseilConfigureCopts.cmake not found at ${ABSEIL_COPTS_FILE}")
