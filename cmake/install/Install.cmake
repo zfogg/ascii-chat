@@ -266,7 +266,7 @@ install(FILES "${CMAKE_SOURCE_DIR}/deps/uthash/src/uthash.h"
 )
 
 # Install pkg-config file (only when shared library is built)
-if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
     # Set mimalloc requirement conditionally
     if(USE_MIMALLOC)
         set(MIMALLOC_REQUIREMENT "mimalloc, ")
