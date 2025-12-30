@@ -7,7 +7,15 @@
  */
 #pragma once
 
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+using std::atomic_bool;
+using std::atomic_int;
+using std::atomic_uint;
+#else
 #include <stdatomic.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>

@@ -24,7 +24,17 @@
 #pragma once
 
 #include <stdarg.h>
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+// When compiling C++ with MSVC runtime headers, the atomic types are in std:: namespace.
+// We bring them into global namespace for compatibility with C-style struct definitions.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+using std::atomic_compare_exchange_weak_explicit;
+using std::atomic_load_explicit;
+using std::memory_order_relaxed;
+#else
 #include <stdatomic.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
