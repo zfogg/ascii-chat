@@ -37,7 +37,15 @@
  * @date September 2025
  */
 
+// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
+#if defined(__cplusplus) && defined(_WIN32)
+#include <atomic>
+using std::atomic_bool;
+using std::atomic_uint_fast32_t;
+using std::atomic_uint_fast64_t;
+#else
 #include <stdatomic.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
