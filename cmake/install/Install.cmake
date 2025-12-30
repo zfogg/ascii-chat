@@ -25,9 +25,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND PLATFORM_LINUX AND NOT USE_MUSL)
     message(WARNING "  Use: ${BoldCyan}cmake -B build -DUSE_MUSL=ON -DCMAKE_BUILD_TYPE=Release${ColorReset}")
 endif()
 
-# Install binary
+# Install binary (separate export from library to allow library-only installs)
 install(TARGETS ascii-chat
-    EXPORT ascii-chat-targets
     RUNTIME DESTINATION bin
     COMPONENT Runtime
 )
@@ -76,7 +75,10 @@ foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib
-            INCLUDES DESTINATION include/ascii-chat
+            # Two include dirs needed:
+            # - include for <ascii-chat/...> style includes
+            # - include/ascii-chat for internal relative includes
+            INCLUDES DESTINATION include include/ascii-chat
             COMPONENT Development
         )
     endif()
@@ -297,7 +299,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
         "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat-config.cmake.in"
         "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
         INSTALL_DESTINATION lib/cmake/ascii-chat
-        NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
 
     # Generate the version file for the config file
