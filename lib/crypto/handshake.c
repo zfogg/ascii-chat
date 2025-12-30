@@ -146,20 +146,23 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
   case PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP:
     // Client can send either:
     // 1. Simple format: kex_public_key_size (when server has no identity key)
-    // 2. Authenticated format: kex_public_key_size + client_auth_key_size + client_sig_size
+    // 2. Authenticated format: kex_public_key_size + client_auth_key_size + client_sig_size + [gpg_key_id_len:1] +
+    // [gpg_key_id:0-16]
     {
       size_t simple_size = ctx->crypto_ctx.public_key_size;
       // For authenticated format, use Ed25519 sizes since client has Ed25519 key
       size_t ed25519_auth_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
       size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;   // Ed25519 signature is always 64 bytes
-      size_t authenticated_size = ctx->crypto_ctx.public_key_size + ed25519_auth_size + ed25519_sig_size;
+      size_t authenticated_min_size = ctx->crypto_ctx.public_key_size + ed25519_auth_size + ed25519_sig_size;
+      size_t authenticated_max_size = authenticated_min_size + 1 + 16; // +1 for length, +16 for max GPG key ID
 
-      if (packet_size != simple_size && packet_size != authenticated_size) {
+      if (packet_size != simple_size &&
+          (packet_size < authenticated_min_size || packet_size > authenticated_max_size)) {
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-                         "Invalid KEY_EXCHANGE_RESP size: %zu (expected %zu for simple or %zu for authenticated: "
-                         "kex=%u + auth=%u + sig=%u)",
-                         packet_size, simple_size, authenticated_size, ctx->crypto_ctx.public_key_size,
-                         ed25519_auth_size, ed25519_sig_size);
+                         "Invalid KEY_EXCHANGE_RESP size: %zu (expected %zu for simple or %zu-%zu for authenticated: "
+                         "kex=%u + auth=%u + sig=%u + optional GPG key ID)",
+                         packet_size, simple_size, authenticated_min_size, authenticated_max_size,
+                         ctx->crypto_ctx.public_key_size, ed25519_auth_size, ed25519_sig_size);
       }
     }
     break;
@@ -176,14 +179,16 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
     break;
 
   case PACKET_TYPE_CRYPTO_AUTH_RESPONSE:
-    // Client sends: hmac_size + auth_challenge_size bytes client_nonce
+    // Client sends: hmac_size + auth_challenge_size bytes client_nonce + [gpg_key_id_len:1] + [gpg_key_id:0-16]
     {
-      size_t expected_size = ctx->crypto_ctx.hmac_size + ctx->crypto_ctx.auth_challenge_size;
-      if (packet_size != expected_size) {
+      size_t min_size = ctx->crypto_ctx.hmac_size + ctx->crypto_ctx.auth_challenge_size;
+      size_t max_size = min_size + 1 + 16; // +1 for length, +16 for max GPG key ID
+      if (packet_size < min_size || packet_size > max_size) {
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL,
-                         "Invalid AUTH_RESPONSE size: %zu (expected %zu: hmac=%u + "
-                         "nonce=%u)",
-                         packet_size, expected_size, ctx->crypto_ctx.hmac_size, ctx->crypto_ctx.auth_challenge_size);
+                         "Invalid AUTH_RESPONSE size: %zu (expected %zu-%zu: hmac=%u + "
+                         "nonce=%u + optional GPG key ID)",
+                         packet_size, min_size, max_size, ctx->crypto_ctx.hmac_size,
+                         ctx->crypto_ctx.auth_challenge_size);
       }
     }
     break;
@@ -801,35 +806,64 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
   if (server_requires_auth) {
     // Send authenticated packet:
-    // [ephemeral:kex_size][identity:auth_size][signature:sig_size]
+    // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
     // Use Ed25519 sizes since client has Ed25519 key
     size_t ed25519_pubkey_size = ED25519_PUBLIC_KEY_SIZE; // Ed25519 public key is always 32 bytes
     size_t ed25519_sig_size = ED25519_SIGNATURE_SIZE;     // Ed25519 signature is always 64 bytes
     size_t response_size = ctx->crypto_ctx.public_key_size + ed25519_pubkey_size + ed25519_sig_size;
 
+    // Check if client has a GPG key ID to send
+    uint8_t gpg_key_id_len = 0;
+    if (ctx->client_gpg_key_id[0] != '\0') {
+      gpg_key_id_len = (uint8_t)strlen(ctx->client_gpg_key_id);
+      if (gpg_key_id_len > 16) {
+        gpg_key_id_len = 16; // Truncate to max length
+      }
+      response_size += 1 + gpg_key_id_len; // 1 byte for length + key ID
+    } else {
+      response_size += 1; // Just the length byte (0)
+    }
+
     uint8_t *key_response = SAFE_MALLOC(response_size, uint8_t *);
-    memcpy(key_response, ctx->crypto_ctx.public_key,
+    size_t offset = 0;
+
+    // Copy ephemeral key
+    memcpy(key_response + offset, ctx->crypto_ctx.public_key,
            ctx->crypto_ctx.public_key_size); // X25519 ephemeral for encryption
+    offset += ctx->crypto_ctx.public_key_size;
 
     if (client_has_identity_key) {
       // Client has identity key - send it with signature
-      memcpy(key_response + ctx->crypto_ctx.public_key_size, ctx->client_private_key.public_key,
-             ed25519_pubkey_size); // Ed25519 identity
+      memcpy(key_response + offset, ctx->client_private_key.public_key, ed25519_pubkey_size); // Ed25519 identity
+      offset += ed25519_pubkey_size;
 
       // Sign ephemeral key with client identity key
       if (ed25519_sign_message(&ctx->client_private_key, ctx->crypto_ctx.public_key, ctx->crypto_ctx.public_key_size,
-                               key_response + ctx->crypto_ctx.public_key_size + ed25519_pubkey_size) != 0) {
+                               key_response + offset) != 0) {
         SAFE_FREE(key_response);
         SAFE_FREE(server_ephemeral_key);
         SAFE_FREE(server_identity_key);
         SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to sign client ephemeral key");
       }
+      offset += ed25519_sig_size;
     } else {
       // Client has no identity key - send null identity and null signature
-      memset(key_response + ctx->crypto_ctx.public_key_size, 0, ed25519_pubkey_size); // Null identity
-      memset(key_response + ctx->crypto_ctx.public_key_size + ed25519_pubkey_size, 0,
-             ed25519_sig_size); // Null signature
+      memset(key_response + offset, 0, ed25519_pubkey_size); // Null identity
+      offset += ed25519_pubkey_size;
+      memset(key_response + offset, 0, ed25519_sig_size); // Null signature
+      offset += ed25519_sig_size;
+    }
+
+    // Append GPG key ID length
+    key_response[offset] = gpg_key_id_len;
+    offset += 1;
+
+    // Append GPG key ID if present
+    if (gpg_key_id_len > 0) {
+      memcpy(key_response + offset, ctx->client_gpg_key_id, gpg_key_id_len);
+      offset += gpg_key_id_len;
+      log_debug("Including client GPG key ID in KEY_EXCHANGE_RESPONSE: %.*s", gpg_key_id_len, ctx->client_gpg_key_id);
     }
 
     result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP, key_response, response_size);
@@ -949,15 +983,30 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
   }
 
   // Handle both authenticated and non-authenticated responses
-  if (payload_len == authenticated_size) {
-    // Authenticated format:
-    // [ephemeral:kex_size][identity:auth_size][signature:sig_size]
+  // authenticated_size is now a minimum - packet may be larger with GPG key ID
+  if (payload_len >= authenticated_size) {
+    // Authenticated format (may have optional GPG key ID):
+    // [ephemeral:kex_size][identity:auth_size][signature:sig_size][gpg_key_id_len:1][gpg_key_id:0-16]
     memcpy(client_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
     memcpy(client_identity_key, payload + ctx->crypto_ctx.public_key_size, ED25519_PUBLIC_KEY_SIZE);
     memcpy(client_signature, payload + ctx->crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE,
            ED25519_SIGNATURE_SIZE);
     client_sent_identity = true;
     ctx->client_sent_identity = true;
+
+    // Extract GPG key ID if present
+    const char *client_gpg_key_id = NULL;
+    char gpg_key_id_buffer[17] = {0};
+    size_t gpg_offset = ctx->crypto_ctx.public_key_size + ED25519_PUBLIC_KEY_SIZE + ED25519_SIGNATURE_SIZE;
+    if (payload_len > gpg_offset) {
+      uint8_t gpg_key_id_len = payload[gpg_offset];
+      if (gpg_key_id_len > 0 && gpg_key_id_len <= 16 && payload_len >= gpg_offset + 1 + gpg_key_id_len) {
+        memcpy(gpg_key_id_buffer, payload + gpg_offset + 1, gpg_key_id_len);
+        gpg_key_id_buffer[gpg_key_id_len] = '\0';
+        client_gpg_key_id = gpg_key_id_buffer;
+        log_debug("Extracted client GPG key ID from KEY_EXCHANGE_RESPONSE: %s", client_gpg_key_id);
+      }
+    }
 
     // Check if client sent a null identity key (all zeros)
     bool client_has_null_identity = true;
@@ -977,10 +1026,9 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     } else {
       // Client has a real identity key - verify signature
       log_debug("Verifying client's signature");
-      // Server-side: we don't have client's GPG key ID unless there's a whitelist
-      // For now, pass NULL - GPG fallback will use TEST_GPG_KEY_ID env var for tests
+      // Pass client's GPG key ID if available
       if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, ctx->crypto_ctx.public_key_size,
-                                   client_signature, NULL) != 0) {
+                                   client_signature, client_gpg_key_id) != 0) {
         if (payload) {
           buffer_pool_free(NULL, payload, payload_len);
         }
@@ -1205,16 +1253,49 @@ static asciichat_error_t send_key_auth_response(crypto_handshake_context_t *ctx,
                      crypto_result_to_string(crypto_result));
   }
 
-  // Combine signature + client nonce (signature_size + auth_challenge_size bytes)
+  // Combine signature + client nonce + optional GPG key ID
+  // Packet format: [signature:64][nonce:32][gpg_key_id_len:1][gpg_key_id:0-16]
   size_t auth_packet_size = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
-  uint8_t auth_packet[ED25519_SIGNATURE_SIZE + HMAC_SHA256_SIZE]; // Maximum size buffer (signature + challenge)
-  memcpy(auth_packet, signature, ctx->crypto_ctx.signature_size);
-  memcpy(auth_packet + ctx->crypto_ctx.signature_size, ctx->client_challenge_nonce,
-         ctx->crypto_ctx.auth_challenge_size);
+
+  // Check if client has a GPG key ID to send
+  uint8_t gpg_key_id_len = 0;
+  if (ctx->client_gpg_key_id[0] != '\0') {
+    gpg_key_id_len = (uint8_t)strlen(ctx->client_gpg_key_id);
+    if (gpg_key_id_len > 16) {
+      gpg_key_id_len = 16; // Truncate to max length
+    }
+    auth_packet_size += 1 + gpg_key_id_len; // 1 byte for length + key ID
+  } else {
+    auth_packet_size += 1; // Just the length byte (0)
+  }
+
+  uint8_t auth_packet[ED25519_SIGNATURE_SIZE + HMAC_SHA256_SIZE +
+                      17]; // Maximum size buffer (signature + challenge + len + key_id)
+  size_t offset = 0;
+
+  // Copy signature
+  memcpy(auth_packet + offset, signature, ctx->crypto_ctx.signature_size);
+  offset += ctx->crypto_ctx.signature_size;
+
+  // Copy client nonce
+  memcpy(auth_packet + offset, ctx->client_challenge_nonce, ctx->crypto_ctx.auth_challenge_size);
+  offset += ctx->crypto_ctx.auth_challenge_size;
+
+  // Copy GPG key ID length
+  auth_packet[offset] = gpg_key_id_len;
+  offset += 1;
+
+  // Copy GPG key ID if present
+  if (gpg_key_id_len > 0) {
+    memcpy(auth_packet + offset, ctx->client_gpg_key_id, gpg_key_id_len);
+    offset += gpg_key_id_len;
+    log_debug("Including client GPG key ID in AUTH_RESPONSE: %.*s", gpg_key_id_len, ctx->client_gpg_key_id);
+  }
+
   sodium_memzero(signature, sizeof(signature));
 
   log_debug("Sending AUTH_RESPONSE packet with Ed25519 signature + client "
-            "nonce (%zu bytes) - %s",
+            "nonce + GPG key ID (%zu bytes) - %s",
             auth_packet_size, auth_context);
   int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, auth_packet, auth_packet_size);
   if (result != 0) {
@@ -1614,17 +1695,34 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
     memcpy(ctx->client_challenge_nonce, payload + ctx->crypto_ctx.hmac_size, ctx->crypto_ctx.auth_challenge_size);
     log_info("Password authentication successful");
   } else {
-    // Ed25519 signature auth (payload is signature(signature_size) + client_nonce(auth_challenge_size) bytes)
-    size_t expected_signature_size = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
+    // Ed25519 signature auth (payload format: signature + client_nonce + gpg_key_id_len + gpg_key_id)
+    size_t expected_min_signature_size =
+        ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size + 1; // +1 for gpg_key_id_len byte
     size_t expected_password_size = ctx->crypto_ctx.hmac_size + ctx->crypto_ctx.auth_challenge_size;
     if (!payload) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Payload is NULL in signature authentication");
       return ERROR_CRYPTO;
     }
-    if (payload_len == expected_signature_size) {
-      // Signature + client nonce - VERIFY the signature on the challenge nonce
+    if (payload_len >= expected_min_signature_size) {
+      // Signature + client nonce + optional GPG key ID - VERIFY the signature on the challenge nonce
       const uint8_t *signature = payload;
       const uint8_t *client_nonce = payload + ctx->crypto_ctx.signature_size;
+
+      // Extract GPG key ID if present
+      size_t gpg_offset = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
+      uint8_t gpg_key_id_len = payload[gpg_offset];
+      const char *client_gpg_key_id = NULL;
+      char gpg_key_id_buffer[17] = {0};
+
+      if (gpg_key_id_len > 0 && gpg_key_id_len <= 16) {
+        // Validate packet has enough bytes for GPG key ID
+        if (payload_len >= gpg_offset + 1 + gpg_key_id_len) {
+          memcpy(gpg_key_id_buffer, payload + gpg_offset + 1, gpg_key_id_len);
+          gpg_key_id_buffer[gpg_key_id_len] = '\0';
+          client_gpg_key_id = gpg_key_id_buffer;
+          log_debug("Extracted client GPG key ID from AUTH_RESPONSE: %s", client_gpg_key_id);
+        }
+      }
 
       // Actually verify the Ed25519/GPG signature on the challenge nonce
       // This was missing, allowing authentication bypass
@@ -1635,10 +1733,11 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
         if (ctx->client_ed25519_key.type == KEY_TYPE_GPG) {
           log_debug("Verifying GPG signature on challenge nonce using gpg --verify binary");
           // GPG keys: use gpg_verify_signature_with_binary() workaround for Format 2 signatures
+          // Pass client_gpg_key_id if available
           verify_result =
               gpg_verify_signature_with_binary(signature, ctx->crypto_ctx.signature_size, ctx->crypto_ctx.auth_nonce,
                                                ctx->crypto_ctx.auth_challenge_size,
-                                               NULL // expected_key_id - optional for now
+                                               client_gpg_key_id // Use client's GPG key ID from AUTH_RESPONSE
               );
         } else {
           log_debug("Verifying Ed25519 signature on challenge nonce using libsodium");

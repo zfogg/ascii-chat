@@ -259,6 +259,21 @@ int client_crypto_init(void) {
     SAFE_STRNCPY(g_crypto_ctx.client_public_key.comment, private_key.key_comment,
                  sizeof(g_crypto_ctx.client_public_key.comment) - 1);
 
+    // Extract GPG key ID if this is a GPG key (format: "gpg:KEYID")
+    if (strncmp(opt_encrypt_key, "gpg:", 4) == 0) {
+      const char *key_id = opt_encrypt_key + 4;
+      if (strlen(key_id) == 16) {
+        SAFE_STRNCPY(g_crypto_ctx.client_gpg_key_id, key_id, sizeof(g_crypto_ctx.client_gpg_key_id));
+        log_debug("CLIENT_CRYPTO_INIT: Extracted client GPG key ID: %s", g_crypto_ctx.client_gpg_key_id);
+      } else {
+        log_warn("CLIENT_CRYPTO_INIT: Invalid GPG key ID length: %zu (expected 16)", strlen(key_id));
+        g_crypto_ctx.client_gpg_key_id[0] = '\0';
+      }
+    } else {
+      // Not a GPG key, clear the field
+      g_crypto_ctx.client_gpg_key_id[0] = '\0';
+    }
+
     // SSH key is already configured in the handshake context above
     // No additional setup needed - SSH keys are used only for authentication
 
