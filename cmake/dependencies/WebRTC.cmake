@@ -213,7 +213,12 @@ if(NOT webrtc_aec3_POPULATED)
                 list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_SSE2=OFF")
                 list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_SSSE3=OFF")
                 list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_AVX2=OFF")
-                message(STATUS "WebRTC Windows ARM64 build: disabling x86 SIMD, NEON still enabled")
+                # Explicitly clear Abseil's HWAES x64 flags to prevent -maes/-msse4.1
+                # Abseil's AbseilConfigureCopts.cmake checks CMAKE_SYSTEM_PROCESSOR for "ARM"
+                # but Windows ARM64 reports "ARM64", causing it to fall through to x64 flags
+                list(APPEND WEBRTC_CMAKE_ARGS "-DABSL_RANDOM_HWAES_X64_FLAGS=")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DABSL_RANDOM_HWAES_MSVC_X64_FLAGS=")
+                message(STATUS "WebRTC Windows ARM64 build: disabling x86 SIMD and Abseil HWAES x64 flags, NEON still enabled")
             endif()
 
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")

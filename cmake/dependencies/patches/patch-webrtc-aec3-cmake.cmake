@@ -509,32 +509,57 @@ file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_WARNINGS}
 message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - added -w to suppress all warnings")
 
 # =============================================================================
-# Patch 16: Abseil random library - Disable x86 SIMD flags on ARM64
+# Patch 16: Abseil random library - Fix ARM64 processor detection
 # =============================================================================
-# Abseil's absl_random_internal_randen_hwaes_impl target adds -maes and -msse4.1
-# compiler flags for hardware AES acceleration. These x86-specific flags fail
-# on ARM64 Windows with error: "unsupported option '-maes' for target 'aarch64-pc-windows-msvc'"
+# Abseil's AbseilConfigureCopts.cmake sets ABSL_RANDOM_RANDEN_COPTS based on
+# CMAKE_SYSTEM_PROCESSOR. It checks for "ARM" to detect ARM architecture.
+# However, Windows ARM64 reports CMAKE_SYSTEM_PROCESSOR as "ARM64" not "ARM",
+# so the detection fails and falls through to x86 flags (-maes, -msse4.1).
 #
-# We patch absl/random/CMakeLists.txt to only add these flags on x86 targets.
+# Error: "unsupported option '-maes' for target 'aarch64-pc-windows-msvc'"
+#
+# Fix: Modify the processor check pattern from "ARM" to "ARM|ARM64|aarch64"
+# to recognize all ARM variants including Windows ARM64.
 
-if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt")
-    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt" ABSEIL_RANDOM_CONTENT)
+set(ABSEIL_COPTS_FILE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/copts/AbseilConfigureCopts.cmake")
+if(EXISTS "${ABSEIL_COPTS_FILE}")
+    file(READ "${ABSEIL_COPTS_FILE}" ABSEIL_COPTS_CONTENT)
 
-    # The original code unconditionally sets these x86 SIMD flags.
-    # We need to wrap the target_compile_options block in an if() for x86 only.
-    # Use regex to handle varying whitespace in the original file.
-    if(ABSEIL_RANDOM_CONTENT MATCHES "target_compile_options\\(absl_random_internal_randen_hwaes_impl")
-        # Use regex replace to wrap the entire target_compile_options block
-        # Pattern matches: target_compile_options(absl_random_internal_randen_hwaes_impl ... -maes ... -msse4.1 ... )
+    # Check if file has the processor detection pattern
+    if(ABSEIL_COPTS_CONTENT MATCHES "CMAKE_SYSTEM_PROCESSOR MATCHES")
+        # Replace processor detection: "ARM" -> "ARM|ARM64|aarch64"
+        # This ensures Windows ARM64 (reports "ARM64") is recognized as ARM architecture
+        # Original pattern: if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^ARM")
+        # The ^ anchor means "starts with ARM" but ARM64 starts with ARM so that should work...
+        # Let's check if there's a more specific pattern being matched
+
+        # Pattern 1: Fix any pattern that matches "arm" case-insensitively but misses "ARM64"
+        # Some Abseil versions use exact match or different patterns
         string(REGEX REPLACE
-            "([ \t]*)(target_compile_options\\(absl_random_internal_randen_hwaes_impl[^)]*-maes[^)]*-msse4\\.1[^)]*\\))"
-            "\\1# Only add x86 AES/SSE flags on x86 architectures (not ARM64)\n\\1if(CMAKE_SYSTEM_PROCESSOR MATCHES \"x86_64|AMD64|i[3-6]86\")\n\\1\\2\n\\1endif()"
-            ABSEIL_RANDOM_CONTENT
-            "${ABSEIL_RANDOM_CONTENT}"
+            "(CMAKE_SYSTEM_PROCESSOR[^)]*MATCHES[^)]*\")(ARM|arm)(\")"
+            "\\1ARM|ARM64|aarch64\\3"
+            ABSEIL_COPTS_CONTENT
+            "${ABSEIL_COPTS_CONTENT}"
         )
-        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt" "${ABSEIL_RANDOM_CONTENT}")
-        message(STATUS "Patched Abseil random/CMakeLists.txt - made x86 SIMD flags conditional on architecture")
+
+        # Pattern 2: Add explicit ARM64 handling at the beginning of the processor detection
+        # Insert a check for ARM64 before other processor checks
+        if(NOT ABSEIL_COPTS_CONTENT MATCHES "ARM64")
+            string(REGEX REPLACE
+                "(if\\(\\$\\{CMAKE_SYSTEM_PROCESSOR\\} MATCHES \")(x86_64|AMD64)"
+                "# Added by ascii-chat: Recognize Windows ARM64\nif(\${CMAKE_SYSTEM_PROCESSOR} MATCHES \"ARM64|aarch64\")\n  set(ABSL_RANDOM_RANDEN_COPTS \"\${ABSL_RANDOM_HWAES_ARM64_FLAGS}\")\nelse\\1\\2"
+                ABSEIL_COPTS_CONTENT
+                "${ABSEIL_COPTS_CONTENT}"
+            )
+        endif()
+
+        file(WRITE "${ABSEIL_COPTS_FILE}" "${ABSEIL_COPTS_CONTENT}")
+        message(STATUS "Patched Abseil AbseilConfigureCopts.cmake - added ARM64 processor detection")
+    else()
+        message(STATUS "Abseil AbseilConfigureCopts.cmake - processor detection pattern not found, may already be patched or different version")
     endif()
+else()
+    message(STATUS "Abseil AbseilConfigureCopts.cmake not found at ${ABSEIL_COPTS_FILE}")
 endif()
 
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")
