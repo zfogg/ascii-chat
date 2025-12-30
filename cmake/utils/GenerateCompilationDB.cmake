@@ -65,13 +65,20 @@ function(generate_compilation_database)
     # NOTE: CMAKE_EXPORT_COMPILE_COMMANDS generates compile_commands.json with absolute paths,
     # but uses the build directory as the "directory" field. We need to fix this later
     # to use CMAKE_SOURCE_DIR instead, so that LibTooling-based tools run from the project root.
+    #
+    # IMPORTANT: Use the same CMAKE_BUILD_TYPE as the parent build so that vcpkg finds
+    # the correct libraries (static for Release, dynamic for Debug/Dev).
+    set(_temp_build_type "${CMAKE_BUILD_TYPE}")
+    if(NOT _temp_build_type)
+        set(_temp_build_type "Debug")
+    endif()
     set(_cmake_configure_args
         "-G" "Ninja"
         "-S" "${CMAKE_SOURCE_DIR}"
         "-B" "${_DB_TEMP_DIR}"
         "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
         "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
-        "-DCMAKE_BUILD_TYPE=Debug"
+        "-DCMAKE_BUILD_TYPE=${_temp_build_type}"
         "-DUSE_MUSL=OFF"
         "-DASCIICHAT_KEEP_SYSROOT_FOR_TOOLS=ON"
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -128,6 +135,16 @@ function(generate_compilation_database)
 
     if(WIN32)
         list(APPEND _cmake_configure_args "-DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND")
+        # Pass vcpkg configuration to temp build so dependencies are found
+        if(DEFINED VCPKG_TARGET_TRIPLET)
+            list(APPEND _cmake_configure_args "-DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}")
+        endif()
+        if(DEFINED VCPKG_INSTALLED_DIR)
+            list(APPEND _cmake_configure_args "-DVCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}")
+        endif()
+        if(DEFINED ENV{VCPKG_ROOT})
+            list(APPEND _cmake_configure_args "-DCMAKE_TOOLCHAIN_FILE=$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+        endif()
     endif()
 
     # Add disable options
