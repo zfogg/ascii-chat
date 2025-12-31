@@ -142,6 +142,28 @@ asciichat_error_t options_state_init(void) {
   // Zero-initialize (all fields start at 0/false/NULL)
   memset(initial_opts, 0, sizeof(*initial_opts));
 
+  // Set non-zero defaults using defines from options.h
+  // These match the documented defaults in --help output
+
+  // Network defaults
+  SAFE_STRNCPY(initial_opts->port, OPT_PORT_DEFAULT, sizeof(initial_opts->port));
+  SAFE_STRNCPY(initial_opts->address, OPT_ADDRESS_DEFAULT, sizeof(initial_opts->address));
+  SAFE_STRNCPY(initial_opts->address6, OPT_ADDRESS6_DEFAULT, sizeof(initial_opts->address6));
+
+  // Server defaults
+  initial_opts->max_clients = OPT_MAX_CLIENTS_DEFAULT;
+  initial_opts->compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
+
+  // Client defaults
+  initial_opts->webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
+  initial_opts->microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
+  initial_opts->speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
+  initial_opts->snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+  initial_opts->reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+
+  // Color and rendering defaults (using zero values which are the correct defaults)
+  initial_opts->color_mode = COLOR_MODE_AUTO; // -1
+
   // Publish initial struct (release semantics - make all fields visible to readers)
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);
 
@@ -205,6 +227,7 @@ const options_t *options_get(void) {
   // Should never be NULL after initialization
   if (!current) {
     log_fatal("Options not initialized! Call options_state_init() first");
+    log_warn("options_get() called before options initialization - this will cause a crash");
     abort();
   }
 

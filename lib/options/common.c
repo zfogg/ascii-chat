@@ -358,21 +358,21 @@ unsigned short int GRAY[256];
 // Shared Option Parsers (Client + Mirror Common Options)
 // ============================================================================
 
-asciichat_error_t parse_color_mode_option(const char *value_str) {
-  if (!value_str) {
+asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
     return ERROR_INVALID_PARAM;
   }
 
   if (strcmp(value_str, "auto") == 0) {
-    opt_color_mode = COLOR_MODE_AUTO;
+    opts->color_mode = COLOR_MODE_AUTO;
   } else if (strcmp(value_str, "none") == 0 || strcmp(value_str, "mono") == 0) {
-    opt_color_mode = COLOR_MODE_NONE;
+    opts->color_mode = COLOR_MODE_NONE;
   } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
-    opt_color_mode = COLOR_MODE_16_COLOR;
+    opts->color_mode = COLOR_MODE_16_COLOR;
   } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
-    opt_color_mode = COLOR_MODE_256_COLOR;
+    opts->color_mode = COLOR_MODE_256_COLOR;
   } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
-    opt_color_mode = COLOR_MODE_TRUECOLOR;
+    opts->color_mode = COLOR_MODE_TRUECOLOR;
   } else {
     (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor\n", value_str);
     return ERROR_INVALID_PARAM;
@@ -381,17 +381,17 @@ asciichat_error_t parse_color_mode_option(const char *value_str) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_render_mode_option(const char *value_str) {
-  if (!value_str) {
+asciichat_error_t parse_render_mode_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
     return ERROR_INVALID_PARAM;
   }
 
   if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
-    opt_render_mode = RENDER_MODE_FOREGROUND;
+    opts->render_mode = RENDER_MODE_FOREGROUND;
   } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
-    opt_render_mode = RENDER_MODE_BACKGROUND;
+    opts->render_mode = RENDER_MODE_BACKGROUND;
   } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
-    opt_render_mode = RENDER_MODE_HALF_BLOCK;
+    opts->render_mode = RENDER_MODE_HALF_BLOCK;
   } else {
     (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
                   value_str);
@@ -446,43 +446,55 @@ asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *o
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_width_option(const char *value_str) {
+asciichat_error_t parse_width_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
   int width_val;
   if (!validate_positive_int_opt(value_str, &width_val, "width")) {
     return ERROR_INVALID_PARAM;
   }
 
-  opt_width = (unsigned short int)width_val;
-  auto_width = false;
+  opts->width = (unsigned short int)width_val;
+  opts->auto_width = false;
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_height_option(const char *value_str) {
+asciichat_error_t parse_height_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
   int height_val;
   if (!validate_positive_int_opt(value_str, &height_val, "height")) {
     return ERROR_INVALID_PARAM;
   }
 
-  opt_height = (unsigned short int)height_val;
-  auto_height = false;
+  opts->height = (unsigned short int)height_val;
+  opts->auto_height = false;
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_webcam_index_option(const char *value_str) {
+asciichat_error_t parse_webcam_index_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
   unsigned short int index_val;
   if (!validate_webcam_index(value_str, &index_val)) {
     return ERROR_INVALID_PARAM;
   }
 
-  opt_webcam_index = index_val;
+  opts->webcam_index = index_val;
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_snapshot_delay_option(const char *value_str) {
-  if (!value_str) {
+asciichat_error_t parse_snapshot_delay_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
     return ERROR_INVALID_PARAM;
   }
 
@@ -493,7 +505,7 @@ asciichat_error_t parse_snapshot_delay_option(const char *value_str) {
     return ERROR_INVALID_PARAM;
   }
 
-  opt_snapshot_delay = delay;
+  opts->snapshot_delay = delay;
 
   return ASCIICHAT_OK;
 }
@@ -566,6 +578,9 @@ void update_dimensions_to_terminal_size(options_t *opts) {
     }
     log_debug("After update_dimensions_to_terminal_size: width=%d, height=%d", opts->width, opts->height);
   } else {
-    log_debug("Failed to get terminal size in update_dimensions_to_terminal_size");
+    // Terminal detection failed - keep the default values set in options_init()
+    log_debug(
+        "Failed to get terminal size in update_dimensions_to_terminal_size, keeping defaults: width=%d, height=%d",
+        opts->width, opts->height);
   }
 }
