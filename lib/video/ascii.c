@@ -46,7 +46,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
   const char *testing_env = SAFE_GETENV("TESTING");
-  if (!opt_snapshot_mode && reset_terminal && testing_env == NULL) {
+  if (!options_get()->snapshot_mode && reset_terminal && testing_env == NULL) {
     console_clear(fd);
     cursor_reset(fd);
 
@@ -130,7 +130,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   char *ascii;
   if (color) {
     // Check for half-block mode first (requires NEON)
-    if (opt_render_mode == RENDER_MODE_HALF_BLOCK) {
+    if (options_get()->render_mode == RENDER_MODE_HALF_BLOCK) {
 #if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
@@ -143,7 +143,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     } else {
 #ifdef SIMD_SUPPORT
       // Standard color modes (foreground/background)
-      bool use_background = (opt_render_mode == RENDER_MODE_BACKGROUND);
+      bool use_background = (options_get()->render_mode == RENDER_MODE_BACKGROUND);
       ascii = image_print_color_simd(resized, use_background, false, palette_chars);
 #else
       ascii = image_print_color(resized, palette_chars);
@@ -317,7 +317,7 @@ asciichat_error_t ascii_write(const char *frame) {
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
   const char *testing_env = SAFE_GETENV("TESTING");
-  if (!opt_snapshot_mode && testing_env == NULL) {
+  if (!options_get()->snapshot_mode && testing_env == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -338,7 +338,7 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
   // console_clear(fd);
   // cursor_reset(fd);
   // Skip cursor show in snapshot mode - leave terminal as-is
-  if (!opt_snapshot_mode && reset_terminal) {
+  if (!options_get()->snapshot_mode && reset_terminal) {
     // Show cursor using platform abstraction
     if (terminal_hide_cursor(fd, false) != 0) {
       log_warn("Failed to show cursor");

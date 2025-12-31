@@ -162,6 +162,7 @@
 #include "protocol.h"
 #include "common.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "network/packet_queue.h"

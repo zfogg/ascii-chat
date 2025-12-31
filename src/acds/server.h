@@ -30,6 +30,7 @@
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "network/tcp_server.h"
+#include "thread_pool.h"
 #include "acds/main.h"
 #include "acds/session.h"
 
@@ -68,9 +69,9 @@ typedef struct {
   // Rate limiting
   struct rate_limiter_s *rate_limiter; ///< SQLite-backed rate limiter
 
-  // Rate limiting cleanup
-  asciithread_t cleanup_thread; ///< Background thread for periodic cleanup
-  atomic_bool cleanup_running;  ///< Cleanup thread control flag
+  // Background worker threads (cleanup, etc.)
+  thread_pool_t *worker_pool; ///< Thread pool for background workers
+  atomic_bool shutdown;       ///< Shutdown flag for worker threads
 
   // Configuration
   acds_config_t config; ///< Runtime configuration

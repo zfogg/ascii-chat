@@ -103,13 +103,14 @@
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict);
+asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict, options_t *opts);
 
 /**
  * @brief Load system config first, then user config (user config overrides system)
  * @param is_client `true` if loading client configuration, `false` for server configuration
  * @param user_config_path Optional path to user config file (NULL uses default location)
  * @param strict If true, user config errors are fatal; system config is always non-strict
+ * @param opts Options structure to write configuration to
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * Loads configuration from two locations in order:
@@ -124,20 +125,21 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
  *
  * @ingroup config
  */
-asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict);
+asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict,
+                                              options_t *opts);
 
 /**
  * @brief Create default configuration file with all default values
  * @param config_path Path to config file to create (NULL uses default location)
+ * @param opts Options structure with values to write (use defaults for a "default" config)
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * Creates a new configuration file at the specified path (or default location
- * if config_path is NULL) with all configuration options set to their default
- * values from options.h.
+ * if config_path is NULL) with all configuration options set to values from opts.
  *
  * The created file includes:
  * - Version comment at the top (current ascii-chat version)
- * - All supported configuration sections with default values
+ * - All supported configuration sections with values from opts
  * - Comments explaining each option
  *
  * @note The function will create the directory structure if needed.
@@ -145,6 +147,6 @@ asciichat_error_t config_load_system_and_user(bool is_client, const char *user_c
  *
  * @ingroup config
  */
-asciichat_error_t config_create_default(const char *config_path);
+asciichat_error_t config_create_default(const char *config_path, const options_t *opts);
 
 /** @} */

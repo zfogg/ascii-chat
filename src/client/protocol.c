@@ -94,6 +94,7 @@
 #include "util/endian.h"
 #include "util/format.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "network/crc32.h"
 #include "util/fps.h"
 #include "crypto/crypto.h"

@@ -9,6 +9,7 @@
  */
 
 #include "options/options.h"
+#include "options/rcu.h" // RCU-based thread-safe options
 #include "options/common.h"
 #include "options/client.h"
 #include "options/server.h"
@@ -56,10 +57,18 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
     }
   }
 
-  // Initialize global variables at runtime (Windows DLL workaround)
-  // Static initializers don't work reliably in Windows DLLs created from OBJECT files
-  // so we must initialize them explicitly here
-  SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "27224");
+  // Initialize RCU options system (must be done before any threads start)
+  asciichat_error_t rcu_init_result = options_state_init();
+  if (rcu_init_result != ASCIICHAT_OK) {
+    return rcu_init_result;
+  }
+
+  // Create local options struct and initialize with defaults
+  // This replaces global variable initialization
+  options_t opts = {0}; // Zero-initialize all fields
+
+  // Set default port
+  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "27224");
 
 // Set default log file paths for Release builds
 #ifdef NDEBUG
@@ -76,41 +85,42 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
 
     char *normalized_default_log = NULL;
     if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
-      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
+      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
       SAFE_FREE(normalized_default_log);
     } else {
-      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
+      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
     }
   } else {
     // Fallback if platform_get_temp_dir fails
-    SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
+    SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
   }
 #else
   // Debug builds: No default log file (empty string)
-  opt_log_file[0] = '\0';
+  opts.log_file[0] = '\0';
 #endif
 
-  opt_no_encrypt = 0;
-  opt_encrypt_key[0] = '\0';
-  opt_password[0] = '\0';
-  opt_encrypt_keyfile[0] = '\0';
-  opt_server_key[0] = '\0';
-  opt_client_keys[0] = '\0';
-  opt_palette_custom[0] = '\0';
+  // Encryption options default to disabled/empty
+  opts.no_encrypt = 0;
+  opts.encrypt_key[0] = '\0';
+  opts.password[0] = '\0';
+  opts.encrypt_keyfile[0] = '\0';
+  opts.server_key[0] = '\0';
+  opts.client_keys[0] = '\0';
+  opts.palette_custom[0] = '\0';
 
   // Set different default addresses for client vs server (before config load)
   if (mode == MODE_CLIENT || mode == MODE_MIRROR) {
     // Client connects to localhost by default (IPv6-first with IPv4 fallback)
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "localhost");
-    opt_address6[0] = '\0'; // Client doesn't use opt_address6
+    SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "localhost");
+    opts.address6[0] = '\0'; // Client doesn't use address6
   } else if (mode == MODE_SERVER) {
     // Server binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
-    SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "::1");
+    SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+    SAFE_SNPRINTF(opts.address6, OPTIONS_BUFF_SIZE, "::1");
   } else if (mode == MODE_ACDS) {
     // ACDS binds to all interfaces by default (0.0.0.0 and ::)
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
-    SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "::");
+    SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+    SAFE_SNPRINTF(opts.address6, OPTIONS_BUFF_SIZE, "::");
   }
 
   // Load configuration from TOML files (if they exist)
@@ -119,23 +129,23 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   // This happens BEFORE CLI parsing so CLI arguments can override config values.
   // Config load errors are non-fatal for default location (logged as warnings)
   bool is_client_or_mirror = (mode == MODE_CLIENT || mode == MODE_MIRROR);
-  asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false);
+  asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // Dispatch to mode-specific option parser
   asciichat_error_t result = ASCIICHAT_OK;
   switch (mode) {
   case MODE_SERVER:
-    result = parse_server_options(argc, argv);
+    result = parse_server_options(argc, argv, &opts);
     break;
   case MODE_CLIENT:
-    result = parse_client_options(argc, argv);
+    result = parse_client_options(argc, argv, &opts);
     break;
   case MODE_MIRROR:
-    result = parse_mirror_options(argc, argv);
+    result = parse_mirror_options(argc, argv, &opts);
     break;
   case MODE_ACDS:
-    result = acds_options_parse(argc, argv);
+    result = acds_options_parse(argc, argv, &opts);
     break;
   default:
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
@@ -147,15 +157,15 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
 
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic
-  update_dimensions_to_terminal_size();
-  update_dimensions_for_full_height();
+  update_dimensions_to_terminal_size(&opts);
+  update_dimensions_for_full_height(&opts);
 
   // Apply verbose level to log threshold
   // Each -V decreases the log level by 1 (showing more verbose output)
   // Minimum level is LOG_DEV (0)
-  if (opt_verbose_level > 0) {
+  if (opts.verbose_level > 0) {
     log_level_t current_level = log_get_level();
-    int new_level = (int)current_level - (int)opt_verbose_level;
+    int new_level = (int)current_level - (int)opts.verbose_level;
     if (new_level < LOG_DEV) {
       new_level = LOG_DEV;
     }
@@ -168,15 +178,23 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   if (webcam_disabled &&
       (strcmp(webcam_disabled, "1") == 0 || platform_strcasecmp(webcam_disabled, "true") == 0 ||
        platform_strcasecmp(webcam_disabled, "yes") == 0 || platform_strcasecmp(webcam_disabled, "on") == 0)) {
-    opt_test_pattern = true;
+    opts.test_pattern = true;
   }
 
   // Apply --no-compress interaction with audio encoding:
   // If --no-compress is set AND audio encoding was NOT explicitly set via flags,
   // disable audio encoding by default
-  if (opt_no_compress && !encode_audio_explicitly_set) {
-    opt_encode_audio = false;
+  if (opts.no_compress && !encode_audio_explicitly_set) {
+    opts.encode_audio = false;
     log_debug("--no-compress set without explicit audio encoding flag: disabling audio encoding");
+  }
+
+  // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
+  // This makes the options visible to all threads via lock-free reads
+  asciichat_error_t publish_result = options_state_set(&opts);
+  if (publish_result != ASCIICHAT_OK) {
+    log_error("Failed to publish parsed options to RCU state");
+    return publish_result;
   }
 
   return ASCIICHAT_OK;

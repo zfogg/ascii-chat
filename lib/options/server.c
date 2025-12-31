@@ -59,7 +59,7 @@ static struct option server_options[] = {{"port", required_argument, NULL, 'p'},
 // Server Option Parsing
 // ============================================================================
 
-asciichat_error_t parse_server_options(int argc, char **argv) {
+asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
   const char *optstring = ":p:EK:F:h";
 
   // Pre-pass: Check for --help first
@@ -95,36 +95,36 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
       uint16_t port_num;
       if (!validate_port_opt(value_str, &port_num))
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
     case 'E': // --encrypt
-      opt_encrypt_enabled = 1;
+      opts->encrypt_enabled = 1;
       break;
 
     case 'K': { // --key
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "key", MODE_SERVER);
       if (!value_str)
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-      opt_encrypt_enabled = 1;
+      SAFE_SNPRINTF(opts->encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      opts->encrypt_enabled = 1;
       break;
     }
 
     case 1009: { // --password
       if (optarg) {
-        SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", optarg);
+        SAFE_SNPRINTF(opts->password, OPTIONS_BUFF_SIZE, "%s", optarg);
       } else {
         char *pw = read_password_from_stdin("Enter encryption password: ");
         if (!pw) {
           (void)fprintf(stderr, "Failed to read password\n");
           return option_error_invalid();
         }
-        SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", pw);
+        SAFE_SNPRINTF(opts->password, OPTIONS_BUFF_SIZE, "%s", pw);
         SAFE_FREE(pw);
       }
-      opt_encrypt_enabled = 1;
+      opts->encrypt_enabled = 1;
       break;
     }
 
@@ -132,20 +132,20 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", MODE_SERVER);
       if (!value_str)
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
-      opt_encrypt_enabled = 1;
+      SAFE_SNPRINTF(opts->encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
+      opts->encrypt_enabled = 1;
       break;
     }
 
     case 1005: // --no-encrypt
-      opt_no_encrypt = 1;
+      opts->no_encrypt = 1;
       break;
 
     case 1008: { // --client-keys
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", MODE_SERVER);
       if (!value_str)
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opts->client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
@@ -158,20 +158,20 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
         (void)fprintf(stderr, "Invalid compression level '%s'. Must be 1-9.\n", value_str);
         return option_error_invalid();
       }
-      opt_compression_level = level;
+      opts->compression_level = level;
       break;
     }
 
     case 1022: // --no-compress
-      opt_no_compress = true;
+      opts->no_compress = true;
       break;
 
     case 1023: // --encode-audio
-      opt_encode_audio = true;
+      opts->encode_audio = true;
       break;
 
     case 1024: // --no-encode-audio
-      opt_encode_audio = false;
+      opts->encode_audio = false;
       break;
 
     case 1021: { // --max-clients
@@ -185,12 +185,12 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
         (void)fprintf(stderr, "Invalid max-clients: %s\n", error_msg);
         return option_error_invalid();
       }
-      opt_max_clients = max_clients;
+      opts->max_clients = max_clients;
       break;
     }
 
     case 1026: // --no-audio-mixer
-      opt_no_audio_mixer = true;
+      opts->no_audio_mixer = true;
       log_info("Audio mixer disabled - will send silence instead of mixing");
       break;
 
@@ -241,21 +241,21 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
     if (is_valid_ipv4(addr_arg)) {
       if (has_ipv4) {
         (void)fprintf(stderr, "Error: Cannot specify multiple IPv4 addresses.\n");
-        (void)fprintf(stderr, "Already have: %s\n", opt_address);
+        (void)fprintf(stderr, "Already have: %s\n", opts->address);
         (void)fprintf(stderr, "Cannot add: %s\n", addr_arg);
         return option_error_invalid();
       }
-      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", addr_arg);
+      SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", addr_arg);
       has_ipv4 = true;
       num_addresses++;
     } else if (is_valid_ipv6(addr_arg)) {
       if (has_ipv6) {
         (void)fprintf(stderr, "Error: Cannot specify multiple IPv6 addresses.\n");
-        (void)fprintf(stderr, "Already have: %s\n", opt_address6);
+        (void)fprintf(stderr, "Already have: %s\n", opts->address6);
         (void)fprintf(stderr, "Cannot add: %s\n", addr_arg);
         return option_error_invalid();
       }
-      SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "%s", addr_arg);
+      SAFE_SNPRINTF(opts->address6, OPTIONS_BUFF_SIZE, "%s", addr_arg);
       has_ipv6 = true;
       num_addresses++;
     } else {

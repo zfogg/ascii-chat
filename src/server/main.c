@@ -88,6 +88,7 @@
 #include "network/tcp_server.h"
 #include "thread_pool.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "buffer_pool.h"
 #include "audio/mixer.h"
 #include "audio/audio.h"

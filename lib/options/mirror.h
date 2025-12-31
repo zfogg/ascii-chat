@@ -142,7 +142,7 @@ extern "C" {
  * @see parse_server_options()
  * @see options_init()
  */
-asciichat_error_t parse_mirror_options(int argc, char **argv);
+asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts);
 
 /**
  * @brief Print mirror mode usage/help text

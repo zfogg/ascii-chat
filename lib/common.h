@@ -95,13 +95,13 @@ typedef unsigned long long uint64_t;
  * Include organized sub-headers for specific domains
  * ============================================================================ */
 
-#include "common/error_codes.h"         // Error codes and error_string function
-#include "common/protocol_constants.h"  // Protocol version, features, compression, frames
-#include "common/limits.h"              // MAX_CLIENTS, FPS limits, display name length
-#include "common/buffer_sizes.h"        // Standard buffer size constants
-#include "common/log_rates.h"           // Logging rate limit constants
-#include "common/shutdown.h"            // Shutdown detection system
-#include "common/string_constants.h"    // String literal constants (STR_TRUE, STR_FALSE, etc.)
+#include "common/error_codes.h"        // Error codes and error_string function
+#include "common/protocol_constants.h" // Protocol version, features, compression, frames
+#include "common/limits.h"             // MAX_CLIENTS, FPS limits, display name length
+#include "common/buffer_sizes.h"       // Standard buffer size constants
+#include "common/log_rates.h"          // Logging rate limit constants
+#include "common/shutdown.h"           // Shutdown detection system
+#include "common/string_constants.h"   // String literal constants (STR_TRUE, STR_FALSE, etc.)
 
 #ifdef __cplusplus
 extern "C" {
@@ -330,7 +330,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define SAFE_FCLOSE(fp)                                                                                                \
   do {                                                                                                                 \
     if ((fp) != NULL) {                                                                                                \
-      fclose(fp);                                                                                                       \
+      fclose(fp);                                                                                                      \
       (fp) = NULL;                                                                                                     \
     }                                                                                                                  \
   } while (0)
@@ -364,7 +364,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
     if (src) {                                                                                                         \
       size_t _len = strlen(src) + 1;                                                                                   \
       (dst) = SAFE_MALLOC(_len, char *);                                                                               \
-      if (dst) {                                                                                                        \
+      if (dst) {                                                                                                       \
         SAFE_MEMCPY((dst), _len, (src), _len);                                                                         \
       } else {                                                                                                         \
         SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src));                                           \

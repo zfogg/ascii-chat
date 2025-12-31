@@ -36,6 +36,7 @@
 #include "platform/terminal.h"
 #include "common.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "video/palette.h"
 
 #include <signal.h>
