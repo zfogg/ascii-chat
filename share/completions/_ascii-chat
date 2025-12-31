@@ -23,7 +23,6 @@ _ascii-chat-client() {
         '--audio-analysis[enable audio analysis for debugging]' \
         '--no-audio-playback[disable speaker playback while keeping audio recording]' \
         '(-s --stretch)'{-s,--stretch}'[stretch or shrink video to fit]' \
-        '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
         '(-S --snapshot)'{-S,--snapshot}'[capture single frame and exit]' \
         '(-D --snapshot-delay)'{-D,--snapshot-delay}'[delay SECONDS before snapshot]:' \
         '--strip-ansi[remove all ANSI escape codes]' \
@@ -80,7 +79,6 @@ _ascii-chat-mirror() {
         '--utf8[force enable UTF-8/Unicode support]' \
         '(-M --render-mode)'{-M,--render-mode}'[rendering mode]:(foreground background half-block)' \
         '(-s --stretch)'{-s,--stretch}'[stretch or shrink video to fit]' \
-        '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
         '(-S --snapshot)'{-S,--snapshot}'[capture single frame and exit]' \
         '(-D --snapshot-delay)'{-D,--snapshot-delay}'[delay SECONDS before snapshot]:' \
         '--strip-ansi[remove all ANSI escape codes]' \
@@ -99,6 +97,7 @@ _ascii_chat() {
             '(-L --log-file)'{-L,--log-file}'[redirect logs to file]:file:_files' \
             '--log-level[set log level]:(dev debug info warn error fatal)' \
             '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
+            '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
             '--config[load configuration from TOML file]:file:_files' \
             '--config-create[create default configuration file]' \
             '1:subcommand:(client server mirror)'

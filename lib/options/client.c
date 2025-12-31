@@ -65,7 +65,6 @@ static struct option client_options[] = {{"port", required_argument, NULL, 'p'},
                                          {"audio-analysis", no_argument, NULL, 1025},
                                          {"no-audio-playback", no_argument, NULL, 1027},
                                          {"stretch", no_argument, NULL, 's'},
-                                         {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
                                          {"snapshot-delay", required_argument, NULL, 'D'},
                                          {"strip-ansi", no_argument, NULL, 1017},
@@ -91,7 +90,7 @@ static struct option client_options[] = {{"port", required_argument, NULL, 'p'},
 // ============================================================================
 
 asciichat_error_t parse_client_options(int argc, char **argv) {
-  const char *optstring = ":p:x:y:c:fM:P:C:AsqSD:EK:F:h";
+  const char *optstring = ":p:x:y:c:fM:P:C:AsSD:EK:F:h";
 
   // Pre-pass: Check for --help first
   for (int i = 1; i < argc; i++) {
@@ -390,10 +389,6 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       opt_stretch = 1;
       break;
 
-    case 'q': // --quiet
-      opt_quiet = 1;
-      break;
-
     case 'S': // --snapshot
       opt_snapshot_mode = 1;
       break;
@@ -605,6 +600,23 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", address_arg);
     }
 
+    // Validate that addresses that look like IPv4 are actually valid IPv4
+    // (addresses with only dots and digits should be validated strictly)
+    bool looks_like_ipv4 = true;
+    for (const char *p = opt_address; *p; p++) {
+      if (!(*p >= '0' && *p <= '9') && *p != '.') {
+        looks_like_ipv4 = false;
+        break;
+      }
+    }
+    if (looks_like_ipv4 && !is_valid_ipv4(opt_address)) {
+      (void)fprintf(stderr, "Error: Invalid IPv4 address '%s'.\n", opt_address);
+      (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n");
+      (void)fprintf(stderr, "Examples: 127.0.0.1, 192.168.1.1\n");
+      (void)fprintf(stderr, "For hostnames, use letters: example.com, localhost\n");
+      return option_error_invalid();
+    }
+
     // Check for port conflict
     extern bool port_explicitly_set_via_flag;
     if (has_port_in_address && port_explicitly_set_via_flag) {
@@ -690,8 +702,6 @@ void usage_client(FILE *desc) {
                 "disable speaker playback but keep recording received audio (debug mode) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
                                    "(ignore aspect ratio) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
-                                   "disable console logging (log only to file) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
                                    "capture single frame and exit (default: [unset])\n");
   (void)fprintf(

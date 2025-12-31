@@ -53,7 +53,6 @@ static struct option mirror_options[] = {{"width", required_argument, NULL, 'x'}
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
                                          {"stretch", no_argument, NULL, 's'},
-                                         {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
                                          {"snapshot-delay", required_argument, NULL, 'D'},
                                          {"strip-ansi", no_argument, NULL, 1017},
@@ -66,7 +65,7 @@ static struct option mirror_options[] = {{"width", required_argument, NULL, 'x'}
 // ============================================================================
 
 asciichat_error_t parse_mirror_options(int argc, char **argv) {
-  const char *optstring = ":x:y:c:fM:P:C:sqSD:h";
+  const char *optstring = ":x:y:c:fM:P:C:sSD:h";
 
   // Pre-pass: Check for --help first
   for (int i = 1; i < argc; i++) {
@@ -266,10 +265,6 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
       opt_stretch = 1;
       break;
 
-    case 'q': // --quiet
-      opt_quiet = 1;
-      break;
-
     case 'S': // --snapshot
       opt_snapshot_mode = 1;
       break;
@@ -371,8 +366,6 @@ void usage_mirror(FILE *desc) {
                                    "Custom palette characters (implies --palette=custom) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
                                    "(ignore aspect ratio) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
-                                   "disable console logging (log only to file) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
                                    "capture single frame and exit (default: [unset])\n");
   (void)fprintf(

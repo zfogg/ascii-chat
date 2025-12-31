@@ -190,7 +190,8 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     asciichat_error_t result = options_init(argc, argv_with_null, mode);
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {
-      _exit(result == ERROR_USAGE ? 1 : result);
+      // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
+      _exit((result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result);
     }
     _exit(0);
   } else if (pid > 0) {
@@ -674,15 +675,16 @@ Test(options, invalid_snapshot_delays) {
  * File Path Tests
  * ============================================================================ */
 
-GENERATE_OPTIONS_TEST(
-    valid_log_file, ARGV_LIST("client", "--log-file", "/tmp/test.log"), true,
-    { cr_assert_str_eq(opt_log_file, "/tmp/test.log"); },
-    { cr_assert_eq(exit_code, 0, "Valid log file should not cause exit"); })
-
-GENERATE_OPTIONS_TEST(
-    invalid_log_file, ARGV_LIST("client", "--log-file", ""), true,
-    { cr_fail("Should not reach this point - empty log file should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Empty log file should exit with code 1"); })
+// NOTE: --log-file is now a global option handled at binary level, not mode-specific
+// GENERATE_OPTIONS_TEST(
+//     valid_log_file, ARGV_LIST("client", "--log-file", "/tmp/test.log"), true,
+//     { cr_assert_str_eq(opt_log_file, "/tmp/test.log"); },
+//     { cr_assert_eq(exit_code, 0, "Valid log file should not cause exit"); })
+//
+// GENERATE_OPTIONS_TEST(
+//     invalid_log_file, ARGV_LIST("client", "--log-file", ""), true,
+//     { cr_fail("Should not reach this point - empty log file should cause exit"); },
+//     { cr_assert_eq(exit_code, 1, "Empty log file should exit with code 1"); })
 
 GENERATE_OPTIONS_TEST(
     valid_encryption_key, ARGV_LIST("client", "--key", "mysecretkey"), true,
@@ -718,9 +720,9 @@ Test(options, flag_options) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client",  "--show-capabilities", "--utf8",    "--audio", "--stretch",
-                  "--quiet", "--snapshot",          "--encrypt", NULL};
-  int result = test_options_init_with_fork(argv, 8, true);
+  // NOTE: --quiet is now a global option, removed from this test
+  char *argv[] = {"client", "--show-capabilities", "--utf8", "--audio", "--stretch", "--snapshot", "--encrypt", NULL};
+  int result = test_options_init_with_fork(argv, 7, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -785,6 +787,7 @@ Test(options, complex_client_combination) {
   options_backup_t backup;
   save_options(&backup);
 
+  // NOTE: --quiet and --log-file are now global options, removed from this test
   char *argv[] = {"client",
                   "192.168.1.100:8080",
                   "--width=120",
@@ -796,14 +799,12 @@ Test(options, complex_client_combination) {
                   "--palette=blocks",
                   "--audio",
                   "--stretch",
-                  "--quiet",
                   "--snapshot",
                   "--snapshot-delay=2.5",
-                  "--log-file=/tmp/ascii-chat.log",
                   "--encrypt",
                   "--key=mysecretpassword",
                   NULL};
-  int argc = 17;
+  int argc = 15;
 
   log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, argc, true);
@@ -816,15 +817,10 @@ Test(options, complex_server_combination) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"server",
-                  "0.0.0.0",
-                  "--port=27224",
-                  "--palette=digital",
-                  "--log-file=/var/log/ascii-chat.log",
-                  "--encrypt",
-                  "--keyfile=/etc/ascii-chat/key",
+  // NOTE: --log-file is now a global option, removed from this test
+  char *argv[] = {"server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", "--keyfile=/etc/ascii-chat/key",
                   NULL};
-  int argc = 7;
+  int argc = 6;
 
   int result = test_options_init_with_fork(argv, argc, false);
   cr_assert_eq(result, 0);
@@ -933,19 +929,15 @@ Test(options, very_long_arguments) {
   save_options(&backup);
 
   // Test with very long but valid arguments
+  // NOTE: -L (log-file) is now a global option, testing only address here
   char long_address[OPTIONS_BUFF_SIZE];
-  char long_logfile[OPTIONS_BUFF_SIZE];
 
   memset(long_address, '1', sizeof(long_address) - 1);
   long_address[sizeof(long_address) - 1] = '\0';
   SAFE_STRNCPY(long_address, "192.168.1.1:8080", sizeof(long_address)); // Valid but test the buffer handling
 
-  memset(long_logfile, '3', sizeof(long_logfile) - 1);
-  long_logfile[sizeof(long_logfile) - 1] = '\0';
-  SAFE_STRNCPY(long_logfile, "/tmp/test.log", sizeof(long_logfile));
-
-  char *argv[] = {"client", long_address, "-L", long_logfile, NULL};
-  int result = test_options_init_with_fork(argv, 4, true);
+  char *argv[] = {"client", long_address, NULL};
+  int result = test_options_init_with_fork(argv, 2, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -1088,14 +1080,14 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_flag_values,
-    ARGV_LIST("client", "--audio", "--stretch", "--quiet", "--snapshot", "--encrypt", "--utf8", "--show-capabilities",
-              "-f"),
+    // NOTE: --quiet is now a global option, removed from this test
+    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-f"),
     true,
     {
       // Test all flags were set
       cr_assert_eq(opt_audio_enabled, 1);
       cr_assert_eq(opt_stretch, 1);
-      cr_assert_eq(opt_quiet, 1);
+      // opt_quiet removed - now a global option
       cr_assert_eq(opt_snapshot_mode, 1);
       cr_assert_eq(opt_encrypt_enabled, 1);
       cr_assert_eq(opt_force_utf8, 1);
@@ -1135,10 +1127,10 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_comprehensive_client_values,
-    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2",
-              "--webcam-flip", "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio",
-              "--stretch", "--quiet", "--snapshot", "--snapshot-delay=5.0", "--log-file=/var/log/test.log", "--encrypt",
-              "--key=testkey123"),
+    // NOTE: --quiet and --log-file are now global options, removed from this test
+    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2", "--webcam-flip",
+              "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio", "--stretch", "--snapshot",
+              "--snapshot-delay=5.0", "--encrypt", "--key=testkey123"),
     true,
     {
       // Verify ALL values
@@ -1153,10 +1145,10 @@ GENERATE_OPTIONS_TEST(
       cr_assert_eq(opt_palette_type, PALETTE_DIGITAL);
       cr_assert_eq(opt_audio_enabled, 1);
       cr_assert_eq(opt_stretch, 1);
-      cr_assert_eq(opt_quiet, 1);
+      // opt_quiet removed - now a global option
       cr_assert_eq(opt_snapshot_mode, 1);
       cr_assert_float_eq(opt_snapshot_delay, 5.0f, 0.01);
-      cr_assert_str_eq(opt_log_file, "/var/log/test.log");
+      // opt_log_file removed - now a global option
       cr_assert_eq(opt_encrypt_enabled, 1);
       cr_assert_str_eq(opt_encrypt_key, "testkey123");
       // Should be enabled by color-mode
@@ -1167,8 +1159,8 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_server_values,
-    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--palette=minimal", "--log-file=/tmp/server.log",
-              "--encrypt", "--keyfile=/etc/server.key"),
+    // NOTE: --log-file is now a global option, removed from this test
+    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--palette=minimal", "--encrypt", "--keyfile=/etc/server.key"),
     false,
     {
       // Verify server values
@@ -1176,7 +1168,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_str_eq(opt_port, "12345");
       cr_assert_eq(opt_palette_type, PALETTE_MINIMAL);
       // Note: --audio is not supported for server mode
-      cr_assert_str_eq(opt_log_file, "/tmp/server.log");
+      // opt_log_file removed - now a global option
       cr_assert_eq(opt_encrypt_enabled, 1);
       cr_assert_str_eq(opt_encrypt_keyfile, "/etc/server.key");
     },
