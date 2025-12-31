@@ -492,8 +492,8 @@
  *
  * **Password input methods**:
  * - Interactive prompt (default, uses platform_get_password())
- * - Environment variable: `$ASCII_CHAT_SSH_PASSWORD` (for automation)
- * - SSH agent: `$SSH_AUTH_SOCK` for password-free operation
+ * - Environment variable: `$ASCII_CHAT_KEY_PASSWORD` (for automation)
+ * - SSH/GPG agent: `$SSH_AUTH_SOCK` for password-free operation
  *
  * **Implementation**: See `lib/crypto/keys/ssh_keys.c:59-134` for the native decryption code
  * and `cmake/LibsodiumBcryptPbkdf.cmake` for the bcrypt_pbkdf library integration.

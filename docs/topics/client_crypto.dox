@@ -61,7 +61,7 @@
  * **Client Keys** (`--client-key`):
  * - Ed25519 SSH private keys for client authentication
  * - Loaded from filesystem or SSH agent
- * - Password support via `$ASCII_CHAT_SSH_PASSWORD`
+ * - Password support via `$ASCII_CHAT_KEY_PASSWORD`
  *
  * **Server Keys** (`--server-key`):
  * - Ed25519 SSH public keys for server verification

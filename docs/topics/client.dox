@@ -432,13 +432,13 @@
  * - Client keys loaded from `--client-key` path
  * - Server keys loaded from `--server-key` path or fetched via HTTPS
  * - Known hosts stored in `~/.ascii-chat/known_hosts`
- * - SSH agent integration via `$SSH_AUTH_SOCK` (Unix only)
- * - Password support via `$ASCII_CHAT_SSH_PASSWORD` environment variable
+ * - SSH/GPG agent integration (Only tested on UNIX for now)
+ * - Password-protected key support via `$ASCII_CHAT_KEY_PASSWORD` environment variable or ssh-agent or gpg-agent usage
  *
  * @note **SSH Key Support**: The client supports native encrypted SSH key decryption
  *       using bcrypt_pbkdf (libsodium-bcrypt-pbkdf) + BearSSL AES-256-CTR. No external
- *       tools required. Alternatively, use `$SSH_AUTH_SOCK` for agent-based
- *       password-free authentication (see lib/crypto/keys/ for implementation).
+ *       tools required. Alternatively, use ssh-agent or gpg-agent for agent-based
+ *       password-free authentication (see lib/crypto/ssh and lib/crypto/gpg for implementation).
  *
  * @section client_command_line Command-Line Options
  *
@@ -465,7 +465,7 @@
  * - `--server-key <path|url>`: Server SSH public key for verification
  *   - Path: `~/.ssh/server_id_ed25519.pub`
  *   - URL: `github:username` or `gitlab:username`
- * - `--insecure-no-host-identity-check`: Skip server host key verification (DANGEROUS!)
+ * - environment variable `ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`: Set to`1` to skip server host key verification (DANGEROUS!)
  *
  * **Testing Options**:
  * - `--snapshot`: Capture single frame and exit
@@ -478,28 +478,39 @@
  *
  * @section client_error_handling Error Handling and Exit Codes
  *
- * **Exit Codes**:
- * - `0`: Successful execution (clean exit or snapshot completed)
- * - `1`: Configuration/initialization error (invalid args, missing webcam, etc.)
- * - `2`: Connection error after max retries or fatal auth failure
- * - `130`: SIGINT received (Ctrl+C)
+ * The client uses the standard ascii-chat error code system defined in asciichat_error_t.
+ * For a complete reference of all exit codes, see @ref exit_codes.
+ *
+ * **Common Client Exit Codes**:
+ * - ASCIICHAT_OK (0): Successful execution
+ * - ERROR_USAGE: Invalid command-line arguments
+ * - ERROR_CONFIG: Configuration error
+ * - ERROR_WEBCAM: Webcam initialization failed
+ * - ERROR_AUDIO: Audio device error
+ * - ERROR_NETWORK_CONNECT: Cannot connect to server
+ * - ERROR_CRYPTO_HANDSHAKE: Handshake failed
+ * - ERROR_AUTH: Authentication failed
+ * - ERROR_SIGNAL_INTERRUPT: Interrupted by signal (Ctrl+C)
+ *
+ * @see @ref exit_codes for complete exit code reference
+ * @see asciichat_error_t for the full enum definition
  *
  * **Error Categories**:
  *
- * **Configuration Errors** (exit 1):
- * - Invalid command-line arguments
- * - Missing or invalid config file
- * - Webcam initialization failure
- * - Audio initialization failure
- * - Display initialization failure
+ * **Configuration Errors**:
+ * - Invalid command-line arguments (ERROR_USAGE)
+ * - Missing or invalid config file (ERROR_CONFIG)
+ * - Webcam initialization failure (ERROR_WEBCAM, ERROR_WEBCAM_IN_USE)
+ * - Audio initialization failure (ERROR_AUDIO)
+ * - Display initialization failure (ERROR_TERMINAL)
  *
- * **Connection Errors** (exit 2):
- * - Network unreachable
- * - Connection refused
- * - DNS resolution failure
- * - Authentication failure (wrong client key)
- * - Host key verification failure (wrong server key)
- * - Handshake timeout
+ * **Connection Errors**:
+ * - Network unreachable (ERROR_NETWORK_CONNECT)
+ * - Connection refused (ERROR_NETWORK_CONNECT)
+ * - DNS resolution failure (ERROR_NETWORK_CONNECT)
+ * - Authentication failure (ERROR_AUTH, ERROR_CRYPTO_HANDSHAKE)
+ * - Host key verification failure (ERROR_CRYPTO_KEY, ERROR_UNAUTHORIZED)
+ * - Handshake timeout (ERROR_NETWORK_TIMEOUT)
  *
  * **Runtime Errors** (log and attempt reconnect):
  * - Socket write error

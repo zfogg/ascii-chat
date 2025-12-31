@@ -549,7 +549,7 @@ SAFE_STRNCPY(dest, src, sizeof(dest));
 ### Environment Variables
 
 - `$SSH_AUTH_SOCK` - SSH agent socket path for password-free key authentication (Unix only)
-- `$ASCII_CHAT_SSH_PASSWORD` - Passphrase for encrypted SSH keys (⚠️ sensitive, prefer ssh-agent)
+- `$ASCII_CHAT_KEY_PASSWORD` - Passphrase for encrypted SSH or GPG keys (⚠️ sensitive, prefer ssh-agent/gpg-agent)
 - `$LOG_LEVEL` - Enable logging at a certain level (DEBUG/0, INFO/1, WARN/2, ERROR/3, FATAL/4)
 - `$CLAUDECODE` - Automatically set by Claude Code; enables LLM-friendly behavior (see below)
 
