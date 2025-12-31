@@ -41,7 +41,7 @@ static int wcwidth(wchar_t wc) {
 }
 #endif
 #include "palette.h"
-#include "common.h"
+#include "core/common.h"
 #include "platform/terminal.h"
 
 /* Default palette constants for legacy functions */

@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "common.h"
+#include "core/common.h"
 
 /**
  * @brief Generate new Ed25519 keypair

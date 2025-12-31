@@ -5,7 +5,7 @@
  */
 
 #include "util/string.h"
-#include "common.h"
+#include "core/common.h"
 #include <string.h>
 #include <ctype.h>
 

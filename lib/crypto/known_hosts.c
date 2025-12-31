@@ -12,8 +12,8 @@
 
 #include "crypto/known_hosts.h"
 #include "crypto/crypto.h"   // Includes <sodium.h>, CRYPTO_* constants
-#include "common.h"          // For BUFFER_SIZE_* constants
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "core/common.h"          // For BUFFER_SIZE_* constants
+#include "core/asciichat_errno.h" // For asciichat_errno system
 #include "crypto/keys.h"
 #include "util/ip.h"
 #include "platform/util.h"

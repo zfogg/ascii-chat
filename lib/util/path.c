@@ -5,7 +5,7 @@
  */
 
 #include "path.h"
-#include "common.h"
+#include "core/common.h"
 #include "platform/system.h"
 #include <string.h>
 #include <stdbool.h>

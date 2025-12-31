@@ -5,7 +5,7 @@
  */
 
 #include "video/output_buffer.h"
-#include "common.h"
+#include "core/common.h"
 
 /*****************************************************************************/
 // char* output buffer helpers

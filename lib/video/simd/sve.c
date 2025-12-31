@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "sve.h"
-#include "common.h"
+#include "core/common.h"
 #include "ascii_simd.h"          // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
 #include "video/output_buffer.h" // For outbuf_t, emit_*, ob_*
 

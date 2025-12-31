@@ -55,7 +55,7 @@
  */
 
 #include <stdbool.h>
-#include "common.h"
+#include "core/common.h"
 
 /**
  * @brief Load configuration from TOML file and apply to global options

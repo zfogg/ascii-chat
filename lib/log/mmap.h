@@ -35,7 +35,7 @@
 #else
 #include <stdatomic.h>
 #endif
-#include "common.h"
+#include "core/common.h"
 #include "platform/mmap.h"
 
 #ifdef __cplusplus

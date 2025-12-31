@@ -46,7 +46,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "common.h"
+#include "core/common.h"
 
 /* ============================================================================
  * IP Address Validation Functions

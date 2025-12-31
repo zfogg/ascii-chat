@@ -160,7 +160,7 @@
 #include "main.h"
 #include "stream.h"
 #include "protocol.h"
-#include "common.h"
+#include "core/common.h"
 #include "options/options.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"

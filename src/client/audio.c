@@ -81,7 +81,7 @@
 #include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
 #include "audio/wav_writer.h"            // WAV file dumping for debugging
-#include "common.h"
+#include "core/common.h"
 #include "options/options.h"
 #include "platform/system.h" // For platform_memcpy
 

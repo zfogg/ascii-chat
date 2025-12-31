@@ -12,9 +12,9 @@
  * @date December 2024
  */
 
-#include "common.h" // Must be first - defines errno constants for Windows
+#include "core/common.h" // Must be first - defines errno constants for Windows
 #include "platform/string.h"
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "core/asciichat_errno.h" // For asciichat_errno system
 #include <corecrt.h>
 #include <stdarg.h>
 #include <stdio.h> // For vsscanf

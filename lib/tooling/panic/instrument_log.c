@@ -2,7 +2,7 @@
 // Debug instrumentation logging runtime for ascii-chat line tracing
 
 #include "tooling/panic/instrument_log.h"
-#include "common.h"
+#include "core/common.h"
 #include "platform/util.h"
 #include "platform/mutex.h"
 #include "platform/system.h"

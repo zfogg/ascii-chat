@@ -8,7 +8,7 @@
 
 #define COBJMACROS
 #include "video/webcam/webcam.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/time.h"
 #include "util/overflow.h"
 #include <mfapi.h>

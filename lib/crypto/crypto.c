@@ -5,8 +5,8 @@
  */
 
 #include "crypto.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "tests/test_env.h"
 #include "util/time.h"
 

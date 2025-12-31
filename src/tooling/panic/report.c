@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Summarizer for ascii-chat instrumentation runtime logs
 
-#include "common.h"
+#include "core/common.h"
 #include "log/logging.h"
 #include "platform/util.h"
 #include "tooling/panic/instrument_log.h"

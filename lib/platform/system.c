@@ -8,7 +8,7 @@
 // All necessary headers are already included by the parent files
 
 #include <stdatomic.h>
-#include "common.h"
+#include "core/common.h"
 #include "util/fnv1a.h"
 
 // UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)

@@ -134,7 +134,7 @@
 #include "crypto.h"
 
 #include "options/options.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/endian.h"
 #include "crypto/handshake/common.h"
 #include "crypto/handshake/server.h"

@@ -5,7 +5,7 @@
  */
 
 #include "ssh_agent.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/bytes.h" // For write_u32_be, read_u32_be
 #include <stdio.h>
 #include <stdlib.h>

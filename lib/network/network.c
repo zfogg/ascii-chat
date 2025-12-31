@@ -6,8 +6,8 @@
  */
 
 #include "network.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "platform/socket.h"
 #include <stdint.h>
 #include <errno.h>

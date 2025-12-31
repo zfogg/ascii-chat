@@ -6,9 +6,9 @@
  */
 
 #include "video_frame.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "buffer_pool.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h" // For asciichat_errno system
+#include "core/buffer_pool.h"
 #include <string.h>
 #include <stdlib.h>
 

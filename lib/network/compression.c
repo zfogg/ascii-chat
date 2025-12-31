@@ -7,8 +7,8 @@
 #include <zstd.h>
 #include <string.h>
 #include "compression.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "core/common.h"
+#include "core/asciichat_errno.h" // For asciichat_errno system
 
 // Compress data using zstd with configurable compression level
 int compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level) {

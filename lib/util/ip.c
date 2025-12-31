@@ -6,7 +6,7 @@
 
 #include "ip.h"
 #include "parsing.h"
-#include "common.h"
+#include "core/common.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

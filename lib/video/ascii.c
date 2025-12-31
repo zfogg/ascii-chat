@@ -18,7 +18,7 @@
 #include "platform/terminal.h"
 
 #include "ascii.h"
-#include "common.h"
+#include "core/common.h"
 #include "image.h"
 #include "util/aspect_ratio.h"
 #include "util/overflow.h"

@@ -4,7 +4,7 @@
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
 
-#include "common.h"
+#include "core/common.h"
 #include "options/options.h"
 #include "platform/abstraction.h"
 #include "platform/system.h"

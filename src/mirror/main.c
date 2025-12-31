@@ -34,7 +34,7 @@
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
-#include "common.h"
+#include "core/common.h"
 #include "options/options.h"
 #include "video/palette.h"
 

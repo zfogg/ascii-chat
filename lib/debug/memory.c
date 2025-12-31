@@ -12,8 +12,8 @@
 #include <string.h>
 
 #include "debug/memory.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
 #include "platform/memory.h"

@@ -6,7 +6,7 @@
  * @ingroup handshake
  */
 
-#include "common.h"
+#include "core/common.h"
 
 /**
  * @name Server Handshake Protocol

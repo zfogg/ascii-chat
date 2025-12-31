@@ -12,8 +12,8 @@
 // Only compile lock_debug implementation when DEBUG_LOCKS is defined
 // Without DEBUG_LOCKS, lock_debug.h provides inline no-op stubs
 
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
 #include "util/time.h"

@@ -4,7 +4,7 @@
  * @brief ⚡ Fast ANSI color code generation with SIMD-accelerated terminal output
  */
 
-#include "common.h"
+#include "core/common.h"
 #include "video/simd/ascii_simd.h"
 #include "ansi_fast.h"
 #include "util/math.h"

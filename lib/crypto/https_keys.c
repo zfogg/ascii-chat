@@ -5,10 +5,10 @@
  */
 
 #include "https_keys.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "platform/string.h"
-#include "network/http_client.h"
+#include "http_client.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

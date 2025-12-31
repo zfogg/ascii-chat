@@ -5,7 +5,7 @@
  */
 
 #include "image.h"
-#include "common.h"
+#include "core/common.h"
 #include "video/image.h"
 #include <limits.h>
 

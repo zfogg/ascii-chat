@@ -12,7 +12,7 @@
 #include <dispatch/dispatch.h>
 
 #include "video/webcam/webcam.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/image.h"
 
 // AVFoundation timeout configuration

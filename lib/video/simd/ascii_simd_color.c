@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include "ascii_simd.h"
 
-#include "common.h"
+#include "core/common.h"
 #include "../image.h"
 #include "video/palette.h"
 #include "util/number.h" // For write_u8

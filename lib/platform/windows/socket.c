@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "common.h"
+#include "core/common.h"
 #include "platform/socket.h"
 
 #pragma comment(lib, "ws2_32.lib")

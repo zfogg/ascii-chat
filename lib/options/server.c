@@ -14,8 +14,8 @@
 #include "options/server.h"
 #include "options/common.h"
 
-#include "asciichat_errno.h"
-#include "common.h"
+#include "core/asciichat_errno.h"
+#include "core/common.h"
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/validation.h"

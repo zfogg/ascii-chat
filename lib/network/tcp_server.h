@@ -63,7 +63,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdatomic.h>
-#include "common.h"
+#include "core/common.h"
 #include "platform/socket.h"
 #include "platform/abstraction.h"
 #include "thread_pool.h"

@@ -5,9 +5,9 @@
  */
 
 #include "server.h"
-#include "asciichat_errno.h"
-#include "buffer_pool.h"
-#include "common.h"
+#include "core/asciichat_errno.h"
+#include "core/buffer_pool.h"
+#include "core/common.h"
 #include "crypto/crypto.h"
 #include "crypto/gpg.h"
 #include "network/packet.h"

@@ -8,7 +8,7 @@
 #include "tests/logging.h"
 #include "network/packet_queue.h"
 #include "network/crc32.h" // For CRC calculation
-#include "buffer_pool.h"   // For buffer_pool_init_global/cleanup_global
+#include "core/buffer_pool.h"   // For buffer_pool_init_global/cleanup_global
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);

@@ -72,7 +72,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "common.h"
+#include "core/common.h"
 #include "util/audio.h"
 #include "util/endian.h"
 

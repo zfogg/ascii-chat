@@ -24,7 +24,7 @@
 #include "video/simd/common.h"
 #include "ansi_fast.h"
 #include "options/options.h"
-#include "buffer_pool.h" // For buffer pool allocation functions
+#include "core/buffer_pool.h" // For buffer pool allocation functions
 #include "util/overflow.h"
 #include "util/image.h"
 #include "util/math.h"

@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "common.h"
+#include "core/common.h"
 
 /**
  * @brief Generate random session string

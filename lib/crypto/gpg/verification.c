@@ -7,7 +7,7 @@
 #include "verification.h"
 #include "signing.h"
 #include "../keys.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/string.h"
 #include "util/validation.h"
 #include "log/logging.h"

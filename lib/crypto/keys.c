@@ -9,8 +9,8 @@
 #include "ssh/ssh_keys.h"
 #include "gpg/gpg_keys.h"
 #include "https_keys.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "util/path.h"
 #include "gpg/export.h" // For gpg_get_public_key()
 #include <string.h>

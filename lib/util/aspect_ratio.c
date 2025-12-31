@@ -4,7 +4,7 @@
  * @brief 📐 Terminal cell aspect ratio calculations for accurate image dimension scaling
  */
 
-#include "common.h"
+#include "core/common.h"
 #include "util/math.h"
 
 #define CHAR_ASPECT 2.0f // terminal cell height ÷ width

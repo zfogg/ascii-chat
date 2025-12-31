@@ -35,7 +35,7 @@
 
 #pragma once
 
-#include "asciichat_errno.h"
+#include "core/asciichat_errno.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

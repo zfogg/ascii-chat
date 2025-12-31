@@ -7,7 +7,7 @@
 #ifdef _WIN32
 
 #include "../abstraction.h"
-#include "common.h"
+#include "core/common.h"
 #include "../windows_compat.h"
 
 /**

@@ -4,7 +4,7 @@
  */
 
 #include "audio/wav_writer.h"
-#include "common.h"
+#include "core/common.h"
 #include "platform/string.h"
 #include <stdio.h>
 #include <stdlib.h>

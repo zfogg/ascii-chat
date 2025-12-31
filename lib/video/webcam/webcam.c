@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #include "webcam.h"
-#include "common.h"
+#include "core/common.h"
 #include "options/options.h"
 #include "video/image.h"
 #include "platform/string.h"

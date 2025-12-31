@@ -69,11 +69,11 @@
 #include "network/av.h"
 #include "util/endian.h"
 #include "util/ip.h"
-#include "common.h"
+#include "core/common.h"
 #include "display.h"
 #include "options/options.h"
 #include "video/palette.h"
-#include "buffer_pool.h"
+#include "core/buffer_pool.h"
 
 #include <string.h>
 #include <stdarg.h>

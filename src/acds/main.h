@@ -58,7 +58,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "common.h"
+#include "core/common.h"
 
 /**
  * @brief Discovery server configuration

@@ -23,7 +23,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "common.h"
+#include "core/common.h"
 #include "options/options.h" // For strtoint_safe()
 
 #ifdef __cplusplus

@@ -16,8 +16,8 @@
 #include "options/acds.h"
 
 #include "options/config.h"
-#include "asciichat_errno.h"
-#include "common.h"
+#include "core/asciichat_errno.h"
+#include "core/common.h"
 #include "log/logging.h"
 #include "platform/system.h"
 #include "platform/terminal.h"

@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "../image.h"
-#include "common.h"
+#include "core/common.h"
 
 // Check for SIMD support and include architecture-specific headers
 // CMake explicitly controls which SIMD levels to enable via ENABLE_SIMD_* options

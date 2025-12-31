@@ -49,7 +49,7 @@
 // Now include ascii-chat headers after WebRTC to avoid macro conflicts
 #include "audio/client_audio_pipeline.h"
 #include "audio/wav_writer.h"
-#include "common.h"
+#include "core/common.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
 

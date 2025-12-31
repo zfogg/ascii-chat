@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "common.h"
+#include "core/common.h"
 #include "platform/abstraction.h"
 #include "acds/protocol.h"
 

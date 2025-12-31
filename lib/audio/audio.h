@@ -74,9 +74,9 @@
 #include <mach/kern_return.h>
 #endif
 
-#include "common.h"
+#include "core/common.h"
 #include "platform/mutex.h"
-#include "ringbuffer.h"
+#include "core/ringbuffer.h"
 
 /* ============================================================================
  * Audio Configuration Constants

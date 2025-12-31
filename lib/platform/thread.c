@@ -8,7 +8,7 @@
  */
 
 #include "thread.h"
-#include "common.h"
+#include "core/common.h"
 #include "log/logging.h"
 
 asciichat_error_t thread_create_or_fail(asciithread_t *thread, void *(*func)(void *), void *arg,

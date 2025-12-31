@@ -5,7 +5,7 @@
  */
 
 #include "platform/string.h"
-#include "common.h"
+#include "core/common.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>

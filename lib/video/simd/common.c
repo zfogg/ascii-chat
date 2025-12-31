@@ -4,7 +4,7 @@
  * @brief 🔧 Shared SIMD utilities: initialization, cleanup, and architecture-specific resource management
  */
 
-#include "common.h"
+#include "core/common.h"
 #include "video/simd/common.h"
 #include "uthash.h"
 #include "video/palette.h"

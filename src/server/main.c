@@ -73,7 +73,7 @@
 #include <stdatomic.h>
 
 #include "main.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/endian.h"
 #include "util/ip.h"
 #include "util/uthash.h"
@@ -83,12 +83,12 @@
 #include "video/image.h"
 #include "video/simd/ascii_simd.h"
 #include "video/simd/common.h"
-#include "asciichat_errno.h"
+#include "core/asciichat_errno.h"
 #include "network/network.h"
 #include "network/tcp_server.h"
 #include "thread_pool.h"
 #include "options/options.h"
-#include "buffer_pool.h"
+#include "core/buffer_pool.h"
 #include "audio/mixer.h"
 #include "audio/audio.h"
 #include "client.h"

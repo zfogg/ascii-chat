@@ -6,8 +6,8 @@
 
 #include "audio/audio.h"
 #include "audio/mixer.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "core/common.h"
+#include "core/asciichat_errno.h" // For asciichat_errno system
 #include "util/time.h"       // For timing instrumentation
 #include "util/bits.h"       // For find_first_set_bit
 #include "util/overflow.h"   // For overflow checking

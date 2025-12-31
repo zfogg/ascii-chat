@@ -67,7 +67,7 @@
 #include "crypto.h"
 #include "util/fps.h"
 
-#include "common.h"
+#include "core/common.h"
 #include "platform/abstraction.h"
 
 #include <stdatomic.h>

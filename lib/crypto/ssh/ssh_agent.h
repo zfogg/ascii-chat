@@ -28,7 +28,7 @@
  * @date October 2025
  */
 
-#include "common.h"
+#include "core/common.h"
 #include "../key_types.h"
 #include <stdbool.h>
 

@@ -80,8 +80,8 @@
 #include "mirror/main.h"
 
 // Common headers for version info and initialization
-#include "common.h"
-#include "version.h"
+#include "core/common.h"
+#include "core/version.h"
 #include "options/options.h"
 #include "options/config.h"
 #include "log/logging.h"
@@ -90,7 +90,7 @@
 #include "util/path.h"
 
 #ifndef NDEBUG
-#include "asciichat_errno.h"
+#include "core/asciichat_errno.h"
 #include "debug/lock.h"
 #endif
 

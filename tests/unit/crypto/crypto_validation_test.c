@@ -9,7 +9,7 @@
 #include "crypto/keys_validation.h"
 #include "crypto/keys.h"
 #include "crypto/crypto.h"
-#include "common.h"
+#include "core/common.h"
 #include <sodium.h>
 #include <string.h>
 

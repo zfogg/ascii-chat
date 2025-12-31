@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "common.h"
+#include "core/common.h"
 #include "acds/session.h"
 #include "acds/protocol.h"
 #include "network/tcp_server.h"

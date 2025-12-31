@@ -5,8 +5,8 @@
  */
 
 #include "keys_validation.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "core/common.h"
+#include "core/asciichat_errno.h"
 #include "crypto/crypto.h" // Includes <sodium.h>
 #include <string.h>
 #include <stdlib.h>

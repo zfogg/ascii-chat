@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #include "crypto/gpg/gpg_keys.h"
-#include "asciichat_errno.h"
+#include "core/asciichat_errno.h"
 
 // Test fixture data
 static char *test_gnupghome = NULL;

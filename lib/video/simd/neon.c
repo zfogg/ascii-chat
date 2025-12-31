@@ -17,7 +17,7 @@
 
 #include <arm_neon.h>
 
-#include "common.h"
+#include "core/common.h"
 #include "neon.h"
 #include "ascii_simd.h"
 #include "../image.h"

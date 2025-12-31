@@ -17,7 +17,7 @@
 #include <linux/videodev2.h>
 
 #include "video/webcam/webcam.h"
-#include "common.h"
+#include "core/common.h"
 #include "platform/file.h"
 #include "platform/util.h"
 #include "util/overflow.h"

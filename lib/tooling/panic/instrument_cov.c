@@ -2,7 +2,7 @@
 // SanitizerCoverage hooks for ascii-chat instrumentation runtime
 
 #include "tooling/panic/instrument_log.h"
-#include "common.h"
+#include "core/common.h"
 
 #include <stdint.h>
 

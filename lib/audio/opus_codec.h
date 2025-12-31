@@ -56,7 +56,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "common.h"
+#include "core/common.h"
 
 /* ============================================================================
  * Forward Declarations

@@ -12,7 +12,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "common.h"
+#include "core/common.h"
 #include "platform/pipe.h"
 
 pipe_t platform_pipe_connect(const char *path) {

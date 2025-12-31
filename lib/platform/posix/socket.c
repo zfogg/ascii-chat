@@ -18,7 +18,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "common.h"
+#include "core/common.h"
 #include "platform/abstraction.h"
 
 // Socket implementation (mostly pass-through for POSIX)

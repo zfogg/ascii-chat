@@ -5,7 +5,7 @@
  */
 
 #include "fps.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/time.h"
 #include "log/logging.h"
 

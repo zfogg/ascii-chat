@@ -118,7 +118,7 @@
 
 #include "protocol.h"
 #include "client.h"
-#include "common.h"
+#include "core/common.h"
 #include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"

@@ -13,15 +13,15 @@
 #include "options/acds.h"
 #include "options/common.h"
 
-#include "asciichat_errno.h"
-#include "common.h"
+#include "core/asciichat_errno.h"
+#include "core/common.h"
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/validation.h"
 #include "util/ip.h"
 #include "util/parsing.h"
 #include "util/path.h"
-#include "version.h"
+#include "core/version.h"
 
 #ifdef _WIN32
 #include "platform/windows/getopt.h"

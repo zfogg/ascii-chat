@@ -8,7 +8,7 @@
  * common error patterns in network protocols.
  */
 
-#include "common.h"
+#include "core/common.h"
 #include "platform/socket.h"
 #include "acds/protocol.h"
 #include "network/rate_limit/rate_limit.h"

@@ -79,9 +79,9 @@
 #include <stdint.h>
 
 // Include ringbuffer.h to get the audio_ring_buffer_t type
-#include "ringbuffer.h"
+#include "core/ringbuffer.h"
 #include "platform/rwlock.h"
-#include "asciichat_errno.h"
+#include "core/asciichat_errno.h"
 
 #ifdef __cplusplus
 extern "C" {

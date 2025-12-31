@@ -7,7 +7,7 @@
 #include <criterion/new/assert.h>
 #include "crypto/https_keys.h"
 #include "crypto/keys.h"
-#include "common.h"
+#include "core/common.h"
 #include <string.h>
 
 TestSuite(crypto_https_keys, .description = "HTTPS key fetching and URL construction");

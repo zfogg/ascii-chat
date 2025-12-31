@@ -16,9 +16,9 @@
 #include "options/client.h"
 #include "options/common.h"
 
-#include "asciichat_errno.h"
+#include "core/asciichat_errno.h"
 #include "audio/audio.h"
-#include "common.h"
+#include "core/common.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "options/levenshtein.h"

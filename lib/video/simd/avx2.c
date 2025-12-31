@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "avx2.h"
-#include "common.h"
+#include "core/common.h"
 #include "../output_buffer.h"
 #include "../ansi_fast.h"
 #include "util/overflow.h"

@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include "common.h"
+#include "core/common.h"
 #include "acds/session.h"
 
 /**

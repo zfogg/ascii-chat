@@ -44,7 +44,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "common.h"
+#include "core/common.h"
 
 /* ============================================================================
  * Path Constants

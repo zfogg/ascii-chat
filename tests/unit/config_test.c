@@ -25,7 +25,7 @@
 
 #include "options/config.h"
 #include "options/options.h"
-#include "common.h"
+#include "core/common.h"
 #include "tests/common.h"
 #include "tests/logging.h"
 

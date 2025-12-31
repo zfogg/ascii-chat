@@ -8,9 +8,9 @@
 #include "endian.h" // For HOST_TO_NET_U16, NET_TO_HOST_U32 (cross-platform)
 #include <string.h>
 #include "../network/packet.h" // For audio_batch_packet_t
-#include "../network/av.h"     // For audio packet structures
+#include "../video/av.h"       // For audio packet structures
 #include "log/logging.h"
-#include "../common.h"
+#include "../core/common.h"
 
 asciichat_error_t audio_parse_batch_header(const void *data, size_t len, audio_batch_info_t *info) {
   if (!data) {

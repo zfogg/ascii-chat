@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include "common.h"
+#include "core/common.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "network/tcp_server.h"

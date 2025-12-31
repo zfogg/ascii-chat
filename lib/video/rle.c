@@ -6,7 +6,7 @@
 
 #include "rle.h"
 #include "output_buffer.h"
-#include "common.h"
+#include "core/common.h"
 
 #include <string.h>
 
