@@ -124,26 +124,34 @@ paru -S libasciichat-git     # Development libraries from git
 
 ## Usage
 
-ascii-chat uses a unified binary with two modes: `server` and `client`.
+ascii-chat uses a unified binary with three modes: `server`, `client`, and `mirror`.
 
-Start the server and wait for client connections:
+**Start a server** and wait for client connections:
 
 ```bash
 # NOTE: on Windows the filename is ascii-chat.exe
-ascii-chat [--help|--version] [server|client] [options...]
+ascii-chat [binary-options...] server [server-options...]
 ```
 
-Start the client and connect to a running server:
+**Connect to a server** as a client:
 
 ```bash
-ascii-chat client [options]
+ascii-chat [binary-options...] client [<address>] [client-options...]
 ```
 
-For help with either mode:
+**View your local webcam** without a network connection (mirror mode):
 
 ```bash
-ascii-chat server --help
-ascii-chat client --help
+ascii-chat [binary-options...] mirror [mirror-options...]
+```
+
+**Get help** for any mode:
+
+```bash
+ascii-chat --help             # Top-level help
+ascii-chat server --help      # Server-specific help
+ascii-chat client --help      # Client-specific help
+ascii-chat mirror --help      # Mirror-specific help
 ```
 
 **Man Page:**
@@ -162,15 +170,56 @@ man build/docs/ascii-chat.1
 
 ## Command line flags
 
+### Binary-Level Options
+
+These options apply to all modes (server, client, mirror) and must be specified **before** the mode:
+
+**Configuration:**
+
+- `--config FILE`: Load configuration from TOML file
+- `--config-create [PATH]`: Create default configuration file and exit
+
+**Logging:**
+
+- `-L --log-file FILE`: Redirect logs to file (default: server.log/client.log/mirror.log based on mode)
+- `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal (default: info in release, debug in debug builds)
+- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
+
+**Information:**
+
+- `-v --version`: Display version information
+- `-h --help`: Show help message
+
+**Example:**
+
+```bash
+# Binary options come before the mode
+ascii-chat -V --log-level debug --log-file /tmp/debug.log client
+ascii-chat --config ~/my-config.toml server
+```
+
 ### Client Options
 
-Run `ascii-chat client --help` to see all client options:
+Run `ascii-chat client --help` to see all client options.
 
-**Connection:**
+**Connection (positional argument):**
 
-- `-a --address ADDRESS`: IPv4 address or hostname to connect to (default: localhost)
-- `-H --host HOSTNAME`: Hostname for DNS lookup (alternative to --address)
-- `-p --port PORT`: TCP port (default: 27224)
+Client accepts 0-1 positional argument for server address:
+- `[address][:port]`: Server address with optional port
+  - `address`: IPv4, IPv6, or hostname (default: localhost)
+  - `:port`: Optional port suffix (default: 27224)
+
+Examples:
+```bash
+ascii-chat client                      # Connect to localhost:27224
+ascii-chat client 192.168.1.1          # Connect to 192.168.1.1:27224
+ascii-chat client example.com:8080     # Connect to example.com:8080
+ascii-chat client [::1]:8080           # Connect to IPv6 ::1:8080
+```
+
+**Connection (flags):**
+
+- `-p --port PORT`: TCP port (default: 27224) - conflicts with port in positional argument
 - `--reconnect VALUE`: Automatic reconnection behavior: `off`, `auto`, or number 1-999 (default: auto)
 
 **Terminal Dimensions:**
@@ -213,11 +262,10 @@ Run `ascii-chat client --help` to see all client options:
 - `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
 - `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
 
-**Snapshot & Mirror Modes:**
+**Snapshot Mode:**
 
 - `-S --snapshot`: Capture single frame from server and exit (useful for scripting, CI/CD)
 - `-D --snapshot-delay SECONDS`: Delay in seconds before capturing snapshot (default: 3.0-4.0 for webcam warmup)
-- `--mirror`: View local webcam as ASCII art without connecting to server (standalone mode)
 - `--strip-ansi`: Remove all ANSI escape codes from output (plain ASCII only)
 
 **Encryption:**
@@ -229,28 +277,32 @@ Run `ascii-chat client --help` to see all client options:
 - `--no-encrypt`: Disable encryption (for local testing)
 - `--server-key KEY`: Expected server public key for identity verification (prevents MITM attacks)
 
-**Configuration & Output:**
+**Output:**
 
-- `--config FILE`: Load configuration from TOML file
-- `--config-create [PATH]`: Create default configuration file and exit
-- `-L --log-file FILE`: Redirect logs to file
-- `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal
 - `-q --quiet`: Disable console logging (logs only to file)
-- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
-
-**Information:**
-
-- `-v --version`: Display version information
-- `-h --help`: Show help message
 
 ### Server Options
 
-Run `./bin/ascii-chat server --help` to see all server options:
+Run `ascii-chat server --help` to see all server options.
 
-**Network Binding:**
+**Network Binding (positional arguments):**
 
-- `-a --address ADDRESS`: IPv4 address to bind to (default: 127.0.0.1)
-- `--address6 ADDRESS6`: IPv6 address to bind to (default: ::1, use `::` for all interfaces)
+Server accepts 0-2 positional arguments for bind addresses:
+- 0 arguments: bind to defaults (127.0.0.1 and ::1)
+- 1 argument: bind to this IPv4 OR IPv6 address
+- 2 arguments: bind to both (must be one IPv4 and one IPv6)
+
+Examples:
+```bash
+ascii-chat server                      # Bind to 127.0.0.1 and ::1
+ascii-chat server 0.0.0.0              # Bind to all IPv4 interfaces
+ascii-chat server ::                   # Bind to all IPv6 interfaces
+ascii-chat server 0.0.0.0 ::           # Bind to all interfaces (IPv4 and IPv6)
+ascii-chat server 127.0.0.1 ::1        # Bind to localhost (IPv4 and IPv6)
+```
+
+**Network Binding (flags):**
+
 - `-p --port PORT`: TCP port to listen on (default: 27224)
 - `--max-clients N`: Maximum concurrent client connections, 1-32 (default: 10)
 
@@ -276,18 +328,60 @@ Run `./bin/ascii-chat server --help` to see all server options:
 - `--no-encrypt`: Disable encryption (for local testing)
 - `--client-keys FILE`: File containing allowed client public keys for authentication (whitelist, one per line in authorized_keys format)
 
-**Configuration & Output:**
+### Mirror Mode Options
 
-- `--config FILE`: Load configuration from TOML file
-- `--config-create [PATH]`: Create default configuration file and exit
-- `-L --log-file FILE`: Redirect logs to file
-- `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal
-- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
+Run `ascii-chat mirror --help` to see all mirror mode options.
 
-**Information:**
+Mirror mode displays your local webcam as ASCII art without any network connection - perfect for testing your webcam, palette settings, and terminal rendering.
 
-- `-v --version`: Display version information
-- `-h --help`: Show help message
+**Terminal Dimensions:**
+
+- `-x --width WIDTH`: Terminal width in characters (auto-detected by default)
+- `-y --height HEIGHT`: Terminal height in characters (auto-detected by default)
+- `--stretch`: Stretch video to fit without preserving aspect ratio
+
+**Webcam Options:**
+
+- `-c --webcam-index INDEX`: Webcam device index (0-based, default: 0)
+- `-f --webcam-flip`: Toggle horizontal flip of webcam image (default: flipped)
+- `--test-pattern`: Use test pattern instead of real webcam
+- `--list-webcams`: List available webcam devices and exit
+
+**Display & Color:**
+
+- `--color-mode MODE`: Color modes: auto, none, 16, 256, truecolor (default: auto)
+- `-M --render-mode MODE`: Render modes: foreground (fg), background (bg), half-block (default: foreground)
+- `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
+- `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
+- `--show-capabilities`: Display detected terminal color capabilities and exit
+- `--utf8`: Force enable UTF-8/Unicode support
+
+**Performance:**
+
+- `--fps FPS`: Desired frame rate, 1-144 (default: 60)
+
+**Snapshot Mode:**
+
+- `-S --snapshot`: Capture single frame and exit (useful for testing palettes)
+- `-D --snapshot-delay SECONDS`: Delay in seconds before capturing snapshot (default: 3.0-4.0 for webcam warmup)
+- `--strip-ansi`: Remove all ANSI escape codes from output (plain ASCII only)
+
+**Output:**
+
+- `-q --quiet`: Disable console logging (logs only to file)
+
+**Example:**
+
+```bash
+# View webcam with custom palette
+ascii-chat mirror --palette blocks
+
+# Test truecolor rendering with half-block mode
+ascii-chat mirror --color-mode truecolor --render-mode half-block
+
+# Capture a single snapshot with debug logging
+ascii-chat -V --log-level debug mirror --snapshot
+```
 
 ## Cryptography
 

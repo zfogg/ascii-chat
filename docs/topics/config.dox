@@ -161,10 +161,10 @@
  * ./ascii-chat server
  *
  * # Bind to specific address and port
- * ./ascii-chat server --address :: --port 27224
+ * ./ascii-chat server :: --port 27224
  *
  * # Bind to IPv4 only
- * ./ascii-chat server --address 0.0.0.0 --port 27224
+ * ./ascii-chat server 0.0.0.0 --port 27224
  *
  * # Use server identity key
  * ./ascii-chat server --key ~/.ssh/ascii-chat-server
@@ -179,11 +179,11 @@
  * ./ascii-chat server --color --log-file /tmp/server.log
  *
  * # Use configuration file
- * ./ascii-chat server --config ~/.config/ascii-chat/server.toml
+ * ./ascii-chat --config ~/.config/ascii-chat/server.toml server
  * @endcode
  *
  * Server-specific flags:
- * - `--address, -a ADDRESS`: Bind address (default: "::")
+ * - `[address1] [address2]` (positional): Bind addresses, 0-2 IPv4/IPv6 addresses (default: 127.0.0.1 and ::1)
  * - `--port, -p PORT`: Listen port (default: 27224)
  * - `--key KEY_FILE`: Server identity key (SSH Ed25519)
  * - `--client-keys KEYS`: Comma-separated authorized client keys
@@ -196,7 +196,7 @@
  * ./ascii-chat client
  *
  * # Connect to specific server
- * ./ascii-chat client --address example.com --port 27224
+ * ./ascii-chat client example.com:27224
  *
  * # Specify terminal dimensions
  * ./ascii-chat client --width 160 --height 45
@@ -220,12 +220,12 @@
  * ./ascii-chat client --snapshot --snapshot-delay 10
  *
  * # Use configuration file
- * ./ascii-chat client --config ~/.config/ascii-chat/client.toml
+ * ./ascii-chat --config ~/.config/ascii-chat/client.toml client example.com
  * @endcode
  *
  * Client-specific flags:
- * - `--address, -a ADDRESS`: Server address (default: "localhost")
- * - `--port, -p PORT`: Server port (default: 27224)
+ * - `[address][:port]` (positional): Server address with optional port (default: localhost:27224)
+ * - `--port, -p PORT`: Server port (default: 27224) - conflicts with port in positional argument
  * - `--width, -w WIDTH`: Terminal width (default: auto-detect)
  * - `--height, -h HEIGHT`: Terminal height (default: auto-detect)
  * - `--color, -c`: Enable color output
@@ -260,18 +260,27 @@
  *
  * **Creating a Default Config**:
  * @code{.sh}
- * ./ascii-chat client --config-create
+ * # Create config at default location
+ * ./ascii-chat --config-create
+ *
+ * # Create config at custom location
+ * ./ascii-chat --config-create ~/.my-config.toml
+ *
+ * # Overwrite existing config (scripted - supports piped input)
+ * echo "y" | ./ascii-chat --config-create
+ * yes | ./ascii-chat --config-create /tmp/server.toml
  * @endcode
  *
  * **Using a Config File**:
  * @code{.sh}
- * ./ascii-chat client --config ~/.ascii-chat/config.toml
+ * ./ascii-chat --config ~/.ascii-chat/config.toml server
+ * ./ascii-chat --config ~/.ascii-chat/config.toml client example.com
  * @endcode
  *
  * **Overriding Config with CLI**:
  * @code{.sh}
- * # Config file sets port=27224, but override it
- * ./ascii-chat client --config ~/.ascii-chat/config.toml --port 8080
+ * # Config file sets port=27224, but override it with --port
+ * ./ascii-chat --config ~/.ascii-chat/config.toml client --port 8080
  * @endcode
  *
  * @section config_precedence Configuration Precedence

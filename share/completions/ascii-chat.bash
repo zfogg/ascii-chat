@@ -36,25 +36,29 @@ _ascii_chat() {
   local cur prev words cword
   _init_completion || return
 
-  # Common options with help text
-  local -a common_opts=(
+  # Binary-level options (available before mode selection)
+  local -a binary_opts=(
     '-h' 'print this help'
     '--help' 'print this help'
     '-v' 'print version information and exit'
     '--version' 'print version information and exit'
-    '-a' 'IPv4 address to bind/connect to'
-    '--address' 'IPv4 address to bind/connect to'
+    '-L' 'redirect logs to file'
+    '--log-file' 'redirect logs to file'
+    '--log-level' 'set log level: dev, debug, info, warn, error, fatal'
+    '-V' 'increase log verbosity (stackable: -VV, -VVV)'
+    '--verbose' 'increase log verbosity (stackable: -VV, -VVV)'
+    '--config' 'load configuration from TOML file'
+    '--config-create' 'create default configuration file'
+  )
+
+  # Common mode-specific options (available in all modes)
+  local -a common_opts=(
     '-p' 'TCP port'
     '--port' 'TCP port'
     '-P' 'ASCII character palette'
     '--palette' 'ASCII character palette'
     '-C' 'Custom palette characters'
     '--palette-chars' 'Custom palette characters'
-    '-L' 'redirect logs to file'
-    '--log-file' 'redirect logs to file'
-    '--log-level' 'set log level: dev, debug, info, warn, error, fatal'
-    '-V' 'increase log verbosity (stackable: -VV, -VVV)'
-    '--verbose' 'increase log verbosity (stackable: -VV, -VVV)'
     '-E' 'enable packet encryption'
     '--encrypt' 'enable packet encryption'
     '-K' 'SSH/GPG key for authentication'
@@ -71,8 +75,6 @@ _ascii_chat() {
     '--width' 'render width (characters)'
     '-y' 'render height (characters)'
     '--height' 'render height (characters)'
-    '-H' 'hostname for DNS lookup'
-    '--host' 'hostname for DNS lookup'
     '-c' 'webcam device index (0-based)'
     '--webcam-index' 'webcam device index (0-based)'
     '--list-webcams' 'list available webcam devices and exit'
@@ -109,13 +111,10 @@ _ascii_chat() {
     '--encode-audio' 'force enable Opus audio encoding'
     '--no-encode-audio' 'disable Opus audio encoding'
     '--reconnect' 'automatic reconnection: off, auto, or number 1-999'
-    '--config' 'load configuration from TOML file'
-    '--config-create' 'create default configuration file'
   )
 
   # Server-only options with help text
   local -a server_opts=(
-    '--address6' 'IPv6 address to bind to (default: ::1)'
     '--max-clients' 'maximum concurrent client connections (default: 10, max: 32)'
     '--client-keys' 'allowed client keys file for authentication (authorized_keys format)'
     '--compression-level' 'zstd compression level 1-9 (default: 1)'
@@ -123,19 +122,46 @@ _ascii_chat() {
     '--encode-audio' 'force enable Opus audio encoding'
     '--no-encode-audio' 'disable Opus audio encoding'
     '--no-audio-mixer' 'disable audio mixer, send silence instead (debug only)'
-    '--config' 'load configuration from TOML file'
-    '--config-create' 'create default configuration file'
+  )
+
+  # Mirror-only options with help text
+  local -a mirror_opts=(
+    '-x' 'render width (characters)'
+    '--width' 'render width (characters)'
+    '-y' 'render height (characters)'
+    '--height' 'render height (characters)'
+    '-c' 'webcam device index (0-based)'
+    '--webcam-index' 'webcam device index (0-based)'
+    '--list-webcams' 'list available webcam devices and exit'
+    '-f' 'toggle horizontal flip of webcam image'
+    '--webcam-flip' 'toggle horizontal flip of webcam image'
+    '--test-pattern' 'use test pattern instead of webcam'
+    '--fps' 'desired frame rate 1-144 (default: 60)'
+    '--color-mode' 'color modes: auto, none, 16, 256, truecolor'
+    '--show-capabilities' 'show detected terminal capabilities and exit'
+    '--utf8' 'force enable UTF-8/Unicode support'
+    '-M' 'rendering mode: foreground/fg, background/bg, half-block'
+    '--render-mode' 'rendering mode: foreground/fg, background/bg, half-block'
+    '-s' 'stretch or shrink video to fit (ignore aspect ratio)'
+    '--stretch' 'stretch or shrink video to fit (ignore aspect ratio)'
+    '-q' 'disable console logging (log only to file)'
+    '--quiet' 'disable console logging (log only to file)'
+    '-S' 'capture single frame and exit'
+    '--snapshot' 'capture single frame and exit'
+    '-D' 'delay SECONDS before snapshot'
+    '--snapshot-delay' 'delay SECONDS before snapshot (default: 3.0-4.0)'
+    '--strip-ansi' 'remove all ANSI escape codes from output'
   )
 
   # Modes
-  local modes="server client"
+  local modes="server client mirror"
 
   # Detect which mode we're in by scanning previous words
   local mode=""
   local i
   for ((i = 1; i < cword; i++)); do
     case "${words[i]}" in
-    server | client)
+    server | client | mirror)
       mode="${words[i]}"
       break
       ;;
@@ -174,9 +200,6 @@ _ascii_chat() {
     return
     ;;
   # Options that take numeric values - no completion
-  -a | --address | -H | --host | --address6)
-    return
-    ;;
   -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps | --microphone-index | --speakers-index | --max-clients)
     return
     ;;
@@ -191,14 +214,17 @@ _ascii_chat() {
 
     case "$mode" in
     client)
-      opts_to_complete=("${common_opts[@]}" "${client_opts[@]}")
+      opts_to_complete=("${binary_opts[@]}" "${common_opts[@]}" "${client_opts[@]}")
       ;;
     server)
-      opts_to_complete=("${common_opts[@]}" "${server_opts[@]}")
+      opts_to_complete=("${binary_opts[@]}" "${common_opts[@]}" "${server_opts[@]}")
+      ;;
+    mirror)
+      opts_to_complete=("${binary_opts[@]}" "${mirror_opts[@]}")
       ;;
     *)
-      # No mode yet - show all options
-      opts_to_complete=("${common_opts[@]}" "${client_opts[@]}" "${server_opts[@]}")
+      # No mode yet - show binary options and modes
+      opts_to_complete=("${binary_opts[@]}")
       ;;
     esac
 

@@ -249,10 +249,10 @@ HASH_ITER(hh, g_client_manager.clients_by_id, ...);
  * The server supports simultaneous binding to both IPv4 and IPv6:
  *
  * **Binding Logic**:
- * - Default: Bind to both 127.0.0.1 (IPv4) and ::1 (IPv6) for localhost dual-stack
- * - If only `--address` set: Bind only to that IPv4 address
- * - If only `--address6` set: Bind only to that IPv6 address
- * - If both set: Bind to both addresses (full dual-stack)
+ * - Default (0 arguments): Bind to both 127.0.0.1 (IPv4) and ::1 (IPv6) for localhost dual-stack
+ * - If one IPv4 address provided: Bind only to that IPv4 address
+ * - If one IPv6 address provided: Bind only to that IPv6 address
+ * - If two addresses provided: Bind to both addresses (full dual-stack, order-independent)
  *
  * **Connection Acceptance**:
  * - Uses `select()` to check both sockets simultaneously
