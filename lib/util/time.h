@@ -278,4 +278,106 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size);
     }                                                                                                                  \
   } while (0)
 
+// ============================================================================
+// Adaptive Sleep System
+// ============================================================================
+
+/**
+ * @brief Configuration for adaptive sleep behavior
+ *
+ * Defines how a thread should adjust its sleep time based on workload.
+ * Threads can speed up (sleep less) when queues build up and slow down
+ * (sleep more) when queues are empty.
+ *
+ * @ingroup module_utilities
+ */
+typedef struct {
+  uint64_t baseline_sleep_ns;  ///< Normal sleep time in nanoseconds (when queue is at target)
+  double min_speed_multiplier; ///< Minimum speed (max sleep) - usually 1.0 (baseline speed)
+  double max_speed_multiplier; ///< Maximum speed (min sleep) - e.g., 4.0 = process 4x faster
+  double speedup_rate;         ///< Ramp-up rate when queue builds (0.0-1.0, higher = faster ramp)
+  double slowdown_rate;        ///< Ramp-down rate when queue empties (0.0-1.0, higher = faster ramp)
+} adaptive_sleep_config_t;
+
+/**
+ * @brief Runtime state for adaptive sleep
+ *
+ * Tracks current speed multiplier and last calculated sleep time.
+ * Should be initialized once and updated each iteration.
+ *
+ * @ingroup module_utilities
+ */
+typedef struct {
+  adaptive_sleep_config_t config;  ///< Configuration (copied, not referenced)
+  double current_speed_multiplier; ///< Current speed state (1.0 = baseline, >1.0 = faster)
+  uint64_t last_sleep_ns;          ///< Last calculated sleep time (for debugging)
+} adaptive_sleep_state_t;
+
+/**
+ * @brief Initialize adaptive sleep state with configuration
+ *
+ * Sets up an adaptive sleep state structure with the provided configuration.
+ * The configuration is copied internally, so the caller doesn't need to keep
+ * the config structure alive.
+ *
+ * @param state Pointer to adaptive sleep state to initialize
+ * @param config Pointer to configuration (will be copied)
+ * @ingroup module_utilities
+ */
+void adaptive_sleep_init(adaptive_sleep_state_t *state, const adaptive_sleep_config_t *config);
+
+/**
+ * @brief Calculate adaptive sleep time based on queue depth
+ *
+ * Evaluates current queue depth against target and adjusts the speed multiplier:
+ * - If queue_depth > target_depth: speed up (reduce sleep, drain queue faster)
+ * - If queue_depth < target_depth: slow down (increase sleep back to baseline)
+ * - Speed multiplier changes gradually based on speedup_rate/slowdown_rate
+ *
+ * The actual sleep time is calculated as: baseline_sleep_ns / current_speed_multiplier
+ *
+ * Example usage:
+ * ```c
+ * adaptive_sleep_state_t sleep_state;
+ * adaptive_sleep_config_t config = {
+ *   .baseline_sleep_ns = 16666667,  // ~60 FPS (16.67ms)
+ *   .min_speed_multiplier = 1.0,    // Never slower than baseline
+ *   .max_speed_multiplier = 4.0,    // Can process up to 4x faster (240 FPS)
+ *   .speedup_rate = 0.1,            // Ramp up 10% per frame
+ *   .slowdown_rate = 0.05           // Ramp down 5% per frame
+ * };
+ * adaptive_sleep_init(&sleep_state, &config);
+ *
+ * while (running) {
+ *   // Process one frame/packet/unit of work
+ *   process_data();
+ *
+ *   // Sleep adaptively based on queue depth
+ *   size_t queue_depth = get_queue_size();
+ *   uint64_t sleep_ns = adaptive_sleep_calculate(&sleep_state, queue_depth, 10);
+ *   platform_sleep_usec(sleep_ns / 1000);
+ * }
+ * ```
+ *
+ * @param state Pointer to adaptive sleep state (will be updated)
+ * @param queue_depth Current number of items in queue/buffer
+ * @param target_depth Desired queue depth (0 = empty queue target)
+ * @return Sleep time in nanoseconds
+ * @ingroup module_utilities
+ */
+uint64_t adaptive_sleep_calculate(adaptive_sleep_state_t *state, size_t queue_depth, size_t target_depth);
+
+/**
+ * @brief Calculate sleep time and immediately sleep for that duration
+ *
+ * Convenience wrapper that combines adaptive_sleep_calculate() with platform_sleep_usec().
+ * Useful for simple loops that don't need to inspect the calculated sleep time.
+ *
+ * @param state Pointer to adaptive sleep state (will be updated)
+ * @param queue_depth Current number of items in queue/buffer
+ * @param target_depth Desired queue depth (0 = empty queue target)
+ * @ingroup module_utilities
+ */
+void adaptive_sleep_do(adaptive_sleep_state_t *state, size_t queue_depth, size_t target_depth);
+
 /** @} */

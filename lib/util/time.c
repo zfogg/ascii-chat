@@ -9,6 +9,7 @@
 #include "../common.h"
 #include "../asciichat_errno.h"
 #include "../platform/rwlock.h"
+#include "../platform/abstraction.h"
 #include "uthash.h"
 #include <stdlib.h>
 #include <string.h>
@@ -275,4 +276,92 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size) {
   // Convert seconds to nanoseconds and use the nanosecond formatter
   double nanoseconds = seconds * NS_PER_SEC;
   return format_duration_ns(nanoseconds, buffer, buffer_size);
+}
+
+// ============================================================================
+// Adaptive Sleep Implementation
+// ============================================================================
+
+void adaptive_sleep_init(adaptive_sleep_state_t *state, const adaptive_sleep_config_t *config) {
+  if (!state || !config) {
+    return;
+  }
+
+  // Copy configuration
+  state->config = *config;
+
+  // Start at baseline speed (no speedup initially)
+  state->current_speed_multiplier = config->min_speed_multiplier;
+
+  // Initial sleep is the baseline
+  state->last_sleep_ns = config->baseline_sleep_ns;
+}
+
+uint64_t adaptive_sleep_calculate(adaptive_sleep_state_t *state, size_t queue_depth, size_t target_depth) {
+  if (!state) {
+    return 0;
+  }
+
+  const adaptive_sleep_config_t *cfg = &state->config;
+
+  // Determine if we need to speed up or slow down
+  double desired_multiplier;
+
+  if (queue_depth > target_depth) {
+    // Queue is building up - speed up processing
+    // The more items in queue, the faster we should process
+    size_t backlog = queue_depth - target_depth;
+
+    // Calculate desired speed based on backlog
+    // Each item above target increases speed proportionally
+    // This ensures we drain the queue faster the more backed up we are
+    double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
+    desired_multiplier = cfg->min_speed_multiplier * backlog_factor;
+
+    // Clamp to max speed
+    if (desired_multiplier > cfg->max_speed_multiplier) {
+      desired_multiplier = cfg->max_speed_multiplier;
+    }
+
+    // Ramp up gradually based on speedup_rate
+    double delta = desired_multiplier - state->current_speed_multiplier;
+    state->current_speed_multiplier += delta * cfg->speedup_rate;
+
+  } else {
+    // Queue is at or below target - slow down to baseline
+    desired_multiplier = cfg->min_speed_multiplier;
+
+    // Ramp down gradually based on slowdown_rate
+    double delta = desired_multiplier - state->current_speed_multiplier;
+    state->current_speed_multiplier += delta * cfg->slowdown_rate;
+  }
+
+  // Ensure we stay within configured bounds
+  if (state->current_speed_multiplier < cfg->min_speed_multiplier) {
+    state->current_speed_multiplier = cfg->min_speed_multiplier;
+  }
+  if (state->current_speed_multiplier > cfg->max_speed_multiplier) {
+    state->current_speed_multiplier = cfg->max_speed_multiplier;
+  }
+
+  // Calculate actual sleep time: baseline / speed_multiplier
+  // Higher multiplier = shorter sleep = faster processing
+  uint64_t sleep_ns = (uint64_t)(cfg->baseline_sleep_ns / state->current_speed_multiplier);
+
+  // Store for debugging
+  state->last_sleep_ns = sleep_ns;
+
+  return sleep_ns;
+}
+
+void adaptive_sleep_do(adaptive_sleep_state_t *state, size_t queue_depth, size_t target_depth) {
+  uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
+
+  if (sleep_ns > 0) {
+    // Convert nanoseconds to microseconds for platform_sleep_usec
+    uint64_t sleep_us = sleep_ns / 1000;
+    if (sleep_us > 0) {
+      platform_sleep_usec(sleep_us);
+    }
+  }
 }
