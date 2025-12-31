@@ -136,7 +136,7 @@
 #include "audio/opus_codec.h"
 #include "network/av.h"
 #include "network/logging.h"
-#include "crypto/handshake.h"
+#include "crypto/handshake/common.h"
 
 /**
  * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown

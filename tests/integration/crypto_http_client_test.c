@@ -226,23 +226,13 @@ Test(crypto_http_client, fetch_github_gpg_keys_valid_user) {
   if (result == ASCIICHAT_OK && num_keys > 0) {
     log_info("Successfully fetched %zu GitHub GPG key(s)", num_keys);
 
-    // Verify GPG key format
+    // Verify GPG key format (should be "gpg:FINGERPRINT")
     for (size_t i = 0; i < num_keys; i++) {
       cr_assert_not_null(keys[i], "GPG key %zu should not be NULL", i);
-      cr_assert(strstr(keys[i], "-----BEGIN PGP") != NULL, "GPG key %zu should have PGP header", i);
+      cr_assert(strncmp(keys[i], "gpg:", 4) == 0, "GPG key %zu should have 'gpg:' prefix", i);
+      cr_assert(strlen(keys[i]) > 4, "GPG key %zu should have content after 'gpg:' prefix", i);
 
-      // Log first few lines
-      const char *line = keys[i];
-      int line_count = 0;
-      log_info("GPG Key %zu (first 3 lines):", i);
-      while (*line && line_count < 3) {
-        const char *line_end = strchr(line, '\n');
-        if (!line_end)
-          break;
-        log_info("  %.*s", (int)(line_end - line), line);
-        line = line_end + 1;
-        line_count++;
-      }
+      log_info("GPG Key %zu: %s", i, keys[i]);
 
       SAFE_FREE(keys[i]);
     }

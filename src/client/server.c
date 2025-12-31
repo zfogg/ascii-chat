@@ -59,7 +59,7 @@
 #include "main.h"
 #include "crypto.h"
 #include "crypto/crypto.h"
-#include "crypto/handshake.h"
+#include "crypto/handshake/common.h"
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"

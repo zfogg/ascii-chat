@@ -17,7 +17,9 @@
 #include <arpa/inet.h>
 
 #include "tests/common.h"
-#include "crypto/handshake.h"
+#include "crypto/handshake/common.h"
+#include "crypto/handshake/client.h"
+#include "crypto/handshake/server.h"
 #include "crypto/keys/keys.h"
 #include "crypto/known_hosts.h"
 #include "network/packet.h"
