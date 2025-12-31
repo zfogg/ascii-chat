@@ -341,9 +341,24 @@ ascii-chat client --key ~/.ssh/id_ed25519 --server-key ~/.ssh/server1.pub
 # Server key verification with GPG (client verifies server identity)
 ascii-chat client --server-key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
 
+# Server key verification using GitHub GPG keys (fetches server's GPG keys from GitHub)
+ascii-chat client --server-key github:zfogg.gpg
+
+# Server key verification using GitLab GPG keys
+ascii-chat client --server-key gitlab:username.gpg
+
 # Client key whitelisting (server only accepts specific clients)
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
 # This .txt file contains multiple .pub file contents, 1 per line, where each line is a client key that is allowed to connect to the server.
+
+# GitHub GPG key whitelisting (fetch client's public GPG keys from GitHub)
+ascii-chat server --key gpg:MYKEYID --client-keys github:zfogg.gpg
+# Server fetches all GPG public keys from https://github.com/zfogg.gpg and whitelists them
+# Client must authenticate with their GPG key:
+ascii-chat client --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3 --server-key gpg:MYKEYID
+
+# GitLab GPG key whitelisting (same but from GitLab)
+ascii-chat server --key gpg:MYKEYID --client-keys gitlab:username.gpg
 
 # Combine all three for maximum security!
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --password "password123"
