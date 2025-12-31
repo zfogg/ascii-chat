@@ -377,73 +377,38 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
     return -1;
   }
 
-  // 2. For EdDSA/Ed25519, use SETHASH --inquire to pass raw data
-  // This matches how SSH agent works - it passes raw data, not pre-hashed data
-  // GPG agent will create the proper Ed25519 S-expression internally
+  // 2. For EdDSA/Ed25519, GPG agent requires SETHASH with a hash algorithm
+  // GPG agent doesn't support --inquire for SETHASH - the command syntax is:
+  //   SETHASH (--hash=<name>)|(<algonumber>) <hexstring>
+  // For Ed25519, we hash the message with SHA512 (algo 10) first
 
-  // Send SETHASH --inquire command
-  if (send_agent_command(handle, "SETHASH --inquire") != 0) {
-    log_error("Failed to send SETHASH --inquire command");
+  // Hash the message with SHA512 using libsodium
+  uint8_t hash[crypto_hash_sha512_BYTES];
+  crypto_hash_sha512(hash, message, message_len);
+
+  // Build SETHASH command with SHA512 hash (algo 10)
+  // Format: "SETHASH 10 <128 hex chars for 64-byte SHA512 hash>"
+  char sethash_cmd[256];
+  int offset = safe_snprintf(sethash_cmd, sizeof(sethash_cmd), "SETHASH 10 ");
+  for (size_t i = 0; i < crypto_hash_sha512_BYTES; i++) {
+    offset += safe_snprintf(sethash_cmd + offset, sizeof(sethash_cmd) - (size_t)offset, "%02X", hash[i]);
+  }
+
+  log_debug("Sending SETHASH command with SHA512 hash");
+  if (send_agent_command(handle, sethash_cmd) != 0) {
+    log_error("Failed to send SETHASH command");
     return -1;
   }
 
-  // Read status lines until we get INQUIRE TBSDATA
-  for (int attempts = 0; attempts < 10; attempts++) {
-    if (read_agent_line(handle, response, sizeof(response)) != 0) {
-      log_error("Failed to read SETHASH response");
-      return -1;
-    }
-
-    log_debug("SETHASH response line %d: %s", attempts + 1, response);
-
-    // Skip status lines (S INQUIRE_MAXLEN)
-    if (response[0] == 'S' && response[1] == ' ') {
-      log_debug("Skipping status line: %s", response);
-      continue;
-    }
-
-    // Check for INQUIRE TBSDATA
-    if (strncmp(response, "INQUIRE TBSDATA", 15) == 0) {
-      log_debug("Got INQUIRE TBSDATA, sending raw message data");
-      break;
-    }
-  }
-
-  // Send the raw message data as hex via D command
-  char *hex_message = SAFE_MALLOC(message_len * 2 + 3, char *);
-  if (!hex_message) {
-    log_error("Failed to allocate hex message buffer");
-    return -1;
-  }
-
-  hex_message[0] = 'D';
-  hex_message[1] = ' ';
-  for (size_t i = 0; i < message_len; i++) {
-    snprintf(hex_message + 2 + i * 2, 3, "%02X", message[i]);
-  }
-  hex_message[2 + message_len * 2] = '\0';
-
-  if (send_agent_command(handle, hex_message) != 0) {
-    SAFE_FREE(hex_message);
-    log_error("Failed to send D command with message data");
-    return -1;
-  }
-  SAFE_FREE(hex_message);
-
-  // Send END command to finish INQUIRE
-  if (send_agent_command(handle, "END") != 0) {
-    log_error("Failed to send END command");
-    return -1;
-  }
-
-  // Read OK response for SETHASH completion
+  // Read SETHASH response
   if (read_agent_line(handle, response, sizeof(response)) != 0) {
-    log_error("Failed to read SETHASH completion response");
+    log_error("Failed to read SETHASH response");
     return -1;
   }
 
   if (!is_ok_response(response)) {
-    log_debug("SETHASH completion response: %s", response);
+    log_error("SETHASH failed: %s", response);
+    return -1;
   }
 
   // 3. Request signature using PKSIGN
