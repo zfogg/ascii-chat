@@ -443,8 +443,8 @@
  * @section client_command_line Command-Line Options
  *
  * **Connection Options**:
- * - `--address <host>`: Server address (default: localhost)
- * - `--port <port>`: Server port (default: 27224)
+ * - `[address][:port]` (positional): Server address with optional port (default: localhost:27224)
+ * - `--port <port>`: Server port (default: 27224) - conflicts with port in positional argument
  *
  * **Media Options**:
  * - \c --audio: Enable audio capture and playback
@@ -644,7 +644,7 @@
  * **IPv6 Connection Issues**:
  * - Some systems prioritize IPv6 but server only listens on IPv4
  * - Workaround: Explicitly use IPv4 address
- * - Example: `./bin/ascii-chat client --address 127.0.0.1`
+ * - Example: `./bin/ascii-chat client 127.0.0.1`
  *
  * **Terminal Compatibility**:
  * - Some terminals don't support UTF-8 or half-block characters

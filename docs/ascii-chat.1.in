@@ -6,17 +6,25 @@
 ascii-chat \- Video chat in your terminal
 .SH SYNOPSIS
 .B ascii-chat
+.RI [ binary-options ]
+.I mode
+.RI [ mode-options ]
+.PP
+.B ascii-chat
+.RI [ binary-options ]
+.B server
+.RI [ address ]
 .RI [ options ]
 .PP
 .B ascii-chat
-.I mode
-.RI [ options ]
-.PP
-.B ascii-chat server
-.RI [ options ]
-.PP
-.B ascii-chat client
+.RI [ binary-options ]
+.B client
 .RI [ address ][: port ]
+.RI [ options ]
+.PP
+.B ascii-chat
+.RI [ binary-options ]
+.B mirror
 .RI [ options ]
 .SH DESCRIPTION
 .B ascii-chat
@@ -24,7 +32,7 @@ is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
 using a local console, a remote SSH session, or any terminal emulator.
 .PP
-The program operates in two modes:
+The program operates in three modes:
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
@@ -36,8 +44,13 @@ the users of the call.
 Connects to an ascii-chat server, captures video from the local webcam, sends it
 to the server, and displays the combined video feed grid from all participants that
 the server sends back.
+.TP
+.B mirror
+Displays your local webcam as ASCII art without any network connection.
+Perfect for testing webcam, palette settings, and terminal rendering.
 .SH OPTIONS
-.SS "Basic Options"
+.SS "Binary-Level Options"
+These options apply to all modes and must be specified \fBbefore\fR the mode argument.
 .TP
 .BR \-h ", " \-\-help
 Print usage information and exit.
@@ -45,8 +58,14 @@ Print usage information and exit.
 .BR \-v ", " \-\-version
 Print version information and exit.
 .TP
-.BR \-q ", " \-\-quiet
-Suppress console logging output. Only errors and critical warnings are displayed.
+.BR \-\-config =\fIPATH\fR
+Load configuration from TOML file at PATH.
+.TP
+.BR \-\-config\-create [=\fIPATH\fR]
+Create a default configuration file and exit.
+If PATH is not specified, uses the default location.
+If the file exists, prompts for confirmation to overwrite.
+Supports piped input for scripting (e.g., \fCecho "y" | ascii-chat --config-create\fR).
 .TP
 .BR \-V ", " \-\-verbose
 Increase output verbosity. Can be specified multiple times for increased detail:
@@ -60,8 +79,8 @@ Increase output verbosity. Can be specified multiple times for increased detail:
 .RE
 .TP
 .BR \-L ", " \-\-log\-file =\fIPATH\fR
-Write log output to the specified file. The default log files are client.log and
-server.log in your current working directory.
+Write log output to the specified file. The default log files are client.log, server.log,
+and mirror.log in your current working directory, based on the mode.
 .TP
 .BR \-\-log\-level =\fILEVEL\fR
 Set logging verbosity level: dev, debug, info, warn, error, fatal.
@@ -71,22 +90,71 @@ Set logging verbosity level: dev, debug, info, warn, error, fatal.
 .IP \(bu 2
 \fBPrecedence\fR: LOG_LEVEL environment variable > \-\-log\-level > build type default
 .RE
+.PP
+.B Example:
+.RS
+.nf
+ascii-chat -V --log-level debug --log-file /tmp/debug.log client
+ascii-chat --config ~/my-config.toml server
+.fi
+.RE
+.SS "Mode-Specific Logging Options"
+.TP
+.BR \-q ", " \-\-quiet
+Suppress console logging output. Only errors and critical warnings are displayed.
+Available in client and mirror modes.
 .SS "Network Options"
 .TP
 .BR \-p ", " \-\-port =\fIPORT\fR
 Server port number. Valid range: 1-65535.
 Default: \fB27224\fR ("ASCII" on a phone dial pad).
-For client, this overrides the port from the positional address argument.
+.PP
+.B Important:
+.RS
+For client mode, you cannot use both \fB--port\fR and a port in the positional address
+argument (e.g., \fBhost:port\fR). If both are provided, the program will exit with an error.
+.RE
+.SS "Server Address (Positional Arguments)"
+The server accepts 0-2 positional arguments for bind addresses.
+.PP
+.B Argument Count:
+.RS
+.IP \(bu 2
+\fB0 arguments\fR: Bind to both 127.0.0.1 and ::1 (dual-stack defaults)
+.IP \(bu 2
+\fB1 argument\fR: Bind only to this address (IPv4 OR IPv6)
+.IP \(bu 2
+\fB2 arguments\fR: Bind to both (must be one IPv4 AND one IPv6)
+.RE
+.PP
+.B Disabling IPv4 or IPv6:
+.RS
+To run IPv4-only or IPv6-only, provide a single address argument:
+.IP \(bu 2
+\fBIPv4 only\fR: \fCascii-chat server 0.0.0.0\fR
+.IP \(bu 2
+\fBIPv6 only\fR: \fCascii-chat server ::\fR
+.RE
+.PP
+.B Order Independence:
+.RS
+When providing two addresses, the order doesn't matter. The server automatically
+detects which is IPv4 and which is IPv6.
+.RE
+.PP
+.B Examples:
+.RS
+.nf
+ascii-chat server                  # Dual-stack: 127.0.0.1 + ::1
+ascii-chat server 0.0.0.0          # IPv4 only: all interfaces
+ascii-chat server ::               # IPv6 only: all interfaces
+ascii-chat server 0.0.0.0 ::       # Dual-stack: all interfaces
+ascii-chat server :: 0.0.0.0       # Same (order independent)
+ascii-chat server 127.0.0.1 ::1    # Dual-stack: localhost
+ascii-chat server --port 8080      # Dual-stack on port 8080
+.fi
+.RE
 .SS "Network Options (Server Only)"
-.TP
-.BR \-a ", " \-\-address =\fIADDR\fR
-IPv4 bind address for the server.
-Default: \fB127.0.0.1\fR
-.TP
-.BR \-\-address6 =\fIADDR\fR
-IPv6 bind address. Use "::" to bind to all IPv6 interfaces.
-Can be used with \fB\-\-address\fR for dual-stack support.
-Default: \fB::1\fR
 .TP
 .BR \-\-max\-clients =\fIN\fR
 Maximum number of concurrent client connections allowed.
@@ -155,8 +223,25 @@ by a port number.
 \fB[::1]:8080\fR: Connect to IPv6 address with custom port (brackets required with port)
 .RE
 .PP
-The \fB\-\-port\fR option can be used to override the port from the positional address.
+.B Important:
+.RS
+You cannot use both a port in the positional argument (e.g., \fBhost:port\fR) and
+the \fB\-\-port\fR flag. If both are provided, the program will exit with an error.
+Use one or the other, not both.
+.RE
+.PP
 Hostnames are resolved via DNS lookup during startup.
+.PP
+.B Examples:
+.RS
+.nf
+ascii-chat client                       # Connect to localhost:27224
+ascii-chat client example.com           # Connect to example.com:27224
+ascii-chat client example.com:8080      # Connect to example.com:8080
+ascii-chat client --port 8080           # Connect to localhost:8080
+ascii-chat client example.com --port 8080  # ERROR: cannot use both
+.fi
+.RE
 .SS "Network Options (Client Only)"
 .TP
 .BR \-\-reconnect =\fIVALUE\fR
@@ -395,20 +480,42 @@ GPG: gpg:KEYID (8, 16, or 40-character key ID or fingerprint)
 Uses SSH \fIauthorized_keys\fR format: one key per line, each line formatted as
 \fCssh-ed25519 AAAAC3... [comment]\fR. Also accepts \fIknown_hosts\fR format.
 Only Ed25519 keys are parsed; RSA/ECDSA keys in the file are ignored.
-.SS "Configuration"
-.TP
-.BR \-\-config =\fIPATH\fR
-Load configuration from TOML file at PATH.
-.TP
-.BR \-\-config\-create [=\fIPATH\fR]
-Create a default configuration file and exit.
-If PATH is not specified, uses the default location.
 .SH EXAMPLES
-.SS "Start a basic server"
+.SS "Configuration Management"
+.TP
+.B Create default config file
+.nf
+ascii-chat --config-create
+.fi
+.TP
+.B Create config at custom location
+.nf
+ascii-chat --config-create ~/.my-config.toml
+.fi
+.TP
+.B Overwrite existing config (scripted)
+.nf
+echo "y" | ascii-chat --config-create
+yes | ascii-chat --config-create /tmp/server.toml
+.fi
+.TP
+.B Use config file with server
+.nf
+ascii-chat --config ~/.ascii-chat/server.toml server
+.fi
+.TP
+.B Use config file with client
+.nf
+ascii-chat --config ~/.ascii-chat/client.toml client example.com
+.fi
+.SS "Basic Usage"
+.TP
+.B Start a basic server
 .nf
 ascii-chat server
 .fi
-.SS "Connect to a local server"
+.TP
+.B Connect to a local server
 .nf
 ascii-chat client
 .fi

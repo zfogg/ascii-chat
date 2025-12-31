@@ -32,9 +32,9 @@
  * @section options_common_options Common Options
  *
  * **Network Options**:
- * - `--address ADDR` - Server address (default: localhost)
+ * - `[address][:port]` (positional for client) - Server address with optional port (default: localhost:27224)
+ * - `[address1] [address2]` (positional for server) - Bind addresses, 0-2 IPv4/IPv6 addresses
  * - `--port PORT` - Server port (default: 27224)
- * - `--ipv6` - Use IPv6 instead of IPv4
  *
  * **Display Options**:
  * - `--width WIDTH` - Terminal width (default: auto-detect)
@@ -67,7 +67,7 @@
  *
  * **Configuration Options**:
  * - `--config PATH` - Load configuration from TOML file
- * - `--config-create PATH` - Create default config file
+ * - `--config-create [PATH]` - Create default config file and exit
  *
  * @section options_examples Usage Examples
  *
@@ -102,7 +102,7 @@
  *
  * **Connect to Remote Server**:
  * @code{.sh}
- * ./ascii-chat client --address 192.168.1.100 --port 27224
+ * ./ascii-chat client 192.168.1.100:27224
  * @endcode
  *
  * **Client with Audio and Color**:

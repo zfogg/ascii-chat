@@ -3,11 +3,9 @@
 _ascii-chat-client() {
     _arguments \
         '(-h --help)'{-h,--help}'[print this help]' \
-        '(-a --address)'{-a,--address}'[IPv4 address to connect to]:(localhost 127.0.0.1)' \
         '(-p --port)'{-p,--port}'[TCP port]:(27224 8080 9000 9001 3000)' \
         '(-x --width)'{-x,--width}'[render width]:(80 120 160 200)' \
         '(-y --height)'{-y,--height}'[render height]:(24 40 50 60)' \
-        '(-H --host)'{-H,--host}'[hostname for DNS lookup]:' \
         '(-c --webcam-index)'{-c,--webcam-index}'[webcam device index (0-based)]:(0 1 2 3)' \
         '--list-webcams[list available webcam devices and exit]' \
         '--list-microphones[list available audio input devices and exit]' \
@@ -28,64 +26,82 @@ _ascii-chat-client() {
         '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
         '(-S --snapshot)'{-S,--snapshot}'[capture single frame and exit]' \
         '(-D --snapshot-delay)'{-D,--snapshot-delay}'[delay SECONDS before snapshot]:' \
-        '--mirror[view webcam locally without network]' \
         '--strip-ansi[remove all ANSI escape codes]' \
         '--server-key[expected server public key]:file:_files' \
         '(-P --palette)'{-P,--palette}'[ASCII character palette]:(standard blocks digital minimal cool custom)' \
         '(-C --palette-chars)'{-C,--palette-chars}'[custom palette characters]:' \
-        '(-L --log-file)'{-L,--log-file}'[redirect logs to file]:file:_files' \
-        '--log-level[set log level]:(dev debug info warn error fatal)' \
         '--compression-level[zstd compression level 1-9]:(1 3 5 7 9)' \
         '--no-compress[disable video frame compression]' \
         '--encode-audio[force enable Opus audio encoding]' \
         '--no-encode-audio[disable Opus audio encoding]' \
         '--reconnect[automatic reconnection behavior]:(off auto 1 2 5 10)' \
-        '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
         '(-K --key)'{-K,--key}'[SSH/GPG key for authentication]:file:_files' \
         '(-F --keyfile)'{-F,--keyfile}'[read encryption key from file]:file:_files' \
         '--password[password for connection encryption]:' \
         '--no-encrypt[disable encryption]' \
-        '--config[load configuration from TOML file]:file:_files' \
-        '--config-create[create default configuration file]'
+        '1:server address:(localhost:27224 127.0.0.1:27224)'
 }
 
 _ascii-chat-server() {
     _arguments \
         '(-h --help)'{-h,--help}'[print this help]' \
-        '(-a --address)'{-a,--address}'[IPv4 address to bind to]:(0.0.0.0 127.0.0.1 localhost)' \
-        '--address6[IPv6 address to bind to]:(::: ::1 localhost)' \
         '(-p --port)'{-p,--port}'[TCP port]:(27224 8080 9000 9001 3000)' \
         '--max-clients[maximum concurrent client connections]:(1 2 4 8 16 32)' \
         '--client-keys[allowed client keys file]:file:_files' \
         '(-P --palette)'{-P,--palette}'[ASCII character palette]:(standard blocks digital minimal cool custom)' \
         '(-C --palette-chars)'{-C,--palette-chars}'[custom palette characters]:' \
-        '(-L --log-file)'{-L,--log-file}'[redirect logs to file]:file:_files' \
-        '--log-level[set log level]:(dev debug info warn error fatal)' \
         '--compression-level[zstd compression level 1-9]:(1 3 5 7 9)' \
         '--no-compress[disable video frame compression]' \
         '--encode-audio[force enable Opus audio encoding]' \
         '--no-encode-audio[disable Opus audio encoding]' \
         '--no-audio-mixer[disable audio mixer, send silence instead (debug only)]' \
-        '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
         '(-K --key)'{-K,--key}'[SSH/GPG key for authentication]:file:_files' \
         '(-F --keyfile)'{-F,--keyfile}'[read encryption key from file]:file:_files' \
         '--password[password for connection encryption]:' \
         '--no-encrypt[disable encryption]' \
-        '--config[load configuration from TOML file]:file:_files' \
-        '--config-create[create default configuration file]'
+        '1:bind address 1:(0.0.0.0 127.0.0.1 localhost ::1)' \
+        '2:bind address 2:(0.0.0.0 127.0.0.1 localhost ::1)'
+}
+
+_ascii-chat-mirror() {
+    _arguments \
+        '(-h --help)'{-h,--help}'[print this help]' \
+        '(-x --width)'{-x,--width}'[render width]:(80 120 160 200)' \
+        '(-y --height)'{-y,--height}'[render height]:(24 40 50 60)' \
+        '(-c --webcam-index)'{-c,--webcam-index}'[webcam device index (0-based)]:(0 1 2 3)' \
+        '--list-webcams[list available webcam devices and exit]' \
+        '(-f --webcam-flip)'{-f,--webcam-flip}'[toggle horizontal flip of webcam image]' \
+        '--test-pattern[use test pattern instead of webcam]' \
+        '--fps[desired frame rate 1-144]:(30 60 75 120 144)' \
+        '--color-mode[color modes]:(auto none 16 256 truecolor)' \
+        '--show-capabilities[show detected terminal capabilities and exit]' \
+        '--utf8[force enable UTF-8/Unicode support]' \
+        '(-M --render-mode)'{-M,--render-mode}'[rendering mode]:(foreground background half-block)' \
+        '(-s --stretch)'{-s,--stretch}'[stretch or shrink video to fit]' \
+        '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
+        '(-S --snapshot)'{-S,--snapshot}'[capture single frame and exit]' \
+        '(-D --snapshot-delay)'{-D,--snapshot-delay}'[delay SECONDS before snapshot]:' \
+        '--strip-ansi[remove all ANSI escape codes]' \
+        '(-P --palette)'{-P,--palette}'[ASCII character palette]:(standard blocks digital minimal cool custom)' \
+        '(-C --palette-chars)'{-C,--palette-chars}'[custom palette characters]:'
 }
 
 _ascii_chat() {
     local subcommand="${words[2]}"
 
-    # If no subcommand yet, show subcommand options
+    # If no subcommand yet, show binary-level options and subcommands
     if [[ -z "$subcommand" || "$subcommand" == -* ]]; then
         _arguments \
             '(-h --help)'{-h,--help}'[print usage information and exit]' \
             '(-v --version)'{-v,--version}'[print version information and exit]' \
-            '1:subcommand:(client server)'
+            '(-L --log-file)'{-L,--log-file}'[redirect logs to file]:file:_files' \
+            '--log-level[set log level]:(dev debug info warn error fatal)' \
+            '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
+            '--config[load configuration from TOML file]:file:_files' \
+            '--config-create[create default configuration file]' \
+            '1:subcommand:(client server mirror)'
         return
     fi
 
@@ -98,6 +114,7 @@ _ascii_chat() {
     case "$subcommand" in
         client) _ascii-chat-client ;;
         server) _ascii-chat-server ;;
+        mirror) _ascii-chat-mirror ;;
         *) _default ;;
     esac
 }
