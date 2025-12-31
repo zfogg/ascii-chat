@@ -1077,6 +1077,12 @@ extern ASCIICHAT_API unsigned short int opt_snapshot_mode;
  *
  * @ingroup options
  */
+#if defined(__APPLE__)
+// macOS webcams show pure black first then fade up into a real color image over a few seconds
+#define SNAPSHOT_DELAY_DEFAULT 4.0f
+#else
+#define SNAPSHOT_DELAY_DEFAULT 3.0f
+#endif
 extern ASCIICHAT_API float opt_snapshot_delay;
 
 /** @brief Strip ANSI escape sequences from output (client only)

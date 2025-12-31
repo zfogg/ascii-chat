@@ -1,7 +1,7 @@
 /**
- * @file client/mirror.h
- * @ingroup client_mirror
- * @brief ascii-chat Client Mirror Mode Interface
+ * @file mirror/main.h
+ * @ingroup mirror
+ * @brief ascii-chat Mirror Mode Interface
  *
  * Defines the interface for local webcam mirror mode, allowing users
  * to view their webcam as ASCII art directly in the terminal without
@@ -22,6 +22,6 @@
  *
  * @return 0 on success, non-zero error code on failure
  *
- * @ingroup client_mirror
+ * @ingroup mirror
  */
 int mirror_main(void);
