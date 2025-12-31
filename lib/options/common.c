@@ -355,6 +355,164 @@ unsigned short int BLUE[256];
 unsigned short int GRAY[256];
 
 // ============================================================================
+// Shared Option Parsers (Client + Mirror Common Options)
+// ============================================================================
+
+asciichat_error_t parse_color_mode_option(const char *value_str) {
+  if (!value_str) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(value_str, "auto") == 0) {
+    opt_color_mode = COLOR_MODE_AUTO;
+  } else if (strcmp(value_str, "none") == 0 || strcmp(value_str, "mono") == 0) {
+    opt_color_mode = COLOR_MODE_NONE;
+  } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
+    opt_color_mode = COLOR_MODE_16_COLOR;
+  } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
+    opt_color_mode = COLOR_MODE_256_COLOR;
+  } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
+    opt_color_mode = COLOR_MODE_TRUECOLOR;
+  } else {
+    (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor\n", value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_render_mode_option(const char *value_str) {
+  if (!value_str) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
+    opt_render_mode = RENDER_MODE_FOREGROUND;
+  } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
+    opt_render_mode = RENDER_MODE_BACKGROUND;
+  } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
+    opt_render_mode = RENDER_MODE_HALF_BLOCK;
+  } else {
+    (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
+                  value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_palette_option(const char *value_str) {
+  if (!value_str) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(value_str, "standard") == 0) {
+    opt_palette_type = PALETTE_STANDARD;
+  } else if (strcmp(value_str, "blocks") == 0) {
+    opt_palette_type = PALETTE_BLOCKS;
+  } else if (strcmp(value_str, "digital") == 0) {
+    opt_palette_type = PALETTE_DIGITAL;
+  } else if (strcmp(value_str, "minimal") == 0) {
+    opt_palette_type = PALETTE_MINIMAL;
+  } else if (strcmp(value_str, "cool") == 0) {
+    opt_palette_type = PALETTE_COOL;
+  } else if (strcmp(value_str, "custom") == 0) {
+    opt_palette_type = PALETTE_CUSTOM;
+  } else {
+    (void)fprintf(stderr, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
+                  value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_palette_chars_option(const char *value_str) {
+  if (!value_str) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strlen(value_str) >= sizeof(opt_palette_custom)) {
+    (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
+                  sizeof(opt_palette_custom) - 1);
+    return ERROR_INVALID_PARAM;
+  }
+
+  SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
+  opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
+  opt_palette_custom_set = true;
+  opt_palette_type = PALETTE_CUSTOM;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_width_option(const char *value_str) {
+  int width_val;
+  if (!validate_positive_int_opt(value_str, &width_val, "width")) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  opt_width = (unsigned short int)width_val;
+  auto_width = false;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_height_option(const char *value_str) {
+  int height_val;
+  if (!validate_positive_int_opt(value_str, &height_val, "height")) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  opt_height = (unsigned short int)height_val;
+  auto_height = false;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_webcam_index_option(const char *value_str) {
+  unsigned short int index_val;
+  if (!validate_webcam_index(value_str, &index_val)) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  opt_webcam_index = index_val;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_snapshot_delay_option(const char *value_str) {
+  if (!value_str) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  char *endptr;
+  float delay = strtof(value_str, &endptr);
+  if (endptr == value_str || *endptr != '\0' || delay < 0.0f) {
+    (void)fprintf(stderr, "Invalid snapshot delay '%s'. Must be a non-negative number.\n", value_str);
+    return ERROR_INVALID_PARAM;
+  }
+
+  opt_snapshot_delay = delay;
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t parse_log_level_option(const char *value_str) {
+  char error_msg[256];
+  int log_level = validate_opt_log_level(value_str, error_msg, sizeof(error_msg));
+
+  if (log_level == -1) {
+    (void)fprintf(stderr, "Error: %s\n", error_msg);
+    return ERROR_INVALID_PARAM;
+  }
+
+  opt_log_level = (log_level_t)log_level;
+
+  return ASCIICHAT_OK;
+}
+
+// ============================================================================
 // Terminal Dimension Utilities
 // ============================================================================
 

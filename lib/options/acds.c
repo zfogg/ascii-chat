@@ -47,8 +47,8 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ============================================================================
 
 static struct option acds_options[] = {
-    {"port", required_argument, NULL, 'p'},      {"database", required_argument, NULL, 'd'},
-    {"key", required_argument, NULL, 'k'},       {"log-file", required_argument, NULL, 'L'},
+    {"port", required_argument, NULL, 'p'},      {"db", required_argument, NULL, 'd'},
+    {"key", required_argument, NULL, 'K'},       {"log-file", required_argument, NULL, 'L'},
     {"log-level", required_argument, NULL, 'l'}, {"help", no_argument, NULL, 'h'},
     {"version", no_argument, NULL, 'v'},         {0, 0, 0, 0}};
 
@@ -57,7 +57,7 @@ static struct option acds_options[] = {
 // ============================================================================
 
 asciichat_error_t acds_options_parse(int argc, char **argv) {
-  const char *optstring = ":p:d:k:L:l:hv";
+  const char *optstring = ":p:d:K:L:l:hv";
 
   // Pre-pass: Check for --help or --version first
   for (int i = 1; i < argc; i++) {
@@ -106,15 +106,15 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
       break;
     }
 
-    case 'd': { // --database
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "database", MODE_ACDS);
+    case 'd': { // --db
+      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "db", MODE_ACDS);
       if (!value_str)
         return option_error_invalid();
       SAFE_STRNCPY(opt_acds_database_path, value_str, sizeof(opt_acds_database_path));
       break;
     }
 
-    case 'k': { // --key
+    case 'K': { // --key
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "key", MODE_ACDS);
       if (!value_str)
         return option_error_invalid();
@@ -134,25 +134,8 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "log-level", MODE_ACDS);
       if (!value_str)
         return option_error_invalid();
-
-      // Parse log level
-      if (strcmp(value_str, "dev") == 0 || strcmp(value_str, "DEV") == 0) {
-        opt_log_level = LOG_DEV;
-      } else if (strcmp(value_str, "debug") == 0 || strcmp(value_str, "DEBUG") == 0) {
-        opt_log_level = LOG_DEBUG;
-      } else if (strcmp(value_str, "info") == 0 || strcmp(value_str, "INFO") == 0) {
-        opt_log_level = LOG_INFO;
-      } else if (strcmp(value_str, "warn") == 0 || strcmp(value_str, "WARN") == 0) {
-        opt_log_level = LOG_WARN;
-      } else if (strcmp(value_str, "error") == 0 || strcmp(value_str, "ERROR") == 0) {
-        opt_log_level = LOG_ERROR;
-      } else if (strcmp(value_str, "fatal") == 0 || strcmp(value_str, "FATAL") == 0) {
-        opt_log_level = LOG_FATAL;
-      } else {
-        (void)fprintf(stderr, "Error: Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal\n",
-                      value_str);
+      if (parse_log_level_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      }
       break;
     }
 
@@ -249,9 +232,9 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
 
   // Set default bind addresses if not specified
   if (!has_ipv4 && !has_ipv6) {
-    // No addresses specified - bind to all interfaces
-    SAFE_STRNCPY(opt_address, "0.0.0.0", OPTIONS_BUFF_SIZE);
-    SAFE_STRNCPY(opt_address6, "::", OPTIONS_BUFF_SIZE);
+    // No addresses specified - bind to localhost only (secure default)
+    SAFE_STRNCPY(opt_address, "127.0.0.1", OPTIONS_BUFF_SIZE);
+    SAFE_STRNCPY(opt_address6, "::1", OPTIONS_BUFF_SIZE);
   }
 
   // Set default paths if not specified
@@ -316,7 +299,14 @@ void acds_print_version(void) {
 // ACDS Usage Text
 // ============================================================================
 
-#define USAGE_INDENT "        "
+// ACDS-specific usage lines (different from server/client)
+#define USAGE_PORT_ACDS_LINE                                                                                           \
+  USAGE_INDENT "-p --port PORT          " USAGE_INDENT "discovery service TCP listen port (default: 27225)\n"
+
+#define USAGE_KEY_ACDS_LINE                                                                                            \
+  USAGE_INDENT "-k --key PATH           " USAGE_INDENT                                                                 \
+               "Ed25519 identity key for server: /path/to/key, gpg:keyid, or 'ssh' for auto-detect (default: "         \
+               "~/.config/ascii-chat/acds_identity on Unix, %%APPDATA%%\\ascii-chat\\acds_identity on Windows)\n"
 
 void acds_usage(FILE *desc) {
   (void)fprintf(desc, "acds - ascii-chat discovery service\n\n");
@@ -324,27 +314,25 @@ void acds_usage(FILE *desc) {
   (void)fprintf(desc, "USAGE:\n");
   (void)fprintf(desc, "  acds [address1] [address2] [options...]\n\n");
   (void)fprintf(desc, "BIND ADDRESSES (Positional Arguments):\n");
-  (void)fprintf(desc, "  0 arguments: Bind to all interfaces (0.0.0.0 and ::)\n");
+  (void)fprintf(desc, "  0 arguments: Bind to localhost only (127.0.0.1 and ::1) - secure default\n");
   (void)fprintf(desc, "  1 argument:  Bind only to this IPv4 OR IPv6 address\n");
   (void)fprintf(desc, "  2 arguments: Bind to both (must be one IPv4 AND one IPv6, order-independent)\n\n");
   (void)fprintf(desc, "EXAMPLES:\n");
-  (void)fprintf(desc, "  acds                          # All interfaces (0.0.0.0 + ::)\n");
+  (void)fprintf(desc, "  acds                          # Localhost only (127.0.0.1 + ::1) - secure default\n");
+  (void)fprintf(desc,
+                "  acds 0.0.0.0 ::               # All interfaces (dual-stack) - INSECURE, publicly accessible\n");
   (void)fprintf(desc, "  acds 0.0.0.0                  # All IPv4 interfaces\n");
   (void)fprintf(desc, "  acds ::                       # All IPv6 interfaces\n");
-  (void)fprintf(desc, "  acds 0.0.0.0 ::               # All interfaces (dual-stack)\n");
   (void)fprintf(desc, "  acds 192.168.1.100 ::1        # Specific IPv4 + localhost IPv6\n");
   (void)fprintf(desc, "  acds --port 9443              # Use port 9443 instead of default 27225\n\n");
   (void)fprintf(desc, "OPTIONS:\n");
-  (void)fprintf(desc, USAGE_INDENT "-h --help               " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-v --version            " USAGE_INDENT "print version information\n");
-  (void)fprintf(desc, USAGE_INDENT "-p --port PORT          " USAGE_INDENT "TCP port to listen on (default: 27225)\n");
-  (void)fprintf(desc, USAGE_INDENT "-d --database PATH      " USAGE_INDENT
-                                   "SQLite database path (default: ~/.config/ascii-chat/acds.db)\n");
-  (void)fprintf(desc, USAGE_INDENT "-k --key PATH           " USAGE_INDENT
-                                   "Ed25519 identity key path (default: ~/.config/ascii-chat/acds_identity)\n");
-  (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE      " USAGE_INDENT "log file path (default: stderr)\n");
-  (void)fprintf(desc, USAGE_INDENT "-l --log-level LEVEL    " USAGE_INDENT
-                                   "log level: dev, debug, info, warn, error, fatal (default: info)\n");
+  (void)fprintf(desc, USAGE_HELP_LINE);
+  (void)fprintf(desc, USAGE_VERSION_LINE);
+  (void)fprintf(desc, USAGE_PORT_ACDS_LINE);
+  (void)fprintf(desc, USAGE_DATABASE_LINE);
+  (void)fprintf(desc, USAGE_KEY_ACDS_LINE);
+  (void)fprintf(desc, USAGE_LOG_FILE_LINE);
+  (void)fprintf(desc, USAGE_LOG_LEVEL_LINE);
   (void)fprintf(desc, "\n");
   (void)fprintf(desc, "For more information: https://github.com/zfogg/ascii-chat\n");
 }
