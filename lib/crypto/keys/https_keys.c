@@ -12,6 +12,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 // =============================================================================
 // Helper Functions
@@ -122,8 +124,16 @@ asciichat_error_t build_github_gpg_url(const char *username, char *url_out, size
     return ERROR_INVALID_PARAM;
   }
 
+  // Strip .gpg suffix if user already included it (e.g., "github:zfogg.gpg")
+  char clean_username[256];
+  SAFE_STRNCPY(clean_username, username, sizeof(clean_username) - 1);
+  size_t len = strlen(clean_username);
+  if (len > 4 && strcmp(clean_username + len - 4, ".gpg") == 0) {
+    clean_username[len - 4] = '\0'; // Remove .gpg suffix
+  }
+
   // Construct GitHub GPG keys URL: https://github.com/username.gpg
-  int result = safe_snprintf(url_out, url_size, "https://github.com/%s.gpg", username);
+  int result = safe_snprintf(url_out, url_size, "https://github.com/%s.gpg", clean_username);
   if (result < 0 || result >= (int)url_size) {
     SET_ERRNO(ERROR_STRING, "Failed to construct GitHub GPG URL");
     return ERROR_STRING;
@@ -143,8 +153,16 @@ asciichat_error_t build_gitlab_gpg_url(const char *username, char *url_out, size
     return ERROR_INVALID_PARAM;
   }
 
+  // Strip .gpg suffix if user already included it (e.g., "gitlab:zfogg.gpg")
+  char clean_username[256];
+  SAFE_STRNCPY(clean_username, username, sizeof(clean_username) - 1);
+  size_t len = strlen(clean_username);
+  if (len > 4 && strcmp(clean_username + len - 4, ".gpg") == 0) {
+    clean_username[len - 4] = '\0'; // Remove .gpg suffix
+  }
+
   // Construct GitLab GPG keys URL: https://gitlab.com/username.gpg
-  int result = safe_snprintf(url_out, url_size, "https://gitlab.com/%s.gpg", username);
+  int result = safe_snprintf(url_out, url_size, "https://gitlab.com/%s.gpg", clean_username);
   if (result < 0 || result >= (int)url_size) {
     SET_ERRNO(ERROR_STRING, "Failed to construct GitLab GPG URL");
     return ERROR_STRING;
@@ -395,9 +413,6 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     return ERROR_INVALID_PARAM;
   }
 
-  // For GPG keys, we typically get a single armored key block
-  // This is a simplified implementation - real GPG parsing is more complex
-
   *num_keys = 0;
   *keys_out = NULL;
 
@@ -407,23 +422,155 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     return ERROR_CRYPTO_KEY;
   }
 
-  // Allocate space for one GPG key
-  *keys_out = SAFE_MALLOC(sizeof(char *), char **);
+  // Write armored block to temp file
+  char temp_file[] = "/tmp/asciichat_gpg_import_XXXXXX";
+  int fd = mkstemp(temp_file);
+  if (fd < 0) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temp file for GPG import");
+  }
+
+  ssize_t written = write(fd, response_text, response_len);
+  close(fd);
+
+  if (written != (ssize_t)response_len) {
+    unlink(temp_file);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write GPG key to temp file");
+  }
+
+  // Import the key using gpg --import
+  char import_cmd[512];
+  snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
+  FILE *import_fp = popen(import_cmd, "r");
+  if (!import_fp) {
+    unlink(temp_file);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to run gpg --import");
+  }
+
+  char import_output[2048];
+  size_t import_len = fread(import_output, 1, sizeof(import_output) - 1, import_fp);
+  import_output[import_len] = '\0';
+  pclose(import_fp);
+  unlink(temp_file);
+
+  // Extract ALL key IDs from import output (format: "gpg: key KEYID: ...")
+  // GitHub often returns multiple keys in one armored block
+  const char *key_marker = "gpg: key ";
+  char key_ids[16][17]; // Support up to 16 keys
+  size_t key_count = 0;
+
+  log_debug("GPG import output:\n%s", import_output);
+
+  char *search_pos = import_output;
+  while (key_count < 16) {
+    char *key_line = strstr(search_pos, key_marker);
+    if (!key_line)
+      break;
+
+    key_line += strlen(key_marker);
+    int i = 0;
+    while (i < 16 && key_line[i] != ':' && key_line[i] != ' ' && key_line[i] != '\n') {
+      key_ids[key_count][i] = key_line[i];
+      i++;
+    }
+    key_ids[key_count][i] = '\0';
+
+    if (i > 0) {
+      log_debug("Extracted GPG key ID #%zu: %s", key_count, key_ids[key_count]);
+      key_count++;
+    }
+    search_pos = key_line + i;
+  }
+
+  if (key_count == 0) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to extract any key IDs from GPG import output");
+  }
+
+  log_debug("Total GPG keys extracted from import: %zu", key_count);
+
+  // Allocate array for results
+  *keys_out = SAFE_MALLOC(sizeof(char *) * key_count, char **);
   if (!*keys_out) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG keys array");
   }
 
-  (*keys_out)[0] = SAFE_MALLOC(response_len + 1, char *);
-  if (!(*keys_out)[0]) {
-    SAFE_FREE(*keys_out);
-    *keys_out = NULL;
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG key string");
+  // Process each key ID to get full fingerprint
+  size_t valid_keys = 0;
+  for (size_t k = 0; k < key_count; k++) {
+    // Get full fingerprint from gpg --list-keys output
+    char list_cmd[256];
+    snprintf(list_cmd, sizeof(list_cmd), "gpg --list-keys --with-colons --fingerprint '%s' 2>/dev/null", key_ids[k]);
+    FILE *list_fp = popen(list_cmd, "r");
+    if (!list_fp) {
+      continue; // Skip this key if we can't list it
+    }
+
+    char list_output[4096];
+    size_t list_len = fread(list_output, 1, sizeof(list_output) - 1, list_fp);
+    list_output[list_len] = '\0';
+    pclose(list_fp);
+
+    // Check if it contains an Ed25519 key (algorithm 22)
+    if (!strstr(list_output, ":22:") && !strstr(list_output, "ed25519")) {
+      continue; // Skip non-Ed25519 keys
+    }
+
+    // Extract full 40-character fingerprint from "fpr:" line
+    // Format: fpr:::::::::FINGERPRINT:
+    // The fingerprint is field 10 (after 9 colons)
+    char fingerprint[41] = {0};
+    const char *fpr_marker = "\nfpr:";
+    char *fpr_line = strstr(list_output, fpr_marker);
+    if (fpr_line) {
+      fpr_line += 1; // Skip the newline
+      // Count 9 colons from the start of the line
+      int colon_count = 0;
+      while (*fpr_line && colon_count < 9) {
+        if (*fpr_line == ':')
+          colon_count++;
+        fpr_line++;
+      }
+      // Now we should be at the start of the fingerprint
+      // Extract up to 40 hex characters
+      int fpr_len = 0;
+      while (fpr_len < 40 && fpr_line[fpr_len] && fpr_line[fpr_len] != ':' && fpr_line[fpr_len] != '\n') {
+        fingerprint[fpr_len] = fpr_line[fpr_len];
+        fpr_len++;
+      }
+      fingerprint[fpr_len] = '\0';
+    }
+
+    // If fingerprint extraction failed, use the short key ID
+    if (strlen(fingerprint) == 0) {
+      log_warn("Failed to extract fingerprint for key %s, using short key ID", key_ids[k]);
+      SAFE_STRNCPY(fingerprint, key_ids[k], sizeof(fingerprint));
+    }
+
+    log_debug("Key %s -> fingerprint: %s (length: %zu)", key_ids[k], fingerprint, strlen(fingerprint));
+
+    // Allocate and store this key in gpg:KEYID format
+    size_t gpg_key_len = strlen("gpg:") + strlen(fingerprint) + 1;
+    (*keys_out)[valid_keys] = SAFE_MALLOC(gpg_key_len, char *);
+    if (!(*keys_out)[valid_keys]) {
+      // Cleanup on allocation failure
+      for (size_t cleanup = 0; cleanup < valid_keys; cleanup++) {
+        SAFE_FREE((*keys_out)[cleanup]);
+      }
+      SAFE_FREE(*keys_out);
+      *keys_out = NULL;
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG key string");
+    }
+
+    snprintf((*keys_out)[valid_keys], gpg_key_len, "gpg:%s", fingerprint);
+    log_debug("Added valid Ed25519 key #%zu: %s", valid_keys, (*keys_out)[valid_keys]);
+    valid_keys++;
   }
 
-  // Copy the entire GPG key
-  memcpy((*keys_out)[0], response_text, response_len);
-  (*keys_out)[0][response_len] = '\0';
+  if (valid_keys == 0) {
+    SAFE_FREE(*keys_out);
+    *keys_out = NULL;
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid Ed25519 keys found in imported GPG keys");
+  }
 
-  *num_keys = 1;
+  *num_keys = valid_keys;
   return ASCIICHAT_OK;
 }
