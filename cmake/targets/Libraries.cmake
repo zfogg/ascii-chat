@@ -350,10 +350,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-crypto
         ascii-chat-core
         ${ZSTD_LIBRARIES}
+        sqlite3  # Rate limiting SQLite backend
     )
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES})
+    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} sqlite3)
 endif()
 
 # Core module was moved earlier in the dependency chain (Module 7)
@@ -703,7 +704,7 @@ else()
         # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
         get_core_deps_libraries(CORE_LIBS)
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${CORE_LIBS} m
+            ${CORE_LIBS} m sqlite3
         )
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
