@@ -939,9 +939,18 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Example: (1:q33:<33-bytes>) where first byte is 0x40 (Ed25519 prefix), then 32-byte key
   const char *q_marker = strstr(response, "(1:q");
   if (!q_marker) {
-    log_error("Failed to find public key (1:q) in GPG agent READKEY response");
+    log_warn("Failed to find public key (1:q) in GPG agent READKEY response, trying gpg --export fallback");
     log_debug("Response was: %.*s", (int)(bytes_read < 200 ? bytes_read : 200), response);
-    return -1;
+    gpg_agent_disconnect(agent_sock);
+
+    // Fallback: Use gpg --export for public-only keys
+    int export_result = gpg_export_public_key(key_id, public_key_out);
+    if (export_result == 0) {
+      log_info("Successfully extracted public key using gpg --export fallback");
+    } else {
+      log_error("Fallback public key extraction failed for key ID: %s", key_id);
+    }
+    return export_result;
   }
 
   // Skip "(1:q" to get to the length field
