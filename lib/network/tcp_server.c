@@ -96,9 +96,8 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
     return SET_ERRNO(ERROR_INVALID_PARAM, "server or config is NULL");
   }
 
-  if (!config->client_handler) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "client_handler callback is required");
-  }
+  // Note: client_handler is optional - some users may use tcp_server just for socket setup
+  // and implement their own accept loop (like ascii-chat server with its cleanup logic)
 
   // Initialize server state
   memset(server, 0, sizeof(*server));
@@ -149,6 +148,11 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
 asciichat_error_t tcp_server_run(tcp_server_t *server) {
   if (!server) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
+  }
+
+  if (!server->config.client_handler) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "client_handler is required for tcp_server_run() - use custom accept loop if handler is NULL");
   }
 
   log_info("TCP server starting accept loop...");
