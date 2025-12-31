@@ -97,6 +97,8 @@
 #include "platform/symbols.h"
 #include "platform/system.h"
 #include "crypto/keys.h"
+#include "network/rate_limit/rate_limit.h"
+#include "network/errors.h"
 
 /* ============================================================================
  * Global State
@@ -148,6 +150,27 @@ mixer_t *g_audio_mixer = NULL;
  * even when threads are waiting on blocking operations.
  */
 static_cond_t g_shutdown_cond = STATIC_COND_INIT;
+
+/**
+ * @brief Global rate limiter for connection attempts and packet processing
+ *
+ * In-memory rate limiter to prevent connection flooding and DoS attacks.
+ * Tracks connection attempts and packet rates per IP address with configurable limits.
+ *
+ * Default limits (from rate_limit.c):
+ * - RATE_EVENT_CONNECTION: 50 connections per 60 seconds
+ * - RATE_EVENT_IMAGE_FRAME: 144 FPS (8640 frames/min)
+ * - RATE_EVENT_AUDIO: 172 FPS (10320 packets/min)
+ * - RATE_EVENT_PING: 2 Hz (120 pings/min)
+ * - RATE_EVENT_CLIENT_JOIN: 10 joins per 60 seconds
+ * - RATE_EVENT_CONTROL: 100 control packets per 60 seconds
+ *
+ * THREAD SAFETY: The rate limiter is thread-safe and can be used concurrently
+ * from the main accept loop and packet handlers without external synchronization.
+ *
+ * @see main.h for extern declaration
+ */
+rate_limiter_t *g_rate_limiter = NULL;
 
 /**
  * @brief TCP server instance for accepting client connections
@@ -673,6 +696,20 @@ int server_main(void) {
   // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
   g_client_manager.clients_by_id = NULL;
 
+  // Initialize connection rate limiter (prevents DoS attacks)
+  if (!atomic_load(&g_server_should_exit)) {
+    log_debug("Initializing connection rate limiter...");
+    g_rate_limiter = rate_limiter_create_memory();
+    if (!g_rate_limiter) {
+      LOG_ERRNO_IF_SET("Failed to initialize rate limiter");
+      if (!atomic_load(&g_server_should_exit)) {
+        FATAL(ERROR_MEMORY, "Failed to create connection rate limiter");
+      }
+    } else {
+      log_info("Connection rate limiter initialized (50 connections/min per IP)");
+    }
+  }
+
   // Initialize audio mixer (always enabled on server)
   if (!atomic_load(&g_server_should_exit)) {
     log_debug("Initializing audio mixer for per-client audio rendering...");
@@ -941,6 +978,20 @@ main_loop:
       log_warn("New client connected with unknown address family %d", ((struct sockaddr *)&client_addr)->sa_family);
     }
 
+    // Check connection rate limit (prevent DoS attacks)
+    if (g_rate_limiter) {
+      bool allowed = false;
+      asciichat_error_t rate_check =
+          rate_limiter_check(g_rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
+      if (rate_check != ASCIICHAT_OK || !allowed) {
+        log_warn("Connection rate limit exceeded for %s, rejecting connection", client_ip);
+        socket_close(client_sock);
+        continue;
+      }
+      // Record successful connection attempt
+      rate_limiter_record(g_rate_limiter, client_ip, RATE_EVENT_CONNECTION);
+    }
+
     // Add client to multi-client manager
     int client_id = add_client(client_sock, client_ip, client_port);
     if (client_id < 0) {
@@ -1002,6 +1053,12 @@ main_loop:
   if (g_stats_logger_thread_created) {
     ascii_thread_join(&g_stats_logger_thread, NULL);
     g_stats_logger_thread_created = false;
+  }
+
+  // Destroy rate limiter
+  if (g_rate_limiter) {
+    rate_limiter_destroy(g_rate_limiter);
+    g_rate_limiter = NULL;
   }
 
   // Clean up all connected clients

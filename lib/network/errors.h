@@ -63,6 +63,29 @@ asciichat_error_t send_error_packet_message(socket_t sockfd, asciichat_error_t e
 bool check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, rate_event_type_t event_type,
                                  socket_t client_socket, const char *operation_name);
 
+/**
+ * @brief Map packet type to rate event type and check rate limit
+ *
+ * Maps packet_type_t to the corresponding rate_event_type_t and performs
+ * rate limiting check. Sends ERROR_RATE_LIMITED response if exceeded.
+ *
+ * Packet type to rate event mapping:
+ * - IMAGE_FRAME -> RATE_EVENT_IMAGE_FRAME
+ * - AUDIO, AUDIO_BATCH, AUDIO_OPUS, AUDIO_OPUS_BATCH -> RATE_EVENT_AUDIO
+ * - PING, PONG -> RATE_EVENT_PING
+ * - CLIENT_JOIN -> RATE_EVENT_CLIENT_JOIN
+ * - CLIENT_CAPABILITIES, STREAM_START, STREAM_STOP, CLIENT_LEAVE -> RATE_EVENT_CONTROL
+ * - All other packets -> No rate limiting (always allowed)
+ *
+ * @param rate_limiter Rate limiter instance
+ * @param client_ip Client IP address
+ * @param client_socket Client socket for sending error response
+ * @param packet_type Packet type being processed
+ * @return true if allowed (and event recorded), false if rate limited
+ */
+bool check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, socket_t client_socket,
+                                        packet_type_t packet_type);
+
 #ifdef __cplusplus
 }
 #endif

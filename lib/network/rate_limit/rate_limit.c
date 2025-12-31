@@ -13,18 +13,44 @@
 
 // Event type strings for logging
 static const char *event_type_strings[RATE_EVENT_MAX] = {
-    [RATE_EVENT_SESSION_CREATE] = "session_create", [RATE_EVENT_SESSION_LOOKUP] = "session_lookup",
-    [RATE_EVENT_SESSION_JOIN] = "session_join",     [RATE_EVENT_CONNECTION] = "connection",
-    [RATE_EVENT_FRAME_SEND] = "frame_send",
+    [RATE_EVENT_SESSION_CREATE] = "session_create",
+    [RATE_EVENT_SESSION_LOOKUP] = "session_lookup",
+    [RATE_EVENT_SESSION_JOIN] = "session_join",
+    [RATE_EVENT_CONNECTION] = "connection",
+    [RATE_EVENT_IMAGE_FRAME] = "image_frame",
+    [RATE_EVENT_AUDIO] = "audio",
+    [RATE_EVENT_PING] = "ping",
+    [RATE_EVENT_CLIENT_JOIN] = "client_join",
+    [RATE_EVENT_CONTROL] = "control",
 };
 
 // Default rate limits: conservative defaults to prevent abuse
+// Debug builds have relaxed limits for development/testing
 const rate_limit_config_t DEFAULT_RATE_LIMITS[RATE_EVENT_MAX] = {
+// ACDS discovery server limits
+#ifdef NDEBUG
+    // Release mode: production limits (144 FPS video, 172 FPS audio)
     [RATE_EVENT_SESSION_CREATE] = {.max_events = 10, .window_secs = 60}, // 10 creates per minute
     [RATE_EVENT_SESSION_LOOKUP] = {.max_events = 30, .window_secs = 60}, // 30 lookups per minute
     [RATE_EVENT_SESSION_JOIN] = {.max_events = 20, .window_secs = 60},   // 20 joins per minute
     [RATE_EVENT_CONNECTION] = {.max_events = 50, .window_secs = 60},     // 50 connections per minute
-    [RATE_EVENT_FRAME_SEND] = {.max_events = 1000, .window_secs = 60},   // 1000 frames per minute
+    [RATE_EVENT_IMAGE_FRAME] = {.max_events = 8640, .window_secs = 60},  // 8640 frames/min = 144 FPS
+    [RATE_EVENT_AUDIO] = {.max_events = 10320, .window_secs = 60},       // 10320 packets/min = 172 FPS
+    [RATE_EVENT_PING] = {.max_events = 120, .window_secs = 60},          // 120 pings/min = 2 Hz max
+    [RATE_EVENT_CLIENT_JOIN] = {.max_events = 10, .window_secs = 60},    // 10 joins per minute
+    [RATE_EVENT_CONTROL] = {.max_events = 100, .window_secs = 60},       // 100 control packets/min
+#else
+    // Debug mode: slightly relaxed limits for development/testing (1.5x production limits)
+    [RATE_EVENT_SESSION_CREATE] = {.max_events = 15, .window_secs = 60}, // 15 creates per minute
+    [RATE_EVENT_SESSION_LOOKUP] = {.max_events = 45, .window_secs = 60}, // 45 lookups per minute
+    [RATE_EVENT_SESSION_JOIN] = {.max_events = 30, .window_secs = 60},   // 30 joins per minute
+    [RATE_EVENT_CONNECTION] = {.max_events = 75, .window_secs = 60},     // 75 connections per minute
+    [RATE_EVENT_IMAGE_FRAME] = {.max_events = 12960, .window_secs = 60}, // 12960 frames/min = 216 FPS
+    [RATE_EVENT_AUDIO] = {.max_events = 15480, .window_secs = 60},       // 15480 packets/min = 258 FPS
+    [RATE_EVENT_PING] = {.max_events = 180, .window_secs = 60},          // 180 pings/min = 3 Hz
+    [RATE_EVENT_CLIENT_JOIN] = {.max_events = 25, .window_secs = 60},    // 25 joins per minute (for testing reconnects)
+    [RATE_EVENT_CONTROL] = {.max_events = 150, .window_secs = 60},       // 150 control packets/min
+#endif
 };
 
 // ============================================================================

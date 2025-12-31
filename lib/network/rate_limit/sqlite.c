@@ -19,9 +19,15 @@ typedef struct {
 
 // Event type strings for database storage
 static const char *event_type_strings[RATE_EVENT_MAX] = {
-    [RATE_EVENT_SESSION_CREATE] = "session_create", [RATE_EVENT_SESSION_LOOKUP] = "session_lookup",
-    [RATE_EVENT_SESSION_JOIN] = "session_join",     [RATE_EVENT_CONNECTION] = "connection",
-    [RATE_EVENT_FRAME_SEND] = "frame_send",
+    [RATE_EVENT_SESSION_CREATE] = "session_create",
+    [RATE_EVENT_SESSION_LOOKUP] = "session_lookup",
+    [RATE_EVENT_SESSION_JOIN] = "session_join",
+    [RATE_EVENT_CONNECTION] = "connection",
+    [RATE_EVENT_IMAGE_FRAME] = "image_frame",
+    [RATE_EVENT_AUDIO] = "audio",
+    [RATE_EVENT_PING] = "ping",
+    [RATE_EVENT_CLIENT_JOIN] = "client_join",
+    [RATE_EVENT_CONTROL] = "control",
 };
 
 static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address, rate_event_type_t event_type,

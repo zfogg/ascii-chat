@@ -134,15 +134,34 @@ typedef struct {
 } tcp_server_config_t;
 
 /**
+ * @brief Thread entry for client thread pool
+ *
+ * Tracks individual worker threads spawned for a client.
+ * Threads are stopped in order based on stop_id (lower values stopped first).
+ */
+typedef struct tcp_client_thread {
+  asciithread_t thread;           ///< Thread handle
+  int stop_id;                    ///< Cleanup order (lower = stop first)
+  void *(*thread_func)(void *);   ///< Thread function
+  void *thread_arg;               ///< Thread argument
+  char name[64];                  ///< Thread name for debugging
+  struct tcp_client_thread *next; ///< Linked list next pointer
+} tcp_client_thread_t;
+
+/**
  * @brief Client registry entry
  *
  * Internal structure for tracking connected clients.
  * Uses uthash for efficient socket-based lookup.
+ * Each client can have multiple worker threads tracked in a thread pool.
  */
 struct tcp_client_entry {
-  socket_t socket;   ///< Client socket (hash key)
-  void *client_data; ///< User-provided client data
-  UT_hash_handle hh; ///< uthash handle
+  socket_t socket;              ///< Client socket (hash key)
+  void *client_data;            ///< User-provided client data
+  tcp_client_thread_t *threads; ///< Linked list of worker threads
+  mutex_t threads_mutex;        ///< Mutex protecting thread list
+  size_t thread_count;          ///< Number of threads in pool
+  UT_hash_handle hh;            ///< uthash handle
 };
 
 /**
@@ -267,3 +286,55 @@ void tcp_server_foreach_client(tcp_server_t *server, tcp_client_foreach_fn callb
  * @return Number of clients in registry
  */
 size_t tcp_server_get_client_count(tcp_server_t *server);
+
+// ============================================================================
+// Client Thread Pool Management
+// ============================================================================
+
+/**
+ * @brief Spawn a worker thread for a client
+ *
+ * Creates and tracks a new worker thread for the specified client.
+ * Threads are identified by stop_id for ordered cleanup - lower stop_id
+ * values are stopped first when the client disconnects.
+ *
+ * Example stop_id ordering:
+ * - stop_id=1: Receive thread (stop first to prevent new data)
+ * - stop_id=2: Render threads (stop after receive)
+ * - stop_id=3: Send thread (stop last after all processing done)
+ *
+ * @param server Server structure
+ * @param client_socket Client socket to spawn thread for
+ * @param thread_func Thread function to execute
+ * @param thread_arg Argument passed to thread function
+ * @param stop_id Cleanup order (lower = stop first)
+ * @param thread_name Thread name for debugging (max 63 chars)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t tcp_server_spawn_thread(tcp_server_t *server, socket_t client_socket, void *(*thread_func)(void *),
+                                          void *thread_arg, int stop_id, const char *thread_name);
+
+/**
+ * @brief Stop all threads for a client in stop_id order
+ *
+ * Stops all worker threads spawned for the specified client.
+ * Threads are stopped in ascending stop_id order (lower values first).
+ * Joins each thread to ensure it has fully exited before proceeding.
+ *
+ * @param server Server structure
+ * @param client_socket Client socket whose threads to stop
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t tcp_server_stop_client_threads(tcp_server_t *server, socket_t client_socket);
+
+/**
+ * @brief Get thread count for a client
+ *
+ * Thread-safe count of worker threads spawned for a client.
+ *
+ * @param server Server structure
+ * @param client_socket Client socket to query
+ * @param[out] count Output pointer for thread count (set to 0 if client not found)
+ * @return ASCIICHAT_OK on success, ERROR_NOT_FOUND if client not in registry
+ */
+asciichat_error_t tcp_server_get_thread_count(tcp_server_t *server, socket_t client_socket, size_t *count);

@@ -44,12 +44,20 @@
  * @brief Rate limit event types
  */
 typedef enum {
+  // ACDS discovery server events
   RATE_EVENT_SESSION_CREATE = 0, ///< Session creation
   RATE_EVENT_SESSION_LOOKUP = 1, ///< Session lookup
   RATE_EVENT_SESSION_JOIN = 2,   ///< Session join
-  RATE_EVENT_CONNECTION = 3,     ///< New connection (for ascii-chat server)
-  RATE_EVENT_FRAME_SEND = 4,     ///< Frame send (for ascii-chat server)
-  RATE_EVENT_MAX                 ///< Sentinel value
+
+  // ASCII-Chat server events
+  RATE_EVENT_CONNECTION = 3,  ///< New connection
+  RATE_EVENT_IMAGE_FRAME = 4, ///< Image frame from client (PACKET_TYPE_IMAGE_FRAME)
+  RATE_EVENT_AUDIO = 5,       ///< Audio packet (PACKET_TYPE_AUDIO, PACKET_TYPE_AUDIO_BATCH)
+  RATE_EVENT_PING = 6,        ///< Ping/pong keepalive (PACKET_TYPE_PING, PACKET_TYPE_PONG)
+  RATE_EVENT_CLIENT_JOIN = 7, ///< Client join request (PACKET_TYPE_CLIENT_JOIN)
+  RATE_EVENT_CONTROL = 8,     ///< Control packets (CAPABILITIES, STREAM_START/STOP, LEAVE)
+
+  RATE_EVENT_MAX ///< Sentinel value
 } rate_event_type_t;
 
 /**

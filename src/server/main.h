@@ -40,6 +40,16 @@
 
 #pragma once
 
+#include "network/rate_limit/rate_limit.h"
+
+/**
+ * @brief Global connection rate limiter
+ *
+ * Shared rate limiter instance used by packet handlers to prevent DoS attacks.
+ * Tracks connection attempts and packet rates per IP address.
+ */
+extern rate_limiter_t *g_rate_limiter;
+
 /**
  * @brief Server mode entry point for unified binary
  *
