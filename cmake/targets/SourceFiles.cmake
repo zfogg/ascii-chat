@@ -295,6 +295,7 @@ set_source_files_properties(
 set(DATA_STRUCTURES_SRCS
     lib/ringbuffer.c
     lib/buffer_pool.c
+    lib/thread_pool.c
 )
 
 # =============================================================================
