@@ -205,16 +205,16 @@ static void full_terminal_reset(int fd) {
  * @ingroup client_display
  */
 static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
-  // Safety check for NULL or empty data
+  // Validate parameters
   if (!frame_data) {
-    log_error("write_frame_to_output: NULL frame_data");
+    SET_ERRNO(ERROR_INVALID_PARAM, "write_frame_to_output: NULL frame_data");
     return;
   }
 
   // Calculate length safely to avoid potential segfault in strlen
   size_t frame_len = strnlen(frame_data, 1024 * 1024); // Max 1MB frame
   if (frame_len == 0) {
-    log_debug("write_frame_to_output: Empty frame data");
+    SET_ERRNO(ERROR_INVALID_PARAM, "write_frame_to_output: Empty frame data");
     return;
   }
 
@@ -359,7 +359,7 @@ void display_disable_logging_for_first_frame() {
  */
 void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
   if (!frame_data) {
-    log_warn("Attempted to render NULL frame data");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Attempted to render NULL frame data");
     return;
   }
 

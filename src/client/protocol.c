@@ -389,24 +389,28 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
   }
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // Handle snapshot mode timing
   bool take_snapshot = false;
-  if (opt_snapshot_mode) {
+  if (opts->snapshot_mode) {
     static time_t first_frame_time = 0;
     if (first_frame_time == 0) {
       first_frame_time = time(NULL);
       // If delay is 0, take snapshot immediately on first frame
-      if (opt_snapshot_delay == 0) {
+      if (opts->snapshot_delay == 0) {
         log_info("Snapshot captured immediately (delay=0)!");
         take_snapshot = true;
         signal_exit();
       } else {
-        log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...", opt_snapshot_delay);
+        log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
+                 opts->snapshot_delay);
       }
     } else {
       time_t snapshot_time = time(NULL);
       double elapsed = difftime(snapshot_time, first_frame_time);
-      if (elapsed >= (double)opt_snapshot_delay) {
+      if (elapsed >= (double)opts->snapshot_delay) {
         char duration_str[32];
         format_duration_s(elapsed, duration_str, sizeof(duration_str));
         log_info("Snapshot captured after %s!", duration_str);
@@ -512,7 +516,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
  * @ingroup client_protocol
  */
 static void handle_audio_packet(const void *data, size_t len) {
-  if (!opt_audio_enabled || !data || len == 0) {
+  if (!data || len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio packet data");
+    return;
+  }
+
+  const options_t *opts = options_get();
+  if (!(opts && opts->audio_enabled)) {
+    log_warn_every(1000000, "Received audio packet but audio is disabled");
     return;
   }
 
@@ -547,7 +558,14 @@ static void handle_audio_packet(const void *data, size_t len) {
  * @ingroup client_protocol
  */
 static void handle_audio_batch_packet(const void *data, size_t len) {
-  if (!opt_audio_enabled || !data) {
+  if (!data) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch packet data");
+    return;
+  }
+
+  const options_t *opts = options_get();
+  if (!(opts && opts->audio_enabled)) {
+    log_warn_every(1000000, "Received audio batch packet but audio is disabled");
     return;
   }
 
@@ -602,7 +620,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   }
 
   // Track received packet for analysis
-  if (opt_audio_analysis_enabled) {
+  if (opts && opts->audio_analysis_enabled) {
     audio_analysis_track_received_packet(len);
   }
 
@@ -627,7 +645,16 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
  * @ingroup client_protocol
  */
 static void handle_audio_opus_packet(const void *data, size_t len) {
-  if (!opt_audio_enabled || !data || len == 0) {
+  // Validate parameters
+  if (!data || len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio opus packet: data=%p, len=%zu", data, len);
+    return;
+  }
+
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts || !opts->audio_enabled) {
+    log_warn_every(1000000, "Received opus audio packet but audio is disabled");
     return;
   }
 
@@ -644,7 +671,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   // Track received packet for analysis
-  if (opt_audio_analysis_enabled) {
+  if (opts && opts->audio_analysis_enabled) {
     audio_analysis_track_received_packet(len);
   }
 
@@ -675,7 +702,16 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
  * @ingroup client_protocol
  */
 static void handle_audio_opus_batch_packet(const void *data, size_t len) {
-  if (!opt_audio_enabled || !data || len == 0) {
+  // Validate parameters
+  if (!data || len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid opus batch packet: data=%p, len=%zu", data, len);
+    return;
+  }
+
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts || !opts->audio_enabled) {
+    log_warn_every(1000000, "Received opus batch packet but audio is disabled");
     return;
   }
 
@@ -745,7 +781,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
 
   if (total_decoded_samples > 0) {
     // Track received packet for analysis
-    if (opt_audio_analysis_enabled) {
+    if (opts && opts->audio_analysis_enabled) {
       audio_analysis_track_received_packet(len);
     }
 

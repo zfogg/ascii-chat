@@ -366,7 +366,16 @@ static void audio_sender_cleanup(void) {
  * @ingroup client_audio
  */
 void audio_process_received_samples(const float *samples, int num_samples) {
-  if (!opt_audio_enabled || !samples || num_samples <= 0) {
+  // Validate parameters
+  if (!samples || num_samples <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio samples: samples=%p, num_samples=%d", (void *)samples, num_samples);
+    return;
+  }
+
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts || !opts->audio_enabled) {
+    log_warn_every(1000000, "Received audio samples but audio is disabled");
     return;
   }
 
@@ -389,7 +398,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   }
 
   // Track samples for analysis
-  if (opt_audio_analysis_enabled) {
+  if (opts->audio_analysis_enabled) {
     for (int i = 0; i < num_samples; i++) {
       audio_analysis_track_received_sample(samples[i]);
     }
@@ -460,6 +469,9 @@ void audio_process_received_samples(const float *samples, int num_samples) {
  */
 static void *audio_capture_thread_func(void *arg) {
   (void)arg;
+
+  // Get options from RCU state
+  const options_t *opts = options_get();
 
   log_info("Audio capture thread started");
 
@@ -578,7 +590,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Track sent samples for analysis
-      if (opt_audio_analysis_enabled) {
+      if (opts && opts->audio_analysis_enabled) {
         for (int i = 0; i < samples_read; i++) {
           audio_analysis_track_sent_sample(audio_buffer[i]);
         }
@@ -628,7 +640,7 @@ static void *audio_capture_thread_func(void *arg) {
               batch_total_size += (size_t)opus_len;
               batch_frame_count++;
 
-              if (opt_audio_analysis_enabled) {
+              if (opts && opts->audio_analysis_enabled) {
                 audio_analysis_track_sent_packet((size_t)opus_len);
               }
             }
@@ -693,7 +705,10 @@ static void *audio_capture_thread_func(void *arg) {
  * @ingroup client_audio
  */
 int audio_client_init() {
-  if (!opt_audio_enabled) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
+  if (!opts || !opts->audio_enabled) {
     return 0; // Audio disabled - not an error
   }
 
@@ -790,9 +805,12 @@ int audio_client_init() {
  * @ingroup client_audio
  */
 int audio_start_thread() {
-  log_info("audio_start_thread called: opt_audio_enabled=%d", opt_audio_enabled);
+  // Get options from RCU state
+  const options_t *opts = options_get();
 
-  if (!opt_audio_enabled) {
+  log_info("audio_start_thread called: audio_enabled=%d", opts ? opts->audio_enabled : 0);
+
+  if (!opts || !opts->audio_enabled) {
     log_info("Audio is disabled, skipping audio capture thread creation");
     return 0; // Audio disabled - not an error
   }
@@ -888,7 +906,10 @@ bool audio_thread_exited() {
  * @ingroup client_audio
  */
 void audio_cleanup() {
-  if (!opt_audio_enabled) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
+  if (!opts || !opts->audio_enabled) {
     return;
   }
 

@@ -211,7 +211,7 @@ const options_t *options_get(void) {
   return current;
 }
 
-asciichat_error_t options_update(options_updater_fn updater, void *context) {
+asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context) {
   if (!updater) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "updater function is NULL");
   }
