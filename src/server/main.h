@@ -41,6 +41,11 @@
 #pragma once
 
 #include "network/rate_limit/rate_limit.h"
+#include "network/tcp_server.h"
+#include "audio/mixer.h"
+#include "crypto/key_types.h"
+#include "stats.h"
+#include "client.h"
 
 /**
  * @brief Global connection rate limiter
@@ -49,6 +54,57 @@
  * Tracks connection attempts and packet rates per IP address.
  */
 extern rate_limiter_t *g_rate_limiter;
+
+/**
+ * @brief Server context - encapsulates all server state
+ *
+ * This structure holds all server-wide state that was previously stored in
+ * global variables. It's passed to client handlers via tcp_server user_data,
+ * reducing global state and improving modularity.
+ *
+ * DESIGN RATIONALE:
+ * =================
+ * - Reduces global state: All server state in one place
+ * - Improves testability: Can create multiple independent server instances
+ * - Better encapsulation: Clear ownership of resources
+ * - Thread-safe: Context is read-only after initialization
+ *
+ * LIFETIME:
+ * =========
+ * - Created in server_main() before tcp_server_init()
+ * - Passed to tcp_server via config.user_data
+ * - Available to client handlers via tcp_client_context_t.user_data
+ * - Destroyed in server_main() after tcp_server_shutdown()
+ *
+ * @ingroup server_main
+ */
+typedef struct server_context_t {
+  // TCP server instance
+  tcp_server_t *tcp_server; ///< TCP server managing connections
+
+  // Rate limiting
+  rate_limiter_t *rate_limiter; ///< Connection and packet rate limiter
+
+  // Client management
+  client_manager_t *client_manager; ///< Client registry and state
+  rwlock_t *client_manager_rwlock;  ///< RW lock protecting client manager
+
+  // Server lifecycle
+  atomic_bool *server_should_exit; ///< Shutdown flag
+
+  // Audio mixing
+  mixer_t *audio_mixer; ///< Multi-client audio mixer
+
+  // Statistics
+  server_stats_t *stats; ///< Server statistics
+  mutex_t *stats_mutex;  ///< Mutex protecting stats
+
+  // Cryptography
+  bool encryption_enabled;           ///< Whether encryption is enabled
+  private_key_t *server_private_key; ///< Server's private key
+  public_key_t *client_whitelist;    ///< Whitelisted client public keys
+  size_t num_whitelisted_clients;    ///< Number of whitelisted clients
+} server_context_t;
 
 /**
  * @brief Server mode entry point for unified binary

@@ -11,6 +11,10 @@
 
 #include "network/client.h"
 
+// Forward declaration to avoid circular dependency with main.h
+// Files that need the full definition should include main.h themselves
+typedef struct server_context_t server_context_t;
+
 /**
  * @brief Global client manager structure for server-side client coordination
  *
@@ -74,8 +78,8 @@ extern client_manager_t g_client_manager;
 extern rwlock_t g_client_manager_rwlock;
 
 // Client management functions
-int add_client(socket_t socket, const char *client_ip, int port);
-int remove_client(uint32_t client_id);
+int add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port);
+int remove_client(server_context_t *server_ctx, uint32_t client_id);
 client_info_t *find_client_by_id(uint32_t client_id);
 client_info_t *find_client_by_socket(socket_t socket);
 void cleanup_client_media_buffers(client_info_t *client);
