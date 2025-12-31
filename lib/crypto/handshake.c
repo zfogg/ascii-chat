@@ -1366,13 +1366,8 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
 
   // Copy nonce to local buffer before freeing payload
   // Use auth_challenge_size since that's what the server sent
-  uint8_t nonce_buffer[256]; // Maximum nonce size
-  if (ctx->crypto_ctx.auth_challenge_size > sizeof(nonce_buffer)) {
-    if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
-    }
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Auth challenge size too large: %u", ctx->crypto_ctx.auth_challenge_size);
-  }
+  // Note: auth_challenge_size is uint8_t (max 255), buffer is 256 bytes, so always sufficient
+  uint8_t nonce_buffer[256];
   memcpy(nonce_buffer, payload + 1, ctx->crypto_ctx.auth_challenge_size);
   const uint8_t *nonce = nonce_buffer;
 

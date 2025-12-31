@@ -381,7 +381,9 @@ asciichat_error_t ssh_agent_sign(const public_key_t *public_key, const uint8_t *
     return SET_ERRNO(ERROR_CRYPTO, "Failed to read SSH agent sign response (read %zd bytes)", read_bytes);
   }
 
-  uint32_t response_len = read_u32_be(response);
+  // Response format: uint32 length, byte type, data...
+  // We validate length implicitly by checking read_bytes and parsing the full response
+  (void)read_u32_be(response); // Read but don't need explicit length check
   uint8_t response_type = response[4];
 
   // Check for SSH2_AGENT_SIGN_RESPONSE (14)
