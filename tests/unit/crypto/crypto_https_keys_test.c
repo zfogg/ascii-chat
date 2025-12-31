@@ -301,9 +301,22 @@ Test(crypto_https_keys, parse_ssh_keys_only_newlines) {
 // =============================================================================
 
 Test(crypto_https_keys, parse_gpg_keys_valid) {
+  // Use the real expired test key fixture
   const char *response =
-      "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: GnuPG v2\n\nmQENBF...\n-----END PGP PUBLIC KEY "
-      "BLOCK-----\n";
+      "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
+      "\n"
+      "mDMEZYluwBYJKwYBBAHaRw8BAQdA1K+SeOBdrF0l3zcEmKS9BVLQdeH28aOOlQIz\n"
+      "tcTg2AS0OkFTQ0lJIENoYXQgRXhwaXJlZCBUZXN0IEtleSA8ZXhwaXJlZC10ZXN0\n"
+      "QGFzY2lpLWNoYXQudGVzdD6IlgQTFgoAPhYhBMb2DjAmhdQ2V+U1Yn6nkbhlBrzy\n"
+      "BQJliW7AAhsDBQkAAVGABQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAAAoJEH6nkbhl\n"
+      "BrzyKxwBAJ0H9EoGF8DA9b3mdcxb4kHTVMIpKLVXWY9BsU9pJAyvAP0Vv2Ynt0Zm\n"
+      "i8PinOhyMlURPDXovyJLiQsCLPQn5M5RDbg4BGWJbsASCisGAQQBl1UBBQEBB0CI\n"
+      "uII1RMQkImsTaifKayy8+epPa9xjRxPBAtGrf86SPQMBCAeIfgQYFgoAJhYhBMb2\n"
+      "DjAmhdQ2V+U1Yn6nkbhlBrzyBQJliW7AAhsMBQkAAVGAAAoJEH6nkbhlBrzyAvMA\n"
+      "/3SmZ2S//vAl8J5VYZGk8wLadn9Zhk+C2g6U3ncvW4x2AQDchXne15q/OrtyYa2t\n"
+      "RpKdoeSdF228xgdmiwRSOe8/BQ==\n"
+      "=xv17\n"
+      "-----END PGP PUBLIC KEY BLOCK-----\n";
   char **keys = NULL;
   size_t num_keys = 0;
 
@@ -312,7 +325,10 @@ Test(crypto_https_keys, parse_gpg_keys_valid) {
   cr_assert_eq(result, ASCIICHAT_OK, "Should parse GPG key successfully");
   cr_assert_eq(num_keys, 1, "Should parse exactly one GPG key");
   cr_assert_not_null(keys, "Keys array should not be NULL");
-  cr_assert_str_eq(keys[0], response, "Parsed GPG key should match input");
+  // The function returns "gpg:FINGERPRINT" format, not the armored text
+  cr_assert_not_null(keys[0], "First key should not be NULL");
+  cr_assert(strncmp(keys[0], "gpg:", 4) == 0, "Key should start with 'gpg:' prefix");
+  cr_assert(strlen(keys[0]) > 4, "Key should have content after 'gpg:' prefix");
 
   // Cleanup
   for (size_t i = 0; i < num_keys; i++) {

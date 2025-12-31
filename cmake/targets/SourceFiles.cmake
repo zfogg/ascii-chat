@@ -49,7 +49,9 @@ set(CRYPTO_SRCS
     lib/crypto/crypto.c
     lib/crypto/keys/keys.c
     lib/crypto/known_hosts.c
-    lib/crypto/handshake.c
+    lib/crypto/handshake/common.c
+    lib/crypto/handshake/server.c
+    lib/crypto/handshake/client.c
     lib/crypto/pem_utils.c
     lib/crypto/gpg.c  # GPG agent support (signing only, verification with libsodium)
     lib/crypto/ssh_agent.c
