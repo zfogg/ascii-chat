@@ -191,6 +191,9 @@ static bool g_crypto_initialized = false;
  * @ingroup client_crypto
  */
 int client_crypto_init(void) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
   if (g_crypto_initialized) {
     log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
@@ -199,7 +202,7 @@ int client_crypto_init(void) {
   }
 
   // Check if encryption is disabled
-  if (opt_no_encrypt) {
+  if (opts && opts->no_encrypt) {
     log_info("Encryption disabled via --no-encrypt");
     log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
     return 0;
@@ -213,24 +216,25 @@ int client_crypto_init(void) {
   private_key_t private_key;
 
   // Load client private key if provided via --key
-  if (strlen(opt_encrypt_key) > 0) {
+  const char *encrypt_key = opts ? opts->encrypt_key : "";
+  if (strlen(encrypt_key) > 0) {
     // --key supports file-based authentication (SSH keys, GPG keys via gpg:keyid)
 
     // For SSH key files (not gpg:keyid format), validate the file exists
-    if (strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
-      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
+    if (strncmp(encrypt_key, "gpg:", 4) != 0) {
+      if (validate_ssh_key_file(encrypt_key) != 0) {
         return -1;
       }
     }
 
     // Parse key (handles SSH files and gpg:keyid format)
-    log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", opt_encrypt_key);
-    if (parse_private_key(opt_encrypt_key, &private_key) == ASCIICHAT_OK) {
+    log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", encrypt_key);
+    if (parse_private_key(encrypt_key, &private_key) == ASCIICHAT_OK) {
       log_info("Successfully parsed SSH private key");
       log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
       is_ssh_key = true;
     } else {
-      log_error("Failed to parse SSH key file: %s", opt_encrypt_key);
+      log_error("Failed to parse SSH key file: %s", encrypt_key);
       log_error("This may be due to:");
       log_error("  - Wrong password for encrypted key");
       log_error("  - Unsupported key type (only Ed25519 is currently supported)");
@@ -262,8 +266,8 @@ int client_crypto_init(void) {
                  sizeof(g_crypto_ctx.client_public_key.comment) - 1);
 
     // Extract GPG key ID if this is a GPG key (format: "gpg:KEYID")
-    if (strncmp(opt_encrypt_key, "gpg:", 4) == 0) {
-      const char *key_id = opt_encrypt_key + 4;
+    if (strncmp(encrypt_key, "gpg:", 4) == 0) {
+      const char *key_id = encrypt_key + 4;
       size_t key_id_len = strlen(key_id);
       // Accept 8, 16, or 40 character GPG key IDs (short/long/full fingerprint)
       if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
@@ -286,9 +290,10 @@ int client_crypto_init(void) {
     sodium_memzero(&private_key, sizeof(private_key));
 
     // If password is also provided, derive password key for dual authentication
-    if (strlen(opt_password) > 0) {
+    const char *password = opts ? opts->password : "";
+    if (strlen(password) > 0) {
       log_debug("CLIENT_CRYPTO_INIT: Password also provided, deriving password key");
-      crypto_result_t crypto_result = crypto_derive_password_key(&g_crypto_ctx.crypto_ctx, opt_password);
+      crypto_result_t crypto_result = crypto_derive_password_key(&g_crypto_ctx.crypto_ctx, password);
       if (crypto_result != CRYPTO_OK) {
         log_error("Failed to derive password key: %s", crypto_result_to_string(crypto_result));
         return -1;
@@ -297,10 +302,10 @@ int client_crypto_init(void) {
       log_info("Password authentication enabled alongside SSH key");
     }
 
-  } else if (strlen(opt_password) > 0) {
+  } else if (opts && strlen(opts->password) > 0) {
     // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
-    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opt_password); // false = client
+    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opts->password); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake with password");
     }
@@ -316,18 +321,21 @@ int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded");
 
   // Set up server connection info for known_hosts
-  SAFE_STRNCPY(g_crypto_ctx.server_hostname, opt_address, sizeof(g_crypto_ctx.server_hostname) - 1);
+  const char *address = opts ? opts->address : "localhost";
+  SAFE_STRNCPY(g_crypto_ctx.server_hostname, address, sizeof(g_crypto_ctx.server_hostname) - 1);
   const char *server_ip = server_connection_get_ip();
   log_debug("CLIENT_CRYPTO_INIT: server_connection_get_ip() returned: '%s'", server_ip ? server_ip : "NULL");
   SAFE_STRNCPY(g_crypto_ctx.server_ip, server_ip ? server_ip : "", sizeof(g_crypto_ctx.server_ip) - 1);
-  g_crypto_ctx.server_port = (uint16_t)strtoint_safe(opt_port);
+  const char *port = opts ? opts->port : "27224";
+  g_crypto_ctx.server_port = (uint16_t)strtoint_safe(port);
   log_debug("CLIENT_CRYPTO_INIT: Set server_ip='%s', server_port=%u", g_crypto_ctx.server_ip, g_crypto_ctx.server_port);
 
   // Configure server key verification if specified
-  if (strlen(opt_server_key) > 0) {
+  const char *server_key = opts ? opts->server_key : "";
+  if (strlen(server_key) > 0) {
     g_crypto_ctx.verify_server_key = true;
-    SAFE_STRNCPY(g_crypto_ctx.expected_server_key, opt_server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
-    log_info("Server key verification enabled: %s", opt_server_key);
+    SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
+    log_info("Server key verification enabled: %s", server_key);
   }
 
   g_crypto_initialized = true;
@@ -345,8 +353,11 @@ int client_crypto_init(void) {
  * @ingroup client_crypto
  */
 int client_crypto_handshake(socket_t socket) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // If client has --no-encrypt, skip handshake entirely
-  if (opt_no_encrypt) {
+  if (opts && opts->no_encrypt) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
     return 0;
   }
@@ -610,7 +621,10 @@ int client_crypto_handshake(socket_t socket) {
  * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
-  if (!g_crypto_initialized || opt_no_encrypt) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
+  if (!g_crypto_initialized || (opts && opts->no_encrypt)) {
     return false;
   }
 

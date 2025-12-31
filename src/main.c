@@ -491,8 +491,8 @@ int main(int argc, char *argv[]) {
         // Initialize logging for log_plain_stderr() to work
         log_init(NULL, LOG_ERROR, true, false); // Minimal logging, errors only, force stderr
 
-        // Create config and exit
-        asciichat_error_t result = config_create_default(config_path);
+        // Create config and exit (pass NULL for opts since this is before options_init)
+        asciichat_error_t result = config_create_default(config_path, NULL);
         if (result != ASCIICHAT_OK) {
           fprintf(stderr, "Failed to create config file\n");
           return result;
@@ -671,39 +671,6 @@ int main(int argc, char *argv[]) {
     return ERROR_USAGE;
   }
 
-  // Apply binary-level logging options BEFORE options_init so log_init() sees them
-  // (log_init is called inside asciichat_common_init which is called from options_init)
-  if (binary_log_file) {
-    SAFE_STRNCPY(opt_log_file, binary_log_file, sizeof(opt_log_file));
-  }
-  if (binary_log_level) {
-    // Parse log level string to enum
-    if (strcmp(binary_log_level, "dev") == 0 || strcmp(binary_log_level, "DEV") == 0) {
-      opt_log_level = LOG_DEV;
-    } else if (strcmp(binary_log_level, "debug") == 0 || strcmp(binary_log_level, "DEBUG") == 0) {
-      opt_log_level = LOG_DEBUG;
-    } else if (strcmp(binary_log_level, "info") == 0 || strcmp(binary_log_level, "INFO") == 0) {
-      opt_log_level = LOG_INFO;
-    } else if (strcmp(binary_log_level, "warn") == 0 || strcmp(binary_log_level, "WARN") == 0) {
-      opt_log_level = LOG_WARN;
-    } else if (strcmp(binary_log_level, "error") == 0 || strcmp(binary_log_level, "ERROR") == 0) {
-      opt_log_level = LOG_ERROR;
-    } else if (strcmp(binary_log_level, "fatal") == 0 || strcmp(binary_log_level, "FATAL") == 0) {
-      opt_log_level = LOG_FATAL;
-    } else {
-      fprintf(stderr, "Error: Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal\n",
-              binary_log_level);
-      UNTRACKED_FREE(mode_argv);
-      return ERROR_USAGE;
-    }
-  }
-  if (binary_verbose_count > 0) {
-    opt_verbose_level = (unsigned short int)binary_verbose_count;
-  }
-  if (binary_quiet) {
-    opt_quiet = 1;
-  }
-
   // Parse command line options (common for all modes)
   // Note: --help and --version will exit(0) directly within options_init
   asciichat_error_t options_result = options_init(mode_argc, mode_argv, mode_type);
@@ -713,11 +680,89 @@ int main(int argc, char *argv[]) {
     return options_result;
   }
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
+  // Apply binary-level logging options if provided (--log-file, --log-level, -v, --quiet at binary level)
+  // These override any mode-specific options
+  if (binary_log_file || binary_log_level || binary_verbose_count > 0 || binary_quiet) {
+    // Helper struct for updating multiple fields
+    struct binary_opts_ctx {
+      const char *log_file;
+      log_level_t log_level;
+      unsigned short int verbose_level;
+      bool quiet;
+      bool has_log_file;
+      bool has_log_level;
+      bool has_verbose;
+      bool has_quiet;
+    };
+
+    // Parse binary log level if provided
+    log_level_t parsed_log_level = opts ? opts->log_level : LOG_INFO;
+    bool has_parsed_log_level = false;
+    if (binary_log_level) {
+      if (strcmp(binary_log_level, "dev") == 0 || strcmp(binary_log_level, "DEV") == 0) {
+        parsed_log_level = LOG_DEV;
+        has_parsed_log_level = true;
+      } else if (strcmp(binary_log_level, "debug") == 0 || strcmp(binary_log_level, "DEBUG") == 0) {
+        parsed_log_level = LOG_DEBUG;
+        has_parsed_log_level = true;
+      } else if (strcmp(binary_log_level, "info") == 0 || strcmp(binary_log_level, "INFO") == 0) {
+        parsed_log_level = LOG_INFO;
+        has_parsed_log_level = true;
+      } else if (strcmp(binary_log_level, "warn") == 0 || strcmp(binary_log_level, "WARN") == 0) {
+        parsed_log_level = LOG_WARN;
+        has_parsed_log_level = true;
+      } else if (strcmp(binary_log_level, "error") == 0 || strcmp(binary_log_level, "ERROR") == 0) {
+        parsed_log_level = LOG_ERROR;
+        has_parsed_log_level = true;
+      } else if (strcmp(binary_log_level, "fatal") == 0 || strcmp(binary_log_level, "FATAL") == 0) {
+        parsed_log_level = LOG_FATAL;
+        has_parsed_log_level = true;
+      } else {
+        fprintf(stderr, "Error: Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal\n",
+                binary_log_level);
+        UNTRACKED_FREE(mode_argv);
+        return ERROR_USAGE;
+      }
+    }
+
+    struct binary_opts_ctx ctx = {.log_file = binary_log_file,
+                                  .log_level = parsed_log_level,
+                                  .verbose_level = (unsigned short int)binary_verbose_count,
+                                  .quiet = binary_quiet,
+                                  .has_log_file = (binary_log_file != NULL),
+                                  .has_log_level = has_parsed_log_level,
+                                  .has_verbose = (binary_verbose_count > 0),
+                                  .has_quiet = binary_quiet};
+
+    // Updater function to apply binary-level options
+    auto void apply_binary_opts(options_t * opts, void *context) {
+      struct binary_opts_ctx *c = (struct binary_opts_ctx *)context;
+      if (c->has_log_file && c->log_file) {
+        SAFE_STRNCPY(opts->log_file, c->log_file, sizeof(opts->log_file));
+      }
+      if (c->has_log_level) {
+        opts->log_level = c->log_level;
+      }
+      if (c->has_verbose) {
+        opts->verbose_level = c->verbose_level;
+      }
+      if (c->has_quiet) {
+        opts->quiet = true;
+      }
+    }
+
+    options_update(apply_binary_opts, &ctx);
+    opts = options_get(); // Refresh pointer after update
+  }
+
   // Determine if this mode uses client-like initialization (client and mirror modes)
   bool is_client_or_mirror_mode = (mode_type == MODE_CLIENT || mode_type == MODE_MIRROR);
 
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
-  if (is_client_or_mirror_mode && opt_show_capabilities) {
+  if (is_client_or_mirror_mode && opts && opts->show_capabilities) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
@@ -743,18 +788,31 @@ int main(int argc, char *argv[]) {
   }
 
   // Validate log file path if specified (security: prevent path traversal)
-  if (strlen(opt_log_file) > 0) {
+  const char *log_file_from_opts = (opts && opts->log_file[0] != '\0') ? opts->log_file : NULL;
+  if (log_file_from_opts && strlen(log_file_from_opts) > 0) {
     char *validated_log_file = NULL;
-    asciichat_error_t log_path_result = path_validate_user_path(opt_log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
+    asciichat_error_t log_path_result =
+        path_validate_user_path(log_file_from_opts, PATH_ROLE_LOG_FILE, &validated_log_file);
     if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
       // Invalid log file path - warn and fall back to default
-      fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", opt_log_file, default_log_filename);
-      // Clear opt_log_file so asciichat_shared_init uses default
-      opt_log_file[0] = '\0';
+      fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
+              default_log_filename);
+      // Clear log_file in options so asciichat_shared_init uses default
+      auto void clear_log_file(options_t * opts, void *context) {
+        (void)context;
+        opts->log_file[0] = '\0';
+      }
+      options_update(clear_log_file, NULL);
+      opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     } else {
-      // Replace opt_log_file with validated path
-      SAFE_STRNCPY(opt_log_file, validated_log_file, sizeof(opt_log_file));
+      // Replace log_file with validated path
+      auto void update_log_file(options_t * opts, void *context) {
+        const char *validated_path = (const char *)context;
+        SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
+      }
+      options_update(update_log_file, validated_log_file);
+      opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     }
   }
@@ -766,13 +824,19 @@ int main(int argc, char *argv[]) {
     UNTRACKED_FREE(mode_argv);
     return init_result;
   }
-  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;
-  log_warn("Logging initialized to %s", log_filename);
+  const char *final_log_file = (opts && opts->log_file[0] != '\0') ? opts->log_file : default_log_filename;
+  log_warn("Logging initialized to %s", final_log_file);
 
   // Client-specific: auto-detect piping and default to no color mode
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
-  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && opt_color_mode == COLOR_MODE_AUTO) {
-    opt_color_mode = COLOR_MODE_NONE;
+  terminal_color_mode_t color_mode = opts ? opts->color_mode : COLOR_MODE_AUTO;
+  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
+    auto void update_color_mode(options_t * opts, void *context) {
+      (void)context;
+      opts->color_mode = COLOR_MODE_NONE;
+    }
+    options_update(update_color_mode, NULL);
+    opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }
 

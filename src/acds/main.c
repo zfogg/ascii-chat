@@ -80,6 +80,9 @@ int main(int argc, char **argv) {
     return result;
   }
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // Initialize platform layer
   result = platform_init();
   if (result != ASCIICHAT_OK) {
@@ -88,8 +91,9 @@ int main(int argc, char **argv) {
   }
 
   // Initialize logging using parsed options
-  const char *log_file = (opt_log_file[0] != '\0') ? opt_log_file : NULL;
-  log_init(log_file, opt_log_level, false, false);
+  const char *log_file = (opts && opts->log_file[0] != '\0') ? opts->log_file : NULL;
+  log_level_t log_level = opts ? opts->log_level : LOG_INFO;
+  log_init(log_file, log_level, false, false);
 
   log_info("ASCII-Chat Discovery Service (acds) starting...");
   log_info("Version: %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
@@ -135,12 +139,12 @@ int main(int argc, char **argv) {
   // Create config from options for server initialization
   acds_config_t config;
   config.port = opt_acds_port;
-  SAFE_STRNCPY(config.address, opt_address, sizeof(config.address));
-  SAFE_STRNCPY(config.address6, opt_address6, sizeof(config.address6));
+  SAFE_STRNCPY(config.address, opts ? opts->address : "0.0.0.0", sizeof(config.address));
+  SAFE_STRNCPY(config.address6, opts ? opts->address6 : "::", sizeof(config.address6));
   SAFE_STRNCPY(config.database_path, opt_acds_database_path, sizeof(config.database_path));
   SAFE_STRNCPY(config.key_path, opt_acds_key_path, sizeof(config.key_path));
-  SAFE_STRNCPY(config.log_file, opt_log_file, sizeof(config.log_file));
-  config.log_level = opt_log_level;
+  SAFE_STRNCPY(config.log_file, opts ? opts->log_file : "", sizeof(config.log_file));
+  config.log_level = opts ? opts->log_level : LOG_INFO;
 
   // Initialize server
   acds_server_t server;

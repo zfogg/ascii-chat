@@ -701,6 +701,9 @@ void *client_video_render_thread(void *arg) {
  */
 
 void *client_audio_render_thread(void *arg) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   client_info_t *client = (client_info_t *)arg;
 
   if (!client || client->socket == INVALID_SOCKET_VALUE) {
@@ -839,7 +842,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     int samples_mixed = 0;
-    if (opt_no_audio_mixer) {
+    if (opts && opts->no_audio_mixer) {
       // Disable mixer.h processing: simple mixing without ducking/compression/etc
       // Just add audio from all sources except this client, no processing
       SAFE_MEMSET(mix_buffer, samples_to_read * sizeof(float), 0, samples_to_read * sizeof(float));

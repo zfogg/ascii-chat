@@ -78,6 +78,7 @@
 #include "platform/symbols.h"
 #include "platform/system.h"
 #include "common.h"
+#include "log/logging.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
 #include "buffer_pool.h"
@@ -191,14 +192,19 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts)
+    return;
+
   // Terminal was resized, update dimensions and recalculate aspect ratio
   // ONLY if both width and height are auto (not manually set)
-  if (auto_width && auto_height) {
-    update_dimensions_to_terminal_size();
+  if (opts->auto_width && opts->auto_height) {
+    update_dimensions_to_terminal_size((options_t *)opts);
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
-      if (threaded_send_terminal_size_with_auto_detect(opt_width, opt_height) < 0) {
+      if (threaded_send_terminal_size_with_auto_detect(opts->width, opts->height) < 0) {
         log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
       } else {
         display_full_reset();
@@ -223,6 +229,9 @@ static void sigwinch_handler(int sigwinch) {
  * to prevent race conditions and resource leaks.
  */
 static void shutdown_client() {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
 
@@ -245,7 +254,7 @@ static void shutdown_client() {
   capture_cleanup();
 
   // Print audio analysis report if enabled
-  if (opt_audio_analysis_enabled) {
+  if (opts && opts->audio_analysis_enabled) {
     audio_analysis_print_report();
     audio_analysis_cleanup();
   }
@@ -297,6 +306,9 @@ static void shutdown_client() {
  * @return 0 on success, non-zero error code on failure
  */
 static int initialize_client_systems(bool shared_init_completed) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   if (!shared_init_completed) {
     // Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != 0) {
@@ -306,33 +318,37 @@ static int initialize_client_systems(bool shared_init_completed) {
     (void)atexit(platform_cleanup);
 
     // Initialize palette based on command line options
-    const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
-    if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
+    const char *custom_chars = (opts && opts->palette_custom_set) ? opts->palette_custom : NULL;
+    palette_type_t palette_type = opts ? opts->palette_type : PALETTE_STANDARD;
+    if (apply_palette_config(palette_type, custom_chars) != 0) {
       log_error("Failed to apply palette configuration");
       return 1;
     }
 
     // Initialize logging with appropriate settings
     char *validated_log_file = NULL;
-    if (strlen(opt_log_file) > 0) {
-      asciichat_error_t log_path_result =
-          path_validate_user_path(opt_log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
+    log_level_t log_level = opts ? opts->log_level : LOG_LEVEL_INFO;
+    const char *log_file = (opts && opts->log_file[0] != '\0') ? opts->log_file : "";
+
+    if (strlen(log_file) > 0) {
+      asciichat_error_t log_path_result = path_validate_user_path(log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
       if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
         // Invalid log file path, fall back to default and warn
         (void)fprintf(stderr, "WARNING: Invalid log file path specified, using default 'client.log'\n");
-        log_init("client.log", opt_log_level, true, true /* use_mmap */);
+        log_init("client.log", log_level, true, true /* use_mmap */);
       } else {
-        log_init(validated_log_file, opt_log_level, true, true /* use_mmap */);
+        log_init(validated_log_file, log_level, true, true /* use_mmap */);
       }
       SAFE_FREE(validated_log_file);
     } else {
-      log_init("client.log", opt_log_level, true, true /* use_mmap */);
+      log_init("client.log", log_level, true, true /* use_mmap */);
     }
 
     // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
-    debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
-    if (!opt_snapshot_mode) {
+    bool quiet_mode = (opts && opts->quiet) || (opts && opts->snapshot_mode);
+    debug_memory_set_quiet_mode(quiet_mode);
+    if (!(opts && opts->snapshot_mode)) {
       (void)atexit(debug_memory_report);
     }
 #endif
@@ -375,14 +391,14 @@ static int initialize_client_systems(bool shared_init_completed) {
   }
 
   // Initialize audio if enabled
-  if (opt_audio_enabled) {
+  if (opts && opts->audio_enabled) {
     if (audio_client_init() != 0) {
       log_fatal("Failed to initialize audio system");
       return ERROR_AUDIO;
     }
 
     // Initialize audio analysis if requested
-    if (opt_audio_analysis_enabled) {
+    if (opts && opts->audio_analysis_enabled) {
       if (audio_analysis_init() != 0) {
         log_warn("Failed to initialize audio analysis");
       }
@@ -404,8 +420,11 @@ static int initialize_client_systems(bool shared_init_completed) {
  * @return 0 on success, error code on failure
  */
 int client_main(void) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // Dispatcher already printed capabilities, but honor flag defensively
-  if (opt_show_capabilities) {
+  if (opts && opts->show_capabilities) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
@@ -457,8 +476,10 @@ int client_main(void) {
   bool first_connection = true;
   while (!should_exit()) {
     // Handle connection establishment or reconnection
-    int connection_result = server_connection_establish(opt_address, strtoint_safe(opt_port), reconnect_attempt,
-                                                        first_connection, has_ever_connected);
+    const char *address = opts ? opts->address : "localhost";
+    int port = opts ? opts->port : 27224;
+    int connection_result =
+        server_connection_establish(address, port, reconnect_attempt, first_connection, has_ever_connected);
 
     if (connection_result != 0) {
       // Check for authentication failure (code -2) - exit immediately without retry
@@ -469,7 +490,7 @@ int client_main(void) {
 
       // In snapshot mode, exit immediately on connection failure - no retries
       // Snapshot mode is for quick single-frame captures, not persistent connections
-      if (opt_snapshot_mode) {
+      if (opts && opts->snapshot_mode) {
         log_error("Connection failed in snapshot mode - exiting without retry");
         return 1;
       }
@@ -477,18 +498,21 @@ int client_main(void) {
       // Connection failed - check if we should retry based on --reconnect setting
       reconnect_attempt++;
 
+      // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
+      int reconnect_attempts = opts ? opts->reconnect_attempts : -1;
+
       // Check reconnection policy
-      if (opt_reconnect_attempts == 0) {
+      if (reconnect_attempts == 0) {
         // --reconnect off: Exit immediately on first failure
         log_error("Connection failed (reconnection disabled via --reconnect off)");
         return 1;
-      } else if (opt_reconnect_attempts > 0 && reconnect_attempt > opt_reconnect_attempts) {
+      } else if (reconnect_attempts > 0 && reconnect_attempt > reconnect_attempts) {
         // --reconnect N: Exceeded max retry attempts
         log_error("Connection failed after %d attempts (limit set by --reconnect %d)", reconnect_attempt - 1,
-                  opt_reconnect_attempts);
+                  reconnect_attempts);
         return 1;
       }
-      // else: opt_reconnect_attempts == -1 (auto) means retry forever
+      // else: reconnect_attempts == -1 (auto) means retry forever
 
       if (has_ever_connected) {
         display_full_reset();
@@ -499,16 +523,16 @@ int client_main(void) {
       }
 
       if (has_ever_connected) {
-        if (opt_reconnect_attempts == -1) {
+        if (reconnect_attempts == -1) {
           log_info("Reconnection attempt #%d... (unlimited retries)", reconnect_attempt);
         } else {
-          log_info("Reconnection attempt #%d/%d...", reconnect_attempt, opt_reconnect_attempts);
+          log_info("Reconnection attempt #%d/%d...", reconnect_attempt, reconnect_attempts);
         }
       } else {
-        if (opt_reconnect_attempts == -1) {
+        if (reconnect_attempts == -1) {
           log_info("Connection attempt #%d... (unlimited retries)", reconnect_attempt);
         } else {
-          log_info("Connection attempt #%d/%d...", reconnect_attempt, opt_reconnect_attempts);
+          log_info("Connection attempt #%d/%d...", reconnect_attempt, reconnect_attempts);
         }
       }
 
@@ -534,7 +558,7 @@ int client_main(void) {
       server_connection_close();
 
       // In snapshot mode, exit immediately on protocol failure - no retries
-      if (opt_snapshot_mode) {
+      if (opts && opts->snapshot_mode) {
         log_error("Protocol startup failed in snapshot mode - exiting without retry");
         return 1;
       }
@@ -582,7 +606,7 @@ int client_main(void) {
 
     // In snapshot mode, exit immediately on connection loss - no reconnection
     // Snapshot mode is for quick single-frame captures, not persistent connections
-    if (opt_snapshot_mode) {
+    if (opts && opts->snapshot_mode) {
       log_error("Connection lost in snapshot mode - exiting without reconnection");
       return 1;
     }

@@ -498,8 +498,11 @@ static void *webcam_capture_thread_func(void *arg) {
  * @ingroup client_capture
  */
 int capture_init() {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // Initialize webcam capture
-  int webcam_index = opt_webcam_index;
+  int webcam_index = opts ? opts->webcam_index : 0;
   int result = webcam_init(webcam_index);
   if (result != 0) {
     SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam (error code: %d)", result);

@@ -166,7 +166,8 @@ extern size_t g_num_whitelisted_clients;
  */
 int server_crypto_init(void) {
   // Check if encryption is disabled
-  if (opt_no_encrypt) {
+  const options_t *opts = options_get();
+  if (opts->no_encrypt) {
     log_info("Encryption disabled via --no-encrypt");
     return 0;
   }
@@ -182,7 +183,8 @@ int server_crypto_init(void) {
  * @return 0 on success, -1 on failure
  */
 int server_crypto_handshake(client_info_t *client) {
-  if (opt_no_encrypt) {
+  const options_t *opts = options_get();
+  if (opts->no_encrypt) {
     log_debug("Crypto handshake skipped (disabled)");
     return 0;
   }
@@ -194,11 +196,11 @@ int server_crypto_handshake(client_info_t *client) {
 
   // Initialize crypto context for this specific client
   int init_result;
-  if (strlen(opt_password) > 0) {
+  if (strlen(opts->password) > 0) {
     // Password provided - use password-based encryption (even if SSH key is also provided)
     log_debug("SERVER_CRYPTO_HANDSHAKE: Using password-based encryption");
     init_result =
-        crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, opt_password); // true = server
+        crypto_handshake_init_with_password(&client->crypto_handshake_ctx, true, opts->password); // true = server
   } else {
     // Server has SSH key - use standard initialization
     log_debug("SERVER_CRYPTO_HANDSHAKE: Using passwordless-based encryption");
@@ -547,7 +549,8 @@ int server_crypto_handshake(client_info_t *client) {
  * @return true if encryption is ready, false otherwise
  */
 bool crypto_server_is_ready(uint32_t client_id) {
-  if (opt_no_encrypt) {
+  const options_t *opts = options_get();
+  if (opts->no_encrypt) {
     return false;
   }
 
