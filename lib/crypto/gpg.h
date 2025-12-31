@@ -10,10 +10,8 @@
  * This header provides GPG agent integration for signing operations using
  * the Assuan protocol to communicate with gpg-agent.
  *
- * @warning GPG SUPPORT IS CURRENTLY DISABLED: This code exists but is not
- *          active in the current build. GPG-related functions may not work
- *          until GPG support is re-enabled. Use SSH agent or in-memory keys
- *          for signing operations instead.
+ * GPG Ed25519 keys are fully supported for authentication via gpg-agent.
+ * Requires `gpg` binary in PATH and gpg-agent running.
  *
  * @note Assuan protocol: Uses the Assuan protocol to communicate with gpg-agent.
  *       Assuan is GPG's standard protocol for agent communication.
@@ -63,9 +61,6 @@
  *       - Unix: Returns socket file descriptor (int)
  *       - Windows: Returns HANDLE cast to int (handle values are always even)
  *
- * @warning GPG support is currently disabled. This function may not work until
- *          GPG support is re-enabled.
- *
  * @warning Agent must be running. Function returns error if gpg-agent is not available.
  *          Use gpg_agent_is_available() to check availability first.
  *
@@ -89,8 +84,6 @@ int gpg_agent_connect(void);
  * @note Safe to call with invalid handle (-1 or INVALID_HANDLE_VALUE).
  *       Function checks handle validity before operations.
  *
- * @warning GPG support is currently disabled. This function may not work until
- *          GPG support is re-enabled.
  *
  * @ingroup crypto
  */
@@ -108,8 +101,6 @@ void gpg_agent_disconnect(int sock);
  * @note Agent path: Uses same path discovery as gpg_agent_connect().
  *       May fail if agent path is incorrect or agent is not running.
  *
- * @warning GPG support is currently disabled. This function may not work until
- *          GPG support is re-enabled.
  *
  * @ingroup crypto
  */
@@ -156,8 +147,6 @@ bool gpg_agent_is_available(void);
  *       - Unix: Socket file descriptor
  *       - Windows: HANDLE cast to int
  *
- * @warning GPG support is currently disabled. This function may not work until
- *          GPG support is re-enabled.
  *
  * @warning Keygrip validation: Function does not validate keygrip format.
  *          Invalid keygrip may cause agent errors.
@@ -208,8 +197,6 @@ int gpg_agent_sign(int sock, const char *keygrip, const uint8_t *message, size_t
  *       - Unix: `gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null`
  *       - Windows: `gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul`
  *
- * @warning GPG support is currently disabled. This function may not work until
- *          GPG support is re-enabled.
  *
  * @warning Security: Key ID is validated and escaped to prevent command injection.
  *          Do NOT pass unvalidated key IDs to this function.
@@ -323,8 +310,6 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
  *
  * @note Constant-time: Verification uses constant-time comparison to prevent timing attacks.
  *
- * @warning GPG support is currently disabled. This function may not work until
- *          GPG support is re-enabled.
  *
  * @warning Library dependency: Requires libgcrypt to be installed and linked.
  *          Returns error if libgcrypt is not available.
