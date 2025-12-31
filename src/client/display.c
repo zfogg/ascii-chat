@@ -172,6 +172,10 @@ static tty_info_t display_get_current_tty(void) {
 static void full_terminal_reset(int fd) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
   if (!opts || !opts->snapshot_mode) {
@@ -220,6 +224,10 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
 
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   if (use_direct_tty) {
     // Direct TTY for interactive use
@@ -365,6 +373,10 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
 
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   // For terminal: print every frame until final snapshot
   // For non-terminal: only print the final snapshot frame

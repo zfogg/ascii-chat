@@ -14,12 +14,12 @@
 void webcam_suite_setup(void) {
   log_set_level(LOG_FATAL);
   test_logging_disable(true, true);
-  opt_test_pattern = true;
+  test_set_test_pattern(true);
 }
 
 // Suite teardown: restore settings
 void webcam_suite_teardown(void) {
-  opt_test_pattern = false;
+  test_set_test_pattern(false);
   log_set_level(LOG_DEBUG);
   test_logging_restore();
 }
@@ -88,7 +88,7 @@ Test(webcam, read_success) {
   webcam_init(0);
 
   // Set up global options
-  opt_webcam_flip = false;
+  test_set_webcam_flip(false);
 
   // Read a frame from test pattern
   image_t *result = webcam_read();
@@ -129,14 +129,14 @@ Test(webcam, read_with_horizontal_flip) {
   // Initialize with test pattern
   webcam_init(0);
 
-  opt_webcam_flip = true;
+  test_set_webcam_flip(true);
 
   // Read frame with flip enabled
   image_t *frame1 = webcam_read();
   cr_assert_not_null(frame1, "Should read frame with flip enabled");
 
   // Read frame with flip disabled to compare
-  opt_webcam_flip = false;
+  test_set_webcam_flip(false);
   image_t *frame2 = webcam_read();
   cr_assert_not_null(frame2, "Should read frame without flip");
 
@@ -159,7 +159,7 @@ Test(webcam, read_without_horizontal_flip) {
   // Initialize with test pattern
   webcam_init(0);
 
-  opt_webcam_flip = false;
+  test_set_webcam_flip(false);
 
   // Read frame without flip
   image_t *result = webcam_read();
@@ -180,7 +180,7 @@ Test(webcam, read_multiple_calls) {
   // Initialize with test pattern
   webcam_init(0);
 
-  opt_webcam_flip = false;
+  test_set_webcam_flip(false);
 
   // Read multiple frames - test pattern generates new frame each time
   for (int i = 0; i < 5; i++) {
@@ -246,7 +246,7 @@ Test(webcam, init_read_cleanup_cycle) {
     cr_assert_eq(result, 0, "Init should succeed for cycle %d", cycle);
 
     // Read
-    opt_webcam_flip = false;
+    test_set_webcam_flip(false);
     image_t *read_result = webcam_read();
     cr_assert_not_null(read_result, "Read should succeed for cycle %d", cycle);
 
@@ -263,12 +263,12 @@ Test(webcam, read_with_odd_width_flip) {
   webcam_init(0);
 
   // Read without flip
-  opt_webcam_flip = false;
+  test_set_webcam_flip(false);
   image_t *frame_normal = webcam_read();
   cr_assert_not_null(frame_normal, "Should read frame without flip");
 
   // Read with flip
-  opt_webcam_flip = true;
+  test_set_webcam_flip(true);
   image_t *frame_flipped = webcam_read();
   cr_assert_not_null(frame_flipped, "Should read frame with flip");
 
@@ -296,11 +296,11 @@ Test(webcam, read_with_single_pixel_width) {
   // But we can test that flip doesn't crash with test pattern
   webcam_init(0);
 
-  opt_webcam_flip = false;
+  test_set_webcam_flip(false);
   image_t *result1 = webcam_read();
   cr_assert_not_null(result1, "Should read frame without flip");
 
-  opt_webcam_flip = true;
+  test_set_webcam_flip(true);
   image_t *result2 = webcam_read();
   cr_assert_not_null(result2, "Should read frame with flip");
 

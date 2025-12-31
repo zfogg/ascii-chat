@@ -315,6 +315,13 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     return -1;
   }
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
+
   // Close any existing connection
   if (g_sockfd != INVALID_SOCKET_VALUE) {
     close_socket(g_sockfd);
@@ -547,7 +554,7 @@ connection_success:
 
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message
-  if (!opt_snapshot_mode) {
+  if (!opts->snapshot_mode) {
     log_debug("Connected to server - terminal logging will be disabled after initial setup");
   } else {
     log_debug("Connected to server - terminal logging kept enabled for snapshot mode");
@@ -565,7 +572,7 @@ connection_success:
   }
 
   // Send initial terminal capabilities to server (this may generate debug logs)
-  int result = threaded_send_terminal_size_with_auto_detect(opt_width, opt_height);
+  int result = threaded_send_terminal_size_with_auto_detect(opts->width, opts->height);
   if (result < 0) {
     log_error("Failed to send initial capabilities to server: %s", network_error_string());
     close_socket(g_sockfd);
@@ -574,22 +581,22 @@ connection_success:
   }
 
   // Now disable terminal logging after capabilities are sent (for reconnections)
-  if (!opt_snapshot_mode && has_ever_connected) {
+  if (!opts->snapshot_mode && has_ever_connected) {
     log_set_terminal_output(false);
     log_debug("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
   }
 
   // Send client join packet for multi-user support
   uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
-  log_info("opt_audio_enabled = %d (sending CLIENT_JOIN)", opt_audio_enabled);
-  if (opt_audio_enabled) {
+  log_info("opts->audio_enabled = %d (sending CLIENT_JOIN)", opts->audio_enabled);
+  if (opts->audio_enabled) {
     log_info("Adding CLIENT_CAP_AUDIO to capabilities");
     my_capabilities |= CLIENT_CAP_AUDIO;
   }
-  if (opt_color_mode != COLOR_MODE_NONE) {
+  if (opts->color_mode != COLOR_MODE_NONE) {
     my_capabilities |= CLIENT_CAP_COLOR;
   }
-  if (opt_stretch) {
+  if (opts->stretch) {
     my_capabilities |= CLIENT_CAP_STRETCH;
   }
 
@@ -1014,6 +1021,13 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
  * @ingroup client_connection
  */
 int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
+
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
     return -1;
@@ -1027,7 +1041,7 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   caps = apply_color_mode_override(caps);
 
   // Check if detection was reliable, use fallback only for auto-detection
-  if (!caps.detection_reliable && opt_color_mode == COLOR_MODE_AUTO) {
+  if (!caps.detection_reliable && opts->color_mode == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");
     SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
     caps.color_level = TERM_COLOR_NONE;
@@ -1046,11 +1060,11 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
   net_packet.width = HOST_TO_NET_U16(width);
   net_packet.height = HOST_TO_NET_U16(height);
-  net_packet.palette_type = HOST_TO_NET_U32(opt_palette_type);
+  net_packet.palette_type = HOST_TO_NET_U32(opts->palette_type);
   net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
 
-  if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
-    SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
+  if (opts->palette_type == PALETTE_CUSTOM && opts->palette_custom_set) {
+    SAFE_STRNCPY(net_packet.palette_custom, opts->palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
     SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
@@ -1074,7 +1088,7 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
-  net_packet.utf8_support = opt_force_utf8 ? 1 : 0;
+  net_packet.utf8_support = opts->force_utf8 ? 1 : 0;
 
   SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 

@@ -42,6 +42,7 @@
 
 #include <stdbool.h>
 #include "thread_pool.h"
+#include "network/tcp_client.h"
 
 /**
  * @brief Global client worker thread pool
@@ -57,6 +58,28 @@
  * client modules for spawning and managing worker threads.
  */
 extern thread_pool_t *g_client_worker_pool;
+
+/**
+ * @brief Global TCP client instance
+ *
+ * Central connection and state management structure for the client.
+ * Replaces scattered global variables from server.c, protocol.c, audio.c, etc.
+ * Follows the same pattern as tcp_server_t used by the server.
+ *
+ * This instance provides:
+ * - Connection state management (socket, server address, client ID)
+ * - Thread-safe packet transmission with mutex protection
+ * - Audio queue management for async audio streaming
+ * - Crypto handshake context for encrypted connections
+ * - Terminal capability tracking for rendering
+ *
+ * Initialized by tcp_client_create() in client_main().
+ * Destroyed by tcp_client_destroy() at cleanup.
+ *
+ * All client modules (server.c, protocol.c, audio.c, capture.c, display.c)
+ * should use this instance instead of accessing global connection state.
+ */
+extern tcp_client_t *g_client;
 
 /**
  * @brief Client mode entry point for unified binary

@@ -82,6 +82,10 @@ int main(int argc, char **argv) {
 
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   // Initialize platform layer
   result = platform_init();

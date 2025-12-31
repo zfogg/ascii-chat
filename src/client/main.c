@@ -84,6 +84,7 @@
 #include "buffer_pool.h"
 #include "video/palette.h"
 #include "network/network.h"
+#include "network/tcp_client.h"
 #include "util/path.h"
 
 #ifndef NDEBUG
@@ -120,6 +121,18 @@ atomic_bool g_should_exit = false;
  * - Audio sender thread (audio.c)
  */
 thread_pool_t *g_client_worker_pool = NULL;
+
+/**
+ * Global TCP client instance
+ *
+ * Central connection and state management structure for the client.
+ * Replaces scattered global variables from server.c, protocol.c, audio.c, etc.
+ * Follows the same pattern as tcp_server_t used by the server.
+ *
+ * Initialized by tcp_client_create() in client_main().
+ * Destroyed by tcp_client_destroy() at cleanup.
+ */
+tcp_client_t *g_client = NULL;
 
 /**
  * Check if shutdown has been requested
@@ -231,6 +244,10 @@ static void sigwinch_handler(int sigwinch) {
 static void shutdown_client() {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
@@ -247,7 +264,14 @@ static void shutdown_client() {
     g_client_worker_pool = NULL;
   }
 
+  // Destroy TCP client instance (replaces scattered server.c cleanup)
+  if (g_client) {
+    tcp_client_destroy(&g_client);
+    log_debug("TCP client instance destroyed successfully");
+  }
+
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
+  // Legacy cleanup - will be removed after full migration to tcp_client
   server_connection_cleanup();
 
   // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
@@ -308,6 +332,10 @@ static void shutdown_client() {
 static int initialize_client_systems(bool shared_init_completed) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   if (!shared_init_completed) {
     // Initialize platform-specific functionality (Winsock, etc)
@@ -327,7 +355,7 @@ static int initialize_client_systems(bool shared_init_completed) {
 
     // Initialize logging with appropriate settings
     char *validated_log_file = NULL;
-    log_level_t log_level = opts ? opts->log_level : LOG_LEVEL_INFO;
+    log_level_t log_level = opts ? opts->log_level : LOG_INFO;
     const char *log_file = (opts && opts->log_file[0] != '\0') ? opts->log_file : "";
 
     if (strlen(log_file) > 0) {
@@ -377,7 +405,17 @@ static int initialize_client_systems(bool shared_init_completed) {
     return ERROR_DISPLAY;
   }
 
-  // Initialize server connection management
+  // Initialize TCP client instance (replaces scattered server.c globals)
+  if (!g_client) {
+    g_client = tcp_client_create();
+    if (!g_client) {
+      log_fatal("Failed to create TCP client instance");
+      return ERROR_NETWORK;
+    }
+    log_debug("TCP client instance created successfully");
+  }
+
+  // Initialize server connection management (legacy - will be migrated to tcp_client)
   if (server_connection_init() != 0) {
     log_fatal("Failed to initialize server connection");
     return ERROR_NETWORK;
@@ -422,6 +460,10 @@ static int initialize_client_systems(bool shared_init_completed) {
 int client_main(void) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   // Dispatcher already printed capabilities, but honor flag defensively
   if (opts && opts->show_capabilities) {
@@ -477,7 +519,8 @@ int client_main(void) {
   while (!should_exit()) {
     // Handle connection establishment or reconnection
     const char *address = opts ? opts->address : "localhost";
-    int port = opts ? opts->port : 27224;
+    const char *port_str = opts ? opts->port : "27224";
+    int port = atoi(port_str);
     int connection_result =
         server_connection_establish(address, port, reconnect_attempt, first_connection, has_ever_connected);
 

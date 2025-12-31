@@ -337,6 +337,13 @@ static void configure_client_socket(socket_t socket, uint32_t client_id) {
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
 __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_ctx, socket_t socket,
                                                        const char *client_ip, int port) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
+
   rwlock_wrlock(&g_client_manager_rwlock);
 
   // Find empty slot - this is the authoritative check
@@ -353,11 +360,11 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   }
 
   // Check if we've hit the configured max-clients limit (not the array size)
-  if (existing_count >= opt_max_clients) {
+  if (existing_count >= opts->max_clients) {
     rwlock_wrunlock(&g_client_manager_rwlock);
     SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count,
-              opt_max_clients);
-    log_error("Maximum client limit reached (%d/%d active clients)", existing_count, opt_max_clients);
+              opts->max_clients);
+    log_error("Maximum client limit reached (%d/%d active clients)", existing_count, opts->max_clients);
 
     // Send a rejection message to the client before closing
     // Use platform-abstracted socket_send() instead of raw send() for Windows portability
@@ -550,7 +557,7 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     // Use per-client crypto state to determine enforcement
     // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
     bool enforce_encryption =
-        !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+        !opts->no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
 
     packet_envelope_t envelope;
     packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, enforce_encryption, &envelope);
@@ -908,6 +915,13 @@ void *client_receive_thread(void *arg) {
     return NULL;
   }
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return NULL;
+  }
+
   if (atomic_load(&client->protocol_disconnect_requested)) {
     log_debug("Receive thread for client %u exiting before start (protocol disconnect requested)",
               atomic_load(&client->client_id));
@@ -974,7 +988,7 @@ void *client_receive_thread(void *arg) {
     // Protect crypto field access with mutex to prevent race conditions
     mutex_lock(&client->client_state_mutex);
     bool crypto_ready =
-        !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+        !opts->no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
 
     if (crypto_ready) {
       // CRITICAL: Check client_id again before getting crypto context - prevent use-after-free
@@ -1006,7 +1020,7 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // Use per-client crypto_ready state instead of global opt_no_encrypt
+    // Use per-client crypto_ready state instead of global opts->no_encrypt
     // This ensures encryption is only enforced AFTER this specific client completes the handshake
     packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, crypto_ready, &envelope);
 
@@ -1218,6 +1232,13 @@ void *client_send_thread_func(void *arg) {
     return NULL;
   }
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return NULL;
+  }
+
   // Check if client_id is 0 (client struct has been zeroed by remove_client)
   // This must be checked BEFORE accessing any client fields
   if (atomic_load(&client->client_id) == 0) {
@@ -1271,7 +1292,7 @@ void *client_send_thread_func(void *arg) {
       const crypto_context_t *crypto_ctx = NULL;
       mutex_lock(&client->client_state_mutex);
       bool crypto_ready =
-          !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+          !opts->no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
       if (crypto_ready) {
         crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
       }
@@ -1390,7 +1411,7 @@ void *client_send_thread_func(void *arg) {
 
       // Check if session rekeying should be triggered
       mutex_lock(&client->client_state_mutex);
-      bool should_rekey = !opt_no_encrypt && client->crypto_initialized &&
+      bool should_rekey = !opts->no_encrypt && client->crypto_initialized &&
                           crypto_handshake_is_ready(&client->crypto_handshake_ctx) &&
                           crypto_handshake_should_rekey(&client->crypto_handshake_ctx);
       mutex_unlock(&client->client_state_mutex);

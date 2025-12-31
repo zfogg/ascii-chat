@@ -703,6 +703,10 @@ void *client_video_render_thread(void *arg) {
 void *client_audio_render_thread(void *arg) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return NULL;
+  }
 
   client_info_t *client = (client_info_t *)arg;
 

@@ -500,6 +500,10 @@ static void *webcam_capture_thread_func(void *arg) {
 int capture_init() {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   // Initialize webcam capture
   int webcam_index = opts ? opts->webcam_index : 0;
