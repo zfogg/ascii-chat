@@ -259,6 +259,7 @@ set(CORE_SRCS
     lib/options/client.c
     lib/options/server.c
     lib/options/mirror.c
+    lib/options/acds.c
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c
