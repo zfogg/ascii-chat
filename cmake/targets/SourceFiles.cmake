@@ -254,6 +254,10 @@ set(CORE_SRCS
     lib/log/logging.c
     lib/log/mmap.c
     lib/options/options.c
+    lib/options/common.c
+    lib/options/client.c
+    lib/options/server.c
+    lib/options/mirror.c
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c
@@ -313,7 +317,6 @@ set(APP_SRCS
     src/server/stats.c
     # Client mode sources
     src/client/main.c
-    src/client/mirror.c
     src/client/server.c
     src/client/protocol.c
     src/client/crypto.c
@@ -321,5 +324,7 @@ set(APP_SRCS
     src/client/capture.c
     src/client/audio.c
     src/client/keepalive.c
+    # Mirror mode sources
+    src/mirror/main.c
 )
 

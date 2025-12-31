@@ -64,7 +64,6 @@
  */
 
 #include "main.h"
-#include "mirror.h"
 #include "server.h"
 #include "protocol.h"
 #include "display.h"
@@ -383,11 +382,6 @@ int client_main(void) {
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
     return 0;
-  }
-
-  // Mirror mode: view webcam locally without connecting to server
-  if (opt_mirror_mode) {
-    return mirror_main();
   }
 
   // Initialize all client subsystems (shared init already completed)

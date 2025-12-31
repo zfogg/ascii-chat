@@ -232,19 +232,20 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
     return false;
   }
 
-  // Check for non-interactive mode
-  if (!platform_is_interactive()) {
-    return false;
-  }
+  bool is_interactive = platform_is_interactive();
+  bool previous_terminal_state = false;
 
-  // Lock terminal so only this thread can output to terminal
-  bool previous_terminal_state = log_lock_terminal();
+  // Only lock terminal and show prompt if interactive
+  if (is_interactive) {
+    // Lock terminal so only this thread can output to terminal
+    previous_terminal_state = log_lock_terminal();
 
-  // Display prompt with default indicator
-  if (default_yes) {
-    log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
-  } else {
-    log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+    // Display prompt with default indicator
+    if (default_yes) {
+      log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+    } else {
+      log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+    }
   }
 
   char response[16];
@@ -267,9 +268,15 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
       // Empty response or invalid input = use default
       result = default_yes;
     }
+  } else {
+    // fgets failed (EOF or error) - return default
+    result = default_yes;
   }
 
-  // Unlock terminal
-  log_unlock_terminal(previous_terminal_state);
+  // Unlock terminal if we locked it
+  if (is_interactive) {
+    log_unlock_terminal(previous_terminal_state);
+  }
+
   return result;
 }

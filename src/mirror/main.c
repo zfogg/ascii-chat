@@ -1,6 +1,6 @@
 /**
- * @file client/mirror.c
- * @ingroup client_mirror
+ * @file mirror/main.c
+ * @ingroup mirror
  * @brief Local webcam mirror mode: view webcam as ASCII art without network
  *
  * Mirror mode provides a simple way to view your own webcam feed converted
@@ -15,16 +15,16 @@
  *
  * ## Usage
  *
- * Run the client with the --mirror flag:
+ * Run as a standalone mode:
  * @code
- * ascii-chat client --mirror
+ * ascii-chat mirror
  * @endcode
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025
  */
 
-#include "mirror.h"
+#include "main.h"
 #include "video/webcam/webcam.h"
 #include "video/ascii.h"
 #include "video/image.h"

@@ -12,6 +12,9 @@
 #include <sys/ioctl.h>
 
 #include "options/options.h"
+#include "options/client.h"
+#include "options/server.h"
+#include "options/mirror.h"
 #include "tests/common.h"
 #include "platform/terminal.h"
 #include "tests/logging.h"
@@ -862,8 +865,10 @@ Test(options, usage_function) {
   FILE *devnull = fopen("/dev/null", "w");
   cr_assert_not_null(devnull);
 
-  usage(devnull, true);
-  usage(devnull, false);
+  // Test all three usage functions (client, server, mirror)
+  usage_client(devnull);
+  usage_server(devnull);
+  usage_mirror(devnull);
 
   fclose(devnull);
 }

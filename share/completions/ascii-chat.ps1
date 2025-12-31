@@ -26,31 +26,34 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
     $modes = @(
         @{ Name = 'server'; Description = 'Run a video chat server' }
         @{ Name = 'client'; Description = 'Connect to a video chat server' }
+        @{ Name = 'mirror'; Description = 'View webcam locally without network' }
     )
 
-    # Common options (available in both modes)
-    $commonOptions = @(
+    # Binary-level options (available before mode selection and in all modes)
+    $binaryOptions = @(
         @{ Name = '-h'; Description = 'print this help' }
         @{ Name = '--help'; Description = 'print this help' }
         @{ Name = '-v'; Description = 'print version information and exit' }
         @{ Name = '--version'; Description = 'print version information and exit' }
-        @{ Name = '-a'; Description = 'IPv4 address to bind/connect to' }
-        @{ Name = '--address'; Description = 'IPv4 address to bind/connect to' }
+        @{ Name = '-L'; Description = 'redirect logs to file' }
+        @{ Name = '--log-file'; Description = 'redirect logs to file' }
+        @{ Name = '--log-level'; Description = 'set log level: dev, debug, info, warn, error, fatal' }
+        @{ Name = '-V'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
+        @{ Name = '--verbose'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
+        @{ Name = '--config'; Description = 'load configuration from TOML file' }
+        @{ Name = '--config-create'; Description = 'create default configuration file' }
+    )
+
+    # Common mode-specific options (available in client and server modes)
+    $commonOptions = @(
         @{ Name = '-p'; Description = 'TCP port' }
         @{ Name = '--port'; Description = 'TCP port' }
         @{ Name = '-P'; Description = 'ASCII character palette' }
         @{ Name = '--palette'; Description = 'ASCII character palette' }
         @{ Name = '-C'; Description = 'Custom palette characters' }
         @{ Name = '--palette-chars'; Description = 'Custom palette characters' }
-        @{ Name = '-L'; Description = 'redirect logs to file' }
-        @{ Name = '--log-file'; Description = 'redirect logs to file' }
-        @{ Name = '--log-level'; Description = 'set log level: dev, debug, info, warn, error, fatal' }
-        @{ Name = '-V'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
-        @{ Name = '--verbose'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
         @{ Name = '--compression-level'; Description = 'zstd compression level 1-9' }
         @{ Name = '--no-compress'; Description = 'disable video frame compression' }
-        @{ Name = '--config'; Description = 'load configuration from TOML file' }
-        @{ Name = '--config-create'; Description = 'create default configuration file' }
         @{ Name = '-E'; Description = 'enable packet encryption' }
         @{ Name = '--encrypt'; Description = 'enable packet encryption' }
         @{ Name = '-K'; Description = 'SSH/GPG key for authentication' }
@@ -67,8 +70,6 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--width'; Description = 'render width' }
         @{ Name = '-y'; Description = 'render height' }
         @{ Name = '--height'; Description = 'render height' }
-        @{ Name = '-H'; Description = 'hostname for DNS lookup' }
-        @{ Name = '--host'; Description = 'hostname for DNS lookup' }
         @{ Name = '-c'; Description = 'webcam device index (0-based)' }
         @{ Name = '--webcam-index'; Description = 'webcam device index (0-based)' }
         @{ Name = '--list-webcams'; Description = 'list available webcam devices and exit' }
@@ -99,7 +100,6 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--snapshot'; Description = 'capture single frame and exit' }
         @{ Name = '-D'; Description = 'delay SECONDS before snapshot' }
         @{ Name = '--snapshot-delay'; Description = 'delay SECONDS before snapshot' }
-        @{ Name = '--mirror'; Description = 'view webcam locally without connecting to server' }
         @{ Name = '--strip-ansi'; Description = 'remove all ANSI escape codes from output' }
         @{ Name = '--server-key'; Description = 'expected server public key for verification' }
         @{ Name = '--reconnect'; Description = 'automatic reconnection behavior (off or auto)' }
@@ -113,6 +113,35 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--encode-audio'; Description = 'force enable Opus audio encoding' }
         @{ Name = '--no-encode-audio'; Description = 'disable Opus audio encoding' }
         @{ Name = '--no-audio-mixer'; Description = 'disable audio mixer, send silence instead (debug only)' }
+    )
+
+    # Mirror-only options
+    $mirrorOptions = @(
+        @{ Name = '-x'; Description = 'render width' }
+        @{ Name = '--width'; Description = 'render width' }
+        @{ Name = '-y'; Description = 'render height' }
+        @{ Name = '--height'; Description = 'render height' }
+        @{ Name = '-c'; Description = 'webcam device index (0-based)' }
+        @{ Name = '--webcam-index'; Description = 'webcam device index (0-based)' }
+        @{ Name = '--list-webcams'; Description = 'list available webcam devices and exit' }
+        @{ Name = '-f'; Description = 'toggle horizontal flip of webcam image' }
+        @{ Name = '--webcam-flip'; Description = 'toggle horizontal flip of webcam image' }
+        @{ Name = '--test-pattern'; Description = 'use test pattern instead of webcam' }
+        @{ Name = '--fps'; Description = 'desired frame rate 1-144' }
+        @{ Name = '--color-mode'; Description = 'color modes: auto, none, 16, 256, truecolor' }
+        @{ Name = '--show-capabilities'; Description = 'show detected terminal capabilities and exit' }
+        @{ Name = '--utf8'; Description = 'force enable UTF-8/Unicode support' }
+        @{ Name = '-M'; Description = 'rendering mode: foreground, background, half-block' }
+        @{ Name = '--render-mode'; Description = 'rendering mode: foreground, background, half-block' }
+        @{ Name = '-s'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
+        @{ Name = '--stretch'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
+        @{ Name = '-q'; Description = 'disable console logging (log only to file)' }
+        @{ Name = '--quiet'; Description = 'disable console logging (log only to file)' }
+        @{ Name = '-S'; Description = 'capture single frame and exit' }
+        @{ Name = '--snapshot'; Description = 'capture single frame and exit' }
+        @{ Name = '-D'; Description = 'delay SECONDS before snapshot' }
+        @{ Name = '--snapshot-delay'; Description = 'delay SECONDS before snapshot' }
+        @{ Name = '--strip-ansi'; Description = 'remove all ANSI escape codes from output' }
     )
 
     # Palette values
@@ -134,7 +163,7 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
 
     for ($i = 1; $i -lt $tokens.Count; $i++) {
         $token = $tokens[$i].ToString()
-        if ($token -eq 'server' -or $token -eq 'client') {
+        if ($token -eq 'server' -or $token -eq 'client' -or $token -eq 'mirror') {
             $mode = $token
         }
         if ($i -eq $tokens.Count - 1 -or $tokens[$i].Extent.EndOffset -lt $cursorPosition) {
@@ -172,7 +201,7 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
             # File path completion - let PowerShell handle it
             return
         }
-        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password|--microphone-index|--speakers-index|--compression-level|--max-clients|--reconnect)$' {
+        '^(--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password|--microphone-index|--speakers-index|--compression-level|--max-clients|--reconnect)$' {
             # These take values but don't have predefined completions
             return
         }
@@ -193,14 +222,17 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
                 )
             }
         }
-        # Also show all options if typing an option
-        $options = $commonOptions + $clientOptions + $serverOptions
+        # Also show binary-level options if typing an option
+        $options = $binaryOptions
     }
     elseif ($mode -eq 'client') {
-        $options = $commonOptions + $clientOptions
+        $options = $binaryOptions + $commonOptions + $clientOptions
     }
     elseif ($mode -eq 'server') {
-        $options = $commonOptions + $serverOptions
+        $options = $binaryOptions + $commonOptions + $serverOptions
+    }
+    elseif ($mode -eq 'mirror') {
+        $options = $binaryOptions + $mirrorOptions
     }
 
     # Complete options
