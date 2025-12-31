@@ -115,7 +115,7 @@ typedef struct crypto_handshake_context_t {
   public_key_t client_public_key;   /**< Client's Ed25519 public key (for authentication) */
   private_key_t client_private_key; /**< Client's Ed25519 private key (for signing challenges) */
   char expected_server_key[256];    /**< Expected server key fingerprint (client only, for known_hosts) */
-  char client_gpg_key_id[17]; /**< Client's GPG key ID (16 hex chars + null terminator, for server verification) */
+  char client_gpg_key_id[41]; /**< Client's GPG key ID (8/16/40 hex chars + null terminator, for server verification) */
 
   /** Connection info for known_hosts */
   char server_hostname[256]; /**< Server hostname (user-provided) */
