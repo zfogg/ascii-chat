@@ -507,7 +507,7 @@ component_management:
       paths:
         - "tests/**/*.c"
         - "tests/**/*.h"
-        - "lib/tests/**/*"
+        - "tests/fixtures/lib-helpers/**/*"
       flag_regexes:
         - "coverage"
         - "ascii-chat-tests.*"
@@ -572,7 +572,7 @@ ignore:
   - "**/compile_commands.json"
   - "lib/version.c"
   - "lib/version.h.in"
-  - "lib/musl_c23_compat.c"
+  - "lib/platform/compat/musl_c23_compat.c"
 
 # Flag configuration for organizing uploads
 flags:

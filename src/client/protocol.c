@@ -86,7 +86,7 @@
 #include "network/packet.h"
 #include "network/packet_parsing.h"
 #include "network/av.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"

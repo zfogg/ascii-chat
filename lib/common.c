@@ -11,7 +11,7 @@
 #include "platform/init.h"
 #include "platform/memory.h"
 #include "log/logging.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "video/palette.h"
 #include "asciichat_errno.h"
 #include "crypto/known_hosts.h"

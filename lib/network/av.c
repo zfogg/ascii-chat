@@ -34,7 +34,7 @@
 #include "util/overflow.h"
 #include "audio/opus_codec.h"
 #include "platform/string.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "util/overflow.h"
 #include <stdint.h>
 #include <stdbool.h>

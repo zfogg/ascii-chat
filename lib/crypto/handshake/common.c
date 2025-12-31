@@ -6,7 +6,7 @@
 
 #include "common.h"
 #include "asciichat_errno.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
 #include "crypto/crypto.h"

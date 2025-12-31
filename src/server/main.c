@@ -88,7 +88,7 @@
 #include "network/tcp_server.h"
 #include "thread_pool.h"
 #include "options/options.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "audio/mixer.h"
 #include "audio/audio.h"
 #include "client.h"

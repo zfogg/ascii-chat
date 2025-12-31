@@ -79,7 +79,7 @@
 #include "platform/system.h"
 #include "common.h"
 #include "options/options.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "video/palette.h"
 #include "network/network.h"
 #include "util/path.h"

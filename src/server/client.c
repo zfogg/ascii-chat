@@ -121,7 +121,7 @@
 #include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "network/network.h"
 #include "network/packet.h"
 #include "network/av.h"

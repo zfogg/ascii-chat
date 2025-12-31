@@ -100,7 +100,7 @@ using std::atomic_size_t;
 #else
 #include <stdatomic.h>
 #endif
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "network/packet.h"
 
 /**

@@ -11,7 +11,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "asciichat_errno.h" // For asciichat_errno system
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "options/options.h"
 #include "platform/init.h" // For static_mutex_t
 #include <stdlib.h>

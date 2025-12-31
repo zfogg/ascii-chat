@@ -5,7 +5,7 @@
  */
 
 #include "packet_queue.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
 #include "asciichat_errno.h"

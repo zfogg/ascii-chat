@@ -25,7 +25,7 @@ using std::atomic_uint;
 #include "network/packet_queue.h"
 #include "network/logging.h"
 #include "crypto/handshake/common.h" // For crypto_handshake_context_t (complete type needed for field)
-#include "ringbuffer.h"
+#include "util/data-structures/ringbuffer.h"
 #include "video/video_frame.h"
 #include "platform/terminal.h"
 #include "video/palette.h"

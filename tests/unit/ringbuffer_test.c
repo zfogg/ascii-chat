@@ -9,9 +9,9 @@
 
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "ringbuffer.h"
+#include "util/data-structures/ringbuffer.h"
 #include "audio/audio.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG, true, true);

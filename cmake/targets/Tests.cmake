@@ -280,7 +280,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # - common.c: Provides shared test utilities (test_get_binary_path, etc.)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} lib/tests/common.c lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} tests/fixtures/lib-helpers/common.c tests/fixtures/lib-helpers/globals.c tests/fixtures/lib-helpers/logging.c)
 
         # Add timer dependency so timing starts before first test compiles
         if(TARGET tests-timer-start)

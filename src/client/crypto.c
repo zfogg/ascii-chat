@@ -155,7 +155,7 @@
 #include "crypto/handshake/client.h"
 #include "crypto/crypto.h"
 #include "crypto/keys.h"
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "network/packet.h"
 #include "util/time.h"
 #include "util/endian.h"

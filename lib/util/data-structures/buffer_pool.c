@@ -4,7 +4,7 @@
  * @brief 💾 Lock-free memory pool with atomic operations
  */
 
-#include "buffer_pool.h"
+#include "util/data-structures/buffer_pool.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/system.h"

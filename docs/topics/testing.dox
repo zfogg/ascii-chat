@@ -527,7 +527,7 @@
  * @section testing_logging Test Logging Macros
  *
  * Tests can generate a lot of output, which makes it hard to see what actually matters.
- * We've got some helpful macros in `lib/tests/logging.h` (included via `lib/tests/common.h`)
+ * We've got some helpful macros in `tests/fixtures/lib-helpers/logging.h` (included via `tests/fixtures/lib-helpers/common.h`)
  * that let you control logging during tests.
  *
  * @subsection testing_logging_suite_macros Test Suite Macros
@@ -689,7 +689,7 @@
  *
  * Writing good tests:
  * ------------------
- * - **Always include `lib/tests/common.h`**: It has everything you need
+ * - **Always include `tests/fixtures/lib-helpers/common.h`**: It has everything you need
  * - **Use quiet logging macros**: Tests should be quiet unless something fails
  * - **Test both success and failure paths**: Make sure error handling works too
  * - **Use theorized tests for properties**: Great for roundtrip properties, invariants, etc.
@@ -751,12 +751,12 @@
  * ------------------------------
  * - **Test scripts**: `tests/scripts/`
  * - **Test source**: `tests/unit/`, `tests/integration/`, `tests/performance/`
- * - **Test utilities**: `lib/tests/`
+ * - **Test utilities**: `tests/fixtures/lib-helpers/`
  * - **Docker config**: `tests/Dockerfile`, `tests/docker-compose.yml`
  *
  * @section testing_utilities Test Utilities
  *
- * The test utilities in `lib/tests/` provide common functionality for writing tests:
+ * The test utilities in `tests/fixtures/lib-helpers/` provide common functionality for writing tests:
  *
  * **Files**:
  * - @ref tests/logging.h "test_logging.h" - Logging control utilities for quiet test execution
