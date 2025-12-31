@@ -258,8 +258,8 @@ Test(compression, send_ascii_frame_packet_basic) {
   mock_send_packet_result = 100; // Success
 
   // Set global options
-  opt_width = 80;
-  opt_height = 24;
+  test_set_width(80);
+  test_set_height(24);
 
   // Use very small data that won't compress well (so it won't use compression)
   char *frame_data = generate_random_frame_data(10);
@@ -497,8 +497,8 @@ Test(compression, send_compressed_frame_legacy) {
   mock_send_packet_result = 100;
 
   // Set global options
-  opt_width = 80;
-  opt_height = 24;
+  test_set_width(80);
+  test_set_height(24);
 
   char *frame_data = generate_test_frame_data(100);
   cr_assert_not_null(frame_data);

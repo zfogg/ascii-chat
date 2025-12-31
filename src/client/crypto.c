@@ -193,6 +193,10 @@ static bool g_crypto_initialized = false;
 int client_crypto_init(void) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
   if (g_crypto_initialized) {
@@ -355,6 +359,10 @@ int client_crypto_init(void) {
 int client_crypto_handshake(socket_t socket) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   // If client has --no-encrypt, skip handshake entirely
   if (opts && opts->no_encrypt) {
@@ -623,6 +631,10 @@ int client_crypto_handshake(socket_t socket) {
 bool crypto_client_is_ready(void) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return false;
+  }
 
   if (!g_crypto_initialized || (opts && opts->no_encrypt)) {
     return false;

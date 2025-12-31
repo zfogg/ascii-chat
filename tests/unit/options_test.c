@@ -75,14 +75,13 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
 typedef options_t options_backup_t;
 
 static void save_options(options_backup_t *backup) {
+  // Initialize RCU state if not already initialized
+  // This is safe to call multiple times - it's a no-op if already initialized
+  options_state_init();
+
   // Get current options from RCU and make a copy
   const options_t *current = options_get();
-  if (current) {
-    memcpy(backup, current, sizeof(options_t));
-  } else {
-    // If RCU not initialized yet, zero-initialize
-    memset(backup, 0, sizeof(options_t));
-  }
+  memcpy(backup, current, sizeof(options_t));
 }
 
 static void restore_options(const options_backup_t *backup) {

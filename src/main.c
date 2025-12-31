@@ -380,6 +380,68 @@ static const mode_descriptor_t *find_mode(const char *mode_name) {
  * @param argv Original argument vector from OS
  * @return Exit code (0 = success, non-zero = error)
  */
+
+/* ============================================================================
+ * Options Update Helper Functions
+ * ============================================================================ */
+
+/**
+ * Helper struct for applying binary-level options
+ */
+struct binary_opts_ctx {
+  const char *log_file;
+  log_level_t log_level;
+  unsigned short int verbose_level;
+  bool quiet;
+  bool has_log_file;
+  bool has_log_level;
+  bool has_verbose;
+  bool has_quiet;
+};
+
+/**
+ * Updater function to apply binary-level options
+ */
+static void apply_binary_opts_updater(options_t *opts, void *context) {
+  struct binary_opts_ctx *c = (struct binary_opts_ctx *)context;
+  if (c->has_log_file && c->log_file) {
+    SAFE_STRNCPY(opts->log_file, c->log_file, sizeof(opts->log_file));
+  }
+  if (c->has_log_level) {
+    opts->log_level = c->log_level;
+  }
+  if (c->has_verbose) {
+    opts->verbose_level = c->verbose_level;
+  }
+  if (c->has_quiet) {
+    opts->quiet = true;
+  }
+}
+
+/**
+ * Updater to clear log file path
+ */
+static void clear_log_file_updater(options_t *opts, void *context) {
+  (void)context;
+  opts->log_file[0] = '\0';
+}
+
+/**
+ * Updater to set validated log file path
+ */
+static void update_log_file_updater(options_t *opts, void *context) {
+  const char *validated_path = (const char *)context;
+  SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
+}
+
+/**
+ * Updater to set color mode to NONE
+ */
+static void update_color_mode_to_none_updater(options_t *opts, void *context) {
+  (void)context;
+  opts->color_mode = COLOR_MODE_NONE;
+}
+
 int main(int argc, char *argv[]) {
   /**
    * @name Argument Validation
@@ -682,6 +744,10 @@ int main(int argc, char *argv[]) {
 
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   // Apply binary-level logging options if provided (--log-file, --log-level, -v, --quiet at binary level)
   // These override any mode-specific options
@@ -737,24 +803,7 @@ int main(int argc, char *argv[]) {
                                   .has_verbose = (binary_verbose_count > 0),
                                   .has_quiet = binary_quiet};
 
-    // Updater function to apply binary-level options
-    auto void apply_binary_opts(options_t * opts, void *context) {
-      struct binary_opts_ctx *c = (struct binary_opts_ctx *)context;
-      if (c->has_log_file && c->log_file) {
-        SAFE_STRNCPY(opts->log_file, c->log_file, sizeof(opts->log_file));
-      }
-      if (c->has_log_level) {
-        opts->log_level = c->log_level;
-      }
-      if (c->has_verbose) {
-        opts->verbose_level = c->verbose_level;
-      }
-      if (c->has_quiet) {
-        opts->quiet = true;
-      }
-    }
-
-    options_update(apply_binary_opts, &ctx);
+    options_update(apply_binary_opts_updater, &ctx);
     opts = options_get(); // Refresh pointer after update
   }
 
@@ -798,20 +847,12 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
               default_log_filename);
       // Clear log_file in options so asciichat_shared_init uses default
-      auto void clear_log_file(options_t * opts, void *context) {
-        (void)context;
-        opts->log_file[0] = '\0';
-      }
-      options_update(clear_log_file, NULL);
+      options_update(clear_log_file_updater, NULL);
       opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     } else {
       // Replace log_file with validated path
-      auto void update_log_file(options_t * opts, void *context) {
-        const char *validated_path = (const char *)context;
-        SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
-      }
-      options_update(update_log_file, validated_log_file);
+      options_update(update_log_file_updater, validated_log_file);
       opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     }
@@ -831,11 +872,7 @@ int main(int argc, char *argv[]) {
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
   terminal_color_mode_t color_mode = opts ? opts->color_mode : COLOR_MODE_AUTO;
   if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
-    auto void update_color_mode(options_t * opts, void *context) {
-      (void)context;
-      opts->color_mode = COLOR_MODE_NONE;
-    }
-    options_update(update_color_mode, NULL);
+    options_update(update_color_mode_to_none_updater, NULL);
     opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }

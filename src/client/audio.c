@@ -472,6 +472,10 @@ static void *audio_capture_thread_func(void *arg) {
 
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return NULL;
+  }
 
   log_info("Audio capture thread started");
 
@@ -707,6 +711,10 @@ static void *audio_capture_thread_func(void *arg) {
 int audio_client_init() {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   if (!opts || !opts->audio_enabled) {
     return 0; // Audio disabled - not an error
@@ -807,6 +815,10 @@ int audio_client_init() {
 int audio_start_thread() {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   log_info("audio_start_thread called: audio_enabled=%d", opts ? opts->audio_enabled : 0);
 
@@ -908,6 +920,10 @@ bool audio_thread_exited() {
 void audio_cleanup() {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   if (!opts || !opts->audio_enabled) {
     return;

@@ -28,10 +28,6 @@ __attribute__((constructor)) static void init_test_environment(void) {
 atomic_bool g_should_exit = false;
 
 /**
- * Terminal color mode and render mode globals referenced by terminal.c
- * In production builds, these are defined in options.c and set from command-line options.
- * For tests, we define them here as weak symbols so they can be overridden by options.c
- * if it's linked, but still provide defaults if options.c isn't linked.
+ * Terminal color mode and render mode are now accessed via RCU options_get().
+ * No global stubs needed - terminal.c uses options_get() directly.
  */
-__attribute__((weak)) terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO;
-__attribute__((weak)) render_mode_t opt_render_mode = RENDER_MODE_FOREGROUND;

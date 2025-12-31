@@ -691,7 +691,7 @@ Test(ascii, ascii_read_init_basic) {
 
   // Enable test pattern mode if needed
   if (use_test_pattern) {
-    opt_test_pattern = true;
+    test_set_test_pattern(true);
   }
 
   asciichat_error_t result = ascii_read_init(0);
@@ -703,7 +703,7 @@ Test(ascii, ascii_read_init_basic) {
 
   // Restore test pattern setting
   if (use_test_pattern) {
-    opt_test_pattern = false;
+    test_set_test_pattern(false);
   }
 }
 

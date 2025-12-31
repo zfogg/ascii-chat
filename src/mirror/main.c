@@ -118,6 +118,10 @@ static bool g_mirror_has_tty = false;
 static int mirror_display_init(void) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   g_mirror_tty_info = get_current_tty();
 
@@ -159,6 +163,10 @@ static void mirror_display_cleanup(void) {
 static void mirror_write_frame(const char *frame_data) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   if (!frame_data) {
     return;
@@ -215,6 +223,10 @@ static void mirror_write_frame(const char *frame_data) {
 int mirror_main(void) {
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
 
   log_info("Starting mirror mode");
 

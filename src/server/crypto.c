@@ -167,6 +167,10 @@ extern size_t g_num_whitelisted_clients;
 int server_crypto_init(void) {
   // Check if encryption is disabled
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
   if (opts->no_encrypt) {
     log_info("Encryption disabled via --no-encrypt");
     return 0;
@@ -184,6 +188,10 @@ int server_crypto_init(void) {
  */
 int server_crypto_handshake(client_info_t *client) {
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
   if (opts->no_encrypt) {
     log_debug("Crypto handshake skipped (disabled)");
     return 0;
@@ -550,6 +558,10 @@ int server_crypto_handshake(client_info_t *client) {
  */
 bool crypto_server_is_ready(uint32_t client_id) {
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return false;
+  }
   if (opts->no_encrypt) {
     return false;
   }

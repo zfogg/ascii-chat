@@ -564,32 +564,40 @@ static void *ascii_chat_client_handler(void *arg) {
  * @ingroup server_main
  */
 static int init_server_crypto(void) {
+  // Get options from RCU
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
+
   // Check if encryption is disabled
-  if (opt_no_encrypt) {
+  if (opts->no_encrypt) {
     log_info("Encryption: DISABLED (--no-encrypt)");
     g_server_encryption_enabled = false;
     return 0;
   }
 
   // Load server private key if provided via --key
-  if (strlen(opt_encrypt_key) > 0) {
+  if (strlen(opts->encrypt_key) > 0) {
     // --key requires signing capabilities (SSH key files or GPG keys with gpg-agent)
 
     // Validate SSH key file (skip validation for special prefixes - they have their own validation)
-    bool is_special_key = (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
-                           strncmp(opt_encrypt_key, "gitlab:", 7) == 0);
+    bool is_special_key =
+        (strncmp(opts->encrypt_key, "gpg:", 4) == 0 || strncmp(opts->encrypt_key, "github:", 7) == 0 ||
+         strncmp(opts->encrypt_key, "gitlab:", 7) == 0);
 
     if (!is_special_key) {
-      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
-        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", opt_encrypt_key);
+      if (validate_ssh_key_file(opts->encrypt_key) != 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", opts->encrypt_key);
         return -1;
       }
     }
 
     // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
-    log_info("Loading key for authentication: %s", opt_encrypt_key);
-    if (parse_private_key(opt_encrypt_key, &g_server_private_key) == ASCIICHAT_OK) {
-      log_info("Successfully loaded server key: %s", opt_encrypt_key);
+    log_info("Loading key for authentication: %s", opts->encrypt_key);
+    if (parse_private_key(opts->encrypt_key, &g_server_private_key) == ASCIICHAT_OK) {
+      log_info("Successfully loaded server key: %s", opts->encrypt_key);
     } else {
       log_error("Failed to parse key: %s\n"
                 "This may be due to:\n"
@@ -599,11 +607,11 @@ static int init_server_crypto(void) {
                 "\n"
                 "Note: RSA and ECDSA keys are not yet supported\n"
                 "To generate an Ed25519 key: ssh-keygen -t ed25519\n",
-                opt_encrypt_key);
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", opt_encrypt_key);
+                opts->encrypt_key);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", opts->encrypt_key);
       return -1;
     }
-  } else if (strlen(opt_password) == 0) {
+  } else if (strlen(opts->password) == 0) {
     // No identity key provided - server will run in simple mode
     // The server will still generate ephemeral keys for encryption, but no identity key
     g_server_private_key.type = KEY_TYPE_UNKNOWN;
@@ -611,9 +619,9 @@ static int init_server_crypto(void) {
   }
 
   // Load client whitelist if provided
-  if (strlen(opt_client_keys) > 0) {
-    if (parse_public_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", opt_client_keys);
+  if (strlen(opts->client_keys) > 0) {
+    if (parse_public_keys(opts->client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", opts->client_keys);
       return -1;
     }
     log_debug("Loaded %zu whitelisted clients", g_num_whitelisted_clients);
@@ -628,6 +636,13 @@ int server_main(void) {
   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
   // This function focuses on server-specific initialization
 
+  // Get options from RCU
+  const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return -1;
+  }
+
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
@@ -640,16 +655,16 @@ int server_main(void) {
   }
   log_info("Crypto initialized successfully");
 
-  // Handle quiet mode - disable terminal output when opt_quiet is enabled
-  log_set_terminal_output(!opt_quiet);
+  // Handle quiet mode - disable terminal output when opts->quiet is enabled
+  log_set_terminal_output(!opts->quiet);
 
   log_info("ASCII Chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
-  int port = strtoint_safe(opt_port);
+  int port = strtoint_safe(opts->port);
   if (port == INT_MIN) {
-    log_error("Invalid port configuration: %s", opt_port);
-    FATAL(ERROR_CONFIG, "Invalid port configuration: %s", opt_port);
+    log_error("Invalid port configuration: %s", opts->port);
+    FATAL(ERROR_CONFIG, "Invalid port configuration: %s", opts->port);
   }
 
   ascii_simd_init();
@@ -699,12 +714,12 @@ int server_main(void) {
   }
 
   // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
-  log_debug("Config check: opt_address='%s', opt_address6='%s'", opt_address, opt_address6);
+  log_debug("Config check: opts->address='%s', opts->address6='%s'", opts->address, opts->address6);
 
-  bool ipv4_has_value = (strlen(opt_address) > 0);
-  bool ipv6_has_value = (strlen(opt_address6) > 0);
-  bool ipv4_is_default = (strcmp(opt_address, "127.0.0.1") == 0);
-  bool ipv6_is_default = (strcmp(opt_address6, "::1") == 0);
+  bool ipv4_has_value = (strlen(opts->address) > 0);
+  bool ipv6_has_value = (strlen(opts->address6) > 0);
+  bool ipv4_is_default = (strcmp(opts->address, "127.0.0.1") == 0);
+  bool ipv6_is_default = (strcmp(opts->address6, "::1") == 0);
 
   log_debug("Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d",
             ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);
@@ -726,20 +741,20 @@ int server_main(void) {
     // IPv4 explicitly set, IPv6 is default or empty: bind only IPv4
     bind_ipv4 = true;
     bind_ipv6 = false;
-    ipv4_address = opt_address;
+    ipv4_address = opts->address;
     log_info("Binding only to IPv4 address: %s", ipv4_address);
   } else if (ipv6_has_value && !ipv6_is_default && (ipv4_is_default || !ipv4_has_value)) {
     // IPv6 explicitly set, IPv4 is default or empty: bind only IPv6
     bind_ipv4 = false;
     bind_ipv6 = true;
-    ipv6_address = opt_address6;
+    ipv6_address = opts->address6;
     log_info("Binding only to IPv6 address: %s", ipv6_address);
   } else {
     // Both explicitly set or one explicit + one default: dual-stack
     bind_ipv4 = true;
     bind_ipv6 = true;
-    ipv4_address = ipv4_has_value ? opt_address : "127.0.0.1";
-    ipv6_address = ipv6_has_value ? opt_address6 : "::1";
+    ipv4_address = ipv4_has_value ? opts->address : "127.0.0.1";
+    ipv6_address = ipv6_has_value ? opts->address6 : "::1";
     log_info("Dual-stack binding: IPv4=%s, IPv6=%s", ipv4_address, ipv6_address);
   }
 

@@ -893,9 +893,15 @@ void test_terminal_output_modes(void) {
  * Apply color mode and render mode overrides to detected capabilities
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    return caps; // Options not initialized yet, return unmodified caps
+  }
+
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
-  if (opt_color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
+  if (opts->color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
     log_debug("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~((uint32_t)TERM_CAP_COLOR_16 | (uint32_t)TERM_CAP_COLOR_256 | (uint32_t)TERM_CAP_COLOR_TRUE);
@@ -905,7 +911,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 #endif
 
   // Handle color mode overrides
-  switch (opt_color_mode) {
+  switch (opts->color_mode) {
   case COLOR_MODE_AUTO:
     // Use detected capabilities as-is
     break;
@@ -938,7 +944,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   }
 
   // Handle render mode overrides
-  switch (opt_render_mode) {
+  switch (opts->render_mode) {
   case RENDER_MODE_FOREGROUND:
     caps.capabilities &= ~(uint32_t)TERM_CAP_BACKGROUND;
     break;
@@ -953,13 +959,13 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   }
 
   // Handle UTF-8 override
-  if (opt_force_utf8) {
+  if (opts->force_utf8) {
     caps.utf8_support = true;
     caps.capabilities |= TERM_CAP_UTF8;
   }
 
   // Include client's render mode preference
-  caps.render_mode = opt_render_mode;
+  caps.render_mode = opts->render_mode;
 
   return caps;
 }

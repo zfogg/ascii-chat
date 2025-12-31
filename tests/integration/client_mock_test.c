@@ -20,12 +20,12 @@
 void client_test_setup(void) {
   log_set_level(LOG_FATAL);
   test_logging_disable(true, true);
-  opt_test_pattern = true;
+  test_set_test_pattern(true);
 }
 
 // Suite teardown: restore settings
 void client_test_teardown(void) {
-  opt_test_pattern = false;
+  test_set_test_pattern(false);
   log_set_level(LOG_DEBUG);
   test_logging_restore();
 }

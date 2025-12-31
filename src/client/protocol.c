@@ -391,6 +391,10 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Get options from RCU state
   const options_t *opts = options_get();
+  if (!opts) {
+    log_error("Options not initialized");
+    return;
+  }
 
   // Handle snapshot mode timing
   bool take_snapshot = false;
