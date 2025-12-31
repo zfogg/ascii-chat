@@ -72,6 +72,7 @@
 #include "common.h"
 #include "display.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "video/palette.h"
 #include "buffer_pool.h"
 

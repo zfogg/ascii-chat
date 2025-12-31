@@ -56,7 +56,7 @@ static struct option acds_options[] = {
 // ACDS Option Parsing
 // ============================================================================
 
-asciichat_error_t acds_options_parse(int argc, char **argv) {
+asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
   const char *optstring = ":p:d:K:L:l:hv";
 
   // Pre-pass: Check for --help or --version first
@@ -126,7 +126,7 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", MODE_ACDS);
       if (!value_str)
         return option_error_invalid();
-      SAFE_STRNCPY(opt_log_file, value_str, sizeof(opt_log_file));
+      SAFE_STRNCPY(opts->log_file, value_str, sizeof(opts->log_file));
       break;
     }
 
@@ -134,7 +134,7 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "log-level", MODE_ACDS);
       if (!value_str)
         return option_error_invalid();
-      if (parse_log_level_option(value_str) != ASCIICHAT_OK)
+      if (parse_log_level_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -192,21 +192,21 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
     if (is_valid_ipv4(addr_arg)) {
       if (has_ipv4) {
         (void)fprintf(stderr, "Error: Cannot specify multiple IPv4 addresses.\n");
-        (void)fprintf(stderr, "Already have: %s\n", opt_address);
+        (void)fprintf(stderr, "Already have: %s\n", opts->address);
         (void)fprintf(stderr, "Cannot add: %s\n", addr_arg);
         return option_error_invalid();
       }
-      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", addr_arg);
+      SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", addr_arg);
       has_ipv4 = true;
       num_addresses++;
     } else if (is_valid_ipv6(addr_arg)) {
       if (has_ipv6) {
         (void)fprintf(stderr, "Error: Cannot specify multiple IPv6 addresses.\n");
-        (void)fprintf(stderr, "Already have: %s\n", opt_address6);
+        (void)fprintf(stderr, "Already have: %s\n", opts->address6);
         (void)fprintf(stderr, "Cannot add: %s\n", addr_arg);
         return option_error_invalid();
       }
-      SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "%s", addr_arg);
+      SAFE_SNPRINTF(opts->address6, OPTIONS_BUFF_SIZE, "%s", addr_arg);
       has_ipv6 = true;
       num_addresses++;
     } else {
@@ -233,8 +233,8 @@ asciichat_error_t acds_options_parse(int argc, char **argv) {
   // Set default bind addresses if not specified
   if (!has_ipv4 && !has_ipv6) {
     // No addresses specified - bind to localhost only (secure default)
-    SAFE_STRNCPY(opt_address, "127.0.0.1", OPTIONS_BUFF_SIZE);
-    SAFE_STRNCPY(opt_address6, "::1", OPTIONS_BUFF_SIZE);
+    SAFE_STRNCPY(opts->address, "127.0.0.1", OPTIONS_BUFF_SIZE);
+    SAFE_STRNCPY(opts->address6, "::1", OPTIONS_BUFF_SIZE);
   }
 
   // Set default paths if not specified

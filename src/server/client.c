@@ -121,6 +121,7 @@
 #include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "buffer_pool.h"
 #include "network/network.h"
 #include "network/packet.h"

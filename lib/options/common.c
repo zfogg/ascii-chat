@@ -401,23 +401,23 @@ asciichat_error_t parse_render_mode_option(const char *value_str) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_palette_option(const char *value_str) {
-  if (!value_str) {
+asciichat_error_t parse_palette_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
     return ERROR_INVALID_PARAM;
   }
 
   if (strcmp(value_str, "standard") == 0) {
-    opt_palette_type = PALETTE_STANDARD;
+    opts->palette_type = PALETTE_STANDARD;
   } else if (strcmp(value_str, "blocks") == 0) {
-    opt_palette_type = PALETTE_BLOCKS;
+    opts->palette_type = PALETTE_BLOCKS;
   } else if (strcmp(value_str, "digital") == 0) {
-    opt_palette_type = PALETTE_DIGITAL;
+    opts->palette_type = PALETTE_DIGITAL;
   } else if (strcmp(value_str, "minimal") == 0) {
-    opt_palette_type = PALETTE_MINIMAL;
+    opts->palette_type = PALETTE_MINIMAL;
   } else if (strcmp(value_str, "cool") == 0) {
-    opt_palette_type = PALETTE_COOL;
+    opts->palette_type = PALETTE_COOL;
   } else if (strcmp(value_str, "custom") == 0) {
-    opt_palette_type = PALETTE_CUSTOM;
+    opts->palette_type = PALETTE_CUSTOM;
   } else {
     (void)fprintf(stderr, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
                   value_str);
@@ -427,21 +427,21 @@ asciichat_error_t parse_palette_option(const char *value_str) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_palette_chars_option(const char *value_str) {
-  if (!value_str) {
+asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *opts) {
+  if (!value_str || !opts) {
     return ERROR_INVALID_PARAM;
   }
 
-  if (strlen(value_str) >= sizeof(opt_palette_custom)) {
+  if (strlen(value_str) >= sizeof(opts->palette_custom)) {
     (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
-                  sizeof(opt_palette_custom) - 1);
+                  sizeof(opts->palette_custom) - 1);
     return ERROR_INVALID_PARAM;
   }
 
-  SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
-  opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
-  opt_palette_custom_set = true;
-  opt_palette_type = PALETTE_CUSTOM;
+  SAFE_STRNCPY(opts->palette_custom, value_str, sizeof(opts->palette_custom));
+  opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
+  opts->palette_custom_set = true;
+  opts->palette_type = PALETTE_CUSTOM;
 
   return ASCIICHAT_OK;
 }
@@ -498,7 +498,11 @@ asciichat_error_t parse_snapshot_delay_option(const char *value_str) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t parse_log_level_option(const char *value_str) {
+asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts) {
+  if (!opts) {
+    return ERROR_INVALID_PARAM;
+  }
+
   char error_msg[256];
   int log_level = validate_opt_log_level(value_str, error_msg, sizeof(error_msg));
 
@@ -507,7 +511,7 @@ asciichat_error_t parse_log_level_option(const char *value_str) {
     return ERROR_INVALID_PARAM;
   }
 
-  opt_log_level = (log_level_t)log_level;
+  opts->log_level = (log_level_t)log_level;
 
   return ASCIICHAT_OK;
 }
@@ -516,7 +520,11 @@ asciichat_error_t parse_log_level_option(const char *value_str) {
 // Terminal Dimension Utilities
 // ============================================================================
 
-void update_dimensions_for_full_height(void) {
+void update_dimensions_for_full_height(options_t *opts) {
+  if (!opts) {
+    return;
+  }
+
   unsigned short int term_width, term_height;
 
   // Note: Logging is not available during options_init, so we can't use log_debug here
@@ -524,35 +532,39 @@ void update_dimensions_for_full_height(void) {
   if (result == ASCIICHAT_OK) {
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
-    if (auto_height && auto_width) {
-      opt_height = term_height;
-      opt_width = term_width; // Also set width when both are auto
+    if (opts->auto_height && opts->auto_width) {
+      opts->height = term_height;
+      opts->width = term_width; // Also set width when both are auto
     }
     // If only height is auto, use full terminal height
-    else if (auto_height) {
-      opt_height = term_height;
+    else if (opts->auto_height) {
+      opts->height = term_height;
     }
     // If only width is auto, use full terminal width
-    else if (auto_width) {
-      opt_width = term_width;
+    else if (opts->auto_width) {
+      opts->width = term_width;
     }
   } else {
     // Terminal size detection failed, but we can still continue with defaults
   }
 }
 
-void update_dimensions_to_terminal_size(void) {
+void update_dimensions_to_terminal_size(options_t *opts) {
+  if (!opts) {
+    return;
+  }
+
   unsigned short int term_width, term_height;
   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
   asciichat_error_t terminal_result = get_terminal_size(&term_width, &term_height);
   if (terminal_result == ASCIICHAT_OK) {
-    if (auto_width) {
-      opt_width = term_width;
+    if (opts->auto_width) {
+      opts->width = term_width;
     }
-    if (auto_height) {
-      opt_height = term_height;
+    if (opts->auto_height) {
+      opts->height = term_height;
     }
-    log_debug("After update_dimensions_to_terminal_size: opt_width=%d, opt_height=%d", opt_width, opt_height);
+    log_debug("After update_dimensions_to_terminal_size: width=%d, height=%d", opts->width, opts->height);
   } else {
     log_debug("Failed to get terminal size in update_dimensions_to_terminal_size");
   }

@@ -89,7 +89,7 @@ static struct option client_options[] = {{"port", required_argument, NULL, 'p'},
 // Client Option Parsing
 // ============================================================================
 
-asciichat_error_t parse_client_options(int argc, char **argv) {
+asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts) {
   const char *optstring = ":p:x:y:c:fM:P:C:AsSD:EK:F:h";
 
   // Pre-pass: Check for --help first
@@ -125,7 +125,7 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       uint16_t port_num;
       if (!validate_port_opt(value_str, &port_num))
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%s", value_str);
       extern bool port_explicitly_set_via_flag;
       port_explicitly_set_via_flag = true;
       break;
@@ -159,7 +159,7 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
     }
 
     case 'f':
-      opt_webcam_flip = !opt_webcam_flip;
+      opts->webcam_flip = !opts->webcam_flip;
       break;
 
     case 1000: { // --color-mode
@@ -172,11 +172,11 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
     }
 
     case 1001: // --show-capabilities
-      opt_show_capabilities = 1;
+      opts->show_capabilities = 1;
       break;
 
     case 1002: // --utf8
-      opt_force_utf8 = 1;
+      opts->force_utf8 = 1;
       break;
 
     case 1003: { // --fps
@@ -192,7 +192,7 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
     }
 
     case 1004: // --test-pattern
-      opt_test_pattern = true;
+      opts->test_pattern = true;
       log_info("Using test pattern mode - webcam will not be opened");
       break;
 
@@ -276,7 +276,7 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      if (parse_palette_option(value_str) != ASCIICHAT_OK)
+      if (parse_palette_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -285,13 +285,13 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      if (parse_palette_chars_option(value_str) != ASCIICHAT_OK)
+      if (parse_palette_chars_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
 
     case 'A': // --audio
-      opt_audio_enabled = 1;
+      opts->audio_enabled = 1;
       break;
 
     case 1028: { // --microphone-index
@@ -304,7 +304,7 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
         (void)fprintf(stderr, "Invalid microphone index: %s\n", error_msg);
         return option_error_invalid();
       }
-      opt_microphone_index = mic_index;
+      opts->microphone_index = mic_index;
       break;
     }
 
@@ -318,24 +318,24 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
         (void)fprintf(stderr, "Invalid speakers index: %s\n", error_msg);
         return option_error_invalid();
       }
-      opt_speakers_index = speaker_index;
+      opts->speakers_index = speaker_index;
       break;
     }
 
     case 1025: // --audio-analysis
-      opt_audio_analysis_enabled = 1;
+      opts->audio_analysis_enabled = 1;
       break;
 
     case 1027: // --no-audio-playback
-      opt_audio_no_playback = 1;
+      opts->audio_no_playback = 1;
       break;
 
     case 's': // --stretch
-      opt_stretch = 1;
+      opts->stretch = 1;
       break;
 
     case 'S': // --snapshot
-      opt_snapshot_mode = 1;
+      opts->snapshot_mode = 1;
       break;
 
     case 'D': { // --snapshot-delay
@@ -348,35 +348,35 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
     }
 
     case 1017: // --strip-ansi
-      opt_strip_ansi = 1;
+      opts->strip_ansi = 1;
       break;
 
     case 'E': // --encrypt
-      opt_encrypt_enabled = 1;
+      opts->encrypt_enabled = 1;
       break;
 
     case 'K': { // --key
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "key", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-      opt_encrypt_enabled = 1;
+      SAFE_SNPRINTF(opts->encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      opts->encrypt_enabled = 1;
       break;
     }
 
     case 1009: { // --password
       if (optarg) {
-        SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", optarg);
+        SAFE_SNPRINTF(opts->password, OPTIONS_BUFF_SIZE, "%s", optarg);
       } else {
         char *pw = read_password_from_stdin("Enter encryption password: ");
         if (!pw) {
           (void)fprintf(stderr, "Failed to read password\n");
           return option_error_invalid();
         }
-        SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", pw);
+        SAFE_SNPRINTF(opts->password, OPTIONS_BUFF_SIZE, "%s", pw);
         SAFE_FREE(pw);
       }
-      opt_encrypt_enabled = 1;
+      opts->encrypt_enabled = 1;
       break;
     }
 
@@ -384,20 +384,20 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
-      opt_encrypt_enabled = 1;
+      SAFE_SNPRINTF(opts->encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
+      opts->encrypt_enabled = 1;
       break;
     }
 
     case 1005: // --no-encrypt
-      opt_no_encrypt = 1;
+      opts->no_encrypt = 1;
       break;
 
     case 1006: { // --server-key
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      SAFE_SNPRINTF(opts->server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
 
@@ -410,20 +410,20 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
         (void)fprintf(stderr, "Invalid compression level '%s'. Must be 1-9.\n", value_str);
         return option_error_invalid();
       }
-      opt_compression_level = level;
+      opts->compression_level = level;
       break;
     }
 
     case 1022: // --no-compress
-      opt_no_compress = true;
+      opts->no_compress = true;
       break;
 
     case 1023: // --encode-audio
-      opt_encode_audio = true;
+      opts->encode_audio = true;
       break;
 
     case 1024: // --no-encode-audio
-      opt_encode_audio = false;
+      opts->encode_audio = false;
       break;
 
     case 1020: { // --reconnect
@@ -431,16 +431,16 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       if (!value_str)
         return option_error_invalid();
       if (strcmp(value_str, "off") == 0 || strcmp(value_str, "0") == 0) {
-        opt_reconnect_attempts = 0;
+        opts->reconnect_attempts = 0;
       } else if (strcmp(value_str, "auto") == 0 || strcmp(value_str, "-1") == 0) {
-        opt_reconnect_attempts = -1;
+        opts->reconnect_attempts = -1;
       } else {
         int attempts = strtoint_safe(value_str);
         if (attempts == INT_MIN || attempts < 0 || attempts > 999) {
           (void)fprintf(stderr, "Invalid reconnect value '%s'. Use 'off', 'auto', or 1-999.\n", value_str);
           return option_error_invalid();
         }
-        opt_reconnect_attempts = attempts;
+        opts->reconnect_attempts = attempts;
       }
       break;
     }
@@ -496,14 +496,14 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
             (void)fprintf(stderr, "Error: IPv6 address too long\n");
             return option_error_invalid();
           }
-          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%.*s", (int)addr_len, address_arg + 1);
+          SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%.*s", (int)addr_len, address_arg + 1);
           // Extract port
           const char *port_str = colon + 1;
           uint16_t port_num;
           if (!validate_port_opt(port_str, &port_num)) {
             return option_error_invalid();
           }
-          SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", port_str);
+          SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%s", port_str);
         }
       } else {
         // Check if it's IPv6 without brackets (no port allowed)
@@ -522,34 +522,34 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
             (void)fprintf(stderr, "Error: Address too long\n");
             return option_error_invalid();
           }
-          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%.*s", (int)addr_len, address_arg);
+          SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%.*s", (int)addr_len, address_arg);
           // Extract port
           const char *port_str = colon + 1;
           uint16_t port_num;
           if (!validate_port_opt(port_str, &port_num)) {
             return option_error_invalid();
           }
-          SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", port_str);
+          SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%s", port_str);
         } else {
           // Multiple colons - likely bare IPv6 address
-          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", address_arg);
+          SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", address_arg);
         }
       }
     } else {
       // No colon - just an address
-      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", address_arg);
+      SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", address_arg);
     }
 
     // Validate addresses that contain dots as potential IPv4 addresses
     // If it has a dot, it's either a valid IPv4 or a hostname with domain (e.g., example.com)
     // Check if it looks like an IPv4 attempt (starts with digit and has dots)
-    bool has_dot = strchr(opt_address, '.') != NULL;
-    bool starts_with_digit = opt_address[0] >= '0' && opt_address[0] <= '9';
+    bool has_dot = strchr(opts->address, '.') != NULL;
+    bool starts_with_digit = opts->address[0] >= '0' && opts->address[0] <= '9';
 
     if (has_dot && starts_with_digit) {
       // Looks like an IPv4 attempt - validate strictly
-      if (!is_valid_ipv4(opt_address)) {
-        (void)fprintf(stderr, "Error: Invalid IPv4 address '%s'.\n", opt_address);
+      if (!is_valid_ipv4(opts->address)) {
+        (void)fprintf(stderr, "Error: Invalid IPv4 address '%s'.\n", opts->address);
         (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n");
         (void)fprintf(stderr, "Examples: 127.0.0.1, 192.168.1.1\n");
         (void)fprintf(stderr, "For hostnames, use letters: example.com, localhost\n");

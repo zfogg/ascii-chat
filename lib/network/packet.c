@@ -14,7 +14,8 @@
 #include "crypto/crypto.h"
 #include "network/compression.h"
 #include "util/endian.h"
-#include "options/options.h" // For opt_compression_level
+#include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -420,14 +421,18 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   size_t final_len = len;
   void *compressed_data = NULL;
 
+  // Get options from RCU state
+  const options_t *opts = options_get();
+
   // Skip compression for pre-compressed data (Opus audio) or if --no-compress flag is set
-  bool should_skip_compression = packet_is_precompressed(type) || opt_no_compress;
+  bool should_skip_compression = packet_is_precompressed(type) || (opts && opts->no_compress);
   if (!should_skip_compression && len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
     void *temp_compressed = NULL;
     size_t compressed_size = 0;
 
-    // Use configured compression level from --compression-level flag
-    if (compress_data(data, len, &temp_compressed, &compressed_size, opt_compression_level) == 0) {
+    // Use configured compression level from options (default: 1 for fastest compression)
+    int compression_level = (opts && opts->compression_level > 0) ? opts->compression_level : 1;
+    if (compress_data(data, len, &temp_compressed, &compressed_size, compression_level) == 0) {
       double ratio = (double)compressed_size / (double)len;
       if (ratio < COMPRESSION_RATIO_THRESHOLD) {
         final_data = temp_compressed;

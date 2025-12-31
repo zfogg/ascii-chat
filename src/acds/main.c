@@ -20,6 +20,7 @@
 #include "version.h"
 #include "log/logging.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "options/acds.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"

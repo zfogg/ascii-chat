@@ -153,7 +153,7 @@ extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
  * @see acds_usage()
  * @see options_init()
  */
-asciichat_error_t acds_options_parse(int argc, char **argv);
+asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts);
 
 /**
  * @brief Print ACDS version information

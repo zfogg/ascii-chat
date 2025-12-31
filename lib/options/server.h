@@ -135,7 +135,7 @@ extern "C" {
  * @see parse_mirror_options()
  * @see options_init()
  */
-asciichat_error_t parse_server_options(int argc, char **argv);
+asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts);
 
 /**
  * @brief Print server mode usage/help text

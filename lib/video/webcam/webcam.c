@@ -17,7 +17,7 @@ static webcam_context_t *global_webcam_ctx = NULL;
 
 asciichat_error_t webcam_init(unsigned short int webcam_index) {
   // Check if test pattern mode is enabled
-  if (opt_test_pattern) {
+  if (options_get()->test_pattern) {
     log_info("Test pattern mode enabled - not opening real webcam");
     log_info("Test pattern resolution: 1280x720");
     return ASCIICHAT_OK;
@@ -56,7 +56,7 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
 
 image_t *webcam_read(void) {
   // Check if test pattern mode is enabled
-  if (opt_test_pattern) {
+  if (options_get()->test_pattern) {
     // Generate a test pattern image with animation
     static int frame_counter = 0;
     frame_counter++;
@@ -150,7 +150,7 @@ image_t *webcam_read(void) {
     // The bright white line was creating a horizontal 'M' stripe across the display
 
     // Apply horizontal flip if requested (same as real webcam)
-    if (opt_webcam_flip) {
+    if (options_get()->webcam_flip) {
       for (int y = 0; y < test_frame->h; y++) {
         for (int x = 0; x < test_frame->w / 2; x++) {
           rgb_t temp = test_frame->pixels[y * test_frame->w + x];
@@ -175,7 +175,7 @@ image_t *webcam_read(void) {
   }
 
   // Apply horizontal flip if requested
-  if (opt_webcam_flip && frame->w > 1) {
+  if (options_get()->webcam_flip && frame->w > 1) {
     // Flip the image horizontally - optimized for large images
     // Process entire rows to improve cache locality
     rgb_t *left = frame->pixels;
@@ -202,7 +202,7 @@ image_t *webcam_read(void) {
 }
 
 void webcam_cleanup(void) {
-  if (opt_test_pattern) {
+  if (options_get()->test_pattern) {
     log_info("Test pattern mode - no webcam resources to release");
     return;
   }
@@ -217,7 +217,7 @@ void webcam_cleanup(void) {
 }
 
 void webcam_flush(void) {
-  if (opt_test_pattern) {
+  if (options_get()->test_pattern) {
     return; // Test pattern doesn't need flushing
   }
 

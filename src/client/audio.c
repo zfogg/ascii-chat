@@ -83,6 +83,7 @@
 #include "audio/wav_writer.h"            // WAV file dumping for debugging
 #include "common.h"
 #include "options/options.h"
+#include "options/rcu.h"     // For RCU-based options access
 #include "platform/system.h" // For platform_memcpy
 
 #include <stdatomic.h>

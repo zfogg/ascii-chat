@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "platform/abstraction.h"
 #include "platform/system.h"
 #include "util/path.h"
@@ -482,8 +483,9 @@ log_level_t log_get_level(void) {
 }
 
 void log_set_terminal_output(bool enabled) {
-  // Respect --quiet flag: if opt_quiet is set, never enable terminal output
-  if (enabled && opt_quiet) {
+  // Respect --quiet flag: if quiet is set, never enable terminal output
+  const options_t *opts = options_get();
+  if (enabled && opts && opts->quiet) {
     return; // Silently ignore attempts to enable terminal output when --quiet is set
   }
   atomic_store(&g_log.terminal_output_enabled, enabled);

@@ -83,6 +83,7 @@
 #include "common.h"
 #include "version.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "options/config.h"
 #include "log/logging.h"
 #include "platform/terminal.h"

@@ -149,6 +149,7 @@
 #include "crypto.h"
 #include "server.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "common.h"
 #include "util/endian.h"
 #include "crypto/handshake/common.h"

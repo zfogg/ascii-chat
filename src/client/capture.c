@@ -94,6 +94,7 @@
 #include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
+#include "options/rcu.h" // For RCU-based options access
 #include "util/time.h"
 #include "util/format.h"
 #include "util/image.h"

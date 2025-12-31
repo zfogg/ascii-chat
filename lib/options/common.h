@@ -348,7 +348,7 @@ asciichat_error_t parse_render_mode_option(const char *value_str);
  * @note Prints error message to stderr on failure
  * @note Sets opt_palette_type global variable on success
  */
-asciichat_error_t parse_palette_option(const char *value_str);
+asciichat_error_t parse_palette_option(const char *value_str, options_t *opts);
 
 /**
  * @brief Parse --palette-chars option and set opt_palette_custom
@@ -363,7 +363,7 @@ asciichat_error_t parse_palette_option(const char *value_str);
  * @note Sets opt_palette_custom, opt_palette_custom_set, and opt_palette_type on success
  * @note Maximum length is 255 characters (sizeof(opt_palette_custom) - 1)
  */
-asciichat_error_t parse_palette_chars_option(const char *value_str);
+asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *opts);
 
 /**
  * @brief Parse --width option and set opt_width
@@ -430,7 +430,7 @@ asciichat_error_t parse_snapshot_delay_option(const char *value_str);
  * @note Sets opt_log_level global variable on success
  * @note Uses validate_opt_log_level() from validation.h
  */
-asciichat_error_t parse_log_level_option(const char *value_str);
+asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts);
 
 // ============================================================================
 // Terminal Dimension Utilities
@@ -459,7 +459,7 @@ asciichat_error_t parse_log_level_option(const char *value_str);
  * }
  * @endcode
  */
-void update_dimensions_for_full_height(void);
+void update_dimensions_for_full_height(options_t *opts);
 
 /**
  * @brief Update dimensions to current terminal size
@@ -482,7 +482,7 @@ void update_dimensions_for_full_height(void);
  * log_info("Terminal dimensions: %dx%d", opt_width, opt_height);
  * @endcode
  */
-void update_dimensions_to_terminal_size(void);
+void update_dimensions_to_terminal_size(options_t *opts);
 
 // ============================================================================
 // Usage String Macros (Complete Format Strings)

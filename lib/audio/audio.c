@@ -943,8 +943,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
   // Setup input parameters
   PaStreamParameters inputParams;
-  if (opt_microphone_index >= 0) {
-    inputParams.device = opt_microphone_index;
+  if (options_get()->microphone_index >= 0) {
+    inputParams.device = options_get()->microphone_index;
   } else {
     inputParams.device = Pa_GetDefaultInputDevice();
   }
@@ -967,8 +967,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
   // Setup output parameters
   PaStreamParameters outputParams;
-  if (opt_speakers_index >= 0) {
-    outputParams.device = opt_speakers_index;
+  if (options_get()->speakers_index >= 0) {
+    outputParams.device = options_get()->speakers_index;
   } else {
     outputParams.device = Pa_GetDefaultOutputDevice();
   }

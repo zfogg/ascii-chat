@@ -64,7 +64,7 @@ static struct option mirror_options[] = {{"width", required_argument, NULL, 'x'}
 // Mirror Option Parsing
 // ============================================================================
 
-asciichat_error_t parse_mirror_options(int argc, char **argv) {
+asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
   const char *optstring = ":x:y:c:fM:P:C:sSD:h";
 
   // Pre-pass: Check for --help first
@@ -121,7 +121,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
     }
 
     case 'f':
-      opt_webcam_flip = !opt_webcam_flip;
+      opts->webcam_flip = !opts->webcam_flip;
       break;
 
     case 1000: { // --color-mode
@@ -134,11 +134,11 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
     }
 
     case 1001: // --show-capabilities
-      opt_show_capabilities = 1;
+      opts->show_capabilities = 1;
       break;
 
     case 1002: // --utf8
-      opt_force_utf8 = 1;
+      opts->force_utf8 = 1;
       break;
 
     case 1003: { // --fps
@@ -154,7 +154,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
     }
 
     case 1004: // --test-pattern
-      opt_test_pattern = true;
+      opts->test_pattern = true;
       log_info("Using test pattern mode - webcam will not be opened");
       break;
 
@@ -192,7 +192,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_palette_option(value_str) != ASCIICHAT_OK)
+      if (parse_palette_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -201,17 +201,17 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_palette_chars_option(value_str) != ASCIICHAT_OK)
+      if (parse_palette_chars_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
 
     case 's': // --stretch
-      opt_stretch = 1;
+      opts->stretch = 1;
       break;
 
     case 'S': // --snapshot
-      opt_snapshot_mode = 1;
+      opts->snapshot_mode = 1;
       break;
 
     case 'D': { // --snapshot-delay
@@ -224,7 +224,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv) {
     }
 
     case 1017: // --strip-ansi
-      opt_strip_ansi = 1;
+      opts->strip_ansi = 1;
       break;
 
     case 'h': // --help

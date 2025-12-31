@@ -10,6 +10,7 @@
 #include "../file.h"
 #include "../internal.h"
 #include "../../options/options.h"
+#include "../../options/rcu.h" // For RCU-based options access
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../util/parsing.h"
@@ -596,9 +597,15 @@ void test_terminal_output_modes(void) {
  * @return Modified capabilities with overrides applied
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
+  // Get options from RCU state
+  const options_t *opts = options_get();
+  if (!opts) {
+    return caps; // Options not initialized yet, return unmodified caps
+  }
+
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
-  if (opt_color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
+  if (opts->color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
     log_debug("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
@@ -608,10 +615,10 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 #endif
 
   // Apply color mode override if specified in options (not auto mode)
-  if (opt_color_mode != COLOR_MODE_AUTO) {
+  if (opts->color_mode != COLOR_MODE_AUTO) {
     // Map color_mode_t to terminal_color_level_t (enum values don't align)
     terminal_color_level_t override_level;
-    switch (opt_color_mode) {
+    switch (opts->color_mode) {
     case COLOR_MODE_NONE:
       override_level = TERM_COLOR_NONE;
       break;
@@ -659,8 +666,8 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   }
 
   // Apply render mode from options (user can override via --render-mode)
-  // The default opt_render_mode is RENDER_MODE_FOREGROUND which is what we want
-  caps.render_mode = opt_render_mode;
+  // The default render_mode is RENDER_MODE_FOREGROUND which is what we want
+  caps.render_mode = opts->render_mode;
 
   // Set default FPS based on platform
   extern int g_max_fps;
