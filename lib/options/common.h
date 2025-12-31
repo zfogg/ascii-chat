@@ -309,32 +309,34 @@ char *read_password_from_stdin(const char *prompt);
 // ============================================================================
 
 /**
- * @brief Parse --color-mode option and set opt_color_mode
+ * @brief Parse --color-mode option and set opts->color_mode
  *
- * Validates color mode string and sets global opt_color_mode variable.
+ * Validates color mode string and sets opts->color_mode field.
  * Accepts: "auto", "none", "mono", "16", "16color", "256", "256color", "truecolor", "24bit"
  *
  * @param value_str Color mode string from command line
+ * @param opts Options struct to update
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid mode
  *
  * @note Prints error message to stderr on failure
- * @note Sets opt_color_mode global variable on success
+ * @note Sets opts->color_mode on success
  */
-asciichat_error_t parse_color_mode_option(const char *value_str);
+asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts);
 
 /**
- * @brief Parse --render-mode option and set opt_render_mode
+ * @brief Parse --render-mode option and set opts->render_mode
  *
- * Validates render mode string and sets global opt_render_mode variable.
+ * Validates render mode string and sets opts->render_mode field.
  * Accepts: "foreground", "fg", "background", "bg", "half-block", "halfblock"
  *
  * @param value_str Render mode string from command line
+ * @param opts Options struct to update
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid mode
  *
  * @note Prints error message to stderr on failure
- * @note Sets opt_render_mode global variable on success
+ * @note Sets opts->render_mode on success
  */
-asciichat_error_t parse_render_mode_option(const char *value_str);
+asciichat_error_t parse_render_mode_option(const char *value_str, options_t *opts);
 
 /**
  * @brief Parse --palette option and set opt_palette_type
@@ -366,56 +368,60 @@ asciichat_error_t parse_palette_option(const char *value_str, options_t *opts);
 asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *opts);
 
 /**
- * @brief Parse --width option and set opt_width
+ * @brief Parse --width option and set opts->width
  *
- * Validates width value and sets global opt_width and auto_width variables.
+ * Validates width value and sets opts->width and opts->auto_width fields.
  *
  * @param value_str Width value from command line
+ * @param opts Options struct to update
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
  *
  * @note Prints error message to stderr on failure
- * @note Sets opt_width and auto_width = false on success
+ * @note Sets opts->width and opts->auto_width = false on success
  */
-asciichat_error_t parse_width_option(const char *value_str);
+asciichat_error_t parse_width_option(const char *value_str, options_t *opts);
 
 /**
- * @brief Parse --height option and set opt_height
+ * @brief Parse --height option and set opts->height
  *
- * Validates height value and sets global opt_height and auto_height variables.
+ * Validates height value and sets opts->height and opts->auto_height fields.
  *
  * @param value_str Height value from command line
+ * @param opts Options struct to update
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
  *
  * @note Prints error message to stderr on failure
- * @note Sets opt_height and auto_height = false on success
+ * @note Sets opts->height and opts->auto_height = false on success
  */
-asciichat_error_t parse_height_option(const char *value_str);
+asciichat_error_t parse_height_option(const char *value_str, options_t *opts);
 
 /**
- * @brief Parse --webcam-index option and set opt_webcam_index
+ * @brief Parse --webcam-index option and set opts->webcam_index
  *
- * Validates webcam index and sets global opt_webcam_index variable.
+ * Validates webcam index and sets opts->webcam_index field.
  *
  * @param value_str Webcam index from command line
+ * @param opts Options struct to update
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
  *
  * @note Prints error message to stderr on failure
- * @note Sets opt_webcam_index on success
+ * @note Sets opts->webcam_index on success
  */
-asciichat_error_t parse_webcam_index_option(const char *value_str);
+asciichat_error_t parse_webcam_index_option(const char *value_str, options_t *opts);
 
 /**
- * @brief Parse --snapshot-delay option and set opt_snapshot_delay
+ * @brief Parse --snapshot-delay option and set opts->snapshot_delay
  *
- * Validates snapshot delay (non-negative float) and sets global opt_snapshot_delay variable.
+ * Validates snapshot delay (non-negative float) and sets opts->snapshot_delay field.
  *
  * @param value_str Snapshot delay in seconds from command line
+ * @param opts Options struct to update
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM if invalid
  *
  * @note Prints error message to stderr on failure
- * @note Sets opt_snapshot_delay on success
+ * @note Sets opts->snapshot_delay on success
  */
-asciichat_error_t parse_snapshot_delay_option(const char *value_str);
+asciichat_error_t parse_snapshot_delay_option(const char *value_str, options_t *opts);
 
 /**
  * @brief Parse --log-level option and set opt_log_level

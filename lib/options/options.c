@@ -67,8 +67,25 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   // This replaces global variable initialization
   options_t opts = {0}; // Zero-initialize all fields
 
+  // Set default dimensions (fallback if terminal size detection fails)
+  opts.width = OPT_WIDTH_DEFAULT;
+  opts.height = OPT_HEIGHT_DEFAULT;
+  opts.auto_width = true;
+  opts.auto_height = true;
+
   // Set default port
-  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "27224");
+  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "%s", OPT_PORT_DEFAULT);
+
+  // Set other non-zero defaults (using macros from options.h)
+  opts.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
+  opts.color_mode = OPT_COLOR_MODE_DEFAULT;
+  opts.render_mode = OPT_RENDER_MODE_DEFAULT;
+  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
+  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
+  opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
+  opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
+  opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
+  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 
 // Set default log file paths for Release builds
 #ifdef NDEBUG

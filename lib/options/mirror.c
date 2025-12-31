@@ -97,7 +97,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "width", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_width_option(value_str) != ASCIICHAT_OK)
+      if (parse_width_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -106,7 +106,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "height", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_height_option(value_str) != ASCIICHAT_OK)
+      if (parse_height_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -115,7 +115,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_webcam_index_option(value_str) != ASCIICHAT_OK)
+      if (parse_webcam_index_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -128,7 +128,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_color_mode_option(value_str) != ASCIICHAT_OK)
+      if (parse_color_mode_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -183,7 +183,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_render_mode_option(value_str) != ASCIICHAT_OK)
+      if (parse_render_mode_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }
@@ -218,7 +218,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", MODE_MIRROR);
       if (!value_str)
         return option_error_invalid();
-      if (parse_snapshot_delay_option(value_str) != ASCIICHAT_OK)
+      if (parse_snapshot_delay_option(value_str, opts) != ASCIICHAT_OK)
         return option_error_invalid();
       break;
     }

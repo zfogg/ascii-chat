@@ -215,6 +215,48 @@ typedef terminal_color_level_t terminal_color_mode_t;
 #define SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif
 
+/** @brief Default TCP port for client/server communication */
+#define OPT_PORT_DEFAULT "27224"
+
+/** @brief Default server address for client connections */
+#define OPT_ADDRESS_DEFAULT "localhost"
+
+/** @brief Default IPv6 server address */
+#define OPT_ADDRESS6_DEFAULT "::1"
+
+/** @brief Default maximum concurrent clients (server only) */
+#define OPT_MAX_CLIENTS_DEFAULT 9
+
+/** @brief Default compression level (1-9) */
+#define OPT_COMPRESSION_LEVEL_DEFAULT 1
+
+/** @brief Default FPS (frames per second) */
+#define OPT_FPS_DEFAULT 60
+
+/** @brief Default webcam device index */
+#define OPT_WEBCAM_INDEX_DEFAULT 0
+
+/** @brief Default microphone device index (-1 means system default) */
+#define OPT_MICROPHONE_INDEX_DEFAULT (-1)
+
+/** @brief Default speakers device index (-1 means system default) */
+#define OPT_SPEAKERS_INDEX_DEFAULT (-1)
+
+/** @brief Default reconnect attempts (-1 means auto/infinite) */
+#define OPT_RECONNECT_ATTEMPTS_DEFAULT (-1)
+
+/** @brief Default webcam flip state (true = horizontally flipped) */
+#define OPT_WEBCAM_FLIP_DEFAULT true
+
+/** @brief Default color mode (auto-detect terminal capabilities) */
+#define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
+
+/** @brief Default render mode (foreground characters only) */
+#define OPT_RENDER_MODE_DEFAULT RENDER_MODE_FOREGROUND
+
+/** @brief Default audio encoding state (true = Opus encoding enabled) */
+#define OPT_ENCODE_AUDIO_DEFAULT true
+
 /** @} */
 
 /**
