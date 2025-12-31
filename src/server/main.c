@@ -85,6 +85,7 @@
 #include "video/simd/common.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
+#include "network/tcp_server.h"
 #include "options/options.h"
 #include "buffer_pool.h"
 #include "audio/mixer.h"
@@ -149,35 +150,18 @@ mixer_t *g_audio_mixer = NULL;
 static_cond_t g_shutdown_cond = STATIC_COND_INIT;
 
 /**
- * @brief Main listening socket for accepting client connections
+ * @brief TCP server instance for accepting client connections
  *
- * This socket is bound to the configured port and listens for incoming
- * client connections. Closed by signal handlers to interrupt accept()
- * calls during shutdown, ensuring the main loop exits promptly.
+ * Uses lib/network/tcp_server abstraction for dual-stack IPv4/IPv6 support.
+ * Handles socket creation, binding, listening, and provides thread-safe
+ * client registry for managing connected clients.
  *
- * PLATFORM NOTE: Uses platform-abstracted socket_t type (SOCKET on Windows,
- * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
- */
-/**
- * @brief IPv4 listening socket file descriptor
- *
- * Socket used to accept incoming IPv4 connections. Set to INVALID_SOCKET_VALUE
- * when not listening. Atomic to allow safe access from signal handlers.
+ * PLATFORM NOTE: tcp_server_t handles platform-abstracted socket_t types
+ * internally for proper cross-platform Windows/POSIX support.
  *
  * @ingroup server_main
  */
-static _Atomic socket_t listenfd = INVALID_SOCKET_VALUE;
-
-/**
- * @brief IPv6 listening socket file descriptor
- *
- * Socket used to accept incoming IPv6 connections. Set to INVALID_SOCKET_VALUE
- * when not listening. Atomic to allow safe access from signal handlers.
- *
- * @note May be INVALID_SOCKET_VALUE if IPv6 is disabled or unavailable
- * @ingroup server_main
- */
-static _Atomic socket_t listenfd6 = INVALID_SOCKET_VALUE;
+static tcp_server_t g_tcp_server;
 
 /**
  * @brief Global client manager for signal handler access
@@ -322,17 +306,14 @@ static void sigint_handler(int sigint) {
   ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
   (void)unused; // Suppress unused variable warning
 
-  // STEP 3: Close listening socket to interrupt accept() in main loop
-  // This is signal-safe on Windows and necessary to wake up blocked accept()
-  socket_t current_listenfd = atomic_load(&listenfd);
-  if (current_listenfd != INVALID_SOCKET_VALUE) {
-    socket_close(current_listenfd);
-    atomic_store(&listenfd, INVALID_SOCKET_VALUE);
+  // STEP 3: Signal TCP server to stop and close listening sockets
+  // This interrupts the accept() call in the main loop
+  atomic_store(&g_tcp_server.running, false);
+  if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
+    socket_close(g_tcp_server.listen_socket);
   }
-  socket_t current_listenfd6 = atomic_load(&listenfd6);
-  if (current_listenfd6 != INVALID_SOCKET_VALUE) {
-    socket_close(current_listenfd6);
-    atomic_store(&listenfd6, INVALID_SOCKET_VALUE);
+  if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
+    socket_close(g_tcp_server.listen_socket6);
   }
 
   // STEP 4: DO NOT access client data structures in signal handler
@@ -349,84 +330,7 @@ static void sigint_handler(int sigint) {
   // The main thread will handle cleanup when it detects g_server_should_exit
 }
 
-/**
- * @brief Helper function to create, bind, and listen on a socket
- * @param address Address to bind to (e.g., "127.0.0.1" or "::1")
- * @param family Address family (AF_INET or AF_INET6)
- * @param port Port number to bind to
- * @return Socket descriptor on success, INVALID_SOCKET_VALUE on failure (calls FATAL on error)
- *
- * This function handles the complete socket setup sequence:
- * 1. Resolve the address using getaddrinfo
- * 2. Create a socket with the specified family
- * 3. Set socket options (SO_REUSEADDR, IPV6_V6ONLY for IPv6, keep-alive)
- * 4. Bind to the address and port
- * 5. Listen for connections
- *
- * For IPv6 sockets, IPV6_V6ONLY is set to 1 to ensure separate binding from IPv4.
- */
-static socket_t bind_and_listen(const char *address, int family, int port) {
-  struct addrinfo hints, *res = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = family;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
-
-  char port_str[16];
-  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
-
-  log_debug("Resolving bind address '%s' port %s...", address, port_str);
-  int getaddr_result = getaddrinfo(address, port_str, &hints, &res);
-  if (getaddr_result != 0) {
-    FATAL(ERROR_NETWORK, "Failed to resolve bind address '%s': %s", address, gai_strerror(getaddr_result));
-  }
-
-  struct sockaddr_storage serv_addr;
-  if (res->ai_addrlen > sizeof(serv_addr)) {
-    freeaddrinfo(res);
-    FATAL(ERROR_NETWORK, "Address size too large: %zu bytes", (size_t)res->ai_addrlen);
-  }
-  memcpy(&serv_addr, res->ai_addr, res->ai_addrlen);
-  int address_family = res->ai_family;
-  socklen_t addrlen = res->ai_addrlen;
-  freeaddrinfo(res);
-
-  socket_t server_socket = socket_create(address_family, SOCK_STREAM, 0);
-  if (server_socket == INVALID_SOCKET_VALUE) {
-    FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
-  }
-
-  // Set socket options
-  int yes = 1;
-  if (socket_setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-    FATAL(ERROR_NETWORK, "setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
-  }
-
-  // For IPv6 sockets, set IPV6_V6ONLY=1 to bind separately from IPv4
-  if (address_family == AF_INET6) {
-    int ipv6only = 1; // 1 = IPv6 only (don't accept IPv4-mapped)
-    if (socket_setsockopt(server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
-      log_warn("Failed to set IPV6_V6ONLY=1: %s", SAFE_STRERROR(errno));
-    } else {
-      log_debug("IPv6-only mode enabled (separate from IPv4)");
-    }
-  }
-
-  if (set_socket_keepalive(server_socket) < 0) {
-    log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
-  }
-
-  log_info("Server binding to %s:%d", address, port);
-  if (socket_bind(server_socket, (struct sockaddr *)&serv_addr, addrlen) < 0) {
-    FATAL(ERROR_NETWORK_BIND, "Socket bind failed: %s", SAFE_STRERROR(errno));
-  }
-
-  if (socket_listen(server_socket, 10) < 0) {
-    FATAL(ERROR_NETWORK, "Connection listen failed: %s", SAFE_STRERROR(errno));
-  }
-
-  return server_socket;
-}
+// bind_and_listen() function removed - now using lib/network/tcp_server abstraction
 
 /**
  * @brief Handler for SIGTERM (termination request) signals
@@ -676,24 +580,7 @@ int server_main(void) {
     log_info("Statistics logger thread started");
   }
 
-  // Network setup - Support dual-stack IPv4 and IPv6 binding
-  // Logic:
-  // - Default: bind to both 127.0.0.1 (IPv4) and ::1 (IPv6) for dual-stack on localhost
-  // - If only opt_address is set: bind only to that IPv4 address
-  // - If only opt_address6 is set: bind only to that IPv6 address
-  // - If both are set: bind to both (dual-stack)
-
-  bool bind_ipv4 = false;
-  bool bind_ipv6 = false;
-  const char *ipv4_address = NULL;
-  const char *ipv6_address = NULL;
-
-  // Determine which addresses to bind to
-  // Check if addresses were explicitly set (non-empty and not default values)
-  // Defaults set in options_init: opt_address="127.0.0.1", opt_address6="::1" (for server)
-  // We need to detect if user explicitly provided --address or --address6
-  // Since defaults are set before config/CLI parsing, we check if values differ from defaults
-
+  // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
   log_debug("Config check: opt_address='%s', opt_address6='%s'", opt_address, opt_address6);
 
   bool ipv4_has_value = (strlen(opt_address) > 0);
@@ -704,11 +591,11 @@ int server_main(void) {
   log_debug("Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d",
             ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);
 
-  // Logic:
-  // - If both are defaults (or empty): bind to both defaults (dual-stack)
-  // - If only IPv4 was explicitly set (non-default value): bind only IPv4
-  // - If only IPv6 was explicitly set (non-default value): bind only IPv6
-  // - If both were explicitly set: bind both (dual-stack)
+  // Determine bind configuration
+  bool bind_ipv4 = false;
+  bool bind_ipv6 = false;
+  const char *ipv4_address = NULL;
+  const char *ipv6_address = NULL;
 
   if (ipv4_has_value && ipv6_has_value && ipv4_is_default && ipv6_is_default) {
     // Both are defaults: dual-stack with default localhost addresses
@@ -738,16 +625,23 @@ int server_main(void) {
     log_info("Dual-stack binding: IPv4=%s, IPv6=%s", ipv4_address, ipv6_address);
   }
 
-  // Bind IPv4 socket if needed
-  if (bind_ipv4) {
-    socket_t new_listenfd = bind_and_listen(ipv4_address, AF_INET, port);
-    atomic_store(&listenfd, new_listenfd);
-  }
+  // Configure TCP server
+  tcp_server_config_t tcp_config = {
+      .port = port,
+      .ipv4_address = ipv4_address,
+      .ipv6_address = ipv6_address,
+      .bind_ipv4 = bind_ipv4,
+      .bind_ipv6 = bind_ipv6,
+      .accept_timeout_sec = ACCEPT_TIMEOUT,
+      .client_handler = NULL, // ASCII-chat uses custom accept loop, not tcp_server_run()
+      .user_data = NULL,
+  };
 
-  // Bind IPv6 socket if needed
-  if (bind_ipv6) {
-    socket_t new_listenfd6 = bind_and_listen(ipv6_address, AF_INET6, port);
-    atomic_store(&listenfd6, new_listenfd6);
+  // Initialize TCP server (creates and binds sockets)
+  memset(&g_tcp_server, 0, sizeof(g_tcp_server));
+  asciichat_error_t tcp_init_result = tcp_server_init(&g_tcp_server, &tcp_config);
+  if (tcp_init_result != ASCIICHAT_OK) {
+    FATAL(ERROR_NETWORK, "Failed to initialize TCP server");
   }
 
   struct sockaddr_storage client_addr;
@@ -898,15 +792,17 @@ main_loop:
       (void)remove_client(cleanup_tasks[i].client_id);
     }
 
+    // Check if TCP server should stop (signal handler sets this)
+    if (!atomic_load(&g_tcp_server.running)) {
+      break;
+    }
+
     // Check if listening sockets were closed by signal handler
-    socket_t current_listenfd = atomic_load(&listenfd);
-    socket_t current_listenfd6 = atomic_load(&listenfd6);
+    socket_t current_listenfd = g_tcp_server.listen_socket;
+    socket_t current_listenfd6 = g_tcp_server.listen_socket6;
     if (current_listenfd == INVALID_SOCKET_VALUE && current_listenfd6 == INVALID_SOCKET_VALUE) {
       break; // Both sockets closed, exit
     }
-
-    // Accept network connection with timeout
-    // Use select() to check both IPv4 and IPv6 sockets when both are bound
 
     // Check g_server_should_exit right before accept
     if (atomic_load(&g_server_should_exit)) {
@@ -916,8 +812,6 @@ main_loop:
     // Build fd_set for select() if we have multiple sockets
     fd_set read_fds;
     socket_fd_zero(&read_fds);
-    // NOTE: max_fd starts at 0 for select() calculation - this is correct
-    // On Windows, select() ignores this parameter anyway
     socket_t max_fd = 0;
 
     if (current_listenfd != INVALID_SOCKET_VALUE) {
@@ -942,7 +836,7 @@ main_loop:
         continue;
       }
       // Error - check if socket was closed
-      if (atomic_load(&listenfd) == INVALID_SOCKET_VALUE && atomic_load(&listenfd6) == INVALID_SOCKET_VALUE) {
+      if (g_tcp_server.listen_socket == INVALID_SOCKET_VALUE && g_tcp_server.listen_socket6 == INVALID_SOCKET_VALUE) {
         break;
       }
       continue;
@@ -960,15 +854,8 @@ main_loop:
     }
 
     // CRITICAL: Final check right before accept to prevent race condition
-    // The signal handler could close the socket between atomic_load() and accept()
-    socket_t final_listenfd = INVALID_SOCKET_VALUE;
-    if (accept_listenfd == current_listenfd) {
-      final_listenfd = atomic_load(&listenfd);
-    } else {
-      final_listenfd = atomic_load(&listenfd6);
-    }
-    if (final_listenfd == INVALID_SOCKET_VALUE || final_listenfd != accept_listenfd) {
-      log_debug("Main loop: listenfd was closed by signal handler, breaking accept loop");
+    if (accept_listenfd == INVALID_SOCKET_VALUE) {
+      log_debug("Main loop: no valid socket ready, breaking accept loop");
       break;
     }
 
@@ -1182,15 +1069,8 @@ main_loop:
   lock_debug_cleanup();
 #endif
 
-  // Close listen sockets (both IPv4 and IPv6)
-  socket_t current_listenfd = atomic_load(&listenfd);
-  if (current_listenfd != INVALID_SOCKET_VALUE) {
-    socket_close(current_listenfd);
-  }
-  socket_t current_listenfd6 = atomic_load(&listenfd6);
-  if (current_listenfd6 != INVALID_SOCKET_VALUE) {
-    socket_close(current_listenfd6);
-  }
+  // Shutdown TCP server (closes listen sockets and cleans up)
+  tcp_server_shutdown(&g_tcp_server);
 
   // Clean up SIMD caches
   simd_caches_destroy_all();
