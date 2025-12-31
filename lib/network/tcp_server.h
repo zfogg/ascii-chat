@@ -66,6 +66,7 @@
 #include "common.h"
 #include "platform/socket.h"
 #include "platform/abstraction.h"
+#include "thread_pool.h"
 #include "uthash.h"
 
 // Forward declarations
@@ -134,21 +135,6 @@ typedef struct {
 } tcp_server_config_t;
 
 /**
- * @brief Thread entry for client thread pool
- *
- * Tracks individual worker threads spawned for a client.
- * Threads are stopped in order based on stop_id (lower values stopped first).
- */
-typedef struct tcp_client_thread {
-  asciithread_t thread;           ///< Thread handle
-  int stop_id;                    ///< Cleanup order (lower = stop first)
-  void *(*thread_func)(void *);   ///< Thread function
-  void *thread_arg;               ///< Thread argument
-  char name[64];                  ///< Thread name for debugging
-  struct tcp_client_thread *next; ///< Linked list next pointer
-} tcp_client_thread_t;
-
-/**
  * @brief Client registry entry
  *
  * Internal structure for tracking connected clients.
@@ -156,12 +142,10 @@ typedef struct tcp_client_thread {
  * Each client can have multiple worker threads tracked in a thread pool.
  */
 struct tcp_client_entry {
-  socket_t socket;              ///< Client socket (hash key)
-  void *client_data;            ///< User-provided client data
-  tcp_client_thread_t *threads; ///< Linked list of worker threads
-  mutex_t threads_mutex;        ///< Mutex protecting thread list
-  size_t thread_count;          ///< Number of threads in pool
-  UT_hash_handle hh;            ///< uthash handle
+  socket_t socket;        ///< Client socket (hash key)
+  void *client_data;      ///< User-provided client data
+  thread_pool_t *threads; ///< Thread pool for client worker threads
+  UT_hash_handle hh;      ///< uthash handle
 };
 
 /**
@@ -286,6 +270,45 @@ void tcp_server_foreach_client(tcp_server_t *server, tcp_client_foreach_fn callb
  * @return Number of clients in registry
  */
 size_t tcp_server_get_client_count(tcp_server_t *server);
+
+// ============================================================================
+// Client Context Utilities
+// ============================================================================
+
+/**
+ * @brief Get formatted IP address from client context
+ *
+ * Extracts and formats the client IP address from the connection context.
+ * Works for both IPv4 and IPv6 addresses.
+ *
+ * @param ctx Client context structure
+ * @param buf Output buffer for formatted IP string
+ * @param len Buffer size (recommend INET6_ADDRSTRLEN = 46 bytes)
+ * @return Pointer to buf on success, NULL on error
+ */
+const char *tcp_client_context_get_ip(const tcp_client_context_t *ctx, char *buf, size_t len);
+
+/**
+ * @brief Get port number from client context
+ *
+ * Extracts the client port number from the connection context.
+ * Works for both IPv4 and IPv6 addresses.
+ *
+ * @param ctx Client context structure
+ * @return Port number (host byte order), or -1 on error
+ */
+int tcp_client_context_get_port(const tcp_client_context_t *ctx);
+
+/**
+ * @brief Reject client connection with reason
+ *
+ * Helper for rejecting clients due to rate limits, capacity limits, etc.
+ * Logs the rejection reason and closes the socket.
+ *
+ * @param socket Client socket to close
+ * @param reason Human-readable rejection reason (for logging)
+ */
+void tcp_server_reject_client(socket_t socket, const char *reason);
 
 // ============================================================================
 // Client Thread Pool Management

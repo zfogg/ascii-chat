@@ -86,6 +86,7 @@
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "network/tcp_server.h"
+#include "thread_pool.h"
 #include "options/options.h"
 #include "buffer_pool.h"
 #include "audio/mixer.h"
@@ -196,22 +197,12 @@ extern client_manager_t g_client_manager;
 extern rwlock_t g_client_manager_rwlock;
 
 /**
- * @brief Background thread handle for periodic statistics logging
+ * @brief Background worker thread pool for server operations
  *
- * Runs stats_logger_thread_func() from stats.c to provide periodic reports
- * on server performance, client counts, buffer usage, and resource metrics.
- * Essential for monitoring server health in production deployments.
+ * Manages background threads like stats logger, lock debugging, etc.
+ * Threads in this pool are independent of client connections.
  */
-static asciithread_t g_stats_logger_thread;
-
-/**
- * @brief Flag tracking whether stats logger thread was successfully created
- *
- * Used to determine whether we need to wait for the stats thread during
- * shutdown cleanup. Prevents attempting to join a thread that was never
- * started due to initialization failures.
- */
-static bool g_stats_logger_thread_created = false;
+static thread_pool_t *g_server_worker_pool = NULL;
 
 /* ============================================================================
  * Server Crypto State
@@ -444,21 +435,15 @@ static void *ascii_chat_client_handler(void *arg) {
 
   socket_t client_socket = ctx->client_socket;
 
-  // Extract client IP and port
+  // Extract client IP and port using tcp_server helpers
   char client_ip[INET6_ADDRSTRLEN] = {0};
-  int client_port = 0;
-  int addr_family = (ctx->addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
-
-  if (format_ip_address(addr_family, (struct sockaddr *)&ctx->addr, client_ip, sizeof(client_ip)) == ASCIICHAT_OK) {
-    if (addr_family == AF_INET) {
-      struct sockaddr_in *addr_in = (struct sockaddr_in *)&ctx->addr;
-      client_port = NET_TO_HOST_U16(addr_in->sin_port);
-    } else {
-      struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&ctx->addr;
-      client_port = NET_TO_HOST_U16(addr_in6->sin6_port);
-    }
-  } else {
+  if (!tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip))) {
     safe_snprintf(client_ip, sizeof(client_ip), "unknown");
+  }
+
+  int client_port = tcp_client_context_get_port(ctx);
+  if (client_port < 0) {
+    client_port = 0;
   }
 
   log_info("Client handler started for %s:%d", client_ip, client_port);
@@ -469,8 +454,7 @@ static void *ascii_chat_client_handler(void *arg) {
     asciichat_error_t rate_check =
         rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
-      log_warn("Connection rate limit exceeded for %s, rejecting connection", client_ip);
-      socket_close(client_socket);
+      tcp_server_reject_client(client_socket, "Connection rate limit exceeded");
       SAFE_FREE(ctx);
       return NULL;
     }
@@ -481,12 +465,11 @@ static void *ascii_chat_client_handler(void *arg) {
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
   int client_id = add_client(server_ctx, client_socket, client_ip, client_port);
   if (client_id < 0) {
-    log_error("Failed to add client %s:%d, rejecting connection", client_ip, client_port);
     if (HAS_ERRNO(&asciichat_errno_context)) {
       PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
       CLEAR_ERRNO();
     }
-    socket_close(client_socket);
+    tcp_server_reject_client(client_socket, "Failed to add client");
     SAFE_FREE(ctx);
     return NULL;
   }
@@ -700,11 +683,17 @@ int server_main(void) {
   }
 #endif
 
-  // Start statistics logging thread for periodic performance monitoring
-  if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL) != 0) {
+  // Create background worker thread pool for server operations
+  g_server_worker_pool = thread_pool_create("server_workers");
+  if (!g_server_worker_pool) {
+    LOG_ERRNO_IF_SET("Failed to create server worker thread pool");
+    FATAL(ERROR_MEMORY, "Failed to create server worker thread pool");
+  }
+
+  // Spawn statistics logging thread in worker pool
+  if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, "stats_logger") != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
   } else {
-    g_stats_logger_thread_created = true;
     log_info("Statistics logger thread started");
   }
 
@@ -903,10 +892,11 @@ int server_main(void) {
 
   log_info("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
 
-  // Wait for stats logger thread to finish
-  if (g_stats_logger_thread_created) {
-    ascii_thread_join(&g_stats_logger_thread, NULL);
-    g_stats_logger_thread_created = false;
+  // Stop and destroy server worker thread pool (stats logger, etc.)
+  if (g_server_worker_pool) {
+    thread_pool_destroy(g_server_worker_pool);
+    g_server_worker_pool = NULL;
+    log_info("Server worker thread pool stopped");
   }
 
   // Destroy rate limiter
