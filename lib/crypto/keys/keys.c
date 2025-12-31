@@ -113,18 +113,22 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   // Clear output structure
   memset(key_out, 0, sizeof(private_key_t));
 
-  // Check for GPG key format: "gpg:KEYID" where KEYID is 16-char hex string
+  // Check for GPG key format: "gpg:KEYID" where KEYID is 8, 16, or 40 hex chars
+  // - 8 chars: short key ID (last 8 chars of fingerprint)
+  // - 16 chars: long key ID (last 16 chars of fingerprint)
+  // - 40 chars: full fingerprint
   if (strncmp(key_path, "gpg:", 4) == 0) {
     const char *key_id = key_path + 4; // Skip "gpg:" prefix
 
-    // Validate key ID format (must be 16 hex characters)
+    // Validate key ID format (must be 8, 16, or 40 hex characters)
     size_t key_id_len = strlen(key_id);
-    if (key_id_len != 16) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID length: %zu (expected 16 hex chars)", key_id_len);
+    if (key_id_len != 8 && key_id_len != 16 && key_id_len != 40) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID length: %zu (expected 8, 16, or 40 hex chars)",
+                       key_id_len);
     }
 
     // Validate hex characters
-    for (size_t i = 0; i < 16; i++) {
+    for (size_t i = 0; i < key_id_len; i++) {
       char c = key_id[i];
       if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
         return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key ID: contains non-hex character '%c'", c);
