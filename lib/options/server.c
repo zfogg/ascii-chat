@@ -40,8 +40,6 @@
 // ============================================================================
 
 static struct option server_options[] = {{"port", required_argument, NULL, 'p'},
-                                         {"palette", required_argument, NULL, 'P'},
-                                         {"palette-chars", required_argument, NULL, 'C'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"password", optional_argument, NULL, 1009},
@@ -62,7 +60,7 @@ static struct option server_options[] = {{"port", required_argument, NULL, 'p'},
 // ============================================================================
 
 asciichat_error_t parse_server_options(int argc, char **argv) {
-  const char *optstring = ":p:P:C:EK:F:h";
+  const char *optstring = ":p:EK:F:h";
 
   // Pre-pass: Check for --help first
   for (int i = 1; i < argc; i++) {
@@ -98,47 +96,6 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
       if (!validate_port_opt(value_str, &port_num))
         return option_error_invalid();
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
-      break;
-    }
-
-    case 'P': { // --palette
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", MODE_SERVER);
-      if (!value_str)
-        return option_error_invalid();
-      if (strcmp(value_str, "standard") == 0) {
-        opt_palette_type = PALETTE_STANDARD;
-      } else if (strcmp(value_str, "blocks") == 0) {
-        opt_palette_type = PALETTE_BLOCKS;
-      } else if (strcmp(value_str, "digital") == 0) {
-        opt_palette_type = PALETTE_DIGITAL;
-      } else if (strcmp(value_str, "minimal") == 0) {
-        opt_palette_type = PALETTE_MINIMAL;
-      } else if (strcmp(value_str, "cool") == 0) {
-        opt_palette_type = PALETTE_COOL;
-      } else if (strcmp(value_str, "custom") == 0) {
-        opt_palette_type = PALETTE_CUSTOM;
-      } else {
-        (void)fprintf(stderr,
-                      "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
-                      value_str);
-        return option_error_invalid();
-      }
-      break;
-    }
-
-    case 'C': { // --palette-chars
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", MODE_SERVER);
-      if (!value_str)
-        return option_error_invalid();
-      if (strlen(value_str) >= sizeof(opt_palette_custom)) {
-        (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
-                      sizeof(opt_palette_custom) - 1);
-        return option_error_invalid();
-      }
-      SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
-      opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
-      opt_palette_custom_set = true;
-      opt_palette_type = PALETTE_CUSTOM;
       break;
     }
 
@@ -321,8 +278,6 @@ asciichat_error_t parse_server_options(int argc, char **argv) {
 // Server Usage Text
 // ============================================================================
 
-#define USAGE_INDENT "        "
-
 void usage_server(FILE *desc) {
   (void)fprintf(desc, "ascii-chat - server options\n\n");
   (void)fprintf(desc, "USAGE:\n");
@@ -338,37 +293,18 @@ void usage_server(FILE *desc) {
   (void)fprintf(desc, "  ascii-chat server 0.0.0.0 ::         # All interfaces (dual-stack)\n");
   (void)fprintf(desc, "  ascii-chat server 192.168.1.100 ::1  # Specific IPv4 + localhost IPv6\n\n");
   (void)fprintf(desc, "OPTIONS:\n");
-  (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "   --max-clients N   " USAGE_INDENT "maximum simultaneous clients (1-9, default: 9)\n");
-  (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
-                                   "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
-  (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
-                                   "Custom palette characters for --palette=custom (implies --palette=custom)\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT
-                "-K --key KEY         " USAGE_INDENT
-                "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' "
-                "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(
-      desc, USAGE_INDENT
-      "   --password [PASS] " USAGE_INDENT
-      "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
-                                   "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt      " USAGE_INDENT "disable encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --client-keys KEYS" USAGE_INDENT
-                                   "allowed client public keys (comma-separated, supports github:user, "
-                                   "gitlab:user, gpg:keyid, or SSH pubkey) (default: [unset])\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "   --compression-level N " USAGE_INDENT "zstd compression level 1-9 (default: 1)\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "   --no-compress     " USAGE_INDENT "disable frame compression (default: [unset])\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "   --encode-audio    " USAGE_INDENT "enable Opus audio encoding (default: enabled)\n");
-  (void)fprintf(desc, USAGE_INDENT "   --no-encode-audio " USAGE_INDENT "disable Opus audio encoding\n");
-  (void)fprintf(desc, USAGE_INDENT "   --no-audio-mixer  " USAGE_INDENT
-                                   "disable audio mixer - send silence (debug mode only)\n");
+  (void)fprintf(desc, USAGE_HELP_LINE);
+  (void)fprintf(desc, USAGE_PORT_LINE, 27224);
+  (void)fprintf(desc, USAGE_MAX_CLIENTS_LINE);
+  (void)fprintf(desc, USAGE_ENCRYPT_LINE);
+  (void)fprintf(desc, USAGE_KEY_SERVER_LINE);
+  (void)fprintf(desc, USAGE_PASSWORD_LINE);
+  (void)fprintf(desc, USAGE_KEYFILE_LINE);
+  (void)fprintf(desc, USAGE_NO_ENCRYPT_LINE);
+  (void)fprintf(desc, USAGE_CLIENT_KEYS_LINE);
+  (void)fprintf(desc, USAGE_COMPRESSION_LEVEL_LINE);
+  (void)fprintf(desc, USAGE_NO_COMPRESS_LINE);
+  (void)fprintf(desc, USAGE_ENCODE_AUDIO_LINE);
+  (void)fprintf(desc, USAGE_NO_ENCODE_AUDIO_LINE);
+  (void)fprintf(desc, USAGE_NO_AUDIO_MIXER_LINE);
 }

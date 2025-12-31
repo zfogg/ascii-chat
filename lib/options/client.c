@@ -135,12 +135,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "width", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      int width_val;
-      if (!validate_positive_int_opt(value_str, &width_val, "width"))
+      if (parse_width_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      opt_width = (unsigned short int)width_val;
-      extern bool auto_width;
-      auto_width = false;
       break;
     }
 
@@ -148,12 +144,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "height", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      int height_val;
-      if (!validate_positive_int_opt(value_str, &height_val, "height"))
+      if (parse_height_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      opt_height = (unsigned short int)height_val;
-      extern bool auto_height;
-      auto_height = false;
       break;
     }
 
@@ -161,10 +153,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      unsigned short int index_val;
-      if (!validate_webcam_index(value_str, &index_val))
+      if (parse_webcam_index_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      opt_webcam_index = index_val;
       break;
     }
 
@@ -176,21 +166,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      if (strcmp(value_str, "auto") == 0) {
-        opt_color_mode = COLOR_MODE_AUTO;
-      } else if (strcmp(value_str, "none") == 0 || strcmp(value_str, "mono") == 0) {
-        opt_color_mode = COLOR_MODE_NONE;
-      } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
-        opt_color_mode = COLOR_MODE_16_COLOR;
-      } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
-        opt_color_mode = COLOR_MODE_256_COLOR;
-      } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
-        opt_color_mode = COLOR_MODE_TRUECOLOR;
-      } else {
-        (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor\n",
-                      value_str);
+      if (parse_color_mode_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      }
       break;
     }
 
@@ -290,17 +267,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
-        opt_render_mode = RENDER_MODE_FOREGROUND;
-      } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
-        opt_render_mode = RENDER_MODE_BACKGROUND;
-      } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
-        opt_render_mode = RENDER_MODE_HALF_BLOCK;
-      } else {
-        (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
-                      value_str);
+      if (parse_render_mode_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      }
       break;
     }
 
@@ -308,24 +276,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      if (strcmp(value_str, "standard") == 0) {
-        opt_palette_type = PALETTE_STANDARD;
-      } else if (strcmp(value_str, "blocks") == 0) {
-        opt_palette_type = PALETTE_BLOCKS;
-      } else if (strcmp(value_str, "digital") == 0) {
-        opt_palette_type = PALETTE_DIGITAL;
-      } else if (strcmp(value_str, "minimal") == 0) {
-        opt_palette_type = PALETTE_MINIMAL;
-      } else if (strcmp(value_str, "cool") == 0) {
-        opt_palette_type = PALETTE_COOL;
-      } else if (strcmp(value_str, "custom") == 0) {
-        opt_palette_type = PALETTE_CUSTOM;
-      } else {
-        (void)fprintf(stderr,
-                      "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
-                      value_str);
+      if (parse_palette_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      }
       break;
     }
 
@@ -333,15 +285,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      if (strlen(value_str) >= sizeof(opt_palette_custom)) {
-        (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
-                      sizeof(opt_palette_custom) - 1);
+      if (parse_palette_chars_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      }
-      SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
-      opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
-      opt_palette_custom_set = true;
-      opt_palette_type = PALETTE_CUSTOM;
       break;
     }
 
@@ -397,13 +342,8 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", MODE_CLIENT);
       if (!value_str)
         return option_error_invalid();
-      char *endptr;
-      float delay = strtof(value_str, &endptr);
-      if (endptr == value_str || *endptr != '\0' || delay < 0.0f) {
-        (void)fprintf(stderr, "Invalid snapshot delay '%s'. Must be a non-negative number.\n", value_str);
+      if (parse_snapshot_delay_option(value_str) != ASCIICHAT_OK)
         return option_error_invalid();
-      }
-      opt_snapshot_delay = delay;
       break;
     }
 
@@ -635,8 +575,6 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
 // Client Usage Text
 // ============================================================================
 
-#define USAGE_INDENT "        "
-
 void usage_client(FILE *desc) {
   (void)fprintf(desc, "ascii-chat - client options\n\n");
   (void)fprintf(desc, "USAGE:\n");
@@ -650,79 +588,41 @@ void usage_client(FILE *desc) {
   (void)fprintf(desc, "  ::1                        connect to IPv6:27224\n");
   (void)fprintf(desc, "  [::1]:8080                 connect to IPv6:port (brackets required with port)\n\n");
   (void)fprintf(desc, "OPTIONS:\n");
-  (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT
-                                   "override port from address (default: 27224)\n");
-  (void)fprintf(desc, USAGE_INDENT "   --reconnect VALUE         " USAGE_INDENT
-                                   "reconnection behavior: off, auto, or 1-999 (default: auto)\n");
-  (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
-  (void)fprintf(desc, USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT
-                                   "webcam device index (0-based) (default: 0)\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "   --list-webcams            " USAGE_INDENT "list available webcam devices and exit\n");
-  (void)fprintf(desc, USAGE_INDENT "   --list-microphones        " USAGE_INDENT
-                                   "list available audio input devices and exit\n");
-  (void)fprintf(desc, USAGE_INDENT "   --list-speakers           " USAGE_INDENT
-                                   "list available audio output devices and exit\n");
-  (void)fprintf(desc, USAGE_INDENT "   --microphone-index INDEX  " USAGE_INDENT
-                                   "microphone device index (-1 for default) (default: -1)\n");
-  (void)fprintf(desc, USAGE_INDENT "   --speakers-index INDEX    " USAGE_INDENT
-                                   "speakers device index (-1 for default) (default: -1)\n");
-  (void)fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
-                                   "image (default: flipped)\n");
-  (void)fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "
-                                   "(for testing multiple clients)\n");
-  (void)fprintf(desc, USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 "
+  (void)fprintf(desc, USAGE_HELP_LINE);
+  (void)fprintf(desc, USAGE_PORT_CLIENT_LINE);
+  (void)fprintf(desc, USAGE_RECONNECT_LINE);
+  (void)fprintf(desc, USAGE_WIDTH_LINE);
+  (void)fprintf(desc, USAGE_HEIGHT_LINE);
+  (void)fprintf(desc, USAGE_WEBCAM_INDEX_LINE);
+  (void)fprintf(desc, USAGE_LIST_WEBCAMS_LINE);
+  (void)fprintf(desc, USAGE_LIST_MICROPHONES_LINE);
+  (void)fprintf(desc, USAGE_LIST_SPEAKERS_LINE);
+  (void)fprintf(desc, USAGE_MICROPHONE_INDEX_LINE);
+  (void)fprintf(desc, USAGE_SPEAKERS_INDEX_LINE);
+  (void)fprintf(desc, USAGE_WEBCAM_FLIP_LINE);
+  (void)fprintf(desc, USAGE_TEST_PATTERN_CLIENT_LINE);
 #ifdef _WIN32
-                                   "(default: 30 for Windows)\n");
+  (void)fprintf(desc, USAGE_FPS_WIN_LINE);
 #else
-                                   "(default: 60 for Unix)\n");
+  (void)fprintf(desc, USAGE_FPS_UNIX_LINE);
 #endif
-  (void)fprintf(desc,
-                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, none, 16, 256, truecolor "
-                             "(default: auto)\n");
-  (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
-                                   "show detected terminal capabilities and exit\n");
-  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT
-                                   "force enable UTF-8/Unicode support (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
-                                   "foreground, background, half-block (default: foreground)\n");
-  (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
-                                   "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
-  (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
-                                   "Custom palette characters (implies --palette=custom) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
-                                   "enable audio capture and playback (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --audio-analysis          " USAGE_INDENT
-                                   "track and report audio quality metrics (with --audio) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT
-                "   --no-audio-playback       " USAGE_INDENT
-                "disable speaker playback but keep recording received audio (debug mode) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
-                                   "(ignore aspect ratio) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
-                                   "capture single frame and exit (default: [unset])\n");
-  (void)fprintf(
-      desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
-      (double)SNAPSHOT_DELAY_DEFAULT);
-  (void)fprintf(desc, USAGE_INDENT "   --strip-ansi              " USAGE_INDENT
-                                   "remove all ANSI escape codes from output (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
-                                   "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key KEY                  " USAGE_INDENT
-                                   "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, "
-                                   "gitlab:user, or 'ssh' for auto-detect "
-                                   "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(
-      desc, USAGE_INDENT
-      "   --password [PASS]          " USAGE_INDENT
-      "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
-                                   "(implies --encrypt) (default: [unset])\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --server-key KEY           " USAGE_INDENT
-                                   "expected server public key for verification (default: [unset])\n");
+  (void)fprintf(desc, USAGE_COLOR_MODE_LINE);
+  (void)fprintf(desc, USAGE_SHOW_CAPABILITIES_LINE);
+  (void)fprintf(desc, USAGE_UTF8_LINE);
+  (void)fprintf(desc, USAGE_RENDER_MODE_LINE);
+  (void)fprintf(desc, USAGE_PALETTE_LINE);
+  (void)fprintf(desc, USAGE_PALETTE_CHARS_LINE);
+  (void)fprintf(desc, USAGE_AUDIO_LINE);
+  (void)fprintf(desc, USAGE_AUDIO_ANALYSIS_LINE);
+  (void)fprintf(desc, USAGE_NO_AUDIO_PLAYBACK_LINE);
+  (void)fprintf(desc, USAGE_STRETCH_LINE);
+  (void)fprintf(desc, USAGE_SNAPSHOT_LINE);
+  (void)fprintf(desc, USAGE_SNAPSHOT_DELAY_LINE, (double)SNAPSHOT_DELAY_DEFAULT);
+  (void)fprintf(desc, USAGE_STRIP_ANSI_LINE);
+  (void)fprintf(desc, USAGE_ENCRYPT_LINE);
+  (void)fprintf(desc, USAGE_KEY_CLIENT_LINE);
+  (void)fprintf(desc, USAGE_PASSWORD_LINE);
+  (void)fprintf(desc, USAGE_KEYFILE_LINE);
+  (void)fprintf(desc, USAGE_NO_ENCRYPT_LINE);
+  (void)fprintf(desc, USAGE_SERVER_KEY_LINE);
 }

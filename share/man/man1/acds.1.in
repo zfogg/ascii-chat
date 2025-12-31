@@ -176,16 +176,17 @@ No HTTP, WebSocket, or JSON infrastructure required.
 .IP \(bu 2
 0xFF: Error responses
 .RE
-.SH OFFLINE FALLBACK
-When ACDS is unreachable, two fallback mechanisms activate:
+.SH MDNS
+You don't necessarily need an internet connection to an ACDS server to discover 
+and talk to other ascii-chatters.
 .TP
 .B mDNS Discovery
 Clients broadcast via _acip._tcp service type on local networks, advertising
 identity fingerprints in TXT records.
 .TP
 .B Manual Verification
-Hosts export public keys to files for out-of-band sharing; clients verify
-server identity before accepting connections.
+Clients and servers can pre-share public keys; they both have a flag to verify 
+the other's identity when accepting connections.
 .PP
 Both modes display prominent warnings about unverified identities and require
 explicit user confirmation.
@@ -205,13 +206,13 @@ Comprehensive audit logging captures all operations
 .I ~/.config/ascii-chat/acds.db
 Default SQLite database (Unix)
 .TP
-.I %APPDATA%\\ascii-chat\\acds.db
+.I %APPDATA%\\\\ascii-chat\\\\acds.db
 Default SQLite database (Windows)
 .TP
 .I ~/.config/ascii-chat/acds_identity
 Default Ed25519 identity key (Unix)
 .TP
-.I %APPDATA%\\ascii-chat\\acds_identity
+.I %APPDATA%\\\\ascii-chat\\\\acds_identity
 Default Ed25519 identity key (Windows)
 .SH ENVIRONMENT
 .TP
