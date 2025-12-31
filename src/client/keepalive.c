@@ -69,6 +69,7 @@
 
 #include "common.h"
 #include "platform/abstraction.h"
+#include "thread_pool.h"
 
 #include <stdatomic.h>
 
@@ -234,8 +235,9 @@ int keepalive_start_thread() {
 
   // Start ping thread for keepalive
   atomic_store(&g_ping_thread_exited, false);
-  if (ascii_thread_create(&g_ping_thread, ping_thread_func, NULL) != 0) {
-    log_error("Failed to create ping thread");
+  if (thread_pool_spawn(g_client_worker_pool, ping_thread_func, NULL, 3, "keepalive_ping") != ASCIICHAT_OK) {
+    log_error("Failed to spawn ping thread in worker pool");
+    LOG_ERRNO_IF_SET("Ping thread creation failed");
     return -1;
   }
 
@@ -267,11 +269,10 @@ void keepalive_stop_thread() {
   }
 
   if (!atomic_load(&g_ping_thread_exited)) {
-    log_error("Ping thread not responding - forcing join");
+    log_warn("Ping thread not responding - will be joined by thread pool");
   }
 
-  // Join the thread
-  ascii_thread_join(&g_ping_thread, NULL);
+  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_ping_thread_created = false;
 
   log_info("Ping thread stopped and joined");
