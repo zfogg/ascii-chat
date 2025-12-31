@@ -483,7 +483,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     const char *gpg_key_id = NULL;
     if (ctx->expected_server_key[0] != '\0' && strncmp(ctx->expected_server_key, "gpg:", 4) == 0) {
       const char *key_id_start = ctx->expected_server_key + 4;
-      if (strlen(key_id_start) == 16) {
+      size_t key_id_len = strlen(key_id_start);
+      // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
+      if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
         gpg_key_id = key_id_start;
         log_debug("Using GPG key ID from --server-key for verification: %s", gpg_key_id);
       }
