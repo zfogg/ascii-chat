@@ -600,21 +600,21 @@ asciichat_error_t parse_client_options(int argc, char **argv) {
       SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", address_arg);
     }
 
-    // Validate that addresses that look like IPv4 are actually valid IPv4
-    // (addresses with only dots and digits should be validated strictly)
-    bool looks_like_ipv4 = true;
-    for (const char *p = opt_address; *p; p++) {
-      if (!(*p >= '0' && *p <= '9') && *p != '.') {
-        looks_like_ipv4 = false;
-        break;
+    // Validate addresses that contain dots as potential IPv4 addresses
+    // If it has a dot, it's either a valid IPv4 or a hostname with domain (e.g., example.com)
+    // Check if it looks like an IPv4 attempt (starts with digit and has dots)
+    bool has_dot = strchr(opt_address, '.') != NULL;
+    bool starts_with_digit = opt_address[0] >= '0' && opt_address[0] <= '9';
+
+    if (has_dot && starts_with_digit) {
+      // Looks like an IPv4 attempt - validate strictly
+      if (!is_valid_ipv4(opt_address)) {
+        (void)fprintf(stderr, "Error: Invalid IPv4 address '%s'.\n", opt_address);
+        (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n");
+        (void)fprintf(stderr, "Examples: 127.0.0.1, 192.168.1.1\n");
+        (void)fprintf(stderr, "For hostnames, use letters: example.com, localhost\n");
+        return option_error_invalid();
       }
-    }
-    if (looks_like_ipv4 && !is_valid_ipv4(opt_address)) {
-      (void)fprintf(stderr, "Error: Invalid IPv4 address '%s'.\n", opt_address);
-      (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n");
-      (void)fprintf(stderr, "Examples: 127.0.0.1, 192.168.1.1\n");
-      (void)fprintf(stderr, "For hostnames, use letters: example.com, localhost\n");
-      return option_error_invalid();
     }
 
     // Check for port conflict

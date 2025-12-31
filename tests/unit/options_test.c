@@ -989,14 +989,12 @@ Test(options, random_combinations) {
     argv[0] = "client";
 
     // Randomly add valid options
+    // NOTE: --quiet is now a global option, removed from this test
     if (rand() % 2) {
       argv[argc++] = "192.168.1.1:8080";
     }
     if (rand() % 2) {
       argv[argc++] = "--audio";
-    }
-    if (rand() % 2) {
-      argv[argc++] = "--quiet";
     }
     if (rand() % 2) {
       argv[argc++] = "--stretch";
@@ -1263,10 +1261,11 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(opt_render_mode, RENDER_MODE_HALF_BLOCK); },
     { cr_assert_eq(exit_code, 0, "halfblock alias should not cause exit"); })
 
-GENERATE_OPTIONS_TEST(
-    test_log_file_path, ARGV_LIST("client", "--log-file", "/var/log/ascii-chat.log"), true,
-    { cr_assert_str_eq(opt_log_file, "/var/log/ascii-chat.log"); },
-    { cr_assert_eq(exit_code, 0, "log file path should not cause exit"); })
+// NOTE: --log-file is now a global option handled at binary level, not mode-specific
+// GENERATE_OPTIONS_TEST(
+//     test_log_file_path, ARGV_LIST("client", "--log-file", "/var/log/ascii-chat.log"), true,
+//     { cr_assert_str_eq(opt_log_file, "/var/log/ascii-chat.log"); },
+//     { cr_assert_eq(exit_code, 0, "log file path should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
     test_webcam_index_only, ARGV_LIST("client", "-c", "5"), true,
