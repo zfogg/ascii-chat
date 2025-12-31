@@ -1287,12 +1287,22 @@
  * ascii-chat server --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
  * @endcode
  *
- * **Client (verify using GitHub):**
+ * **Client (verify using GitHub SSH key):**
  * @code{.bash}
  * ascii-chat client --server-key github:zfogg
  * @endcode
  *
- * **Client (verify using GPG):**
+ * **Client (verify using GitHub GPG key):**
+ * @code{.bash}
+ * ascii-chat client --server-key github:zfogg.gpg
+ * @endcode
+ *
+ * **Client (verify using GitLab GPG key):**
+ * @code{.bash}
+ * ascii-chat client --server-key gitlab:username.gpg
+ * @endcode
+ *
+ * **Client (verify using local GPG key):**
  * @code{.bash}
  * ascii-chat client --server-key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
  * @endcode
@@ -1339,6 +1349,40 @@
  * - ✅ Access control: Only pre-approved clients connect
  * - ✅ Audit trail: Server logs all connection attempts with client keys
  * - ✅ Revocable: Remove key from file to revoke access
+ *
+ * **GitHub/GitLab GPG Key Fetching:**
+ *
+ * Both `--server-key` (client verifies server) and `--client-keys` (server whitelists clients)
+ * support fetching GPG public keys from GitHub/GitLab:
+ *
+ * @code{.bash}
+ * # Client verifies server using GitHub GPG keys
+ * ascii-chat client --server-key github:zfogg.gpg
+ *
+ * # Server whitelists clients using GitHub GPG keys
+ * ascii-chat server --key gpg:MYKEYID --client-keys github:zfogg.gpg
+ *
+ * # GitLab works the same way
+ * ascii-chat client --server-key gitlab:username.gpg
+ * ascii-chat server --key gpg:MYKEYID --client-keys gitlab:username.gpg
+ *
+ * # Full example: Client authenticates with GPG key, verifies server via GitHub
+ * ascii-chat client --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3 \
+ *                    --server-key github:serveruser.gpg
+ * @endcode
+ *
+ * **How it works:**
+ * 1. Server fetches GPG armored public key block from `https://github.com/username.gpg`
+ * 2. Imports all GPG keys using `gpg --import` (GitHub users often have multiple keys)
+ * 3. Extracts full 40-character Ed25519 fingerprints using `gpg --list-keys`
+ * 4. Adds all valid Ed25519 keys to client whitelist
+ * 5. Client authenticates by signing challenge with their GPG key via gpg-agent
+ *
+ * **Why this is useful:**
+ * - ✅ **Social proof**: Verify client identity via their public GitHub/GitLab profile
+ * - ✅ **Zero configuration**: No need to manually exchange public keys
+ * - ✅ **Multi-key support**: Automatically whitelists all user's Ed25519 GPG keys
+ * - ✅ **No secrets**: Only public keys are fetched; private keys stay in gpg-agent
  *
  * @subsection crypto_mode_depth Mode 5: Defense in Depth (All Features)
  *
