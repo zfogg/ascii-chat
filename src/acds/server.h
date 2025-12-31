@@ -65,6 +65,10 @@ typedef struct {
   // Persistence
   sqlite3 *db; ///< SQLite database handle
 
+  // Rate limiting cleanup
+  asciithread_t cleanup_thread; ///< Background thread for periodic cleanup
+  atomic_bool cleanup_running;  ///< Cleanup thread control flag
+
   // Configuration
   acds_config_t config; ///< Runtime configuration
 } acds_server_t;

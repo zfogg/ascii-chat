@@ -341,5 +341,6 @@ set(ACDS_SRCS
     src/acds/database.c
     src/acds/identity.c
     src/acds/strings.c
+    src/acds/rate_limit.c
 )
 
