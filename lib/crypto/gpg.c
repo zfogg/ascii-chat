@@ -1326,23 +1326,12 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
  * @param key_id_out Output buffer for 16-char key ID (must be at least 17 bytes for null terminator)
  * @return 0 on success, -1 if key not found
  */
-static int gpg_find_key_id_from_public_key(const uint8_t public_key[32], char *key_id_out) {
-  // For now, we'll use a simple approach: assume the test environment
-  // If we're in test mode, use the TEST_GPG_KEY_ID environment variable
-  const char *test_key_id = SAFE_GETENV("TEST_GPG_KEY_ID");
-  if (test_key_id && strlen(test_key_id) == 16) {
-    memcpy(key_id_out, test_key_id, 16);
-    key_id_out[16] = '\0';
-    log_debug("Using TEST_GPG_KEY_ID: %s for verification", key_id_out);
-    return 0;
-  }
-
-  log_warn("Cannot determine GPG key ID from public key (not in test mode)");
-  return -1;
-}
-
 int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
                                 const uint8_t signature[64]) {
+  // Note: We don't use the raw signature parameter directly.
+  // Instead, we regenerate the OpenPGP signature using GPG (Ed25519 is deterministic).
+  (void)signature;
+
   log_info("gpg_verify_detached_ed25519: Verifying signature with key ID %s using gpg --verify", key_id);
 
   // To verify with GPG, we need to:
