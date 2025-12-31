@@ -75,21 +75,31 @@
  * ```
  *
  * **Supported Operations**:
- * - Parse GPG public key from armored text
- * - Extract Ed25519 subkeys from GPG keys
+ * - Parse GPG public key from keyring via `gpg --list-keys` and keygrip
+ * - Extract Ed25519 public key via gpg-agent READKEY command
+ * - Sign challenges using gpg-agent PKSIGN command (Assuan protocol)
+ * - Verify signatures using `gpg --verify` for deterministic Ed25519
  * - Convert GPG Ed25519 keys to X25519 for key exchange
+ * - Accept 8, 16, or 40 character key IDs (short, long, full fingerprint)
  *
- * **Limitations**:
- * - Currently only Ed25519 GPG keys are supported
- * - GPG support may be disabled (check build configuration)
- * - GPG agent support exists but may not be enabled
+ * **Requirements**:
+ * - Only Ed25519 GPG keys are supported (not RSA/DSA)
+ * - `gpg` binary must be in PATH
+ * - gpg-agent must be running for signing operations
  *
  * **Example**:
  * @code{.c}
- * // Parse GPG key from armored text
+ * // Parse GPG key by key ID
+ * private_key_t privkey;
+ * asciichat_error_t err = parse_private_key(
+ *     "gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3",
+ *     &privkey
+ * );
+ *
+ * // Parse GPG key for server verification
  * public_key_t pubkey;
- * asciichat_error_t err = parse_public_key(
- *     "-----BEGIN PGP PUBLIC KEY BLOCK-----\n...\n-----END PGP PUBLIC KEY BLOCK-----",
+ * err = parse_public_key(
+ *     "gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3",
  *     &pubkey
  * );
  * @endcode

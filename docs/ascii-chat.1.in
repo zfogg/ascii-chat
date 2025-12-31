@@ -339,7 +339,7 @@ Enable packet encryption.
 Default: \fBenabled\fR
 .TP
 .BR \-K ", " \-\-key =\fIKEY\fR
-SSH key for authentication. Accepts:
+Key for authentication. Accepts:
 .RS
 .IP \(bu 2
 File path: /path/to/key (SSH Ed25519 private key)
@@ -348,8 +348,12 @@ GitHub: github:username
 .IP \(bu 2
 GitLab: gitlab:username
 .IP \(bu 2
+GPG: gpg:KEYID (8, 16, or 40-character key ID or fingerprint)
+.IP \(bu 2
 Auto-detect: ssh (uses ~/.ssh/id_ed25519)
 .RE
+.IP
+GPG keys require the \fBgpg\fR binary in PATH and use gpg-agent for signing.
 .IP
 Implies \-\-encrypt.
 .TP
@@ -374,7 +378,17 @@ Explicitly disable encryption, even if keys are available.
 .TP
 .BR \-\-server\-key =\fIKEY\fR
 (Client only) Expected server public key for identity verification.
-Prevents man-in-the-middle attacks. Can be a key string or path to .pub file.
+Prevents man-in-the-middle attacks. Accepts:
+.RS
+.IP \(bu 2
+Path to .pub file (SSH Ed25519 public key)
+.IP \(bu 2
+GitHub: github:username
+.IP \(bu 2
+GitLab: gitlab:username
+.IP \(bu 2
+GPG: gpg:KEYID (8, 16, or 40-character key ID or fingerprint)
+.RE
 .TP
 .BR \-\-client\-keys =\fIFILE\fR
 (Server only) File containing allowed client public keys for authentication.
