@@ -1057,40 +1057,6 @@ extern ASCIICHAT_API unsigned short int opt_verbose_level;
  */
 extern ASCIICHAT_API unsigned short int opt_snapshot_mode;
 
-/** @brief Enable mirror mode - view webcam locally without server (client only)
- *
- * If non-zero, enables mirror mode where the client displays the webcam feed
- * as ASCII art directly to the terminal without connecting to any server.
- * Useful for previewing your webcam appearance before joining a chat.
- *
- * **Default**: `0` (normal network mode)
- *
- * **Command-line**: `--mirror` (enable mirror mode)
- *
- * **Behavior**:
- * - Captures frames from webcam continuously
- * - Converts frames to ASCII art locally
- * - Displays ASCII art to terminal in real-time
- * - No network connection required
- * - Press Ctrl+C to exit
- *
- * **Snapshot Support**:
- * Can be combined with `--snapshot` to capture a single frame from your local
- * webcam without connecting to a server:
- * - `--mirror --snapshot` - Capture one local webcam frame and exit
- * - Uses `opt_snapshot_delay` for webcam warmup before capture
- *
- * **Example**: `--mirror` (view local webcam as ASCII art)
- * **Example**: `--mirror --snapshot` (capture single frame locally)
- *
- * @note Client mode only: Not available in server mode
- * @note Does not connect to server (standalone mode)
- * @note Audio is disabled in mirror mode (not compatible with --audio)
- *
- * @ingroup options
- */
-extern ASCIICHAT_API unsigned short int opt_mirror_mode;
-
 /** @brief Snapshot delay in seconds (default 3.0 for webcam warmup)
  *
  * Delay in seconds to wait before capturing frame in snapshot mode. This delay
@@ -1661,12 +1627,24 @@ extern unsigned short int GRAY[];
  *
  * @ingroup options
  */
-asciichat_error_t options_init(int argc, char **argv, bool is_client);
 
 /**
- * @brief Print usage information for client or server
+ * @brief Mode type for options parsing
+ *
+ * Determines which set of options to use when parsing command-line arguments.
+ */
+typedef enum {
+  MODE_SERVER, ///< Server mode - network server options
+  MODE_CLIENT, ///< Client mode - network client options
+  MODE_MIRROR  ///< Mirror mode - local webcam viewing (no network)
+} asciichat_mode_t;
+
+asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode);
+
+/**
+ * @brief Print usage information for client, server, or mirror mode
  * @param desc File descriptor to write to (typically stdout or stderr)
- * @param is_client true for client usage, false for server usage
+ * @param mode Mode to show usage for (MODE_SERVER, MODE_CLIENT, or MODE_MIRROR)
  *
  * Prints comprehensive usage information including:
  * - Program description and synopsis
@@ -1698,7 +1676,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client);
  *
  * @ingroup options
  */
-void usage(FILE *desc, bool is_client);
+void usage(FILE *desc, asciichat_mode_t mode);
 
 /**
  * @brief Print client usage information
