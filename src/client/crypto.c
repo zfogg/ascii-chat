@@ -262,11 +262,14 @@ int client_crypto_init(void) {
     // Extract GPG key ID if this is a GPG key (format: "gpg:KEYID")
     if (strncmp(opt_encrypt_key, "gpg:", 4) == 0) {
       const char *key_id = opt_encrypt_key + 4;
-      if (strlen(key_id) == 16) {
+      size_t key_id_len = strlen(key_id);
+      // Accept 8, 16, or 40 character GPG key IDs (short/long/full fingerprint)
+      if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
         SAFE_STRNCPY(g_crypto_ctx.client_gpg_key_id, key_id, sizeof(g_crypto_ctx.client_gpg_key_id));
-        log_debug("CLIENT_CRYPTO_INIT: Extracted client GPG key ID: %s", g_crypto_ctx.client_gpg_key_id);
+        log_debug("CLIENT_CRYPTO_INIT: Extracted client GPG key ID (%zu chars): %s", key_id_len,
+                  g_crypto_ctx.client_gpg_key_id);
       } else {
-        log_warn("CLIENT_CRYPTO_INIT: Invalid GPG key ID length: %zu (expected 16)", strlen(key_id));
+        log_warn("CLIENT_CRYPTO_INIT: Invalid GPG key ID length: %zu (expected 8, 16, or 40)", key_id_len);
         g_crypto_ctx.client_gpg_key_id[0] = '\0';
       }
     } else {
