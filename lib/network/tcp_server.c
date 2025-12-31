@@ -376,7 +376,9 @@ asciichat_error_t tcp_server_remove_client(tcp_server_t *server, socket_t socket
 
   if (!entry) {
     mutex_unlock(&server->clients_mutex);
-    return SET_ERRNO(ERROR_INVALID_STATE, "Client socket=%d not in registry", socket);
+    // Already removed (e.g., during shutdown) - this is fine
+    log_debug("Client socket=%d already removed from registry", socket);
+    return ASCIICHAT_OK;
   }
 
   // Call cleanup callback if set

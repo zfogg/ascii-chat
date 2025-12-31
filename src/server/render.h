@@ -12,7 +12,7 @@ void *client_video_render_thread(void *arg);
 void *client_audio_render_thread(void *arg);
 
 // Render thread lifecycle management
-int create_client_render_threads(client_info_t *client);
+int create_client_render_threads(server_context_t *server_ctx, client_info_t *client);
 void stop_client_render_threads(client_info_t *client);
 
 // Render timing control - match platform-specific client FPS for optimal performance

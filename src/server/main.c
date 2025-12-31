@@ -409,6 +409,111 @@ static void sigusr1_handler(int sigusr1) {
 }
 
 /* ============================================================================
+ * Client Handler Thread (for tcp_server integration)
+ * ============================================================================
+ */
+
+/**
+ * @brief Client handler thread function for tcp_server integration
+ *
+ * Called by tcp_server_run() for each accepted connection. This function:
+ * 1. Extracts client connection info from tcp_client_context_t
+ * 2. Performs connection rate limiting
+ * 3. Calls add_client() to initialize client structure and spawn workers
+ * 4. Blocks until client disconnects
+ * 5. Calls remove_client() to cleanup
+ *
+ * @param arg Pointer to tcp_client_context_t allocated by tcp_server_run()
+ * @return NULL (thread exit value)
+ */
+static void *ascii_chat_client_handler(void *arg) {
+  tcp_client_context_t *ctx = (tcp_client_context_t *)arg;
+  if (!ctx) {
+    log_error("Client handler: NULL context");
+    return NULL;
+  }
+
+  // Extract server context from user_data
+  server_context_t *server_ctx = (server_context_t *)ctx->user_data;
+  if (!server_ctx) {
+    log_error("Client handler: NULL server context");
+    socket_close(ctx->client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  socket_t client_socket = ctx->client_socket;
+
+  // Extract client IP and port
+  char client_ip[INET6_ADDRSTRLEN] = {0};
+  int client_port = 0;
+  int addr_family = (ctx->addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
+
+  if (format_ip_address(addr_family, (struct sockaddr *)&ctx->addr, client_ip, sizeof(client_ip)) == ASCIICHAT_OK) {
+    if (addr_family == AF_INET) {
+      struct sockaddr_in *addr_in = (struct sockaddr_in *)&ctx->addr;
+      client_port = NET_TO_HOST_U16(addr_in->sin_port);
+    } else {
+      struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&ctx->addr;
+      client_port = NET_TO_HOST_U16(addr_in6->sin6_port);
+    }
+  } else {
+    safe_snprintf(client_ip, sizeof(client_ip), "unknown");
+  }
+
+  log_info("Client handler started for %s:%d", client_ip, client_port);
+
+  // Check connection rate limit (prevent DoS attacks)
+  if (server_ctx->rate_limiter) {
+    bool allowed = false;
+    asciichat_error_t rate_check =
+        rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
+    if (rate_check != ASCIICHAT_OK || !allowed) {
+      log_warn("Connection rate limit exceeded for %s, rejecting connection", client_ip);
+      socket_close(client_socket);
+      SAFE_FREE(ctx);
+      return NULL;
+    }
+    // Record successful connection attempt
+    rate_limiter_record(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION);
+  }
+
+  // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
+  int client_id = add_client(server_ctx, client_socket, client_ip, client_port);
+  if (client_id < 0) {
+    log_error("Failed to add client %s:%d, rejecting connection", client_ip, client_port);
+    if (HAS_ERRNO(&asciichat_errno_context)) {
+      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+      CLEAR_ERRNO();
+    }
+    socket_close(client_socket);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+
+  log_debug("Client %d added successfully from %s:%d", client_id, client_ip, client_port);
+
+  // Block until client disconnects (active flag is set by receive thread)
+  client_info_t *client = find_client_by_id((uint32_t)client_id);
+  if (client) {
+    while (atomic_load(&client->active) && !atomic_load(server_ctx->server_should_exit)) {
+      platform_sleep_ms(100); // Check every 100ms
+    }
+    log_info("Client %d disconnected from %s:%d", client_id, client_ip, client_port);
+  }
+
+  // Cleanup (this will call tcp_server_stop_client_threads internally)
+  remove_client(server_ctx, (uint32_t)client_id);
+
+  // Close socket and free context
+  socket_close(client_socket);
+  SAFE_FREE(ctx);
+
+  log_info("Client handler finished for %s:%d", client_ip, client_port);
+  return NULL;
+}
+
+/* ============================================================================
  * Main Function
  * ============================================================================
  */
@@ -648,6 +753,23 @@ int server_main(void) {
     log_info("Dual-stack binding: IPv4=%s, IPv6=%s", ipv4_address, ipv6_address);
   }
 
+  // Create server context - encapsulates all server state for passing to client handlers
+  // This reduces global state and improves modularity by using tcp_server.user_data
+  server_context_t server_ctx = {
+      .tcp_server = &g_tcp_server,
+      .rate_limiter = g_rate_limiter,
+      .client_manager = &g_client_manager,
+      .client_manager_rwlock = &g_client_manager_rwlock,
+      .server_should_exit = &g_server_should_exit,
+      .audio_mixer = g_audio_mixer,
+      .stats = &g_stats,
+      .stats_mutex = &g_stats_mutex,
+      .encryption_enabled = g_server_encryption_enabled,
+      .server_private_key = &g_server_private_key,
+      .client_whitelist = g_client_whitelist,
+      .num_whitelisted_clients = g_num_whitelisted_clients,
+  };
+
   // Configure TCP server
   tcp_server_config_t tcp_config = {
       .port = port,
@@ -656,8 +778,8 @@ int server_main(void) {
       .bind_ipv4 = bind_ipv4,
       .bind_ipv6 = bind_ipv6,
       .accept_timeout_sec = ACCEPT_TIMEOUT,
-      .client_handler = NULL, // ASCII-chat uses custom accept loop, not tcp_server_run()
-      .user_data = NULL,
+      .client_handler = ascii_chat_client_handler,
+      .user_data = &server_ctx, // Pass server context to client handlers
   };
 
   // Initialize TCP server (creates and binds sockets)
@@ -666,9 +788,6 @@ int server_main(void) {
   if (tcp_init_result != ASCIICHAT_OK) {
     FATAL(ERROR_NETWORK, "Failed to initialize TCP server");
   }
-
-  struct sockaddr_storage client_addr;
-  socklen_t client_len = sizeof(client_addr);
 
   struct timespec last_stats_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
@@ -681,10 +800,9 @@ int server_main(void) {
   // Lock debug system already initialized earlier in main()
 
   // Check if SIGINT was received during initialization
+  // If so, tcp_server_run() will detect it and exit immediately
   if (atomic_load(&g_server_should_exit)) {
-    // Skip rest of initialization and go straight to main loop
-    // which will detect g_server_should_exit and exit cleanly
-    goto main_loop;
+    log_info("Shutdown signal received during initialization, skipping server startup");
   }
 
   // Lock debug thread already started earlier in main()
@@ -727,297 +845,33 @@ int server_main(void) {
   }
 
   // ========================================================================
-  // MAIN CONNECTION LOOP - Heart of the modular server architecture
+  // MAIN CONNECTION LOOP - Delegated to tcp_server
   // ========================================================================
   //
-  // This loop orchestrates the entire multi-client server lifecycle:
-  // 1. Clean up disconnected clients (free slots for new connections)
-  // 2. Accept new client connections (with timeout to check shutdown)
-  // 3. Initialize new clients (spawn threads via client.c functions)
-  // 4. Repeat until shutdown signal received
+  // The tcp_server module handles:
+  // 1. Dual-stack IPv4/IPv6 accept loop with select() timeout
+  // 2. Spawning client_handler threads for each connection
+  // 3. Responsive shutdown when g_tcp_server.running is set to false
   //
-  // CRITICAL ORDERING: Client cleanup MUST happen before accept() to ensure
-  // maximum connection slots are available. Otherwise, slots remain occupied
-  // by dead connections, eventually preventing new clients from joining.
+  // Client lifecycle is managed by ascii_chat_client_handler() which:
+  // - Performs rate limiting
+  // - Calls add_client() to initialize structures and spawn workers
+  // - Blocks until client disconnects
+  // - Calls remove_client() to cleanup and stop worker threads
+  log_info("Server entering accept loop (port %d)...", port);
 
-main_loop:
-  while (!atomic_load(&g_server_should_exit)) {
-    // Debug: Log loop iteration
-    // Check if we received a shutdown signal
-    if (atomic_load(&g_server_should_exit)) {
-      break;
-    }
-
-    // Rate-limited logging: Only show status when client count actually changes
-    // This prevents log spam while maintaining visibility into server state
-    // THREAD SAFETY: Protect read of client_count with rwlock
-    static int last_logged_count = -1;
-    rwlock_rdlock(&g_client_manager_rwlock);
-    int current_count = g_client_manager.client_count;
-    rwlock_rdunlock(&g_client_manager_rwlock);
-    if (current_count != last_logged_count) {
-      log_debug("Waiting for client connections... (%d/%d clients)", current_count, MAX_CLIENTS);
-      last_logged_count = current_count;
-    }
-
-    // ====================================================================
-    // PHASE 1: DISCONNECT CLEANUP - Free slots from terminated clients
-    // ====================================================================
-    //
-    // This implements a lock-safe cleanup pattern to avoid infinite loops:
-    // 1. Collect cleanup tasks under read lock (minimal critical section)
-    // 2. Release lock before processing (prevents lock contention)
-    // 3. Process each cleanup task without locks (allows other threads to continue)
-    //
-    // This pattern prevents deadlocks while ensuring all disconnected
-    // clients are properly cleaned up before accepting new ones.
-    typedef struct {
-      uint32_t client_id;
-      asciithread_t receive_thread;
-    } cleanup_task_t;
-
-    cleanup_task_t cleanup_tasks[MAX_CLIENTS];
-    int cleanup_count = 0;
-
-    // FIXED: Only do cleanup if there are actually clients connected
-    // THREAD SAFETY: Check client_count under the lock to avoid race
-    rwlock_rdlock(&g_client_manager_rwlock);
-    if (g_client_manager.client_count > 0) {
-      for (int i = 0; i < MAX_CLIENTS; i++) {
-        client_info_t *client = &g_client_manager.clients[i];
-        // Check if this client has been marked inactive by its receive thread
-        // Only check clients that have been initialized (client_id != 0)
-        // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
-        if (atomic_load(&client->client_id) == 0) {
-          continue; // Skip uninitialized clients
-        }
-
-        // Use snapshot pattern to avoid holding both locks simultaneously
-        // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-        uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
-        bool is_active = atomic_load(&client->active);                 // Use atomic read to avoid deadlock
-
-        if (!is_active && ascii_thread_is_initialized(&client->receive_thread)) {
-          // Collect cleanup task
-          cleanup_tasks[cleanup_count].client_id = client_id_snapshot;
-          cleanup_tasks[cleanup_count].receive_thread = client->receive_thread;
-          cleanup_count++;
-
-          // Clear the thread handle immediately to avoid double-join
-          // Use platform-safe thread initialization
-          ascii_thread_init(&client->receive_thread);
-        }
-      }
-    }
-    rwlock_rdunlock(&g_client_manager_rwlock);
-
-    // Process cleanup tasks without holding lock (prevents infinite loops)
-    for (int i = 0; i < cleanup_count; i++) {
-      bool is_shutting_down = atomic_load(&g_server_should_exit);
-      if (is_shutting_down) {
-        // During shutdown, give receive thread a brief chance to exit cleanly with timeout
-        int join_result = ascii_thread_join_timeout(&cleanup_tasks[i].receive_thread, NULL, 200);
-        if (join_result == -2) {
-          log_warn("Receive thread for client %u timed out during shutdown (continuing)", cleanup_tasks[i].client_id);
-          // Don't try to remove client if thread didn't exit cleanly
-          continue;
-        }
-      } else {
-        ascii_thread_join(&cleanup_tasks[i].receive_thread, NULL);
-      }
-
-      (void)remove_client(cleanup_tasks[i].client_id);
-    }
-
-    // Check if TCP server should stop (signal handler sets this)
-    if (!atomic_load(&g_tcp_server.running)) {
-      break;
-    }
-
-    // Check if listening sockets were closed by signal handler
-    socket_t current_listenfd = g_tcp_server.listen_socket;
-    socket_t current_listenfd6 = g_tcp_server.listen_socket6;
-    if (current_listenfd == INVALID_SOCKET_VALUE && current_listenfd6 == INVALID_SOCKET_VALUE) {
-      break; // Both sockets closed, exit
-    }
-
-    // Check g_server_should_exit right before accept
-    if (atomic_load(&g_server_should_exit)) {
-      break;
-    }
-
-    // Build fd_set for select() if we have multiple sockets
-    fd_set read_fds;
-    socket_fd_zero(&read_fds);
-    socket_t max_fd = 0;
-
-    if (current_listenfd != INVALID_SOCKET_VALUE) {
-      socket_fd_set(current_listenfd, &read_fds);
-      max_fd = (current_listenfd > max_fd) ? current_listenfd : max_fd;
-    }
-    if (current_listenfd6 != INVALID_SOCKET_VALUE) {
-      socket_fd_set(current_listenfd6, &read_fds);
-      max_fd = (current_listenfd6 > max_fd) ? current_listenfd6 : max_fd;
-    }
-
-    // Use select() with timeout to check both sockets
-    struct timeval timeout;
-    timeout.tv_sec = ACCEPT_TIMEOUT;
-    timeout.tv_usec = 0;
-
-    int select_result = socket_select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
-
-    if (select_result <= 0) {
-      if (select_result == 0) {
-        // Timeout - expected, continue loop
-        continue;
-      }
-      // Error - check if socket was closed
-      if (g_tcp_server.listen_socket == INVALID_SOCKET_VALUE && g_tcp_server.listen_socket6 == INVALID_SOCKET_VALUE) {
-        break;
-      }
-      continue;
-    }
-
-    // Determine which socket has a connection ready
-    socket_t accept_listenfd = INVALID_SOCKET_VALUE;
-    if (current_listenfd != INVALID_SOCKET_VALUE && socket_fd_isset(current_listenfd, &read_fds)) {
-      accept_listenfd = current_listenfd;
-    } else if (current_listenfd6 != INVALID_SOCKET_VALUE && socket_fd_isset(current_listenfd6, &read_fds)) {
-      accept_listenfd = current_listenfd6;
-    } else {
-      // Neither socket ready (shouldn't happen if select() returned > 0)
-      continue;
-    }
-
-    // CRITICAL: Final check right before accept to prevent race condition
-    if (accept_listenfd == INVALID_SOCKET_VALUE) {
-      log_debug("Main loop: no valid socket ready, breaking accept loop");
-      break;
-    }
-
-    ASSERT_NO_ERRNO();
-
-    int client_sock = accept_with_timeout(accept_listenfd, (struct sockaddr *)&client_addr, &client_len, 0);
-
-    // Get the error code from asciichat_errno_context (which accept_with_timeout sets)
-    int saved_errno = asciichat_errno_context.system_errno;
-    if (client_sock < 0) {
-      if (saved_errno == ETIMEDOUT || saved_errno == EAGAIN || saved_errno == EWOULDBLOCK) {
-#ifdef DEBUG_NETWORK
-        log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
-                  client_sock < 0 ? socket_get_error_string() : "success");
-#endif
-
-#ifdef DEBUG_MEMORY
-        // Hot loop memory reporting for bug detection and sanity.
-        // debug_memory_report();
-#endif
-        // Clear asciichat_errno for timeouts (expected behavior)
-        if (HAS_ERRNO(&asciichat_errno_context)) {
-          if (asciichat_errno_context.system_errno == ETIMEDOUT) {
-            asciichat_clear_errno();
-          } else {
-            PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
-          }
-        }
-        ASSERT_NO_ERRNO();
-
-        continue;
-      }
-      if (saved_errno == EINTR) {
-        // Interrupted by signal - check if we should exit
-        log_debug("accept() interrupted by signal");
-        if (atomic_load(&g_server_should_exit)) {
-          break;
-        }
-        continue;
-      }
-      if (saved_errno == EBADF || saved_errno == ENOTSOCK
-#ifdef _WIN32
-          || saved_errno == WSAENOTSOCK || saved_errno == WSAEBADF || saved_errno == WSAEINVAL
-#endif
-      ) {
-        // Socket was closed by signal handler
-#ifdef _WIN32
-        char error_buf[256];
-        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL, saved_errno, 0, error_buf, sizeof(error_buf), NULL);
-        log_debug("accept() failed because socket was closed: %s", error_buf);
-#else
-        log_debug("accept() failed because socket was closed: %s", SAFE_STRERROR(saved_errno));
-#endif
-        break;
-      }
-      // This point in code isn't an actual error and a simple TCP timeout happened. Loop.
-      continue;
-    }
-
-    // Log client connection - handle both IPv4 and IPv6
-    char client_ip[INET6_ADDRSTRLEN]; // Large enough for both IPv4 and IPv6
-    int client_port = 0;
-
-    int family = ((struct sockaddr *)&client_addr)->sa_family;
-    if (format_ip_address(family, (struct sockaddr *)&client_addr, client_ip, sizeof(client_ip)) == ASCIICHAT_OK) {
-      if (family == AF_INET) {
-        struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
-        client_port = NET_TO_HOST_U16(addr_in->sin_port);
-        log_debug("New client connected from %s:%d (IPv4)", client_ip, client_port);
-      } else if (family == AF_INET6) {
-        struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
-        client_port = NET_TO_HOST_U16(addr_in6->sin6_port);
-
-        // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
-        if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
-          log_debug("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
-        } else {
-          log_debug("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
-        }
-      }
-    } else {
-      safe_snprintf(client_ip, sizeof(client_ip), "unknown");
-      log_warn("New client connected with unknown address family %d", ((struct sockaddr *)&client_addr)->sa_family);
-    }
-
-    // Check connection rate limit (prevent DoS attacks)
-    if (g_rate_limiter) {
-      bool allowed = false;
-      asciichat_error_t rate_check =
-          rate_limiter_check(g_rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
-      if (rate_check != ASCIICHAT_OK || !allowed) {
-        log_warn("Connection rate limit exceeded for %s, rejecting connection", client_ip);
-        socket_close(client_sock);
-        continue;
-      }
-      // Record successful connection attempt
-      rate_limiter_record(g_rate_limiter, client_ip, RATE_EVENT_CONNECTION);
-    }
-
-    // Add client to multi-client manager
-    int client_id = add_client(client_sock, client_ip, client_port);
-    if (client_id < 0) {
-      log_error("Failed to add client, rejecting connection");
-      // Print error context if available (helps debug crypto/network failures)
-      if (HAS_ERRNO(&asciichat_errno_context)) {
-        PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
-        // Clear the error so ASSERT_NO_ERRNO() doesn't abort on next iteration
-        CLEAR_ERRNO();
-      }
-      socket_close(client_sock);
-      continue;
-    }
-
-    log_debug("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
-
-    // Check if we should exit after processing this client
-    if (atomic_load(&g_server_should_exit)) {
-      break;
-    }
-
-    if (HAS_ERRNO(&asciichat_errno_context)) {
-      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
-    }
-    ASSERT_NO_ERRNO();
+  // Run TCP server (blocks until shutdown signal received)
+  // tcp_server_run() handles:
+  // - select() on IPv4/IPv6 sockets with timeout
+  // - accept() new connections
+  // - Spawn ascii_chat_client_handler() thread for each connection
+  // - Responsive shutdown when atomic_store(&g_tcp_server.running, false)
+  asciichat_error_t run_result = tcp_server_run(&g_tcp_server);
+  if (run_result != ASCIICHAT_OK) {
+    log_error("TCP server exited with error");
   }
+
+  log_info("Server accept loop exited");
 
   // Cleanup
   log_info("Server shutting down...");
@@ -1090,7 +944,9 @@ main_loop:
 
   // Remove all clients without holding any locks
   for (int i = 0; i < client_count; i++) {
-    (void)remove_client(clients_to_remove[i]);
+    if (remove_client(&server_ctx, clients_to_remove[i]) != 0) {
+      log_error("Failed to remove client %u during shutdown", clients_to_remove[i]);
+    }
   }
 
   // Clean up hash table

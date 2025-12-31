@@ -485,7 +485,6 @@ void *acds_client_handler(void *arg) {
   }
 
   // Cleanup
-  // Remove client from registry
   tcp_server_remove_client(&server->tcp_server, client_socket);
   log_debug("Client %s unregistered (total=%zu)", client_ip, tcp_server_get_client_count(&server->tcp_server));
 

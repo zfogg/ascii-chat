@@ -157,6 +157,7 @@
 
 #include "render.h"
 #include "client.h"
+#include "main.h"
 #include "stream.h"
 #include "protocol.h"
 #include "common.h"
@@ -1146,9 +1147,9 @@ void *client_audio_render_thread(void *arg) {
  * @see stop_client_render_threads() For cleanup implementation
  */
 
-int create_client_render_threads(client_info_t *client) {
-  if (!client) {
-    log_error("Cannot create render threads for NULL client");
+int create_client_render_threads(server_context_t *server_ctx, client_info_t *client) {
+  if (!server_ctx || !client) {
+    log_error("Cannot create render threads: NULL %s", !server_ctx ? "server_ctx" : "client");
     return -1;
   }
 
@@ -1165,9 +1166,11 @@ int create_client_render_threads(client_info_t *client) {
   atomic_store(&client->video_render_thread_running, true);
   atomic_store(&client->audio_render_thread_running, true);
 
-  // Create video rendering thread
-  asciichat_error_t video_result = thread_create_or_fail(&client->video_render_thread, client_video_render_thread,
-                                                         client, "video_render", client->client_id);
+  // Create video rendering thread (stop_id=2, stop after receive thread)
+  char thread_name[64];
+  snprintf(thread_name, sizeof(thread_name), "video_render_%u", client->client_id);
+  asciichat_error_t video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
+                                                           client_video_render_thread, client, 2, thread_name);
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
     atomic_store(&client->video_render_thread_running, false);
@@ -1175,16 +1178,17 @@ int create_client_render_threads(client_info_t *client) {
     return -1;
   }
 
-  // Create audio rendering thread
-  asciichat_error_t audio_result = thread_create_or_fail(&client->audio_render_thread, client_audio_render_thread,
-                                                         client, "audio_render", client->client_id);
+  // Create audio rendering thread (stop_id=2, same priority as video)
+  snprintf(thread_name, sizeof(thread_name), "audio_render_%u", client->client_id);
+  asciichat_error_t audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
+                                                           client_audio_render_thread, client, 2, thread_name);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store(&client->video_render_thread_running, false);
     // Reset audio flag since thread creation failed
     atomic_store(&client->audio_render_thread_running, false);
-    // Note: thread cancellation not available in platform abstraction
-    ascii_thread_join(&client->video_render_thread, NULL);
+    // tcp_server_stop_client_threads() will be called by remove_client()
+    // to clean up the video thread we just created
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }

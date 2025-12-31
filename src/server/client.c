@@ -334,7 +334,8 @@ static void configure_client_socket(socket_t socket, uint32_t client_id) {
 }
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const char *client_ip, int port) {
+__attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_ctx, socket_t socket,
+                                                       const char *client_ip, int port) {
   rwlock_wrlock(&g_client_manager_rwlock);
 
   // Find empty slot - this is the authoritative check
@@ -411,6 +412,15 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
   // Configure socket options for optimal performance
   configure_client_socket(socket, atomic_load(&client->client_id));
+
+  // Register socket with tcp_server for thread pool management
+  // Must be done before spawning any threads
+  asciichat_error_t reg_result = tcp_server_add_client(server_ctx->tcp_server, socket, client);
+  if (reg_result != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INTERNAL, "Failed to register client socket with tcp_server");
+    log_error("Failed to register client %u socket with tcp_server", atomic_load(&client->client_id));
+    goto error_cleanup;
+  }
 
   safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id));
 
@@ -511,7 +521,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     int crypto_result = server_crypto_handshake(client);
     if (crypto_result != 0) {
       log_error("Crypto handshake failed for client %u: %s", atomic_load(&client->client_id), network_error_string());
-      (void)remove_client(atomic_load(&client->client_id));
+      if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+        log_error("Failed to remove client after crypto handshake failure");
+      }
       return -1;
     }
 
@@ -549,7 +561,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
       if (envelope.allocated_buffer) {
         buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
       }
-      (void)remove_client(atomic_load(&client->client_id));
+      if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+        log_error("Failed to remove client after crypto handshake failure");
+      }
       return -1;
     }
 
@@ -559,7 +573,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
       if (envelope.allocated_buffer) {
         buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
       }
-      (void)remove_client(atomic_load(&client->client_id));
+      if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+        log_error("Failed to remove client after crypto handshake failure");
+      }
       return -1;
     }
 
@@ -576,22 +592,32 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Start threads for this client (AFTER crypto handshake AND initial capabilities)
-  asciichat_error_t recv_result = thread_create_or_fail(&client->receive_thread, client_receive_thread, client,
-                                                        "receive", atomic_load(&client->client_id));
+  // Use tcp_server thread pool for managed cleanup with stop_id ordering:
+  //   stop_id=1: receive thread (stop first to prevent new data)
+  //   stop_id=2: render threads (stop after receive)
+  //   stop_id=3: send thread (stop last after all processing done)
+  char thread_name[64];
+  snprintf(thread_name, sizeof(thread_name), "receive_%u", atomic_load(&client->client_id));
+  asciichat_error_t recv_result =
+      tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
   if (recv_result != ASCIICHAT_OK) {
     // Don't destroy mutexes here - remove_client() will handle it
-    (void)remove_client(atomic_load(&client->client_id));
+    if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+      log_error("Failed to remove client after receive thread creation failure");
+    }
     return -1;
   }
 
-  // Start send thread for this client
-  asciichat_error_t send_result = thread_create_or_fail(&client->send_thread, client_send_thread_func, client, "send",
-                                                        atomic_load(&client->client_id));
+  // Start send thread for this client (stop_id=3, stop last)
+  snprintf(thread_name, sizeof(thread_name), "send_%u", atomic_load(&client->client_id));
+  asciichat_error_t send_result =
+      tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_send_thread_func, client, 3, thread_name);
   if (send_result != ASCIICHAT_OK) {
-    // Join the receive thread before cleaning up to prevent race conditions
-    ascii_thread_join(&client->receive_thread, NULL);
-    // Now safe to remove client (won't double-free since first thread creation succeeded)
-    (void)remove_client(atomic_load(&client->client_id));
+    // tcp_server_stop_client_threads() will be called by remove_client()
+    // to clean up the receive thread we just created
+    if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+      log_error("Failed to remove client after send thread creation failure");
+    }
     return -1;
   }
 
@@ -640,9 +666,11 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   // CRITICAL: Use atomic_load for client_id to prevent data races
   uint32_t client_id_snapshot = atomic_load(&client->client_id);
   log_debug("Creating render threads for client %u", client_id_snapshot);
-  if (create_client_render_threads(client) != 0) {
+  if (create_client_render_threads(server_ctx, client) != 0) {
     log_error("Failed to create render threads for client %u", client_id_snapshot);
-    (void)remove_client(client_id_snapshot);
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove client after render thread creation failure");
+    }
     return -1;
   }
   log_debug("Successfully created render threads for client %u", client_id_snapshot);
@@ -684,10 +712,16 @@ error_cleanup:
 }
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
+__attribute__((no_sanitize("integer"))) int remove_client(server_context_t *server_ctx, uint32_t client_id) {
+  if (!server_ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Cannot remove client %u: NULL server_ctx", client_id);
+    return -1;
+  }
+
   // Phase 1: Mark client inactive and prepare for cleanup while holding write lock
   client_info_t *target_client = NULL;
   char display_name_copy[MAX_DISPLAY_NAME_LEN];
+  socket_t client_socket = INVALID_SOCKET_VALUE; // Save socket for thread cleanup
 
   log_debug("SOCKET_DEBUG: Attempting to remove client %d", client_id);
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -707,15 +741,14 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
       // Store display name before clearing
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
-      // Shutdown socket to unblock I/O operations, then close
+      // Save socket for tcp_server_stop_client_threads() before closing
       mutex_lock(&client->client_state_mutex);
+      client_socket = client->socket; // Save socket for thread cleanup
       if (client->socket != INVALID_SOCKET_VALUE) {
-        log_debug("SOCKET_DEBUG: Client %d closing socket %d", client->client_id, client->socket);
+        log_debug("SOCKET_DEBUG: Client %d shutting down socket %d", client->client_id, client->socket);
         // Shutdown both send and receive operations to unblock any pending I/O
         socket_shutdown(client->socket, 2); // 2 = SHUT_RDWR on POSIX, SD_BOTH on Windows
-        socket_close(client->socket);
-        client->socket = INVALID_SOCKET_VALUE;
-        log_debug("SOCKET_DEBUG: Client %d socket set to INVALID", client->client_id);
+        // Don't close yet - tcp_server needs socket as lookup key
       }
       mutex_unlock(&client->client_state_mutex);
 
@@ -740,34 +773,32 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // This prevents deadlock with render threads that need read locks
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  // Phase 2: Join threads without holding any locks
-
-  // Wait for send thread to exit
-  if (ascii_thread_is_initialized(&target_client->send_thread)) {
-    int join_result;
-    // Always wait for send thread - don't use timeout that masks the problem
-    join_result = ascii_thread_join(&target_client->send_thread, NULL);
-    if (join_result != 0) {
-      log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
-    }
-    // Clear thread handle after join (regardless of success/failure)
-    ascii_thread_init(&target_client->send_thread);
+  // Phase 2: Stop all client threads using tcp_server thread pool
+  // This joins threads in stop_id order: receive(1), render(2), send(3)
+  // IMPORTANT: Use saved client_socket (not target_client->socket which may be closed)
+  log_debug("Stopping all threads for client %u (socket %d)", client_id, client_socket);
+  asciichat_error_t stop_result = tcp_server_stop_client_threads(server_ctx->tcp_server, client_socket);
+  if (stop_result != ASCIICHAT_OK) {
+    log_warn("Failed to stop threads for client %u: error %d", client_id, stop_result);
+    // Continue with cleanup even if thread stopping failed
   }
 
-  // Receive thread is already joined by main.c
-  // Defensively clear handle here in case main.c didn't clear it properly
-  if (ascii_thread_is_initialized(&target_client->receive_thread)) {
-    log_debug("Receive thread for client %u still initialized - clearing handle", client_id);
-    ascii_thread_init(&target_client->receive_thread);
-  } else {
-    log_debug("Receive thread for client %u was already joined by main thread", client_id);
+  // Now safe to close the socket (threads are stopped)
+  if (client_socket != INVALID_SOCKET_VALUE) {
+    log_debug("SOCKET_DEBUG: Closing socket %d for client %u after thread cleanup", client_socket, client_id);
+    socket_close(client_socket);
   }
-
-  // Stop render threads (this joins them)
-  stop_client_render_threads(target_client);
 
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
+
+  // Mark socket as closed in client structure
+  if (target_client && target_client->socket != INVALID_SOCKET_VALUE) {
+    mutex_lock(&target_client->client_state_mutex);
+    target_client->socket = INVALID_SOCKET_VALUE;
+    mutex_unlock(&target_client->client_state_mutex);
+    log_debug("SOCKET_DEBUG: Client %u socket set to INVALID", client_id);
+  }
 
   // Use the dedicated cleanup function to ensure all resources are freed
   cleanup_client_all_buffers(target_client);
