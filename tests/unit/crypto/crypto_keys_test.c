@@ -12,7 +12,7 @@
 #include <string.h>
 
 #include "tests/common.h"
-#include "crypto/keys/keys.h"
+#include "crypto/keys.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with debug logging

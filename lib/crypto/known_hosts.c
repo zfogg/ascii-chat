@@ -14,7 +14,7 @@
 #include "crypto/crypto.h"   // Includes <sodium.h>, CRYPTO_* constants
 #include "common.h"          // For BUFFER_SIZE_* constants
 #include "asciichat_errno.h" // For asciichat_errno system
-#include "crypto/keys/keys.h"
+#include "crypto/keys.h"
 #include "util/ip.h"
 #include "platform/util.h"
 #include "platform/system.h"   // For platform_isatty() and FILE_PERM_* constants

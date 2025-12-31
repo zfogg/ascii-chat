@@ -139,7 +139,7 @@
 #include "crypto/handshake/common.h"
 #include "crypto/handshake/server.h"
 #include "crypto/crypto.h"
-#include "crypto/keys/keys.h"
+#include "crypto/keys.h"
 #include "util/time.h"
 #include "util/endian.h"
 

@@ -21,7 +21,7 @@
 #include "crypto/handshake/common.h"
 #include "crypto/handshake/client.h"
 #include "crypto/handshake/server.h"
-#include "crypto/keys/keys.h"
+#include "crypto/keys.h"
 #include "network/packet.h"
 #include "buffer_pool.h"
 #include "tests/logging.h"

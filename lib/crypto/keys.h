@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file crypto/keys/keys.h
+ * @file crypto/keys.h
  * @defgroup keys Key Management
  * @brief SSH key, GPG key, and key validation APIs
  * @ingroup keys
@@ -29,14 +29,14 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../../common.h" // For asciichat_error_t
-#include "types.h"        // Include the key type definitions
+#include "../common.h"    // For asciichat_error_t
+#include "key_types.h"    // Include the key type definitions
 
 // Include specialized key modules
-#include "ssh_keys.h"
-#include "gpg_keys.h"
+#include "ssh/ssh_keys.h"
+#include "gpg/gpg_keys.h"
 #include "https_keys.h"
-#include "validation.h"
+#include "keys_validation.h"
 
 /**
  * @name Public Key Parsing

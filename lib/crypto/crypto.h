@@ -66,8 +66,8 @@
 #include <sodium.h>
 
 // Include required types
-#include "keys/types.h" // For private_key_t
-#include "../common.h"  // For asciichat_error_t
+#include "key_types.h" // For private_key_t
+#include "../common.h" // For asciichat_error_t
 
 /**
  * @name Password Requirements

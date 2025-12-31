@@ -4,7 +4,7 @@
  * @brief ✅ Cryptographic key validation: fingerprint computation, format checking, and trust verification
  */
 
-#include "validation.h"
+#include "keys_validation.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "crypto/crypto.h" // Includes <sodium.h>

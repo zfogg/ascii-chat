@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "crypto/keys/gpg_keys.h"
+#include "crypto/gpg/gpg_keys.h"
 #include "asciichat_errno.h"
 
 // Test fixture data

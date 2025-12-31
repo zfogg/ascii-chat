@@ -47,19 +47,24 @@ endif()
 # =============================================================================
 set(CRYPTO_SRCS
     lib/crypto/crypto.c
-    lib/crypto/keys/keys.c
+    lib/crypto/keys.c
     lib/crypto/known_hosts.c
     lib/crypto/handshake/common.c
     lib/crypto/handshake/server.c
     lib/crypto/handshake/client.c
     lib/crypto/pem_utils.c
-    lib/crypto/gpg.c  # GPG agent support (signing only, verification with libsodium)
-    lib/crypto/ssh_agent.c
-    lib/crypto/keys/ssh_keys.c
-    lib/crypto/keys/gpg_keys.c  # GPG key parsing
-    # lib/crypto/keys/gpg_stubs.c  # Stub implementations (disabled - using real GPG support)
-    lib/crypto/keys/https_keys.c
-    lib/crypto/keys/validation.c
+    # GPG module (refactored into gpg/ subdirectory)
+    lib/crypto/gpg/agent.c
+    lib/crypto/gpg/export.c
+    lib/crypto/gpg/signing.c
+    lib/crypto/gpg/verification.c
+    lib/crypto/gpg/gpg_keys.c  # GPG key parsing
+    # SSH module (refactored into ssh/ subdirectory)
+    lib/crypto/ssh/ssh_agent.c
+    lib/crypto/ssh/ssh_keys.c  # SSH key parsing
+    # Key management (at crypto root)
+    lib/crypto/https_keys.c    # GitHub/GitLab key fetching
+    lib/crypto/keys_validation.c  # Key validation utilities
     # libsodium-bcrypt-pbkdf (OpenBSD implementation)
     deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
     deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
