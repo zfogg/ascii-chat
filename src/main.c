@@ -195,7 +195,7 @@ static const mode_descriptor_t g_mode_table[] = {
  * @brief Top-level options for fuzzy matching (without dashes)
  */
 static const char *const g_top_level_options[] = {
-    "help", "version", "config", "config-create", "log-file", "log-level", "verbose",
+    "help", "version", "config", "config-create", "log-file", "log-level", "verbose", "quiet",
     NULL // Terminator
 };
 
@@ -261,6 +261,7 @@ static void print_usage(const char *program_name) {
   printf("  -L --log-file FILE           Redirect logs to FILE\n");
   printf("  --log-level LEVEL            Set log level: dev, debug, info, warn, error, fatal\n");
   printf("  -V --verbose                 Increase log verbosity (stackable: -VV, -VVV)\n");
+  printf("  -q --quiet                   Disable console logging (log to file only)\n");
   printf("\n");
   printf("MODES:\n");
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
@@ -459,6 +460,7 @@ int main(int argc, char *argv[]) {
   const char *binary_log_file = NULL;
   const char *binary_log_level = NULL;
   int binary_verbose_count = 0;
+  bool binary_quiet = false;
 
   // Case 3: Check for --help, --version, --config-create, --config, and logging options BEFORE the mode
   // Logging options are binary-level and apply to all modes
@@ -540,6 +542,10 @@ int main(int argc, char *argv[]) {
           // All characters were 'V', this is valid
           continue;
         }
+      }
+      if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
+        binary_quiet = true;
+        continue;
       }
       // Any other option before the mode - check if it's a typo of a top-level option or mode name
       // Extract the option name (skip leading dashes)
@@ -664,16 +670,8 @@ int main(int argc, char *argv[]) {
     return ERROR_USAGE;
   }
 
-  // Parse command line options (common for all modes)
-  // Note: --help and --version will exit(0) directly within options_init
-  asciichat_error_t options_result = options_init(mode_argc, mode_argv, mode_type);
-  if (options_result != ASCIICHAT_OK) {
-    // options_init returns ERROR_USAGE for invalid options (after printing error)
-    UNTRACKED_FREE(mode_argv);
-    return options_result;
-  }
-
-  // Apply binary-level logging options (these override mode-specific defaults)
+  // Apply binary-level logging options BEFORE options_init so log_init() sees them
+  // (log_init is called inside asciichat_common_init which is called from options_init)
   if (binary_log_file) {
     SAFE_STRNCPY(opt_log_file, binary_log_file, sizeof(opt_log_file));
   }
@@ -700,6 +698,18 @@ int main(int argc, char *argv[]) {
   }
   if (binary_verbose_count > 0) {
     opt_verbose_level = (unsigned short int)binary_verbose_count;
+  }
+  if (binary_quiet) {
+    opt_quiet = 1;
+  }
+
+  // Parse command line options (common for all modes)
+  // Note: --help and --version will exit(0) directly within options_init
+  asciichat_error_t options_result = options_init(mode_argc, mode_argv, mode_type);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ERROR_USAGE for invalid options (after printing error)
+    UNTRACKED_FREE(mode_argv);
+    return options_result;
   }
 
   // Determine if this mode uses client-like initialization (client and mirror modes)

@@ -77,6 +77,11 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   }
   (void)atexit(platform_cleanup);
 
+  // Apply quiet mode setting BEFORE log_init so initialization messages are suppressed
+  if (opt_quiet) {
+    log_set_terminal_output(false);
+  }
+
   // Initialize logging with default filename
   // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;

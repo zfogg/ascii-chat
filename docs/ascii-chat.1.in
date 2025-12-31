@@ -90,6 +90,10 @@ Set logging verbosity level: dev, debug, info, warn, error, fatal.
 .IP \(bu 2
 \fBPrecedence\fR: LOG_LEVEL environment variable > \-\-log\-level > build type default
 .RE
+.TP
+.BR \-q ", " \-\-quiet
+Disable console logging (log to file only). Only errors and critical warnings are displayed on the console.
+Logs continue to be written to the log file if \-\-log\-file is specified.
 .PP
 .B Example:
 .RS
@@ -98,11 +102,6 @@ ascii-chat -V --log-level debug --log-file /tmp/debug.log client
 ascii-chat --config ~/my-config.toml server
 .fi
 .RE
-.SS "Mode-Specific Logging Options"
-.TP
-.BR \-q ", " \-\-quiet
-Suppress console logging output. Only errors and critical warnings are displayed.
-Available in client and mirror modes.
 .SS "Network Options"
 .TP
 .BR \-p ", " \-\-port =\fIPORT\fR

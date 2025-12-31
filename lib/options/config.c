@@ -906,6 +906,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
 
   // Parse TOML file
   toml_result_t result = toml_parse_file_ex(config_path_expanded);
+  defer(toml_free(result));
 
   if (!result.ok) {
     // result.errmsg is an array, so check its first character

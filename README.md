@@ -184,6 +184,7 @@ These options apply to all modes (server, client, mirror) and must be specified 
 - `-L --log-file FILE`: Redirect logs to file (default: server.log/client.log/mirror.log based on mode)
 - `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal (default: info in release, debug in debug builds)
 - `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
+- `-q --quiet`: Disable console logging (logs only to file)
 
 **Information:**
 
@@ -277,10 +278,6 @@ ascii-chat client [::1]:8080           # Connect to IPv6 ::1:8080
 - `--no-encrypt`: Disable encryption (for local testing)
 - `--server-key KEY`: Expected server public key for identity verification (prevents MITM attacks)
 
-**Output:**
-
-- `-q --quiet`: Disable console logging (logs only to file)
-
 ### Server Options
 
 Run `ascii-chat server --help` to see all server options.
@@ -365,10 +362,6 @@ Mirror mode displays your local webcam as ASCII art without any network connecti
 - `-S --snapshot`: Capture single frame and exit (useful for testing palettes)
 - `-D --snapshot-delay SECONDS`: Delay in seconds before capturing snapshot (default: 3.0-4.0 for webcam warmup)
 - `--strip-ansi`: Remove all ANSI escape codes from output (plain ASCII only)
-
-**Output:**
-
-- `-q --quiet`: Disable console logging (logs only to file)
 
 **Example:**
 
