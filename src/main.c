@@ -77,11 +77,13 @@
 // Mode-specific entry point
 #include "server/main.h"
 #include "client/main.h"
+#include "mirror/main.h"
 
 // Common headers for version info and initialization
 #include "common.h"
 #include "version.h"
 #include "options/options.h"
+#include "options/config.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "options/levenshtein.h"
@@ -176,6 +178,11 @@ static const mode_descriptor_t g_mode_table[] = {
         .description = "Run as video chat client (connect to server)",
         .entry_point = client_main,
     },
+    {
+        .name = "mirror",
+        .description = "View local webcam as ASCII art (no server)",
+        .entry_point = mirror_main,
+    },
     // NULL terminator for table iteration
     {.name = NULL, .description = NULL, .entry_point = NULL},
 };
@@ -188,7 +195,7 @@ static const mode_descriptor_t g_mode_table[] = {
  * @brief Top-level options for fuzzy matching (without dashes)
  */
 static const char *const g_top_level_options[] = {
-    "help", "version",
+    "help", "version", "config", "config-create", "log-file", "log-level", "verbose",
     NULL // Terminator
 };
 
@@ -196,7 +203,7 @@ static const char *const g_top_level_options[] = {
  * @brief Mode names for fuzzy matching
  */
 static const char *const g_mode_names[] = {
-    "server", "client",
+    "server", "client", "mirror",
     NULL // Terminator
 };
 
@@ -239,17 +246,29 @@ static void print_usage(const char *program_name) {
          ASCII_CHAT_DESCRIPTION_EMOJI_R);
   printf("\n");
   printf("USAGE:\n");
-  printf("  %s <mode> [options...]\n", binary_name);
-  printf("  %s --help\n", binary_name);
-  printf("  %s --version\n", binary_name);
+  printf("  %s [options] <mode> [mode-options...]\n", binary_name);
+  printf("\n");
+  printf("EXAMPLES:\n");
+  printf("  %s server                    Start server on default port 27224\n", binary_name);
+  printf("  %s client                    Connect to localhost:27224\n", binary_name);
+  printf("  %s client example.com        Connect to example.com:27224\n", binary_name);
+  printf("\n");
+  printf("OPTIONS:\n");
+  printf("  --help                       Show this help\n");
+  printf("  --version                    Show version information\n");
+  printf("  --config FILE                Load configuration from FILE\n");
+  printf("  --config-create [FILE]       Create default config and exit\n");
+  printf("  -L --log-file FILE           Redirect logs to FILE\n");
+  printf("  --log-level LEVEL            Set log level: dev, debug, info, warn, error, fatal\n");
+  printf("  -V --verbose                 Increase log verbosity (stackable: -VV, -VVV)\n");
   printf("\n");
   printf("MODES:\n");
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
     printf("  %-6s  %s\n", mode->name, mode->description);
   }
   printf("\n");
-  printf("MODE-SPECIFIC HELP:\n");
-  printf("  %s <mode> --help     Show mode-specific options\n", binary_name);
+  printf("MODE-OPTIONS:\n");
+  printf("  %s <mode> --help             Show options for a mode\n", binary_name);
   printf("\n");
   printf("️🔗 https://github.com/zfogg/ascii-chat\n");
 }
@@ -271,7 +290,7 @@ static void print_usage(const char *program_name) {
  * @ingroup main
  */
 static void print_version() {
-  printf("%s %s\n", APP_NAME, VERSION);
+  printf("%s %s (%s, %s)\n", APP_NAME, VERSION, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
   printf("\n");
 
   printf("Built with:\n");
@@ -297,8 +316,6 @@ static void print_version() {
 #else
   printf("  C Library: Unknown\n");
 #endif
-
-  printf("  Platform: %s\n", ASCII_CHAT_OS);
 
   printf("\n");
   printf("For more information: https://github.com/zfogg/ascii-chat\n");
@@ -438,9 +455,13 @@ int main(int argc, char *argv[]) {
    * @{
    */
 
-  // Case 3: Check for --help or --version BEFORE the mode (global options)
-  // If they appear after the mode, they'll be passed to the mode handler
-  // Any other option before the mode is an error
+  // Binary-level logging options (apply to all modes)
+  const char *binary_log_file = NULL;
+  const char *binary_log_level = NULL;
+  int binary_verbose_count = 0;
+
+  // Case 3: Check for --help, --version, --config-create, --config, and logging options BEFORE the mode
+  // Logging options are binary-level and apply to all modes
   for (int i = 1; i < argc && (mode_index == -1 || i < mode_index); i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -450,6 +471,75 @@ int main(int argc, char *argv[]) {
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         print_version();
         return 0;
+      }
+      if (strncmp(argv[i], "--config-create", 15) == 0) {
+        // Handle --config-create or --config-create=path
+        const char *config_path = NULL;
+        if (argv[i][15] == '=') {
+          // Format: --config-create=path
+          config_path = argv[i] + 16;
+          if (config_path[0] == '\0') {
+            config_path = NULL; // Empty path after =, use default
+          }
+        } else if (argv[i][15] == '\0' && i + 1 < argc && argv[i + 1][0] != '-') {
+          // Format: --config-create path (next arg is the path)
+          config_path = argv[i + 1];
+        }
+        // Initialize logging for log_plain_stderr() to work
+        log_init(NULL, LOG_ERROR, true, false); // Minimal logging, errors only, force stderr
+
+        // Create config and exit
+        asciichat_error_t result = config_create_default(config_path);
+        if (result != ASCIICHAT_OK) {
+          fprintf(stderr, "Failed to create config file\n");
+          return result;
+        }
+        const char *final_path = config_path ? config_path : "default location";
+        fprintf(stdout, "Created config file at %s\n", final_path);
+        return 0;
+      }
+      if (strcmp(argv[i], "--config") == 0) {
+        // --config requires an argument - this will be handled by options_init later
+        // Skip this and the next argument (the config path)
+        if (i + 1 < argc) {
+          i++; // Skip the config path argument
+        }
+        continue;
+      }
+      // Binary-level logging options
+      if (strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0) {
+        if (i + 1 < argc) {
+          binary_log_file = argv[i + 1];
+          i++; // Skip the log file path argument
+        } else {
+          fprintf(stderr, "Error: %s requires an argument\n", argv[i]);
+          return ERROR_USAGE;
+        }
+        continue;
+      }
+      if (strcmp(argv[i], "--log-level") == 0) {
+        if (i + 1 < argc) {
+          binary_log_level = argv[i + 1];
+          i++; // Skip the log level argument
+        } else {
+          fprintf(stderr, "Error: --log-level requires an argument\n");
+          return ERROR_USAGE;
+        }
+        continue;
+      }
+      if (strcmp(argv[i], "--verbose") == 0 || strcmp(argv[i], "-V") == 0) {
+        binary_verbose_count++;
+        continue;
+      }
+      // Handle stacked verbose flags like -VVV
+      if (argv[i][0] == '-' && argv[i][1] == 'V') {
+        for (int j = 1; argv[i][j] == 'V'; j++) {
+          binary_verbose_count++;
+        }
+        if (argv[i][binary_verbose_count + 1] == '\0') {
+          // All characters were 'V', this is valid
+          continue;
+        }
       }
       // Any other option before the mode - check if it's a typo of a top-level option or mode name
       // Extract the option name (skip leading dashes)
@@ -561,25 +651,84 @@ int main(int argc, char *argv[]) {
    * @{
    */
 
-  // Determine if this is client or server mode
-  bool is_client = (strcmp(mode->name, "client") == 0);
+  // Determine which mode we're in for options parsing
+  asciichat_mode_t mode_type;
+  if (strcmp(mode->name, "server") == 0) {
+    mode_type = MODE_SERVER;
+  } else if (strcmp(mode->name, "client") == 0) {
+    mode_type = MODE_CLIENT;
+  } else if (strcmp(mode->name, "mirror") == 0) {
+    mode_type = MODE_MIRROR;
+  } else {
+    fprintf(stderr, "Error: Unknown mode '%s'\n", mode->name);
+    return ERROR_USAGE;
+  }
 
-  // Parse command line options (common for both modes)
+  // Parse command line options (common for all modes)
   // Note: --help and --version will exit(0) directly within options_init
-  asciichat_error_t options_result = options_init(mode_argc, mode_argv, is_client);
+  asciichat_error_t options_result = options_init(mode_argc, mode_argv, mode_type);
   if (options_result != ASCIICHAT_OK) {
     // options_init returns ERROR_USAGE for invalid options (after printing error)
     UNTRACKED_FREE(mode_argv);
     return options_result;
   }
 
+  // Apply binary-level logging options (these override mode-specific defaults)
+  if (binary_log_file) {
+    SAFE_STRNCPY(opt_log_file, binary_log_file, sizeof(opt_log_file));
+  }
+  if (binary_log_level) {
+    // Parse log level string to enum
+    if (strcmp(binary_log_level, "dev") == 0 || strcmp(binary_log_level, "DEV") == 0) {
+      opt_log_level = LOG_DEV;
+    } else if (strcmp(binary_log_level, "debug") == 0 || strcmp(binary_log_level, "DEBUG") == 0) {
+      opt_log_level = LOG_DEBUG;
+    } else if (strcmp(binary_log_level, "info") == 0 || strcmp(binary_log_level, "INFO") == 0) {
+      opt_log_level = LOG_INFO;
+    } else if (strcmp(binary_log_level, "warn") == 0 || strcmp(binary_log_level, "WARN") == 0) {
+      opt_log_level = LOG_WARN;
+    } else if (strcmp(binary_log_level, "error") == 0 || strcmp(binary_log_level, "ERROR") == 0) {
+      opt_log_level = LOG_ERROR;
+    } else if (strcmp(binary_log_level, "fatal") == 0 || strcmp(binary_log_level, "FATAL") == 0) {
+      opt_log_level = LOG_FATAL;
+    } else {
+      fprintf(stderr, "Error: Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal\n",
+              binary_log_level);
+      UNTRACKED_FREE(mode_argv);
+      return ERROR_USAGE;
+    }
+  }
+  if (binary_verbose_count > 0) {
+    opt_verbose_level = (unsigned short int)binary_verbose_count;
+  }
+
+  // Determine if this mode uses client-like initialization (client and mirror modes)
+  bool is_client_or_mirror_mode = (mode_type == MODE_CLIENT || mode_type == MODE_MIRROR);
+
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
-  if (is_client && opt_show_capabilities) {
+  if (is_client_or_mirror_mode && opt_show_capabilities) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
     UNTRACKED_FREE(mode_argv);
     return 0;
+  }
+
+  // Determine default log filename based on mode
+  const char *default_log_filename;
+  switch (mode_type) {
+  case MODE_SERVER:
+    default_log_filename = "server.log";
+    break;
+  case MODE_CLIENT:
+    default_log_filename = "client.log";
+    break;
+  case MODE_MIRROR:
+    default_log_filename = "mirror.log";
+    break;
+  default:
+    default_log_filename = "ascii-chat.log";
+    break;
   }
 
   // Validate log file path if specified (security: prevent path traversal)
@@ -588,7 +737,6 @@ int main(int argc, char *argv[]) {
     asciichat_error_t log_path_result = path_validate_user_path(opt_log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
     if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
       // Invalid log file path - warn and fall back to default
-      const char *default_log_filename = is_client ? "client.log" : "server.log";
       fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", opt_log_file, default_log_filename);
       // Clear opt_log_file so asciichat_shared_init uses default
       opt_log_file[0] = '\0';
@@ -601,9 +749,8 @@ int main(int argc, char *argv[]) {
   }
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
-  // For client mode, this also sets log_force_stderr(true) to route all logs to stderr
-  const char *default_log_filename = is_client ? "client.log" : "server.log";
-  asciichat_error_t init_result = asciichat_shared_init(default_log_filename, is_client);
+  // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr
+  asciichat_error_t init_result = asciichat_shared_init(default_log_filename, is_client_or_mirror_mode);
   if (init_result != ASCIICHAT_OK) {
     UNTRACKED_FREE(mode_argv);
     return init_result;
@@ -613,7 +760,7 @@ int main(int argc, char *argv[]) {
 
   // Client-specific: auto-detect piping and default to no color mode
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
-  if (is_client && !platform_isatty(STDOUT_FILENO) && opt_color_mode == COLOR_MODE_AUTO) {
+  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && opt_color_mode == COLOR_MODE_AUTO) {
     opt_color_mode = COLOR_MODE_NONE;
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }

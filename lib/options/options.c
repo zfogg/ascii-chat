@@ -89,7 +89,7 @@ int strtoint_safe(const char *str) {
 }
 // Forward declaration for get_required_argument (defined later in file)
 static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                                   bool is_client);
+                                   asciichat_mode_t mode);
 
 // Standard option parsing error return
 static inline asciichat_error_t option_error_invalid(void) {
@@ -98,8 +98,8 @@ static inline asciichat_error_t option_error_invalid(void) {
 
 // Validate and retrieve required argument for an option
 static char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name,
-                                        bool is_client) {
-  char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, is_client);
+                                        asciichat_mode_t mode) {
+  char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, mode);
   if (!value) {
     (void)option_error_invalid();
   }
@@ -204,6 +204,9 @@ static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size
 ASCIICHAT_API unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
 ASCIICHAT_API bool auto_width = true, auto_height = true;
 
+// Track if --port was explicitly set via command-line flag (for mutual exclusion validation)
+static bool port_explicitly_set_via_flag = false;
+
 ASCIICHAT_API char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
                    opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
@@ -248,9 +251,6 @@ ASCIICHAT_API unsigned short int opt_verbose_level = 0;
 
 // Enable snapshot mode when set via --snapshot (client only - capture one frame and exit)
 ASCIICHAT_API unsigned short int opt_snapshot_mode = 0;
-
-// Enable mirror mode when set via --mirror (client only - view webcam locally without server)
-ASCIICHAT_API unsigned short int opt_mirror_mode = 0;
 
 // Snapshot delay in seconds (float) - default 3.0 for webcam warmup
 #if defined(__APPLE__)
@@ -335,19 +335,13 @@ static struct option client_options[] = {{"port", required_argument, NULL, 'p'},
                                          {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
                                          {"snapshot-delay", required_argument, NULL, 'D'},
-                                         {"mirror", no_argument, NULL, 1016},
                                          {"strip-ansi", no_argument, NULL, 1017},
-                                         {"log-file", required_argument, NULL, 'L'},
-                                         {"log-level", required_argument, NULL, 1018},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"password", optional_argument, NULL, 1009},
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"server-key", required_argument, NULL, 1006},
-                                         {"config", required_argument, NULL, 1010},
-                                         {"config-create", optional_argument, NULL, 1011},
-                                         {"verbose", no_argument, NULL, 'V'},
                                          {"list-webcams", no_argument, NULL, 1013},
                                          {"list-microphones", no_argument, NULL, 1014},
                                          {"list-speakers", no_argument, NULL, 1015},
@@ -359,23 +353,38 @@ static struct option client_options[] = {{"port", required_argument, NULL, 'p'},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
-// Server-only options
-static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
-                                         {"address6", required_argument, NULL, 1012},
-                                         {"port", required_argument, NULL, 'p'},
+// Mirror mode options (local webcam viewing without network)
+static struct option mirror_options[] = {{"width", required_argument, NULL, 'x'},
+                                         {"height", required_argument, NULL, 'y'},
+                                         {"webcam-index", required_argument, NULL, 'c'},
+                                         {"webcam-flip", no_argument, NULL, 'f'},
+                                         {"test-pattern", no_argument, NULL, 1004},
+                                         {"fps", required_argument, NULL, 1003},
+                                         {"color-mode", required_argument, NULL, 1000},
+                                         {"show-capabilities", no_argument, NULL, 1001},
+                                         {"utf8", no_argument, NULL, 1002},
+                                         {"render-mode", required_argument, NULL, 'M'},
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
-                                         {"log-file", required_argument, NULL, 'L'},
-                                         {"log-level", required_argument, NULL, 1018},
+                                         {"stretch", no_argument, NULL, 's'},
+                                         {"quiet", no_argument, NULL, 'q'},
+                                         {"snapshot", no_argument, NULL, 'S'},
+                                         {"snapshot-delay", required_argument, NULL, 'D'},
+                                         {"strip-ansi", no_argument, NULL, 1017},
+                                         {"list-webcams", no_argument, NULL, 1013},
+                                         {"help", optional_argument, NULL, 'h'},
+                                         {0, 0, 0, 0}};
+
+// Server-only options
+static struct option server_options[] = {{"port", required_argument, NULL, 'p'},
+                                         {"palette", required_argument, NULL, 'P'},
+                                         {"palette-chars", required_argument, NULL, 'C'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"password", optional_argument, NULL, 1009},
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"client-keys", required_argument, NULL, 1008},
-                                         {"config", required_argument, NULL, 1010},
-                                         {"config-create", optional_argument, NULL, 1011},
-                                         {"verbose", no_argument, NULL, 'V'},
                                          {"compression-level", required_argument, NULL, 1019},
                                          {"no-compress", no_argument, NULL, 1022},
                                          {"encode-audio", no_argument, NULL, 1023},
@@ -455,7 +464,7 @@ static char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buf
 // Helper function to handle required arguments with consistent error messages
 // Returns NULL on error (caller should check and return error code)
 static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
-                                   bool is_client) {
+                                   asciichat_mode_t mode) {
   // Check if opt_value is NULL or empty
   if (!opt_value || strlen(opt_value) == 0) {
     goto error;
@@ -476,12 +485,13 @@ static char *get_required_argument(const char *opt_value, char *buffer, size_t b
   return value_str;
 
 error:
-  (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", option_name);
+  (void)fprintf(stderr, "%s: option '--%s' requires an argument\n",
+                mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"), option_name);
   (void)fflush(stderr);
   return NULL; // Signal error to caller
 }
 
-asciichat_error_t options_init(int argc, char **argv, bool is_client) {
+asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   // Track whether audio encoding flags were explicitly set
   bool encode_audio_explicitly_set = false;
 
@@ -515,7 +525,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 #else
                   "/",
 #endif
-                  is_client ? "client" : "server");
+                  mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"));
 
     char *normalized_default_log = NULL;
     if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
@@ -542,7 +552,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   opt_palette_custom[0] = '\0';
 
   // Set different default addresses for client vs server (before config load)
-  if (is_client) {
+  if (mode == MODE_CLIENT || mode == MODE_MIRROR) {
     // Client connects to localhost by default (IPv6-first with IPv4 fallback)
     SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "localhost");
     opt_address6[0] = '\0'; // Client doesn't use opt_address6
@@ -552,120 +562,45 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "::1");
   }
 
-  // Track config file path from --config option (if provided)
-  const char *custom_config_path = NULL;
-
-  // Pre-pass: Check for --config-create before parsing (it creates file and exits)
-  for (int i = 1; i < argc; i++) {
-    if (argv[i] == NULL)
-      break;
-    if (strncmp(argv[i], "--config-create=", 16) == 0) {
-      // Format: --config-create=path
-      const char *create_path = argv[i] + 16; // Skip "--config-create=" (16 characters including =)
-      if (create_path[0] == '\0') {
-        create_path = NULL;
-      }
-      asciichat_error_t create_result = config_create_default(create_path);
-      if (create_result != ASCIICHAT_OK) {
-        (void)fprintf(stderr, "Failed to create config file: %s\n", asciichat_error_string(create_result));
-        return create_result;
-      }
-      const char *final_path = create_path ? create_path : "default location";
-      (void)fprintf(stdout, "Created default config file at %s\n", final_path);
-      (void)fflush(stdout);
-      return ASCIICHAT_OK; // Exit successfully
-    } else if (strcmp(argv[i], "--config-create") == 0) {
-      // Format: --config-create [path] (space-separated, path optional)
-      // Check if next argument is a mode (server/client) or a path
-      const char *create_path = NULL;
-      if (i + 1 < argc && argv[i + 1] != NULL) {
-        // If next arg is "server" or "client", it's the mode, not a path
-        if (strcmp(argv[i + 1], "server") != 0 && strcmp(argv[i + 1], "client") != 0) {
-          create_path = argv[i + 1];
-        }
-      }
-      asciichat_error_t create_result = config_create_default(create_path);
-      if (create_result != ASCIICHAT_OK) {
-        (void)fprintf(stderr, "Failed to create config file: %s\n", asciichat_error_string(create_result));
-        return create_result;
-      }
-      const char *final_path = create_path ? create_path : "default location";
-      (void)fprintf(stdout, "Created default config file at %s\n", final_path);
-      (void)fflush(stdout);
-      return ASCIICHAT_OK; // Exit successfully
-    }
-  }
-
-  // Pre-pass: Check for --config option (must load before other options are parsed)
-  for (int i = 1; i < argc; i++) {
-    if (argv[i] == NULL)
-      break;
-    if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
-      custom_config_path = argv[i + 1];
-      break;
-    } else if (strncmp(argv[i], "--config=", 9) == 0) {
-      custom_config_path = argv[i] + 9;
-      break;
-    }
-  }
-
   // Load configuration from TOML files (if they exist)
   // This loads system config first (${INSTALL_PREFIX}/etc/ascii-chat/config.toml),
-  // then user config (custom path or default). User config overrides system config.
+  // then user config at default location. User config overrides system config.
   // This happens BEFORE CLI parsing so CLI arguments can override config values.
-  // Use strict=true if custom path provided (errors are fatal), strict=false for default (non-fatal)
-  bool strict_config = (custom_config_path != NULL);
-  asciichat_error_t config_result = config_load_system_and_user(is_client, custom_config_path, strict_config);
-  if (config_result != ASCIICHAT_OK) {
-    if (strict_config) {
-      // Custom config file errors are fatal - show detailed error message
-      const char *config_file_path = custom_config_path ? custom_config_path : "default location";
+  // Config load errors are non-fatal for default location (logged as warnings)
+  bool is_client_or_mirror = (mode == MODE_CLIENT || mode == MODE_MIRROR);
+  asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false);
+  (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
-      // Get error context to retrieve the detailed message
-      asciichat_error_context_t err_ctx;
-      if (asciichat_has_errno(&err_ctx) && err_ctx.context_message && strlen(err_ctx.context_message) > 0) {
-        // Use the detailed context message from SET_ERRNO
-        (void)fprintf(stderr, "%s\n", err_ctx.context_message);
-      } else {
-        // Fallback to generic error message
-        const char *error_msg = asciichat_error_string(config_result);
-        (void)fprintf(stderr, "Failed to load config file '%s': %s (error code: %d)\n", config_file_path, error_msg,
-                      config_result);
-        (void)fprintf(stderr, "Please check that the file exists, is readable, and contains valid TOML syntax.\n");
-      }
-      return config_result;
-    }
-    // Config load errors are non-fatal for default location (logged as warnings)
-    // Continue with defaults and CLI parsing
-  }
-
-  // Use different option sets for client vs server
+  // Use different option sets for server, client, and mirror modes
   const char *optstring;
   struct option *options;
 
-  if (is_client) {
-    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:Vh"; // Leading ':' for error reporting
-    options = client_options;
-  } else {
-    optstring = ":a:p:P:C:L:EK:F:Vh"; // Leading ':' for error reporting (removed A for audio)
+  switch (mode) {
+  case MODE_SERVER:
+    optstring = ":a:p:P:C:EK:F:h"; // Leading ':' for error reporting
     options = server_options;
+    break;
+  case MODE_CLIENT:
+    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:EK:F:h"; // Leading ':' for error reporting
+    options = client_options;
+    break;
+  case MODE_MIRROR:
+    optstring = ":x:y:c:fM:P:C:sqSD:h"; // Leading ':' for error reporting
+    options = mirror_options;
+    break;
+  default:
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
   }
 
-  // Pre-pass: Check for --help or --version first (they have priority over everything)
-  // This ensures help/version are shown without triggering password prompts or other side effects
+  // Pre-pass: Check for --help first (it has priority over everything)
+  // This ensures help is shown without triggering password prompts or other side effects
+  // Note: --version is handled at binary level in src/main.c, not here
   for (int i = 1; i < argc; i++) {
     if (argv[i] == NULL) {
       break; // Stop if we hit a NULL element (safety check for tests with malformed argv)
     }
     if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-      usage(stdout, is_client);
-      (void)fflush(stdout);
-      _exit(0);
-    }
-    if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-      const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
-      printf("%s v%d.%d.%d-%s (%s, %s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_DATE, ASCII_CHAT_BUILD_TYPE);
+      usage(stdout, mode);
       (void)fflush(stdout);
       _exit(0);
     }
@@ -682,91 +617,24 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     switch (c) {
     case 0:
       // Handle long-only options that return 0
-      if (options[longindex].name) {
-        // Skip --config and --config-create (already handled in pre-pass)
-        if (strcmp(options[longindex].name, "config") == 0 || strcmp(options[longindex].name, "config-create") == 0) {
-          break;
-        }
-      }
+      // if (options[longindex].name) {
+      //}
       break;
-
-    case 'a': { // --address (server only - for bind address)
-      // Client mode: -a/--address is deprecated, use positional argument instead
-      if (is_client) {
-        (void)fprintf(stderr, "Error: --address/-a is not available for client mode.\n");
-        (void)fprintf(stderr, "Use positional argument instead:\n");
-        (void)fprintf(stderr, "  ascii-chat client [address][:port]\n");
-        (void)fprintf(stderr, "Examples:\n");
-        (void)fprintf(stderr, "  ascii-chat client                     (connects to localhost:27224)\n");
-        (void)fprintf(stderr, "  ascii-chat client 192.168.1.1         (connects to 192.168.1.1:27224)\n");
-        (void)fprintf(stderr, "  ascii-chat client example.com:8080    (connects to example.com:8080)\n");
-        (void)fprintf(stderr, "  ascii-chat client [::1]:8080          (connects to IPv6 ::1:8080)\n");
-        return option_error_invalid();
-      }
-
-      // Server mode: parse bind address
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
-      if (!value_str)
-        return option_error_invalid();
-
-      // Parse IPv6 address (remove brackets if present)
-      char parsed_addr[OPTIONS_BUFF_SIZE];
-      if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
-        value_str = parsed_addr;
-      }
-
-      // Check if it's a valid IPv4 or IPv6 address
-      if (is_valid_ipv4(value_str) || is_valid_ipv6(value_str)) {
-        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
-      } else {
-        (void)fprintf(stderr, "Invalid bind address format '%s'.\n", value_str);
-        (void)fprintf(stderr, "Server bind address must be a valid IP address.\n");
-        (void)fprintf(stderr, "Supported formats:\n");
-        (void)fprintf(stderr, "  IPv4: 0.0.0.0 or 127.0.0.1\n");
-        (void)fprintf(stderr, "  IPv6: :: or ::1 or [::1]\n");
-        return option_error_invalid();
-      }
-      break;
-    }
-
-    case 1012: { // --address6 (server only)
-      if (is_client) {
-        (void)fprintf(stderr, "Error: --address6 is only available for server mode.\n");
-        return option_error_invalid();
-      }
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address6", is_client);
-      if (!value_str)
-        return option_error_invalid();
-
-      // Parse IPv6 address (remove brackets if present)
-      char parsed_addr[OPTIONS_BUFF_SIZE];
-      if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
-        value_str = parsed_addr;
-      }
-
-      // Check if it's a valid IPv6 address
-      if (is_valid_ipv6(value_str)) {
-        SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "%s", value_str);
-      } else {
-        (void)fprintf(stderr, "Error: Invalid IPv6 address '%s'.\n", value_str);
-        return option_error_invalid();
-      }
-      break;
-    }
 
     case 'p': {
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "port", is_client);
+      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "port", mode);
       if (!value_str)
         return option_error_invalid();
       uint16_t port_num;
       if (!validate_port_opt(value_str, &port_num))
         return option_error_invalid();
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
+      port_explicitly_set_via_flag = true; // Track that --port was used
       break;
     }
 
     case 'x': {
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "width", is_client);
+      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "width", mode);
       if (!value_str)
         return option_error_invalid();
       int width_val;
@@ -778,7 +646,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'y': {
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "height", is_client);
+      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "height", mode);
       if (!value_str)
         return option_error_invalid();
       int height_val;
@@ -790,7 +658,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'c': {
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", is_client);
+      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", mode);
       if (!value_str)
         return option_error_invalid();
       unsigned short int index_val;
@@ -807,7 +675,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1000: { // --color-mode
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", mode);
       if (!value_str)
         return option_error_invalid();
       if (strcmp(value_str, "auto") == 0) {
@@ -836,12 +704,12 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       break;
 
     case 1003: { // --fps (client only - sets client's desired frame rate)
-      if (!is_client) {
+      if (mode == MODE_SERVER) {
         (void)fprintf(stderr, "Error: --fps is a client-only option.\n");
         return option_error_invalid();
       }
       extern int g_max_fps; // From common.c
-      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "fps", is_client);
+      char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "fps", mode);
       if (!value_str)
         return option_error_invalid();
       int fps_val;
@@ -852,7 +720,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1004: { // --test-pattern (client only - use test pattern instead of webcam)
-      if (!is_client) {
+      if (mode == MODE_SERVER) {
         (void)fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
         return option_error_invalid();
       }
@@ -862,7 +730,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1026: { // --no-audio-mixer (server only - disable audio mixer for debugging)
-      if (is_client) {
+      if (mode == MODE_CLIENT || mode == MODE_MIRROR) {
         (void)fprintf(stderr, "Error: --no-audio-mixer is a server-only option.\n");
         return option_error_invalid();
       }
@@ -872,7 +740,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1013: { // --list-webcams (client only - list available webcam devices and exit)
-      if (!is_client) {
+      if (mode == MODE_SERVER) {
         (void)fprintf(stderr, "Error: --list-webcams is a client-only option.\n");
         return option_error_invalid();
       }
@@ -897,7 +765,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1014: { // --list-microphones (client only - list available audio input devices and exit)
-      if (!is_client) {
+      if (mode == MODE_SERVER) {
         (void)fprintf(stderr, "Error: --list-microphones is a client-only option.\n");
         return option_error_invalid();
       }
@@ -924,7 +792,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1015: { // --list-speakers (client only - list available audio output devices and exit)
-      if (!is_client) {
+      if (mode == MODE_SERVER) {
         (void)fprintf(stderr, "Error: --list-speakers is a client-only option.\n");
         return option_error_invalid();
       }
@@ -951,7 +819,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'M': { // --render-mode
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", mode);
       if (!value_str)
         return option_error_invalid();
       if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
@@ -969,7 +837,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'P': { // --palette
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", mode);
       if (!value_str)
         return option_error_invalid();
       if (strcmp(value_str, "standard") == 0) {
@@ -994,7 +862,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'C': { // --palette-chars
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", mode);
       if (!value_str)
         return option_error_invalid();
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
@@ -1059,16 +927,12 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_snapshot_mode = 1;
       break;
 
-    case 1016: // --mirror (client only - view webcam locally without server)
-      opt_mirror_mode = 1;
-      break;
-
     case 1017: // --strip-ansi (client only - remove ANSI escape sequences from output)
       opt_strip_ansi = 1;
       break;
 
     case 'D': {
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", mode);
       if (!value_str)
         return option_error_invalid();
       char *endptr;
@@ -1087,7 +951,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'L': {
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", mode);
       if (!value_str)
         return option_error_invalid();
       char *normalized_log = NULL;
@@ -1103,7 +967,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1018: { // --log-level
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-level", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-level", mode);
       if (!value_str)
         return option_error_invalid();
       int log_level = validate_opt_log_level(value_str, NULL, 0);
@@ -1117,7 +981,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1019: { // --compression-level
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "compression-level", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "compression-level", mode);
       if (!value_str)
         return option_error_invalid();
 
@@ -1136,12 +1000,12 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1020: { // --reconnect (client only)
-      if (!is_client) {
+      if (mode == MODE_SERVER) {
         (void)fprintf(stderr, "Warning: --reconnect is ignored in server mode\n");
         break;
       }
 
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "reconnect", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "reconnect", mode);
       if (!value_str)
         return option_error_invalid();
 
@@ -1158,12 +1022,12 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1021: { // --max-clients (server only)
-      if (is_client) {
+      if (mode == MODE_CLIENT || mode == MODE_MIRROR) {
         (void)fprintf(stderr, "Warning: --max-clients is ignored in client mode\n");
         break;
       }
 
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "max-clients", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "max-clients", mode);
       if (!value_str)
         return option_error_invalid();
 
@@ -1197,7 +1061,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       break;
 
     case 'K': {
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", mode);
       if (!value_str)
         return option_error_invalid();
 
@@ -1227,7 +1091,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 'F': {
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", mode);
       if (!value_str)
         return option_error_invalid();
       SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -1242,7 +1106,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1006: { // --server-key (client only)
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", mode);
       if (!value_str)
         return option_error_invalid();
       SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -1250,7 +1114,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
 
     case 1008: { // --client-keys (server only)
-      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", mode);
       if (!value_str)
         return option_error_invalid();
       SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
@@ -1333,7 +1197,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
               char abbreviated_opt[256];
               safe_snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
               safe_fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
-              usage(stderr, is_client);
+              usage(stderr, mode);
               return option_error_invalid();
             }
           }
@@ -1360,7 +1224,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
             }
           }
         }
-        (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", opt_name);
+        (void)fprintf(stderr, "%s: option '--%s' requires an argument\n",
+                      mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"), opt_name);
       } else {
         // Short option - try to find the corresponding long option name
         const char *long_name = NULL;
@@ -1371,9 +1236,11 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           }
         }
         if (long_name) {
-          (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", long_name);
+          (void)fprintf(stderr, "%s: option '--%s' requires an argument\n",
+                        mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"), long_name);
         } else {
-          (void)fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
+          (void)fprintf(stderr, "%s: option '-%c' requires an argument\n",
+                        mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"), optopt);
         }
       }
       return option_error_invalid();
@@ -1425,36 +1292,79 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       }
 #ifndef NDEBUG
       // Only print full usage in debug builds - release builds just show the error
-      usage(stderr, is_client);
+      usage(stderr, mode);
 #endif
       return option_error_invalid();
     }
 
     case 'h':
-      usage(stdout, is_client);
+      usage(stdout, mode);
       (void)fflush(stdout);
       _exit(0);
-
-    case 'v': {
-      const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
-      printf("%s v%d.%d.%d-%s (%s, %s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_DATE, ASCII_CHAT_BUILD_TYPE);
-      (void)fflush(stdout);
-      _exit(0);
-    }
-
-    case 1010: // --config (handled in pre-pass)
-    case 1011: // --config-create (handled in pre-pass)
-      break;
 
     default:
       abort();
     }
   }
 
+  // Server mode: Parse positional arguments for bind addresses (0-2 addresses)
+  // - 0 args: bind to defaults (127.0.0.1 and ::1)
+  // - 1 arg: bind to this address (IPv4 or IPv6)
+  // - 2 args: bind to both (must be 1 IPv4 and 1 IPv6)
+  if (mode == MODE_SERVER) {
+    int num_addresses = 0;
+    bool has_ipv4 = false;
+    bool has_ipv6 = false;
+
+    // Parse up to 2 positional arguments
+    while (optind < argc && argv[optind] != NULL && argv[optind][0] != '-' && num_addresses < 2) {
+      const char *addr_arg = argv[optind];
+
+      // Parse IPv6 address (remove brackets if present)
+      char parsed_addr[OPTIONS_BUFF_SIZE];
+      if (parse_ipv6_address(addr_arg, parsed_addr, sizeof(parsed_addr)) == 0) {
+        addr_arg = parsed_addr;
+      }
+
+      // Check if it's IPv4 or IPv6
+      if (is_valid_ipv4(addr_arg)) {
+        if (has_ipv4) {
+          (void)fprintf(stderr, "Error: Cannot specify multiple IPv4 addresses.\n");
+          (void)fprintf(stderr, "Already have: %s\n", opt_address);
+          (void)fprintf(stderr, "Cannot add: %s\n", addr_arg);
+          return option_error_invalid();
+        }
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", addr_arg);
+        has_ipv4 = true;
+        num_addresses++;
+      } else if (is_valid_ipv6(addr_arg)) {
+        if (has_ipv6) {
+          (void)fprintf(stderr, "Error: Cannot specify multiple IPv6 addresses.\n");
+          (void)fprintf(stderr, "Already have: %s\n", opt_address6);
+          (void)fprintf(stderr, "Cannot add: %s\n", addr_arg);
+          return option_error_invalid();
+        }
+        SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "%s", addr_arg);
+        has_ipv6 = true;
+        num_addresses++;
+      } else {
+        (void)fprintf(stderr, "Error: Invalid IP address '%s'.\n", addr_arg);
+        (void)fprintf(stderr, "Server bind addresses must be valid IPv4 or IPv6 addresses.\n");
+        (void)fprintf(stderr, "Examples:\n");
+        (void)fprintf(stderr, "  ascii-chat server 0.0.0.0\n");
+        (void)fprintf(stderr, "  ascii-chat server ::1\n");
+        (void)fprintf(stderr, "  ascii-chat server 0.0.0.0 ::1\n");
+        return option_error_invalid();
+      }
+
+      optind++; // Consume this argument
+    }
+  }
+
   // Client mode: Parse positional argument for address[:port]
   // This replaces the old -a/--address and -H/--host options
-  if (is_client) {
+  // Note: Mirror mode does NOT accept positional arguments
+  if (mode == MODE_CLIENT) {
     // Check if there's a remaining positional argument after options
     if (optind < argc && argv[optind] != NULL) {
       const char *addr_arg = argv[optind];
@@ -1495,12 +1405,30 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           }
         }
 
-        // Store parsed port (overrides any previous --port setting)
+        // Check for mutual exclusion: cannot specify port in both positional arg and --port flag
+        if (parsed_port != 27224 && port_explicitly_set_via_flag) {
+          (void)fprintf(stderr, "Error: Cannot specify port in both the positional argument and --port flag.\n");
+          return option_error_invalid();
+        }
+
+        // Store parsed port (only if not already set via --port flag)
         SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%u", parsed_port);
 
         optind++; // Consume this argument
       }
     }
+  }
+
+  // Validate no extra positional arguments (mirror mode only - client/server handle their own)
+  if (mode == MODE_MIRROR && optind < argc) {
+    (void)fprintf(stderr, "Unexpected argument: '%s'\n", argv[optind]);
+    return option_error_invalid();
+  }
+
+  // Validate no extra positional arguments for client/server beyond what they parsed
+  if ((mode == MODE_CLIENT || mode == MODE_SERVER) && optind < argc) {
+    (void)fprintf(stderr, "Unexpected argument: '%s'\n", argv[optind]);
+    return option_error_invalid();
   }
 
   // After parsing command line options, update dimensions
@@ -1527,14 +1455,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       (strcmp(webcam_disabled, "1") == 0 || platform_strcasecmp(webcam_disabled, "true") == 0 ||
        platform_strcasecmp(webcam_disabled, "yes") == 0 || platform_strcasecmp(webcam_disabled, "on") == 0)) {
     opt_test_pattern = true;
-  }
-
-  // Check for incompatible options: mirror mode and audio are not compatible
-  if (opt_mirror_mode && opt_audio_enabled) {
-    (void)fprintf(stderr, "Error: --mirror and --audio are incompatible options.\n");
-    (void)fprintf(stderr, "Mirror mode displays local webcam without network or audio support.\n");
-    (void)fflush(stderr);
-    return option_error_invalid();
   }
 
   // Apply --no-compress interaction with audio encoding:
@@ -1618,22 +1538,13 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "(ignore aspect ratio) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
                                    "disable console logging (log only to file) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-V --verbose                 " USAGE_INDENT
-                                   "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --log-level LEVEL         " USAGE_INDENT
-                                   "set log level: dev, debug, info, warn, error, fatal "
-                                   "(default: debug in debug builds, info in release)\n");
   (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
                                    "capture single frame and exit (default: [unset])\n");
   (void)fprintf(
       desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
       (double)SNAPSHOT_DELAY_DEFAULT);
-  (void)fprintf(desc, USAGE_INDENT "   --mirror                  " USAGE_INDENT
-                                   "view webcam locally without connecting to server (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --strip-ansi              " USAGE_INDENT
                                    "remove all ANSI escape codes from output (default: [unset])\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
                                    "enable packet encryption (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-K --key KEY                  " USAGE_INDENT
@@ -1652,24 +1563,67 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "expected server public key for verification (default: [unset])\n");
 }
 
+void usage_mirror(FILE *desc /* stdout|stderr*/) {
+  (void)fprintf(desc, "ascii-chat - mirror options\n");
+  (void)fprintf(desc, ASCII_CHAT_DESCRIPTION "\n\n");
+  (void)fprintf(desc, "USAGE:\n");
+  (void)fprintf(desc, "  ascii-chat mirror [options...]\n\n");
+  (void)fprintf(desc, "DESCRIPTION:\n");
+  (void)fprintf(desc, "  View your local webcam as ASCII art without connecting to a server.\n\n");
+  (void)fprintf(desc, "OPTIONS:\n");
+  (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
+  (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
+  (void)fprintf(desc, USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT
+                                   "webcam device index (0-based) (default: 0)\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "   --list-webcams            " USAGE_INDENT "list available webcam devices and exit\n");
+  (void)fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
+                                   "image (default: flipped)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "
+                                   "(for testing)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 "
+#ifdef _WIN32
+                                   "(default: 30 for Windows)\n");
+#else
+                                   "(default: 60 for Unix)\n");
+#endif
+  (void)fprintf(desc,
+                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, none, 16, 256, truecolor "
+                             "(default: auto)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
+                                   "show detected terminal capabilities and exit\n");
+  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT
+                                   "force enable UTF-8/Unicode support (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
+                                   "foreground, background, half-block (default: foreground)\n");
+  (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
+                                   "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
+  (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
+                                   "Custom palette characters (implies --palette=custom) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
+                                   "(ignore aspect ratio) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
+                                   "disable console logging (log only to file) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
+                                   "capture single frame and exit (default: [unset])\n");
+  (void)fprintf(
+      desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
+      (double)SNAPSHOT_DELAY_DEFAULT);
+  (void)fprintf(desc, USAGE_INDENT "   --strip-ansi              " USAGE_INDENT
+                                   "remove all ANSI escape codes from output (default: [unset])\n");
+}
+
 void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
   (void)fprintf(desc, ASCII_CHAT_DESCRIPTION "\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 127.0.0.1)\n");
-  (void)fprintf(desc, USAGE_INDENT "    --address6 ADDR6 " USAGE_INDENT "IPv6 address to bind to (default: ::1)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     "
                                    "Custom palette characters for --palette=custom (implies --palette=custom)\n");
-  (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --log-level LEVEL  " USAGE_INDENT
-                                   "set log level: dev, debug, info, warn, error, fatal "
-                                   "(default: debug in debug builds, info in release)\n");
-  (void)fprintf(desc, USAGE_INDENT "-V --verbose         " USAGE_INDENT
-                                   "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT
@@ -1689,11 +1643,20 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
                                    "disable audio mixer - send silence (debug mode only)\n");
 }
 
-void usage(FILE *desc /* stdout|stderr*/, bool is_client) {
-  if (is_client) {
-    usage_client(desc);
-  } else {
+void usage(FILE *desc /* stdout|stderr*/, asciichat_mode_t mode) {
+  switch (mode) {
+  case MODE_SERVER:
     usage_server(desc);
+    break;
+  case MODE_CLIENT:
+    usage_client(desc);
+    break;
+  case MODE_MIRROR:
+    usage_mirror(desc);
+    break;
+  default:
+    (void)fprintf(desc, "Error: Unknown mode\n");
+    break;
   }
 }
 

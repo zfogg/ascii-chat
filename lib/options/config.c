@@ -11,6 +11,7 @@
 #include "common.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
+#include "platform/question.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "version.h"
@@ -468,13 +469,6 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   if (snapshot_mode.type == TOML_BOOLEAN && !config_snapshot_mode_set) {
     opt_snapshot_mode = snapshot_mode.u.boolean ? 1 : 0;
     config_snapshot_mode_set = true;
-  }
-
-  // Mirror mode
-  toml_datum_t mirror_mode = toml_seek(toptab, "client.mirror_mode");
-  if (mirror_mode.type == TOML_BOOLEAN && !config_mirror_mode_set) {
-    opt_mirror_mode = mirror_mode.u.boolean ? 1 : 0;
-    config_mirror_mode_set = true;
   }
 
   // Snapshot delay
@@ -1045,7 +1039,17 @@ asciichat_error_t config_create_default(const char *config_path) {
   // Check if file already exists
   struct stat st;
   if (stat(config_path_expanded, &st) == 0) {
-    return SET_ERRNO(ERROR_CONFIG, "Config file already exists: %s", config_path ? config_path : "default location");
+    // File exists - ask user if they want to overwrite
+    log_plain_stderr("Config file already exists: %s", config_path_expanded);
+
+    bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+    if (!overwrite) {
+      log_plain_stderr("Config file creation cancelled.");
+      return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
+    }
+
+    // User confirmed overwrite - continue to create file (will overwrite existing)
+    log_plain_stderr("Overwriting existing config file...");
   }
 
   // Create directory if needed
@@ -1143,8 +1147,6 @@ asciichat_error_t config_create_default(const char *config_path) {
   (void)fprintf(f, "#quiet = %s\n", opt_quiet ? "true" : "false");
   (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
   (void)fprintf(f, "#snapshot_mode = %s\n", opt_snapshot_mode ? "true" : "false");
-  (void)fprintf(f, "# Mirror mode (view webcam locally without server)\n");
-  (void)fprintf(f, "#mirror_mode = %s\n", opt_mirror_mode ? "true" : "false");
   (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
   (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opt_snapshot_delay);
   (void)fprintf(f, "# Use test pattern instead of real webcam\n");
