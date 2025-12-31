@@ -73,7 +73,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "common.h"
-#include "util/audio.h"
+#include "audio/packet_parsing.h"
 #include "util/endian.h"
 
 /** @name Frame Decoding Functions
@@ -191,7 +191,7 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
  * @ingroup packet_parsing
  * @brief Helpers for parsing audio batch packet headers
  *
- * @note audio_batch_info_t is defined in util/audio.h
+ * @note audio_batch_info_t is defined in audio/packet_parsing.h
  */
 
 /**

@@ -1,12 +1,12 @@
 /**
- * @file util/image.c
- * @ingroup util
+ * @file video/buffer_calc.c
+ * @ingroup video
  * @brief 🖼️ Safe overflow-checked buffer size calculations for images and video frames
  */
 
+#include "buffer_calc.h"
+#include "../common.h"
 #include "image.h"
-#include "common.h"
-#include "video/image.h"
 #include <limits.h>
 
 asciichat_error_t image_calc_pixel_count(size_t width, size_t height, size_t *out_pixel_count) {

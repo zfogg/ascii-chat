@@ -96,7 +96,7 @@
 #include "options/options.h"
 #include "util/time.h"
 #include "util/format.h"
-#include "util/image.h"
+#include "video/buffer_calc.h"
 #include "util/endian.h"
 #include "util/thread.h"
 #include "util/endian.h"

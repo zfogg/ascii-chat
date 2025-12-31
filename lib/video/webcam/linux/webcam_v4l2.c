@@ -21,7 +21,7 @@
 #include "platform/file.h"
 #include "platform/util.h"
 #include "util/overflow.h"
-#include "util/image.h"
+#include "video/buffer_calc.h"
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8

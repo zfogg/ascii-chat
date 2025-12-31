@@ -1,6 +1,6 @@
 /**
- * @file util/image.h
- * @ingroup util
+ * @file video/buffer_calc.h
+ * @ingroup video
  * @brief 🖼️ Safe overflow-checked buffer size calculations for images and video frames
  *
  * Provides helpers for calculating buffer sizes with proper overflow detection.
@@ -11,7 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "asciichat_errno.h"
+#include "../asciichat_errno.h"
 
 /**
  * @brief Calculate pixel count with overflow checking

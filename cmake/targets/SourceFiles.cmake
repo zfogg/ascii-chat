@@ -31,8 +31,6 @@ set(UTIL_SRCS
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c
-    lib/util/image.c
-    lib/util/audio.c
     lib/util/password.c
     lib/util/fps.c
 )
@@ -198,6 +196,7 @@ endif()
 set(VIDEO_SRCS
     lib/video/video_frame.c
     lib/video/image.c
+    lib/video/buffer_calc.c
     lib/video/ascii.c
     lib/video/ansi_fast.c
     lib/video/ansi.c
@@ -214,6 +213,7 @@ set(VIDEO_SRCS
 # =============================================================================
 set(AUDIO_SRCS
     lib/audio/audio.c
+    lib/audio/packet_parsing.c
     lib/audio/mixer.c
     lib/audio/wav_writer.c
     lib/audio/opus_codec.c

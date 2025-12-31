@@ -147,7 +147,7 @@
 #include "video/ascii.h"
 #include "util/aspect_ratio.h"
 #include "util/endian.h"
-#include "util/image.h"
+#include "video/buffer_calc.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()
 extern rwlock_t g_client_manager_rwlock;

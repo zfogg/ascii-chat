@@ -1,8 +1,8 @@
 #pragma once
 /**
- * @file util/audio.h
+ * @file audio/packet_parsing.h
  * @brief 🔊 Audio packet parsing utilities
- * @ingroup util
+ * @ingroup audio
  *
  * Provides utility functions and macros for parsing audio batch packets.
  * These helpers are used in both server and client protocol handlers to
@@ -62,8 +62,6 @@
  * }
  * @endcode
  */
-
-#pragma once
 
 #include <stdint.h>
 #include <string.h>

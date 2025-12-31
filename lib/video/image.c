@@ -26,7 +26,7 @@
 #include "options/options.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
 #include "util/overflow.h"
-#include "util/image.h"
+#include "video/buffer_calc.h"
 #include "util/math.h"
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
