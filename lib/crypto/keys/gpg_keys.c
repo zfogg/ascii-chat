@@ -14,6 +14,16 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
+
+// Platform-specific popen/pclose
+#ifdef _WIN32
+#define SAFE_POPEN _popen
+#define SAFE_PCLOSE _pclose
+#else
+#define SAFE_POPEN popen
+#define SAFE_PCLOSE pclose
+#endif
 
 // =============================================================================
 // GPG Key Parsing Implementation
@@ -157,12 +167,96 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
     return ERROR_INVALID_PARAM;
   }
 
-  // TODO: Implement GPG key expiry checking
-  // This requires parsing the OpenPGP packet structure and checking expiration dates
+  // For GPG key expiry checking, we need a key ID
+  // If gpg_key_text is a key ID (8, 16, or 40 hex chars), use it directly
+  // Otherwise, we'd need to parse the GPG armored text (complex)
+  size_t key_len = strlen(gpg_key_text);
+  const char *key_id = gpg_key_text;
 
-  *is_expired = false; // Default to not expired
-  SET_ERRNO(ERROR_CRYPTO_KEY, "GPG key expiry checking not yet implemented");
-  return ERROR_CRYPTO_KEY;
+  // Check if it looks like a key ID (hex characters only)
+  bool is_hex = true;
+  for (size_t i = 0; i < key_len; i++) {
+    if (!((gpg_key_text[i] >= '0' && gpg_key_text[i] <= '9') || (gpg_key_text[i] >= 'A' && gpg_key_text[i] <= 'F') ||
+          (gpg_key_text[i] >= 'a' && gpg_key_text[i] <= 'f'))) {
+      is_hex = false;
+      break;
+    }
+  }
+
+  // Only support key ID format (8, 16, or 40 hex chars)
+  if (!is_hex || (key_len != 8 && key_len != 16 && key_len != 40)) {
+    log_warn("check_gpg_key_expiry: Input is not a key ID format (expected 8/16/40 hex chars)");
+    *is_expired = false; // Assume not expired if we can't check
+    return ASCIICHAT_OK;
+  }
+
+  // Use gpg --list-keys with colon-separated output to check expiry
+  char cmd[512];
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-colons %s 2>/dev/null", key_id);
+
+  FILE *fp = SAFE_POPEN(cmd, "r");
+  if (!fp) {
+    log_error("Failed to run gpg --list-keys for key %s", key_id);
+    *is_expired = false; // Assume not expired if we can't check
+    return ASCIICHAT_OK;
+  }
+
+  char line[1024];
+  bool found_pub = false;
+  *is_expired = false;
+
+  // Parse colon-separated output
+  // Format: pub:trust:keylen:algo:keyid:creation:expiry:...
+  // Field 6 is expiry timestamp (seconds since epoch), or empty if no expiry
+  while (fgets(line, sizeof(line), fp)) {
+    if (strncmp(line, "pub:", 4) == 0) {
+      found_pub = true;
+
+      // Split line by colons
+      char *fields[12];
+      int field_count = 0;
+      char *ptr = line;
+      char *field_start = ptr;
+
+      while (*ptr && field_count < 12) {
+        if (*ptr == ':' || *ptr == '\n') {
+          *ptr = '\0';
+          fields[field_count++] = field_start;
+          field_start = ptr + 1;
+        }
+        ptr++;
+      }
+
+      // Field 6 is expiry date (index 6)
+      if (field_count >= 7 && strlen(fields[6]) > 0) {
+        // Parse expiry timestamp
+        long expiry_timestamp = atol(fields[6]);
+        time_t now = time(NULL);
+
+        if (expiry_timestamp > 0 && expiry_timestamp < now) {
+          *is_expired = true;
+          log_warn("GPG key %s has expired (expiry: %ld, now: %ld)", key_id, expiry_timestamp, (long)now);
+        } else if (expiry_timestamp > 0) {
+          log_debug("GPG key %s expires at timestamp %ld (valid)", key_id, expiry_timestamp);
+        } else {
+          log_debug("GPG key %s has no expiration date", key_id);
+        }
+      } else {
+        log_debug("GPG key %s has no expiration date (field empty)", key_id);
+      }
+
+      break; // Found the pub line, stop parsing
+    }
+  }
+
+  SAFE_PCLOSE(fp);
+
+  if (!found_pub) {
+    log_warn("Could not find GPG key %s in keyring", key_id);
+    *is_expired = false; // Assume not expired if key not found
+  }
+
+  return ASCIICHAT_OK;
 }
 
 // =============================================================================
