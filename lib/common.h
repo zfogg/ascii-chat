@@ -10,10 +10,13 @@
  * @{
  *
  * This header provides core functionality used throughout ascii-chat:
- * - Error and exit codes (unified status values)
+ * - Error codes (via common/error_codes.h)
+ * - Protocol constants (via common/protocol_constants.h)
+ * - Application limits (via common/limits.h)
+ * - Buffer sizes (via common/buffer_sizes.h)
  * - Memory allocation macros (with mimalloc support)
+ * - Thread and synchronization macros
  * - Utility macros (MIN, MAX, ARRAY_SIZE)
- * - Protocol constants
  * - Shutdown detection system
  * - Shared initialization function
  *
@@ -89,129 +92,16 @@ typedef unsigned long long uint64_t;
 #endif
 
 /* ============================================================================
- * Common Definitions
- * ============================================================================
- */
+ * Include organized sub-headers for specific domains
+ * ============================================================================ */
 
-/* ============================================================================
- * Error and Exit Codes - Unified Status Values (0-255)
- * ============================================================================
- * Single enum for both function return values and process exit codes.
- * Following Unix conventions: 0 = success, 1 = general error, 2 = usage error.
- *
- * Usage:
- *   - Library functions return these codes
- *   - Application code passes these to exit()
- *   - Use FATAL macros in src/ code for automatic error reporting
- */
-
-/* Undefine Windows macros that conflict with our enum values */
-#ifdef _WIN32
-#undef ERROR_BUFFER_OVERFLOW
-#undef ERROR_INVALID_STATE
-#undef ERROR_FILE_NOT_FOUND
-#endif
-
-/**
- * @brief Error and exit codes - unified status values (0-255)
- *
- * Single enum for both function return values and process exit codes.
- * Following Unix conventions: 0 = success, 1 = general error, 2 = usage error.
- *
- * Error codes are organized into ranges:
- * - 0: Success
- * - 1-2: Standard errors (general, usage)
- * - 3-19: Initialization failures
- * - 20-39: Hardware/Device errors
- * - 40-59: Network errors
- * - 60-79: Security/Crypto errors
- * - 80-99: Runtime errors
- * - 100-127: Signal/Crash handlers
- * - 128-255: Reserved (128+N = terminated by signal N on Unix)
- *
- * @ingroup common
- */
-typedef enum {
-  /* Standard codes (0-2) - Unix conventions */
-  ASCIICHAT_OK = 0,  /**< Success */
-  ERROR_GENERAL = 1, /**< Unspecified error */
-  ERROR_USAGE = 2,   /**< Invalid command line arguments or options */
-
-  /* Initialization failures (3-19) */
-  ERROR_MEMORY = 3,        /**< Memory allocation failed (OOM) */
-  ERROR_CONFIG = 4,        /**< Configuration file or settings error */
-  ERROR_CRYPTO_INIT = 5,   /**< Cryptographic initialization failed */
-  ERROR_LOGGING_INIT = 6,  /**< Logging system initialization failed */
-  ERROR_PLATFORM_INIT = 7, /**< Platform-specific initialization failed */
-
-  /* Hardware/Device errors (20-39) */
-  ERROR_WEBCAM = 20,            /**< Webcam initialization or capture failed */
-  ERROR_WEBCAM_IN_USE = 21,     /**< Webcam is in use by another application */
-  ERROR_WEBCAM_PERMISSION = 22, /**< Webcam permission denied */
-  ERROR_AUDIO = 23,             /**< Audio device initialization or I/O failed */
-  ERROR_AUDIO_IN_USE = 24,      /**< Audio device is in use */
-  ERROR_TERMINAL = 25,          /**< Terminal initialization or capability detection failed */
-
-  /* Network errors (40-59) */
-  ERROR_NETWORK = 40,          /**< General network error */
-  ERROR_NETWORK_BIND = 41,     /**< Cannot bind to port (server) */
-  ERROR_NETWORK_CONNECT = 42,  /**< Cannot connect to server (client) */
-  ERROR_NETWORK_TIMEOUT = 43,  /**< Network operation timed out */
-  ERROR_NETWORK_PROTOCOL = 44, /**< Protocol violation or incompatible version */
-  ERROR_NETWORK_SIZE = 45,     /**< Network packet size error */
-
-  /* Session and protocol errors (46-55) */
-  ERROR_RATE_LIMITED = 46,        /**< Rate limit exceeded */
-  ERROR_SESSION_NOT_FOUND = 47,   /**< Session not found or expired */
-  ERROR_SESSION_FULL = 48,        /**< Session has reached max participants */
-  ERROR_INVALID_PASSWORD = 49,    /**< Incorrect password */
-  ERROR_INVALID_SIGNATURE = 50,   /**< Invalid cryptographic signature */
-  ERROR_ACDS_STRING_TAKEN = 51,   /**< Requested session string already in use (ACDS) */
-  ERROR_ACDS_STRING_INVALID = 52, /**< Invalid session string format (ACDS) */
-  ERROR_INTERNAL = 53,            /**< Internal server error */
-  ERROR_UNKNOWN_PACKET = 54,      /**< Unknown packet type received */
-
-  /* Security/Crypto errors (60-79) */
-  ERROR_CRYPTO = 60,              /**< Cryptographic operation failed */
-  ERROR_CRYPTO_KEY = 61,          /**< Key loading, parsing, or generation failed */
-  ERROR_CRYPTO_AUTH = 62,         /**< Authentication failed */
-  ERROR_CRYPTO_HANDSHAKE = 63,    /**< Cryptographic handshake failed */
-  ERROR_CRYPTO_VERIFICATION = 64, /**< Signature or key verification failed */
-
-  /* Runtime errors (80-99) */
-  ERROR_THREAD = 80,             /**< Thread creation or management failed */
-  ERROR_BUFFER = 81,             /**< Buffer allocation or overflow */
-  ERROR_BUFFER_FULL = 82,        /**< Buffer full */
-  ERROR_BUFFER_OVERFLOW = 83,    /**< Buffer overflow */
-  ERROR_DISPLAY = 84,            /**< Display rendering or output error */
-  ERROR_INVALID_STATE = 85,      /**< Invalid program state */
-  ERROR_INVALID_PARAM = 86,      /**< Invalid parameter */
-  ERROR_INVALID_FRAME = 87,      /**< Invalid frame data */
-  ERROR_RESOURCE_EXHAUSTED = 88, /**< System resources exhausted */
-  ERROR_FORMAT = 89,             /**< String formatting operation failed */
-  ERROR_STRING = 90,             /**< String manipulation operation failed */
-  ERROR_NOT_FOUND = 91,          /**< Resource not found in registry or lookup */
-
-  /* Signal/Crash handlers (100-127) */
-  ERROR_SIGNAL_INTERRUPT = 100, /**< Interrupted by signal (SIGINT, SIGTERM) */
-  ERROR_SIGNAL_CRASH = 101,     /**< Fatal signal (SIGSEGV, SIGABRT, etc.) */
-  ERROR_ASSERTION_FAILED = 102, /**< Assertion or invariant violation */
-
-  /* Compression errors (103-104) */
-  ERROR_COMPRESSION = 103,   /**< Compression operation failed */
-  ERROR_DECOMPRESSION = 104, /**< Decompression operation failed */
-
-  /* File system errors (105-109) */
-  ERROR_FILE_OPERATION = 105, /**< File or directory operation failed */
-  ERROR_FILE_NOT_FOUND = 106, /**< File or directory not found */
-
-  /* Process errors (110-119) */
-  ERROR_PROCESS_FAILED = 110, /**< Process execution or termination failed */
-
-  /* Reserved (128-255) - Should not be used */
-  /* 128+N typically means "terminated by signal N" on Unix systems */
-
-} asciichat_error_t;
+#include "common/error_codes.h"         // Error codes and error_string function
+#include "common/protocol_constants.h"  // Protocol version, features, compression, frames
+#include "common/limits.h"              // MAX_CLIENTS, FPS limits, display name length
+#include "common/buffer_sizes.h"        // Standard buffer size constants
+#include "common/log_rates.h"           // Logging rate limit constants
+#include "common/shutdown.h"            // Shutdown detection system
+#include "common/string_constants.h"    // String literal constants (STR_TRUE, STR_FALSE, etc.)
 
 #ifdef __cplusplus
 extern "C" {
@@ -224,132 +114,6 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #ifdef __cplusplus
 }
 #endif
-
-/* ============================================================================
- * Error String Utilities
- * ============================================================================
- */
-
-/**
- * @brief Get human-readable string for error/exit code
- * @param code Error code from asciichat_error_t enum
- * @return Human-readable error string, or "Unknown error" for invalid codes
- * @ingroup common
- */
-static inline const char *asciichat_error_string(asciichat_error_t code) {
-  switch (code) {
-  case ASCIICHAT_OK:
-    return "Success";
-  case ERROR_GENERAL:
-    return "General error";
-  case ERROR_USAGE:
-    return "Invalid command line usage";
-  case ERROR_MEMORY:
-    return "Memory allocation failed";
-  case ERROR_CONFIG:
-    return "Configuration error";
-  case ERROR_CRYPTO_INIT:
-    return "Cryptographic initialization failed";
-  case ERROR_LOGGING_INIT:
-    return "Logging initialization failed";
-  case ERROR_PLATFORM_INIT:
-    return "Platform initialization failed";
-  case ERROR_WEBCAM:
-    return "Webcam error";
-  case ERROR_WEBCAM_IN_USE:
-    return "Webcam in use by another application";
-  case ERROR_WEBCAM_PERMISSION:
-    return "Webcam permission denied";
-  case ERROR_AUDIO:
-    return "Audio device error";
-  case ERROR_AUDIO_IN_USE:
-    return "Audio device in use";
-  case ERROR_TERMINAL:
-    return "Terminal error";
-  case ERROR_NETWORK:
-    return "Network error";
-  case ERROR_NETWORK_BIND:
-    return "Cannot bind to network port";
-  case ERROR_NETWORK_CONNECT:
-    return "Cannot connect to server";
-  case ERROR_NETWORK_TIMEOUT:
-    return "Network timeout";
-  case ERROR_NETWORK_PROTOCOL:
-    return "Network protocol error";
-  case ERROR_NETWORK_SIZE:
-    return "Network packet size error";
-  case ERROR_RATE_LIMITED:
-    return "Rate limit exceeded";
-  case ERROR_SESSION_NOT_FOUND:
-    return "Session not found";
-  case ERROR_SESSION_FULL:
-    return "Session is full";
-  case ERROR_INVALID_PASSWORD:
-    return "Invalid password";
-  case ERROR_INVALID_SIGNATURE:
-    return "Invalid signature";
-  case ERROR_ACDS_STRING_TAKEN:
-    return "Session string already in use";
-  case ERROR_ACDS_STRING_INVALID:
-    return "Invalid session string";
-  case ERROR_INTERNAL:
-    return "Internal server error";
-  case ERROR_UNKNOWN_PACKET:
-    return "Unknown packet type";
-  case ERROR_CRYPTO:
-    return "Cryptographic error";
-  case ERROR_CRYPTO_KEY:
-    return "Cryptographic key error";
-  case ERROR_CRYPTO_AUTH:
-    return "Authentication failed";
-  case ERROR_CRYPTO_HANDSHAKE:
-    return "Cryptographic handshake failed";
-  case ERROR_CRYPTO_VERIFICATION:
-    return "Signature verification failed";
-  case ERROR_THREAD:
-    return "Thread error";
-  case ERROR_BUFFER:
-    return "Buffer error";
-  case ERROR_BUFFER_FULL:
-    return "Buffer full";
-  case ERROR_BUFFER_OVERFLOW:
-    return "Buffer overflow";
-  case ERROR_DISPLAY:
-    return "Display error";
-  case ERROR_INVALID_STATE:
-    return "Invalid program state";
-  case ERROR_INVALID_PARAM:
-    return "Invalid parameter";
-  case ERROR_INVALID_FRAME:
-    return "Invalid frame data";
-  case ERROR_RESOURCE_EXHAUSTED:
-    return "System resources exhausted";
-  case ERROR_FORMAT:
-    return "String formatting operation failed";
-  case ERROR_STRING:
-    return "String manipulation operation failed";
-  case ERROR_NOT_FOUND:
-    return "Resource not found";
-  case ERROR_SIGNAL_INTERRUPT:
-    return "Interrupted by signal";
-  case ERROR_SIGNAL_CRASH:
-    return "Terminated by fatal signal";
-  case ERROR_ASSERTION_FAILED:
-    return "Assertion failed";
-  case ERROR_COMPRESSION:
-    return "Compression operation failed";
-  case ERROR_DECOMPRESSION:
-    return "Decompression operation failed";
-  case ERROR_FILE_OPERATION:
-    return "File or directory operation failed";
-  case ERROR_FILE_NOT_FOUND:
-    return "File or directory not found";
-  case ERROR_PROCESS_FAILED:
-    return "Process execution or termination failed";
-  default:
-    return "Unknown error";
-  }
-}
 
 /* ============================================================================
  * Fatal Error Macros - Exit with Error Message and Stack Trace
@@ -387,304 +151,9 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 #define FATAL(code, ...) asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #endif
 
-// =============================================================================
-// Protocol Version Constants
-// =============================================================================
-
-/** @brief Major protocol version number */
-#define PROTOCOL_VERSION_MAJOR 1
-/** @brief Minor protocol version number */
-#define PROTOCOL_VERSION_MINOR 0
-
-// =============================================================================
-// Feature Flags
-// =============================================================================
-
-/** @brief Run-length encoding support flag */
-#define FEATURE_RLE_ENCODING 0x01
-/** @brief Delta frame encoding support flag */
-#define FEATURE_DELTA_FRAMES 0x02
-
-// =============================================================================
-// Compression Constants
-// =============================================================================
-
-/** @brief No compression algorithm */
-#define COMPRESS_ALGO_NONE 0x00
-/** @brief zlib deflate compression algorithm */
-#define COMPRESS_ALGO_ZLIB 0x01
-/** @brief LZ4 fast compression algorithm */
-#define COMPRESS_ALGO_LZ4 0x02
-/** @brief zstd algorithm */
-#define COMPRESS_ALGO_ZSTD 0x03
-
-// =============================================================================
-// Frame Flags
-// =============================================================================
-
-/** @brief Frame includes ANSI color codes */
-#define FRAME_FLAG_HAS_COLOR 0x01
-/** @brief Frame data is compressed */
-#define FRAME_FLAG_IS_COMPRESSED 0x02
-/** @brief Frame data is RLE compressed */
-#define FRAME_FLAG_RLE_COMPRESSED 0x04
-/** @brief Frame was stretched (aspect adjusted) */
-#define FRAME_FLAG_IS_STRETCHED 0x08
-
-// =============================================================================
-// Pixel Format Constants
-// =============================================================================
-
-/** @brief RGB pixel format */
-#define PIXEL_FORMAT_RGB 0
-/** @brief RGBA pixel format */
-#define PIXEL_FORMAT_RGBA 1
-/** @brief BGR pixel format */
-#define PIXEL_FORMAT_BGR 2
-/** @brief BGRA pixel format */
-#define PIXEL_FORMAT_BGRA 3
-
-// =============================================================================
-// Multi-Client Constants
-// =============================================================================
-
-/** @brief Maximum display name length in characters */
-#define MAX_DISPLAY_NAME_LEN 32
-/** @brief Maximum possible clients (static array size) - actual runtime limit set by --max-clients (1-32) */
-#define MAX_CLIENTS 32
-
-/** @brief Default maximum frame rate (frames per second) */
-#define DEFAULT_MAX_FPS 60
-
-/** @brief Runtime configurable maximum frame rate (can be overridden via environment or command line) */
-extern int g_max_fps;
-/** @brief Maximum frame rate macro (uses g_max_fps if set, otherwise DEFAULT_MAX_FPS) */
-#define MAX_FPS (g_max_fps > 0 ? g_max_fps : DEFAULT_MAX_FPS)
-
-/** @brief Frame interval in milliseconds based on MAX_FPS */
-#define FRAME_INTERVAL_MS (1000 / MAX_FPS)
-
-/** @brief Frame buffer capacity based on MAX_FPS */
-#define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
-
-// =============================================================================
-// Common Buffer Sizes
-// =============================================================================
-
-/**
- * @brief Small buffer size (256 bytes)
- *
- * Used for short strings, error messages, and small temporary buffers.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_SMALL 256
-
-/**
- * @brief Medium buffer size (512 bytes)
- *
- * Used for medium-length strings, paths, and intermediate buffers.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_MEDIUM 512
-
-/**
- * @brief Large buffer size (1024 bytes)
- *
- * Used for longer strings, full paths, and larger temporary buffers.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_LARGE 1024
-
-/**
- * @brief Extra large buffer size (2048 bytes)
- *
- * Used for very long strings, multiple paths, and large temporary buffers.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_XLARGE 2048
-
-/**
- * @brief Extra extra large buffer size (4096 bytes)
- *
- * Used for maximum-length paths and very large temporary buffers.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_XXLARGE 4096
-
-/**
- * @brief Extra extra extra large buffer size (8192 bytes)
- *
- * Used for extremely large buffers like exception messages and stack traces.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_XXXLARGE 8192
-
-/**
- * @brief Huge buffer size (16kb)
- *
- * Used for huge buffers like stack traces and other system messages.
- *
- * @ingroup common
- */
-#define BUFFER_SIZE_HUGE 16384
-
-/* ============================================================================
- * Logging Rate Limit Constants (in microseconds)
- * ============================================================================
- * Standard rate limits for log_*_every() macros to reduce log spam
- * in high-frequency code paths.
- *
- * Usage: log_debug_every(LOG_RATE_VIDEO_FRAME, "message")
- *
- * @ingroup common
- */
-
-/** @brief Log rate limit: 0.1 seconds (100,000 microseconds) - for very high frequency operations */
-#define LOG_RATE_VERY_FAST (100000)
-
-/** @brief Log rate limit: 1 second (1,000,000 microseconds) */
-#define LOG_RATE_FAST (1000000)
-
-/** @brief Log rate limit: 3 seconds (3,000,000 microseconds) */
-#define LOG_RATE_NORMAL (3000000)
-
-/** @brief Log rate limit: 5 seconds (5,000,000 microseconds) - default for audio/video packets */
-#define LOG_RATE_DEFAULT (5000000)
-
-/** @brief Log rate limit: 10 seconds (10,000,000 microseconds) */
-#define LOG_RATE_SLOW (10000000)
-
-/* ============================================================================
- * Shutdown Check System
- * ============================================================================
- * Provides clean separation between library and application for shutdown
- * detection. Library code should never directly access application state.
- *
- * Usage:
- *   Application (server.c/client.c):
- *     shutdown_register_callback(my_shutdown_check_fn);
- *
- *   Library code (logging.c, debug/lock.c, etc.):
- *     if (shutdown_is_requested()) { return; }
- */
-
-/**
- * @brief Shutdown check callback function type
- * @return true if shutdown has been requested, false otherwise
- * @ingroup common
- */
-typedef bool (*shutdown_check_fn)(void);
-
-/**
- * @brief Register application's shutdown check function
- * @param callback Function to call to check if shutdown has been requested
- *
- * @note Call this from main() to register the application's shutdown detection function.
- *       Library code should use shutdown_is_requested() instead of accessing application state directly.
- *
- * @ingroup common
- */
-void shutdown_register_callback(shutdown_check_fn callback);
-
-/**
- * @brief Check if shutdown has been requested
- * @return true if shutdown has been requested, false otherwise
- *
- * @note Use this in library code to check for shutdown requests without accessing
- *       application state directly. The callback must be registered first with
- *       shutdown_register_callback().
- *
- * @ingroup common
- */
-bool shutdown_is_requested(void);
-
-/* ============================================================================
- * String Literal Constants
- * ============================================================================
- */
-
-/**
- * @brief String literal: "0" (zero)
- *
- * Used for boolean comparisons and numeric string parsing.
- *
- * @ingroup common
- */
-#define STR_ZERO "0"
-
-/**
- * @brief String literal: "1" (one)
- *
- * Used for boolean comparisons and numeric string parsing.
- *
- * @ingroup common
- */
-#define STR_ONE "1"
-
-/**
- * @brief String literal: "false"
- *
- * Used for boolean string comparisons.
- *
- * @ingroup common
- */
-#define STR_FALSE "false"
-
-/**
- * @brief String literal: "true"
- *
- * Used for boolean string comparisons.
- *
- * @ingroup common
- */
-#define STR_TRUE "true"
-
-/**
- * @brief String literal: "off"
- *
- * Used for boolean string comparisons (disable/enable).
- *
- * @ingroup common
- */
-#define STR_OFF "off"
-
-/**
- * @brief String literal: "on"
- *
- * Used for boolean string comparisons (enable/disable).
- *
- * @ingroup common
- */
-#define STR_ON "on"
-
-/**
- * @brief String literal: "no"
- *
- * Used for boolean string comparisons.
- *
- * @ingroup common
- */
-#define STR_NO "no"
-
-/**
- * @brief String literal: "yes"
- *
- * Used for boolean string comparisons.
- *
- * @ingroup common
- */
-#define STR_YES "yes"
-
 /* ============================================================================
  * Utility Macros
- * ============================================================================
- */
+ * ============================================================================ */
 
 /* Common utility macros */
 /** @brief Return the minimum of two values */
@@ -861,7 +330,7 @@ bool shutdown_is_requested(void);
 #define SAFE_FCLOSE(fp)                                                                                                \
   do {                                                                                                                 \
     if ((fp) != NULL) {                                                                                                \
-      fclose(fp);                                                                                                      \
+      fclose(fp);                                                                                                       \
       (fp) = NULL;                                                                                                     \
     }                                                                                                                  \
   } while (0)
@@ -895,7 +364,7 @@ bool shutdown_is_requested(void);
     if (src) {                                                                                                         \
       size_t _len = strlen(src) + 1;                                                                                   \
       (dst) = SAFE_MALLOC(_len, char *);                                                                               \
-      if (dst) {                                                                                                       \
+      if (dst) {                                                                                                        \
         SAFE_MEMCPY((dst), _len, (src), _len);                                                                         \
       } else {                                                                                                         \
         SET_ERRNO(ERROR_MEMORY, "String duplication failed for: %s", (src));                                           \
@@ -954,8 +423,7 @@ bool shutdown_is_requested(void);
 
 /* ============================================================================
  * Thread Creation and Synchronization Macros
- * ============================================================================
- */
+ * ============================================================================ */
 
 /**
  * @brief Create a thread or log error and return
