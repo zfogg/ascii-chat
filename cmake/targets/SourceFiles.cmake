@@ -35,11 +35,12 @@ set(UTIL_SRCS
     lib/util/audio.c
     lib/util/password.c
     lib/util/fps.c
+    lib/util/crc32.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
 if(USE_MUSL)
-    list(APPEND UTIL_SRCS lib/musl_c23_compat.c)
+    list(APPEND UTIL_SRCS lib/core/musl_c23_compat.c)
 endif()
 
 # =============================================================================
@@ -53,6 +54,7 @@ set(CRYPTO_SRCS
     lib/crypto/handshake/server.c
     lib/crypto/handshake/client.c
     lib/crypto/pem_utils.c
+    lib/crypto/http_client.c    # HTTPS client for key fetching
     # GPG module (refactored into gpg/ subdirectory)
     lib/crypto/gpg/agent.c
     lib/crypto/gpg/export.c
@@ -202,6 +204,7 @@ set(VIDEO_SRCS
     lib/video/ansi_fast.c
     lib/video/ansi.c
     lib/video/palette.c
+    lib/video/av.c
     lib/util/utf8.c
     lib/video/webcam/webcam.c
 )
@@ -238,11 +241,8 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/packet_parsing.c
-    lib/network/av.c
     lib/network/compression.c
-    lib/network/crc32.c
     lib/network/packet_queue.c
-    lib/network/http_client.c
     lib/network/tcp_server.c
     lib/network/errors.c
     # Rate limiting library (backend abstraction)
@@ -255,8 +255,8 @@ set(NETWORK_SRCS
 # Module 8: Core Application (changes daily)
 # =============================================================================
 set(CORE_SRCS
-    lib/common.c
-    lib/asciichat_errno.c
+    lib/core/common.c
+    lib/core/asciichat_errno.c
     lib/log/logging.c
     lib/log/mmap.c
     lib/options/options.c
@@ -268,7 +268,7 @@ set(CORE_SRCS
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c
-    lib/version.c
+    lib/core/version.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
@@ -293,8 +293,8 @@ set_source_files_properties(
 # Data Structures Module
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
-    lib/ringbuffer.c
-    lib/buffer_pool.c
+    lib/core/ringbuffer.c
+    lib/core/buffer_pool.c
 )
 
 # =============================================================================
