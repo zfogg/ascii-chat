@@ -90,6 +90,7 @@
 #include <math.h>
 
 #include "platform/abstraction.h"
+#include "thread_pool.h"
 
 /* ============================================================================
  * Audio System State
@@ -304,11 +305,12 @@ static void audio_sender_init(void) {
   atomic_store(&g_audio_sender_should_exit, false);
 
   // Start sender thread
-  if (THREAD_CREATE_SAFE(g_audio_sender_thread, audio_sender_thread_func, NULL) == 0) {
+  if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
     log_info("Audio sender thread created");
   } else {
-    log_error("Failed to create audio sender thread");
+    log_error("Failed to spawn audio sender thread in worker pool");
+    LOG_ERRNO_IF_SET("Audio sender thread creation failed");
   }
 }
 
@@ -326,11 +328,10 @@ static void audio_sender_cleanup(void) {
   cond_signal(&g_audio_send_queue_cond);
   mutex_unlock(&g_audio_send_queue_mutex);
 
-  // Join thread
+  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
-    THREAD_JOIN(g_audio_sender_thread);
     g_audio_sender_thread_created = false;
-    log_info("Audio sender thread joined");
+    log_info("Audio sender thread will be joined by thread pool");
   }
 
   mutex_destroy(&g_audio_send_queue_mutex);
@@ -817,8 +818,9 @@ int audio_start_thread() {
 
   // Start audio capture thread
   atomic_store(&g_audio_capture_thread_exited, false);
-  if (THREAD_CREATE_SAFE(g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
-    log_error("Failed to create audio capture thread");
+  if (thread_pool_spawn(g_client_worker_pool, audio_capture_thread_func, NULL, 4, "audio_capture") != ASCIICHAT_OK) {
+    log_error("Failed to spawn audio capture thread in worker pool");
+    LOG_ERRNO_IF_SET("Audio capture thread creation failed");
     return -1;
   }
 
@@ -845,8 +847,8 @@ void audio_stop_thread() {
     return;
   }
 
-  // Signal thread to stop
-  signal_exit();
+  // Note: We don't call signal_exit() here because that's for global shutdown only
+  // The audio capture thread checks server_connection_is_active() to detect connection loss
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
@@ -856,14 +858,13 @@ void audio_stop_thread() {
   }
 
   if (!atomic_load(&g_audio_capture_thread_exited)) {
-    log_error("Audio capture thread not responding - forcing join");
+    log_warn("Audio capture thread not responding - will be joined by thread pool");
   }
 
-  // Join the thread
-  THREAD_JOIN(g_audio_capture_thread);
+  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_audio_capture_thread_created = false;
 
-  log_info("Audio capture thread stopped and joined");
+  log_info("Audio capture thread stopped");
 }
 
 /**

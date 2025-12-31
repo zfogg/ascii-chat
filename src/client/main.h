@@ -41,6 +41,22 @@
 #pragma once
 
 #include <stdbool.h>
+#include "thread_pool.h"
+
+/**
+ * @brief Global client worker thread pool
+ *
+ * Manages all client worker threads including:
+ * - Data reception thread (protocol.c)
+ * - Webcam capture thread (capture.c)
+ * - Ping/keepalive thread (keepalive.c)
+ * - Audio capture thread (audio.c)
+ * - Audio sender thread (audio.c)
+ *
+ * This pool is initialized in client_main() and accessible from all
+ * client modules for spawning and managing worker threads.
+ */
+extern thread_pool_t *g_client_worker_pool;
 
 /**
  * @brief Client mode entry point for unified binary

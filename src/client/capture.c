@@ -105,6 +105,7 @@
 #include <time.h>
 #include <string.h>
 #include "platform/abstraction.h"
+#include "thread_pool.h"
 
 /* ============================================================================
  * Capture Thread Management
@@ -524,7 +525,7 @@ int capture_start_thread() {
 
   // Start webcam capture thread
   atomic_store(&g_capture_thread_exited, false);
-  if (THREAD_CREATE_SAFE(g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
+  if (thread_pool_spawn(g_client_worker_pool, webcam_capture_thread_func, NULL, 2, "webcam_capture") != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_THREAD, "Webcam capture thread creation failed");
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;
@@ -569,39 +570,10 @@ void capture_stop_thread() {
   }
 
   if (!atomic_load(&g_capture_thread_exited)) {
-    log_warn("Capture thread not responding after 2 seconds - forcing join with timeout");
+    log_warn("Capture thread not responding after 2 seconds - will be joined by thread pool");
   }
 
-  // Join the thread with timeout to prevent hanging
-  void *thread_retval = NULL;
-  int join_result = ascii_thread_join_timeout(&g_capture_thread, &thread_retval, 5000); // 5 second timeout
-
-  if (join_result == -2) {
-    SET_ERRNO(ERROR_THREAD, "Capture thread join timed out - thread may be stuck, forcing termination");
-    // Force close the thread handle to prevent resource leak
-#ifdef _WIN32
-    if (g_capture_thread) {
-      CloseHandle(g_capture_thread);
-      g_capture_thread = NULL;
-    }
-#else
-    // On POSIX, threads clean up automatically after join
-    g_capture_thread = 0;
-#endif
-  } else if (join_result != 0) {
-    SET_ERRNO(ERROR_THREAD, "Failed to join capture thread, result=%d", join_result);
-    // Still force close the handle to prevent leak
-#ifdef _WIN32
-    if (g_capture_thread) {
-      CloseHandle(g_capture_thread);
-      g_capture_thread = NULL;
-    }
-#else
-    // On POSIX, threads clean up automatically after join
-    g_capture_thread = 0;
-#endif
-  }
-
+  // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_capture_thread_created = false;
 }
 /**

@@ -82,6 +82,7 @@
 #include "audio/audio.h"
 #include "audio/analysis.h"
 #include "keepalive.h"
+#include "thread_pool.h"
 
 #include "network/packet.h"
 #include "network/packet_parsing.h"
@@ -1059,8 +1060,9 @@ int protocol_start_connection() {
 
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
-  if (ascii_thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
-    log_error("Failed to create data reception thread");
+  if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
+    log_error("Failed to spawn data reception thread in worker pool");
+    LOG_ERRNO_IF_SET("Data reception thread creation failed");
     return -1;
   }
 
@@ -1117,7 +1119,10 @@ void protocol_stop_connection() {
   // Stop webcam capture thread
   capture_stop_thread();
 
-  // Wait for thread to exit gracefully with timeout
+  // Stop audio threads if running
+  audio_stop_thread();
+
+  // Wait for data reception thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_data_thread_exited)) {
     platform_sleep_usec(100000); // 100ms
@@ -1125,43 +1130,23 @@ void protocol_stop_connection() {
   }
 
   if (!atomic_load(&g_data_thread_exited)) {
-    log_warn("Data thread not responding after 2 seconds - forcing join with timeout");
+    log_warn("Data thread not responding after 2 seconds - will be joined by thread pool");
   }
 
-  // Join the thread with timeout to prevent hanging
-  void *thread_retval = NULL;
-  int join_result = ascii_thread_join_timeout(&g_data_thread, &thread_retval, 5000); // 5 second timeout
-
-  if (join_result == -2) {
-    log_error("Data thread join timed out - thread may be stuck, forcing termination");
-    // Force close the thread handle to prevent resource leak
-#ifdef _WIN32
-    if (g_data_thread) {
-      CloseHandle(g_data_thread);
-      g_data_thread = NULL;
+  // Join all threads in the client worker pool (in stop_id order)
+  // This handles the data reception thread and (eventually) all other worker threads
+  if (g_client_worker_pool) {
+    asciichat_error_t result = thread_pool_stop_all(g_client_worker_pool);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to stop client worker threads");
+      LOG_ERRNO_IF_SET("Thread pool stop failed");
     }
-#else
-    // On POSIX, threads clean up automatically after join
-    g_data_thread = 0;
-#endif
-  } else if (join_result != 0) {
-    log_error("Failed to join data thread, result=%d", join_result);
-    // Still force close the handle to prevent leak
-#ifdef _WIN32
-    if (g_data_thread) {
-      CloseHandle(g_data_thread);
-      g_data_thread = NULL;
-    }
-#else
-    // On POSIX, threads clean up automatically after join
-    g_data_thread = 0;
-#endif
   }
 
   g_data_thread_created = false;
 
 #ifdef DEBUG_THREADS
-  log_info("Data reception thread stopped and joined");
+  log_info("Data reception thread stopped and joined by thread pool");
 #endif
 }
 
