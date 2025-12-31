@@ -53,12 +53,12 @@ typedef struct {
 } env_restore_t;
 
 static void set_dummy_ssh_passphrase(env_restore_t *restore) {
-  const char *current = getenv("ASCII_CHAT_SSH_PASSWORD");
+  const char *current = getenv("ASCII_CHAT_KEY_PASSWORD");
   if (restore) {
     restore->was_set = current != NULL;
     restore->previous_value = current ? strdup(current) : NULL;
   }
-  set_env_value("ASCII_CHAT_SSH_PASSWORD", "dummy-passphrase");
+  set_env_value("ASCII_CHAT_KEY_PASSWORD", "dummy-passphrase");
 }
 
 static void restore_ssh_passphrase(env_restore_t *restore) {
@@ -66,9 +66,9 @@ static void restore_ssh_passphrase(env_restore_t *restore) {
     return;
   }
   if (restore->was_set) {
-    set_env_value("ASCII_CHAT_SSH_PASSWORD", restore->previous_value ? restore->previous_value : "");
+    set_env_value("ASCII_CHAT_KEY_PASSWORD", restore->previous_value ? restore->previous_value : "");
   } else {
-    unset_env_value("ASCII_CHAT_SSH_PASSWORD");
+    unset_env_value("ASCII_CHAT_KEY_PASSWORD");
   }
   free(restore->previous_value);
 }

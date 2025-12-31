@@ -749,12 +749,12 @@ changing command-line arguments.
   - **When to use**: Preferred method for SSH key authentication (automatically detected)
   - **Used for**: SSH key authentication without storing passphrases in environment
 
-- `ASCII_CHAT_SSH_PASSWORD`
+- `ASCII_CHAT_KEY_PASSWORD`
 
-  - **Purpose**: Provides SSH key passphrase for encrypted SSH keys passed to --key
-  - **Values**: The passphrase string for your encrypted SSH key
-  - **Security**: ⚠️ **Sensitive data** - contains your SSH key passphrase - prefer ssh-agent over this (we support it)
-  - **When to use**: When using encrypted SSH keys and you want to avoid interactive passphrase prompts
+  - **Purpose**: Provides key passphrase for encrypted SSH or GPG keys
+  - **Values**: The passphrase string for your encrypted key
+  - **Security**: ⚠️ **Sensitive data** - contains your key passphrase - prefer ssh-agent/gpg-agent over this (we support both)
+  - **When to use**: When using encrypted keys and you want to avoid interactive passphrase prompts
 
 ### Terminal Variables (Used for Display Detection)
 

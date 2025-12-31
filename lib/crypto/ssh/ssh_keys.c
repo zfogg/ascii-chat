@@ -489,7 +489,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     uint32_t bcrypt_rounds = read_u32_be(&key_blob[kdf_opt_offset]);
 
     // Check for password in environment variable first
-    const char *env_password = platform_getenv("ASCII_CHAT_SSH_PASSWORD");
+    const char *env_password = platform_getenv("ASCII_CHAT_KEY_PASSWORD");
     char *password = NULL;
     if (env_password && strlen(env_password) > 0) {
       // Use password from environment variable
