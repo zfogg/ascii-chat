@@ -43,13 +43,13 @@ static void *cleanup_thread_func(void *arg) {
 
   log_info("Rate limit cleanup thread started");
 
-  while (atomic_load(&server->cleanup_running)) {
+  while (!atomic_load(&server->shutdown)) {
     // Sleep for 5 minutes (or until shutdown)
-    for (int i = 0; i < 300 && atomic_load(&server->cleanup_running); i++) {
+    for (int i = 0; i < 300 && !atomic_load(&server->shutdown); i++) {
       platform_sleep_ms(1000); // Sleep 1 second at a time for responsive shutdown
     }
 
-    if (!atomic_load(&server->cleanup_running)) {
+    if (atomic_load(&server->shutdown)) {
       break;
     }
 
@@ -132,11 +132,21 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
     return result;
   }
 
-  // Start rate limit cleanup thread
-  atomic_store(&server->cleanup_running, true);
-  if (ascii_thread_create(&server->cleanup_thread, cleanup_thread_func, server) != 0) {
-    log_warn("Failed to create rate limit cleanup thread (continuing without cleanup)");
-    atomic_store(&server->cleanup_running, false);
+  // Initialize background worker thread pool
+  atomic_store(&server->shutdown, false);
+  server->worker_pool = thread_pool_create("acds_workers");
+  if (!server->worker_pool) {
+    log_warn("Failed to create worker thread pool");
+    tcp_server_shutdown(&server->tcp_server);
+    database_close(server->db);
+    session_registry_destroy(server->sessions);
+    SAFE_FREE(server->sessions);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create worker thread pool");
+  }
+
+  // Spawn rate limit cleanup thread in worker pool
+  if (thread_pool_spawn(server->worker_pool, cleanup_thread_func, server, 0, "rate_limit_cleanup") != ASCIICHAT_OK) {
+    log_warn("Failed to spawn rate limit cleanup thread (continuing without cleanup)");
   }
 
   log_info("Discovery server initialized successfully");
@@ -159,16 +169,19 @@ void acds_server_shutdown(acds_server_t *server) {
     return;
   }
 
+  // Signal shutdown to worker threads
+  atomic_store(&server->shutdown, true);
+
   // Shutdown TCP server (closes listen sockets, stops accept loop)
   tcp_server_shutdown(&server->tcp_server);
 
   // TODO: Wait for all client handler threads to exit
 
-  // Stop cleanup thread
-  if (atomic_load(&server->cleanup_running)) {
-    atomic_store(&server->cleanup_running, false);
-    ascii_thread_join(&server->cleanup_thread, NULL);
-    log_debug("Rate limit cleanup thread stopped");
+  // Stop and destroy worker thread pool (cleanup thread, etc.)
+  if (server->worker_pool) {
+    thread_pool_destroy(server->worker_pool);
+    server->worker_pool = NULL;
+    log_debug("Worker thread pool stopped");
   }
 
   // Destroy rate limiter
@@ -204,16 +217,14 @@ void *acds_client_handler(void *arg) {
 
   // Get client IP for logging
   char client_ip[INET6_ADDRSTRLEN] = {0};
-  int addr_family = (ctx->addr.ss_family == AF_INET) ? AF_INET : AF_INET6;
-  format_ip_address(addr_family, (struct sockaddr *)&ctx->addr, client_ip, sizeof(client_ip));
+  tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip));
 
   log_info("Client handler started for %s", client_ip);
 
   // Register client in TCP server registry with allocated client data
   acds_client_data_t *client_data = SAFE_MALLOC(sizeof(acds_client_data_t), acds_client_data_t *);
   if (!client_data) {
-    log_error("Failed to allocate client data for %s", client_ip);
-    socket_close(client_socket);
+    tcp_server_reject_client(client_socket, "Failed to allocate client data");
     SAFE_FREE(ctx);
     return NULL;
   }
@@ -221,9 +232,8 @@ void *acds_client_handler(void *arg) {
   client_data->joined_session = false;
 
   if (tcp_server_add_client(&server->tcp_server, client_socket, client_data) != ASCIICHAT_OK) {
-    log_error("Failed to register client %s in registry", client_ip);
     SAFE_FREE(client_data);
-    socket_close(client_socket);
+    tcp_server_reject_client(client_socket, "Failed to register client in registry");
     SAFE_FREE(ctx);
     return NULL;
   }
