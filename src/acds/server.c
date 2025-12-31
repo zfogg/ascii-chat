@@ -18,7 +18,9 @@
 #include "acds/session.h"
 #include "acds/signaling.h"
 #include "acds/protocol.h"
-#include "acds/rate_limit.h"
+#include "network/rate_limit/rate_limit.h"
+#include "network/rate_limit/sqlite.h"
+#include "network/errors.h"
 #include "log/logging.h"
 #include "platform/socket.h"
 #include "network/network.h"
@@ -53,7 +55,7 @@ static void *cleanup_thread_func(void *arg) {
 
     // Run cleanup (delete events older than 1 hour)
     log_debug("Running rate limit cleanup...");
-    asciichat_error_t result = rate_limit_cleanup(server->db, 3600);
+    asciichat_error_t result = rate_limiter_cleanup(server->rate_limiter, 3600);
     if (result != ASCIICHAT_OK) {
       log_warn("Rate limit cleanup failed");
     }
@@ -96,6 +98,18 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   if (result != ASCIICHAT_OK) {
     log_warn("Failed to load sessions from database (continuing anyway)");
   }
+
+  // Initialize rate limiter with SQLite backend
+  server->rate_limiter = rate_limiter_create_sqlite(NULL); // NULL = externally managed DB
+  if (!server->rate_limiter) {
+    database_close(server->db);
+    session_registry_destroy(server->sessions);
+    SAFE_FREE(server->sessions);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create rate limiter");
+  }
+
+  // Set the database handle for the rate limiter
+  rate_limiter_set_sqlite_db(server->rate_limiter, server->db);
 
   // Configure TCP server
   tcp_server_config_t tcp_config = {
@@ -155,6 +169,12 @@ void acds_server_shutdown(acds_server_t *server) {
     atomic_store(&server->cleanup_running, false);
     ascii_thread_join(&server->cleanup_thread, NULL);
     log_debug("Rate limit cleanup thread stopped");
+  }
+
+  // Destroy rate limiter
+  if (server->rate_limiter) {
+    rate_limiter_destroy(server->rate_limiter);
+    server->rate_limiter = NULL;
   }
 
   // Close database
@@ -244,18 +264,10 @@ void *acds_client_handler(void *arg) {
       }
 
       // Rate limiting check
-      bool allowed = false;
-      asciichat_error_t rate_check = rate_limit_check(server->db, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
-      if (rate_check != ASCIICHAT_OK || !allowed) {
-        acip_error_t error = {.error_code = 0xFD}; // Rate limit exceeded
-        SAFE_STRNCPY(error.error_message, "Rate limit exceeded. Please try again later.", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
-        log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
+      if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, client_socket,
+                                       "SESSION_CREATE")) {
         break;
       }
-
-      // Record the rate limit event
-      rate_limit_record(server->db, client_ip, RATE_EVENT_SESSION_CREATE);
 
       acip_session_create_t *req = (acip_session_create_t *)payload;
       acip_session_created_t resp;
@@ -277,11 +289,9 @@ void *acds_client_handler(void *arg) {
         }
         rwlock_rdunlock(&server->sessions->lock);
       } else {
-        // Error - send error response
-        acip_error_t error = {.error_code = (uint8_t)create_result};
-        SAFE_STRNCPY(error.error_message, "Failed to create session", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
-        log_warn("Session creation failed for %s: %d", client_ip, create_result);
+        // Error - send error response using proper error code
+        send_error_packet_message(client_socket, create_result, "Failed to create session");
+        log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_string(create_result));
       }
       break;
     }
@@ -295,18 +305,10 @@ void *acds_client_handler(void *arg) {
       }
 
       // Rate limiting check
-      bool allowed = false;
-      asciichat_error_t rate_check = rate_limit_check(server->db, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
-      if (rate_check != ASCIICHAT_OK || !allowed) {
-        acip_error_t error = {.error_code = 0xFD}; // Rate limit exceeded
-        SAFE_STRNCPY(error.error_message, "Rate limit exceeded. Please try again later.", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
-        log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
+      if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, client_socket,
+                                       "SESSION_LOOKUP")) {
         break;
       }
-
-      // Record the rate limit event
-      rate_limit_record(server->db, client_ip, RATE_EVENT_SESSION_LOOKUP);
 
       acip_session_lookup_t *req = (acip_session_lookup_t *)payload;
       acip_session_info_t resp;
@@ -323,10 +325,8 @@ void *acds_client_handler(void *arg) {
         send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_INFO, &resp, sizeof(resp));
         log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
       } else {
-        acip_error_t error = {.error_code = (uint8_t)lookup_result};
-        SAFE_STRNCPY(error.error_message, "Lookup failed", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
-        log_warn("Session lookup failed for %s: %d", client_ip, lookup_result);
+        send_error_packet_message(client_socket, lookup_result, "Session lookup failed");
+        log_warn("Session lookup failed for %s: %s", client_ip, asciichat_error_string(lookup_result));
       }
       break;
     }
@@ -340,18 +340,10 @@ void *acds_client_handler(void *arg) {
       }
 
       // Rate limiting check
-      bool allowed = false;
-      asciichat_error_t rate_check = rate_limit_check(server->db, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
-      if (rate_check != ASCIICHAT_OK || !allowed) {
-        acip_error_t error = {.error_code = 0xFD}; // Rate limit exceeded
-        SAFE_STRNCPY(error.error_message, "Rate limit exceeded. Please try again later.", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
-        log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
+      if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, client_socket,
+                                       "SESSION_JOIN")) {
         break;
       }
-
-      // Record the rate limit event
-      rate_limit_record(server->db, client_ip, RATE_EVENT_SESSION_JOIN);
 
       acip_session_join_t *req = (acip_session_join_t *)payload;
       acip_session_joined_t resp;
@@ -432,7 +424,8 @@ void *acds_client_handler(void *arg) {
         }
         rwlock_rdunlock(&server->sessions->lock);
       } else {
-        log_warn("Session leave failed for %s: %d", client_ip, leave_result);
+        send_error_packet(client_socket, leave_result);
+        log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));
       }
       break;
     }
@@ -449,10 +442,8 @@ void *acds_client_handler(void *arg) {
 
       asciichat_error_t relay_result = signaling_relay_sdp(server->sessions, &server->tcp_server, sdp, payload_size);
       if (relay_result != ASCIICHAT_OK) {
-        log_warn("SDP relay failed from %s: %d", client_ip, relay_result);
-        acip_error_t error = {.error_code = (uint8_t)relay_result};
-        SAFE_STRNCPY(error.error_message, "SDP relay failed", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
+        send_error_packet_message(client_socket, relay_result, "SDP relay failed");
+        log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
       }
       break;
     }
@@ -469,10 +460,8 @@ void *acds_client_handler(void *arg) {
 
       asciichat_error_t relay_result = signaling_relay_ice(server->sessions, &server->tcp_server, ice, payload_size);
       if (relay_result != ASCIICHAT_OK) {
-        log_warn("ICE relay failed from %s: %d", client_ip, relay_result);
-        acip_error_t error = {.error_code = (uint8_t)relay_result};
-        SAFE_STRNCPY(error.error_message, "ICE relay failed", sizeof(error.error_message));
-        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
+        send_error_packet_message(client_socket, relay_result, "ICE relay failed");
+        log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
       }
       break;
     }
@@ -485,10 +474,7 @@ void *acds_client_handler(void *arg) {
 
     default:
       log_warn("Unknown packet type 0x%02X from %s", packet_type, client_ip);
-      // Send error response
-      acip_error_t error = {.error_code = 1}; // Unknown packet type
-      SAFE_STRNCPY(error.error_message, "Unknown packet type", sizeof(error.error_message));
-      send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
+      send_error_packet(client_socket, ERROR_UNKNOWN_PACKET);
       break;
     }
 

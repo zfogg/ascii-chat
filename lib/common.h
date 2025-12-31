@@ -160,6 +160,17 @@ typedef enum {
   ERROR_NETWORK_PROTOCOL = 44, /**< Protocol violation or incompatible version */
   ERROR_NETWORK_SIZE = 45,     /**< Network packet size error */
 
+  /* Session and protocol errors (46-55) */
+  ERROR_RATE_LIMITED = 46,        /**< Rate limit exceeded */
+  ERROR_SESSION_NOT_FOUND = 47,   /**< Session not found or expired */
+  ERROR_SESSION_FULL = 48,        /**< Session has reached max participants */
+  ERROR_INVALID_PASSWORD = 49,    /**< Incorrect password */
+  ERROR_INVALID_SIGNATURE = 50,   /**< Invalid cryptographic signature */
+  ERROR_ACDS_STRING_TAKEN = 51,   /**< Requested session string already in use (ACDS) */
+  ERROR_ACDS_STRING_INVALID = 52, /**< Invalid session string format (ACDS) */
+  ERROR_INTERNAL = 53,            /**< Internal server error */
+  ERROR_UNKNOWN_PACKET = 54,      /**< Unknown packet type received */
+
   /* Security/Crypto errors (60-79) */
   ERROR_CRYPTO = 60,              /**< Cryptographic operation failed */
   ERROR_CRYPTO_KEY = 61,          /**< Key loading, parsing, or generation failed */
@@ -266,6 +277,24 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Network protocol error";
   case ERROR_NETWORK_SIZE:
     return "Network packet size error";
+  case ERROR_RATE_LIMITED:
+    return "Rate limit exceeded";
+  case ERROR_SESSION_NOT_FOUND:
+    return "Session not found";
+  case ERROR_SESSION_FULL:
+    return "Session is full";
+  case ERROR_INVALID_PASSWORD:
+    return "Invalid password";
+  case ERROR_INVALID_SIGNATURE:
+    return "Invalid signature";
+  case ERROR_ACDS_STRING_TAKEN:
+    return "Session string already in use";
+  case ERROR_ACDS_STRING_INVALID:
+    return "Invalid session string";
+  case ERROR_INTERNAL:
+    return "Internal server error";
+  case ERROR_UNKNOWN_PACKET:
+    return "Unknown packet type";
   case ERROR_CRYPTO:
     return "Cryptographic error";
   case ERROR_CRYPTO_KEY:
