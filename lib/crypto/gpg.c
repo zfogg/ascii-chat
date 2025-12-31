@@ -1315,16 +1315,15 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
 
   log_info("Successfully extracted 64-byte Ed25519 signature from OpenPGP packet");
 
-  // Debug: Print signature bytes
-  fprintf(stderr, "[GPG DEBUG] Signature R (first 32 bytes): ");
+  // Debug: Log signature components
+  char hex_r[65], hex_s[65];
   for (int i = 0; i < 32; i++) {
-    fprintf(stderr, "%02x", signature_out[i]);
+    safe_snprintf(hex_r + i * 2, 3, "%02x", signature_out[i]);
+    safe_snprintf(hex_s + i * 2, 3, "%02x", signature_out[i + 32]);
   }
-  fprintf(stderr, "\n[GPG DEBUG] Signature S (last 32 bytes): ");
-  for (int i = 32; i < 64; i++) {
-    fprintf(stderr, "%02x", signature_out[i]);
-  }
-  fprintf(stderr, "\n");
+  hex_r[64] = hex_s[64] = '\0';
+  log_debug("Signature R (first 32 bytes): %s", hex_r);
+  log_debug("Signature S (last 32 bytes): %s", hex_s);
 
   return 0;
 }

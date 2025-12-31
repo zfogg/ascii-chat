@@ -1077,15 +1077,13 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
 
   // If using GPG agent, delegate signing to GPG agent
   if (key->use_gpg_agent) {
-    fprintf(stderr, "[DEBUG] ed25519_sign_message: Using GPG key, attempting agent connection\n");
     log_debug("Using GPG agent for Ed25519 signing (keygrip: %.40s)", key->gpg_keygrip);
 
     // Connect to GPG agent
     int agent_sock = gpg_agent_connect();
-    fprintf(stderr, "[DEBUG] gpg_agent_connect() returned: %d\n", agent_sock);
+    log_debug("GPG agent connection result: %d", agent_sock);
 
     if (agent_sock < 0) {
-      fprintf(stderr, "[DEBUG] GPG agent not available, using fallback\n");
       log_info("GPG agent not available, falling back to gpg --detach-sign for signing");
 
       // Extract GPG key ID from key comment ("GPG key <key_id>")
@@ -1095,18 +1093,16 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
         key_id = key->key_comment + strlen(key_id_prefix);
       }
 
-      fprintf(stderr, "[DEBUG] Extracted key_id: %s (len=%zu)\n", key_id ? key_id : "NULL",
-              key_id ? strlen(key_id) : 0);
+      log_debug("Extracted GPG key ID: %s (len=%zu)", key_id ? key_id : "NULL", key_id ? strlen(key_id) : 0);
 
       if (!key_id || strlen(key_id) != 16) {
-        fprintf(stderr, "[DEBUG] Key ID extraction failed\n");
         return SET_ERRNO(ERROR_CRYPTO, "Cannot extract GPG key ID from comment for fallback signing");
       }
 
       // Use gpg --detach-sign fallback
-      fprintf(stderr, "[DEBUG] Calling gpg_sign_detached_ed25519 with key %s\n", key_id);
+      log_debug("Calling gpg_sign_detached_ed25519 with key %s", key_id);
       int result = gpg_sign_detached_ed25519(key_id, message, message_len, signature);
-      fprintf(stderr, "[DEBUG] gpg_sign_detached_ed25519 returned: %d\n", result);
+      log_debug("gpg_sign_detached_ed25519 result: %d", result);
 
       if (result != 0) {
         return SET_ERRNO(ERROR_CRYPTO, "GPG fallback signing failed (both agent and gpg command failed)");
@@ -1116,7 +1112,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
       return ASCIICHAT_OK;
     }
 
-    fprintf(stderr, "[DEBUG] Using GPG agent for signing\n");
+    log_debug("Using GPG agent for signing");
 
     // Sign the message using GPG agent
     size_t sig_len = 0;
@@ -1190,14 +1186,13 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const u
   }
 
   if (valid_key_id) {
-    fprintf(stderr, "[VERIFY DEBUG] Standard Ed25519 verification failed, trying GPG fallback with key %s\n",
-            key_id_to_use);
+    log_debug("Standard Ed25519 verification failed, trying GPG fallback with key %s", key_id_to_use);
     int gpg_result = gpg_verify_detached_ed25519(key_id_to_use, message, message_len, signature);
     if (gpg_result == 0) {
-      fprintf(stderr, "[VERIFY DEBUG] GPG verification succeeded!\n");
+      log_debug("GPG verification succeeded");
       return ASCIICHAT_OK;
     }
-    fprintf(stderr, "[VERIFY DEBUG] GPG verification also failed\n");
+    log_debug("GPG verification also failed");
   }
 
   return SET_ERRNO(ERROR_CRYPTO, "Ed25519 signature verification failed (tried both libsodium and GPG)");

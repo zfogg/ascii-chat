@@ -322,15 +322,16 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 
     // Sign the ephemeral key with our identity key
     log_debug("Signing ephemeral key with server identity key");
-    fprintf(stderr, "[SERVER DEBUG] Signing ephemeral key (32 bytes): ");
+
+    // Log key details in debug mode
+    char hex_ephemeral[65], hex_identity[65];
     for (int i = 0; i < 32; i++) {
-      fprintf(stderr, "%02x", ctx->crypto_ctx.public_key[i]);
+      safe_snprintf(hex_ephemeral + i * 2, 3, "%02x", ctx->crypto_ctx.public_key[i]);
+      safe_snprintf(hex_identity + i * 2, 3, "%02x", ctx->server_private_key.public_key[i]);
     }
-    fprintf(stderr, "\n[SERVER DEBUG] Using identity public key: ");
-    for (int i = 0; i < 32; i++) {
-      fprintf(stderr, "%02x", ctx->server_private_key.public_key[i]);
-    }
-    fprintf(stderr, "\n");
+    hex_ephemeral[64] = hex_identity[64] = '\0';
+    log_debug("SERVER: Ephemeral key (32 bytes): %s", hex_ephemeral);
+    log_debug("SERVER: Identity public key: %s", hex_identity);
 
     if (ed25519_sign_message(&ctx->server_private_key, ctx->crypto_ctx.public_key, ctx->crypto_ctx.public_key_size,
                              extended_packet + ctx->crypto_ctx.public_key_size +
@@ -464,20 +465,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     log_debug("Received signature: %s", hex_sig);
 
     // Verify signature: server identity signed the ephemeral key
-    log_debug("Verifying server's signature over ephemeral key");
-    fprintf(stderr, "[CLIENT DEBUG] Verifying ephemeral key (32 bytes): ");
-    for (int i = 0; i < 32; i++) {
-      fprintf(stderr, "%02x", server_ephemeral_key[i]);
-    }
-    fprintf(stderr, "\n[CLIENT DEBUG] Using identity public key: ");
-    for (int i = 0; i < 32; i++) {
-      fprintf(stderr, "%02x", server_identity_key[i]);
-    }
-    fprintf(stderr, "\n[CLIENT DEBUG] With signature: ");
-    for (int i = 0; i < 64; i++) {
-      fprintf(stderr, "%02x", server_signature[i]);
-    }
-    fprintf(stderr, "\n");
+    log_debug("Verifying server's signature over ephemeral key (already logged above)");
 
     // If client didn't specify --server-key, skip signature verification
     // (client doesn't care about server identity verification)
