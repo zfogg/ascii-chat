@@ -190,6 +190,7 @@ typedef enum {
   ERROR_RESOURCE_EXHAUSTED = 88, /**< System resources exhausted */
   ERROR_FORMAT = 89,             /**< String formatting operation failed */
   ERROR_STRING = 90,             /**< String manipulation operation failed */
+  ERROR_NOT_FOUND = 91,          /**< Resource not found in registry or lookup */
 
   /* Signal/Crash handlers (100-127) */
   ERROR_SIGNAL_INTERRUPT = 100, /**< Interrupted by signal (SIGINT, SIGTERM) */
@@ -327,6 +328,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "String formatting operation failed";
   case ERROR_STRING:
     return "String manipulation operation failed";
+  case ERROR_NOT_FOUND:
+    return "Resource not found";
   case ERROR_SIGNAL_INTERRUPT:
     return "Interrupted by signal";
   case ERROR_SIGNAL_CRASH:

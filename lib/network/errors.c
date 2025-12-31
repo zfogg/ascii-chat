@@ -50,3 +50,51 @@ bool check_and_record_rate_limit(rate_limiter_t *rate_limiter, const char *clien
   rate_limiter_record(rate_limiter, client_ip, event_type);
   return true;
 }
+
+bool check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char *client_ip, socket_t client_socket,
+                                        packet_type_t packet_type) {
+  // Map packet type to rate event type
+  rate_event_type_t event_type;
+  const char *packet_name;
+
+  switch (packet_type) {
+  case PACKET_TYPE_IMAGE_FRAME:
+    event_type = RATE_EVENT_IMAGE_FRAME;
+    packet_name = "IMAGE_FRAME";
+    break;
+
+  case PACKET_TYPE_AUDIO:
+  case PACKET_TYPE_AUDIO_BATCH:
+  case PACKET_TYPE_AUDIO_OPUS:
+  case PACKET_TYPE_AUDIO_OPUS_BATCH:
+    event_type = RATE_EVENT_AUDIO;
+    packet_name = "AUDIO";
+    break;
+
+  case PACKET_TYPE_PING:
+  case PACKET_TYPE_PONG:
+    event_type = RATE_EVENT_PING;
+    packet_name = "PING";
+    break;
+
+  case PACKET_TYPE_CLIENT_JOIN:
+    event_type = RATE_EVENT_CLIENT_JOIN;
+    packet_name = "CLIENT_JOIN";
+    break;
+
+  case PACKET_TYPE_CLIENT_CAPABILITIES:
+  case PACKET_TYPE_STREAM_START:
+  case PACKET_TYPE_STREAM_STOP:
+  case PACKET_TYPE_CLIENT_LEAVE:
+    event_type = RATE_EVENT_CONTROL;
+    packet_name = "CONTROL";
+    break;
+
+  default:
+    // No rate limiting for other packet types
+    return true;
+  }
+
+  // Use the existing check_and_record_rate_limit function
+  return check_and_record_rate_limit(rate_limiter, client_ip, event_type, client_socket, packet_name);
+}

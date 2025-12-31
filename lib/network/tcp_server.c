@@ -237,6 +237,13 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     ctx->user_data = server->config.user_data;
 
     // Spawn client handler thread
+    // Handler is responsible for:
+    // 1. Allocating client_data
+    // 2. Calling tcp_server_add_client() to register
+    // 3. Spawning additional worker threads via tcp_server_spawn_thread() if needed
+    // 4. Processing client requests
+    // 5. Calling tcp_server_remove_client() on disconnect
+    // 6. Closing socket and freeing ctx
     asciithread_t thread;
     if (ascii_thread_create(&thread, server->config.client_handler, ctx) != 0) {
       log_error("Failed to create client handler thread for %s", client_ip);
@@ -246,7 +253,6 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     }
 
     // Thread is detached (handler is responsible for cleanup)
-    // TODO: Track threads for clean shutdown
     (void)thread; // Suppress unused warning
   }
 
@@ -286,6 +292,18 @@ void tcp_server_shutdown(tcp_server_t *server) {
     if (server->cleanup_fn && entry->client_data) {
       server->cleanup_fn(entry->client_data);
     }
+
+    // Clean up thread pool
+    mutex_lock(&entry->threads_mutex);
+    tcp_client_thread_t *thread = entry->threads;
+    while (thread) {
+      tcp_client_thread_t *next = thread->next;
+      SAFE_FREE(thread);
+      thread = next;
+    }
+    mutex_unlock(&entry->threads_mutex);
+    mutex_destroy(&entry->threads_mutex);
+
     HASH_DEL(server->clients, entry);
     SAFE_FREE(entry);
   }
@@ -328,6 +346,14 @@ asciichat_error_t tcp_server_add_client(tcp_server_t *server, socket_t socket, v
 
   entry->socket = socket;
   entry->client_data = client_data;
+  entry->threads = NULL;
+  entry->thread_count = 0;
+
+  // Initialize thread pool mutex
+  if (mutex_init(&entry->threads_mutex) != 0) {
+    SAFE_FREE(entry);
+    return SET_ERRNO(ERROR_INTERNAL, "Failed to initialize thread pool mutex");
+  }
 
   // Add to hash table (thread-safe)
   mutex_lock(&server->clients_mutex);
@@ -357,6 +383,21 @@ asciichat_error_t tcp_server_remove_client(tcp_server_t *server, socket_t socket
   if (server->cleanup_fn && entry->client_data) {
     server->cleanup_fn(entry->client_data);
   }
+
+  // Clean up thread pool
+  mutex_lock(&entry->threads_mutex);
+  tcp_client_thread_t *thread = entry->threads;
+  while (thread) {
+    tcp_client_thread_t *next = thread->next;
+    SAFE_FREE(thread);
+    thread = next;
+  }
+  entry->threads = NULL;
+  entry->thread_count = 0;
+  mutex_unlock(&entry->threads_mutex);
+
+  // Destroy thread pool mutex
+  mutex_destroy(&entry->threads_mutex);
 
   HASH_DEL(server->clients, entry);
   SAFE_FREE(entry);
@@ -414,4 +455,159 @@ size_t tcp_server_get_client_count(tcp_server_t *server) {
   mutex_unlock(&server->clients_mutex);
 
   return count;
+}
+
+// ============================================================================
+// Client Thread Pool Management
+// ============================================================================
+
+asciichat_error_t tcp_server_spawn_thread(tcp_server_t *server, socket_t client_socket, void *(*thread_func)(void *),
+                                          void *thread_arg, int stop_id, const char *thread_name) {
+  if (!server || !thread_func) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "server or thread_func is NULL");
+  }
+
+  if (client_socket == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "client_socket is invalid");
+  }
+
+  // Find client entry
+  mutex_lock(&server->clients_mutex);
+  tcp_client_entry_t *entry = NULL;
+  HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
+
+  if (!entry) {
+    mutex_unlock(&server->clients_mutex);
+    return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
+  }
+
+  // Allocate thread entry
+  tcp_client_thread_t *thread_entry = SAFE_MALLOC(sizeof(tcp_client_thread_t), tcp_client_thread_t *);
+  if (!thread_entry) {
+    mutex_unlock(&server->clients_mutex);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate thread entry");
+  }
+
+  thread_entry->stop_id = stop_id;
+  thread_entry->thread_func = thread_func;
+  thread_entry->thread_arg = thread_arg;
+  thread_entry->next = NULL;
+
+  // Copy thread name (truncate if necessary)
+  if (thread_name) {
+    SAFE_STRNCPY(thread_entry->name, thread_name, sizeof(thread_entry->name));
+  } else {
+    SAFE_SNPRINTF(thread_entry->name, sizeof(thread_entry->name), "worker-%d", stop_id);
+  }
+
+  // Create thread
+  if (ascii_thread_create(&thread_entry->thread, thread_func, thread_arg) != 0) {
+    SAFE_FREE(thread_entry);
+    mutex_unlock(&server->clients_mutex);
+    return SET_ERRNO(ERROR_INTERNAL, "Failed to create thread '%s' for client socket=%d", thread_entry->name,
+                     client_socket);
+  }
+
+  // Add to thread list (sorted by stop_id)
+  mutex_lock(&entry->threads_mutex);
+
+  if (!entry->threads || entry->threads->stop_id > stop_id) {
+    // Insert at head
+    thread_entry->next = entry->threads;
+    entry->threads = thread_entry;
+  } else {
+    // Find insertion point (maintain sorted order by stop_id)
+    tcp_client_thread_t *prev = entry->threads;
+    while (prev->next && prev->next->stop_id <= stop_id) {
+      prev = prev->next;
+    }
+    thread_entry->next = prev->next;
+    prev->next = thread_entry;
+  }
+
+  entry->thread_count++;
+  mutex_unlock(&entry->threads_mutex);
+  mutex_unlock(&server->clients_mutex);
+
+  log_debug("Spawned thread '%s' (stop_id=%d) for client socket=%d (total_threads=%zu)", thread_entry->name, stop_id,
+            client_socket, entry->thread_count);
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t tcp_server_stop_client_threads(tcp_server_t *server, socket_t client_socket) {
+  if (!server) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "server is NULL");
+  }
+
+  if (client_socket == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "client_socket is invalid");
+  }
+
+  // Find client entry
+  mutex_lock(&server->clients_mutex);
+  tcp_client_entry_t *entry = NULL;
+  HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
+
+  if (!entry) {
+    mutex_unlock(&server->clients_mutex);
+    return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
+  }
+
+  // Stop threads in stop_id order (already sorted)
+  mutex_lock(&entry->threads_mutex);
+
+  log_debug("Stopping %zu threads for client socket=%d in stop_id order", entry->thread_count, client_socket);
+
+  tcp_client_thread_t *thread = entry->threads;
+  while (thread) {
+    log_debug("Joining thread '%s' (stop_id=%d) for client socket=%d", thread->name, thread->stop_id, client_socket);
+
+    // Join thread (wait for it to exit)
+    if (ascii_thread_join(&thread->thread, NULL) != 0) {
+      log_warn("Failed to join thread '%s' for client socket=%d", thread->name, client_socket);
+    }
+
+    tcp_client_thread_t *next = thread->next;
+    SAFE_FREE(thread);
+    thread = next;
+  }
+
+  entry->threads = NULL;
+  entry->thread_count = 0;
+
+  mutex_unlock(&entry->threads_mutex);
+  mutex_unlock(&server->clients_mutex);
+
+  log_debug("All threads stopped for client socket=%d", client_socket);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t tcp_server_get_thread_count(tcp_server_t *server, socket_t client_socket, size_t *count) {
+  if (!server || !count) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "server or count is NULL");
+  }
+
+  if (client_socket == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "client_socket is invalid");
+  }
+
+  *count = 0;
+
+  // Find client entry
+  mutex_lock(&server->clients_mutex);
+  tcp_client_entry_t *entry = NULL;
+  HASH_FIND(hh, server->clients, &client_socket, sizeof(socket_t), entry);
+
+  if (!entry) {
+    mutex_unlock(&server->clients_mutex);
+    return SET_ERRNO(ERROR_NOT_FOUND, "Client socket=%d not in registry", client_socket);
+  }
+
+  mutex_lock(&entry->threads_mutex);
+  *count = entry->thread_count;
+  mutex_unlock(&entry->threads_mutex);
+  mutex_unlock(&server->clients_mutex);
+
+  return ASCIICHAT_OK;
 }

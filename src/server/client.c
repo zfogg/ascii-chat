@@ -110,6 +110,7 @@
 #endif
 
 #include "client.h"
+#include "main.h"
 #include "protocol.h"
 #include "render.h"
 #include "stream.h"
@@ -125,6 +126,7 @@
 #include "network/packet.h"
 #include "network/av.h"
 #include "network/packet_queue.h"
+#include "network/errors.h"
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
@@ -1837,6 +1839,14 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
  * @param len Packet length
  */
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
+  // Rate limiting: Check and record packet-specific rate limits
+  if (g_rate_limiter) {
+    if (!check_and_record_packet_rate_limit(g_rate_limiter, client->client_ip, client->socket, type)) {
+      // Rate limit exceeded - error response already sent by utility function
+      return;
+    }
+  }
+
   switch (type) {
   case PACKET_TYPE_PROTOCOL_VERSION:
     handle_protocol_version_packet(client, data, len);
