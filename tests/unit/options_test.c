@@ -57,7 +57,9 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
       optind = 1;                                                                                                      \
       opterr = 1;                                                                                                      \
       optopt = 0;                                                                                                      \
-      options_init(argc, argv, is_client_val);                                                                         \
+      /* Convert boolean to asciichat_mode_t enum */                                                                   \
+      asciichat_mode_t mode = is_client_val ? MODE_CLIENT : MODE_SERVER;                                               \
+      options_init(argc, argv, mode);                                                                                  \
       option_assertions                                                                                                \
     }                                                                                                                  \
                                                                                                                        \
@@ -183,7 +185,9 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
       argv_with_null = argv;
     }
 
-    asciichat_error_t result = options_init(argc, argv_with_null, is_client);
+    // Convert boolean is_client to asciichat_mode_t enum
+    asciichat_mode_t mode = is_client ? MODE_CLIENT : MODE_SERVER;
+    asciichat_error_t result = options_init(argc, argv_with_null, mode);
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {
       _exit(result == ERROR_USAGE ? 1 : result);
@@ -234,7 +238,7 @@ Test(options, default_values) {
 }
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options, basic_client_options, ARGV_LIST("client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50"),
+    options, basic_client_options, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"),
     true,
     {
       cr_assert_str_eq(opt_address, "192.168.1.1");
@@ -247,7 +251,7 @@ GENERATE_OPTIONS_TEST_IN_SUITE(
     { cr_assert_eq(exit_code, 0, "Basic client options should not exit"); })
 
 GENERATE_OPTIONS_TEST(
-    basic_server_options, ARGV_LIST("server", "-a", "127.0.0.1", "-p", "3000"), false,
+    basic_server_options, ARGV_LIST("server", "127.0.0.1", "-p", "3000"), false,
     {
       cr_assert_str_eq(opt_address, "127.0.0.1");
       cr_assert_str_eq(opt_port, "3000");
@@ -269,21 +273,21 @@ GENERATE_OPTIONS_TEST(
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_192_168_1_1, ARGV_LIST("client", "-a", "192.168.1.1"), true,
+    valid_ipv4_192_168_1_1, ARGV_LIST("client", "192.168.1.1"), true,
     { cr_assert_str_eq(opt_address, "192.168.1.1"); },
     { cr_assert_eq(exit_code, 0, "Valid IP 192.168.1.1 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_127_0_0_1, ARGV_LIST("client", "-a", "127.0.0.1"), true, { cr_assert_str_eq(opt_address, "127.0.0.1"); },
+    valid_ipv4_127_0_0_1, ARGV_LIST("client", "127.0.0.1"), true, { cr_assert_str_eq(opt_address, "127.0.0.1"); },
     { cr_assert_eq(exit_code, 0, "Valid IP 127.0.0.1 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    valid_ipv4_255_255_255_255, ARGV_LIST("client", "-a", "255.255.255.255"), true,
+    valid_ipv4_255_255_255_255, ARGV_LIST("client", "255.255.255.255"), true,
     { cr_assert_str_eq(opt_address, "255.255.255.255"); },
     { cr_assert_eq(exit_code, 0, "Valid IP 255.255.255.255 should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_ipv4_octet_too_large, ARGV_LIST("client", "-a", "256.1.1.1"), true,
+    invalid_ipv4_octet_too_large, ARGV_LIST("client", "256.1.1.1"), true,
     {
       // This should not be reached since options_init should exit
       cr_fail("Should not reach this point - invalid IP should cause exit");
@@ -291,7 +295,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 1, "Invalid IP 256.1.1.1 should cause exit with code 1"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_ipv4_too_few_octets, ARGV_LIST("client", "-a", "192.168.1"), true,
+    invalid_ipv4_too_few_octets, ARGV_LIST("client", "192.168.1"), true,
     {
       // This should not be reached since options_init should exit
       cr_fail("Should not reach this point - invalid IP should cause exit");
@@ -299,7 +303,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 1, "Invalid IP 192.168.1 should cause exit with code 1"); })
 
 GENERATE_OPTIONS_TEST(
-    invalid_ipv4_non_numeric, ARGV_LIST("client", "-a", "192.168.1.abc"), true,
+    invalid_ipv4_non_numeric, ARGV_LIST("client", "192.168.1.abc"), true,
     {
       // This should not be reached since options_init should exit
       cr_fail("Should not reach this point - invalid IP should cause exit");
@@ -329,8 +333,8 @@ ParameterizedTestParameters(options, ip_address_validation) {
 }
 
 ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation) {
-  char *argv[] = {"client", "-a", (char *)tc->address, NULL};
-  int argc = 3;
+  char *argv[] = {"client", (char *)tc->address, NULL};
+  int argc = 2;
   options_backup_t backup;
   save_options(&backup);
 
@@ -344,7 +348,7 @@ ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation)
     optind = 1;
     opterr = 1;
     optopt = 0;
-    options_init(argc, argv, true);
+    options_init(argc, argv, MODE_CLIENT);
     cr_assert_str_eq(opt_address, tc->address, "%s should set address correctly", tc->description);
   } else {
     cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
@@ -430,7 +434,7 @@ ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
     optind = 1;
     opterr = 1;
     optopt = 0;
-    options_init(argc, argv, true);
+    options_init(argc, argv, MODE_CLIENT);
     cr_assert_str_eq(opt_port, tc->port, "%s should set port correctly", tc->description);
   } else {
     cr_assert_eq(exit_code, tc->expected_exit_code, "%s should cause exit with code %d", tc->description,
@@ -754,16 +758,6 @@ GENERATE_OPTIONS_TEST_IN_SUITE(
     { cr_assert_eq(exit_code, 1, "Unknown option should exit with code 1"); })
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, missing_argument_address, ARGV_LIST("client", "--address"), true,
-    { cr_fail("Should not reach this point - missing argument should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1"); })
-
-GENERATE_OPTIONS_TEST_IN_SUITE(
-    options_errors, missing_argument_short, ARGV_LIST("client", "-a"), true,
-    { cr_fail("Should not reach this point - missing argument should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1"); })
-
-GENERATE_OPTIONS_TEST_IN_SUITE(
     options_errors, missing_argument_port, ARGV_LIST("client", "--port"), true,
     { cr_fail("Should not reach this point - missing argument should cause exit"); },
     { cr_assert_eq(exit_code, 1, "Missing argument should exit with code 1"); })
@@ -776,8 +770,8 @@ Test(options, equals_sign_handling) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--address=192.168.1.1", "--port=8080", "--width=100", "--height=50", NULL};
-  int result = test_options_init_with_fork(argv, 5, true);
+  char *argv[] = {"client", "192.168.1.1:8080", "--width=100", "--height=50", NULL};
+  int result = test_options_init_with_fork(argv, 4, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -792,8 +786,7 @@ Test(options, complex_client_combination) {
   save_options(&backup);
 
   char *argv[] = {"client",
-                  "--address=192.168.1.100",
-                  "--port=8080",
+                  "192.168.1.100:8080",
                   "--width=120",
                   "--height=60",
                   "--webcam-index=1",
@@ -810,7 +803,7 @@ Test(options, complex_client_combination) {
                   "--encrypt",
                   "--key=mysecretpassword",
                   NULL};
-  int argc = 18;
+  int argc = 17;
 
   log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, argc, true);
@@ -824,7 +817,7 @@ Test(options, complex_server_combination) {
   save_options(&backup);
 
   char *argv[] = {"server",
-                  "--address=0.0.0.0",
+                  "0.0.0.0",
                   "--port=27224",
                   "--palette=digital",
                   "--log-file=/var/log/ascii-chat.log",
@@ -941,23 +934,18 @@ Test(options, very_long_arguments) {
 
   // Test with very long but valid arguments
   char long_address[OPTIONS_BUFF_SIZE];
-  char long_port[OPTIONS_BUFF_SIZE];
   char long_logfile[OPTIONS_BUFF_SIZE];
 
   memset(long_address, '1', sizeof(long_address) - 1);
   long_address[sizeof(long_address) - 1] = '\0';
-  SAFE_STRNCPY(long_address, "192.168.1.1", sizeof(long_address)); // Valid but test the buffer handling
-
-  memset(long_port, '2', sizeof(long_port) - 1);
-  long_port[sizeof(long_port) - 1] = '\0';
-  SAFE_STRNCPY(long_port, "8080", sizeof(long_port));
+  SAFE_STRNCPY(long_address, "192.168.1.1:8080", sizeof(long_address)); // Valid but test the buffer handling
 
   memset(long_logfile, '3', sizeof(long_logfile) - 1);
   long_logfile[sizeof(long_logfile) - 1] = '\0';
   SAFE_STRNCPY(long_logfile, "/tmp/test.log", sizeof(long_logfile));
 
-  char *argv[] = {"client", "-a", long_address, "-p", long_port, "-L", long_logfile, NULL};
-  int result = test_options_init_with_fork(argv, 7, true);
+  char *argv[] = {"client", long_address, "-L", long_logfile, NULL};
+  int result = test_options_init_with_fork(argv, 4, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -968,14 +956,13 @@ Test(options, maximum_values) {
   save_options(&backup);
 
   char *argv[] = {"client",
-                  "--address=255.255.255.255",
-                  "--port=65535",
+                  "255.255.255.255:65535",
                   "--width=65535",
                   "--height=65535",
                   "--webcam-index=65535",
                   "--snapshot-delay=999.999",
                   NULL};
-  int argc = 7;
+  int argc = 6;
 
   int result = test_options_init_with_fork(argv, argc, true);
   cr_assert_eq(result, 0);
@@ -987,9 +974,9 @@ Test(options, minimum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client",           "--address=0.0.0.0",    "--port=1", "--width=1", "--height=1",
-                  "--webcam-index=0", "--snapshot-delay=0.0", NULL};
-  int argc = 7;
+  char *argv[] = {"client", "0.0.0.0:1", "--width=1", "--height=1", "--webcam-index=0", "--snapshot-delay=0.0",
+                  NULL};
+  int argc = 6;
 
   int result = test_options_init_with_fork(argv, argc, true);
   cr_assert_eq(result, 0);
@@ -1011,12 +998,7 @@ Test(options, random_combinations) {
 
     // Randomly add valid options
     if (rand() % 2) {
-      argv[argc++] = "-a";
-      argv[argc++] = "192.168.1.1";
-    }
-    if (rand() % 2) {
-      argv[argc++] = "-p";
-      argv[argc++] = "8080";
+      argv[argc++] = "192.168.1.1:8080";
     }
     if (rand() % 2) {
       argv[argc++] = "--audio";
@@ -1040,7 +1022,7 @@ Test(options, random_combinations) {
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    actual_values_client, ARGV_LIST("client", "-a", "192.168.1.1", "-p", "8080", "-x", "100", "-y", "50"), true,
+    actual_values_client, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"), true,
     {
       // Test actual values were set
       cr_assert_str_eq(opt_address, "192.168.1.1");
@@ -1153,7 +1135,7 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_comprehensive_client_values,
-    ARGV_LIST("client", "--address=10.0.0.1", "--port=9999", "--width=200", "--height=100", "--webcam-index=2",
+    ARGV_LIST("client", "10.0.0.1:9999", "--width=200", "--height=100", "--webcam-index=2",
               "--webcam-flip", "--color-mode=256", "--render-mode=background", "--palette=digital", "--audio",
               "--stretch", "--quiet", "--snapshot", "--snapshot-delay=5.0", "--log-file=/var/log/test.log", "--encrypt",
               "--key=testkey123"),
@@ -1185,7 +1167,7 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_server_values,
-    ARGV_LIST("server", "--address=0.0.0.0", "--port=12345", "--palette=minimal", "--log-file=/tmp/server.log",
+    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--palette=minimal", "--log-file=/tmp/server.log",
               "--encrypt", "--keyfile=/etc/server.key"),
     false,
     {
@@ -1206,7 +1188,7 @@ GENERATE_OPTIONS_TEST(
 
 GENERATE_OPTIONS_TEST(
     test_equals_sign_syntax,
-    ARGV_LIST("client", "--address=192.168.1.100", "--port=8080", "--width=150", "--height=75"), true,
+    ARGV_LIST("client", "192.168.1.100:8080", "--width=150", "--height=75"), true,
     {
       cr_assert_str_eq(opt_address, "192.168.1.100");
       cr_assert_str_eq(opt_port, "8080");
@@ -1218,7 +1200,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "equals sign syntax should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_mixed_syntax, ARGV_LIST("client", "-a", "10.0.0.1", "--port=3000", "-x", "80", "--height=60"), true,
+    test_mixed_syntax, ARGV_LIST("client", "10.0.0.1:3000", "-x", "80", "--height=60"), true,
     {
       cr_assert_str_eq(opt_address, "10.0.0.1");
       cr_assert_str_eq(opt_port, "3000");
@@ -1315,7 +1297,7 @@ GENERATE_OPTIONS_TEST(
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    test_server_basic_options, ARGV_LIST("client", "--address=127.0.0.1", "--port=8080", "--width=110", "--height=70"),
+    test_server_basic_options, ARGV_LIST("client", "127.0.0.1:8080", "--width=110", "--height=70"),
     true,
     {
       cr_assert_str_eq(opt_address, "127.0.0.1");
