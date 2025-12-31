@@ -7,8 +7,8 @@
  * On crash, the log file is immediately readable with cat/tail.
  */
 
-#include "log/mmap.h"
-#include "log/logging.h"
+#include "logging/mmap.h"
+#include "logging/logging.h"
 #include "platform/mmap.h"
 #include "platform/system.h"
 

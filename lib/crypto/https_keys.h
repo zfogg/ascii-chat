@@ -26,7 +26,7 @@
  * @date October 2025
  */
 
-#include "../common.h"
+#include "common.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

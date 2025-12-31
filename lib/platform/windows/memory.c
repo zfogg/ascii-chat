@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 
-#include "../memory.h"
+#include "memory.h"
 #include <malloc.h>
 
 /**

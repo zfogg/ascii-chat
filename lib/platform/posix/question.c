@@ -5,7 +5,7 @@
  */
 
 #include "platform/question.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 
 #include <stdio.h>
 #include <string.h>

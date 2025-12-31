@@ -6,7 +6,7 @@
 
 #include "image.h"
 #include "common.h"
-#include "video/image.h"
+#include "video/video_constants.h"
 #include <limits.h>
 
 asciichat_error_t image_calc_pixel_count(size_t width, size_t height, size_t *out_pixel_count) {

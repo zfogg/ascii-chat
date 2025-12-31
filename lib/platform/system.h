@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <time.h>
-#include "../common.h"
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {

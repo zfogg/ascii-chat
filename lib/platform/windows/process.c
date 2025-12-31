@@ -6,9 +6,9 @@
 
 #ifdef _WIN32
 
-#include "../process.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
+#include "process.h"
+#include "common.h"
+#include "asciichat_errno.h"
 #include <stdlib.h>
 #include <errno.h>
 

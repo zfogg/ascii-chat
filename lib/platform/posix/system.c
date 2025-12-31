@@ -6,12 +6,12 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
-#include "../internal.h"
-#include "../../common.h" // For log_error()
-#include "../../asciichat_errno.h"
-#include "../../util/ip.h"
-#include "../symbols.h" // For symbol cache
+#include "abstraction.h"
+#include "internal.h"
+#include "common.h" // For log_error()
+#include "asciichat_errno.h"
+#include "util/ip.h"
+#include "symbols.h" // For symbol cache
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -1039,6 +1039,6 @@ bool platform_get_cwd(char *cwd, size_t path_size) {
 }
 
 // Include cross-platform system utilities (binary PATH detection)
-#include "../system.c"
+#include "system_impl.c"
 
 #endif // !_WIN32

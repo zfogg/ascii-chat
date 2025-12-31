@@ -16,7 +16,7 @@
 
 #include "asciichat_errno.h"
 #include "common.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "options/options.h"
 #include "options/validation.h"
 #include "util/ip.h"

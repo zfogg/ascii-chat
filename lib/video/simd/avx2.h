@@ -14,7 +14,7 @@
  * @date September 2025
  */
 
-#include "../image.h"
+#include "image.h"
 
 #if SIMD_SUPPORT_AVX2
 

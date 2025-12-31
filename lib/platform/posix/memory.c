@@ -6,7 +6,7 @@
 
 #ifndef _WIN32
 
-#include "../memory.h"
+#include "memory.h"
 
 // POSIX-specific memory sizing functions
 #ifdef __APPLE__

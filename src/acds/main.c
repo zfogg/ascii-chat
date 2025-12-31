@@ -18,7 +18,7 @@
 #include "acds/strings.h"
 #include "common.h"
 #include "version.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "options/options.h"
 #include "options/acds.h"
 #include "platform/abstraction.h"

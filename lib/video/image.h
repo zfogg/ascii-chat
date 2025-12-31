@@ -57,8 +57,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "../platform/abstraction.h"
-#include "../common.h"
+#include "platform/abstraction.h"
+#include "common.h"
+#include "video_constants.h"
 
 /* ============================================================================
  * Data Structures
@@ -146,49 +147,13 @@ typedef struct image_t {
 } image_t;
 
 /* ============================================================================
- * Image Size Constants
+ * Image Size Constants (defined in video_constants.h)
  * ============================================================================
+ *
+ * IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT, and IMAGE_MAX_PIXELS_SIZE are defined
+ * in video_constants.h to avoid circular dependencies and enable their use
+ * in utility modules.
  */
-
-/**
- * @brief Maximum image width (4K resolution)
- *
- * Maximum supported image width in pixels. Set to 3840 pixels
- * (4K UHD width) to support high-resolution video capture.
- *
- * @note Larger images may exceed memory limits.
- * @note Video pipeline may enforce lower limits for performance.
- *
- * @ingroup video
- */
-#define IMAGE_MAX_WIDTH 3840
-
-/**
- * @brief Maximum image height (4K resolution)
- *
- * Maximum supported image height in pixels. Set to 2160 pixels
- * (4K UHD height) to support high-resolution video capture.
- *
- * @note Larger images may exceed memory limits.
- * @note Video pipeline may enforce lower limits for performance.
- *
- * @ingroup video
- */
-#define IMAGE_MAX_HEIGHT 2160
-
-/**
- * @brief Maximum pixel data size in bytes
- *
- * Maximum size in bytes for pixel data array. Calculated as:
- * IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t)
- * Used for buffer allocation and validation.
- *
- * @note This is approximately 24.88 MB for 4K RGB images.
- * @note Actual memory usage may be higher due to alignment.
- *
- * @ingroup video
- */
-#define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
 
 /* ============================================================================
  * Image Allocation and Management Functions
@@ -348,7 +313,7 @@ char *image_print_color(const image_t *p, const char *palette);
  */
 
 // Capability-aware image printing functions
-#include "../platform/terminal.h"
+#include "platform/terminal.h"
 
 /**
  * @brief Print image with terminal capability awareness

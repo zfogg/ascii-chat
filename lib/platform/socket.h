@@ -52,7 +52,7 @@ typedef int socket_t;
 #define INVALID_SOCKET_VALUE (-1)
 #endif
 
-#include "../common.h"
+#include "common.h"
 
 // ============================================================================
 // Socket Functions

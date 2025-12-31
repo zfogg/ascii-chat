@@ -84,7 +84,7 @@
 #include "version.h"
 #include "options/options.h"
 #include "options/config.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/terminal.h"
 #include "options/levenshtein.h"
 #include "util/path.h"

@@ -20,7 +20,7 @@
 #include "audio/audio.h"
 #include "common.h"
 #include "crypto/crypto.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "options/levenshtein.h"
 #include "options/options.h"
 #include "options/validation.h"

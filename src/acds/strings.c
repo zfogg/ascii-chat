@@ -4,7 +4,7 @@
  */
 
 #include "acds/strings.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include <sodium.h>
 #include <string.h>
 #include <ctype.h>

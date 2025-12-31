@@ -75,7 +75,7 @@
 #include "platform/socket.h"
 #include "platform/abstraction.h"
 #include "crypto/crypto.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

@@ -15,7 +15,7 @@
 #include "ssse3.h"
 #include "ascii_simd.h"
 #include "common.h"
-#include "../output_buffer.h"
+#include "output_buffer.h"
 #include "util/overflow.h"
 
 //=============================================================================

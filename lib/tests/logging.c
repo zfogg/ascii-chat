@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include "log/logging.h"
+#include "logging/logging.h"
 
 #ifndef _WIN32
 // POSIX-only test utilities for redirecting stdout/stderr

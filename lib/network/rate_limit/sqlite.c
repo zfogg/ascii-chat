@@ -6,7 +6,7 @@
  */
 
 #include "network/rate_limit/sqlite.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include <sqlite3.h>
 #include <string.h>
 

@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include "../image.h"
+#include "image.h"
 #include "common.h"
 
 // Check for SIMD support and include architecture-specific headers

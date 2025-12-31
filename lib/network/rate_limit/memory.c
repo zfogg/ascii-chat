@@ -7,7 +7,7 @@
 
 #include "network/rate_limit/memory.h"
 #include "common.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/abstraction.h"
 #include "uthash.h"
 #include <stdlib.h>

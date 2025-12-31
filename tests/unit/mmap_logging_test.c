@@ -4,7 +4,7 @@
  */
 
 #include "tests/common.h"
-#include "log/mmap.h"
+#include "logging/mmap.h"
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>

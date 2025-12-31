@@ -5,7 +5,7 @@
 
 #include "network/errors.h"
 #include "network/network.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include <string.h>
 
 asciichat_error_t send_error_packet(socket_t sockfd, asciichat_error_t error_code) {

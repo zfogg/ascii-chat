@@ -6,10 +6,10 @@
 
 #ifdef _WIN32
 
-#include "../../options/options.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../util/parsing.h"
+#include "options/options.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "util/parsing.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>

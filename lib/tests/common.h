@@ -59,8 +59,8 @@
 #include <criterion/criterion.h>
 
 // Project headers - use relative paths from tests directory
-#include "../common.h"
-#include "log/logging.h"
+#include "common.h"
+#include "logging/logging.h"
 #include "tests/logging.h"
 #include "test_env.h"
 

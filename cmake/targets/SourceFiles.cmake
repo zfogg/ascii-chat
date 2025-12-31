@@ -32,9 +32,9 @@ set(UTIL_SRCS
     lib/util/aspect_ratio.c
     lib/util/time.c
     lib/util/image.c
-    lib/util/audio.c
     lib/util/password.c
     lib/util/fps.c
+    lib/util/utf8.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -97,7 +97,7 @@ set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
     lib/platform/socket.c
     lib/platform/thread.c
-    # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
+    # NOTE: lib/platform/system_impl.c is included by windows/system.c and posix/system.c
 )
 
 if(WIN32)
@@ -202,7 +202,6 @@ set(VIDEO_SRCS
     lib/video/ansi_fast.c
     lib/video/ansi.c
     lib/video/palette.c
-    lib/util/utf8.c
     lib/video/webcam/webcam.c
 )
 
@@ -245,6 +244,7 @@ set(NETWORK_SRCS
     lib/network/http_client.c
     lib/network/tcp_server.c
     lib/network/errors.c
+    lib/util/audio.c
     # Rate limiting library (backend abstraction)
     lib/network/rate_limit/rate_limit.c
     lib/network/rate_limit/memory.c
@@ -257,8 +257,8 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
-    lib/log/logging.c
-    lib/log/mmap.c
+    lib/logging/logging.c
+    lib/logging/mmap.c
     lib/options/options.c
     lib/options/common.c
     lib/options/client.c

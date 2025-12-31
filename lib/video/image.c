@@ -16,7 +16,7 @@
 #include <unistd.h>
 #endif
 
-#include "../common.h"
+#include "common.h"
 #include "output_buffer.h"
 #include "image.h"
 #include "ascii.h"

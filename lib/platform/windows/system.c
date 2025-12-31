@@ -6,14 +6,14 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
-#include "../internal.h"
-#include "../socket.h"
+#include "abstraction.h"
+#include "internal.h"
+#include "socket.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/ip.h"
-#include "../symbols.h"
+#include "symbols.h"
 
 #include <dbghelp.h>
 #include <wincrypt.h>
@@ -1593,7 +1593,7 @@ bool platform_get_cwd(char *cwd, size_t path_size) {
 }
 
 // Include cross-platform system utilities (binary PATH detection)
-// Note: Uses uthash for binary PATH cache (included via system.c)
-#include "../system.c"
+// Note: Uses uthash for binary PATH cache (included via system_impl.c)
+#include "system_impl.c"
 
 #endif // !!_WIN32

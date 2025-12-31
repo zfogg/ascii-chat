@@ -15,7 +15,7 @@
 #include "ascii_simd.h"
 
 #include "common.h"
-#include "../image.h"
+#include "image.h"
 #include "video/palette.h"
 #include "util/number.h" // For write_u8
 

@@ -20,7 +20,7 @@
 #include "common.h"
 #include "neon.h"
 #include "ascii_simd.h"
-#include "../image.h"
+#include "image.h"
 #include "video/simd/common.h"
 #include "video/output_buffer.h"
 #include "video/ansi_fast.h"

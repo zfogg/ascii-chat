@@ -41,7 +41,7 @@
  * @date October 2025
  */
 
-#include "../common.h"
+#include "common.h"
 
 /* ============================================================================
  * Protocol Message Parsing Functions

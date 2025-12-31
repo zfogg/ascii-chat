@@ -27,7 +27,7 @@
  * SOFTWARE.
  */
 
-#include "../common.h"
+#include "common.h"
 #include "pem_utils.h"
 #include "asciichat_errno.h"
 

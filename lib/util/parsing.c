@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
-#include "../asciichat_errno.h"
+#include "asciichat_errno.h"
 
 asciichat_error_t safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
   if (!message || !width || !height) {

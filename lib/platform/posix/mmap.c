@@ -5,7 +5,7 @@
  */
 
 #include "platform/mmap.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 
 #include <sys/mman.h>
 #include <sys/stat.h>

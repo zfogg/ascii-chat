@@ -25,7 +25,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "../common.h"
+#include "common.h"
 
 // ============================================================================
 // Platform-Specific Signal Definitions

@@ -11,8 +11,8 @@
 #include <stdbool.h>
 #include "avx2.h"
 #include "common.h"
-#include "../output_buffer.h"
-#include "../ansi_fast.h"
+#include "output_buffer.h"
+#include "ansi_fast.h"
 #include "util/overflow.h"
 
 #if SIMD_SUPPORT_AVX2

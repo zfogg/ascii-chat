@@ -6,7 +6,7 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
+#include "abstraction.h"
 #include <pthread.h>
 #include "asciichat_errno.h"
 

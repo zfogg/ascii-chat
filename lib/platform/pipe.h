@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <sys/types.h> // For ssize_t on all platforms
-#include "../common.h"
+#include "common.h"
 
 #ifdef _WIN32
 #include <windows.h>

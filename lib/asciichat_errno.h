@@ -11,7 +11,7 @@
 // Platform-specific includes - must be first
 #include "common.h"
 // Include logging.h for log_error macro used in SET_ERRNO
-#include "log/logging.h"
+#include "logging/logging.h"
 
 /**
  * @file asciichat_errno.h

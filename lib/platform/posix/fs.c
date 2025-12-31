@@ -6,9 +6,9 @@
 
 #ifndef _WIN32
 
-#include "../fs.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
+#include "fs.h"
+#include "common.h"
+#include "asciichat_errno.h"
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>

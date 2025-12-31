@@ -5,7 +5,7 @@
  */
 
 #include "gpg_keys.h"
-#include "../keys_validation.h"
+#include "keys_validation.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/string.h"

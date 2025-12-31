@@ -6,7 +6,7 @@
 #include "network/rate_limit/rate_limit.h"
 #include "network/rate_limit/memory.h"
 #include "network/rate_limit/sqlite.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

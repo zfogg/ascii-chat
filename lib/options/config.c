@@ -13,7 +13,7 @@
 #include "platform/system.h"
 #include "platform/question.h"
 #include "crypto/crypto.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "version.h"
 #include "tooling/defer/defer.h"
 

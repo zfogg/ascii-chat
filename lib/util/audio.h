@@ -67,7 +67,7 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "../asciichat_errno.h"
+#include "asciichat_errno.h"
 
 /**
  * Parsed audio batch packet header information.

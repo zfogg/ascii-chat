@@ -27,8 +27,8 @@
  * @date October 2025
  */
 
-#include "../../common.h"
-#include "../key_types.h" // Include the key type definitions
+#include "common.h"
+#include "key_types.h" // Include the key type definitions
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

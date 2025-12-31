@@ -14,7 +14,7 @@
 
 #include "platform/socket.h"
 #include "network/packet.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include <stdint.h>
 #include <stdbool.h>
 

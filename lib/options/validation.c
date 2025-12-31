@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "common.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/terminal.h"
 #include "platform/util.h"
 #include "util/ip.h"

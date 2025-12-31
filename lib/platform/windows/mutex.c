@@ -6,8 +6,8 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
-#include "../windows_compat.h"
+#include "abstraction.h"
+#include "windows_compat.h"
 #include "asciichat_errno.h"
 
 /**

@@ -29,7 +29,7 @@
  */
 
 #include "common.h"
-#include "../key_types.h"
+#include "key_types.h"
 #include <stdbool.h>
 
 /**

@@ -14,7 +14,7 @@
 #include "common.h"
 #include "ascii_simd.h"
 #include "video/palette.h"
-#include "../ascii.h"
+#include "ascii.h"
 #include "video/output_buffer.h"
 #include "avx2.h"
 #include "util/math.h"

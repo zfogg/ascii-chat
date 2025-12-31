@@ -6,7 +6,7 @@
  */
 
 #include "socket.h"
-#include "../common.h"
+#include "common.h"
 
 // Platform-specific TCP header (included by socket.h above)
 // Windows: ws2tcpip.h (included by winsock2.h)

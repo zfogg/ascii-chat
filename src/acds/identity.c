@@ -5,7 +5,7 @@
 
 #include "acds/identity.h"
 #include "crypto/crypto.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/abstraction.h"
 #include "platform/fs.h"
 #include <sodium.h>

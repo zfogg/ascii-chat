@@ -18,7 +18,7 @@
 #include "options/config.h"
 #include "asciichat_errno.h"
 #include "common.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/util.h"

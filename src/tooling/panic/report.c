@@ -2,7 +2,7 @@
 // Summarizer for ascii-chat instrumentation runtime logs
 
 #include "common.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/util.h"
 #include "tooling/panic/instrument_log.h"
 

@@ -6,9 +6,9 @@
 
 #define SOKOL_IMPL
 #include "time.h"
-#include "../common.h"
-#include "../asciichat_errno.h"
-#include "../platform/rwlock.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "platform/rwlock.h"
 #include "uthash.h"
 #include <stdlib.h>
 #include <string.h>

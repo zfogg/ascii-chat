@@ -10,7 +10,7 @@
 #include "platform/system.h"
 #include "platform/init.h"
 #include "platform/memory.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "buffer_pool.h"
 #include "video/palette.h"
 #include "asciichat_errno.h"

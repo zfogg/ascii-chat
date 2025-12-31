@@ -6,4 +6,4 @@
 
 // The implementation in symbols.c is cross-platform and handles
 // both Windows (.exe binaries) and POSIX (Unix binaries) via #ifdef _WIN32
-#include "../symbols.c"
+#include "symbols.c"

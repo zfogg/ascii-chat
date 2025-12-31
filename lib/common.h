@@ -1000,7 +1000,7 @@ bool shutdown_is_requested(void);
   } while (0)
 
 /* Include logging.h to provide logging macros to all files that include common.h */
-#include "log/logging.h" // IWYU pragma: keep
+#include "logging/logging.h" // IWYU pragma: keep
 
 /** @} */
 

@@ -5,7 +5,7 @@
  */
 
 #include "util/password.h"
-#include "log/logging.h"
+#include "logging/logging.h"
 #include "platform/question.h"
 
 #include <string.h>

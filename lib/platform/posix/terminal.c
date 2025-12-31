@@ -6,13 +6,13 @@
 
 #ifndef _WIN32
 
-#include "../terminal.h"
-#include "../file.h"
-#include "../internal.h"
-#include "../../options/options.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../util/parsing.h"
+#include "terminal.h"
+#include "file.h"
+#include "internal.h"
+#include "options/options.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "util/parsing.h"
 #include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>

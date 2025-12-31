@@ -18,7 +18,7 @@
 #include <sys/stat.h>
 
 #include "logging.h"
-#include "log/mmap.h"
+#include "logging/mmap.h"
 #include "platform/terminal.h"
 #include "platform/thread.h"
 #include "platform/mutex.h"
