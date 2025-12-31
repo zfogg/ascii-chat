@@ -6,8 +6,8 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
-#include "crypto/keys/validation.h"
-#include "crypto/keys/keys.h"
+#include "crypto/keys_validation.h"
+#include "crypto/keys.h"
 #include "crypto/crypto.h"
 #include "common.h"
 #include <sodium.h>

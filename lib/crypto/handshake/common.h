@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include "platform/socket.h"
 #include "crypto/crypto.h"
-#include "crypto/keys/keys.h"
+#include "crypto/keys.h"
 #include "network/packet.h"
 
 /**

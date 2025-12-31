@@ -5,8 +5,8 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include "crypto/keys/https_keys.h"
-#include "crypto/keys/keys.h"
+#include "crypto/https_keys.h"
+#include "crypto/keys.h"
 #include "common.h"
 #include <string.h>
 

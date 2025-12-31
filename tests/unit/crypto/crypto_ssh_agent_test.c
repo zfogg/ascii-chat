@@ -5,8 +5,8 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include "crypto/ssh_agent.h"
-#include "crypto/keys/keys.h"
+#include "crypto/ssh/ssh_agent.h"
+#include "crypto/keys.h"
 #include "common.h"
 #include <sodium.h>
 #include <string.h>

@@ -95,7 +95,7 @@
 #include "platform/string.h"
 #include "platform/symbols.h"
 #include "platform/system.h"
-#include "crypto/keys/keys.h"
+#include "crypto/keys.h"
 
 /* ============================================================================
  * Global State

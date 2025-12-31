@@ -5,14 +5,14 @@
  */
 
 #include "keys.h"
-#include "types.h"
-#include "ssh_keys.h"
-#include "gpg_keys.h"
+#include "key_types.h"
+#include "ssh/ssh_keys.h"
+#include "gpg/gpg_keys.h"
 #include "https_keys.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
-#include "../gpg.h" // For gpg_get_public_key()
+#include "gpg/export.h" // For gpg_get_public_key()
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

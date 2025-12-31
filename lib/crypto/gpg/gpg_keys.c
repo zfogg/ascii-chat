@@ -5,11 +5,11 @@
  */
 
 #include "gpg_keys.h"
-#include "validation.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../platform/string.h"
-#include "../gpg.h" // For gpg_get_public_key()
+#include "../keys_validation.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "platform/string.h"
+#include "export.h" // For gpg_get_public_key()
 #include <sodium.h>
 #include <string.h>
 #include <stdlib.h>
