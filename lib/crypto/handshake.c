@@ -479,32 +479,39 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
     fprintf(stderr, "\n");
 
-    // Extract GPG key ID from expected_server_key if it's a GPG key (gpg:KEYID format)
-    const char *gpg_key_id = NULL;
-    if (ctx->expected_server_key[0] != '\0' && strncmp(ctx->expected_server_key, "gpg:", 4) == 0) {
-      const char *key_id_start = ctx->expected_server_key + 4;
-      size_t key_id_len = strlen(key_id_start);
-      // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
-      if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
-        gpg_key_id = key_id_start;
-        log_debug("Using GPG key ID from --server-key for verification: %s", gpg_key_id);
+    // If client didn't specify --server-key, skip signature verification
+    // (client doesn't care about server identity verification)
+    if (!ctx->verify_server_key) {
+      log_info("Skipping server signature verification (no --server-key specified)");
+      log_warn("Connection is encrypted but server identity is NOT verified (vulnerable to MITM)");
+    } else {
+      // Extract GPG key ID from expected_server_key if it's a GPG key (gpg:KEYID format)
+      const char *gpg_key_id = NULL;
+      if (ctx->expected_server_key[0] != '\0' && strncmp(ctx->expected_server_key, "gpg:", 4) == 0) {
+        const char *key_id_start = ctx->expected_server_key + 4;
+        size_t key_id_len = strlen(key_id_start);
+        // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
+        if (key_id_len == 8 || key_id_len == 16 || key_id_len == 40) {
+          gpg_key_id = key_id_start;
+          log_debug("Using GPG key ID from --server-key for verification: %s", gpg_key_id);
+        }
       }
-    }
 
-    if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, ctx->crypto_ctx.public_key_size,
-                                 server_signature, gpg_key_id) != 0) {
-      if (payload) {
-        buffer_pool_free(NULL, payload, payload_len);
+      if (ed25519_verify_signature(server_identity_key, server_ephemeral_key, ctx->crypto_ctx.public_key_size,
+                                   server_signature, gpg_key_id) != 0) {
+        if (payload) {
+          buffer_pool_free(NULL, payload, payload_len);
+        }
+        SAFE_FREE(server_ephemeral_key);
+        SAFE_FREE(server_identity_key);
+        SAFE_FREE(server_signature);
+        return SET_ERRNO(ERROR_CRYPTO, "Server signature verification FAILED - rejecting connection. "
+                                       "This indicates: Server's identity key does not "
+                                       "match its ephemeral key, Potential man-in-the-middle attack, "
+                                       "Corrupted or malicious server");
       }
-      SAFE_FREE(server_ephemeral_key);
-      SAFE_FREE(server_identity_key);
-      SAFE_FREE(server_signature);
-      return SET_ERRNO(ERROR_CRYPTO, "Server signature verification FAILED - rejecting connection. "
-                                     "This indicates: Server's identity key does not "
-                                     "match its ephemeral key, Potential man-in-the-middle attack, "
-                                     "Corrupted or malicious server");
+      log_info("Server signature verified successfully");
     }
-    log_info("Server signature verified successfully");
 
     // Verify server identity against expected key if --server-key is specified
     if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
@@ -1026,24 +1033,32 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
       ctx->client_sent_identity = false;
       log_warn("Client connected without identity authentication");
     } else {
-      // Client has a real identity key - verify signature
-      log_debug("Verifying client's signature");
-      // Pass client's GPG key ID if available
-      if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, ctx->crypto_ctx.public_key_size,
-                                   client_signature, client_gpg_key_id) != 0) {
-        if (payload) {
-          buffer_pool_free(NULL, payload, payload_len);
-        }
+      // Client has a real identity key
+      // If server didn't specify --client-keys, skip signature verification
+      // (server doesn't care about client identity verification)
+      if (!ctx->require_client_auth) {
+        log_info("Skipping client signature verification (no --client-keys specified)");
+        log_warn("Connection is encrypted but client identity is NOT verified");
+      } else {
+        // Verify client's signature
+        log_debug("Verifying client's signature");
+        // Pass client's GPG key ID if available
+        if (ed25519_verify_signature(client_identity_key, client_ephemeral_key, ctx->crypto_ctx.public_key_size,
+                                     client_signature, client_gpg_key_id) != 0) {
+          if (payload) {
+            buffer_pool_free(NULL, payload, payload_len);
+          }
 
-        // Send AUTH_FAILED with specific reason
-        auth_failure_packet_t failure = {0};
-        failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
-        int send_result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
-        if (send_result != 0) {
-          return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_FAILED packet");
-        }
+          // Send AUTH_FAILED with specific reason
+          auth_failure_packet_t failure = {0};
+          failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
+          int send_result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+          if (send_result != 0) {
+            return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_FAILED packet");
+          }
 
-        return SET_ERRNO(ERROR_CRYPTO, "Client signature verification FAILED - rejecting connection");
+          return SET_ERRNO(ERROR_CRYPTO, "Client signature verification FAILED - rejecting connection");
+        }
       }
     }
 
