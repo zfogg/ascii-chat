@@ -299,12 +299,13 @@ ascii-chat's crypto works like your web browser's HTTPS: the client and server p
 
 ### Authentication Options
 
-**SSH Key Authentication** (`--key`):
+**SSH/GPG Key Authentication** (`--key`):
 
 - Use your existing SSH Ed25519 keys for authentication
-- Supports encrypted keys (prompts for passphrase or uses ssh-agent)
-- Supports GitHub public SSH keys with `--client-keys github:username` and `--server-key github:username`
-- Future support planned for: `gpg:keyid`, `github:username.gpg`
+- Use GPG Ed25519 keys via gpg-agent (no passphrase prompts)
+- Supports encrypted SSH keys (prompts for passphrase or uses ssh-agent)
+- Supports GitHub public keys with `--client-keys github:username` and `--server-key github:username`
+- GPG key formats: `gpg:KEYID` where KEYID is 8, 16, or 40 hex characters (short/long/full fingerprint)
 
 **Password-Based Encryption** (`--password`):
 
@@ -321,6 +322,9 @@ ascii-chat's crypto works like your web browser's HTTPS: the client and server p
 # SSH key authentication (prompts for passphrase if encrypted)
 ascii-chat client --key ~/.ssh/id_ed25519
 
+# GPG key authentication (uses gpg-agent, no passphrase prompt)
+ascii-chat server --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
+
 # Password-based encryption
 ascii-chat server --password "hunter2"
 
@@ -330,9 +334,12 @@ ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
 # Disable encryption (for local testing)
 ascii-chat server --no-encrypt
 
-# Server key verification (client verifies server identity)
+# Server key verification with SSH (client verifies server identity)
 ascii-chat client --key ~/.ssh/id_ed25519 --server-key ~/.ssh/server1.pub
 # This .pub file format is standard OpenSSH public key format (ssh-ed25519).
+
+# Server key verification with GPG (client verifies server identity)
+ascii-chat client --server-key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
 
 # Client key whitelisting (server only accepts specific clients)
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
@@ -341,6 +348,9 @@ ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
 # Combine all three for maximum security!
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --password "password123"
 # You need to know (1) the server public key and (2) the password before connecting, and the server needs to know (3) your public key and (4) the same password.
+
+# GPG key with password for extra security
+ascii-chat server --key gpg:7FE90A79F2E80ED3 --password "password123"
 ```
 
 ## libasciichat
@@ -851,7 +861,7 @@ changing command-line arguments.
 - [x] Linux support.
 - [ ] Fix v4l2 usage because the ascii rendered looks corrupted on Linux.
 - [x] Crypto.
-- [ ] GPG key support for crypto (there's a bug upstream in libgcrypt).
+- [x] GPG key support for crypto (Ed25519 via gpg-agent).
 - [ ] zalgo text generator
 - [x] v4l2 webcam images working.
 - [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)

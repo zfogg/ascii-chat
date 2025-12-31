@@ -14,12 +14,12 @@
  * Supported input formats:
  * - SSH Ed25519 keys (ssh-ed25519 format)
  * - GitHub/GitLab SSH keys (fetched via HTTPS)
- * - GPG keys (from GitHub/GitLab or local keyring)
+ * - GPG Ed25519 keys (from local keyring via gpg-agent)
  * - X25519 keys (raw hex or base64)
  * - File paths (reads first line and parses)
  *
  * @note All keys are normalized to 32-byte X25519 format for key exchange.
- * @note GPG support: Code exists but is currently disabled.
+ * @note GPG support: GPG Ed25519 keys are fully supported via gpg-agent (requires gpg binary in PATH).
  * @note GitHub/GitLab fetching: Uses BearSSL for HTTPS requests.
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -70,8 +70,8 @@
  * @note Key normalization: All keys are converted to X25519 format for key exchange.
  *       Ed25519 keys are converted using libsodium conversion function.
  *
- * @note GPG support: GPG key parsing code exists but is currently disabled.
- *       Format "gpg:0xKEYID" may not work until GPG support is re-enabled.
+ * @note GPG support: GPG Ed25519 keys are fully supported. Accepts 8, 16, or 40 character
+ *       key IDs (short/long/full fingerprint). Requires `gpg` binary in PATH and gpg-agent running.
  *
  * @note GitHub/GitLab fetching: Uses BearSSL for HTTPS requests. Requires network connectivity.
  *       Only first Ed25519 key is returned. For multiple keys, use `parse_public_keys()` instead.
@@ -82,8 +82,6 @@
  *
  * @warning Network operations: GitHub/GitLab fetching requires network connectivity.
  *          May fail if network is unavailable or endpoints are blocked.
- *
- * @warning GPG support: GPG key parsing may not work until GPG support is re-enabled.
  *
  * @ingroup keys
  */
@@ -240,7 +238,6 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
  * @note In-memory signing: If use_ssh_agent is false, uses in-memory key for signing.
  *       Key must be loaded into memory (via parse_private_key()).
  *
- * @note GPG agent: use_gpg_agent flag exists but GPG agent support is currently disabled.
  *       Setting use_gpg_agent=true will not work until GPG support is re-enabled.
  *
  * @note Signature format: Ed25519 signature is always 64 bytes (R || S format).
@@ -248,7 +245,6 @@ asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519
  * @warning Agent availability: If use_ssh_agent is true but SSH agent is not available,
  *          function returns error. Check SSH agent availability before using.
  *
- * @warning GPG agent: GPG agent support is currently disabled. use_gpg_agent flag
  *          exists but will not work until GPG support is re-enabled.
  *
  * @ingroup keys
@@ -313,7 +309,6 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const u
  *       free(keys_out);
  *       ```
  *
- * @note GPG support: GPG key fetching code exists but may not work until GPG support is re-enabled.
  *
  * @warning Network dependency: Requires active network connection.
  *          May fail if GitHub is unreachable or username doesn't exist.
@@ -339,7 +334,6 @@ asciichat_error_t fetch_github_keys(const char *username, char ***keys_out, size
  *
  * @note Memory management: Caller must free each key string and the keys array (same as fetch_github_keys).
  *
- * @note GPG support: GPG key fetching code exists but may not work until GPG support is re-enabled.
  *
  * @warning Network dependency: Requires active network connection.
  *          May fail if GitLab is unreachable or username doesn't exist.
@@ -357,12 +351,10 @@ asciichat_error_t fetch_gitlab_keys(const char *username, char ***keys_out, size
  *
  * Fetches GPG keys from GitHub: GET https://github.com/username.gpg
  *
- * @note GPG support: Code exists but GPG key parsing may not work until GPG support is re-enabled.
  *
  * @note Memory management: Caller must free each key string and the keys array (same as fetch_github_keys).
  *
  * @warning Network dependency: Requires active network connection.
- * @warning GPG support: GPG key parsing may not work until GPG support is re-enabled.
  *
  * @ingroup keys
  */
@@ -377,12 +369,10 @@ asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, 
  *
  * Fetches GPG keys from GitLab: GET https://gitlab.com/username.gpg
  *
- * @note GPG support: Code exists but GPG key parsing may not work until GPG support is re-enabled.
  *
  * @note Memory management: Caller must free each key string and the keys array (same as fetch_gitlab_keys).
  *
  * @warning Network dependency: Requires active network connection.
- * @warning GPG support: GPG key parsing may not work until GPG support is re-enabled.
  *
  * @ingroup keys
  */
@@ -404,12 +394,10 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
  * Extracts Ed25519 public key from PGP armored format.
  * Parses GPG key structure and converts to Ed25519/X25519 format.
  *
- * @note GPG support: Code exists but GPG key parsing may not work until GPG support is re-enabled.
  *
  * @note Key format: GPG keys are parsed from armored format (-----BEGIN PGP PUBLIC KEY BLOCK-----).
  *       Extracts Ed25519 subkey and converts to X25519 for key exchange.
  *
- * @warning GPG support: GPG key parsing may not work until GPG support is re-enabled.
  *
  * @ingroup keys
  */
