@@ -20,8 +20,9 @@
  *
  * - **Encrypted by default** - No configuration required
  * - **Modern crypto** - X25519, XSalsa20-Poly1305, Argon2id
- * - **SSH key integration** - Use existing Ed25519 keys
+ * - **SSH/GPG key integration** - Use existing Ed25519 keys
  * - **SSH agent support** - Auto-adds keys, eliminates password prompts
+ * - **GPG agent support** - Use gpg-agent for signing, no passphrase prompts
  * - **GitHub/GitLab integration** - Fetch public keys automatically
  * - **Password protection** - Optional shared password authentication
  * - **Client whitelisting** - Server-side access control
@@ -80,6 +81,7 @@
  * | **Default** | None (ephemeral DH) | ❌ | Quick sessions, low-threat environments |
  * | **Password** | Shared secret | ✅ | Friends exchanging password out-of-band |
  * | **SSH Keys** | Key pinning | ✅ | Tech users with existing SSH keys |
+ * | **GPG Keys** | Key pinning + gpg-agent | ✅ | GPG users, no passphrase prompts |
  * | **GitHub/GitLab** | Social proof + keys | ✅ | Verify identity via public profiles |
  * | **Known Hosts** | First-use trust | ⚠️ | Like SSH - detect key changes |
  * | **Whitelist** | Pre-approved keys | ✅ | Private servers, access control |
@@ -1074,26 +1076,40 @@
  * - `lib/platform/posix/pipe.c` - POSIX Unix domain socket implementation
  * - `lib/platform/windows/pipe.c` - Windows named pipe implementation
  *
- * @subsection crypto_gpg_keys GPG Key Support (Optional)
+ * @subsection crypto_gpg_keys GPG Key Support
  *
- * **If GPG is installed**, ascii-chat can use GPG keys:
+ * ascii-chat supports **GPG Ed25519 keys** via gpg-agent integration:
  *
  * @code{.bash}
- * # Use GPG key by ID
- * ascii-chat server --key gpg:0xABCD1234
+ * # Server with GPG key (short key ID - 8 hex chars)
+ * ascii-chat server --key gpg:ABCD1234
  *
- * # Use GPG key by fingerprint
+ * # Server with GPG key (long key ID - 16 hex chars)
+ * ascii-chat server --key gpg:1234567890ABCDEF
+ *
+ * # Server with GPG key (full fingerprint - 40 hex chars)
  * ascii-chat server --key gpg:1234567890ABCDEF1234567890ABCDEF12345678
+ *
+ * # Client verifying server GPG key
+ * ascii-chat client --server-key gpg:1234567890ABCDEF1234567890ABCDEF12345678
  * @endcode
  *
- * **How it works:**
- * 1. **Check GPG availability:** `gpg --version` (fail gracefully if not found)
- * 2. **Export key:** `gpg --export KEYID` (prompts for passphrase via pinentry)
- * 3. **Hash to X25519:** `BLAKE2b(gpg_export_output, 32)` → 32-byte X25519 key
+ * **Requirements:**
+ * - `gpg` binary must be in PATH
+ * - GPG key must be Ed25519 (Curve 25519) type
+ * - gpg-agent must be running for signing operations
  *
- * **Why hash instead of convert?**
- * GPG keys can be RSA, DSA, or ECC (not necessarily Ed25519). Hashing provides a deterministic
- * X25519 key from any GPG key material.
+ * **Key ID formats:**
+ * - **Short key ID:** 8 hex characters (last 8 chars of fingerprint)
+ * - **Long key ID:** 16 hex characters (last 16 chars of fingerprint)
+ * - **Full fingerprint:** 40 hex characters (complete fingerprint)
+ * - Optional `0x` prefix is accepted for all formats
+ *
+ * **How it works:**
+ * 1. **Extract public key:** `gpg --list-keys` + keygrip lookup
+ * 2. **Get Ed25519 key:** Query gpg-agent via READKEY command (Assuan protocol)
+ * 3. **Sign challenges:** gpg-agent signs via PKSIGN command (no passphrase prompt needed)
+ * 4. **Verify signatures:** `gpg --verify` for deterministic Ed25519 signature verification
  *
  * **Graceful fallback:**
  * @code
@@ -1104,6 +1120,12 @@
  *   Arch: pacman -S gnupg
  * Or use SSH keys: --key ~/.ssh/id_ed25519
  * @endcode
+ *
+ * **Code locations:**
+ * - `lib/crypto/gpg.h` - GPG interface declarations
+ * - `lib/crypto/gpg.c` - GPG protocol implementation and gpg-agent communication
+ * - `lib/crypto/keys/gpg_keys.c` - GPG key parsing and Ed25519 extraction
+ * - `lib/crypto/keys/keys.c:167` - GPG key loading (keygrip stored for agent signing)
  *
  * @subsection crypto_known_hosts Known Hosts (IP-Based TOFU)
  *
@@ -1253,11 +1275,16 @@
  * - ✅ Forward secrecy: DH keys still ephemeral
  * - ⚠️ Password strength: Security depends on password quality
  *
- * @subsection crypto_mode_ssh Mode 3: SSH Key Pinning
+ * @subsection crypto_mode_ssh Mode 3: SSH/GPG Key Pinning
  *
- * **Server:**
+ * **Server with SSH key:**
  * @code{.bash}
  * ascii-chat server --key ~/.ssh/id_ed25519
+ * @endcode
+ *
+ * **Server with GPG key:**
+ * @code{.bash}
+ * ascii-chat server --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
  * @endcode
  *
  * **Client (verify using GitHub):**
@@ -1265,15 +1292,21 @@
  * ascii-chat client --server-key github:zfogg
  * @endcode
  *
+ * **Client (verify using GPG):**
+ * @code{.bash}
+ * ascii-chat client --server-key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
+ * @endcode
+ *
  * **Security:**
  * - ✅ Privacy: All packets encrypted
  * - ✅ MITM protection: Cryptographically verified identity
  * - ✅ Forward secrecy: DH keys still ephemeral
  * - ✅ No shared secret: Public keys can be shared openly
+ * - ✅ GPG agent integration: No passphrase prompts during signing
  *
  * **Verification flow:**
  * 1. Server sends Ed25519 identity key + signature
- * 2. Client fetches expected key from GitHub
+ * 2. Client fetches expected key (from GitHub, GPG keyring, or file)
  * 3. Client verifies signature: `ed25519_verify(signature, ephemeral_key, identity_key)`
  * 4. Client proceeds only if signature valid
  *
@@ -1309,10 +1342,18 @@
  *
  * @subsection crypto_mode_depth Mode 5: Defense in Depth (All Features)
  *
- * **Server:**
+ * **Server with SSH key:**
  * @code{.bash}
  * ascii-chat server \
  *   --key ~/.ssh/id_ed25519 \
+ *   --password myPass123 \
+ *   --client-keys ~/.ssh/authorized_keys
+ * @endcode
+ *
+ * **Server with GPG key:**
+ * @code{.bash}
+ * ascii-chat server \
+ *   --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3 \
  *   --password myPass123 \
  *   --client-keys ~/.ssh/authorized_keys
  * @endcode
