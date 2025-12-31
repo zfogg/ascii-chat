@@ -34,6 +34,19 @@
 #include "acds/session.h"
 
 /**
+ * @brief Per-client connection data
+ *
+ * Stored in tcp_server client registry to track which session and
+ * participant this connection represents. Used by signaling relay
+ * to map participant_id → socket for message delivery.
+ */
+typedef struct {
+  uint8_t session_id[16];     ///< Session UUID (valid if joined_session)
+  uint8_t participant_id[16]; ///< Participant UUID (valid if joined_session)
+  bool joined_session;        ///< Whether client has successfully joined a session
+} acds_client_data_t;
+
+/**
  * @brief Discovery server state
  *
  * Contains all runtime state for the discovery server including
