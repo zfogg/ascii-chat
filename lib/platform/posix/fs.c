@@ -25,9 +25,9 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
   if (mkdir(path, mode) == -1) {
     // EEXIST is not an error - directory may already exist
     if (errno == EEXIST) {
-      // Verify it's actually a directory
+      // Verify it's actually a directory (use stat() to follow symlinks)
       struct stat sb;
-      if (lstat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+      if (stat(path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
         return ASCIICHAT_OK;
       }
       // Path exists but is not a directory
