@@ -108,6 +108,18 @@
 atomic_bool g_should_exit = false;
 
 /**
+ * Global client worker thread pool
+ *
+ * Manages all client worker threads including:
+ * - Data reception thread (protocol.c)
+ * - Webcam capture thread (capture.c)
+ * - Ping/keepalive thread (keepalive.c)
+ * - Audio capture thread (audio.c)
+ * - Audio sender thread (audio.c)
+ */
+thread_pool_t *g_client_worker_pool = NULL;
+
+/**
  * Check if shutdown has been requested
  *
  * @return true if shutdown requested, false otherwise
@@ -219,6 +231,12 @@ static void shutdown_client() {
   // This prevents race conditions where threads access freed resources.
   protocol_stop_connection();
 
+  // Destroy client worker thread pool (all threads already stopped by protocol_stop_connection)
+  if (g_client_worker_pool) {
+    thread_pool_destroy(g_client_worker_pool);
+    g_client_worker_pool = NULL;
+  }
+
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
   server_connection_cleanup();
 
@@ -321,6 +339,15 @@ static int initialize_client_systems(bool shared_init_completed) {
     // Initialize global shared buffer pool
     buffer_pool_init_global();
     (void)atexit(buffer_pool_cleanup_global);
+  }
+
+  // Initialize client worker thread pool (always needed, even if shared init done)
+  if (!g_client_worker_pool) {
+    g_client_worker_pool = thread_pool_create("client_workers");
+    if (!g_client_worker_pool) {
+      log_fatal("Failed to create client worker thread pool");
+      return ERROR_THREAD;
+    }
   }
 
   // Ensure logging output is available for connection attempts
