@@ -243,6 +243,7 @@ set(NETWORK_SRCS
     lib/network/crc32.c
     lib/network/packet_queue.c
     lib/network/http_client.c
+    lib/network/tcp_server.c
 )
 
 # =============================================================================
@@ -326,5 +327,18 @@ set(APP_SRCS
     src/client/keepalive.c
     # Mirror mode sources
     src/mirror/main.c
+)
+
+# =============================================================================
+# Discovery Server (ACDS) Sources
+# =============================================================================
+set(ACDS_SRCS
+    src/acds/main.c
+    src/acds/server.c
+    src/acds/session.c
+    src/acds/signaling.c
+    src/acds/database.c
+    src/acds/identity.c
+    src/acds/strings.c
 )
 

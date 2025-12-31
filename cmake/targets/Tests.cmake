@@ -428,7 +428,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
         # Set test properties
         set_tests_properties(${test_exe_name} PROPERTIES
-            ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+            ENVIRONMENT "TESTING=1;CRITERION_TEST=1;LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/tests/lsan_suppressions.txt"
             TIMEOUT ${CTEST_TEST_TIMEOUT}
             LABELS "${test_category}"
         )
