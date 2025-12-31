@@ -18,12 +18,50 @@
 #include "acds/session.h"
 #include "acds/signaling.h"
 #include "acds/protocol.h"
+#include "acds/rate_limit.h"
 #include "log/logging.h"
 #include "platform/socket.h"
 #include "network/network.h"
 #include "network/tcp_server.h"
 #include "util/ip.h"
 #include <string.h>
+#include <time.h>
+
+/**
+ * @brief Background thread for periodic rate limit cleanup
+ *
+ * Wakes up every 5 minutes to remove old rate limit events from the database.
+ * This prevents the rate_events table from growing unbounded.
+ */
+static void *cleanup_thread_func(void *arg) {
+  acds_server_t *server = (acds_server_t *)arg;
+  if (!server) {
+    return NULL;
+  }
+
+  log_info("Rate limit cleanup thread started");
+
+  while (atomic_load(&server->cleanup_running)) {
+    // Sleep for 5 minutes (or until shutdown)
+    for (int i = 0; i < 300 && atomic_load(&server->cleanup_running); i++) {
+      platform_sleep_ms(1000); // Sleep 1 second at a time for responsive shutdown
+    }
+
+    if (!atomic_load(&server->cleanup_running)) {
+      break;
+    }
+
+    // Run cleanup (delete events older than 1 hour)
+    log_debug("Running rate limit cleanup...");
+    asciichat_error_t result = rate_limit_cleanup(server->db, 3600);
+    if (result != ASCIICHAT_OK) {
+      log_warn("Rate limit cleanup failed");
+    }
+  }
+
+  log_info("Rate limit cleanup thread exiting");
+  return NULL;
+}
 
 asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *config) {
   if (!server || !config) {
@@ -80,6 +118,13 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
     return result;
   }
 
+  // Start rate limit cleanup thread
+  atomic_store(&server->cleanup_running, true);
+  if (ascii_thread_create(&server->cleanup_thread, cleanup_thread_func, server) != 0) {
+    log_warn("Failed to create rate limit cleanup thread (continuing without cleanup)");
+    atomic_store(&server->cleanup_running, false);
+  }
+
   log_info("Discovery server initialized successfully");
   return ASCIICHAT_OK;
 }
@@ -104,6 +149,13 @@ void acds_server_shutdown(acds_server_t *server) {
   tcp_server_shutdown(&server->tcp_server);
 
   // TODO: Wait for all client handler threads to exit
+
+  // Stop cleanup thread
+  if (atomic_load(&server->cleanup_running)) {
+    atomic_store(&server->cleanup_running, false);
+    ascii_thread_join(&server->cleanup_thread, NULL);
+    log_debug("Rate limit cleanup thread stopped");
+  }
 
   // Close database
   if (server->db) {
@@ -191,6 +243,20 @@ void *acds_client_handler(void *arg) {
         break;
       }
 
+      // Rate limiting check
+      bool allowed = false;
+      asciichat_error_t rate_check = rate_limit_check(server->db, client_ip, RATE_EVENT_SESSION_CREATE, NULL, &allowed);
+      if (rate_check != ASCIICHAT_OK || !allowed) {
+        acip_error_t error = {.error_code = 0xFD}; // Rate limit exceeded
+        SAFE_STRNCPY(error.error_message, "Rate limit exceeded. Please try again later.", sizeof(error.error_message));
+        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
+        log_warn("Rate limit exceeded for SESSION_CREATE from %s", client_ip);
+        break;
+      }
+
+      // Record the rate limit event
+      rate_limit_record(server->db, client_ip, RATE_EVENT_SESSION_CREATE);
+
       acip_session_create_t *req = (acip_session_create_t *)payload;
       acip_session_created_t resp;
       memset(&resp, 0, sizeof(resp));
@@ -228,6 +294,20 @@ void *acds_client_handler(void *arg) {
         break;
       }
 
+      // Rate limiting check
+      bool allowed = false;
+      asciichat_error_t rate_check = rate_limit_check(server->db, client_ip, RATE_EVENT_SESSION_LOOKUP, NULL, &allowed);
+      if (rate_check != ASCIICHAT_OK || !allowed) {
+        acip_error_t error = {.error_code = 0xFD}; // Rate limit exceeded
+        SAFE_STRNCPY(error.error_message, "Rate limit exceeded. Please try again later.", sizeof(error.error_message));
+        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
+        log_warn("Rate limit exceeded for SESSION_LOOKUP from %s", client_ip);
+        break;
+      }
+
+      // Record the rate limit event
+      rate_limit_record(server->db, client_ip, RATE_EVENT_SESSION_LOOKUP);
+
       acip_session_lookup_t *req = (acip_session_lookup_t *)payload;
       acip_session_info_t resp;
       memset(&resp, 0, sizeof(resp));
@@ -258,6 +338,20 @@ void *acds_client_handler(void *arg) {
         log_warn("SESSION_JOIN packet too small from %s", client_ip);
         break;
       }
+
+      // Rate limiting check
+      bool allowed = false;
+      asciichat_error_t rate_check = rate_limit_check(server->db, client_ip, RATE_EVENT_SESSION_JOIN, NULL, &allowed);
+      if (rate_check != ASCIICHAT_OK || !allowed) {
+        acip_error_t error = {.error_code = 0xFD}; // Rate limit exceeded
+        SAFE_STRNCPY(error.error_message, "Rate limit exceeded. Please try again later.", sizeof(error.error_message));
+        send_packet(client_socket, PACKET_TYPE_ACIP_ERROR, &error, sizeof(error));
+        log_warn("Rate limit exceeded for SESSION_JOIN from %s", client_ip);
+        break;
+      }
+
+      // Record the rate limit event
+      rate_limit_record(server->db, client_ip, RATE_EVENT_SESSION_JOIN);
 
       acip_session_join_t *req = (acip_session_join_t *)payload;
       acip_session_joined_t resp;
