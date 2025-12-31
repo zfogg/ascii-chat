@@ -29,8 +29,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../common.h"    // For asciichat_error_t
-#include "key_types.h"    // Include the key type definitions
+#include "../common.h" // For asciichat_error_t
+#include "key_types.h" // Include the key type definitions
 
 // Include specialized key modules
 #include "ssh/ssh_keys.h"
