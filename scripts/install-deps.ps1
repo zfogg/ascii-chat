@@ -139,7 +139,8 @@ $RequiredPackages = @(
     "zstd",        # Compression library for frame data
     "libsodium",   # Cryptography library for encryption
     "portaudio",   # Audio I/O library for capture/playback
-    "opus"         # Audio codec library for real-time compression
+    "opus",        # Audio codec library for real-time compression
+    "sqlite3"      # Database library for discovery service
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan

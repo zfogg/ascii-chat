@@ -356,7 +356,49 @@ typedef enum {
   /** @brief Opus-encoded single audio frame */
   PACKET_TYPE_AUDIO_OPUS = 34,
   /** @brief Batched Opus-encoded audio frames */
-  PACKET_TYPE_AUDIO_OPUS_BATCH = 35
+  PACKET_TYPE_AUDIO_OPUS_BATCH = 35,
+
+  // ============================================================================
+  // Discovery Service Protocol (ACDS)
+  // ============================================================================
+
+  /** @brief Create new session (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_SESSION_CREATE = 0x20,
+  /** @brief Session created response (Discovery Server -> Client) */
+  PACKET_TYPE_ACIP_SESSION_CREATED = 0x21,
+  /** @brief Lookup session by string (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_SESSION_LOOKUP = 0x22,
+  /** @brief Session info response (Discovery Server -> Client) */
+  PACKET_TYPE_ACIP_SESSION_INFO = 0x23,
+  /** @brief Join existing session (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_SESSION_JOIN = 0x24,
+  /** @brief Session joined response (Discovery Server -> Client) */
+  PACKET_TYPE_ACIP_SESSION_JOINED = 0x25,
+  /** @brief Leave session (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_SESSION_LEAVE = 0x26,
+  /** @brief End session (Host -> Discovery Server) */
+  PACKET_TYPE_ACIP_SESSION_END = 0x27,
+  /** @brief Reconnect to session (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_SESSION_RECONNECT = 0x28,
+
+  /** @brief WebRTC SDP offer/answer (bidirectional) */
+  PACKET_TYPE_ACIP_WEBRTC_SDP = 0x30,
+  /** @brief WebRTC ICE candidate (bidirectional) */
+  PACKET_TYPE_ACIP_WEBRTC_ICE = 0x31,
+
+  /** @brief Reserve session string (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_STRING_RESERVE = 0x40,
+  /** @brief String reserved response (Discovery Server -> Client) */
+  PACKET_TYPE_ACIP_STRING_RESERVED = 0x41,
+  /** @brief Renew string reservation (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_STRING_RENEW = 0x42,
+  /** @brief Release string reservation (Client -> Discovery Server) */
+  PACKET_TYPE_ACIP_STRING_RELEASE = 0x43,
+
+  /** @brief Discovery server ping (keepalive) */
+  PACKET_TYPE_ACIP_DISCOVERY_PING = 0xFE,
+  /** @brief Generic error response (Discovery Server -> Client) */
+  PACKET_TYPE_ACIP_ERROR = 0xFF
 } packet_type_t;
 
 /**
