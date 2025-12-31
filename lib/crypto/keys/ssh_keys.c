@@ -1179,11 +1179,17 @@ asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const u
   // If standard verification fails, try GPG fallback (for GPG-signed messages)
   // Use provided gpg_key_id if available, otherwise check environment variable (for tests)
   const char *key_id_to_use = gpg_key_id;
-  if (!key_id_to_use || strlen(key_id_to_use) != 16) {
+  size_t key_id_len = key_id_to_use ? strlen(key_id_to_use) : 0;
+  // Accept 8, 16, or 40 character GPG key IDs (short, long, or full fingerprint)
+  bool valid_key_id = (key_id_len == 8 || key_id_len == 16 || key_id_len == 40);
+
+  if (!valid_key_id) {
     key_id_to_use = platform_getenv("TEST_GPG_KEY_ID");
+    key_id_len = key_id_to_use ? strlen(key_id_to_use) : 0;
+    valid_key_id = (key_id_len == 8 || key_id_len == 16 || key_id_len == 40);
   }
 
-  if (key_id_to_use && strlen(key_id_to_use) == 16) {
+  if (valid_key_id) {
     fprintf(stderr, "[VERIFY DEBUG] Standard Ed25519 verification failed, trying GPG fallback with key %s\n",
             key_id_to_use);
     int gpg_result = gpg_verify_detached_ed25519(key_id_to_use, message, message_len, signature);
