@@ -1642,7 +1642,8 @@ extern unsigned short int GRAY[];
 typedef enum {
   MODE_SERVER, ///< Server mode - network server options
   MODE_CLIENT, ///< Client mode - network client options
-  MODE_MIRROR  ///< Mirror mode - local webcam viewing (no network)
+  MODE_MIRROR, ///< Mirror mode - local webcam viewing (no network)
+  MODE_ACDS    ///< Discovery service mode - session management and WebRTC signaling
 } asciichat_mode_t;
 
 asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode);

@@ -5,7 +5,7 @@
  * @brief ⚙️ Command-line argument parser dispatcher and initialization
  *
  * Main entry point for option parsing. Dispatches to mode-specific parsers
- * (client, server, mirror) and handles common initialization and post-processing.
+ * (client, server, mirror, acds) and handles common initialization and post-processing.
  */
 
 #include "options/options.h"
@@ -13,6 +13,7 @@
 #include "options/client.h"
 #include "options/server.h"
 #include "options/mirror.h"
+#include "options/acds.h"
 
 #include "options/config.h"
 #include "asciichat_errno.h"
@@ -102,10 +103,14 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
     // Client connects to localhost by default (IPv6-first with IPv4 fallback)
     SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "localhost");
     opt_address6[0] = '\0'; // Client doesn't use opt_address6
-  } else {
+  } else if (mode == MODE_SERVER) {
     // Server binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
     SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
     SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "::1");
+  } else if (mode == MODE_ACDS) {
+    // ACDS binds to all interfaces by default (0.0.0.0 and ::)
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+    SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "::");
   }
 
   // Load configuration from TOML files (if they exist)
@@ -128,6 +133,9 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
     break;
   case MODE_MIRROR:
     result = parse_mirror_options(argc, argv);
+    break;
+  case MODE_ACDS:
+    result = acds_options_parse(argc, argv);
     break;
   default:
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
