@@ -117,9 +117,6 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
 
-  options_builder_add_bool(b, "require-server-verify", '\0', offsetof(options_t, require_server_verify), false,
-                           "Only accept clients who verified via ACDS", "SECURITY", false, NULL);
-
   options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
                            "SECURITY", false, NULL);
 
@@ -288,9 +285,6 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
 
-  options_builder_add_bool(b, "require-client-verify", '\0', offsetof(options_t, require_client_verify), false,
-                           "Only connect to servers whose identity was verified by ACDS", "SECURITY", false, NULL);
-
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
                                           "Option --snapshot-delay requires --snapshot");
@@ -456,6 +450,23 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_callback(
       b, "log-level", 'l', offsetof(options_t, log_level), &(log_level_t){LOG_INFO}, // Default: info level
       sizeof(log_level_t), parse_log_level, "Log level (dev, debug, info, warn, error, fatal)", "LOGGING", false, NULL);
+
+  // Identity verification options
+  options_builder_add_bool(b, "require-server-identity", 'S', offsetof(options_t, require_server_identity), false,
+                           "Require servers to provide signed Ed25519 identity when creating sessions", "SECURITY",
+                           false, NULL);
+
+  options_builder_add_bool(b, "require-client-identity", 'C', offsetof(options_t, require_client_identity), false,
+                           "Require clients to provide signed Ed25519 identity when joining sessions", "SECURITY",
+                           false, NULL);
+
+  options_builder_add_bool(b, "require-server-verify", 'V', offsetof(options_t, require_server_verify), false,
+                           "ACDS policy: require servers to verify client identity during handshake", "SECURITY", false,
+                           NULL);
+
+  options_builder_add_bool(b, "require-client-verify", 'c', offsetof(options_t, require_client_verify), false,
+                           "ACDS policy: require clients to verify server identity during handshake", "SECURITY", false,
+                           NULL);
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");

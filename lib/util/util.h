@@ -24,7 +24,6 @@
  * - thread.h: Thread management helper macros
  * - atomic.h: Atomic operations convenience macros
  * - endian.h: Network byte order conversion helpers
- * - audio.h: Audio packet parsing utilities
  *
  * USAGE:
  * ======
@@ -62,4 +61,3 @@
 #include "util/thread.h"
 #include "util/atomic.h"
 #include "util/endian.h"
-#include "util/audio.h"

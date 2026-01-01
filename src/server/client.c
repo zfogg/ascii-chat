@@ -311,8 +311,9 @@ client_info_t *find_client_by_socket(socket_t socket) {
  */
 static void configure_client_socket(socket_t socket, uint32_t client_id) {
   // Enable TCP keepalive to detect dead connections
-  if (set_socket_keepalive(socket) < 0) {
-    log_warn("Failed to set socket keepalive for client %u: %s", client_id, network_error_string());
+  asciichat_error_t keepalive_result = set_socket_keepalive(socket);
+  if (keepalive_result != ASCIICHAT_OK) {
+    log_warn("Failed to set socket keepalive for client %u: %s", client_id, asciichat_error_string(keepalive_result));
   }
 
   // Set socket buffer sizes for large data transmission
@@ -525,9 +526,10 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
     const int HANDSHAKE_TIMEOUT_SECONDS = 30;
-    if (set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS) < 0) {
+    asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS);
+    if (timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to set handshake timeout for client %u: %s", atomic_load(&client->client_id),
-               network_error_string());
+               asciichat_error_string(timeout_result));
       // Continue anyway - timeout is a safety feature, not critical
     }
 
@@ -542,9 +544,10 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
 
     // Clear socket timeout after handshake completes successfully
     // This allows normal operation without timeouts on data transfer
-    if (set_socket_timeout(socket, 0) < 0) {
+    asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
+    if (clear_timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to clear handshake timeout for client %u: %s", atomic_load(&client->client_id),
-               network_error_string());
+               asciichat_error_string(clear_timeout_result));
       // Continue anyway - we can still communicate even with timeout set
     }
 
@@ -690,10 +693,11 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
   }
 
-  int packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                              (crypto_context_t *)crypto_ctx);
-  if (packet_send_result != 0) {
-    log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
+  asciichat_error_t packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                                            (crypto_context_t *)crypto_ctx);
+  if (packet_send_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial server state to client %u: %s", atomic_load(&client->client_id),
+             asciichat_error_string(packet_send_result));
   } else {
     log_debug("Sent initial server state to client %u: %u connected clients", atomic_load(&client->client_id),
               state.connected_client_count);
@@ -1327,7 +1331,7 @@ void *client_send_thread_func(void *arg) {
       }
       mutex_unlock(&client->client_state_mutex);
 
-      int result = 0;
+      asciichat_error_t result = ASCIICHAT_OK;
 
       if (audio_packet_count == 1) {
         // Single packet - send directly for low latency
@@ -1374,7 +1378,7 @@ void *client_send_thread_func(void *arg) {
                             total_opus_size, client->client_id);
           } else {
             log_error("Failed to allocate buffer for Opus batch");
-            result = -1;
+            result = ERROR_MEMORY;
           }
 
           if (batched_opus)
@@ -1411,7 +1415,7 @@ void *client_send_thread_func(void *arg) {
                             audio_packet_count, total_samples, client->client_id);
           } else {
             log_error("Failed to allocate buffer for audio batch");
-            result = -1;
+            result = ERROR_MEMORY;
           }
         }
       }
@@ -1421,9 +1425,9 @@ void *client_send_thread_func(void *arg) {
         packet_queue_free_packet(audio_packets[i]);
       }
 
-      if (result != 0) {
+      if (result != ASCIICHAT_OK) {
         if (!atomic_load(&g_server_should_exit)) {
-          log_error("Failed to send audio to client %u", client->client_id);
+          log_error("Failed to send audio to client %u: %s", client->client_id, asciichat_error_string(result));
         }
         break; // Socket error, exit thread
       }
@@ -1589,14 +1593,15 @@ void *client_send_thread_func(void *arg) {
       // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
       mutex_lock(&client->send_mutex);
       // Send packet without holding any locks (crypto_ctx is safe to use)
-      int send_result = send_packet_secure(client->socket, PACKET_TYPE_ASCII_FRAME, payload, payload_size,
-                                           (crypto_context_t *)crypto_ctx);
+      asciichat_error_t send_result = send_packet_secure(client->socket, PACKET_TYPE_ASCII_FRAME, payload, payload_size,
+                                                         (crypto_context_t *)crypto_ctx);
       mutex_unlock(&client->send_mutex);
       (void)clock_gettime(CLOCK_MONOTONIC, &step5);
 
-      if (send_result != 0) {
+      if (send_result != ASCIICHAT_OK) {
         if (!atomic_load(&g_server_should_exit)) {
-          SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u", client->client_id);
+          SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u: %s", client->client_id,
+                    asciichat_error_string(send_result));
         }
         break;
       }
@@ -1745,12 +1750,13 @@ void broadcast_server_state_to_all_clients(void) {
         continue;
       }
 
-      int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state,
-                                      sizeof(net_state), (crypto_context_t *)client_snapshots[i].crypto_ctx);
+      asciichat_error_t result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state,
+                                                    sizeof(net_state), (crypto_context_t *)client_snapshots[i].crypto_ctx);
       mutex_unlock(&target->send_mutex);
 
-      if (result != 0) {
-        log_error("Failed to send server state to client %u", client_snapshots[i].client_id);
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to send server state to client %u: %s", client_snapshots[i].client_id,
+                  asciichat_error_string(result));
       } else {
         log_debug("Sent server state to client %u: %u connected, %u active", client_snapshots[i].client_id,
                   state.connected_client_count, state.active_client_count);
@@ -2020,10 +2026,12 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     mutex_unlock(&client->client_state_mutex);
     // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
     mutex_lock(&client->send_mutex);
-    if (send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx) < 0) {
-      SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u", client->client_id);
-    }
+    asciichat_error_t pong_result = send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx);
     mutex_unlock(&client->send_mutex);
+    if (pong_result != ASCIICHAT_OK) {
+      SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
+                asciichat_error_string(pong_result));
+    }
     break;
   }
 

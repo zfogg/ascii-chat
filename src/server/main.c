@@ -894,6 +894,10 @@ int server_main(void) {
     create_params.max_participants = opts->max_clients;
     create_params.has_password = false; // TODO: Support password-protected sessions
 
+    // Server connection information (where clients should connect)
+    SAFE_STRNCPY(create_params.server_address, opts->address, sizeof(create_params.server_address));
+    create_params.server_port = port;
+
     // Create session
     acds_session_create_result_t create_result;
     asciichat_error_t create_err = acds_session_create(&acds_client, &create_params, &create_result);

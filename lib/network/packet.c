@@ -213,6 +213,30 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
     // Note: Proper size validation is done in crypto_handshake_validate_packet_size()
     // which uses the session's crypto parameters for accurate validation
     break;
+  // ACIP protocol packets (Discovery Service)
+  case PACKET_TYPE_ACIP_SESSION_CREATE:
+  case PACKET_TYPE_ACIP_SESSION_CREATED:
+  case PACKET_TYPE_ACIP_SESSION_LOOKUP:
+  case PACKET_TYPE_ACIP_SESSION_INFO:
+  case PACKET_TYPE_ACIP_SESSION_JOIN:
+  case PACKET_TYPE_ACIP_SESSION_JOINED:
+  case PACKET_TYPE_ACIP_SESSION_LEAVE:
+  case PACKET_TYPE_ACIP_SESSION_END:
+  case PACKET_TYPE_ACIP_SESSION_RECONNECT:
+  case PACKET_TYPE_ACIP_WEBRTC_SDP:
+  case PACKET_TYPE_ACIP_WEBRTC_ICE:
+  case PACKET_TYPE_ACIP_STRING_RESERVE:
+  case PACKET_TYPE_ACIP_STRING_RESERVED:
+  case PACKET_TYPE_ACIP_STRING_RENEW:
+  case PACKET_TYPE_ACIP_STRING_RELEASE:
+  case PACKET_TYPE_ACIP_DISCOVERY_PING:
+  case PACKET_TYPE_ACIP_ERROR:
+    // ACIP packets - basic size validation
+    // Discovery service packets can vary in size (variable-length strings, etc.)
+    if (len > 65536) { // 64KB max for discovery packets
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "ACIP packet too large: %u bytes (max 65536)", len);
+    }
+    break;
   default:
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown packet type: %u", type);
   }
@@ -402,13 +426,12 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  * @param data Packet data
  * @param len Data length
  * @param crypto_ctx Crypto context for encryption
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len,
-                       crypto_context_t *crypto_ctx) {
+asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len,
+                                     crypto_context_t *crypto_ctx) {
   if (len > MAX_PACKET_SIZE) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
 
   // Handshake packets are ALWAYS sent unencrypted
@@ -432,7 +455,8 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
 
     // Use configured compression level from options (default: 1 for fastest compression)
     int compression_level = (opts && opts->compression_level > 0) ? opts->compression_level : 1;
-    if (compress_data(data, len, &temp_compressed, &compressed_size, compression_level) == 0) {
+    asciichat_error_t compress_result = compress_data(data, len, &temp_compressed, &compressed_size, compression_level);
+    if (compress_result == ASCIICHAT_OK) {
       double ratio = (double)compressed_size / (double)len;
       if (ratio < COMPRESSION_RATIO_THRESHOLD) {
         final_data = temp_compressed;
@@ -450,12 +474,12 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   if (!crypto_ctx || !ready) {
     log_warn_every(LOG_RATE_FAST, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
                    (void *)crypto_ctx, ready);
-    int result = packet_send(sockfd, type, final_data, final_len);
+    asciichat_error_t result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
     if (result != ASCIICHAT_OK) {
-      SET_ERRNO(ERROR_NETWORK, "Failed to send packet: %d", result);
+      SET_ERRNO(ERROR_NETWORK, "Failed to send packet: %s", asciichat_error_string(result));
     }
     return result;
   }
@@ -470,20 +494,18 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // Combine header + payload for encryption
   // Check for integer overflow before addition
   if (final_len > SIZE_MAX - sizeof(header)) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow plaintext buffer size");
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow plaintext buffer size");
   }
   size_t plaintext_len = sizeof(header) + final_len;
   uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_len);
   if (!plaintext) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext packet");
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext packet");
   }
 
   memcpy(plaintext, &header, sizeof(header));
@@ -494,22 +516,20 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // Encrypt
   // Check for integer overflow before calculating ciphertext size
   if (plaintext_len > SIZE_MAX - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
     buffer_pool_free(NULL, plaintext, plaintext_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
   }
   size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
   uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
   if (!ciphertext) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
     buffer_pool_free(NULL, plaintext, plaintext_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
   }
 
   size_t ciphertext_len;
@@ -518,18 +538,17 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   buffer_pool_free(NULL, plaintext, plaintext_len);
 
   if (result != CRYPTO_OK) {
-    SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
     buffer_pool_free(NULL, ciphertext, ciphertext_size);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
-    return -1;
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
   }
 
   // Send as PACKET_TYPE_ENCRYPTED
   log_debug_every(LOG_RATE_SLOW, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)",
                   type);
-  int send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
+  asciichat_error_t send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
   buffer_pool_free(NULL, ciphertext, ciphertext_size);
 
   if (compressed_data) {
@@ -819,16 +838,15 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
   asciichat_error_t send_result;
 
   if (encryption_ready) {
-    int secure_result =
+    send_result =
         send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
-    send_result = secure_result == ASCIICHAT_OK ? ASCIICHAT_OK : ERROR_NETWORK;
   } else {
     send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
   }
   SAFE_FREE(payload);
 
   if (send_result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to send error packet: %d", send_result);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send error packet: %s", asciichat_error_string(send_result));
   }
 
   return ASCIICHAT_OK;
