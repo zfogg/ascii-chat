@@ -116,9 +116,12 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   req.capabilities = params->capabilities;
   req.max_participants = params->max_participants;
 
-  // TODO: Generate proper Ed25519 signature
-  // For now, use dummy signature (will be validated by server if crypto enabled)
-  memset(req.signature, 0, 64);
+  // Generate Ed25519 signature for identity verification
+  asciichat_error_t sign_result = acds_sign_session_create(params->identity_seckey, timestamp, params->capabilities,
+                                                           params->max_participants, req.signature);
+  if (sign_result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign SESSION_CREATE request");
+  }
 
   req.has_password = params->has_password ? 1 : 0;
   if (params->has_password) {
@@ -293,8 +296,12 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
   uint64_t timestamp = (uint64_t)time(NULL) * 1000;
   req.timestamp = timestamp;
 
-  // TODO: Generate proper Ed25519 signature
-  memset(req.signature, 0, 64);
+  // Generate Ed25519 signature for identity verification
+  asciichat_error_t sign_result =
+      acds_sign_session_join(params->identity_seckey, timestamp, params->session_string, req.signature);
+  if (sign_result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to sign SESSION_JOIN request");
+  }
 
   req.has_password = params->has_password ? 1 : 0;
   if (params->has_password) {
