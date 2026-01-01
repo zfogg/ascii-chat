@@ -1,0 +1,153 @@
+/**
+ * @file parsers.h
+ * @brief Custom option parsers for enum types
+ * @ingroup options
+ *
+ * This module provides custom callback parsers for enum-based options
+ * used by the options builder system. Each parser converts a string
+ * argument to the appropriate enum value.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date December 2025
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include "platform/terminal.h"
+#include "video/palette.h"
+#include "log/logging.h"
+
+/**
+ * @brief Parse terminal color level option
+ * @param arg String argument (e.g., "auto", "none", "16", "256", "truecolor")
+ * @param dest Destination pointer (terminal_color_level_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto", "a" - Auto-detect from terminal
+ * - "none", "mono", "monochrome", "0" - No color (TERM_COLOR_NONE)
+ * - "16", "16color", "ansi" - 16-color mode (TERM_COLOR_16)
+ * - "256", "256color" - 256-color mode (TERM_COLOR_256)
+ * - "truecolor", "true", "tc", "rgb", "24bit" - Truecolor mode (TERM_COLOR_TRUECOLOR)
+ */
+bool parse_color_mode(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse render mode option
+ * @param arg String argument (e.g., "foreground", "background", "half-block")
+ * @param dest Destination pointer (render_mode_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "foreground", "fg", "0" - Foreground mode (RENDER_MODE_FOREGROUND)
+ * - "background", "bg", "1" - Background mode (RENDER_MODE_BACKGROUND)
+ * - "half-block", "half", "hb", "2" - Half-block mode (RENDER_MODE_HALF_BLOCK)
+ */
+bool parse_render_mode(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse palette type option
+ * @param arg String argument (e.g., "standard", "blocks", "custom")
+ * @param dest Destination pointer (palette_type_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "standard", "std", "0" - Standard palette (PALETTE_STANDARD)
+ * - "blocks", "block", "1" - Blocks palette (PALETTE_BLOCKS)
+ * - "digital", "dig", "2" - Digital palette (PALETTE_DIGITAL)
+ * - "minimal", "min", "3" - Minimal palette (PALETTE_MINIMAL)
+ * - "cool", "4" - Cool palette (PALETTE_COOL)
+ * - "custom", "5" - Custom palette (PALETTE_CUSTOM)
+ */
+bool parse_palette_type(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse log level option
+ * @param arg String argument (e.g., "debug", "info", "warn")
+ * @param dest Destination pointer (log_level_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "dev", "development", "0" - Development level (LOG_DEV)
+ * - "debug", "dbg", "1" - Debug level (LOG_DEBUG)
+ * - "info", "information", "2" - Info level (LOG_INFO)
+ * - "warn", "warning", "3" - Warning level (LOG_WARN)
+ * - "error", "err", "4" - Error level (LOG_ERROR)
+ * - "fatal", "5" - Fatal level (LOG_FATAL)
+ */
+bool parse_log_level(const char *arg, void *dest, char **error_msg);
+
+// ============================================================================
+// Positional Argument Parsers
+// ============================================================================
+
+/**
+ * @brief Parse server bind address positional argument
+ * @param arg Current bind address argument
+ * @param config Pointer to options struct (must contain address/address6 fields)
+ * @param remaining Remaining positional args (for multi-arg parsing)
+ * @param num_remaining Count of remaining args
+ * @param error_msg Error message output (set on failure)
+ * @return Number of args consumed (0-2), or -1 on error
+ *
+ * Server bind address parsing rules:
+ * - 0 args total: Uses defaults (127.0.0.1 + ::1 for dual-stack localhost)
+ * - 1 arg: Single IPv4 OR IPv6 bind address
+ * - 2 args: One IPv4 AND one IPv6 bind address (order-independent)
+ * - Cannot specify multiple addresses of the same type
+ * - IPv6 addresses can be wrapped in brackets (e.g., [::1])
+ *
+ * This parser can consume 0-2 arguments depending on what's provided.
+ * It tracks internal state to ensure only one IPv4 and one IPv6 are specified.
+ *
+ * Example usage with options_builder_add_positional():
+ * ```c
+ * options_builder_add_positional(
+ *     builder,
+ *     "bind-address",
+ *     "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
+ *     false,  // Not required (defaults to localhost)
+ *     parse_server_bind_address
+ * );
+ * ```
+ */
+int parse_server_bind_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
+
+/**
+ * @brief Parse client address positional argument
+ * @param arg Address argument in format [address][:port]
+ * @param config Pointer to options struct (must contain address and port fields)
+ * @param remaining Remaining positional args (unused for client)
+ * @param num_remaining Count of remaining args
+ * @param error_msg Error message output (set on failure)
+ * @return Number of args consumed (always 1), or -1 on error
+ *
+ * Client address parsing rules:
+ * - Parses single argument: [address][:port]
+ * - IPv6 with brackets and port: [::1]:8080
+ * - IPv4/hostname with port: 192.168.1.1:8080 or example.com:8080
+ * - Bare IPv6: ::1 (detected by multiple colons)
+ * - Bare hostname/IPv4: 192.168.1.1 or example.com
+ * - IPv4 addresses starting with digit are validated strictly
+ * - Detects port conflict if --port flag was already used
+ *
+ * This parser handles the complex logic of separating address from optional port
+ * while correctly handling IPv6 addresses that contain colons.
+ *
+ * Example usage with options_builder_add_positional():
+ * ```c
+ * options_builder_add_positional(
+ *     builder,
+ *     "address",
+ *     "[address][:port] - Server address (IPv4, IPv6, or hostname) with optional port",
+ *     false,  // Not required (defaults to localhost:27224)
+ *     parse_client_address
+ * );
+ * ```
+ */
+int parse_client_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
