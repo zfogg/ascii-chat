@@ -442,6 +442,14 @@ static void update_color_mode_to_none_updater(options_t *opts, void *context) {
   opts->color_mode = COLOR_MODE_NONE;
 }
 
+/**
+ * Updater to store session string for ACDS discovery
+ */
+static void update_session_string_updater(options_t *opts, void *context) {
+  const char *session_string = (const char *)context;
+  SAFE_STRNCPY(opts->session_string, session_string, sizeof(opts->session_string));
+}
+
 int main(int argc, char *argv[]) {
   /**
    * @name Argument Validation
@@ -497,6 +505,7 @@ int main(int argc, char *argv[]) {
   // Case 2: Find the mode (first non-option argument)
   int mode_index = -1;
   const mode_descriptor_t *mode = NULL;
+  char detected_session_string[64] = {0}; // Store session string before options_init()
 
   for (int i = 1; i < argc; i++) {
     // Skip options (arguments starting with -)
@@ -653,12 +662,38 @@ int main(int argc, char *argv[]) {
    * @{
    */
 
-  // Case 4: Validate mode was found
+  // Case 4: Validate mode was found OR detect session string
   if (mode == NULL) {
-    // Check if there's a non-option non-mode argument (invalid mode)
+    // Check if there's a non-option non-mode argument (could be session string or invalid mode)
     for (int i = 1; i < argc; i++) {
       if (argv[i][0] != '-') {
-        // Found a non-option that's not a valid mode
+        // Check if it looks like a session string (format: word-word-word)
+        const char *arg = argv[i];
+        int hyphen_count = 0;
+        bool looks_like_session = true;
+
+        // Count hyphens and validate format
+        for (const char *p = arg; *p != '\0'; p++) {
+          if (*p == '-') {
+            hyphen_count++;
+          } else if (!(*p >= 'a' && *p <= 'z') && !(*p >= 'A' && *p <= 'Z') && !(*p >= '0' && *p <= '9')) {
+            // Invalid character for session string
+            looks_like_session = false;
+            break;
+          }
+        }
+
+        // Session strings have exactly 2 hyphens (3 words: word-word-word)
+        if (looks_like_session && hyphen_count == 2 && strlen(arg) >= 5 && strlen(arg) <= 48) {
+          // This looks like a session string! Treat as client mode with ACDS discovery
+          mode = find_mode("client");
+          mode_index = i;
+          // Store session string to be set after options_init()
+          SAFE_STRNCPY(detected_session_string, arg, sizeof(detected_session_string));
+          break;
+        }
+
+        // Not a session string - treat as invalid mode
         fprintf(stderr, "Error: Unknown mode '%s'\n", argv[i]);
         const char *suggestion = levenshtein_find_similar(argv[i], g_mode_names);
         if (suggestion) {
@@ -672,13 +707,19 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Only options provided, no mode
-    fprintf(stderr, "Error: No mode specified\n");
+    // Check if mode was set by session string detection
+    if (mode != NULL) {
+      // Session string was detected and mode was set - continue to next case
+      // (This prevents the "Error: No mode specified" from being printed)
+    } else {
+      // Only options provided, no mode
+      fprintf(stderr, "Error: No mode specified\n");
 #ifndef NDEBUG
-    fprintf(stderr, "\n");
-    print_usage(program_name);
+      fprintf(stderr, "\n");
+      print_usage(program_name);
 #endif
-    return ERROR_USAGE;
+      return ERROR_USAGE;
+    }
   }
 
   /** @} */
@@ -747,6 +788,12 @@ int main(int argc, char *argv[]) {
   if (!opts) {
     log_error("Options not initialized");
     return -1;
+  }
+
+  // Set session string if detected during mode detection
+  if (detected_session_string[0] != '\0') {
+    options_update(update_session_string_updater, (void *)detected_session_string);
+    opts = options_get(); // Refresh pointer after update
   }
 
   // Apply binary-level logging options if provided (--log-file, --log-level, -v, --quiet at binary level)

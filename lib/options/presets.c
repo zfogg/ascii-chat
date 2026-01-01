@@ -117,6 +117,9 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
 
+  options_builder_add_bool(b, "require-server-verify", '\0', offsetof(options_t, require_server_verify), false,
+                           "Only accept clients who verified via ACDS", "SECURITY", false, NULL);
+
   options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
                            "SECURITY", false, NULL);
 
@@ -284,6 +287,9 @@ const options_config_t *options_preset_client(void) {
 
   options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
+
+  options_builder_add_bool(b, "require-client-verify", '\0', offsetof(options_t, require_client_verify), false,
+                           "Only connect to servers whose identity was verified by ACDS", "SECURITY", false, NULL);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",

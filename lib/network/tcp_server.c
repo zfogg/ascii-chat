@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <netdb.h>
+#include <errno.h>
 
 #include "network/tcp_server.h"
 #include "common.h"
@@ -183,7 +184,15 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     int select_result = socket_select((int)(max_fd + 1), &read_fds, NULL, NULL, &timeout);
 
     if (select_result < 0) {
-      log_error("select() failed in accept loop");
+      // Check if interrupted by signal (expected during shutdown)
+      int err = socket_get_last_error();
+      if (err == EINTR) {
+        // Signal interrupt (e.g., SIGTERM, SIGINT) - check running flag and continue
+        log_debug("select() interrupted by signal");
+        continue;
+      }
+      // Actual error - socket_get_error_string() returns last socket error
+      log_error("select() failed in accept loop: %s (errno=%d)", socket_get_error_string(), err);
       continue;
     }
 

@@ -86,6 +86,7 @@
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "network/tcp_server.h"
+#include "network/acds_client.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -863,6 +864,54 @@ int server_main(void) {
   // - Calls add_client() to initialize structures and spawn workers
   // - Blocks until client disconnects
   // - Calls remove_client() to cleanup and stop worker threads
+
+  // ACDS Session Creation: Register this server with discovery service
+  char session_string[64] = {0};
+  // TODO: Make ACDS server address configurable via --acds-server option
+  const char *acds_server = "127.0.0.1";
+  uint16_t acds_port = 27225;
+
+  log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
+
+  acds_client_config_t acds_config;
+  acds_client_config_init_defaults(&acds_config);
+  SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
+  acds_config.server_port = acds_port;
+  acds_config.timeout_ms = 5000;
+
+  acds_client_t acds_client;
+  asciichat_error_t acds_connect_result = acds_client_connect(&acds_client, &acds_config);
+  if (acds_connect_result == ASCIICHAT_OK) {
+    // Prepare session creation parameters
+    acds_session_create_params_t create_params;
+    memset(&create_params, 0, sizeof(create_params));
+
+    // TODO: Use real identity public key from server crypto
+    // For now, use dummy key (ACDS will accept it if crypto is disabled)
+    memset(create_params.identity_pubkey, 0, 32);
+
+    create_params.capabilities = 0x03; // Video + Audio
+    create_params.max_participants = opts->max_clients;
+    create_params.has_password = false; // TODO: Support password-protected sessions
+
+    // Create session
+    acds_session_create_result_t create_result;
+    asciichat_error_t create_err = acds_session_create(&acds_client, &create_params, &create_result);
+    acds_client_disconnect(&acds_client);
+
+    if (create_err == ASCIICHAT_OK) {
+      SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
+      log_info("✨ Session created successfully!");
+      log_info("📋 Session string: %s", session_string);
+      log_info("🔗 Share this with others to join:");
+      log_info("   ascii-chat %s", session_string);
+    } else {
+      log_warn("Failed to create session on ACDS server (server will run without discovery)");
+    }
+  } else {
+    log_warn("Could not connect to ACDS server at %s:%d (server will run without discovery)", acds_server, acds_port);
+  }
+
   log_info("Server entering accept loop (port %d)...", port);
 
   // Run TCP server (blocks until shutdown signal received)

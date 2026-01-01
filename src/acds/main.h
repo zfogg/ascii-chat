@@ -67,13 +67,15 @@
  * parsed from command-line arguments.
  */
 typedef struct {
-  int port;                ///< TCP listen port (default 27225)
-  char address[256];       ///< IPv4 bind address (empty = all interfaces)
-  char address6[256];      ///< IPv6 bind address (empty = all interfaces)
-  char database_path[512]; ///< SQLite database path
-  char key_path[512];      ///< Ed25519 identity key file path
-  char log_file[512];      ///< Log file path (empty = stderr)
-  log_level_t log_level;   ///< Logging verbosity level
+  int port;                     ///< TCP listen port (default 27225)
+  char address[256];            ///< IPv4 bind address (empty = all interfaces)
+  char address6[256];           ///< IPv6 bind address (empty = all interfaces)
+  char database_path[512];      ///< SQLite database path
+  char key_path[512];           ///< Ed25519 identity key file path
+  char log_file[512];           ///< Log file path (empty = stderr)
+  log_level_t log_level;        ///< Logging verbosity level
+  bool require_server_identity; ///< Require servers to provide signed identity when creating sessions
+  bool require_client_identity; ///< Require clients to provide signed identity when joining sessions
 } acds_config_t;
 
 /**

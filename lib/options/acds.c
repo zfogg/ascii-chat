@@ -50,18 +50,23 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // part of the common options_t structure. ACDS is a separate binary from
 // the unified ascii-chat binary, so it makes sense for it to have custom parsing.
 
-static struct option acds_options[] = {
-    {"port", required_argument, NULL, 'p'},      {"db", required_argument, NULL, 'd'},
-    {"key", required_argument, NULL, 'K'},       {"log-file", required_argument, NULL, 'L'},
-    {"log-level", required_argument, NULL, 'l'}, {"help", no_argument, NULL, 'h'},
-    {"version", no_argument, NULL, 'v'},         {0, 0, 0, 0}};
+static struct option acds_options[] = {{"port", required_argument, NULL, 'p'},
+                                       {"db", required_argument, NULL, 'd'},
+                                       {"key", required_argument, NULL, 'K'},
+                                       {"log-file", required_argument, NULL, 'L'},
+                                       {"log-level", required_argument, NULL, 'l'},
+                                       {"require-server-identity", no_argument, NULL, 'S'},
+                                       {"require-client-identity", no_argument, NULL, 'C'},
+                                       {"help", no_argument, NULL, 'h'},
+                                       {"version", no_argument, NULL, 'v'},
+                                       {0, 0, 0, 0}};
 
 // ============================================================================
 // ACDS Option Parsing
 // ============================================================================
 
 asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
-  const char *optstring = ":p:d:K:L:l:hv";
+  const char *optstring = ":p:d:K:L:l:SChv";
 
   // Pre-pass: Check for --help or --version first
   for (int i = 1; i < argc; i++) {
@@ -137,6 +142,14 @@ asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
         return option_error_invalid();
       break;
     }
+
+    case 'S': // --require-server-identity
+      opts->require_server_identity = 1;
+      break;
+
+    case 'C': // --require-client-identity
+      opts->require_client_identity = 1;
+      break;
 
     case 'h': // --help
       acds_usage(stdout);
@@ -326,6 +339,12 @@ void acds_usage(FILE *desc) {
   (void)fprintf(desc, USAGE_KEY_ACDS_LINE);
   (void)fprintf(desc, USAGE_LOG_FILE_LINE);
   (void)fprintf(desc, USAGE_LOG_LEVEL_LINE);
+  (void)fprintf(desc, "\n");
+  (void)fprintf(desc, "SECURITY OPTIONS:\n");
+  (void)fprintf(desc, USAGE_INDENT "--require-server-identity " USAGE_INDENT
+                                   "Require servers to provide signed Ed25519 identity when creating sessions\n");
+  (void)fprintf(desc, USAGE_INDENT "--require-client-identity " USAGE_INDENT
+                                   "Require clients to provide signed Ed25519 identity when joining sessions\n");
   (void)fprintf(desc, "\n");
   (void)fprintf(desc, "For more information: https://github.com/zfogg/ascii-chat\n");
 }

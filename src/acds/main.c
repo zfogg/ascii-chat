@@ -149,6 +149,16 @@ int main(int argc, char **argv) {
   SAFE_STRNCPY(config.key_path, opt_acds_key_path, sizeof(config.key_path));
   SAFE_STRNCPY(config.log_file, opts ? opts->log_file : "", sizeof(config.log_file));
   config.log_level = opts ? opts->log_level : LOG_INFO;
+  config.require_server_identity = opts ? (opts->require_server_identity != 0) : false;
+  config.require_client_identity = opts ? (opts->require_client_identity != 0) : false;
+
+  // Log security policy
+  if (config.require_server_identity) {
+    log_info("Security: Requiring signed identity from servers creating sessions");
+  }
+  if (config.require_client_identity) {
+    log_info("Security: Requiring signed identity from clients joining sessions");
+  }
 
   // Initialize server
   acds_server_t server;

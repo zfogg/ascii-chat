@@ -85,6 +85,7 @@
 #include "video/palette.h"
 #include "network/network.h"
 #include "network/tcp_client.h"
+#include "network/acds_client.h"
 #include "util/path.h"
 
 #ifndef NDEBUG
@@ -516,10 +517,65 @@ int client_main(void) {
 
   int reconnect_attempt = 0;
   bool first_connection = true;
+
+  // ACDS Discovery: If session_string is set, lookup server via ACDS
+  const char *discovered_address = NULL;
+  const char *discovered_port = NULL;
+
+  if (opts && opts->session_string[0] != '\0') {
+    log_info("Session string detected: %s - performing ACDS discovery", opts->session_string);
+
+    // Configure ACDS client
+    acds_client_config_t acds_config;
+    acds_client_config_init_defaults(&acds_config);
+
+    // Use default ACDS server for now (TODO: make configurable via --acds-server option)
+    // Default: discovery.ascii.chat:27225 or localhost:27225
+    SAFE_STRNCPY(acds_config.server_address, "127.0.0.1", sizeof(acds_config.server_address));
+    acds_config.server_port = 27225;
+    acds_config.timeout_ms = 5000;
+
+    // Connect to ACDS server
+    acds_client_t acds_client;
+    asciichat_error_t acds_connect_result = acds_client_connect(&acds_client, &acds_config);
+    if (acds_connect_result != ASCIICHAT_OK) {
+      log_error("Failed to connect to ACDS server at %s:%d", acds_config.server_address, acds_config.server_port);
+      return 1;
+    }
+
+    // Lookup session
+    acds_session_lookup_result_t lookup_result;
+    asciichat_error_t lookup_err = acds_session_lookup(&acds_client, opts->session_string, &lookup_result);
+    acds_client_disconnect(&acds_client);
+
+    if (lookup_err != ASCIICHAT_OK || !lookup_result.found) {
+      fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", opts->session_string);
+      fprintf(stderr, "  - Not a recognized mode (server, client, mirror)\n");
+      fprintf(stderr, "  - Not an active session on the discovery server\n");
+      fprintf(stderr, "\nDid you mean to:\n");
+      fprintf(stderr, "  ascii-chat server           # Start a new server\n");
+      fprintf(stderr, "  ascii-chat client           # Connect to localhost\n");
+      fprintf(stderr, "  ascii-chat client HOST      # Connect to specific host\n");
+      return 1;
+    }
+
+    // TODO: Extract server address from session info
+    // For now, just use the session info to verify it exists
+    log_info("Session found: %s (%d/%d participants)", opts->session_string, lookup_result.current_participants,
+             lookup_result.max_participants);
+
+    // TODO: The SESSION_INFO packet doesn't include server address yet
+    // We need to either:
+    // 1. Add server address to SESSION_INFO packet
+    // 2. Or use SESSION_JOIN to get connection details
+    // For now, fall back to default address/port
+    log_warn("ACDS discovery not yet fully implemented - using default server address");
+  }
+
   while (!should_exit()) {
     // Handle connection establishment or reconnection
-    const char *address = opts ? opts->address : "localhost";
-    const char *port_str = opts ? opts->port : "27224";
+    const char *address = discovered_address ? discovered_address : (opts ? opts->address : "localhost");
+    const char *port_str = discovered_port ? discovered_port : (opts ? opts->port : "27224");
     int port = atoi(port_str);
     int connection_result =
         server_connection_establish(address, port, reconnect_attempt, first_connection, has_ever_connected);
