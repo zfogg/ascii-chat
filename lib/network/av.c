@@ -447,12 +447,11 @@ int av_parse_size_message(const char *message, unsigned short *width, unsigned s
  * @return 0 on success, -1 on error
  * @ingroup av
  */
-int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
-                            crypto_context_t *crypto_ctx) {
+asciichat_error_t send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
+                                          crypto_context_t *crypto_ctx) {
   if (!samples || num_samples <= 0 || batch_count <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples,
-              num_samples, batch_count);
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples,
+                     num_samples, batch_count);
   }
 
   // Build batch header
@@ -469,8 +468,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   // Allocate buffer for header + data
   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for audio batch packet");
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for audio batch packet");
   }
 
   // Copy header
@@ -507,7 +505,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 #endif
 
   // Send packet with encryption support
-  int result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);
+  asciichat_error_t result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);
   buffer_pool_free(NULL, buffer, total_size);
 
   return result;

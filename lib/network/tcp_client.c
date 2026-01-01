@@ -357,12 +357,12 @@ int tcp_client_send_packet(tcp_client_t *client, packet_type_t type, const void 
   }
 
   // Send packet (encrypted if crypto context available)
-  int result = send_packet_secure(client->sockfd, type, data, len, crypto_ctx);
+  asciichat_error_t result = send_packet_secure(client->sockfd, type, data, len, crypto_ctx);
 
   mutex_unlock(&client->send_mutex);
 
-  if (result != 0) {
-    log_debug("Failed to send packet type %d: %s", type, network_error_string());
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to send packet type %d: %s", type, asciichat_error_string(result));
     return -1;
   }
 
@@ -631,7 +631,7 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
   // Recheck connection status inside mutex to prevent TOCTOU race
   if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
     mutex_unlock(&client->send_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Get crypto context if encryption is enabled
@@ -661,7 +661,7 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
   memcpy(buf + header_size, opus_data, opus_size);
 
   // Send packet with encryption if available
-  int result;
+  asciichat_error_t result;
   if (crypto_ctx) {
     result = send_packet_secure(client->sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size, crypto_ctx);
   } else {
@@ -671,7 +671,7 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
   buffer_pool_free(NULL, packet_data, total_size);
   mutex_unlock(&client->send_mutex);
 
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     tcp_client_signal_lost(client);
   }
 
