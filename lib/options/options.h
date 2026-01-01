@@ -559,6 +559,53 @@ typedef struct options_state {
 const options_t *options_get(void);
 
 /**
+ * @brief Safely get a specific option field (lock-free read)
+ *
+ * Convenience macro for accessing individual option fields without storing
+ * the entire options pointer. Includes NULL check with warning log for safety.
+ *
+ * **Usage Examples**:
+ * @code{.c}
+ * // Simple field access
+ * const char *addr = GET_OPTION(address6);
+ * int width = GET_OPTION(width);
+ * bool flip = GET_OPTION(webcam_flip);
+ *
+ * // In expressions
+ * if (GET_OPTION(encrypt_enabled)) {
+ *     // encryption is enabled
+ * }
+ *
+ * // Function arguments
+ * connect_to_server(GET_OPTION(address), GET_OPTION(port));
+ * @endcode
+ *
+ * **Design**: This macro eliminates the need to store `const options_t *opts`
+ * pointers around the codebase, reducing clutter and making code more readable.
+ *
+ * **Safety**: If options_get() returns NULL (shouldn't happen after initialization),
+ * the macro will log a warning and return a zero-initialized field.
+ *
+ * **Performance**: Equivalent cost to direct options_get()->field access.
+ *
+ * @param field The field name to access (e.g., address, port, width, etc.)
+ * @return The value of the requested field
+ *
+ * @note Must be called after options_init() has completed
+ * @note Zero-initialized fields are returned if options pointer is somehow NULL
+ *
+ * @ingroup options
+ */
+#define GET_OPTION(field) \
+  ({ \
+    const options_t *_opts = options_get(); \
+    if (!_opts) { \
+      log_warn("GET_OPTION(" #field ") called but options not initialized"); \
+    } \
+    (_opts ? (_opts->field) : ((typeof(((options_t *)0)->field)){0})); \
+  })
+
+/**
  * @brief Update options using copy-on-write (thread-safe)
  *
  * Callback-based update interface. Allocates a new options struct, copies
