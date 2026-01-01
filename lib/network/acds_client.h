@@ -81,6 +81,8 @@ typedef struct {
   bool has_password;           ///< Password protection enabled
   char password[128];          ///< Optional password (if has_password)
   const char *reserved_string; ///< Optional reserved string (NULL = auto-generate)
+  char server_address[64];     ///< Server address where clients should connect
+  uint16_t server_port;        ///< Server port where clients should connect
 } acds_session_create_params_t;
 
 /**
@@ -107,6 +109,9 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
 
 /**
  * @brief Session lookup result
+ *
+ * NOTE: Does NOT include server connection information (IP/port).
+ * Server address is only revealed after successful authentication via acds_session_join().
  */
 typedef struct {
   bool found;                   ///< Session exists
@@ -118,6 +123,8 @@ typedef struct {
   bool has_password;            ///< Password required to join
   uint64_t created_at;          ///< Creation timestamp (Unix ms)
   uint64_t expires_at;          ///< Expiration timestamp (Unix ms)
+  bool require_server_verify;   ///< ACDS policy: server must verify client identity
+  bool require_client_verify;   ///< ACDS policy: client must verify server identity
 } acds_session_lookup_result_t;
 
 /**
@@ -146,6 +153,9 @@ typedef struct {
 
 /**
  * @brief Session join result
+ *
+ * Server connection information is ONLY included after successful authentication.
+ * This prevents IP address leakage to unauthenticated clients.
  */
 typedef struct {
   bool success;               ///< Join succeeded
@@ -153,6 +163,8 @@ typedef struct {
   uint8_t session_id[16];     ///< Session UUID (if success)
   uint8_t error_code;         ///< Error code (if !success)
   char error_message[129];    ///< Error message (if !success, null-terminated)
+  char server_address[65];    ///< Server IP/hostname (if success, null-terminated)
+  uint16_t server_port;       ///< Server port (if success)
 } acds_session_join_result_t;
 
 /**

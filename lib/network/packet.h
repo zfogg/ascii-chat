@@ -361,44 +361,45 @@ typedef enum {
   // ============================================================================
   // Discovery Service Protocol (ACDS)
   // ============================================================================
+  // ACIP packets use range 100-199 to avoid conflicts with ascii-chat protocol (1-35)
 
   /** @brief Create new session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_CREATE = 0x20,
+  PACKET_TYPE_ACIP_SESSION_CREATE = 100,
   /** @brief Session created response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_SESSION_CREATED = 0x21,
+  PACKET_TYPE_ACIP_SESSION_CREATED = 101,
   /** @brief Lookup session by string (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_LOOKUP = 0x22,
+  PACKET_TYPE_ACIP_SESSION_LOOKUP = 102,
   /** @brief Session info response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_SESSION_INFO = 0x23,
+  PACKET_TYPE_ACIP_SESSION_INFO = 103,
   /** @brief Join existing session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_JOIN = 0x24,
+  PACKET_TYPE_ACIP_SESSION_JOIN = 104,
   /** @brief Session joined response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_SESSION_JOINED = 0x25,
+  PACKET_TYPE_ACIP_SESSION_JOINED = 105,
   /** @brief Leave session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_LEAVE = 0x26,
+  PACKET_TYPE_ACIP_SESSION_LEAVE = 106,
   /** @brief End session (Host -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_END = 0x27,
+  PACKET_TYPE_ACIP_SESSION_END = 107,
   /** @brief Reconnect to session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_RECONNECT = 0x28,
+  PACKET_TYPE_ACIP_SESSION_RECONNECT = 108,
 
   /** @brief WebRTC SDP offer/answer (bidirectional) */
-  PACKET_TYPE_ACIP_WEBRTC_SDP = 0x30,
+  PACKET_TYPE_ACIP_WEBRTC_SDP = 110,
   /** @brief WebRTC ICE candidate (bidirectional) */
-  PACKET_TYPE_ACIP_WEBRTC_ICE = 0x31,
+  PACKET_TYPE_ACIP_WEBRTC_ICE = 111,
 
   /** @brief Reserve session string (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_STRING_RESERVE = 0x40,
+  PACKET_TYPE_ACIP_STRING_RESERVE = 120,
   /** @brief String reserved response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_STRING_RESERVED = 0x41,
+  PACKET_TYPE_ACIP_STRING_RESERVED = 121,
   /** @brief Renew string reservation (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_STRING_RENEW = 0x42,
+  PACKET_TYPE_ACIP_STRING_RENEW = 122,
   /** @brief Release string reservation (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_STRING_RELEASE = 0x43,
+  PACKET_TYPE_ACIP_STRING_RELEASE = 123,
 
   /** @brief Discovery server ping (keepalive) */
-  PACKET_TYPE_ACIP_DISCOVERY_PING = 0xFE,
+  PACKET_TYPE_ACIP_DISCOVERY_PING = 150,
   /** @brief Generic error response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_ERROR = 0xFF
+  PACKET_TYPE_ACIP_ERROR = 199
 } packet_type_t;
 
 /**
@@ -1134,7 +1135,8 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  *
  * @ingroup network
  */
-int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx);
+asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len,
+                                     crypto_context_t *crypto_ctx);
 
 /**
  * @brief Receive a packet with decryption and decompression support

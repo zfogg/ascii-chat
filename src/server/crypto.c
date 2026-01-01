@@ -245,6 +245,13 @@ int server_crypto_handshake(client_info_t *client) {
     log_info("Client whitelist enabled: %zu authorized keys", g_num_whitelisted_clients);
   }
 
+  // If --require-server-verify is set, require clients to provide identity keys
+  // This ensures only clients with Ed25519 identity keys can connect
+  if (opts && opts->require_server_verify) {
+    client->crypto_handshake_ctx.require_client_auth = true;
+    log_info("--require-server-verify enabled: clients must provide identity keys");
+  }
+
   log_info("Starting crypto handshake with client %u...", atomic_load(&client->client_id));
 
   START_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));

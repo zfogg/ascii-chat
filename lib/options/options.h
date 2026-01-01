@@ -406,7 +406,9 @@ int strtoint_safe(const char *str);
   char address[OPTIONS_BUFF_SIZE];                                                                                     \
   char port[OPTIONS_BUFF_SIZE];                                                                                        \
   unsigned short int require_server_identity;                                                                          \
-  unsigned short int require_client_identity;
+  unsigned short int require_client_identity;                                                                          \
+  unsigned short int require_server_verify;                                                                            \
+  unsigned short int require_client_verify;
 
 /**
  * @brief Consolidated options structure

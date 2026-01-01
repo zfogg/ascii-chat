@@ -165,8 +165,8 @@ int av_send_audio(socket_t sockfd, const float *samples, int num_samples);
  *
  * @ingroup av
  */
-int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
-                            crypto_context_t *crypto_ctx);
+asciichat_error_t send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
+                                          crypto_context_t *crypto_ctx);
 
 /**
  * @brief Send audio batch packet (convenience function)

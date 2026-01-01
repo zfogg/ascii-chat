@@ -546,9 +546,9 @@ int client_main(void) {
     // Lookup session
     acds_session_lookup_result_t lookup_result;
     asciichat_error_t lookup_err = acds_session_lookup(&acds_client, opts->session_string, &lookup_result);
-    acds_client_disconnect(&acds_client);
 
     if (lookup_err != ASCIICHAT_OK || !lookup_result.found) {
+      acds_client_disconnect(&acds_client);
       fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", opts->session_string);
       fprintf(stderr, "  - Not a recognized mode (server, client, mirror)\n");
       fprintf(stderr, "  - Not an active session on the discovery server\n");
@@ -559,17 +559,45 @@ int client_main(void) {
       return 1;
     }
 
-    // TODO: Extract server address from session info
-    // For now, just use the session info to verify it exists
-    log_info("Session found: %s (%d/%d participants)", opts->session_string, lookup_result.current_participants,
-             lookup_result.max_participants);
+    log_info("Session found: %s (%d/%d participants, password=%s)", opts->session_string,
+             lookup_result.current_participants, lookup_result.max_participants,
+             lookup_result.has_password ? "required" : "not required");
 
-    // TODO: The SESSION_INFO packet doesn't include server address yet
-    // We need to either:
-    // 1. Add server address to SESSION_INFO packet
-    // 2. Or use SESSION_JOIN to get connection details
-    // For now, fall back to default address/port
-    log_warn("ACDS discovery not yet fully implemented - using default server address");
+    // Join session to get server connection information
+    acds_session_join_params_t join_params;
+    memset(&join_params, 0, sizeof(join_params));
+    join_params.session_string = opts->session_string;
+    join_params.has_password = lookup_result.has_password && opts->password[0] != '\0';
+    if (join_params.has_password) {
+      SAFE_STRNCPY(join_params.password, opts->password, sizeof(join_params.password));
+    }
+    // TODO: Provide Ed25519 identity for signature when required by ACDS policies
+    memset(join_params.identity_pubkey, 0, 32);
+    memset(join_params.identity_seckey, 0, 64);
+
+    acds_session_join_result_t join_result;
+    asciichat_error_t join_err = acds_session_join(&acds_client, &join_params, &join_result);
+    acds_client_disconnect(&acds_client);
+
+    if (join_err != ASCIICHAT_OK || !join_result.success) {
+      fprintf(stderr, "Error: Failed to join session '%s'\n", opts->session_string);
+      if (join_result.error_message[0] != '\0') {
+        fprintf(stderr, "  %s\n", join_result.error_message);
+      }
+      return 1;
+    }
+
+    // Use server address/port from join result (only revealed after authentication)
+    log_info("Joined session successfully, connecting to server: %s:%d", join_result.server_address,
+             join_result.server_port);
+
+    // Set discovered address/port for connection
+    discovered_address = join_result.server_address;
+
+    // Convert port to string for discovered_port
+    static char port_buffer[8];
+    snprintf(port_buffer, sizeof(port_buffer), "%d", join_result.server_port);
+    discovered_port = port_buffer;
   }
 
   while (!should_exit()) {
