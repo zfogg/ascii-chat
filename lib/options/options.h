@@ -411,6 +411,18 @@ int strtoint_safe(const char *str);
   unsigned short int require_client_verify;
 
 /**
+ * @brief Mode type for options parsing
+ *
+ * Determines which set of options to use when parsing command-line arguments.
+ */
+typedef enum {
+  MODE_SERVER, ///< Server mode - network server options
+  MODE_CLIENT, ///< Client mode - network client options
+  MODE_MIRROR, ///< Mirror mode - local webcam viewing (no network)
+  MODE_ACDS    ///< Discovery service mode - session management and WebRTC signaling
+} asciichat_mode_t;
+
+/**
  * @brief Consolidated options structure
  *
  * All options from the scattered extern globals are now in a single struct.
@@ -769,18 +781,6 @@ extern unsigned short int GRAY[];
  *
  * @ingroup options
  */
-
-/**
- * @brief Mode type for options parsing
- *
- * Determines which set of options to use when parsing command-line arguments.
- */
-typedef enum {
-  MODE_SERVER, ///< Server mode - network server options
-  MODE_CLIENT, ///< Client mode - network client options
-  MODE_MIRROR, ///< Mirror mode - local webcam viewing (no network)
-  MODE_ACDS    ///< Discovery service mode - session management and WebRTC signaling
-} asciichat_mode_t;
 
 /**
  * @brief Initialize options by parsing command-line arguments with unified mode detection

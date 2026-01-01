@@ -11,10 +11,11 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 
 // Compress data using zstd with configurable compression level
-asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level) {
+asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size,
+                                int compression_level) {
   if (!input || input_size == 0 || !output || !output_size) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p", input,
-                     input_size, output, output_size);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p",
+                     input, input_size, output, output_size);
   }
 
   // Validate compression level (1-9 for real-time streaming)
@@ -28,8 +29,8 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
   // Sanity check ZSTD_compressBound result
   // ZSTD_compressBound returns 0 for errors or very large values for huge inputs
   if (compressed_size == 0 || compressed_size > 256 * 1024 * 1024) { // Max 256MB compressed buffer
-    return SET_ERRNO(ERROR_INVALID_PARAM, "ZSTD_compressBound returned unreasonable size: %zu for input %zu", compressed_size,
-                     input_size);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "ZSTD_compressBound returned unreasonable size: %zu for input %zu",
+                     compressed_size, input_size);
   }
 
   unsigned char *compressed_data = NULL;
@@ -56,8 +57,8 @@ asciichat_error_t compress_data(const void *input, size_t input_size, void **out
 // Decompress data using zstd
 asciichat_error_t decompress_data(const void *input, size_t input_size, void *output, size_t output_size) {
   if (!input || input_size == 0 || !output || output_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu", input,
-                     input_size, output, output_size);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu",
+                     input, input_size, output, output_size);
   }
 
   size_t ret = ZSTD_decompress(output, output_size, input, input_size);

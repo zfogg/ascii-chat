@@ -73,10 +73,10 @@ typedef struct {
 static crypto_options_test_case_t crypto_options_cases[] = {
     // Note: --help and --version tests are separate (they call _exit(0))
     // Use "" instead of NULL for static char arrays (Criterion fork compatibility)
-    {"Disable encryption", 2, {"program", "--no-encrypt"}, true, true, false, false, false, "", "", "", 0},
+    {"Disable encryption", 3, {"program", "client", "--no-encrypt"}, true, true, false, false, false, "", "", "", 0},
     {"Set password key",
-     3,
-     {"program", "--key", "mypassword"},
+     4,
+     {"program", "client", "--key", "mypassword"},
      true,
      false,
      true,
@@ -87,8 +87,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"Set server key file (client only)",
-     3,
-     {"program", "--server-key", "/etc/ascii-chat/server_key"},
+     4,
+     {"program", "client", "--server-key", "/etc/ascii-chat/server_key"},
      true,                         // --server-key is CLIENT ONLY (client verifies server's public key)
      false,                        // expect_no_encrypt
      false,                        // expect_key_set
@@ -99,8 +99,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",                           // expected_client_keys
      0},                           // expected_result
     {"Set client keys file (server only)",
-     3,
-     {"program", "--client-keys", "/etc/ascii-chat/authorized_keys"},
+     4,
+     {"program", "server", "--client-keys", "/etc/ascii-chat/authorized_keys"},
      false,
      false,
      false,
@@ -111,8 +111,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "/etc/ascii-chat/authorized_keys",
      0},
     {"Multiple crypto options",
-     4,
-     {"program", "--no-encrypt", "--key", "password"},
+     5,
+     {"program", "client", "--no-encrypt", "--key", "password"},
      true,
      true,
      true,
@@ -123,8 +123,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"GitHub key reference",
-     3,
-     {"program", "--key", "github:username"},
+     4,
+     {"program", "client", "--key", "github:username"},
      true,
      false,
      true,
@@ -135,8 +135,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"GitLab key reference",
-     3,
-     {"program", "--key", "gitlab:username"},
+     4,
+     {"program", "client", "--key", "gitlab:username"},
      true,
      false,
      true,
@@ -147,8 +147,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"GPG key reference",
-     3,
-     {"program", "--key", "gpg:0x1234567890ABCDEF"},
+     4,
+     {"program", "client", "--key", "gpg:0x1234567890ABCDEF"},
      true,
      false,
      true,
@@ -159,8 +159,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"Raw X25519 key",
-     3,
-     {"program", "--key", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+     4,
+     {"program", "client", "--key", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
      true,
      false,
      true,
@@ -171,8 +171,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"SSH Ed25519 key",
-     3,
-     {"program", "--key", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGplY2VrZXJzIGVkMjU1MTkga2V5"},
+     4,
+     {"program", "client", "--key", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGplY2VrZXJzIGVkMjU1MTkga2V5"},
      true,
      false,
      true,
@@ -183,8 +183,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"Long password key",
-     3,
-     {"program", "--key", "very-long-password-with-special-chars!@#$%^&*()"},
+     4,
+     {"program", "client", "--key", "very-long-password-with-special-chars!@#$%^&*()"},
      true,
      false,
      true,
@@ -194,8 +194,8 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      "",
      0},
-    {"Empty key (should fail)", 3, {"program", "--key", ""}, true, false, false, false, false, "", "", "", -1},
-    {"Missing key value (should fail)", 2, {"program", "--key"}, true, false, false, false, false, "", "", "", -1}};
+    {"Empty key (should fail)", 4, {"program", "client", "--key", ""}, true, false, false, false, false, "", "", "", -1},
+    {"Missing key value (should fail)", 3, {"program", "client", "--key"}, true, false, false, false, false, "", "", "", -1}};
 // clang-format on
 
 ParameterizedTestParameters(crypto_options, crypto_options_parsing_tests) {
@@ -216,7 +216,7 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
   }
 
   // Initialize options and check return value
-  asciichat_error_t result = options_init(tc->argc, argv_ptrs, tc->is_client);
+  asciichat_error_t result = options_init(tc->argc, argv_ptrs);
 
   // Check return value matches expectation
   if (tc->expected_result == 0) {
@@ -260,10 +260,10 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 // =============================================================================
 
 Test(crypto_options, client_only_options) {
-  const char *argv[] = {"program", "--server-key", "/path/to/server/key"};
+  const char *argv[] = {"program", "client", "--server-key", "/path/to/server/key"};
 
   // --server-key is client-only, should work for client
-  asciichat_error_t result = options_init(3, (char **)argv, true);
+  asciichat_error_t result = options_init(4, (char **)argv);
 
   cr_assert_eq(result, ASCIICHAT_OK, "Client-only option should work for client");
 
@@ -275,10 +275,10 @@ Test(crypto_options, client_only_options) {
 }
 
 Test(crypto_options, server_only_options) {
-  const char *argv[] = {"program", "--client-keys", "/path/to/authorized_keys"};
+  const char *argv[] = {"program", "server", "--client-keys", "/path/to/authorized_keys"};
 
   // This should work for server
-  options_init(3, (char **)argv, false);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -290,7 +290,7 @@ Test(crypto_options, server_only_options) {
 Test(crypto_options, mutually_exclusive_options) {
   const char *argv[] = {"program", "--no-encrypt", "--key", "password"};
 
-  options_init(4, (char **)argv, true);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -315,8 +315,8 @@ Test(crypto_options, invalid_key_formats) {
     // Reset globals between iterations since we're calling options_init() multiple times
     reset_crypto_options();
 
-    const char *argv[] = {"program", "--key", invalid_keys[i]};
-    options_init(3, (char **)argv, true);
+    const char *argv[] = {"program", "client", "--key", invalid_keys[i]};
+    options_init(4, (char **)argv);
 
     // Get options from RCU state
     const options_t *opts = options_get();
@@ -336,9 +336,9 @@ Test(crypto_options, very_long_key_value) {
   memset(long_key, 'A', 250);
   long_key[250] = '\0';
 
-  const char *argv[] = {"program", "--key", long_key};
+  const char *argv[] = {"program", "client", "--key", long_key};
 
-  options_init(3, (char **)argv, true);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -349,9 +349,9 @@ Test(crypto_options, very_long_key_value) {
 
 Test(crypto_options, special_characters_in_key) {
   const char *special_key = "key!@#$%^&*()_+-=[]{}|;':\",./<>?`~";
-  const char *argv[] = {"program", "--key", special_key};
+  const char *argv[] = {"program", "client", "--key", special_key};
 
-  options_init(3, (char **)argv, true);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -362,9 +362,9 @@ Test(crypto_options, special_characters_in_key) {
 
 Test(crypto_options, unicode_characters_in_key) {
   const char *unicode_key = "key_with_unicode_测试_🔑";
-  const char *argv[] = {"program", "--key", unicode_key};
+  const char *argv[] = {"program", "client", "--key", unicode_key};
 
-  options_init(3, (char **)argv, true);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -374,9 +374,9 @@ Test(crypto_options, unicode_characters_in_key) {
 }
 
 Test(crypto_options, empty_arguments) {
-  const char *argv[] = {"program"};
+  const char *argv[] = {"program", "client"};
 
-  options_init(1, (char **)argv, true);
+  options_init(2, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -388,7 +388,7 @@ Test(crypto_options, empty_arguments) {
 
 Test(crypto_options, null_arguments) {
   // This should not crash
-  options_init(0, NULL, true);
+  options_init(0, NULL);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -414,13 +414,16 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
 
   // Build argv based on theory parameters - use static strings
   static const char *program = "program";
+  static const char *client_mode = "client";
+  static const char *server_mode = "server";
   static const char *no_encrypt_opt = "--no-encrypt";
   static const char *key_opt = "--key";
   static const char *key_val = "test-key";
 
   const char *argv[10];
-  int argc = 1;
-  argv[0] = program;
+  int argc = 0;
+  argv[argc++] = program;
+  argv[argc++] = is_client ? client_mode : server_mode;
 
   if (no_encrypt) {
     argv[argc++] = no_encrypt_opt;
@@ -431,7 +434,7 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
     argv[argc++] = key_val;
   }
 
-  options_init(argc, (char **)argv, is_client);
+  options_init(argc, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -446,10 +449,10 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
 // =============================================================================
 
 Test(crypto_options, absolute_file_paths) {
-  const char *argv[] = {"program", "--server-key", "/etc/ascii-chat/server_key"};
+  const char *argv[] = {"program", "client", "--server-key", "/etc/ascii-chat/server_key"};
 
   // --server-key is CLIENT ONLY (client verifies server's public key)
-  options_init(3, (char **)argv, true);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -459,9 +462,9 @@ Test(crypto_options, absolute_file_paths) {
 }
 
 Test(crypto_options, relative_file_paths) {
-  const char *argv[] = {"program", "--client-keys", "./authorized_keys"};
+  const char *argv[] = {"program", "server", "--client-keys", "./authorized_keys"};
 
-  options_init(3, (char **)argv, false);
+  options_init(4, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -479,7 +482,7 @@ Test(crypto_options, help_display, .exit_code = 0) {
   const char *argv[] = {"program", "--help"};
 
   // This will call _exit(0) after printing help
-  options_init(2, (char **)argv, true);
+  options_init(2, (char **)argv);
 
   // Should never reach here due to _exit(0)
   cr_fatal("Should have exited before reaching this line");
@@ -490,7 +493,7 @@ Test(crypto_options, version_display, .exit_code = 0) {
   const char *argv[] = {"program", "--version"};
 
   // This will call _exit(0) after printing version
-  options_init(2, (char **)argv, true);
+  options_init(2, (char **)argv);
 
   // Should never reach here due to _exit(0)
   cr_fatal("Should have exited before reaching this line");
@@ -505,7 +508,7 @@ Test(crypto_options, many_options) {
   // So we test with client mode and skip --client-keys
   const char *argv[] = {"program", "--no-encrypt", "--key", "password", "--server-key", "/etc/server_key"};
 
-  options_init(6, (char **)argv, true); // true = client mode for --server-key
+  options_init(6, (char **)argv); // true = client mode for --server-key
 
   // Get options from RCU state
   const options_t *opts = options_get();
@@ -519,7 +522,7 @@ Test(crypto_options, many_options) {
 Test(crypto_options, repeated_options) {
   const char *argv[] = {"program", "--key", "first-key", "--key", "second-key"};
 
-  options_init(5, (char **)argv, true);
+  options_init(5, (char **)argv);
 
   // Get options from RCU state
   const options_t *opts = options_get();

@@ -693,8 +693,8 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
   }
 
-  asciichat_error_t packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                                            (crypto_context_t *)crypto_ctx);
+  asciichat_error_t packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state,
+                                                            sizeof(net_state), (crypto_context_t *)crypto_ctx);
   if (packet_send_result != ASCIICHAT_OK) {
     log_warn("Failed to send initial server state to client %u: %s", atomic_load(&client->client_id),
              asciichat_error_string(packet_send_result));
@@ -1750,8 +1750,9 @@ void broadcast_server_state_to_all_clients(void) {
         continue;
       }
 
-      asciichat_error_t result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state,
-                                                    sizeof(net_state), (crypto_context_t *)client_snapshots[i].crypto_ctx);
+      asciichat_error_t result =
+          send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                             (crypto_context_t *)client_snapshots[i].crypto_ctx);
       mutex_unlock(&target->send_mutex);
 
       if (result != ASCIICHAT_OK) {
@@ -2026,7 +2027,8 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     mutex_unlock(&client->client_state_mutex);
     // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
     mutex_lock(&client->send_mutex);
-    asciichat_error_t pong_result = send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx);
+    asciichat_error_t pong_result =
+        send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx);
     mutex_unlock(&client->send_mutex);
     if (pong_result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,

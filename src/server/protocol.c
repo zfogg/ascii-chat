@@ -1379,7 +1379,8 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
 
   // Write decoded samples to client's incoming audio buffer
   if (client->incoming_audio_buffer && decoded_count > 0) {
-    asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, decoded_count);
+    asciichat_error_t write_result =
+        audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, decoded_count);
     if (write_result != ASCIICHAT_OK) {
       log_error("Failed to write decoded Opus samples to buffer: %s", asciichat_error_string(write_result));
     }

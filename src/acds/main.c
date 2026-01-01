@@ -43,7 +43,22 @@ int main(int argc, char **argv) {
   asciichat_error_t result;
 
   // Parse command-line arguments using options module
-  result = options_init(argc, argv, MODE_ACDS);
+  // Note: ACDS is a separate binary, so argv[0] is the program name
+  // We need to insert "acds" mode argument for options parsing
+  char **acds_argv = SAFE_MALLOC((size_t)(argc + 2) * sizeof(char *), char **);
+  if (!acds_argv) {
+    return ERROR_MEMORY;
+  }
+  acds_argv[0] = argv[0];
+  acds_argv[1] = "acds";
+  for (int i = 1; i < argc; i++) {
+    acds_argv[i + 1] = argv[i];
+  }
+  acds_argv[argc + 1] = NULL;
+
+  result = options_init(argc + 1, acds_argv);
+
+  SAFE_FREE(acds_argv);
   if (result != ASCIICHAT_OK) {
     return result;
   }

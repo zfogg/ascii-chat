@@ -58,9 +58,8 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
       optind = 1;                                                                                                      \
       opterr = 1;                                                                                                      \
       optopt = 0;                                                                                                      \
-      /* Convert boolean to asciichat_mode_t enum */                                                                   \
-      asciichat_mode_t mode = is_client_val ? MODE_CLIENT : MODE_SERVER;                                               \
-      options_init(argc, argv, mode);                                                                                  \
+      /* options_init now auto-detects mode from argv */                                                              \
+      options_init(argc, argv);                                                                                  \
       /* Get options from RCU for assertions */                                                                        \
       const options_t *opts = options_get();                                                                           \
       option_assertions                                                                                                \
@@ -122,9 +121,8 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
       argv_with_null = argv;
     }
 
-    // Convert boolean is_client to asciichat_mode_t enum
-    asciichat_mode_t mode = is_client ? MODE_CLIENT : MODE_SERVER;
-    asciichat_error_t result = options_init(argc, argv_with_null, mode);
+    // options_init now auto-detects mode from argv
+    asciichat_error_t result = options_init(argc, argv_with_null);
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {
       // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
@@ -152,10 +150,10 @@ Test(options, default_values) {
   save_options(&backup);
 
   // Initialize options with minimal args to get defaults
-  char *argv[] = {"client", NULL};
-  int argc = 1;
+  char *argv[] = {"program", "client", NULL};
+  int argc = 2;
   optind = 1;
-  options_init(argc, argv, MODE_CLIENT);
+  options_init(argc, argv);
 
   // Get options from RCU for assertions
   const options_t *opts = options_get();
@@ -280,8 +278,8 @@ ParameterizedTestParameters(options, ip_address_validation) {
 }
 
 ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation) {
-  char *argv[] = {"client", (char *)tc->address, NULL};
-  int argc = 2;
+  char *argv[] = {"program", "client", (char *)tc->address, NULL};
+  int argc = 3;
   options_backup_t backup;
   save_options(&backup);
 
@@ -295,7 +293,7 @@ ParameterizedTest(ip_validation_test_case_t *tc, options, ip_address_validation)
     optind = 1;
     opterr = 1;
     optopt = 0;
-    options_init(argc, argv, MODE_CLIENT);
+    options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     cr_assert_str_eq(opts->address, tc->address, "%s should set address correctly", tc->description);
@@ -368,8 +366,8 @@ ParameterizedTestParameters(options, port_validation) {
 }
 
 ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
-  char *argv[] = {"client", "-p", (char *)tc->port, NULL};
-  int argc = 3;
+  char *argv[] = {"program", "client", "-p", (char *)tc->port, NULL};
+  int argc = 4;
   options_backup_t backup;
   save_options(&backup);
 
@@ -383,7 +381,7 @@ ParameterizedTest(port_validation_test_case_t *tc, options, port_validation) {
     optind = 1;
     opterr = 1;
     optopt = 0;
-    options_init(argc, argv, MODE_CLIENT);
+    options_init(argc, argv);
     // Get options from RCU for assertions
     const options_t *opts = options_get();
     cr_assert_str_eq(opts->port, tc->port, "%s should set port correctly", tc->description);
