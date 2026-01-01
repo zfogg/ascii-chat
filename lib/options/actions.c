@@ -12,6 +12,9 @@
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
+#include "options/server.h"
+#include "options/client.h"
+#include "options/mirror.h"
 #include "platform/terminal.h"
 #include "version.h"
 #include "video/webcam/webcam.h"
@@ -178,6 +181,28 @@ void action_show_version(void) {
   (void)fprintf(stdout, "\n");
   (void)fprintf(stdout, "For more information: https://github.com/zfogg/ascii-chat\n");
 
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+// ============================================================================
+// Help Actions
+// ============================================================================
+
+void action_help_server(void) {
+  usage_server(stdout);
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+void action_help_client(void) {
+  usage_client(stdout);
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+void action_help_mirror(void) {
+  usage_mirror(stdout);
   (void)fflush(stdout);
   _exit(0);
 }

@@ -55,7 +55,7 @@ These options apply to all modes and must be specified \fBbefore\fR the mode arg
 .BR \-h ", " \-\-help
 Print usage information and exit.
 .TP
-.BR \-v ", " \-\-version
+.BR \-V ", " \-\-version
 Print version information and exit.
 .TP
 .BR \-\-config =\fIPATH\fR
@@ -67,15 +67,15 @@ If PATH is not specified, uses the default location.
 If the file exists, prompts for confirmation to overwrite.
 Supports piped input for scripting (e.g., \fCecho "y" | ascii-chat --config-create\fR).
 .TP
-.BR \-V ", " \-\-verbose
+.BR \-v ", " \-\-verbose
 Increase output verbosity. Can be specified multiple times for increased detail:
 .RS
 .IP \(bu 2
-\fB\-V\fR: More detailed output
+\fB\-v\fR: More detailed output
 .IP \(bu 2
-\fB\-VV\fR: Even more detail
+\fB\-vv\fR: Even more detail
 .IP \(bu 2
-\fB\-VVV\fR: Maximum verbosity
+\fB\-vvv\fR: Maximum verbosity
 .RE
 .TP
 .BR \-L ", " \-\-log\-file =\fIPATH\fR

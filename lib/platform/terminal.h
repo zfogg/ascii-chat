@@ -422,6 +422,8 @@ asciichat_error_t terminal_clear_scrollback(int fd);
  * @ingroup platform
  */
 typedef enum {
+  /** @brief Auto-detect color support from terminal capabilities */
+  TERM_COLOR_AUTO = -1,
   /** @brief No color support (monochrome terminal) */
   TERM_COLOR_NONE = 0,
   /** @brief 16-color support (standard ANSI colors) */

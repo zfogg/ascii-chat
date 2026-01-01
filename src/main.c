@@ -888,6 +888,17 @@ int main(int argc, char *argv[]) {
   log_debug("Lock debug system initialized successfully");
 #endif
 
+  // Set global FPS from command-line option if provided
+  extern int g_max_fps;
+  if (opts->fps > 0) {
+    if (opts->fps < 1 || opts->fps > 144) {
+      log_warn("FPS value %d out of range (1-144), using default", opts->fps);
+    } else {
+      g_max_fps = opts->fps;
+      log_debug("Set FPS from command line: %d", g_max_fps);
+    }
+  }
+
   /** @} */
 
   /**

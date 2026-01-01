@@ -11,6 +11,7 @@
  */
 
 #include "options/acds.h"
+#include "options/builder.h"
 #include "options/common.h"
 
 #include "asciichat_errno.h"
@@ -19,7 +20,6 @@
 #include "options/options.h"
 #include "options/validation.h"
 #include "util/ip.h"
-#include "util/parsing.h"
 #include "util/path.h"
 #include "version.h"
 
@@ -29,7 +29,6 @@
 #include <getopt.h>
 #endif
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +44,11 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ============================================================================
 // ACDS Options Array
 // ============================================================================
+
+// Note: ACDS uses manual parsing due to its unique global variables
+// (opt_acds_database_path, opt_acds_key_path, opt_acds_port) that aren't
+// part of the common options_t structure. ACDS is a separate binary from
+// the unified ascii-chat binary, so it makes sense for it to have custom parsing.
 
 static struct option acds_options[] = {
     {"port", required_argument, NULL, 'p'},      {"db", required_argument, NULL, 'd'},
@@ -70,7 +74,6 @@ asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
       _exit(0);
     }
     if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-      // Print version and exit
       acds_print_version();
       (void)fflush(stdout);
       _exit(0);
@@ -87,15 +90,10 @@ asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
 
     char argbuf[1024];
     switch (c) {
-    case 0:
-      // Long-only options
-      break;
-
     case 'p': { // --port
       char *value_str = validate_required_argument(optarg, argbuf, sizeof(argbuf), "port", MODE_ACDS);
       if (!value_str)
         return option_error_invalid();
-
       char *endptr;
       long port = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || port < 1 || port > 65535) {
@@ -103,6 +101,7 @@ asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
         return option_error_invalid();
       }
       opt_acds_port = (int)port;
+      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%d", opt_acds_port);
       break;
     }
 
@@ -145,7 +144,6 @@ asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
       _exit(0);
 
     case 'v': // --version
-      // Print version and exit
       acds_print_version();
       (void)fflush(stdout);
       _exit(0);
@@ -160,12 +158,7 @@ asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
     default: {
       const char *unknown = argv[optind - 1];
       if (unknown && unknown[0] == '-' && unknown[1] == '-') {
-        const char *suggestion = find_similar_option(unknown + 2, acds_options);
-        if (suggestion) {
-          (void)fprintf(stderr, "acds: unknown option '%s'. Did you mean '--%s'?\n", unknown, suggestion);
-        } else {
-          (void)fprintf(stderr, "acds: unknown option '%s'\n", unknown);
-        }
+        (void)fprintf(stderr, "acds: unknown option '%s'\n", unknown);
       } else {
         (void)fprintf(stderr, "acds: invalid option\n");
       }

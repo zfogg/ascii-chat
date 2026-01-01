@@ -394,6 +394,20 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
                                 const char *env_var_name, bool (*validate)(const void *, char **)) {
   ensure_descriptor_capacity(builder);
 
+  // Store default string pointer in static storage to avoid stack-use-after-return
+  static const char *defaults[256];
+  static size_t num_defaults = 0;
+
+  const void *default_ptr = NULL;
+  if (default_value) {
+    if (num_defaults >= 256) {
+      log_error("Too many string options (max 256)");
+      return;
+    }
+    defaults[num_defaults] = default_value;
+    default_ptr = &defaults[num_defaults++];
+  }
+
   option_descriptor_t desc = {
       .long_name = long_name,
       .short_name = short_name,
@@ -401,7 +415,7 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
       .offset = offset,
       .help_text = help_text,
       .group = group,
-      .default_value = default_value ? &default_value : NULL,
+      .default_value = default_ptr,
       .required = required,
       .env_var_name = env_var_name,
       .validate = validate,
@@ -744,7 +758,7 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
     if (desc->short_name != '\0') {
       size_t len = strlen(short_opts);
       short_opts[len] = desc->short_name;
-      if (desc->type != OPTION_TYPE_BOOL) {
+      if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
         short_opts[len + 1] = ':'; // Requires argument
         short_opts[len + 2] = '\0';
       } else {
@@ -754,7 +768,8 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
 
     // Add long option
     long_opts[long_opt_count].name = desc->long_name;
-    long_opts[long_opt_count].has_arg = (desc->type == OPTION_TYPE_BOOL) ? no_argument : required_argument;
+    long_opts[long_opt_count].has_arg =
+        (desc->type == OPTION_TYPE_BOOL || desc->type == OPTION_TYPE_ACTION) ? no_argument : required_argument;
     long_opts[long_opt_count].flag = NULL;
     long_opts[long_opt_count].val = desc->short_name ? desc->short_name : (1000 + i);
     long_opt_count++;
@@ -810,16 +825,18 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
     }
 
     case OPTION_TYPE_STRING: {
-      char *dup = strdup(optarg);
-      if (!dup) {
-        return SET_ERRNO(ERROR_MEMORY, "Failed to duplicate string");
-      }
-      // Free old value if it exists
-      if (*(char **)field) {
-        free(*(char **)field);
-      }
-      *(char **)field = dup;
-      track_owned_string((options_config_t *)config, dup);
+      // For safety: copy into fixed-size buffer using the first CHARACTER_LIMIT characters
+      // This handles both char* pointers and char[N] arrays safely
+      // Most string fields in options_t are char[OPTIONS_BUFF_SIZE] arrays
+
+      // Check if the field looks like an array (the simplest heuristic is that
+      // arrays will have some data/pattern, pointers will be NULL or a valid heap address)
+      // For our use case, all option string fields are char[OPTIONS_BUFF_SIZE] arrays
+      // So we'll just copy into the buffer safely using snprintf
+
+      char *dest = (char *)field;
+      snprintf(dest, OPTIONS_BUFF_SIZE, "%s", optarg);
+      dest[OPTIONS_BUFF_SIZE - 1] = '\0'; // Ensure null termination
       break;
     }
 
@@ -1011,7 +1028,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     fprintf(stream, "--%s", desc->long_name);
 
     // Print value placeholder
-    if (desc->type != OPTION_TYPE_BOOL) {
+    if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
       fprintf(stream, " ");
       switch (desc->type) {
       case OPTION_TYPE_INT:

@@ -156,7 +156,7 @@
 typedef terminal_color_level_t terminal_color_mode_t;
 
 /** @brief Backward compatibility aliases for color mode enum values */
-#define COLOR_MODE_AUTO (-1)                      ///< Auto-detect color support (not in terminal_color_level_t)
+#define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
 #define COLOR_MODE_NONE TERM_COLOR_NONE           ///< Monochrome mode
 #define COLOR_MODE_16 TERM_COLOR_16               ///< 16-color mode (alias)
 #define COLOR_MODE_16_COLOR TERM_COLOR_16         ///< 16-color mode (full name)
@@ -460,6 +460,7 @@ typedef struct options_state {
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
   unsigned short int force_utf8;        ///< Force UTF-8 support
+  int fps;                              ///< Target framerate (1-144, 0=use default)
 
   // ============================================================================
   // Audio Configuration

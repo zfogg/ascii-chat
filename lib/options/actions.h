@@ -47,3 +47,27 @@ void action_show_capabilities(void);
  * Exits with code 0.
  */
 void action_show_version(void);
+
+/**
+ * @brief Show server mode help and exit
+ *
+ * Displays server mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_server(void);
+
+/**
+ * @brief Show client mode help and exit
+ *
+ * Displays client mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_client(void);
+
+/**
+ * @brief Show mirror mode help and exit
+ *
+ * Displays mirror mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_mirror(void);
