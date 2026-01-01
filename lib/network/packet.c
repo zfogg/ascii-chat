@@ -213,6 +213,30 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
     // Note: Proper size validation is done in crypto_handshake_validate_packet_size()
     // which uses the session's crypto parameters for accurate validation
     break;
+  // ACIP protocol packets (Discovery Service)
+  case PACKET_TYPE_ACIP_SESSION_CREATE:
+  case PACKET_TYPE_ACIP_SESSION_CREATED:
+  case PACKET_TYPE_ACIP_SESSION_LOOKUP:
+  case PACKET_TYPE_ACIP_SESSION_INFO:
+  case PACKET_TYPE_ACIP_SESSION_JOIN:
+  case PACKET_TYPE_ACIP_SESSION_JOINED:
+  case PACKET_TYPE_ACIP_SESSION_LEAVE:
+  case PACKET_TYPE_ACIP_SESSION_END:
+  case PACKET_TYPE_ACIP_SESSION_RECONNECT:
+  case PACKET_TYPE_ACIP_WEBRTC_SDP:
+  case PACKET_TYPE_ACIP_WEBRTC_ICE:
+  case PACKET_TYPE_ACIP_STRING_RESERVE:
+  case PACKET_TYPE_ACIP_STRING_RESERVED:
+  case PACKET_TYPE_ACIP_STRING_RENEW:
+  case PACKET_TYPE_ACIP_STRING_RELEASE:
+  case PACKET_TYPE_ACIP_DISCOVERY_PING:
+  case PACKET_TYPE_ACIP_ERROR:
+    // ACIP packets - basic size validation
+    // Discovery service packets can vary in size (variable-length strings, etc.)
+    if (len > 65536) { // 64KB max for discovery packets
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "ACIP packet too large: %u bytes (max 65536)", len);
+    }
+    break;
   default:
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown packet type: %u", type);
   }

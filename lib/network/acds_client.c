@@ -133,6 +133,10 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
     // Variable part would follow here (not implemented yet)
   }
 
+  // Server connection information
+  SAFE_STRNCPY(req.server_address, params->server_address, sizeof(req.server_address));
+  req.server_port = params->server_port;
+
   // Send SESSION_CREATE packet
   asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
   if (send_result != ASCIICHAT_OK) {
@@ -248,9 +252,13 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
     result->has_password = resp->has_password != 0;
     result->created_at = resp->created_at;
     result->expires_at = resp->expires_at;
+    result->require_server_verify = resp->require_server_verify != 0;
+    result->require_client_verify = resp->require_client_verify != 0;
 
-    log_info("Session found: %s (%d/%d participants)", session_string, result->current_participants,
-             result->max_participants);
+    log_info("Session found: %s (%d/%d participants, password=%s, policies: server_verify=%d client_verify=%d)",
+             session_string, result->current_participants, result->max_participants,
+             result->has_password ? "required" : "not required", result->require_server_verify,
+             result->require_client_verify);
   } else {
     log_info("Session not found: %s", session_string);
   }
@@ -328,8 +336,11 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
   if (result->success) {
     memcpy(result->participant_id, resp->participant_id, 16);
     memcpy(result->session_id, resp->session_id, 16);
-    log_info("Joined session successfully (participant ID: %02x%02x...)", result->participant_id[0],
-             result->participant_id[1]);
+    // Server connection information (ONLY revealed after successful authentication)
+    SAFE_STRNCPY(result->server_address, resp->server_address, sizeof(result->server_address));
+    result->server_port = resp->server_port;
+    log_info("Joined session successfully (participant ID: %02x%02x..., server=%s:%d)", result->participant_id[0],
+             result->participant_id[1], result->server_address, result->server_port);
   } else {
     result->error_code = resp->error_code;
     size_t msg_len = strnlen(resp->error_message, sizeof(resp->error_message));

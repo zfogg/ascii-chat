@@ -76,26 +76,6 @@ typedef struct {
   log_level_t log_level;        ///< Logging verbosity level
   bool require_server_identity; ///< Require servers to provide signed identity when creating sessions
   bool require_client_identity; ///< Require clients to provide signed identity when joining sessions
+  bool require_server_verify;   ///< ACDS policy: require servers to verify client identity during handshake
+  bool require_client_verify;   ///< ACDS policy: require clients to verify server identity during handshake
 } acds_config_t;
-
-/**
- * @brief Parse command-line arguments
- *
- * @param argc Argument count from main()
- * @param argv Argument vector from main()
- * @param config Output configuration structure
- * @return ASCIICHAT_OK on success, ERROR_USAGE on parse error
- */
-asciichat_error_t acds_parse_args(int argc, char **argv, acds_config_t *config);
-
-/**
- * @brief Print usage information
- *
- * @param program_name Program name (argv[0])
- */
-void acds_print_usage(const char *program_name);
-
-/**
- * @brief Print version information
- */
-void acds_print_version(void);

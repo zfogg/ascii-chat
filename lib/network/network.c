@@ -443,11 +443,11 @@ asciichat_error_t set_socket_timeout(socket_t sockfd, int timeout_seconds) {
   timeout.tv_usec = 0;
 
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket receive timeout");
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket receive timeout");
   }
 
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket send timeout");
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket send timeout");
   }
 
   return ASCIICHAT_OK;
@@ -464,7 +464,7 @@ asciichat_error_t set_socket_keepalive(socket_t sockfd) {
   }
   int result = socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
   if (result != 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket keepalive parameters");
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket keepalive parameters");
   }
   return ASCIICHAT_OK;
 }
@@ -480,7 +480,7 @@ asciichat_error_t set_socket_nonblocking(socket_t sockfd) {
   }
   int result = socket_set_nonblocking(sockfd, true);
   if (result != 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket non-blocking mode");
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket non-blocking mode");
   }
   return ASCIICHAT_OK;
 }

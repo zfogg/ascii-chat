@@ -7,6 +7,7 @@
  */
 
 #include "acds/session.h"
+#include "acds/main.h"
 #include "acds/strings.h"
 #include "log/logging.h"
 #include <string.h>
@@ -226,6 +227,10 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
   session->has_password = req->has_password != 0;
   session->current_participants = 0;
 
+  // Server connection information
+  SAFE_STRNCPY(session->server_address, req->server_address, sizeof(session->server_address));
+  session->server_port = req->server_port;
+
   // Hash password if provided
   if (session->has_password) {
     memcpy(session->password_hash, req->password_hash, sizeof(session->password_hash));
@@ -255,9 +260,10 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t session_lookup(session_registry_t *registry, const char *session_string, acip_session_info_t *resp) {
-  if (!registry || !session_string || !resp) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, session_string, or resp is NULL");
+asciichat_error_t session_lookup(session_registry_t *registry, const char *session_string, const acds_config_t *config,
+                                 acip_session_info_t *resp) {
+  if (!registry || !session_string || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, session_string, config, or resp is NULL");
   }
 
   memset(resp, 0, sizeof(*resp));
@@ -276,7 +282,7 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
     return ASCIICHAT_OK;
   }
 
-  // Fill response
+  // Fill response - session data
   resp->found = 1;
   memcpy(resp->session_id, session->session_id, 16);
   memcpy(resp->host_pubkey, session->host_pubkey, 32);
@@ -286,6 +292,14 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
   resp->has_password = session->has_password;
   resp->created_at = session->created_at;
   resp->expires_at = session->expires_at;
+
+  // Fill response - ACDS policy flags
+  resp->require_server_verify = config->require_server_verify ? 1 : 0;
+  resp->require_client_verify = config->require_client_verify ? 1 : 0;
+
+  // NOTE: Server connection information (IP/port) is NOT included in SESSION_INFO.
+  // It is only revealed after successful authentication via SESSION_JOIN to prevent
+  // IP address leakage to unauthenticated clients.
 
   rwlock_rdunlock(&registry->lock);
 
@@ -386,10 +400,14 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   memcpy(resp->participant_id, participant->participant_id, 16);
   memcpy(resp->session_id, session->session_id, 16);
 
+  // Server connection information (ONLY revealed after successful authentication)
+  SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
+  resp->server_port = session->server_port;
+
   rwlock_wrunlock(&registry->lock);
 
-  log_info("Participant joined session %s (participants=%d/%d)", session_string, session->current_participants,
-           session->max_participants);
+  log_info("Participant joined session %s (participants=%d/%d, server=%s:%d)", session_string,
+           session->current_participants, session->max_participants, resp->server_address, resp->server_port);
 
   return ASCIICHAT_OK;
 }

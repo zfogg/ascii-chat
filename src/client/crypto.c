@@ -158,6 +158,7 @@
 #include "crypto/keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
+#include "network/acds_client.h"
 #include "util/time.h"
 #include "util/endian.h"
 #include "capture.h"
@@ -340,6 +341,50 @@ int client_crypto_init(void) {
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
     log_info("Server key verification enabled: %s", server_key);
+  }
+
+  // If --require-client-verify is set, perform ACDS session lookup for server identity
+  if (opts && opts->require_client_verify && strlen(opts->session_string) > 0) {
+    log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", opts->session_string);
+
+    // Connect to ACDS server (default: localhost:27225)
+    // TODO: Make ACDS server address configurable via --acds-server option
+    acds_client_config_t acds_config;
+    acds_client_config_init_defaults(&acds_config);
+    SAFE_STRNCPY(acds_config.server_address, "127.0.0.1", sizeof(acds_config.server_address));
+    acds_config.server_port = 27225;
+    acds_config.timeout_ms = 5000;
+
+    acds_client_t acds_client;
+    asciichat_error_t acds_result = acds_client_connect(&acds_client, &acds_config);
+    if (acds_result != ASCIICHAT_OK) {
+      log_error("Failed to connect to ACDS server at %s:%d", acds_config.server_address, acds_config.server_port);
+      return -1;
+    }
+
+    // Perform SESSION_LOOKUP to get server's identity
+    acds_session_lookup_result_t lookup_result;
+    acds_result = acds_session_lookup(&acds_client, opts->session_string, &lookup_result);
+    acds_client_disconnect(&acds_client);
+
+    if (acds_result != ASCIICHAT_OK || !lookup_result.found) {
+      log_error("ACDS session lookup failed for '%s': %s", opts->session_string,
+                lookup_result.found ? "session not found" : "lookup error");
+      return -1;
+    }
+
+    // Convert server's Ed25519 public key (32 bytes) to hex string
+    char server_key_hex[65]; // 32 bytes * 2 + null terminator
+    for (size_t i = 0; i < 32; i++) {
+      SAFE_SNPRINTF(&server_key_hex[i * 2], 3, "%02x", lookup_result.host_pubkey[i]);
+    }
+    server_key_hex[64] = '\0';
+
+    // Set expected server key for verification during handshake
+    g_crypto_ctx.verify_server_key = true;
+    SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key_hex, sizeof(g_crypto_ctx.expected_server_key) - 1);
+    log_info("ACDS session lookup succeeded - server identity will be verified");
+    log_debug("Expected server key (from ACDS): %s", server_key_hex);
   }
 
   g_crypto_initialized = true;

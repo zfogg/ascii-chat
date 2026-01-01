@@ -29,7 +29,7 @@
  * Client -> Discovery Server
  *
  * Payload structure (fixed + variable):
- * - Fixed part: acip_session_create_t (229 bytes)
+ * - Fixed part: acip_session_create_t (295 bytes)
  * - Variable part: reserved_string (if reserved_string_len > 0)
  */
 typedef struct __attribute__((packed)) {
@@ -45,6 +45,10 @@ typedef struct __attribute__((packed)) {
 
   uint8_t reserved_string_len; ///< 0 = auto-generate, >0 = use provided string
   // char  reserved_string[];        ///< Variable length, follows if len > 0
+
+  // Server connection information (where clients should connect)
+  char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
+  uint16_t server_port;    ///< Port number for client connection
 } acip_session_create_t;
 
 /**
@@ -98,6 +102,9 @@ typedef struct __attribute__((packed)) {
 /**
  * @brief SESSION_INFO (0x23) - Session info response
  * Discovery Server -> Client
+ *
+ * NOTE: Does NOT include server connection information (IP/port).
+ * Server address is only revealed after authentication via SESSION_JOIN.
  */
 typedef struct __attribute__((packed)) {
   uint8_t found;           ///< 0 = not found, 1 = found
@@ -109,6 +116,10 @@ typedef struct __attribute__((packed)) {
   uint8_t has_password; ///< 1 = password required to join
   uint64_t created_at;  ///< Unix ms
   uint64_t expires_at;  ///< Unix ms
+
+  // ACDS Policy Flags (enforced by discovery server)
+  uint8_t require_server_verify; ///< ACDS policy: server must verify client identity
+  uint8_t require_client_verify; ///< ACDS policy: client must verify server identity
 } acip_session_info_t;
 
 /**
@@ -132,6 +143,10 @@ typedef struct __attribute__((packed)) {
 /**
  * @brief SESSION_JOINED (0x25) - Session join response
  * Discovery Server -> Client
+ *
+ * Server connection information is ONLY revealed after successful authentication
+ * (password verification or identity verification). This prevents IP address
+ * leakage to unauthenticated clients who only know the session string.
  */
 typedef struct __attribute__((packed)) {
   uint8_t success;         ///< 0 = failed, 1 = joined
@@ -140,6 +155,10 @@ typedef struct __attribute__((packed)) {
 
   uint8_t participant_id[16]; ///< UUID for this participant (valid if success == 1)
   uint8_t session_id[16];     ///< Session UUID
+
+  // Server connection information (ONLY if success == 1)
+  char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
+  uint16_t server_port;    ///< Port number for client connection
 } acip_session_joined_t;
 
 /**
