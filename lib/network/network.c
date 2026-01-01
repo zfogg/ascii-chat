@@ -431,12 +431,11 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
  * @brief Set socket timeout
  * @param sockfd Socket file descriptor
  * @param timeout_seconds Timeout in seconds
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int set_socket_timeout(socket_t sockfd, int timeout_seconds) {
+asciichat_error_t set_socket_timeout(socket_t sockfd, int timeout_seconds) {
   if (sockfd == INVALID_SOCKET_VALUE) {
-    errno = EBADF;
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket file descriptor");
   }
 
   struct timeval timeout;
@@ -444,40 +443,46 @@ int set_socket_timeout(socket_t sockfd, int timeout_seconds) {
   timeout.tv_usec = 0;
 
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket receive timeout");
   }
 
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0) {
-    return -1;
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket send timeout");
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Set socket keepalive
  * @param sockfd Socket file descriptor
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int set_socket_keepalive(socket_t sockfd) {
+asciichat_error_t set_socket_keepalive(socket_t sockfd) {
   if (sockfd == INVALID_SOCKET_VALUE) {
-    errno = EBADF;
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket file descriptor");
   }
-  return socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
+  int result = socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
+  if (result != 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket keepalive parameters");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Set socket non-blocking
  * @param sockfd Socket file descriptor
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int set_socket_nonblocking(socket_t sockfd) {
+asciichat_error_t set_socket_nonblocking(socket_t sockfd) {
   if (sockfd == INVALID_SOCKET_VALUE) {
-    errno = EBADF;
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket file descriptor");
   }
-  return socket_set_nonblocking(sockfd, true);
+  int result = socket_set_nonblocking(sockfd, true);
+  if (result != 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set socket non-blocking mode");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -546,7 +551,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
   }
 
   // Set socket to non-blocking for timeout control
-  if (set_socket_nonblocking(sockfd) != 0) {
+  if (set_socket_nonblocking(sockfd) != ASCIICHAT_OK) {
     return false;
   }
 

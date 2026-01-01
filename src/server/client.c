@@ -311,8 +311,9 @@ client_info_t *find_client_by_socket(socket_t socket) {
  */
 static void configure_client_socket(socket_t socket, uint32_t client_id) {
   // Enable TCP keepalive to detect dead connections
-  if (set_socket_keepalive(socket) < 0) {
-    log_warn("Failed to set socket keepalive for client %u: %s", client_id, network_error_string());
+  asciichat_error_t keepalive_result = set_socket_keepalive(socket);
+  if (keepalive_result != ASCIICHAT_OK) {
+    log_warn("Failed to set socket keepalive for client %u: %s", client_id, asciichat_error_string(keepalive_result));
   }
 
   // Set socket buffer sizes for large data transmission
@@ -525,9 +526,10 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     // Set timeout for crypto handshake to prevent indefinite blocking
     // This prevents clients from connecting but never completing the handshake
     const int HANDSHAKE_TIMEOUT_SECONDS = 30;
-    if (set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS) < 0) {
+    asciichat_error_t timeout_result = set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS);
+    if (timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to set handshake timeout for client %u: %s", atomic_load(&client->client_id),
-               network_error_string());
+               asciichat_error_string(timeout_result));
       // Continue anyway - timeout is a safety feature, not critical
     }
 
@@ -542,9 +544,10 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
 
     // Clear socket timeout after handshake completes successfully
     // This allows normal operation without timeouts on data transfer
-    if (set_socket_timeout(socket, 0) < 0) {
+    asciichat_error_t clear_timeout_result = set_socket_timeout(socket, 0);
+    if (clear_timeout_result != ASCIICHAT_OK) {
       log_warn("Failed to clear handshake timeout for client %u: %s", atomic_load(&client->client_id),
-               network_error_string());
+               asciichat_error_string(clear_timeout_result));
       // Continue anyway - we can still communicate even with timeout set
     }
 
