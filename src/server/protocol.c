@@ -795,9 +795,11 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         return;
       }
 
-      if (decompress_data(frame_data, data_size, rgb_data, rgb_size) != 0) {
+      asciichat_error_t decompress_result = decompress_data(frame_data, data_size, rgb_data, rgb_size);
+      if (decompress_result != ASCIICHAT_OK) {
         SAFE_FREE(rgb_data);
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes", data_size_sz);
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes: %s", data_size_sz,
+                                       asciichat_error_string(decompress_result));
         return;
       }
 

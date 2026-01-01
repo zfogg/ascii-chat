@@ -431,7 +431,8 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
 
     // Use configured compression level from options (default: 1 for fastest compression)
     int compression_level = (opts && opts->compression_level > 0) ? opts->compression_level : 1;
-    if (compress_data(data, len, &temp_compressed, &compressed_size, compression_level) == 0) {
+    asciichat_error_t compress_result = compress_data(data, len, &temp_compressed, &compressed_size, compression_level);
+    if (compress_result == ASCIICHAT_OK) {
       double ratio = (double)compressed_size / (double)len;
       if (ratio < COMPRESSION_RATIO_THRESHOLD) {
         final_data = temp_compressed;
