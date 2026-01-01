@@ -2,10 +2,11 @@
 /**
  * @file options.c
  * @ingroup options
- * @brief ⚙️ Command-line argument parser dispatcher and initialization
+ * @brief ⚙️ Unified command-line argument parser with built-in mode detection
  *
- * Main entry point for option parsing. Dispatches to mode-specific parsers
- * (client, server, mirror, acds) and handles common initialization and post-processing.
+ * Main entry point for option parsing. Detects mode from command-line arguments,
+ * parses binary-level options, then dispatches to mode-specific parsers
+ * (client, server, mirror, acds) with common initialization and post-processing.
  */
 
 #include "options/options.h"
@@ -36,13 +37,124 @@
 #include <string.h>
 
 // ============================================================================
+// Mode Detection Helper
+// ============================================================================
+
+/**
+ * @brief Detect mode from command-line arguments
+ * @param argc Argument count
+ * @param argv Argument vector
+ * @param out_mode Detected mode (OUTPUT)
+ * @param out_session_string Session string if ACDS mode (OUTPUT, can be NULL)
+ * @param out_mode_index Index of mode in argv (OUTPUT)
+ * @return ASCIICHAT_OK on success, ERROR_USAGE on error or early exit
+ *
+ * Detects mode using this priority:
+ * 1. --help or --version → handled, may exit(0)
+ * 2. First positional argument → matches against mode names
+ * 3. Session string pattern (word-word-word) → client mode
+ * 4. No mode → show help and exit(0)
+ */
+static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode,
+                                               char *out_session_string, int *out_mode_index) {
+  if (out_mode == NULL || out_mode_index == NULL) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Output parameters must not be NULL");
+  }
+
+  *out_mode_index = -1;
+  if (out_session_string) {
+    out_session_string[0] = '\0';
+  }
+
+  // Check for --help or --version BEFORE scanning for mode
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] == '-') {
+      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        // Will be handled by caller
+        *out_mode = MODE_SERVER; // Default, won't be used
+        return ASCIICHAT_OK;
+      }
+      if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
+        // Will be handled by caller
+        *out_mode = MODE_SERVER; // Default, won't be used
+        return ASCIICHAT_OK;
+      }
+    }
+  }
+
+  // Find the first non-option argument (potential mode or session string)
+  int first_positional_idx = -1;
+  for (int i = 1; i < argc; i++) {
+    // Skip options and their arguments
+    if (argv[i][0] == '-') {
+      // Check if this option takes an argument
+      if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0 ||
+           strcmp(argv[i], "--log-level") == 0 || strcmp(argv[i], "--config") == 0) &&
+          i + 1 < argc) {
+        i++; // Skip the argument
+      }
+      continue;
+    }
+
+    // Found a positional argument
+    first_positional_idx = i;
+    break;
+  }
+
+  // If no positional argument found, show help
+  if (first_positional_idx == -1) {
+    // No mode specified - caller will print help and exit
+    *out_mode = MODE_SERVER; // Default
+    *out_mode_index = -1;
+    return ASCIICHAT_OK;
+  }
+
+  const char *positional = argv[first_positional_idx];
+
+  // Try to match against known modes
+  const char *const mode_names[] = {"server", "client", "mirror", "acds", NULL};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_ACDS};
+
+  for (int i = 0; mode_names[i] != NULL; i++) {
+    if (strcmp(positional, mode_names[i]) == 0) {
+      *out_mode = mode_values[i];
+      *out_mode_index = first_positional_idx;
+      return ASCIICHAT_OK;
+    }
+  }
+
+  // Not a known mode - check if it's a session string (word-word-word pattern)
+  int hyphen_count = 0;
+  bool looks_like_session = true;
+
+  for (const char *p = positional; *p != '\0'; p++) {
+    if (*p == '-') {
+      hyphen_count++;
+    } else if (!(*p >= 'a' && *p <= 'z') && !(*p >= 'A' && *p <= 'Z') && !(*p >= '0' && *p <= '9')) {
+      looks_like_session = false;
+      break;
+    }
+  }
+
+  if (looks_like_session && hyphen_count == 2 && strlen(positional) >= 5 && strlen(positional) <= 48) {
+    // This is a session string - treat as client mode
+    *out_mode = MODE_CLIENT;
+    *out_mode_index = first_positional_idx;
+    if (out_session_string) {
+      SAFE_STRNCPY(out_session_string, positional, 64);
+    }
+    return ASCIICHAT_OK;
+  }
+
+  // Unknown positional argument
+  return SET_ERRNO(ERROR_USAGE, "Unknown mode or invalid argument: %s", positional);
+}
+
+// ============================================================================
 // Main Option Parser Entry Point
 // ============================================================================
 
-asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
-  // Track whether audio encoding flags were explicitly set
-  bool encode_audio_explicitly_set = false;
-
+asciichat_error_t options_init(int argc, char **argv) {
   // Validate arguments (safety check for tests)
   if (argc < 0 || argc > 1000) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
@@ -64,8 +176,114 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   }
 
   // Create local options struct and initialize with defaults
-  // This replaces global variable initialization
   options_t opts = {0}; // Zero-initialize all fields
+
+  // ========================================================================
+  // STAGE 1: Mode Detection
+  // ========================================================================
+
+  asciichat_mode_t detected_mode = MODE_SERVER; // Default mode
+  char detected_session_string[64] = {0};
+  int mode_index = -1;
+
+  // Check for --help or --version early (these bypass mode detection)
+  bool show_help = false;
+  bool show_version = false;
+
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] == '-') {
+      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        show_help = true;
+        break;
+      }
+      if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
+        show_version = true;
+        break;
+      }
+    }
+  }
+
+  if (show_help) {
+    // Show top-level help from src/main.c
+    // We'll signal this via the detected_mode field (use a special marker)
+    // Actually, we need to handle this differently...
+    // For now, we'll just set detected_mode and let main.c handle help display
+    // But since there's no help mode, we just need to signal that we want help
+    // We can return ASCIICHAT_OK but set detected_mode to default
+    opts.help = true;
+    opts.detected_mode = MODE_SERVER; // Default
+    options_state_set(&opts);
+    return ASCIICHAT_OK;
+  }
+
+  if (show_version) {
+    opts.version = true;
+    opts.detected_mode = MODE_SERVER; // Default
+    options_state_set(&opts);
+    return ASCIICHAT_OK;
+  }
+
+  // Now detect the actual mode
+  asciichat_error_t mode_detect_result = options_detect_mode(argc, argv, &detected_mode,
+                                                               detected_session_string, &mode_index);
+  if (mode_detect_result != ASCIICHAT_OK) {
+    return mode_detect_result;
+  }
+
+  opts.detected_mode = detected_mode;
+
+  // ========================================================================
+  // STAGE 2: Build argv for mode-specific parsing
+  // ========================================================================
+
+  // If mode was found, build argv with only arguments after the mode
+  // If mode_index == -1, we use all arguments (they become mode-specific args)
+  int mode_argc = argc;
+  char **mode_argv = (char **)argv;
+
+  if (mode_index != -1) {
+    // Mode found at position mode_index
+    // Build new argv: [program_name, args_after_mode...]
+    int args_after_mode = argc - mode_index - 1;
+    mode_argc = 1 + args_after_mode;
+    // Use stack allocation for small argv arrays
+    char *temp_argv_buf[256];
+    if (mode_argc > 256) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", mode_argc);
+    }
+
+    temp_argv_buf[0] = argv[0]; // program name
+    for (int i = 0; i < args_after_mode; i++) {
+      temp_argv_buf[1 + i] = argv[mode_index + 1 + i];
+    }
+    temp_argv_buf[mode_argc] = NULL; // NULL terminate
+
+    // Copy to a buffer that persists
+    // Actually, we can't use stack-allocated array as it goes out of scope
+    // Let's just skip mode_index in the parsing by passing indices
+    // For simplicity, we'll rebuild the argv properly below
+
+    // Actually, let's use a different approach - pass the original argv
+    // and skip arguments before mode_index in the mode-specific parsers
+    // No wait, that's complicated. Let's use malloc for this temporary array.
+
+    char **new_mode_argv = UNTRACKED_MALLOC((size_t)mode_argc * sizeof(char *), char **);
+    if (!new_mode_argv) {
+      return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate mode_argv");
+    }
+
+    new_mode_argv[0] = argv[0];
+    for (int i = 0; i < args_after_mode; i++) {
+      new_mode_argv[1 + i] = argv[mode_index + 1 + i];
+    }
+    new_mode_argv[mode_argc] = NULL;
+
+    mode_argv = new_mode_argv;
+  }
+
+  // ========================================================================
+  // STAGE 3: Set Mode-Specific Defaults
+  // ========================================================================
 
   // Set default dimensions (fallback if terminal size detection fails)
   opts.width = OPT_WIDTH_DEFAULT;
@@ -87,7 +305,7 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
   opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 
-// Set default log file paths for Release builds
+  // Set default log file paths for Release builds
 #ifdef NDEBUG
   char temp_dir[256];
   if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
@@ -98,7 +316,7 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
 #else
                   "/",
 #endif
-                  mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"));
+                  detected_mode == MODE_SERVER ? "server" : (detected_mode == MODE_MIRROR ? "mirror" : "client"));
 
     char *normalized_default_log = NULL;
     if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
@@ -125,52 +343,69 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
   opts.client_keys[0] = '\0';
   opts.palette_custom[0] = '\0';
 
-  // Set different default addresses for client vs server (before config load)
-  if (mode == MODE_CLIENT || mode == MODE_MIRROR) {
-    // Client connects to localhost by default (IPv6-first with IPv4 fallback)
+  // Set different default addresses for different modes
+  if (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR) {
+    // Client/Mirror: connects to localhost by default
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "localhost");
     opts.address6[0] = '\0'; // Client doesn't use address6
-  } else if (mode == MODE_SERVER) {
-    // Server binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
+  } else if (detected_mode == MODE_SERVER) {
+    // Server: binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "127.0.0.1");
-    SAFE_SNPRINTF(opts.address6, OPTIONS_BUFF_SIZE, "::1");
-  } else if (mode == MODE_ACDS) {
-    // ACDS binds to all interfaces by default (0.0.0.0 and ::)
+    // address6 is now a positional argument, not an option
+    opts.address6[0] = '\0';
+  } else if (detected_mode == MODE_ACDS) {
+    // ACDS: binds to all interfaces by default
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "0.0.0.0");
-    SAFE_SNPRINTF(opts.address6, OPTIONS_BUFF_SIZE, "::");
+    opts.address6[0] = '\0';
   }
 
-  // Load configuration from TOML files (if they exist)
-  // This loads system config first (${INSTALL_PREFIX}/etc/ascii-chat/config.toml),
-  // then user config at default location. User config overrides system config.
-  // This happens BEFORE CLI parsing so CLI arguments can override config values.
-  // Config load errors are non-fatal for default location (logged as warnings)
-  bool is_client_or_mirror = (mode == MODE_CLIENT || mode == MODE_MIRROR);
+  // ========================================================================
+  // STAGE 4: Load Configuration Files
+  // ========================================================================
+
+  bool is_client_or_mirror = (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR);
   asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
-  // Dispatch to mode-specific option parser
+  // ========================================================================
+  // STAGE 5: Parse Command-Line Arguments (Mode-Specific)
+  // ========================================================================
+
   asciichat_error_t result = ASCIICHAT_OK;
-  switch (mode) {
+  switch (detected_mode) {
   case MODE_SERVER:
-    result = parse_server_options(argc, argv, &opts);
+    result = parse_server_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_CLIENT:
-    result = parse_client_options(argc, argv, &opts);
+    result = parse_client_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_MIRROR:
-    result = parse_mirror_options(argc, argv, &opts);
+    result = parse_mirror_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_ACDS:
-    result = acds_options_parse(argc, argv, &opts);
+    result = acds_options_parse(mode_argc, mode_argv, &opts);
     break;
   default:
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
+    result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);
+  }
+
+  // Free the temporary mode_argv if we allocated it
+  if (mode_argv != (char **)argv) {
+    UNTRACKED_FREE(mode_argv);
   }
 
   if (result != ASCIICHAT_OK) {
     return result;
   }
+
+  // Set session string if it was detected (ACDS mode via session string pattern)
+  if (detected_session_string[0] != '\0') {
+    SAFE_STRNCPY(opts.session_string, detected_session_string, sizeof(opts.session_string));
+  }
+
+  // ========================================================================
+  // STAGE 6: Post-Processing & Validation
+  // ========================================================================
 
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic
@@ -198,13 +433,15 @@ asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode) {
     opts.test_pattern = true;
   }
 
-  // Apply --no-compress interaction with audio encoding:
-  // If --no-compress is set AND audio encoding was NOT explicitly set via flags,
-  // disable audio encoding by default
-  if (opts.no_compress && !encode_audio_explicitly_set) {
+  // Apply --no-compress interaction with audio encoding
+  if (opts.no_compress) {
     opts.encode_audio = false;
-    log_debug("--no-compress set without explicit audio encoding flag: disabling audio encoding");
+    log_debug("--no-compress set: disabling audio encoding");
   }
+
+  // ========================================================================
+  // STAGE 7: Publish to RCU
+  // ========================================================================
 
   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
   // This makes the options visible to all threads via lock-free reads
