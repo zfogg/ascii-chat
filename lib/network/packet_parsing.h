@@ -73,7 +73,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "common.h"
-#include "util/audio.h"
+#include "audio/audio.h"
 #include "util/endian.h"
 
 /** @name Frame Decoding Functions
@@ -191,37 +191,21 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
  * @ingroup packet_parsing
  * @brief Helpers for parsing audio batch packet headers
  *
- * @note audio_batch_info_t is defined in util/audio.h
+ * @note audio_batch_info_t is defined in audio/audio.h
  */
 
 /**
- * @brief Parse audio batch packet header
+ * @brief Parse audio batch packet header (DEPRECATED: Use audio_parse_batch_header from audio/audio.h)
  *
- * Extracts and validates audio batch header from packet payload.
- * Converts from network byte order to host byte order.
+ * @deprecated Use audio_parse_batch_header() from audio/audio.h instead.
+ * This function is kept for backwards compatibility but should not be used in new code.
  *
- * PACKET FORMAT:
- * - audio_batch_packet_t header (16 bytes)
- * - Float samples[total_samples] (4 bytes each)
- *
- * VALIDATION PERFORMED:
- * - Packet size >= sizeof(audio_batch_packet_t)
- * - batch_count > 0
- * - total_samples > 0
- * - sample_rate is reasonable (8000-192000 Hz)
- * - channels is 1-8
- *
- * @param data Packet payload starting with audio_batch_packet_t
- * @param len Total packet length in bytes
- * @param out_batch Output parameter: parsed batch info
- *
- * @return ASCIICHAT_OK on success, error code on failure
- *         Errors set asciichat_errno with context
- *
- * @note Used by both server and client batch handlers
  * @ingroup packet_parsing
  */
-asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, audio_batch_info_t *out_batch);
+static inline asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, audio_batch_info_t *out_batch) {
+  // Delegate to the canonical implementation in audio/audio.h
+  return audio_parse_batch_header(data, len, out_batch);
+}
 
 /** @} */
 
