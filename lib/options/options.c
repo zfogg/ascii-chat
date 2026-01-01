@@ -240,11 +240,14 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (config_create_path) {
       SAFE_STRNCPY(config_path, config_create_path, sizeof(config_path));
     } else {
-      // Use default config path
-      if (config_get_default_user_path(config_path, sizeof(config_path)) != ASCIICHAT_OK) {
-        fprintf(stderr, "Error: Failed to determine default config path\n");
+      // Use default config path: ~/.ascii-chat/config.toml
+      char *config_dir = get_config_dir();
+      if (!config_dir) {
+        fprintf(stderr, "Error: Failed to determine default config directory\n");
         return ERROR_CONFIG;
       }
+      snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
+      free(config_dir);
     }
 
     // Create config with default options
