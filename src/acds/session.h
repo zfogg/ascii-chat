@@ -13,6 +13,7 @@
 #include "common.h"
 #include "platform/abstraction.h"
 #include "network/acds_protocol.h"
+#include "acds/main.h"
 
 /**
  * @brief Maximum participants per session
@@ -45,6 +46,10 @@ typedef struct session_entry {
 
   uint64_t created_at; ///< Unix timestamp (ms)
   uint64_t expires_at; ///< Unix timestamp (ms) - created_at + 24h
+
+  // Server connection information (where clients should connect)
+  char server_address[64]; ///< IPv4/IPv6 address or hostname
+  uint16_t server_port;    ///< Port number for client connection
 
   participant_t *participants[MAX_PARTICIPANTS]; ///< Participant array
 
@@ -83,10 +88,12 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
  *
  * @param registry Session registry
  * @param session_string Session string to look up
+ * @param config ACDS server configuration (for policy flags)
  * @param resp Session info response (output)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t session_lookup(session_registry_t *registry, const char *session_string, acip_session_info_t *resp);
+asciichat_error_t session_lookup(session_registry_t *registry, const char *session_string, const acds_config_t *config,
+                                 acip_session_info_t *resp);
 
 /**
  * @brief Join existing session

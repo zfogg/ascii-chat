@@ -32,7 +32,6 @@ set(UTIL_SRCS
     lib/util/aspect_ratio.c
     lib/util/time.c
     lib/util/image.c
-    lib/util/audio.c
     lib/util/password.c
     lib/util/fps.c
 )

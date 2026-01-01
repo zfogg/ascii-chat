@@ -356,7 +356,7 @@ void *acds_client_handler(void *arg) {
           (req->session_string_len < sizeof(session_string) - 1) ? req->session_string_len : sizeof(session_string) - 1;
       memcpy(session_string, req->session_string, copy_len);
 
-      asciichat_error_t lookup_result = session_lookup(server->sessions, session_string, &resp);
+      asciichat_error_t lookup_result = session_lookup(server->sessions, session_string, &server->config, &resp);
       if (lookup_result == ASCIICHAT_OK) {
         send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_INFO, &resp, sizeof(resp));
         log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
