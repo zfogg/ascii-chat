@@ -350,7 +350,8 @@ int strtoint_safe(const char *str);
   char password[OPTIONS_BUFF_SIZE];                                                                                    \
   char encrypt_keyfile[OPTIONS_BUFF_SIZE];                                                                             \
   unsigned short int no_encrypt;                                                                                       \
-  char client_keys[OPTIONS_BUFF_SIZE];
+  char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
+  unsigned short int require_server_verify;
 
 /**
  * @brief Client mode options
@@ -377,7 +378,8 @@ int strtoint_safe(const char *str);
   float snapshot_delay;                                                                                                \
   char server_key[OPTIONS_BUFF_SIZE];                                                                                  \
   char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
-  char password[OPTIONS_BUFF_SIZE];
+  char password[OPTIONS_BUFF_SIZE];                                                                                    \
+  unsigned short int require_client_verify;
 
 /**
  * @brief Mirror mode options
@@ -402,7 +404,9 @@ int strtoint_safe(const char *str);
 #define ASCIICHAT_ACDS_OPTIONS_STRUCT                                                                                  \
   ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
   char address[OPTIONS_BUFF_SIZE];                                                                                     \
-  char port[OPTIONS_BUFF_SIZE];
+  char port[OPTIONS_BUFF_SIZE];                                                                                        \
+  unsigned short int require_server_identity;                                                                          \
+  unsigned short int require_client_identity;
 
 /**
  * @brief Consolidated options structure
@@ -432,6 +436,7 @@ typedef struct options_state {
   char address6[OPTIONS_BUFF_SIZE]; ///< IPv6 bind address (server only)
   char port[OPTIONS_BUFF_SIZE];     ///< Server port number
   int max_clients;                  ///< Maximum concurrent clients (server only)
+  char session_string[64];          ///< Session string for ACDS discovery (client only)
 
   // ============================================================================
   // Network Performance Options
@@ -497,6 +502,14 @@ typedef struct options_state {
   unsigned short int no_encrypt;           ///< Disable encryption (opt-out)
   char server_key[OPTIONS_BUFF_SIZE];      ///< Expected server public key (client)
   char client_keys[OPTIONS_BUFF_SIZE];     ///< Allowed client keys (server)
+
+  // ============================================================================
+  // Identity Verification Options (ACDS + Crypto Handshake)
+  // ============================================================================
+  unsigned short int require_server_identity; ///< ACDS: require servers to provide signed Ed25519 identity
+  unsigned short int require_client_identity; ///< ACDS: require clients to provide signed Ed25519 identity
+  unsigned short int require_server_verify;   ///< Server: only accept clients who verified via ACDS
+  unsigned short int require_client_verify;   ///< Client: only connect to servers whose identity was verified by ACDS
 
   // ============================================================================
   // Palette Configuration

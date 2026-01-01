@@ -17,7 +17,8 @@
 #include "acds/database.h"
 #include "acds/session.h"
 #include "acds/signaling.h"
-#include "acds/protocol.h"
+#include "network/acds_protocol.h"
+#include "network/acds_client.h"
 #include "network/rate_limit/rate_limit.h"
 #include "network/rate_limit/sqlite.h"
 #include "network/errors.h"
@@ -280,6 +281,31 @@ void *acds_client_handler(void *arg) {
       }
 
       acip_session_create_t *req = (acip_session_create_t *)payload;
+
+      // Cryptographic identity verification (if required)
+      if (server->config.require_server_identity) {
+        // Validate timestamp (5 minute window)
+        if (!acds_validate_timestamp(req->timestamp, 300)) {
+          log_warn("SESSION_CREATE rejected from %s: invalid timestamp (replay attack protection)", client_ip);
+          send_error_packet_message(client_socket, ERROR_CRYPTO_VERIFICATION,
+                                    "Timestamp validation failed - too old or in the future");
+          break;
+        }
+
+        // Verify Ed25519 signature
+        asciichat_error_t verify_result = acds_verify_session_create(
+            req->identity_pubkey, req->timestamp, req->capabilities, req->max_participants, req->signature);
+
+        if (verify_result != ASCIICHAT_OK) {
+          log_warn("SESSION_CREATE rejected from %s: invalid signature (identity verification failed)", client_ip);
+          send_error_packet_message(client_socket, ERROR_CRYPTO_VERIFICATION, "Identity signature verification failed");
+          break;
+        }
+
+        log_debug("SESSION_CREATE signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
+                  req->identity_pubkey[1]);
+      }
+
       acip_session_created_t resp;
       memset(&resp, 0, sizeof(resp));
 
@@ -356,6 +382,41 @@ void *acds_client_handler(void *arg) {
       }
 
       acip_session_join_t *req = (acip_session_join_t *)payload;
+
+      // Cryptographic identity verification (if required)
+      if (server->config.require_client_identity) {
+        // Validate timestamp (5 minute window)
+        if (!acds_validate_timestamp(req->timestamp, 300)) {
+          log_warn("SESSION_JOIN rejected from %s: invalid timestamp (replay attack protection)", client_ip);
+          acip_session_joined_t error_resp;
+          memset(&error_resp, 0, sizeof(error_resp));
+          error_resp.success = 0;
+          error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
+          SAFE_STRNCPY(error_resp.error_message, "Timestamp validation failed", sizeof(error_resp.error_message));
+          send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_JOINED, &error_resp, sizeof(error_resp));
+          break;
+        }
+
+        // Verify Ed25519 signature
+        asciichat_error_t verify_result =
+            acds_verify_session_join(req->identity_pubkey, req->timestamp, req->session_string, req->signature);
+
+        if (verify_result != ASCIICHAT_OK) {
+          log_warn("SESSION_JOIN rejected from %s: invalid signature (identity verification failed)", client_ip);
+          acip_session_joined_t error_resp;
+          memset(&error_resp, 0, sizeof(error_resp));
+          error_resp.success = 0;
+          error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
+          SAFE_STRNCPY(error_resp.error_message, "Identity signature verification failed",
+                       sizeof(error_resp.error_message));
+          send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_JOINED, &error_resp, sizeof(error_resp));
+          break;
+        }
+
+        log_debug("SESSION_JOIN signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
+                  req->identity_pubkey[1]);
+      }
+
       acip_session_joined_t resp;
       memset(&resp, 0, sizeof(resp));
 

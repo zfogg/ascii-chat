@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include "platform/abstraction.h"
-#include "acds/protocol.h"
+#include "network/acds_protocol.h"
 
 /**
  * @brief Maximum participants per session

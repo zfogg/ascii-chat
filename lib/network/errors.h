@@ -10,7 +10,7 @@
 
 #include "common.h"
 #include "platform/socket.h"
-#include "acds/protocol.h"
+#include "network/acds_protocol.h"
 #include "network/rate_limit/rate_limit.h"
 #include <stddef.h>
 #include <stdbool.h>
