@@ -418,6 +418,11 @@ int strtoint_safe(const char *str);
  */
 typedef struct options_state {
   // ============================================================================
+  // Mode Detection (auto-detected during options_init)
+  // ============================================================================
+  asciichat_mode_t detected_mode; ///< Mode detected from command-line arguments
+
+  // ============================================================================
   // Binary-Level Options (parsed first, before mode selection)
   // ============================================================================
   bool help;    ///< Show help message
@@ -777,7 +782,36 @@ typedef enum {
   MODE_ACDS    ///< Discovery service mode - session management and WebRTC signaling
 } asciichat_mode_t;
 
-asciichat_error_t options_init(int argc, char **argv, asciichat_mode_t mode);
+/**
+ * @brief Initialize options by parsing command-line arguments with unified mode detection
+ * @param argc Argument count from main()
+ * @param argv Argument vector from main()
+ * @return ASCIICHAT_OK on success, ERROR_USAGE on parse errors
+ *
+ * Unified options initialization that handles:
+ * - Mode detection from argv (or defaults to server)
+ * - Binary-level option parsing (--help, --version, --log-file, etc.)
+ * - Mode-specific option parsing
+ * - Configuration file loading
+ * - Post-processing and validation
+ *
+ * The detected mode is stored in options_t->detected_mode for retrieval
+ * via options_get()->detected_mode after this function returns.
+ *
+ * **Mode Detection Priority:**
+ * 1. --help or --version → handled internally, may exit(0)
+ * 2. First non-option positional argument → matched against mode names
+ * 3. Session string pattern (word-word-word) → treated as client mode
+ * 4. No mode specified → defaults to show help and exit(0)
+ *
+ * @note Must be called once at program startup before accessing options
+ * @note Global option variables are initialized by this function
+ * @note Returns ERROR_USAGE for invalid options (after printing error)
+ * @note --help and --version may exit directly (returns ASCIICHAT_OK if they print first)
+ *
+ * @ingroup options
+ */
+asciichat_error_t options_init(int argc, char **argv);
 
 /**
  * @brief Print usage information for client, server, or mirror mode
