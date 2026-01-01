@@ -16,6 +16,7 @@
 
 #include "options/mirror.h"
 #include "options/common.h"
+#include "options/presets.h"
 
 #include "asciichat_errno.h"
 #include "common.h"

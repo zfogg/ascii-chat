@@ -1,0 +1,469 @@
+/**
+ * @file parsers.c
+ * @brief Custom option parsers implementation
+ * @ingroup options
+ */
+
+#include "parsers.h"
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <stddef.h>
+#include "common.h"
+#include "options/options.h"
+
+// Helper function to convert string to lowercase in-place (non-destructive)
+static void to_lower(const char *src, char *dst, size_t max_len) {
+  size_t i = 0;
+  while (src[i] && i < max_len - 1) {
+    dst[i] = (char)tolower((unsigned char)src[i]);
+    i++;
+  }
+  dst[i] = '\0';
+}
+
+bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  terminal_color_level_t *color_mode = (terminal_color_level_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Auto-detect
+  if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0) {
+    // Auto is handled by detect_terminal_capabilities() - we'll use NONE as sentinel
+    *color_mode = TERM_COLOR_NONE;
+    return true;
+  }
+
+  // Monochrome/None
+  if (strcmp(lower, "none") == 0 || strcmp(lower, "mono") == 0 || strcmp(lower, "monochrome") == 0 ||
+      strcmp(lower, "0") == 0) {
+    *color_mode = TERM_COLOR_NONE;
+    return true;
+  }
+
+  // 16-color
+  if (strcmp(lower, "16") == 0 || strcmp(lower, "16color") == 0 || strcmp(lower, "ansi") == 0 ||
+      strcmp(lower, "1") == 0) {
+    *color_mode = TERM_COLOR_16;
+    return true;
+  }
+
+  // 256-color
+  if (strcmp(lower, "256") == 0 || strcmp(lower, "256color") == 0 || strcmp(lower, "2") == 0) {
+    *color_mode = TERM_COLOR_256;
+    return true;
+  }
+
+  // Truecolor
+  if (strcmp(lower, "truecolor") == 0 || strcmp(lower, "true") == 0 || strcmp(lower, "tc") == 0 ||
+      strcmp(lower, "rgb") == 0 || strcmp(lower, "24bit") == 0 || strcmp(lower, "3") == 0) {
+    *color_mode = TERM_COLOR_TRUECOLOR;
+    return true;
+  }
+
+  // Invalid value
+  if (error_msg) {
+    char *msg = SAFE_MALLOC(256, char *);
+    if (msg) {
+      snprintf(msg, 256, "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
+      *error_msg = msg;
+    }
+  }
+  return false;
+}
+
+bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  render_mode_t *render_mode = (render_mode_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Foreground mode
+  if (strcmp(lower, "foreground") == 0 || strcmp(lower, "fg") == 0 || strcmp(lower, "0") == 0) {
+    *render_mode = RENDER_MODE_FOREGROUND;
+    return true;
+  }
+
+  // Background mode
+  if (strcmp(lower, "background") == 0 || strcmp(lower, "bg") == 0 || strcmp(lower, "1") == 0) {
+    *render_mode = RENDER_MODE_BACKGROUND;
+    return true;
+  }
+
+  // Half-block mode
+  if (strcmp(lower, "half-block") == 0 || strcmp(lower, "half") == 0 || strcmp(lower, "hb") == 0 ||
+      strcmp(lower, "2") == 0) {
+    *render_mode = RENDER_MODE_HALF_BLOCK;
+    return true;
+  }
+
+  // Invalid value
+  if (error_msg) {
+    char *msg = SAFE_MALLOC(256, char *);
+    if (msg) {
+      snprintf(msg, 256, "Invalid render mode '%s'. Valid values: foreground, background, half-block", arg);
+      *error_msg = msg;
+    }
+  }
+  return false;
+}
+
+bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  palette_type_t *palette_type = (palette_type_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Standard palette
+  if (strcmp(lower, "standard") == 0 || strcmp(lower, "std") == 0 || strcmp(lower, "0") == 0) {
+    *palette_type = PALETTE_STANDARD;
+    return true;
+  }
+
+  // Blocks palette
+  if (strcmp(lower, "blocks") == 0 || strcmp(lower, "block") == 0 || strcmp(lower, "1") == 0) {
+    *palette_type = PALETTE_BLOCKS;
+    return true;
+  }
+
+  // Digital palette
+  if (strcmp(lower, "digital") == 0 || strcmp(lower, "dig") == 0 || strcmp(lower, "2") == 0) {
+    *palette_type = PALETTE_DIGITAL;
+    return true;
+  }
+
+  // Minimal palette
+  if (strcmp(lower, "minimal") == 0 || strcmp(lower, "min") == 0 || strcmp(lower, "3") == 0) {
+    *palette_type = PALETTE_MINIMAL;
+    return true;
+  }
+
+  // Cool palette
+  if (strcmp(lower, "cool") == 0 || strcmp(lower, "4") == 0) {
+    *palette_type = PALETTE_COOL;
+    return true;
+  }
+
+  // Custom palette
+  if (strcmp(lower, "custom") == 0 || strcmp(lower, "5") == 0) {
+    *palette_type = PALETTE_CUSTOM;
+    return true;
+  }
+
+  // Invalid value
+  if (error_msg) {
+    char *msg = SAFE_MALLOC(256, char *);
+    if (msg) {
+      snprintf(msg, 256, "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom",
+               arg);
+      *error_msg = msg;
+    }
+  }
+  return false;
+}
+
+bool parse_log_level(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  log_level_t *log_level = (log_level_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Development level
+  if (strcmp(lower, "dev") == 0 || strcmp(lower, "development") == 0 || strcmp(lower, "0") == 0) {
+    *log_level = LOG_DEV;
+    return true;
+  }
+
+  // Debug level
+  if (strcmp(lower, "debug") == 0 || strcmp(lower, "dbg") == 0 || strcmp(lower, "1") == 0) {
+    *log_level = LOG_DEBUG;
+    return true;
+  }
+
+  // Info level
+  if (strcmp(lower, "info") == 0 || strcmp(lower, "information") == 0 || strcmp(lower, "2") == 0) {
+    *log_level = LOG_INFO;
+    return true;
+  }
+
+  // Warning level
+  if (strcmp(lower, "warn") == 0 || strcmp(lower, "warning") == 0 || strcmp(lower, "3") == 0) {
+    *log_level = LOG_WARN;
+    return true;
+  }
+
+  // Error level
+  if (strcmp(lower, "error") == 0 || strcmp(lower, "err") == 0 || strcmp(lower, "4") == 0) {
+    *log_level = LOG_ERROR;
+    return true;
+  }
+
+  // Fatal level
+  if (strcmp(lower, "fatal") == 0 || strcmp(lower, "5") == 0) {
+    *log_level = LOG_FATAL;
+    return true;
+  }
+
+  // Invalid value
+  if (error_msg) {
+    char *msg = SAFE_MALLOC(256, char *);
+    if (msg) {
+      snprintf(msg, 256, "Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal", arg);
+      *error_msg = msg;
+    }
+  }
+  return false;
+}
+
+// ============================================================================
+// Positional Argument Parsers
+// ============================================================================
+
+#include "util/ip.h"
+#include <string.h>
+
+/**
+ * @brief Parse server bind address positional argument
+ *
+ * Implements the server bind address parsing logic from server.c.
+ * Can consume 1 argument per call, handling IPv4 or IPv6 bind addresses.
+ * The positional arg system will call this multiple times for multiple args.
+ */
+int parse_server_bind_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg) {
+  (void)remaining; // Unused - we consume one arg at a time
+  (void)num_remaining;
+
+  if (!arg || !config) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or config");
+    }
+    return -1;
+  }
+
+  // Assume config struct has address and address6 fields (OPTIONS_BUFF_SIZE each)
+  // This is a simplified version that assumes standard options_state layout
+  char *address = (char *)config + offsetof(struct options_state, address);
+  char *address6 = (char *)config + offsetof(struct options_state, address6);
+
+  // Parse IPv6 address (remove brackets if present)
+  char parsed_addr[OPTIONS_BUFF_SIZE];
+  const char *addr_to_check = arg;
+  if (parse_ipv6_address(arg, parsed_addr, sizeof(parsed_addr)) == 0) {
+    addr_to_check = parsed_addr;
+  }
+
+  // Check if it's IPv4 or IPv6
+  if (is_valid_ipv4(addr_to_check)) {
+    // Check if we already have an IPv4 address
+    if (address[0] != '\0') {
+      if (error_msg) {
+        char *msg = SAFE_MALLOC(256, char *);
+        if (msg) {
+          snprintf(msg, 256,
+                   "Cannot specify multiple IPv4 addresses.\n"
+                   "Already have: %s\n"
+                   "Cannot add: %s",
+                   address, addr_to_check);
+          *error_msg = msg;
+        }
+      }
+      return -1;
+    }
+    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", addr_to_check);
+    return 1; // Consumed 1 arg
+  } else if (is_valid_ipv6(addr_to_check)) {
+    // Check if we already have an IPv6 address
+    if (address6[0] != '\0') {
+      if (error_msg) {
+        char *msg = SAFE_MALLOC(256, char *);
+        if (msg) {
+          snprintf(msg, 256,
+                   "Cannot specify multiple IPv6 addresses.\n"
+                   "Already have: %s\n"
+                   "Cannot add: %s",
+                   address6, addr_to_check);
+          *error_msg = msg;
+        }
+      }
+      return -1;
+    }
+    SAFE_SNPRINTF(address6, OPTIONS_BUFF_SIZE, "%s", addr_to_check);
+    return 1; // Consumed 1 arg
+  } else {
+    if (error_msg) {
+      char *msg = SAFE_MALLOC(512, char *);
+      if (msg) {
+        snprintf(msg, 512,
+                 "Invalid IP address '%s'.\n"
+                 "Server bind addresses must be valid IPv4 or IPv6 addresses.\n"
+                 "Examples:\n"
+                 "  ascii-chat server 0.0.0.0\n"
+                 "  ascii-chat server ::1\n"
+                 "  ascii-chat server 0.0.0.0 ::1",
+                 arg);
+        *error_msg = msg;
+      }
+    }
+    return -1;
+  }
+}
+
+/**
+ * @brief Parse client address positional argument
+ *
+ * Implements the client address parsing logic from client.c.
+ * Parses [address][:port] with complex IPv6 handling.
+ */
+int parse_client_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg) {
+  (void)remaining;
+  (void)num_remaining;
+
+  if (!arg || !config) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or config");
+    }
+    return -1;
+  }
+
+  // Access address and port fields from options_state struct
+  char *address = (char *)config + offsetof(struct options_state, address);
+  char *port = (char *)config + offsetof(struct options_state, port);
+
+  // Check for port in address (format: address:port or [ipv6]:port)
+  const char *colon = strrchr(arg, ':');
+  bool has_port_in_address = false;
+
+  if (colon != NULL) {
+    // Check if this is IPv6 with port [::1]:port or plain hostname:port
+    if (arg[0] == '[') {
+      // IPv6 with brackets: [address]:port
+      const char *closing_bracket = strchr(arg, ']');
+      if (closing_bracket && closing_bracket < colon) {
+        has_port_in_address = true;
+        // Extract address (remove brackets)
+        size_t addr_len = (size_t)(closing_bracket - arg - 1);
+        if (addr_len >= OPTIONS_BUFF_SIZE) {
+          if (error_msg) {
+            *error_msg = strdup("IPv6 address too long");
+          }
+          return -1;
+        }
+        SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%.*s", (int)addr_len, arg + 1);
+
+        // Extract and validate port
+        const char *port_str = colon + 1;
+        char *endptr;
+        long port_num = strtol(port_str, &endptr, 10);
+        if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
+          if (error_msg) {
+            char *msg = SAFE_MALLOC(256, char *);
+            if (msg) {
+              snprintf(msg, 256, "Invalid port number '%s'. Must be 1-65535.", port_str);
+              *error_msg = msg;
+            }
+          }
+          return -1;
+        }
+        SAFE_SNPRINTF(port, OPTIONS_BUFF_SIZE, "%s", port_str);
+      }
+    } else {
+      // Check if it's IPv6 without brackets (no port allowed)
+      // or hostname/IPv4:port
+      size_t colon_count = 0;
+      for (const char *p = arg; *p; p++) {
+        if (*p == ':')
+          colon_count++;
+      }
+
+      if (colon_count == 1) {
+        // Likely hostname:port or IPv4:port
+        has_port_in_address = true;
+        size_t addr_len = (size_t)(colon - arg);
+        if (addr_len >= OPTIONS_BUFF_SIZE) {
+          if (error_msg) {
+            *error_msg = strdup("Address too long");
+          }
+          return -1;
+        }
+        SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%.*s", (int)addr_len, arg);
+
+        // Extract and validate port
+        const char *port_str = colon + 1;
+        char *endptr;
+        long port_num = strtol(port_str, &endptr, 10);
+        if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
+          if (error_msg) {
+            char *msg = SAFE_MALLOC(256, char *);
+            if (msg) {
+              snprintf(msg, 256, "Invalid port number '%s'. Must be 1-65535.", port_str);
+              *error_msg = msg;
+            }
+          }
+          return -1;
+        }
+        SAFE_SNPRINTF(port, OPTIONS_BUFF_SIZE, "%s", port_str);
+      } else {
+        // Multiple colons - likely bare IPv6 address
+        SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+      }
+    }
+  } else {
+    // No colon - just an address
+    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+  }
+
+  // Validate addresses that contain dots as potential IPv4 addresses
+  // If it has a dot, it's either a valid IPv4 or a hostname with domain
+  bool has_dot = strchr(address, '.') != NULL;
+  bool starts_with_digit = address[0] >= '0' && address[0] <= '9';
+
+  if (has_dot && starts_with_digit) {
+    // Looks like an IPv4 attempt - validate strictly
+    if (!is_valid_ipv4(address)) {
+      if (error_msg) {
+        char *msg = SAFE_MALLOC(512, char *);
+        if (msg) {
+          snprintf(msg, 512,
+                   "Invalid IPv4 address '%s'.\n"
+                   "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n"
+                   "Examples: 127.0.0.1, 192.168.1.1\n"
+                   "For hostnames, use letters: example.com, localhost",
+                   address);
+          *error_msg = msg;
+        }
+      }
+      return -1;
+    }
+  }
+
+  // Note: Port conflict checking would require additional state
+  // (checking if --port flag was used). For now, this is a simplified version.
+  // Full implementation would need to track whether port was set via flag.
+
+  return 1; // Consumed 1 arg
+}

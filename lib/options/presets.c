@@ -1,0 +1,444 @@
+/**
+ * @file presets.c
+ * @brief Preset option configurations for ascii-chat modes
+ * @ingroup options
+ */
+
+#include "builder.h"
+#include "options.h"
+#include "parsers.h"
+#include "actions.h"
+#include "platform/terminal.h"
+#include "video/palette.h"
+#include "log/logging.h"
+
+// ============================================================================
+// Binary-Level Options Preset
+// ============================================================================
+
+const options_config_t *options_preset_binary(void) {
+  static options_config_t *config = NULL;
+  if (config)
+    return config;
+
+  options_builder_t *b = options_builder_create(sizeof(options_t));
+  if (!b)
+    return NULL;
+
+  b->program_name = "ascii-chat";
+  b->description = "Terminal-based video chat with ASCII art rendering";
+
+  // Help and version
+  options_builder_add_bool(b, "help", 'h', offsetof(options_t, help), false, "Show this help message", "GENERAL", false,
+                           NULL);
+
+  options_builder_add_bool(b, "version", 'V', offsetof(options_t, version), false, "Show version information",
+                           "GENERAL", false, NULL);
+
+  // Logging options
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Path to log file", "LOGGING",
+                             false, "ASCII_CHAT_LOG_FILE", NULL);
+
+  // Note: log_level is a log_level_t enum, needs custom parser
+  // For now, we'll skip it in the binary preset since it's mode-specific in ACDS
+
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false, "Suppress log output", "LOGGING", false,
+                           NULL);
+
+  options_builder_add_int(b, "verbose", 'v', offsetof(options_t, verbose_level), 0, "Verbosity level (stackable -vvv)",
+                          "LOGGING", false, NULL, NULL);
+
+  config = options_builder_build(b);
+  options_builder_destroy(b);
+  return config;
+}
+
+// ============================================================================
+// Server Mode Options Preset
+// ============================================================================
+
+const options_config_t *options_preset_server(void) {
+  static options_config_t *config = NULL;
+  if (config)
+    return config;
+
+  options_builder_t *b = options_builder_create(sizeof(options_t));
+  if (!b)
+    return NULL;
+
+  b->program_name = "ascii-chat server";
+  b->description = "Start ascii-chat server";
+
+  // Network options
+  options_builder_add_string(b, "address", 'a', offsetof(options_t, address), OPT_ADDRESS_DEFAULT, "Bind address",
+                             "NETWORK", false, "ASCII_CHAT_ADDRESS", NULL);
+
+  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), OPT_PORT_DEFAULT, "Server port", "NETWORK",
+                             false, "ASCII_CHAT_PORT", NULL);
+
+  options_builder_add_string(b, "address6", '\0', offsetof(options_t, address6), OPT_ADDRESS6_DEFAULT,
+                             "IPv6 bind address", "NETWORK", false, NULL, NULL);
+
+  options_builder_add_int(b, "max-clients", '\0', offsetof(options_t, max_clients), OPT_MAX_CLIENTS_DEFAULT,
+                          "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL);
+
+  // Performance options
+  options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
+                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
+                          NULL);
+
+  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
+                           "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
+                           "Enable Opus audio encoding", "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "no-encode-audio", '\0',
+                           offsetof(options_t, encode_audio), // Note: sets same field to opposite value
+                           !OPT_ENCODE_AUDIO_DEFAULT, "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "no-audio-mixer", '\0', offsetof(options_t, no_audio_mixer), false,
+                           "Disable audio mixer (debug)", "PERFORMANCE", false, NULL);
+
+  // Security options
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
+                           "SECURITY", false, NULL);
+
+  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
+                             false, "ASCII_CHAT_KEY", NULL);
+
+  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
+                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
+
+  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
+                             "SECURITY", false, NULL, NULL);
+
+  options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
+                             "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
+
+  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
+                           "SECURITY", false, NULL);
+
+  // Dependencies
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
+  options_builder_add_dependency_conflicts(b, "no-compress", "compression-level",
+                                           "Cannot use --no-compress with --compression-level");
+  options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
+                                           "Cannot use both --encode-audio and --no-encode-audio");
+
+  // Action options (execute and exit)
+  options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
+                             "ACTIONS");
+
+  options_builder_add_action(b, "list-microphones", '\0', action_list_microphones,
+                             "List available microphone devices and exit", "ACTIONS");
+
+  options_builder_add_action(b, "list-speakers", '\0', action_list_speakers, "List available speaker devices and exit",
+                             "ACTIONS");
+
+  options_builder_add_action(b, "version", 'V', action_show_version, "Show version information and exit", "ACTIONS");
+
+  // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
+  options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
+                                 false, // Not required (defaults to localhost)
+                                 parse_server_bind_address);
+
+  config = options_builder_build(b);
+  options_builder_destroy(b);
+  return config;
+}
+
+// ============================================================================
+// Client Mode Options Preset
+// ============================================================================
+
+const options_config_t *options_preset_client(void) {
+  static options_config_t *config = NULL;
+  if (config)
+    return config;
+
+  options_builder_t *b = options_builder_create(sizeof(options_t));
+  if (!b)
+    return NULL;
+
+  b->program_name = "ascii-chat client";
+  b->description = "Connect to ascii-chat server";
+
+  // Network options
+  options_builder_add_string(b, "address", 'a', offsetof(options_t, address), OPT_ADDRESS_DEFAULT, "Server address",
+                             "NETWORK", false, "ASCII_CHAT_SERVER", NULL);
+
+  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), OPT_PORT_DEFAULT, "Server port", "NETWORK",
+                             false, "ASCII_CHAT_PORT", NULL);
+
+  options_builder_add_int(b, "reconnect", 'r', offsetof(options_t, reconnect_attempts), OPT_RECONNECT_ATTEMPTS_DEFAULT,
+                          "Reconnection attempts (-1=infinite)", "NETWORK", false, NULL, NULL);
+
+  // Terminal dimensions
+  options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
+                          "Terminal width in characters", "TERMINAL", false, NULL, NULL);
+
+  options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
+                          "Terminal height in characters", "TERMINAL", false, NULL, NULL);
+
+  // Webcam options
+  options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
+                          "Webcam device index", "WEBCAM", false, NULL, NULL);
+
+  options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
+                           "Flip webcam horizontally", "WEBCAM", false, NULL);
+
+  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
+                           "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
+
+  // Display options - use custom parsers for enum types
+  options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
+                               &(terminal_color_level_t){TERM_COLOR_NONE}, // NONE used as "auto" sentinel
+                               sizeof(terminal_color_level_t), parse_color_mode,
+                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
+                               &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
+                               sizeof(render_mode_t), parse_render_mode,
+                               "Render mode (foreground, background, half-block)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(
+      b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
+      sizeof(palette_type_t), parse_palette_type,
+      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
+                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
+                           false, NULL);
+
+  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
+                           "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
+                           "DISPLAY", false, NULL);
+
+  // Snapshot mode
+  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
+                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
+
+  options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
+                             "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
+
+  // Audio options
+  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), false, "Enable audio streaming",
+                           "AUDIO", false, NULL);
+
+  options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
+                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, NULL,
+                          NULL);
+
+  options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
+                          "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
+
+  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled), false,
+                           "Enable audio analysis (debug)", "AUDIO", false, NULL);
+
+  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback), false,
+                           "Disable speaker playback (debug)", "AUDIO", false, NULL);
+
+  // Performance options
+  options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
+                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
+                          NULL);
+
+  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
+                           "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
+                           "Enable Opus audio encoding", "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
+                           "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
+
+  // Security options
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
+                           "SECURITY", false, NULL);
+
+  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
+                             false, "ASCII_CHAT_KEY", NULL);
+
+  options_builder_add_string(b, "server-key", '\0', offsetof(options_t, server_key), "", "Expected server public key",
+                             "SECURITY", false, NULL, NULL);
+
+  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
+                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
+
+  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
+                             "SECURITY", false, NULL, NULL);
+
+  // Dependencies
+  options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
+                                          "Option --snapshot-delay requires --snapshot");
+  options_builder_add_dependency_conflicts(b, "no-compress", "compression-level",
+                                           "Cannot use --no-compress with --compression-level");
+  options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
+                                           "Cannot use both --encode-audio and --no-encode-audio");
+
+  // Action options (execute and exit)
+  options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
+                             "ACTIONS");
+
+  options_builder_add_action(b, "list-microphones", '\0', action_list_microphones,
+                             "List available microphone devices and exit", "ACTIONS");
+
+  options_builder_add_action(b, "list-speakers", '\0', action_list_speakers, "List available speaker devices and exit",
+                             "ACTIONS");
+
+  options_builder_add_action(b, "show-capabilities", '\0', action_show_capabilities,
+                             "Show terminal capabilities and exit", "ACTIONS");
+
+  // Positional argument: [address][:port]
+  options_builder_add_positional(b, "address",
+                                 "[address][:port] - Server address (IPv4, IPv6, or hostname) with optional port",
+                                 false, // Not required (defaults to localhost:27224)
+                                 parse_client_address);
+
+  config = options_builder_build(b);
+  options_builder_destroy(b);
+  return config;
+}
+
+// ============================================================================
+// Mirror Mode Options Preset
+// ============================================================================
+
+const options_config_t *options_preset_mirror(void) {
+  static options_config_t *config = NULL;
+  if (config)
+    return config;
+
+  options_builder_t *b = options_builder_create(sizeof(options_t));
+  if (!b)
+    return NULL;
+
+  b->program_name = "ascii-chat mirror";
+  b->description = "Local webcam viewing (no network)";
+
+  // Terminal dimensions
+  options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
+                          "Terminal width in characters", "TERMINAL", false, NULL, NULL);
+
+  options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
+                          "Terminal height in characters", "TERMINAL", false, NULL, NULL);
+
+  // Webcam options
+  options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
+                          "Webcam device index", "WEBCAM", false, NULL, NULL);
+
+  options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
+                           "Flip webcam horizontally", "WEBCAM", false, NULL);
+
+  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
+                           "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
+
+  // Display options - use custom parsers for enum types
+  options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
+                               &(terminal_color_level_t){TERM_COLOR_NONE}, // NONE used as "auto" sentinel
+                               sizeof(terminal_color_level_t), parse_color_mode,
+                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
+                               &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
+                               sizeof(render_mode_t), parse_render_mode,
+                               "Render mode (foreground, background, half-block)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(
+      b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
+      sizeof(palette_type_t), parse_palette_type,
+      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
+                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
+                           false, NULL);
+
+  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
+                           "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
+                           "DISPLAY", false, NULL);
+
+  // Snapshot mode
+  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
+                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
+
+  options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
+                             "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
+
+  // Dependencies
+  options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
+                                          "Option --snapshot-delay requires --snapshot");
+
+  // Action options (execute and exit)
+  options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
+                             "ACTIONS");
+
+  options_builder_add_action(b, "show-capabilities", '\0', action_show_capabilities,
+                             "Show terminal capabilities and exit", "ACTIONS");
+
+  config = options_builder_build(b);
+  options_builder_destroy(b);
+  return config;
+}
+
+// ============================================================================
+// ACDS Mode Options Preset
+// ============================================================================
+
+const options_config_t *options_preset_acds(void) {
+  static options_config_t *config = NULL;
+  if (config)
+    return config;
+
+  options_builder_t *b = options_builder_create(sizeof(options_t));
+  if (!b)
+    return NULL;
+
+  b->program_name = "ascii-chat acds";
+  b->description = "ASCII Chat Discovery Service - session management and WebRTC signaling";
+
+  // Network options
+  options_builder_add_string(b, "address", 'a', offsetof(options_t, address), "127.0.0.1", "Bind address", "NETWORK",
+                             false, "ACDS_ADDRESS", NULL);
+
+  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), "27225", "Server port", "NETWORK", false,
+                             "ACDS_PORT", NULL);
+
+  options_builder_add_string(b, "address6", '\0', offsetof(options_t, address6), "::1", "IPv6 bind address", "NETWORK",
+                             false, NULL, NULL);
+
+  // Note: ACDS also has --db and --key options that use globals:
+  // - opt_acds_database_path
+  // - opt_acds_key_path
+  // These will need to be handled specially in the ACDS parsing code
+
+  // Logging options (ACDS-specific)
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Path to log file", "LOGGING",
+                             false, NULL, NULL);
+
+  options_builder_add_callback(
+      b, "log-level", 'l', offsetof(options_t, log_level), &(log_level_t){LOG_INFO}, // Default: info level
+      sizeof(log_level_t), parse_log_level, "Log level (dev, debug, info, warn, error, fatal)", "LOGGING", false, NULL);
+
+  // Action options (execute and exit)
+  options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
+
+  // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
+  options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
+                                 false, // Not required (defaults to localhost)
+                                 parse_server_bind_address);
+
+  config = options_builder_build(b);
+  options_builder_destroy(b);
+  return config;
+}

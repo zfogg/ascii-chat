@@ -302,6 +302,108 @@ int strtoint_safe(const char *str);
 
 /** @} */
 
+// ============================================================================
+// Struct Definition Macros for Library Users
+// ============================================================================
+
+/**
+ * @brief Binary-level options (parsed before mode selection)
+ *
+ * These options are common to all modes and parsed first.
+ */
+#define ASCIICHAT_BINARY_OPTIONS_STRUCT                                                                                \
+  bool help;                                                                                                           \
+  bool version;                                                                                                        \
+  char log_file[OPTIONS_BUFF_SIZE];                                                                                    \
+  log_level_t log_level;                                                                                               \
+  unsigned short int quiet;                                                                                            \
+  unsigned short int verbose_level;
+
+/**
+ * @brief Common options (all modes after binary parsing)
+ *
+ * These options extend binary options with terminal dimensions.
+ */
+#define ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                \
+  ASCIICHAT_BINARY_OPTIONS_STRUCT                                                                                      \
+  unsigned short int width;                                                                                            \
+  unsigned short int height;                                                                                           \
+  bool auto_width;                                                                                                     \
+  bool auto_height;
+
+/**
+ * @brief Server mode options
+ *
+ * Complete set of options for server mode.
+ */
+#define ASCIICHAT_SERVER_OPTIONS_STRUCT                                                                                \
+  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
+  char address[OPTIONS_BUFF_SIZE];                                                                                     \
+  char address6[OPTIONS_BUFF_SIZE];                                                                                    \
+  char port[OPTIONS_BUFF_SIZE];                                                                                        \
+  int max_clients;                                                                                                     \
+  int compression_level;                                                                                               \
+  bool no_compress;                                                                                                    \
+  bool encode_audio;                                                                                                   \
+  unsigned short int encrypt_enabled;                                                                                  \
+  char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
+  char password[OPTIONS_BUFF_SIZE];                                                                                    \
+  char encrypt_keyfile[OPTIONS_BUFF_SIZE];                                                                             \
+  unsigned short int no_encrypt;                                                                                       \
+  char client_keys[OPTIONS_BUFF_SIZE];
+
+/**
+ * @brief Client mode options
+ *
+ * Complete set of options for client mode.
+ */
+#define ASCIICHAT_CLIENT_OPTIONS_STRUCT                                                                                \
+  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
+  char address[OPTIONS_BUFF_SIZE];                                                                                     \
+  char port[OPTIONS_BUFF_SIZE];                                                                                        \
+  int reconnect_attempts;                                                                                              \
+  unsigned short int webcam_index;                                                                                     \
+  bool webcam_flip;                                                                                                    \
+  bool test_pattern;                                                                                                   \
+  terminal_color_level_t color_mode;                                                                                   \
+  render_mode_t render_mode;                                                                                           \
+  unsigned short int show_capabilities;                                                                                \
+  unsigned short int force_utf8;                                                                                       \
+  unsigned short int audio_enabled;                                                                                    \
+  int microphone_index;                                                                                                \
+  int speakers_index;                                                                                                  \
+  unsigned short int stretch;                                                                                          \
+  unsigned short int snapshot_mode;                                                                                    \
+  float snapshot_delay;                                                                                                \
+  char server_key[OPTIONS_BUFF_SIZE];                                                                                  \
+  char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
+  char password[OPTIONS_BUFF_SIZE];
+
+/**
+ * @brief Mirror mode options
+ *
+ * Complete set of options for mirror mode (local webcam viewing).
+ */
+#define ASCIICHAT_MIRROR_OPTIONS_STRUCT                                                                                \
+  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
+  unsigned short int webcam_index;                                                                                     \
+  bool webcam_flip;                                                                                                    \
+  bool test_pattern;                                                                                                   \
+  terminal_color_level_t color_mode;                                                                                   \
+  render_mode_t render_mode;                                                                                           \
+  unsigned short int force_utf8;                                                                                       \
+  unsigned short int stretch;
+
+/**
+ * @brief ACDS mode options
+ *
+ * Complete set of options for ACDS (discovery service) mode.
+ */
+#define ASCIICHAT_ACDS_OPTIONS_STRUCT                                                                                  \
+  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
+  char address[OPTIONS_BUFF_SIZE];                                                                                     \
+  char port[OPTIONS_BUFF_SIZE];
+
 /**
  * @brief Consolidated options structure
  *
@@ -309,6 +411,12 @@ int strtoint_safe(const char *str);
  * This struct is immutable once published via RCU - modifications create a new copy.
  */
 typedef struct options_state {
+  // ============================================================================
+  // Binary-Level Options (parsed first, before mode selection)
+  // ============================================================================
+  bool help;    ///< Show help message
+  bool version; ///< Show version information
+
   // ============================================================================
   // Terminal Dimensions
   // ============================================================================

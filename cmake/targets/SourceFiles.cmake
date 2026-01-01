@@ -270,6 +270,10 @@ set(CORE_SRCS
     lib/options/levenshtein.c
     lib/options/config.c
     lib/options/rcu.c
+    lib/options/builder.c         # Options builder API (NEW)
+    lib/options/presets.c          # Preset option configs (NEW)
+    lib/options/parsers.c          # Custom enum parsers (NEW)
+    lib/options/actions.c          # Action option callbacks (NEW)
     lib/version.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
