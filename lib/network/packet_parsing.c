@@ -58,10 +58,11 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
     }
 
     // Decompress using compression API
-    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
+    asciichat_error_t decompress_result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
 
-    if (result != 0) {
-      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", original_size);
+    if (decompress_result != ASCIICHAT_OK) {
+      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
+                asciichat_error_string(decompress_result));
       SAFE_FREE(frame_data);
       return NULL;
     }
@@ -104,10 +105,11 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
     }
 
     // Decompress using compression API
-    int result = decompress_data(frame_data_ptr, frame_data_len, output_buffer, original_size);
+    asciichat_error_t decompress_result = decompress_data(frame_data_ptr, frame_data_len, output_buffer, original_size);
 
-    if (result != 0) {
-      return SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", original_size);
+    if (decompress_result != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u: %s", original_size,
+                       asciichat_error_string(decompress_result));
     }
 
     log_debug("Decompressed frame to buffer: %zu -> %u bytes", frame_data_len, original_size);
