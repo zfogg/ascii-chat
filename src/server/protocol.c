@@ -933,7 +933,10 @@ void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_RESOURCE_INITIALIZED(client, client->incoming_audio_buffer, "audio buffer");
 
   const float *samples = (const float *)data;
-  audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
+  asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to write audio samples to buffer: %s", asciichat_error_string(result));
+  }
 }
 
 void handle_remote_log_packet_from_client(client_info_t *client, const void *data, size_t len) {
@@ -1100,7 +1103,10 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 #endif
 
   if (client->incoming_audio_buffer) {
-    audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+    asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+    if (write_result != ASCIICHAT_OK) {
+      log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_string(write_result));
+    }
   }
 
   SAFE_FREE(samples);
@@ -1372,7 +1378,10 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
 
   // Write decoded samples to client's incoming audio buffer
   if (client->incoming_audio_buffer && decoded_count > 0) {
-    audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, decoded_count);
+    asciichat_error_t write_result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, decoded_count);
+    if (write_result != ASCIICHAT_OK) {
+      log_error("Failed to write decoded Opus samples to buffer: %s", asciichat_error_string(write_result));
+    }
   }
 }
 
@@ -1718,13 +1727,14 @@ int send_server_state_to_client(client_info_t *client) {
 
   mutex_lock(&client->send_mutex);
 
-  int result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                  (crypto_context_t *)crypto_ctx);
+  asciichat_error_t result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                                (crypto_context_t *)crypto_ctx);
 
   mutex_unlock(&client->send_mutex);
 
-  if (result != 0) {
-    SET_ERRNO(ERROR_NETWORK, "Failed to send server state to client %u", client->client_id);
+  if (result != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to send server state to client %u: %s", client->client_id,
+              asciichat_error_string(result));
     return -1;
   }
 
