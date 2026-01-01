@@ -154,16 +154,27 @@ static void print_version(void) {
 }
 
 static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
+  // Special case: ACDS is a separate binary, not in this dispatcher
+  if (mode == MODE_ACDS) {
+    fprintf(stderr, "Error: ACDS mode is not available in the unified ascii-chat binary.\n");
+    fprintf(stderr, "The discovery service is provided as a separate 'acds' executable.\n");
+    fprintf(stderr, "Build and run the 'acds' binary for discovery service functionality.\n");
+    return NULL;
+  }
+
   for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
     switch (mode) {
     case MODE_SERVER:
-      if (strcmp(m->name, "server") == 0) return m;
+      if (strcmp(m->name, "server") == 0)
+        return m;
       break;
     case MODE_CLIENT:
-      if (strcmp(m->name, "client") == 0) return m;
+      if (strcmp(m->name, "client") == 0)
+        return m;
       break;
     case MODE_MIRROR:
-      if (strcmp(m->name, "mirror") == 0) return m;
+      if (strcmp(m->name, "mirror") == 0)
+        return m;
       break;
     default:
       break;

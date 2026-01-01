@@ -186,9 +186,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   char detected_session_string[64] = {0};
   int mode_index = -1;
 
-  // Check for --help or --version early (these bypass mode detection)
+  // Check for --help, --version, or --config-create early (these bypass mode detection)
   bool show_help = false;
   bool show_version = false;
+  bool create_config = false;
+  const char *config_create_path = NULL;
 
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
@@ -198,6 +200,14 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
+        break;
+      }
+      if (strcmp(argv[i], "--config-create") == 0) {
+        create_config = true;
+        // Check if next argument is a path (not a flag)
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          config_create_path = argv[i + 1];
+        }
         break;
       }
     }
@@ -223,6 +233,36 @@ asciichat_error_t options_init(int argc, char **argv) {
     return ASCIICHAT_OK;
   }
 
+  if (create_config) {
+    // Handle --config-create: create default config file and exit
+    // Use provided path or default to user config location
+    char config_path[PLATFORM_MAX_PATH_LENGTH];
+    if (config_create_path) {
+      SAFE_STRNCPY(config_path, config_create_path, sizeof(config_path));
+    } else {
+      // Use default config path
+      if (config_get_default_user_path(config_path, sizeof(config_path)) != ASCIICHAT_OK) {
+        fprintf(stderr, "Error: Failed to determine default config path\n");
+        return ERROR_CONFIG;
+      }
+    }
+
+    // Create config with default options
+    asciichat_error_t result = config_create_default(config_path, &opts);
+    if (result != ASCIICHAT_OK) {
+      asciichat_error_context_t err_ctx;
+      if (HAS_ERRNO(&err_ctx)) {
+        fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+      } else {
+        fprintf(stderr, "Error: Failed to create config file at %s\n", config_path);
+      }
+      return result;
+    }
+
+    printf("Created default config file at: %s\n", config_path);
+    exit(0); // Exit successfully after creating config
+  }
+
   // Now detect the actual mode
   asciichat_error_t mode_detect_result =
       options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
@@ -243,29 +283,15 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   if (mode_index != -1) {
     // Mode found at position mode_index
-    // Build new argv: [program_name, args_after_mode...]
+    // Build new argv: [program_name, args_before_mode..., args_after_mode...]
+    // This preserves binary-level options like --log-file that appear before mode
+    int args_before_mode = mode_index - 1; // Skip argv[0], include argv[1] to argv[mode_index-1]
     int args_after_mode = argc - mode_index - 1;
-    mode_argc = 1 + args_after_mode;
-    // Use stack allocation for small argv arrays
-    char *temp_argv_buf[256];
+    mode_argc = 1 + args_before_mode + args_after_mode;
+
     if (mode_argc > 256) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", mode_argc);
     }
-
-    temp_argv_buf[0] = argv[0]; // program name
-    for (int i = 0; i < args_after_mode; i++) {
-      temp_argv_buf[1 + i] = argv[mode_index + 1 + i];
-    }
-    temp_argv_buf[mode_argc] = NULL; // NULL terminate
-
-    // Copy to a buffer that persists
-    // Actually, we can't use stack-allocated array as it goes out of scope
-    // Let's just skip mode_index in the parsing by passing indices
-    // For simplicity, we'll rebuild the argv properly below
-
-    // Actually, let's use a different approach - pass the original argv
-    // and skip arguments before mode_index in the mode-specific parsers
-    // No wait, that's complicated. Let's use malloc for this temporary array.
 
     // Allocate mode_argc+1 to accommodate NULL terminator
     char **new_mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
@@ -273,9 +299,13 @@ asciichat_error_t options_init(int argc, char **argv) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
     }
 
+    // Copy: [program_name, args_before_mode..., args_after_mode...]
     new_mode_argv[0] = argv[0];
+    for (int i = 0; i < args_before_mode; i++) {
+      new_mode_argv[1 + i] = argv[1 + i]; // argv[1] to argv[mode_index-1]
+    }
     for (int i = 0; i < args_after_mode; i++) {
-      new_mode_argv[1 + i] = argv[mode_index + 1 + i];
+      new_mode_argv[1 + args_before_mode + i] = argv[mode_index + 1 + i];
     }
     new_mode_argv[mode_argc] = NULL;
 
@@ -384,7 +414,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     result = parse_mirror_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_ACDS:
-    result = acds_options_parse(mode_argc, mode_argv, &opts);
+    result = parse_acds_options(mode_argc, mode_argv, &opts);
     break;
   default:
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);

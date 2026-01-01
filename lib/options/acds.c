@@ -45,7 +45,7 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ACDS Option Parsing
 // ============================================================================
 
-asciichat_error_t acds_options_parse(int argc, char **argv, options_t *opts) {
+asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
   const options_config_t *config = options_preset_acds();
   int remaining_argc;
   char **remaining_argv;
