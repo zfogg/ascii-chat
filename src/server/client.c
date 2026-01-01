@@ -418,6 +418,11 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
   client->crypto_initialized = false;
 
+  // Initialize pending packet storage (for --no-encrypt mode)
+  client->pending_packet_type = 0;
+  client->pending_packet_payload = NULL;
+  client->pending_packet_length = 0;
+
   // Configure socket options for optimal performance
   configure_client_socket(socket, atomic_load(&client->client_id));
 
@@ -548,31 +553,54 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     // After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
     // We must read and process this packet BEFORE starting the receive thread to avoid a race condition
     // where the packet arrives but no thread is listening for it.
-    log_debug("Waiting for initial capabilities packet from client %u", atomic_load(&client->client_id));
-
-    // Protect crypto context access with client state mutex
-    mutex_lock(&client->client_state_mutex);
-    const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
-
-    // Use per-client crypto state to determine enforcement
-    // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
-    bool enforce_encryption =
-        !opts->no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
-
+    //
+    // SPECIAL CASE: If client used --no-encrypt, we already received this packet during the handshake
+    // attempt and stored it in pending_packet_*. Use that instead of receiving a new one.
     packet_envelope_t envelope;
-    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, enforce_encryption, &envelope);
-    mutex_unlock(&client->client_state_mutex);
+    bool used_pending_packet = false;
 
-    if (result != PACKET_RECV_SUCCESS) {
-      log_error("Failed to receive initial capabilities packet from client %u: result=%d",
-                atomic_load(&client->client_id), result);
-      if (envelope.allocated_buffer) {
-        buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    if (client->pending_packet_payload) {
+      // Client used --no-encrypt mode - use the packet we already received
+      log_info("Client %u using --no-encrypt mode - processing pending packet type %u", atomic_load(&client->client_id),
+               client->pending_packet_type);
+      envelope.type = client->pending_packet_type;
+      envelope.data = client->pending_packet_payload;
+      envelope.len = client->pending_packet_length;
+      envelope.allocated_buffer = client->pending_packet_payload; // Will be freed below
+      envelope.allocated_size = client->pending_packet_length;
+      used_pending_packet = true;
+
+      // Clear pending packet fields
+      client->pending_packet_type = 0;
+      client->pending_packet_payload = NULL;
+      client->pending_packet_length = 0;
+    } else {
+      // Normal encrypted mode - receive capabilities packet
+      log_debug("Waiting for initial capabilities packet from client %u", atomic_load(&client->client_id));
+
+      // Protect crypto context access with client state mutex
+      mutex_lock(&client->client_state_mutex);
+      const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
+
+      // Use per-client crypto state to determine enforcement
+      // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
+      bool enforce_encryption =
+          !opts->no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+
+      packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, enforce_encryption, &envelope);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != PACKET_RECV_SUCCESS) {
+        log_error("Failed to receive initial capabilities packet from client %u: result=%d",
+                  atomic_load(&client->client_id), result);
+        if (envelope.allocated_buffer) {
+          buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+        }
+        if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+          log_error("Failed to remove client after crypto handshake failure");
+        }
+        return -1;
       }
-      if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
-        log_error("Failed to remove client after crypto handshake failure");
-      }
-      return -1;
     }
 
     if (envelope.type != PACKET_TYPE_CLIENT_CAPABILITIES) {
@@ -588,7 +616,8 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     }
 
     // Process the capabilities packet directly
-    log_debug("Processing initial capabilities packet from client %u", atomic_load(&client->client_id));
+    log_debug("Processing initial capabilities packet from client %u (from %s)", atomic_load(&client->client_id),
+              used_pending_packet ? "pending packet" : "network");
     handle_client_capabilities_packet(client, envelope.data, envelope.len);
 
     // Free the packet data

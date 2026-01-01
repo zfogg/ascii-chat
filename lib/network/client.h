@@ -158,6 +158,13 @@ typedef struct client_info {
   crypto_handshake_context_t crypto_handshake_ctx;
   bool crypto_initialized;
 
+  // Pending packet storage for --no-encrypt mode
+  // When client uses --no-encrypt, the first packet (e.g., CLIENT_JOIN) arrives
+  // during crypto handshake attempt. We store it here so the caller can process it.
+  packet_type_t pending_packet_type;
+  void *pending_packet_payload;
+  size_t pending_packet_length;
+
   // uthash handle for hash table operations
   UT_hash_handle hh;
 } client_info_t;
