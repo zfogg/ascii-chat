@@ -56,7 +56,7 @@
  * 4. No mode → show help and exit(0)
  */
 static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode,
-                                               char *out_session_string, int *out_mode_index) {
+                                             char *out_session_string, int *out_mode_index) {
   if (out_mode == NULL || out_mode_index == NULL) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output parameters must not be NULL");
   }
@@ -88,8 +88,8 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     // Skip options and their arguments
     if (argv[i][0] == '-') {
       // Check if this option takes an argument
-      if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0 ||
-           strcmp(argv[i], "--log-level") == 0 || strcmp(argv[i], "--config") == 0) &&
+      if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-level") == 0 ||
+           strcmp(argv[i], "--config") == 0) &&
           i + 1 < argc) {
         i++; // Skip the argument
       }
@@ -224,8 +224,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Now detect the actual mode
-  asciichat_error_t mode_detect_result = options_detect_mode(argc, argv, &detected_mode,
-                                                               detected_session_string, &mode_index);
+  asciichat_error_t mode_detect_result =
+      options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
   if (mode_detect_result != ASCIICHAT_OK) {
     return mode_detect_result;
   }
@@ -267,9 +267,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     // and skip arguments before mode_index in the mode-specific parsers
     // No wait, that's complicated. Let's use malloc for this temporary array.
 
-    char **new_mode_argv = UNTRACKED_MALLOC((size_t)mode_argc * sizeof(char *), char **);
+    // Allocate mode_argc+1 to accommodate NULL terminator
+    char **new_mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
     if (!new_mode_argv) {
-      return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate mode_argv");
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
     }
 
     new_mode_argv[0] = argv[0];

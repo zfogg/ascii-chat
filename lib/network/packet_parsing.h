@@ -202,7 +202,8 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
  *
  * @ingroup packet_parsing
  */
-static inline asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, audio_batch_info_t *out_batch) {
+static inline asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len,
+                                                                audio_batch_info_t *out_batch) {
   // Delegate to the canonical implementation in audio/audio.h
   return audio_parse_batch_header(data, len, out_batch);
 }

@@ -13,10 +13,10 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "options/options.h"
-#include "platform/init.h" // For static_mutex_t
+#include "platform/init.h"  // For static_mutex_t
 #include "network/packet.h" // For audio_batch_packet_t
-#include "network/av.h" // For audio packet structures
-#include "log/logging.h" // For log_* macros
+#include "network/av.h"     // For audio packet structures
+#include "log/logging.h"    // For log_* macros
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
