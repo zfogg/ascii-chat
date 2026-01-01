@@ -284,19 +284,22 @@ int server_crypto_handshake(client_info_t *client) {
     return -1; // Return error but don't crash the server
   }
 
+  // If client sent something other than PROTOCOL_VERSION, it means client is using --no-encrypt
+  // In this case, we need to store the packet for the caller to process and skip the handshake
   if (packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    log_error("Server received packet type 0x%x (decimal %u) - Expected 0x%x (decimal %d)", packet_type, packet_type,
-              PACKET_TYPE_PROTOCOL_VERSION, PACKET_TYPE_PROTOCOL_VERSION);
-    log_error("This suggests a protocol mismatch or packet corruption");
-    log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
-              (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
-    if (payload) {
-      buffer_pool_free(NULL, payload, payload_len);
-    }
-    log_info("Client %u disconnected due to protocol mismatch", atomic_load(&client->client_id));
+    log_info("Client %u sent packet type %u instead of PROTOCOL_VERSION - using unencrypted mode",
+             atomic_load(&client->client_id), packet_type);
+
+    // Store this packet in the client structure so the caller can process it
+    // This is a bit of a hack, but necessary to preserve the packet we already received
+    client->pending_packet_type = packet_type;
+    client->pending_packet_payload = payload;
+    client->pending_packet_length = payload_len;
+
+    // Mark crypto as not initialized (no encryption)
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
-    return -1; // Return error but don't crash the server
+    return 0; // Success - just no encryption
   }
 
   if (payload_len != sizeof(protocol_version_packet_t)) {
