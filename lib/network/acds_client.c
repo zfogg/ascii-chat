@@ -522,19 +522,26 @@ bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds) {
 
   // Check if timestamp is too far in the future (allow 60 second clock skew)
   if (timestamp_ms > now_ms + 60000) {
+    // Cast to signed before subtraction to avoid unsigned underflow
+    int64_t skew = (int64_t)timestamp_ms - (int64_t)now_ms;
     log_warn("Timestamp is in the future: %llu > %llu (skew: %lld ms)", (unsigned long long)timestamp_ms,
-             (unsigned long long)now_ms, (long long)(timestamp_ms - now_ms));
+             (unsigned long long)now_ms, (long long)skew);
     return false;
   }
 
   // Check if timestamp is too old
-  if (timestamp_ms < now_ms - window_ms) {
+  // To avoid unsigned underflow, check if now_ms is large enough before subtracting
+  uint64_t min_valid_timestamp = (now_ms >= window_ms) ? (now_ms - window_ms) : 0;
+  if (timestamp_ms < min_valid_timestamp) {
+    // Cast to signed before subtraction to avoid unsigned underflow
+    int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
     log_warn("Timestamp is too old: %llu < %llu (age: %lld ms, max: %u seconds)", (unsigned long long)timestamp_ms,
-             (unsigned long long)(now_ms - window_ms), (long long)(now_ms - timestamp_ms), window_seconds);
+             (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
     return false;
   }
 
-  log_debug("Timestamp validation passed (age: %lld ms, window: %u seconds)", (long long)(now_ms - timestamp_ms),
-            window_seconds);
+  // Cast to signed before subtraction to avoid unsigned underflow
+  int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
+  log_debug("Timestamp validation passed (age: %lld ms, window: %u seconds)", (long long)age, window_seconds);
   return true;
 }
