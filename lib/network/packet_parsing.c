@@ -164,54 +164,6 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, audio_batch_info_t *out_batch) {
-  if (!data || !out_batch) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL pointer in audio batch header parse");
-  }
-
-  // Forward declare audio_batch_packet_t structure
-  // We can't include audio headers here due to circular dependencies
-  // Instead we define the layout directly for parsing
-  const size_t AUDIO_BATCH_HEADER_SIZE = 16; // sizeof(audio_batch_packet_t)
-
-  if (len < AUDIO_BATCH_HEADER_SIZE) {
-    return SET_ERRNO(ERROR_NETWORK_SIZE, "Audio batch header too small: %zu (need %zu)", len, AUDIO_BATCH_HEADER_SIZE);
-  }
-
-  // Parse header fields (all in network byte order)
-  const uint8_t *header = (const uint8_t *)data;
-
-  uint32_t batch_count_net, total_samples_net, sample_rate_net, channels_net;
-
-  // Read with memcpy to handle unaligned access
-  memcpy(&batch_count_net, header + 0, sizeof(uint32_t));
-  memcpy(&total_samples_net, header + 4, sizeof(uint32_t));
-  memcpy(&sample_rate_net, header + 8, sizeof(uint32_t));
-  memcpy(&channels_net, header + 12, sizeof(uint32_t));
-
-  // Convert from network byte order
-  out_batch->batch_count = NET_TO_HOST_U32(batch_count_net);
-  out_batch->total_samples = NET_TO_HOST_U32(total_samples_net);
-  out_batch->sample_rate = NET_TO_HOST_U32(sample_rate_net);
-  out_batch->channels = NET_TO_HOST_U32(channels_net);
-
-  // Validate header values
-  if (out_batch->batch_count == 0) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Audio batch count cannot be zero");
-  }
-
-  if (out_batch->total_samples == 0) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Audio batch total_samples cannot be zero");
-  }
-
-  if (out_batch->sample_rate < 8000 || out_batch->sample_rate > 192000) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Audio batch sample_rate out of range: %u (valid: 8000-192000)",
-                     out_batch->sample_rate);
-  }
-
-  if (out_batch->channels < 1 || out_batch->channels > 8) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Audio batch channels out of range: %u (valid: 1-8)", out_batch->channels);
-  }
-
-  return ASCIICHAT_OK;
-}
+// NOTE: packet_parse_audio_batch_header has been moved to lib/audio/audio.c as audio_parse_batch_header
+// This module now provides a wrapper inline function in packet_parsing.h for backwards compatibility
+// See lib/audio/audio.h for the canonical implementation

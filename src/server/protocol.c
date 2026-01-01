@@ -122,7 +122,6 @@
 #include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"
-#include "util/audio.h"
 #include "util/bytes.h"
 #include "util/image.h"
 #include "video/video_frame.h"
