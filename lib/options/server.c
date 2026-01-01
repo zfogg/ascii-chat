@@ -12,8 +12,8 @@
  */
 
 #include "options/server.h"
+#include "options/builder.h"
 #include "options/common.h"
-#include "options/presets.h"
 
 #include "asciichat_errno.h"
 #include "common.h"
@@ -67,32 +67,20 @@ asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
 // ============================================================================
 
 void usage_server(FILE *desc) {
-  (void)fprintf(desc, "ascii-chat - server options\n\n");
+  // Print custom bind address help first
+  (void)fprintf(desc, "ascii-chat server - Run as multi-client video chat server\n\n");
   (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  ascii-chat server [address1] [address2] [options...]\n\n");
-  (void)fprintf(desc, "BIND ADDRESSES (Positional Arguments):\n");
-  (void)fprintf(desc, "  0 arguments: Bind to 127.0.0.1 and ::1 (localhost dual-stack)\n");
-  (void)fprintf(desc, "  1 argument:  Bind only to this IPv4 OR IPv6 address\n");
-  (void)fprintf(desc, "  2 arguments: Bind to both (must be one IPv4 AND one IPv6, order-independent)\n\n");
-  (void)fprintf(desc, "EXAMPLES:\n");
-  (void)fprintf(desc, "  ascii-chat server                    # Localhost only (127.0.0.1 + ::1)\n");
-  (void)fprintf(desc, "  ascii-chat server 0.0.0.0            # All IPv4 interfaces\n");
-  (void)fprintf(desc, "  ascii-chat server ::                 # All IPv6 interfaces\n");
-  (void)fprintf(desc, "  ascii-chat server 0.0.0.0 ::         # All interfaces (dual-stack)\n");
-  (void)fprintf(desc, "  ascii-chat server 192.168.1.100 ::1  # Specific IPv4 + localhost IPv6\n\n");
-  (void)fprintf(desc, "OPTIONS:\n");
-  (void)fprintf(desc, USAGE_HELP_LINE);
-  (void)fprintf(desc, USAGE_PORT_LINE, 27224);
-  (void)fprintf(desc, USAGE_MAX_CLIENTS_LINE);
-  (void)fprintf(desc, USAGE_ENCRYPT_LINE);
-  (void)fprintf(desc, USAGE_KEY_SERVER_LINE);
-  (void)fprintf(desc, USAGE_PASSWORD_LINE);
-  (void)fprintf(desc, USAGE_KEYFILE_LINE);
-  (void)fprintf(desc, USAGE_NO_ENCRYPT_LINE);
-  (void)fprintf(desc, USAGE_CLIENT_KEYS_LINE);
-  (void)fprintf(desc, USAGE_COMPRESSION_LEVEL_LINE);
-  (void)fprintf(desc, USAGE_NO_COMPRESS_LINE);
-  (void)fprintf(desc, USAGE_ENCODE_AUDIO_LINE);
-  (void)fprintf(desc, USAGE_NO_ENCODE_AUDIO_LINE);
-  (void)fprintf(desc, USAGE_NO_AUDIO_MIXER_LINE);
+  (void)fprintf(desc, "  ascii-chat server [bind-address] [bind-address6] [options...]\n\n");
+  (void)fprintf(desc, "BIND ADDRESS FORMATS:\n");
+  (void)fprintf(desc, "  (none)                     bind to 127.0.0.1 and ::1 (localhost)\n");
+  (void)fprintf(desc, "  192.168.1.100              bind to IPv4 address only\n");
+  (void)fprintf(desc, "  ::                         bind to all IPv6 addresses\n");
+  (void)fprintf(desc, "  0.0.0.0                    bind to all IPv4 addresses\n");
+  (void)fprintf(desc, "  192.168.1.100 ::           bind to IPv4 and IPv6 (dual-stack)\n\n");
+
+  // Generate options from builder configuration
+  const options_config_t *config = options_preset_server();
+  if (config) {
+    options_config_print_usage(config, desc);
+  }
 }

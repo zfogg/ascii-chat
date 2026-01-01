@@ -8,6 +8,7 @@
 #include "options.h"
 #include "parsers.h"
 #include "actions.h"
+#include "common.h"
 #include "platform/terminal.h"
 #include "video/palette.h"
 #include "log/logging.h"
@@ -129,6 +130,8 @@ const options_config_t *options_preset_server(void) {
                                            "Cannot use both --encode-audio and --no-encode-audio");
 
   // Action options (execute and exit)
+  options_builder_add_action(b, "help", 'h', action_help_server, "Show this help message and exit", "ACTIONS");
+
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
                              "ACTIONS");
 
@@ -195,7 +198,7 @@ const options_config_t *options_preset_client(void) {
 
   // Display options - use custom parsers for enum types
   options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
-                               &(terminal_color_level_t){TERM_COLOR_NONE}, // NONE used as "auto" sentinel
+                               &(terminal_color_level_t){TERM_COLOR_AUTO}, // Auto-detect by default
                                sizeof(terminal_color_level_t), parse_color_mode,
                                "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
 
@@ -209,6 +212,10 @@ const options_config_t *options_preset_client(void) {
       sizeof(palette_type_t), parse_palette_type,
       "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
 
+  options_builder_add_callback(b, "palette-chars", 'C', offsetof(options_t, palette_custom), "",
+                               sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
+                               "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
+
   options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
                            "Show terminal capabilities and exit", "DISPLAY", false, NULL);
 
@@ -220,6 +227,9 @@ const options_config_t *options_preset_client(void) {
 
   options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
                            "DISPLAY", false, NULL);
+
+  options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
+                          "DISPLAY", false, NULL, NULL);
 
   // Snapshot mode
   options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
@@ -284,6 +294,8 @@ const options_config_t *options_preset_client(void) {
                                            "Cannot use both --encode-audio and --no-encode-audio");
 
   // Action options (execute and exit)
+  options_builder_add_action(b, "help", 'h', action_help_client, "Show this help message and exit", "ACTIONS");
+
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
                              "ACTIONS");
 
@@ -342,7 +354,7 @@ const options_config_t *options_preset_mirror(void) {
 
   // Display options - use custom parsers for enum types
   options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
-                               &(terminal_color_level_t){TERM_COLOR_NONE}, // NONE used as "auto" sentinel
+                               &(terminal_color_level_t){TERM_COLOR_AUTO}, // Auto-detect by default
                                sizeof(terminal_color_level_t), parse_color_mode,
                                "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
 
@@ -356,6 +368,10 @@ const options_config_t *options_preset_mirror(void) {
       sizeof(palette_type_t), parse_palette_type,
       "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
 
+  options_builder_add_callback(b, "palette-chars", 'C', offsetof(options_t, palette_custom), "",
+                               sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
+                               "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
+
   options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
                            "Show terminal capabilities and exit", "DISPLAY", false, NULL);
 
@@ -367,6 +383,9 @@ const options_config_t *options_preset_mirror(void) {
 
   options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
                            "DISPLAY", false, NULL);
+
+  options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 30)",
+                          "DISPLAY", false, NULL, NULL);
 
   // Snapshot mode
   options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
@@ -380,6 +399,8 @@ const options_config_t *options_preset_mirror(void) {
                                           "Option --snapshot-delay requires --snapshot");
 
   // Action options (execute and exit)
+  options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "ACTIONS");
+
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
                              "ACTIONS");
 

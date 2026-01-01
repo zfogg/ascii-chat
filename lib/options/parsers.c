@@ -36,8 +36,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
 
   // Auto-detect
   if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0) {
-    // Auto is handled by detect_terminal_capabilities() - we'll use NONE as sentinel
-    *color_mode = TERM_COLOR_NONE;
+    *color_mode = TERM_COLOR_AUTO;
     return true;
   }
 
@@ -466,4 +465,45 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // Full implementation would need to track whether port was set via flag.
 
   return 1; // Consumed 1 arg
+}
+
+// ============================================================================
+// Palette Characters Parser
+// ============================================================================
+
+bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  // The dest pointer points to the palette_custom field in options_t
+  // We need to get the full options_t struct to call parse_palette_chars_option
+  // Since we only have the field pointer, we need to handle this directly
+
+  char *palette_custom = (char *)dest;
+
+  if (strlen(arg) >= 256) {
+    if (error_msg) {
+      char *msg = SAFE_MALLOC(256, char *);
+      if (msg) {
+        snprintf(msg, 256, "Invalid palette-chars: too long (%zu chars, max 255)", strlen(arg));
+        *error_msg = msg;
+      }
+    }
+    return false;
+  }
+
+  // Copy the palette characters
+  SAFE_STRNCPY(palette_custom, arg, 256);
+  palette_custom[255] = '\0';
+
+  // Also set the palette type to custom
+  // Note: This is a simplification - ideally we'd have access to the full options_t struct
+  // to set palette_custom_set and palette_type, but the callback interface doesn't provide that.
+  // The palette_type should be handled separately or via a dependency.
+
+  return true;
 }

@@ -14,8 +14,8 @@
  */
 
 #include "options/client.h"
+#include "options/builder.h"
 #include "options/common.h"
-#include "options/presets.h"
 
 #include "asciichat_errno.h"
 #include "audio/audio.h"
@@ -74,7 +74,8 @@ asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts) {
 // ============================================================================
 
 void usage_client(FILE *desc) {
-  (void)fprintf(desc, "ascii-chat - client options\n\n");
+  // Print custom address format help first
+  (void)fprintf(desc, "ascii-chat client - Connect to ascii-chat server\n\n");
   (void)fprintf(desc, "USAGE:\n");
   (void)fprintf(desc, "  ascii-chat client [address][:port] [options...]\n\n");
   (void)fprintf(desc, "ADDRESS FORMATS:\n");
@@ -85,42 +86,10 @@ void usage_client(FILE *desc) {
   (void)fprintf(desc, "  192.168.1.1:8080           connect to IPv4:port\n");
   (void)fprintf(desc, "  ::1                        connect to IPv6:27224\n");
   (void)fprintf(desc, "  [::1]:8080                 connect to IPv6:port (brackets required with port)\n\n");
-  (void)fprintf(desc, "OPTIONS:\n");
-  (void)fprintf(desc, USAGE_HELP_LINE);
-  (void)fprintf(desc, USAGE_PORT_CLIENT_LINE);
-  (void)fprintf(desc, USAGE_RECONNECT_LINE);
-  (void)fprintf(desc, USAGE_WIDTH_LINE);
-  (void)fprintf(desc, USAGE_HEIGHT_LINE);
-  (void)fprintf(desc, USAGE_WEBCAM_INDEX_LINE);
-  (void)fprintf(desc, USAGE_LIST_WEBCAMS_LINE);
-  (void)fprintf(desc, USAGE_LIST_MICROPHONES_LINE);
-  (void)fprintf(desc, USAGE_LIST_SPEAKERS_LINE);
-  (void)fprintf(desc, USAGE_MICROPHONE_INDEX_LINE);
-  (void)fprintf(desc, USAGE_SPEAKERS_INDEX_LINE);
-  (void)fprintf(desc, USAGE_WEBCAM_FLIP_LINE);
-  (void)fprintf(desc, USAGE_TEST_PATTERN_CLIENT_LINE);
-#ifdef _WIN32
-  (void)fprintf(desc, USAGE_FPS_WIN_LINE);
-#else
-  (void)fprintf(desc, USAGE_FPS_UNIX_LINE);
-#endif
-  (void)fprintf(desc, USAGE_COLOR_MODE_LINE);
-  (void)fprintf(desc, USAGE_SHOW_CAPABILITIES_LINE);
-  (void)fprintf(desc, USAGE_UTF8_LINE);
-  (void)fprintf(desc, USAGE_RENDER_MODE_LINE);
-  (void)fprintf(desc, USAGE_PALETTE_LINE);
-  (void)fprintf(desc, USAGE_PALETTE_CHARS_LINE);
-  (void)fprintf(desc, USAGE_AUDIO_LINE);
-  (void)fprintf(desc, USAGE_AUDIO_ANALYSIS_LINE);
-  (void)fprintf(desc, USAGE_NO_AUDIO_PLAYBACK_LINE);
-  (void)fprintf(desc, USAGE_STRETCH_LINE);
-  (void)fprintf(desc, USAGE_SNAPSHOT_LINE);
-  (void)fprintf(desc, USAGE_SNAPSHOT_DELAY_LINE, (double)SNAPSHOT_DELAY_DEFAULT);
-  (void)fprintf(desc, USAGE_STRIP_ANSI_LINE);
-  (void)fprintf(desc, USAGE_ENCRYPT_LINE);
-  (void)fprintf(desc, USAGE_KEY_CLIENT_LINE);
-  (void)fprintf(desc, USAGE_PASSWORD_LINE);
-  (void)fprintf(desc, USAGE_KEYFILE_LINE);
-  (void)fprintf(desc, USAGE_NO_ENCRYPT_LINE);
-  (void)fprintf(desc, USAGE_SERVER_KEY_LINE);
+
+  // Generate options from builder configuration
+  const options_config_t *config = options_preset_client();
+  if (config) {
+    options_config_print_usage(config, desc);
+  }
 }

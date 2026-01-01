@@ -66,6 +66,20 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg);
 bool parse_palette_type(const char *arg, void *dest, char **error_msg);
 
 /**
+ * @brief Parse custom palette characters option
+ * @param arg String of characters ordered from darkest to brightest
+ * @param dest Destination pointer (char[256])
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * The characters should be ordered from darkest (leftmost) to brightest (rightmost).
+ * Maximum length is 255 characters.
+ *
+ * Example: " .:-=+*#%@"
+ */
+bool parse_palette_chars(const char *arg, void *dest, char **error_msg);
+
+/**
  * @brief Parse log level option
  * @param arg String argument (e.g., "debug", "info", "warn")
  * @param dest Destination pointer (log_level_t*)
