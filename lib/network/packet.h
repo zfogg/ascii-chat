@@ -1134,7 +1134,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  *
  * @ingroup network
  */
-int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx);
+asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx);
 
 /**
  * @brief Receive a packet with decryption and decompression support

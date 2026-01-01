@@ -801,16 +801,17 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
 
   // Use send_packet_secure() which handles encryption and compression automatically
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-  int result = send_packet_secure(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
+  asciichat_error_t result = send_packet_secure(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
 
   mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     server_connection_lost();
+    return -1;
   }
 
-  return result;
+  return 0;
 }
 
 /**

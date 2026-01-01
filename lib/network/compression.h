@@ -71,7 +71,7 @@
  *   - Level 1: Fastest compression, lowest ratio (best for real-time streaming)
  *   - Level 3: Balanced speed/ratio
  *   - Level 9: Slower compression, best ratio (for limited bandwidth)
- * @return 0 on success, non-zero on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * Compresses input data using zstd's compression algorithm with the specified compression level.
  * The output buffer is automatically allocated by the function and must be freed by the caller
@@ -91,7 +91,7 @@
  *
  * @warning Caller must SAFE_FREE() the output buffer to avoid memory leaks.
  */
-int compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level);
+asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level);
 
 /**
  * @brief Decompress data using zstd
@@ -99,7 +99,7 @@ int compress_data(const void *input, size_t input_size, void **output, size_t *o
  * @param input_size Size of compressed data in bytes
  * @param output Pre-allocated output buffer (must not be NULL)
  * @param output_size Size of output buffer in bytes (must be >= decompressed size)
- * @return 0 on success, non-zero on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * Decompresses zstd-compressed data into a pre-allocated output buffer.
  * The output buffer must be large enough to hold the decompressed data.
@@ -114,7 +114,7 @@ int compress_data(const void *input, size_t input_size, void **output, size_t *o
  * @warning Output buffer must be large enough for decompressed data or buffer
  *          overflow will occur. Ensure output_size is correct before calling.
  */
-int decompress_data(const void *input, size_t input_size, void *output, size_t output_size);
+asciichat_error_t decompress_data(const void *input, size_t input_size, void *output, size_t output_size);
 
 /**
  * @brief Determine if compression should be used for given data sizes

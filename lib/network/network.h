@@ -287,7 +287,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
  * @brief Set socket timeout for send/receive operations
  * @param sockfd Socket file descriptor
  * @param timeout_seconds Timeout in seconds
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * Configures socket-level timeout for send and receive operations.
  * This sets SO_SNDTIMEO and SO_RCVTIMEO socket options.
@@ -297,12 +297,12 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
  *
  * @ingroup network
  */
-int set_socket_timeout(socket_t sockfd, int timeout_seconds);
+asciichat_error_t set_socket_timeout(socket_t sockfd, int timeout_seconds);
 
 /**
  * @brief Enable TCP keepalive on socket
  * @param sockfd Socket file descriptor
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * Enables TCP keepalive probes on socket using KEEPALIVE_IDLE,
  * KEEPALIVE_INTERVAL, and KEEPALIVE_COUNT settings.
@@ -312,12 +312,12 @@ int set_socket_timeout(socket_t sockfd, int timeout_seconds);
  *
  * @ingroup network
  */
-int set_socket_keepalive(socket_t sockfd);
+asciichat_error_t set_socket_keepalive(socket_t sockfd);
 
 /**
  * @brief Set socket to non-blocking mode
  * @param sockfd Socket file descriptor
- * @return 0 on success, -1 on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * Sets socket to non-blocking mode. I/O operations return immediately
  * with error if data is not available.
@@ -329,7 +329,7 @@ int set_socket_keepalive(socket_t sockfd);
  *
  * @ingroup network
  */
-int set_socket_nonblocking(socket_t sockfd);
+asciichat_error_t set_socket_nonblocking(socket_t sockfd);
 
 /**
  * @brief Configure socket buffers and TCP_NODELAY for optimal performance
