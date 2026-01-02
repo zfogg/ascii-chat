@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII-Chat STUN/TURN Server Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+        }
+        h1 {
+            color: #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+        }
+        .server-config {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #00ff00;
+        }
+        button {
+            background: #00ff00;
+            color: #1e1e1e;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        #output {
+            background: #0a0a0a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #333;
+            min-height: 200px;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .info { color: #00aaff; }
+        .warning { color: #ffaa00; }
+        code {
+            background: #2a2a2a;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 ASCII-Chat STUN/TURN Server Test</h1>
+
+    <div class="server-config">
+        <h3>Server Configuration</h3>
+        <p><strong>STUN Servers:</strong></p>
+        <ul>
+            <li><code>stun:stun.ascii-chat.com:3478</code> (Primary)</li>
+            <li><code>stun:stun.l.google.com:19302</code> (Fallback)</li>
+        </ul>
+
+        <p><strong>TURN Server:</strong></p>
+        <ul>
+            <li><code>turn:turn.ascii-chat.com:3478</code></li>
+            <li>Username: <code>ascii</code></li>
+            <li>Password: <code>YOUR_TURN_PASSWORD_HERE</code></li>
+        </ul>
+    </div>
+
+    <button onclick="testServers()">🚀 Test STUN/TURN Servers</button>
+    <button onclick="clearOutput()" style="margin-left: 10px; background: #666;">Clear Output</button>
+
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${timestamp}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        async function testServers() {
+            clearOutput();
+            log('='.repeat(70), 'info');
+            log('Starting STUN/TURN Server Test', 'info');
+            log('='.repeat(70), 'info');
+            log('');
+
+            const config = {
+                iceServers: [
+                    {
+                        urls: 'stun:stun.ascii-chat.com:3478'
+                    },
+                    {
+                        urls: 'stun:stun.l.google.com:19302'
+                    },
+                    {
+                        urls: 'turn:turn.ascii-chat.com:3478',
+                        username: 'ascii',
+                        credential: 'YOUR_TURN_PASSWORD_HERE'
+                    }
+                ]
+            };
+
+            log('ICE Server Configuration:', 'info');
+            config.iceServers.forEach((server, i) => {
+                log(`  ${i + 1}. ${server.urls}`, 'info');
+                if (server.username) {
+                    log(`     Username: ${server.username}`, 'info');
+                }
+            });
+            log('');
+
+            try {
+                log('Creating RTCPeerConnection...', 'info');
+                const pc = new RTCPeerConnection(config);
+
+                let candidateCount = {
+                    host: 0,
+                    srflx: 0,  // Server reflexive (STUN)
+                    relay: 0   // Relayed (TURN)
+                };
+
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        const candidate = event.candidate.candidate;
+                        log(`ICE Candidate: ${candidate}`, 'success');
+
+                        // Parse candidate type
+                        if (candidate.includes('typ host')) {
+                            candidateCount.host++;
+                        } else if (candidate.includes('typ srflx')) {
+                            candidateCount.srflx++;
+                            log('  ✅ STUN is working! (Server Reflexive candidate)', 'success');
+                        } else if (candidate.includes('typ relay')) {
+                            candidateCount.relay++;
+                            log('  ✅ TURN is working! (Relay candidate)', 'success');
+                        }
+                    } else {
+                        // All candidates gathered
+                        log('');
+                        log('='.repeat(70), 'info');
+                        log('ICE Gathering Complete!', 'success');
+                        log('='.repeat(70), 'info');
+                        log('');
+                        log('Candidate Summary:', 'info');
+                        log(`  Host candidates (local): ${candidateCount.host}`, 'info');
+                        log(`  Server Reflexive (STUN): ${candidateCount.srflx}`, candidateCount.srflx > 0 ? 'success' : 'error');
+                        log(`  Relay (TURN): ${candidateCount.relay}`, candidateCount.relay > 0 ? 'success' : 'warning');
+                        log('');
+
+                        // Interpret results
+                        if (candidateCount.srflx > 0 && candidateCount.relay > 0) {
+                            log('✅ TEST PASSED: Both STUN and TURN are working!', 'success');
+                        } else if (candidateCount.srflx > 0) {
+                            log('⚠️  PARTIAL: STUN is working, but no TURN relay candidates', 'warning');
+                            log('   This might be OK - TURN is only used as fallback', 'warning');
+                        } else {
+                            log('❌ TEST FAILED: No STUN or TURN candidates found', 'error');
+                            log('   Check firewall, DNS, and server configuration', 'error');
+                        }
+                        log('');
+
+                        // Cleanup
+                        pc.close();
+                    }
+                };
+
+                pc.onicegatheringstatechange = () => {
+                    log(`ICE Gathering State: ${pc.iceGatheringState}`, 'info');
+                };
+
+                pc.oniceconnectionstatechange = () => {
+                    log(`ICE Connection State: ${pc.iceConnectionState}`, 'info');
+                };
+
+                log('');
+                log('Creating data channel...', 'info');
+                pc.createDataChannel('test');
+
+                log('Creating offer...', 'info');
+                const offer = await pc.createOffer();
+
+                log('Setting local description...', 'info');
+                await pc.setLocalDescription(offer);
+
+                log('');
+                log('Gathering ICE candidates...', 'info');
+                log('(This may take 5-10 seconds)', 'info');
+                log('');
+
+            } catch (error) {
+                log('');
+                log('❌ ERROR: ' + error.message, 'error');
+                log('Stack trace:', 'error');
+                log(error.stack, 'error');
+            }
+        }
+
+        // Auto-run test on page load
+        window.addEventListener('load', () => {
+            log('Page loaded. Click "Test STUN/TURN Servers" to begin.', 'info');
+            log('');
+        });
+    </script>
+</body>
+</html>
