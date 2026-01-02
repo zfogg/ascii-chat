@@ -839,7 +839,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     int samples_mixed = 0;
-    if (opts && GET_OPTION(no_audio_mixer)) {
+    if (GET_OPTION(no_audio_mixer)) {
       // Disable mixer.h processing: simple mixing without ducking/compression/etc
       // Just add audio from all sources except this client, no processing
       SAFE_MEMSET(mix_buffer, samples_to_read * sizeof(float), 0, samples_to_read * sizeof(float));

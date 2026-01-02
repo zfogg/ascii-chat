@@ -518,7 +518,7 @@ static void handle_audio_packet(const void *data, size_t len) {
     return;
   }
 
-  if (!(opts && GET_OPTION(audio_enabled))) {
+  if (!(GET_OPTION(audio_enabled))) {
     log_warn_every(1000000, "Received audio packet but audio is disabled");
     return;
   }
@@ -559,7 +559,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  if (!(opts && GET_OPTION(audio_enabled))) {
+  if (!(GET_OPTION(audio_enabled))) {
     log_warn_every(1000000, "Received audio batch packet but audio is disabled");
     return;
   }
@@ -615,7 +615,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   }
 
   // Track received packet for analysis
-  if (opts && GET_OPTION(audio_analysis_enabled)) {
+  if (GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_track_received_packet(len);
   }
 
@@ -665,7 +665,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   // Track received packet for analysis
-  if (opts && GET_OPTION(audio_analysis_enabled)) {
+  if (GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_track_received_packet(len);
   }
 
@@ -774,7 +774,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
 
   if (total_decoded_samples > 0) {
     // Track received packet for analysis
-    if (opts && GET_OPTION(audio_analysis_enabled)) {
+    if (GET_OPTION(audio_analysis_enabled)) {
       audio_analysis_track_received_packet(len);
     }
 

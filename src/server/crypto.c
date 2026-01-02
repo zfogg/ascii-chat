@@ -235,7 +235,7 @@ int server_crypto_handshake(client_info_t *client) {if (GET_OPTION(no_encrypt)) 
 
   // If --require-server-verify is set, require clients to provide identity keys
   // This ensures only clients with Ed25519 identity keys can connect
-  if (opts && GET_OPTION(require_server_verify)) {
+  if (GET_OPTION(require_server_verify)) {
     GET_OPTION(crypto_handshake_ctx).require_client_auth = true;
     log_info("--require-server-verify enabled: clients must provide identity keys");
   }

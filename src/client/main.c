@@ -271,7 +271,7 @@ static void shutdown_client() {
   capture_cleanup();
 
   // Print audio analysis report if enabled
-  if (opts && GET_OPTION(audio_analysis_enabled)) {
+  if (GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_print_report();
     audio_analysis_cleanup();
   }
@@ -332,7 +332,7 @@ static int initialize_client_systems(bool shared_init_completed) {
     (void)atexit(platform_cleanup);
 
     // Initialize palette based on command line options
-    const char *custom_chars = (opts && GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
+    const char *custom_chars = (GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
     palette_type_t palette_type = opts ? GET_OPTION(palette_type) : PALETTE_STANDARD;
     if (apply_palette_config(palette_type, custom_chars) != 0) {
       log_error("Failed to apply palette configuration");
@@ -342,7 +342,7 @@ static int initialize_client_systems(bool shared_init_completed) {
     // Initialize logging with appropriate settings
     char *validated_log_file = NULL;
     log_level_t log_level = opts ? GET_OPTION(log_level) : LOG_INFO;
-    const char *log_file = (opts && GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : "";
+    const char *log_file = (GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : "";
 
     if (strlen(log_file) > 0) {
       asciichat_error_t log_path_result = path_validate_user_path(log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
@@ -360,9 +360,9 @@ static int initialize_client_systems(bool shared_init_completed) {
 
     // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
-    bool quiet_mode = (opts && GET_OPTION(quiet)) || (opts && GET_OPTION(snapshot_mode));
+    bool quiet_mode = (GET_OPTION(quiet)) || (GET_OPTION(snapshot_mode));
     debug_memory_set_quiet_mode(quiet_mode);
-    if (!(opts && GET_OPTION(snapshot_mode))) {
+    if (!(GET_OPTION(snapshot_mode))) {
       (void)atexit(debug_memory_report);
     }
 #endif
@@ -415,14 +415,14 @@ static int initialize_client_systems(bool shared_init_completed) {
   }
 
   // Initialize audio if enabled
-  if (opts && GET_OPTION(audio_enabled)) {
+  if (GET_OPTION(audio_enabled)) {
     if (audio_client_init() != 0) {
       log_fatal("Failed to initialize audio system");
       return ERROR_AUDIO;
     }
 
     // Initialize audio analysis if requested
-    if (opts && GET_OPTION(audio_analysis_enabled)) {
+    if (GET_OPTION(audio_analysis_enabled)) {
       if (audio_analysis_init() != 0) {
         log_warn("Failed to initialize audio analysis");
       }
@@ -445,7 +445,7 @@ static int initialize_client_systems(bool shared_init_completed) {
  */
 int client_main(void) {
   // Get options from RCU state// Dispatcher already printed capabilities, but honor flag defensively
-  if (opts && GET_OPTION(show_capabilities)) {
+  if (GET_OPTION(show_capabilities)) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
@@ -500,7 +500,7 @@ int client_main(void) {
   const char *discovered_address = NULL;
   const char *discovered_port = NULL;
 
-  if (opts && GET_OPTION(session_string)[0] != '\0') {
+  if (GET_OPTION(session_string)[0] != '\0') {
     log_info("Session string detected: %s - performing ACDS discovery", GET_OPTION(session_string));
 
     // Configure ACDS client
@@ -595,7 +595,7 @@ int client_main(void) {
 
       // In snapshot mode, exit immediately on connection failure - no retries
       // Snapshot mode is for quick single-frame captures, not persistent connections
-      if (opts && GET_OPTION(snapshot_mode)) {
+      if (GET_OPTION(snapshot_mode)) {
         log_error("Connection failed in snapshot mode - exiting without retry");
         return 1;
       }
@@ -663,7 +663,7 @@ int client_main(void) {
       server_connection_close();
 
       // In snapshot mode, exit immediately on protocol failure - no retries
-      if (opts && GET_OPTION(snapshot_mode)) {
+      if (GET_OPTION(snapshot_mode)) {
         log_error("Protocol startup failed in snapshot mode - exiting without retry");
         return 1;
       }
@@ -711,7 +711,7 @@ int client_main(void) {
 
     // In snapshot mode, exit immediately on connection loss - no reconnection
     // Snapshot mode is for quick single-frame captures, not persistent connections
-    if (opts && GET_OPTION(snapshot_mode)) {
+    if (GET_OPTION(snapshot_mode)) {
       log_error("Connection lost in snapshot mode - exiting without reconnection");
       return 1;
     }
