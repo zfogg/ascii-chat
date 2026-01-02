@@ -42,7 +42,7 @@
 
 #include <stdbool.h>
 #include "thread_pool.h"
-#include "network/tcp_client.h"
+#include "networking/tcp/client.h"
 
 /**
  * @brief Global client worker thread pool
@@ -80,6 +80,17 @@ extern thread_pool_t *g_client_worker_pool;
  * should use this instance instead of accessing global connection state.
  */
 extern tcp_client_t *g_client;
+
+/**
+ * @brief Global WebRTC peer manager for P2P connections
+ *
+ * Manages WebRTC peer connections for ACDS session participants.
+ * Handles SDP/ICE exchange and DataChannel lifecycle for P2P ACIP transport.
+ *
+ * NULL if WebRTC not initialized (TCP-only mode).
+ * Initialized when joining/creating ACDS sessions with WebRTC transport.
+ */
+extern struct webrtc_peer_manager *g_peer_manager;
 
 /**
  * @brief Client mode entry point for unified binary

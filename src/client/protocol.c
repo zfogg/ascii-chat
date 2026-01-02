@@ -922,6 +922,18 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {.on_ascii_frame 
                                                                 .on_webrtc_ice = acip_on_webrtc_ice,
                                                                 .app_ctx = NULL};
 
+/**
+ * @brief Get ACIP client callbacks for packet dispatch
+ *
+ * Returns pointer to the global callback structure for use by
+ * WebRTC sessions that need to receive ACDS signaling packets.
+ *
+ * @return Pointer to client callbacks (never NULL)
+ */
+const acip_client_callbacks_t *protocol_get_acip_callbacks() {
+  return &g_acip_client_callbacks;
+}
+
 /* ============================================================================
  * Data Reception Thread
  * ============================================================================ */

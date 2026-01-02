@@ -10,8 +10,9 @@
  * @date January 2026
  */
 
-#include "network/acip/handlers.h"
-#include "network/acip/messages.h"
+#include "networking/acip/handlers.h"
+#include "networking/acip/messages.h"
+#include "networking/acip/acds.h"
 #include "network/packet.h"
 #include "network/packet_parsing.h"
 #include "audio/audio.h"
@@ -83,6 +84,10 @@ static asciichat_error_t handle_client_crypto_rekey_request(const void *payload,
                                                             const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_crypto_rekey_response(const void *payload, size_t payload_len,
                                                              const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len,
+                                                  const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len,
+                                                  const acip_client_callbacks_t *callbacks);
 
 /**
  * @brief Client packet handler dispatch table (O(1) lookup)
@@ -104,6 +109,8 @@ static const acip_client_handler_func_t g_client_packet_handlers[200] = {
     [PACKET_TYPE_CLEAR_CONSOLE] = handle_client_clear_console,
     [PACKET_TYPE_CRYPTO_REKEY_REQUEST] = handle_client_crypto_rekey_request,
     [PACKET_TYPE_CRYPTO_REKEY_RESPONSE] = handle_client_crypto_rekey_response,
+    [PACKET_TYPE_ACIP_WEBRTC_SDP] = handle_client_webrtc_sdp,
+    [PACKET_TYPE_ACIP_WEBRTC_ICE] = handle_client_webrtc_ice,
 };
 
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
@@ -361,6 +368,36 @@ static asciichat_error_t handle_client_crypto_rekey_response(const void *payload
   if (callbacks->on_crypto_rekey_response) {
     callbacks->on_crypto_rekey_response(payload, payload_len, callbacks->app_ctx);
   }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t payload_len,
+                                                  const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_webrtc_sdp) {
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(acip_webrtc_sdp_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WEBRTC_SDP payload too small");
+  }
+
+  const acip_webrtc_sdp_t *sdp = (const acip_webrtc_sdp_t *)payload;
+  callbacks->on_webrtc_sdp(sdp, payload_len, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len,
+                                                  const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_webrtc_ice) {
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(acip_webrtc_ice_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WEBRTC_ICE payload too small");
+  }
+
+  const acip_webrtc_ice_t *ice = (const acip_webrtc_ice_t *)payload;
+  callbacks->on_webrtc_ice(ice, payload_len, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 

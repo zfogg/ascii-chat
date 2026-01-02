@@ -88,6 +88,7 @@
 #include "networking/tcp/client.h"
 #include "networking/acip/client.h"
 #include "networking/acip/acds.h"
+#include "networking/acip/receive.h"
 #include "networking/webrtc/peer_manager.h"
 #include "webrtc.h"
 #include "util/path.h"
@@ -155,6 +156,15 @@ struct webrtc_peer_manager *g_peer_manager = NULL;
 static acip_transport_t *g_webrtc_peer_transport = NULL;
 
 /**
+ * @brief ACDS receive thread handle for WebRTC sessions
+ *
+ * Used to receive incoming SDP/ICE signaling messages from remote peers
+ * via the ACDS server during WebRTC session establishment.
+ */
+static asciithread_t g_acds_receive_thread;
+static bool g_acds_receive_thread_active = false;
+
+/**
  * @brief Callback when WebRTC DataChannel is ready
  *
  * Called by peer manager when DataChannel opens and gets wrapped in ACIP transport.
@@ -182,6 +192,56 @@ static void webrtc_transport_ready_callback(acip_transport_t *transport, const u
     // TODO: Store in a hash table keyed by participant_id
     acip_transport_destroy(transport);
   }
+}
+
+/**
+ * @brief ACDS receive thread function for WebRTC signaling
+ *
+ * Continuously receives and dispatches ACDS signaling packets (SDP/ICE)
+ * from remote peers during WebRTC session establishment.
+ *
+ * This thread runs concurrently with the main event loop, enabling
+ * bidirectional signaling for WebRTC connections.
+ *
+ * @param arg Pointer to acip_transport_t for ACDS connection
+ * @return NULL on thread exit
+ */
+static void *acds_receive_thread_func(void *arg) {
+  acip_transport_t *acds_transport = (acip_transport_t *)arg;
+  if (!acds_transport) {
+    log_error("ACDS receive thread started with NULL transport");
+    return NULL;
+  }
+
+  log_info("ACDS receive thread started - listening for WebRTC signaling");
+
+  // Get client callbacks for packet dispatch
+  const acip_client_callbacks_t *callbacks = protocol_get_acip_callbacks();
+  if (!callbacks) {
+    log_error("Failed to get ACIP client callbacks");
+    return NULL;
+  }
+
+  // Receive loop
+  while (g_acds_receive_thread_active && !should_exit()) {
+    // Receive and dispatch one packet (blocking call)
+    asciichat_error_t result = acip_transport_receive_and_dispatch_client(acds_transport, callbacks);
+
+    if (result != ASCIICHAT_OK) {
+      if (result == ERROR_NETWORK) {
+        log_info("ACDS connection closed");
+      } else if (result == ERROR_CRYPTO) {
+        log_error("ACDS crypto error - connection compromised");
+      } else {
+        log_error("ACDS receive error: %s", asciichat_error_string(result));
+      }
+      break;
+    }
+  }
+
+  log_info("ACDS receive thread exiting");
+  g_acds_receive_thread_active = false;
+  return NULL;
 }
 
 /**
@@ -697,6 +757,21 @@ int client_main(void) {
 
       log_info("WebRTC connection initiated - SDP offer sent via ACDS");
 
+      // Start ACDS receive thread for incoming SDP/ICE signaling
+      g_acds_receive_thread_active = true;
+      int thread_result = ascii_thread_create(&g_acds_receive_thread, acds_receive_thread_func, acds_transport);
+      if (thread_result != 0) {
+        log_error("Failed to create ACDS receive thread: %d", thread_result);
+        g_acds_receive_thread_active = false;
+        webrtc_peer_manager_destroy(g_peer_manager);
+        g_peer_manager = NULL;
+        acip_transport_destroy(acds_transport);
+        acds_client_disconnect(&acds_client);
+        return 1;
+      }
+
+      log_info("ACDS receive thread started - ready to process incoming WebRTC signaling");
+
       // Simple event loop: wait for WebRTC connection to establish
       // TODO: Implement proper event loop with DataChannel event handling
       // For now, just sleep and wait for Ctrl+C
@@ -717,6 +792,15 @@ int client_main(void) {
 
       // Cleanup
       log_info("Shutting down WebRTC session");
+
+      // Stop ACDS receive thread
+      if (g_acds_receive_thread_active) {
+        g_acds_receive_thread_active = false;
+        log_info("Waiting for ACDS receive thread to exit");
+        ascii_thread_join(&g_acds_receive_thread, NULL);
+        log_info("ACDS receive thread stopped");
+      }
+
       if (g_webrtc_peer_transport) {
         acip_transport_destroy(g_webrtc_peer_transport);
         g_webrtc_peer_transport = NULL;

@@ -59,8 +59,9 @@
 typedef enum {
   ACIP_TRANSPORT_TCP = 1,       ///< Raw TCP socket
   ACIP_TRANSPORT_WEBSOCKET = 2, ///< WebSocket over TCP
-  ACIP_TRANSPORT_HTTP = 3,      ///< HTTP long-polling (future)
-  ACIP_TRANSPORT_QUIC = 4       ///< QUIC/UDP (future)
+  ACIP_TRANSPORT_WEBRTC = 3,    ///< WebRTC DataChannel (P2P)
+  ACIP_TRANSPORT_HTTP = 4,      ///< HTTP long-polling (future)
+  ACIP_TRANSPORT_QUIC = 5       ///< QUIC/UDP (future)
 } acip_transport_type_t;
 
 /**
@@ -146,6 +147,17 @@ typedef struct {
    * @return true if connected, false otherwise
    */
   bool (*is_connected)(acip_transport_t *transport);
+
+  /**
+   * @brief Custom destroy implementation (optional)
+   *
+   * @param transport Transport instance
+   *
+   * @note Called by acip_transport_destroy() before freeing impl_data
+   * @note Should free transport-specific resources (peer connections, etc.)
+   * @note May be NULL if no custom cleanup needed
+   */
+  void (*destroy_impl)(acip_transport_t *transport);
 } acip_transport_methods_t;
 
 /**
@@ -295,3 +307,19 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
  * @note Caller retains socket ownership
  */
 acip_transport_t *acip_websocket_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx);
+
+/**
+ * @brief Create WebRTC transport from peer connection and data channel
+ *
+ * @param peer_conn WebRTC peer connection handle
+ * @param data_channel WebRTC data channel for ACIP packets
+ * @param crypto_ctx Optional crypto context (may be NULL)
+ * @return Transport instance or NULL on error
+ *
+ * @note Transport takes ownership of peer_conn and data_channel
+ * @note destroy() will close the peer connection and data channel
+ */
+struct webrtc_peer_connection;
+struct webrtc_data_channel;
+acip_transport_t *acip_webrtc_transport_create(struct webrtc_peer_connection *peer_conn,
+                                               struct webrtc_data_channel *data_channel, crypto_context_t *crypto_ctx);

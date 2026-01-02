@@ -36,8 +36,8 @@
 
 #pragma once
 
-#include "network/acip/transport.h"
-#include "network/acip/handlers.h"
+#include "networking/acip/transport.h"
+#include "networking/acip/handlers.h"
 #include "asciichat_errno.h"
 
 /**
