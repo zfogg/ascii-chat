@@ -266,6 +266,9 @@ set(NETWORK_SRCS
     lib/network/acip/acds_handlers.c
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
     lib/network/nat/upnp.c
+    # mDNS service discovery for LAN
+    lib/network/mdns.c
+    deps/mdns/mdns.c
 )
 
 # =============================================================================
