@@ -59,6 +59,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "common.h"
+#include "networking/webrtc/stun.h"
+#include "networking/webrtc/turn.h"
 
 /**
  * @brief Discovery server configuration
@@ -78,4 +80,10 @@ typedef struct {
   bool require_client_identity; ///< Require clients to provide signed identity when joining sessions
   bool require_server_verify;   ///< ACDS policy: require servers to verify client identity during handshake
   bool require_client_verify;   ///< ACDS policy: require clients to verify server identity during handshake
+
+  // WebRTC connectivity servers
+  uint8_t stun_count;            ///< Number of configured STUN servers (0-4)
+  stun_server_t stun_servers[4]; ///< STUN server configurations
+  uint8_t turn_count;            ///< Number of configured TURN servers (0-4)
+  turn_server_t turn_servers[4]; ///< TURN server configurations
 } acds_config_t;

@@ -276,12 +276,39 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
   acip_session_created_t resp;
   memset(&resp, 0, sizeof(resp));
 
-  asciichat_error_t create_result = session_create(server->sessions, req, &resp);
+  asciichat_error_t create_result = session_create(server->sessions, req, &server->config, &resp);
   if (create_result == ASCIICHAT_OK) {
-    // Success - send SESSION_CREATED response
-    acip_send_session_created(transport, &resp);
-    log_info("Session created: %.*s (UUID: %02x%02x...)", resp.session_string_len, resp.session_string,
-             resp.session_id[0], resp.session_id[1]);
+    // Build complete payload: fixed response + variable STUN/TURN servers
+    size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
+    size_t turn_size = (size_t)resp.turn_count * sizeof(turn_server_t);
+    size_t total_size = sizeof(resp) + stun_size + turn_size;
+
+    uint8_t *payload = SAFE_MALLOC(total_size, uint8_t *);
+    if (!payload) {
+      acip_send_error(transport, ERROR_MEMORY, "Out of memory building response");
+      ACDS_DESTROY_TRANSPORT(transport);
+      return;
+    }
+
+    // Copy fixed response
+    memcpy(payload, &resp, sizeof(resp));
+
+    // Append STUN servers
+    if (resp.stun_count > 0) {
+      memcpy(payload + sizeof(resp), server->config.stun_servers, stun_size);
+    }
+
+    // Append TURN servers
+    if (resp.turn_count > 0) {
+      memcpy(payload + sizeof(resp) + stun_size, server->config.turn_servers, turn_size);
+    }
+
+    // Send complete response with variable-length data
+    packet_send_via_transport(transport, PACKET_TYPE_ACIP_SESSION_CREATED, payload, total_size);
+    SAFE_FREE(payload);
+
+    log_info("Session created: %.*s (UUID: %02x%02x..., %d STUN, %d TURN servers)", resp.session_string_len,
+             resp.session_string, resp.session_id[0], resp.session_id[1], resp.stun_count, resp.turn_count);
 
     // Save to database - look up session entry first
     rwlock_rdlock(&server->sessions->lock);

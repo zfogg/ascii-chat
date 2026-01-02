@@ -905,9 +905,8 @@ int server_main(void) {
   }
 
   // Security is configured, proceed with ACDS connection
-  // TODO: Make ACDS server address configurable via --acds-server option
-  const char *acds_server = "127.0.0.1";
-  uint16_t acds_port = 27225;
+  const char *acds_server = GET_OPTION(acds_server);
+  uint16_t acds_port = (uint16_t)GET_OPTION(acds_port);
 
   log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
 
@@ -924,9 +923,16 @@ int server_main(void) {
     acds_session_create_params_t create_params;
     memset(&create_params, 0, sizeof(create_params));
 
-    // TODO: Use real identity public key from server crypto
-    // For now, use dummy key (ACDS will accept it if crypto is disabled)
-    memset(create_params.identity_pubkey, 0, 32);
+    // Use server's Ed25519 identity public key if available
+    if (g_server_encryption_enabled && has_identity) {
+      memcpy(create_params.identity_pubkey, g_server_private_key.public_key, 32);
+      log_debug("Using server identity key for ACDS session");
+    } else {
+      // No identity key available - use zero key
+      // ACDS will accept this if identity verification is not required
+      memset(create_params.identity_pubkey, 0, 32);
+      log_debug("No server identity key - using zero key for ACDS session");
+    }
 
     create_params.capabilities = 0x03; // Video + Audio
     create_params.max_participants = GET_OPTION(max_clients);

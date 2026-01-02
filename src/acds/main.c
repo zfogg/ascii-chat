@@ -139,6 +139,97 @@ int main(int argc, char **argv) {
     log_info("Security: Requiring signed identity from clients joining sessions");
   }
 
+  // Parse STUN servers from comma-separated list
+  config.stun_count = 0;
+  memset(config.stun_servers, 0, sizeof(config.stun_servers));
+  const char *stun_servers_str = GET_OPTION(stun_servers);
+  if (stun_servers_str && stun_servers_str[0] != '\0') {
+    char stun_copy[OPTIONS_BUFF_SIZE];
+    SAFE_STRNCPY(stun_copy, stun_servers_str, sizeof(stun_copy));
+
+    char *saveptr = NULL;
+    char *token = strtok_r(stun_copy, ",", &saveptr);
+    while (token && config.stun_count < 4) {
+      // Trim whitespace
+      while (*token == ' ' || *token == '\t')
+        token++;
+      size_t len = strlen(token);
+      while (len > 0 && (token[len - 1] == ' ' || token[len - 1] == '\t')) {
+        token[--len] = '\0';
+      }
+
+      if (len > 0 && len < sizeof(config.stun_servers[0].host)) {
+        config.stun_servers[config.stun_count].host_len = (uint8_t)len;
+        SAFE_STRNCPY(config.stun_servers[config.stun_count].host, token,
+                     sizeof(config.stun_servers[config.stun_count].host));
+        log_info("Added STUN server: %s", token);
+        config.stun_count++;
+      } else if (len > 0) {
+        log_warn("STUN server URL too long (max 63 chars): %s", token);
+      }
+
+      token = strtok_r(NULL, ",", &saveptr);
+    }
+  }
+
+  // Parse TURN servers from comma-separated list
+  config.turn_count = 0;
+  memset(config.turn_servers, 0, sizeof(config.turn_servers));
+  const char *turn_servers_str = GET_OPTION(turn_servers);
+  const char *turn_username_str = GET_OPTION(turn_username);
+  const char *turn_credential_str = GET_OPTION(turn_credential);
+
+  if (turn_servers_str && turn_servers_str[0] != '\0') {
+    char turn_copy[OPTIONS_BUFF_SIZE];
+    SAFE_STRNCPY(turn_copy, turn_servers_str, sizeof(turn_copy));
+
+    char *saveptr = NULL;
+    char *token = strtok_r(turn_copy, ",", &saveptr);
+    while (token && config.turn_count < 4) {
+      // Trim whitespace
+      while (*token == ' ' || *token == '\t')
+        token++;
+      size_t len = strlen(token);
+      while (len > 0 && (token[len - 1] == ' ' || token[len - 1] == '\t')) {
+        token[--len] = '\0';
+      }
+
+      if (len > 0 && len < sizeof(config.turn_servers[0].url)) {
+        config.turn_servers[config.turn_count].url_len = (uint8_t)len;
+        SAFE_STRNCPY(config.turn_servers[config.turn_count].url, token,
+                     sizeof(config.turn_servers[config.turn_count].url));
+
+        // Set username if provided
+        if (turn_username_str && turn_username_str[0] != '\0') {
+          size_t username_len = strlen(turn_username_str);
+          if (username_len < sizeof(config.turn_servers[0].username)) {
+            config.turn_servers[config.turn_count].username_len = (uint8_t)username_len;
+            SAFE_STRNCPY(config.turn_servers[config.turn_count].username, turn_username_str,
+                         sizeof(config.turn_servers[config.turn_count].username));
+          }
+        }
+
+        // Set credential if provided
+        if (turn_credential_str && turn_credential_str[0] != '\0') {
+          size_t credential_len = strlen(turn_credential_str);
+          if (credential_len < sizeof(config.turn_servers[0].credential)) {
+            config.turn_servers[config.turn_count].credential_len = (uint8_t)credential_len;
+            SAFE_STRNCPY(config.turn_servers[config.turn_count].credential, turn_credential_str,
+                         sizeof(config.turn_servers[config.turn_count].credential));
+          }
+        }
+
+        log_info("Added TURN server: %s (username: %s)", token,
+                 turn_username_str && turn_username_str[0] ? turn_username_str : "<none>");
+        config.turn_count++;
+      } else if (len > 0) {
+        log_warn("TURN server URL too long (max 63 chars): %s", token);
+      }
+
+      token = strtok_r(NULL, ",", &saveptr);
+    }
+  }
+
   // Initialize server
   acds_server_t server;
   memset(&server, 0, sizeof(server));

@@ -30,24 +30,25 @@ const options_config_t *options_preset_binary(void) {
   b->description = "Terminal-based video chat with ASCII art rendering";
 
   // Help and version
-  options_builder_add_bool(b, "help", 'h', offsetof(options_t, help), false, "Show this help message", "GENERAL", false,
-                           NULL);
+  options_builder_add_bool(b, "help", '\0', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
 
-  options_builder_add_bool(b, "version", 'V', offsetof(options_t, version), false, "Show version information",
+  options_builder_add_bool(b, "version", '\0', offsetof(options_t, version), false, "Show version information",
                            "GENERAL", false, NULL);
 
   // Logging options
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Path to log file", "LOGGING",
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);
 
-  // Note: log_level is a log_level_t enum, needs custom parser
-  // For now, we'll skip it in the binary preset since it's mode-specific in ACDS
+  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
+                               &(log_level_t){LOG_INFO}, // Default: info level
+                               sizeof(log_level_t), parse_log_level,
+                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
 
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false, "Suppress log output", "LOGGING", false,
-                           NULL);
+  options_builder_add_int(b, "verbose", 'V', offsetof(options_t, verbose_level), 0,
+                          "Increase log verbosity (stackable: -VV, -VVV)", "LOGGING", false, NULL, NULL);
 
-  options_builder_add_int(b, "verbose", 'v', offsetof(options_t, verbose_level), 0, "Verbosity level (stackable -vvv)",
-                          "LOGGING", false, NULL, NULL);
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
 
   config = options_builder_build(b);
   options_builder_destroy(b);
@@ -117,8 +118,19 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
 
+  options_builder_add_bool(b, "acds-expose-ip", '\0', offsetof(options_t, acds_expose_ip), false,
+                           "Explicitly allow public IP disclosure in ACDS sessions (requires ACDS, opt-in only)",
+                           "SECURITY", false, NULL);
+
   options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
                            "SECURITY", false, NULL);
+
+  // ACDS Discovery options
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), "127.0.0.1",
+                             "ACDS discovery server address", "DISCOVERY", false, NULL, NULL);
+
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
+                          "DISCOVERY", false, NULL, NULL);
 
   // Dependencies
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
@@ -465,6 +477,21 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_bool(b, "require-client-verify", 'c', offsetof(options_t, require_client_verify), false,
                            "ACDS policy: require clients to verify server identity during handshake", "SECURITY", false,
                            NULL);
+
+  // WebRTC connectivity options
+  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers), "",
+                             "Comma-separated list of STUN server URLs (e.g., stun:stun.l.google.com:19302)", "WEBRTC",
+                             false, NULL, NULL);
+
+  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers), "",
+                             "Comma-separated list of TURN server URLs (e.g., turn:relay.example.com:3478)", "WEBRTC",
+                             false, NULL, NULL);
+
+  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "",
+                             "Username for TURN server authentication", "WEBRTC", false, NULL, NULL);
+
+  options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential), "",
+                             "Credential/password for TURN server authentication", "WEBRTC", false, NULL, NULL);
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
