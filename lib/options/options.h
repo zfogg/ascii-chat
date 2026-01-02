@@ -417,7 +417,8 @@ int strtoint_safe(const char *str);
   char stun_servers[OPTIONS_BUFF_SIZE];                                                                                \
   char turn_servers[OPTIONS_BUFF_SIZE];                                                                                \
   char turn_username[OPTIONS_BUFF_SIZE];                                                                               \
-  char turn_credential[OPTIONS_BUFF_SIZE];
+  char turn_credential[OPTIONS_BUFF_SIZE];                                                                             \
+  char turn_secret[OPTIONS_BUFF_SIZE];
 
 /**
  * @brief Mode type for options parsing
@@ -556,6 +557,7 @@ typedef struct options_state {
   char turn_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of TURN server URLs
   char turn_username[OPTIONS_BUFF_SIZE];   ///< ACDS: Username for TURN authentication
   char turn_credential[OPTIONS_BUFF_SIZE]; ///< ACDS: Credential/password for TURN authentication
+  char turn_secret[OPTIONS_BUFF_SIZE];     ///< ACDS: Shared secret for dynamic TURN credential generation (HMAC-SHA1)
 
   // ============================================================================
   // Palette Configuration

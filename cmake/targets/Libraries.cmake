@@ -353,9 +353,16 @@ if(NOT BUILDING_OBJECT_LIBS)
         sqlite3  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
     )
+    # Link miniupnpc if available (optional UPnP/NAT-PMP support)
+    if(MINIUPNPC_FOUND)
+        target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
+    endif()
 else()
     # For OBJECT libs, link external deps only
     target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} sqlite3 libdatachannel)
+    if(MINIUPNPC_FOUND)
+        target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
+    endif()
 endif()
 
 # Core module was moved earlier in the dependency chain (Module 7)
