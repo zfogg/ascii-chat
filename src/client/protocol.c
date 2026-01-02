@@ -389,32 +389,25 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
   }
 
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return;
-  }
-
-  // Handle snapshot mode timing
+  // Get options from RCU state// Handle snapshot mode timing
   bool take_snapshot = false;
-  if (opts->snapshot_mode) {
+  if (GET_OPTION(snapshot_mode)) {
     static time_t first_frame_time = 0;
     if (first_frame_time == 0) {
       first_frame_time = time(NULL);
       // If delay is 0, take snapshot immediately on first frame
-      if (opts->snapshot_delay == 0) {
+      if (GET_OPTION(snapshot_delay) == 0) {
         log_info("Snapshot captured immediately (delay=0)!");
         take_snapshot = true;
         signal_exit();
       } else {
         log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
-                 opts->snapshot_delay);
+                 GET_OPTION(snapshot_delay));
       }
     } else {
       time_t snapshot_time = time(NULL);
       double elapsed = difftime(snapshot_time, first_frame_time);
-      if (elapsed >= (double)opts->snapshot_delay) {
+      if (elapsed >= (double)GET_OPTION(snapshot_delay)) {
         char duration_str[32];
         format_duration_s(elapsed, duration_str, sizeof(duration_str));
         log_info("Snapshot captured after %s!", duration_str);
@@ -525,8 +518,7 @@ static void handle_audio_packet(const void *data, size_t len) {
     return;
   }
 
-  const options_t *opts = options_get();
-  if (!(opts && opts->audio_enabled)) {
+  if (!(opts && GET_OPTION(audio_enabled))) {
     log_warn_every(1000000, "Received audio packet but audio is disabled");
     return;
   }
@@ -567,8 +559,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  const options_t *opts = options_get();
-  if (!(opts && opts->audio_enabled)) {
+  if (!(opts && GET_OPTION(audio_enabled))) {
     log_warn_every(1000000, "Received audio batch packet but audio is disabled");
     return;
   }
@@ -580,10 +571,10 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
 
   // Parse batch header
   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t batch_count = NET_TO_HOST_U32(batch_header->batch_count);
-  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
-  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
-  uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
+  uint32_t batch_count = NET_TO_HOST_U32(GET_OPTION(batch_count));
+  uint32_t total_samples = NET_TO_HOST_U32(GET_OPTION(total_samples));
+  uint32_t sample_rate = NET_TO_HOST_U32(GET_OPTION(sample_rate));
+  uint32_t channels = NET_TO_HOST_U32(GET_OPTION(channels));
 
   (void)batch_count;
   (void)sample_rate;
@@ -624,7 +615,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   }
 
   // Track received packet for analysis
-  if (opts && opts->audio_analysis_enabled) {
+  if (opts && GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_track_received_packet(len);
   }
 
@@ -656,8 +647,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts || !opts->audio_enabled) {
+  if (!opts || !GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received opus audio packet but audio is disabled");
     return;
   }
@@ -675,7 +665,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   // Track received packet for analysis
-  if (opts && opts->audio_analysis_enabled) {
+  if (opts && GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_track_received_packet(len);
   }
 
@@ -713,8 +703,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
   }
 
   // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts || !opts->audio_enabled) {
+  if (!opts || !GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received opus batch packet but audio is disabled");
     return;
   }
@@ -785,7 +774,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
 
   if (total_decoded_samples > 0) {
     // Track received packet for analysis
-    if (opts && opts->audio_analysis_enabled) {
+    if (opts && GET_OPTION(audio_analysis_enabled)) {
       audio_analysis_track_received_packet(len);
     }
 
@@ -865,7 +854,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
   const server_state_packet_t *state = (const server_state_packet_t *)data;
 
   // Convert from network byte order
-  uint32_t active_count = NET_TO_HOST_U32(state->active_client_count);
+  uint32_t active_count = NET_TO_HOST_U32(GET_OPTION(active_client_count));
 
   // Check if connected count changed - if so, set flag to clear console before next frame
   if (g_server_state_initialized) {

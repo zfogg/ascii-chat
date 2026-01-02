@@ -427,15 +427,15 @@ static void *ascii_chat_client_handler(void *arg) {
   }
 
   // Extract server context from user_data
-  server_context_t *server_ctx = (server_context_t *)ctx->user_data;
+  server_context_t *server_ctx = (server_context_t *)GET_OPTION(user_data);
   if (!server_ctx) {
     log_error("Client handler: NULL server context");
-    socket_close(ctx->client_socket);
+    socket_close(GET_OPTION(client_socket));
     SAFE_FREE(ctx);
     return NULL;
   }
 
-  socket_t client_socket = ctx->client_socket;
+  socket_t client_socket = GET_OPTION(client_socket);
 
   // Extract client IP and port using tcp_server helpers
   char client_ip[INET6_ADDRSTRLEN] = {0};
@@ -451,17 +451,17 @@ static void *ascii_chat_client_handler(void *arg) {
   log_info("Client handler started for %s:%d", client_ip, client_port);
 
   // Check connection rate limit (prevent DoS attacks)
-  if (server_ctx->rate_limiter) {
+  if (server_GET_OPTION(rate_limiter)) {
     bool allowed = false;
     asciichat_error_t rate_check =
-        rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
+        rate_limiter_check(server_GET_OPTION(rate_limiter), client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
       tcp_server_reject_client(client_socket, "Connection rate limit exceeded");
       SAFE_FREE(ctx);
       return NULL;
     }
     // Record successful connection attempt
-    rate_limiter_record(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION);
+    rate_limiter_record(server_GET_OPTION(rate_limiter), client_ip, RATE_EVENT_CONNECTION);
   }
 
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
@@ -481,7 +481,7 @@ static void *ascii_chat_client_handler(void *arg) {
   // Block until client disconnects (active flag is set by receive thread)
   client_info_t *client = find_client_by_id((uint32_t)client_id);
   if (client) {
-    while (atomic_load(&client->active) && !atomic_load(server_ctx->server_should_exit)) {
+    while (atomic_load(&GET_OPTION(active)) && !atomic_load(server_GET_OPTION(server_should_exit))) {
       platform_sleep_ms(100); // Check every 100ms
     }
     log_info("Client %d disconnected from %s:%d", client_id, client_ip, client_port);
@@ -565,40 +565,33 @@ static void *ascii_chat_client_handler(void *arg) {
  * @ingroup server_main
  */
 static int init_server_crypto(void) {
-  // Get options from RCU
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  // Check if encryption is disabled
-  if (opts->no_encrypt) {
+  // Get options from RCU// Check if encryption is disabled
+  if (GET_OPTION(no_encrypt)) {
     log_info("Encryption: DISABLED (--no-encrypt)");
     g_server_encryption_enabled = false;
     return 0;
   }
 
   // Load server private key if provided via --key
-  if (strlen(opts->encrypt_key) > 0) {
+  if (strlen(GET_OPTION(encrypt_key)) > 0) {
     // --key requires signing capabilities (SSH key files or GPG keys with gpg-agent)
 
     // Validate SSH key file (skip validation for special prefixes - they have their own validation)
     bool is_special_key =
-        (strncmp(opts->encrypt_key, "gpg:", 4) == 0 || strncmp(opts->encrypt_key, "github:", 7) == 0 ||
-         strncmp(opts->encrypt_key, "gitlab:", 7) == 0);
+        (strncmp(GET_OPTION(encrypt_key), "gpg:", 4) == 0 || strncmp(GET_OPTION(encrypt_key), "github:", 7) == 0 ||
+         strncmp(GET_OPTION(encrypt_key), "gitlab:", 7) == 0);
 
     if (!is_special_key) {
-      if (validate_ssh_key_file(opts->encrypt_key) != 0) {
-        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", opts->encrypt_key);
+      if (validate_ssh_key_file(GET_OPTION(encrypt_key)) != 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", GET_OPTION(encrypt_key));
         return -1;
       }
     }
 
     // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
-    log_info("Loading key for authentication: %s", opts->encrypt_key);
-    if (parse_private_key(opts->encrypt_key, &g_server_private_key) == ASCIICHAT_OK) {
-      log_info("Successfully loaded server key: %s", opts->encrypt_key);
+    log_info("Loading key for authentication: %s", GET_OPTION(encrypt_key));
+    if (parse_private_key(GET_OPTION(encrypt_key), &g_server_private_key) == ASCIICHAT_OK) {
+      log_info("Successfully loaded server key: %s", GET_OPTION(encrypt_key));
     } else {
       log_error("Failed to parse key: %s\n"
                 "This may be due to:\n"
@@ -608,11 +601,11 @@ static int init_server_crypto(void) {
                 "\n"
                 "Note: RSA and ECDSA keys are not yet supported\n"
                 "To generate an Ed25519 key: ssh-keygen -t ed25519\n",
-                opts->encrypt_key);
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", opts->encrypt_key);
+                GET_OPTION(encrypt_key));
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", GET_OPTION(encrypt_key));
       return -1;
     }
-  } else if (strlen(opts->password) == 0) {
+  } else if (strlen(GET_OPTION(password)) == 0) {
     // No identity key provided - server will run in simple mode
     // The server will still generate ephemeral keys for encryption, but no identity key
     g_server_private_key.type = KEY_TYPE_UNKNOWN;
@@ -620,9 +613,9 @@ static int init_server_crypto(void) {
   }
 
   // Load client whitelist if provided
-  if (strlen(opts->client_keys) > 0) {
-    if (parse_public_keys(opts->client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", opts->client_keys);
+  if (strlen(GET_OPTION(client_keys)) > 0) {
+    if (parse_public_keys(GET_OPTION(client_keys), g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", GET_OPTION(client_keys));
       return -1;
     }
     log_debug("Loaded %zu whitelisted clients", g_num_whitelisted_clients);
@@ -637,14 +630,7 @@ int server_main(void) {
   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
   // This function focuses on server-specific initialization
 
-  // Get options from RCU
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  // Register shutdown check callback for library code
+  // Get options from RCU// Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
   // Initialize crypto after logging is ready
@@ -656,16 +642,16 @@ int server_main(void) {
   }
   log_info("Crypto initialized successfully");
 
-  // Handle quiet mode - disable terminal output when opts->quiet is enabled
-  log_set_terminal_output(!opts->quiet);
+  // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
+  log_set_terminal_output(!GET_OPTION(quiet));
 
   log_info("ASCII Chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
-  int port = strtoint_safe(opts->port);
+  int port = strtoint_safe(GET_OPTION(port));
   if (port == INT_MIN) {
-    log_error("Invalid port configuration: %s", opts->port);
-    FATAL(ERROR_CONFIG, "Invalid port configuration: %s", opts->port);
+    log_error("Invalid port configuration: %s", GET_OPTION(port));
+    FATAL(ERROR_CONFIG, "Invalid port configuration: %s", GET_OPTION(port));
   }
 
   ascii_simd_init();
@@ -715,12 +701,12 @@ int server_main(void) {
   }
 
   // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
-  log_debug("Config check: opts->address='%s', opts->address6='%s'", opts->address, opts->address6);
+  log_debug("Config check: GET_OPTION(address)='%s', GET_OPTION(address6)='%s'", GET_OPTION(address), GET_OPTION(address6));
 
-  bool ipv4_has_value = (strlen(opts->address) > 0);
-  bool ipv6_has_value = (strlen(opts->address6) > 0);
-  bool ipv4_is_default = (strcmp(opts->address, "127.0.0.1") == 0);
-  bool ipv6_is_default = (strcmp(opts->address6, "::1") == 0);
+  bool ipv4_has_value = (strlen(GET_OPTION(address)) > 0);
+  bool ipv6_has_value = (strlen(GET_OPTION(address6)) > 0);
+  bool ipv4_is_default = (strcmp(GET_OPTION(address), "127.0.0.1") == 0);
+  bool ipv6_is_default = (strcmp(GET_OPTION(address6), "::1") == 0);
 
   log_debug("Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d",
             ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);
@@ -742,20 +728,20 @@ int server_main(void) {
     // IPv4 explicitly set, IPv6 is default or empty: bind only IPv4
     bind_ipv4 = true;
     bind_ipv6 = false;
-    ipv4_address = opts->address;
+    ipv4_address = GET_OPTION(address);
     log_info("Binding only to IPv4 address: %s", ipv4_address);
   } else if (ipv6_has_value && !ipv6_is_default && (ipv4_is_default || !ipv4_has_value)) {
     // IPv6 explicitly set, IPv4 is default or empty: bind only IPv6
     bind_ipv4 = false;
     bind_ipv6 = true;
-    ipv6_address = opts->address6;
+    ipv6_address = GET_OPTION(address6);
     log_info("Binding only to IPv6 address: %s", ipv6_address);
   } else {
     // Both explicitly set or one explicit + one default: dual-stack
     bind_ipv4 = true;
     bind_ipv6 = true;
-    ipv4_address = ipv4_has_value ? opts->address : "127.0.0.1";
-    ipv6_address = ipv6_has_value ? opts->address6 : "::1";
+    ipv4_address = ipv4_has_value ? GET_OPTION(address) : "127.0.0.1";
+    ipv6_address = ipv6_has_value ? GET_OPTION(address6) : "::1";
     log_info("Dual-stack binding: IPv4=%s, IPv6=%s", ipv4_address, ipv6_address);
   }
 
@@ -891,11 +877,11 @@ int server_main(void) {
     memset(create_params.identity_pubkey, 0, 32);
 
     create_params.capabilities = 0x03; // Video + Audio
-    create_params.max_participants = opts->max_clients;
+    create_params.max_participants = GET_OPTION(max_clients);
     create_params.has_password = false; // TODO: Support password-protected sessions
 
     // Server connection information (where clients should connect)
-    SAFE_STRNCPY(create_params.server_address, opts->address, sizeof(create_params.server_address));
+    SAFE_STRNCPY(create_params.server_address, GET_OPTION(address), sizeof(create_params.server_address));
     create_params.server_port = port;
 
     // Create session
@@ -948,13 +934,13 @@ int server_main(void) {
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
   log_info("Closing all client sockets to unblock receive threads...");
 
-  // Use write lock since we're modifying client->socket
+  // Use write lock since we're modifying GET_OPTION(socket)
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (atomic_load(&client->client_id) != 0 && client->socket != INVALID_SOCKET_VALUE) {
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
+    if (atomic_load(&GET_OPTION(client_id)) != 0 && GET_OPTION(socket) != INVALID_SOCKET_VALUE) {
+      socket_close(GET_OPTION(socket));
+      GET_OPTION(socket) = INVALID_SOCKET_VALUE;
     }
   }
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -987,13 +973,13 @@ int server_main(void) {
     // Only attempt to clean up clients that were actually connected
     // (client_id is 0 for uninitialized clients, starts from 1 for connected clients)
     // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
-    if (atomic_load(&client->client_id) == 0) {
+    if (atomic_load(&GET_OPTION(client_id)) == 0) {
       continue; // Skip uninitialized clients
     }
 
     // Use snapshot pattern to avoid holding both locks simultaneously
     // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
+    uint32_t client_id_snapshot = atomic_load(&GET_OPTION(client_id)); // Atomic read is safe under rwlock
 
     // Clean up ANY client that was allocated, whether active or not
     // (disconnected clients may not be active but still have resources)
