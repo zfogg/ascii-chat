@@ -236,6 +236,7 @@ typedef struct __attribute__((packed)) {
   uint8_t session_id[16];     ///< Session UUID
 
   // Server connection information (ONLY if success == 1)
+  uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
   char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
   uint16_t server_port;    ///< Port number for client connection
 } acip_session_joined_t;

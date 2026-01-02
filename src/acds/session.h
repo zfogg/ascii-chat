@@ -44,6 +44,7 @@ typedef struct session_entry {
   char password_hash[128]; ///< Argon2id hash (if has_password)
   bool has_password;       ///< Password protection flag
   bool expose_ip_publicly; ///< Allow IP disclosure without verification (explicit opt-in via --acds-expose-ip)
+  uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
 
   uint64_t created_at; ///< Unix timestamp (ms)
   uint64_t expires_at; ///< Unix timestamp (ms) - created_at + 24h

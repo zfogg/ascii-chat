@@ -159,6 +159,9 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   // If no password, require explicit opt-in via acds_expose_ip
   req.expose_ip_publicly = params->acds_expose_ip ? 1 : 0;
 
+  // Session type (Direct TCP or WebRTC)
+  req.session_type = params->session_type;
+
   // Send SESSION_CREATE packet
   asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
   if (send_result != ASCIICHAT_OK) {
@@ -363,10 +366,12 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
     memcpy(result->participant_id, resp->participant_id, 16);
     memcpy(result->session_id, resp->session_id, 16);
     // Server connection information (ONLY revealed after successful authentication)
+    result->session_type = resp->session_type;
     SAFE_STRNCPY(result->server_address, resp->server_address, sizeof(result->server_address));
     result->server_port = resp->server_port;
-    log_info("Joined session successfully (participant ID: %02x%02x..., server=%s:%d)", result->participant_id[0],
-             result->participant_id[1], result->server_address, result->server_port);
+    log_info("Joined session successfully (participant ID: %02x%02x..., server=%s:%d, type=%s)",
+             result->participant_id[0], result->participant_id[1], result->server_address, result->server_port,
+             result->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");
   } else {
     result->error_code = resp->error_code;
     size_t msg_len = strnlen(resp->error_message, sizeof(resp->error_message));

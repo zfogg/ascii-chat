@@ -239,6 +239,9 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
   // IP disclosure policy (explicit opt-in)
   session->expose_ip_publicly = req->expose_ip_publicly != 0;
 
+  // Session type (Direct TCP or WebRTC)
+  session->session_type = req->session_type;
+
   // Set timestamps
   uint64_t now = get_current_time_ms();
   session->created_at = now;
@@ -301,6 +304,9 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
   // Fill response - ACDS policy flags
   resp->require_server_verify = config->require_server_verify ? 1 : 0;
   resp->require_client_verify = config->require_client_verify ? 1 : 0;
+
+  // Session type (Direct TCP or WebRTC)
+  resp->session_type = session->session_type;
 
   // NOTE: Server connection information (IP/port) is NOT included in SESSION_INFO.
   // It is only revealed after successful authentication via SESSION_JOIN to prevent
@@ -431,8 +437,10 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   if (reveal_ip) {
     SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
     resp->server_port = session->server_port;
-    log_info("Participant joined session %s (participants=%d/%d, server=%s:%d)", session_string,
-             session->current_participants, session->max_participants, resp->server_address, resp->server_port);
+    resp->session_type = session->session_type;
+    log_info("Participant joined session %s (participants=%d/%d, server=%s:%d, type=%s)", session_string,
+             session->current_participants, session->max_participants, resp->server_address, resp->server_port,
+             session->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");
   } else {
     // Leave server_address and server_port as zero (memset at line 321)
     log_info("Participant joined session %s (participants=%d/%d, IP WITHHELD - auth required)", session_string,
