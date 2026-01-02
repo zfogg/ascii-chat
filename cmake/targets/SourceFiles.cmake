@@ -249,6 +249,7 @@ set(NETWORK_SRCS
     lib/network/acip/client.c
     lib/network/acip/server.c
     lib/network/acip/send.c
+    lib/network/acip/receive.c
     lib/network/acip/handlers.c
     lib/network/acip/acds_handlers.c
     lib/network/acip/transport_tcp.c

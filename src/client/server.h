@@ -73,6 +73,14 @@ bool server_connection_is_active();
 socket_t server_connection_get_socket();
 
 /**
+ * @brief Get ACIP transport instance
+ * @return Transport instance or NULL if not connected
+ *
+ * @ingroup client_connection
+ */
+struct acip_transport *server_connection_get_transport(void);
+
+/**
  * @brief Get client ID assigned by server
  * @return Client ID or 0 if not connected
  *

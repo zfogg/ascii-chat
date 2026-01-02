@@ -660,6 +660,17 @@ socket_t server_connection_get_socket() {
 }
 
 /**
+ * @brief Get ACIP transport instance
+ *
+ * @return Transport instance or NULL if not connected
+ *
+ * @ingroup client_connection
+ */
+acip_transport_t *server_connection_get_transport(void) {
+  return g_client_transport;
+}
+
+/**
  * @brief Get client ID assigned by server
  *
  * @return Client ID (based on local port) or 0 if not connected
