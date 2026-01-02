@@ -95,3 +95,22 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
 
   return ASCIICHAT_OK;
 }
+
+// ============================================================================
+// ACDS Usage/Help Output
+// ============================================================================
+
+void usage_acds(FILE *desc) {
+  (void)fprintf(desc, "ascii-chat-acds - ASCII Chat Discovery Service\n\n");
+  (void)fprintf(desc, "USAGE:\n");
+  (void)fprintf(desc, "  acds [options...]\n\n");
+  (void)fprintf(desc, "DESCRIPTION:\n");
+  (void)fprintf(desc, "  Discovery server for session management and WebRTC signaling\n");
+  (void)fprintf(desc, "  using the ACIP protocol over raw TCP.\n\n");
+
+  // Generate options from builder configuration
+  const options_config_t *config = options_preset_acds();
+  if (config) {
+    options_config_print_usage(config, desc);
+  }
+}

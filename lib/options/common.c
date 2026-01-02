@@ -584,3 +584,27 @@ void update_dimensions_to_terminal_size(options_t *opts) {
         opts->width, opts->height);
   }
 }
+
+// ============================================================================
+// Generic Usage Function (Dispatches to Mode-Specific Functions)
+// ============================================================================
+
+void usage(FILE *desc, asciichat_mode_t mode) {
+  switch (mode) {
+  case MODE_SERVER:
+    usage_server(desc);
+    break;
+  case MODE_CLIENT:
+    usage_client(desc);
+    break;
+  case MODE_MIRROR:
+    usage_mirror(desc);
+    break;
+  case MODE_ACDS:
+    usage_acds(desc);
+    break;
+  default:
+    (void)fprintf(desc, "Unknown mode\n");
+    break;
+  }
+}
