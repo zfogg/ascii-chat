@@ -236,6 +236,9 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
     memcpy(session->password_hash, req->password_hash, sizeof(session->password_hash));
   }
 
+  // IP disclosure policy (explicit opt-in)
+  session->expose_ip_publicly = req->expose_ip_publicly != 0;
+
   // Set timestamps
   uint64_t now = get_current_time_ms();
   session->created_at = now;
@@ -400,14 +403,41 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   memcpy(resp->participant_id, participant->participant_id, 16);
   memcpy(resp->session_id, session->session_id, 16);
 
-  // Server connection information (ONLY revealed after successful authentication)
-  SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
-  resp->server_port = session->server_port;
+  // Server connection information (CRITICAL SECURITY: Conditional IP disclosure)
+  //
+  // IP address is ONLY revealed if:
+  // 1. Password was verified (if session has_password), OR
+  // 2. Session explicitly opted-in with expose_ip_publicly flag
+  //
+  // This prevents IP address leakage to unauthenticated clients.
+  bool reveal_ip = false;
+
+  if (session->has_password) {
+    // Password was already verified at line 355-370
+    // If we reached here, password is correct
+    reveal_ip = true;
+  } else if (session->expose_ip_publicly) {
+    // No password, but explicit opt-in via --acds-expose-ip
+    reveal_ip = true;
+  } else {
+    // No password AND no explicit opt-in = SECURITY VIOLATION
+    // This session was created without proper privacy controls
+    log_warn("Session join: %s has no password and expose_ip_publicly=false - IP NOT REVEALED", session_string);
+    reveal_ip = false;
+  }
+
+  if (reveal_ip) {
+    SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
+    resp->server_port = session->server_port;
+    log_info("Participant joined session %s (participants=%d/%d, server=%s:%d)", session_string,
+             session->current_participants, session->max_participants, resp->server_address, resp->server_port);
+  } else {
+    // Leave server_address and server_port as zero (memset at line 321)
+    log_info("Participant joined session %s (participants=%d/%d, IP WITHHELD - auth required)", session_string,
+             session->current_participants, session->max_participants);
+  }
 
   rwlock_wrunlock(&registry->lock);
-
-  log_info("Participant joined session %s (participants=%d/%d, server=%s:%d)", session_string,
-           session->current_participants, session->max_participants, resp->server_address, resp->server_port);
 
   return ASCIICHAT_OK;
 }

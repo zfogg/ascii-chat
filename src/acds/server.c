@@ -18,7 +18,10 @@
 #include "acds/session.h"
 #include "acds/signaling.h"
 #include "network/acip/acds.h"
+#include "network/acip/acds_handlers.h"
 #include "network/acip/client.h"
+#include "network/acip/send.h"
+#include "network/acip/transport.h"
 #include "network/rate_limit/rate_limit.h"
 #include "network/rate_limit/sqlite.h"
 #include "network/errors.h"
@@ -208,6 +211,321 @@ void acds_server_shutdown(acds_server_t *server) {
   log_info("Server shutdown complete");
 }
 
+// =============================================================================
+// ACIP Transport Helper Macros for ACDS
+// =============================================================================
+// ACDS uses plain TCP without encryption (discovery service)
+// These macros simplify creating temporary transports for responses
+
+#define ACDS_CREATE_TRANSPORT(socket, transport_var)                                                                   \
+  acip_transport_t *transport_var = acip_tcp_transport_create(socket, NULL);                                           \
+  if (!transport_var) {                                                                                                \
+    log_error("Failed to create ACDS transport");                                                                      \
+    return;                                                                                                            \
+  }
+
+#define ACDS_DESTROY_TRANSPORT(transport_var) acip_transport_destroy(transport_var)
+
+// =============================================================================
+// ACIP Callback Wrappers for ACDS
+// =============================================================================
+// These callbacks are invoked by acip_handle_acds_packet() via O(1) array dispatch.
+// Each callback implements: Rate Limit → Crypto Verify → Business Logic → DB Save
+
+static void acds_on_session_create(const acip_session_create_t *req, int client_socket, const char *client_ip,
+                                   void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_debug("SESSION_CREATE packet from %s", client_ip);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Rate limiting check
+  if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, client_socket,
+                                   "SESSION_CREATE")) {
+    return;
+  }
+
+  // Cryptographic identity verification (if required)
+  if (server->config.require_server_identity) {
+    // Validate timestamp (5 minute window)
+    if (!acds_validate_timestamp(req->timestamp, 300)) {
+      log_warn("SESSION_CREATE rejected from %s: invalid timestamp (replay attack protection)", client_ip);
+      acip_send_error(transport, ERROR_CRYPTO_VERIFICATION, "Timestamp validation failed - too old or in the future");
+      ACDS_DESTROY_TRANSPORT(transport);
+
+      return;
+    }
+
+    // Verify Ed25519 signature
+    asciichat_error_t verify_result = acds_verify_session_create(
+        req->identity_pubkey, req->timestamp, req->capabilities, req->max_participants, req->signature);
+
+    if (verify_result != ASCIICHAT_OK) {
+      log_warn("SESSION_CREATE rejected from %s: invalid signature (identity verification failed)", client_ip);
+      acip_send_error(transport, ERROR_CRYPTO_VERIFICATION, "Identity signature verification failed");
+      ACDS_DESTROY_TRANSPORT(transport);
+      return;
+    }
+
+    log_debug("SESSION_CREATE signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
+              req->identity_pubkey[1]);
+  }
+
+  acip_session_created_t resp;
+  memset(&resp, 0, sizeof(resp));
+
+  asciichat_error_t create_result = session_create(server->sessions, req, &resp);
+  if (create_result == ASCIICHAT_OK) {
+    // Success - send SESSION_CREATED response
+    acip_send_session_created(transport, &resp);
+    log_info("Session created: %.*s (UUID: %02x%02x...)", resp.session_string_len, resp.session_string,
+             resp.session_id[0], resp.session_id[1]);
+
+    // Save to database - look up session entry first
+    rwlock_rdlock(&server->sessions->lock);
+    session_entry_t *session = NULL;
+    HASH_FIND(hh, server->sessions->sessions, resp.session_string, strlen(resp.session_string), session);
+    if (session) {
+      database_save_session(server->db, session);
+    }
+    rwlock_rdunlock(&server->sessions->lock);
+  } else {
+    // Error - send error response using proper error code
+    acip_send_error(transport, create_result, "Failed to create session");
+    log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_string(create_result));
+  }
+
+  ACDS_DESTROY_TRANSPORT(transport);
+}
+
+static void acds_on_session_lookup(const acip_session_lookup_t *req, int client_socket, const char *client_ip,
+                                   void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_debug("SESSION_LOOKUP packet from %s", client_ip);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Rate limiting check
+  if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, client_socket,
+                                   "SESSION_LOOKUP")) {
+    return;
+  }
+
+  acip_session_info_t resp;
+  memset(&resp, 0, sizeof(resp));
+
+  // Null-terminate session string for lookup
+  char session_string[49] = {0};
+  size_t copy_len =
+      (req->session_string_len < sizeof(session_string) - 1) ? req->session_string_len : sizeof(session_string) - 1;
+  memcpy(session_string, req->session_string, copy_len);
+
+  asciichat_error_t lookup_result = session_lookup(server->sessions, session_string, &server->config, &resp);
+  if (lookup_result == ASCIICHAT_OK) {
+    acip_send_session_info(transport, &resp);
+    log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
+  } else {
+    acip_send_error(transport, lookup_result, "Session lookup failed");
+    log_warn("Session lookup failed for %s: %s", client_ip, asciichat_error_string(lookup_result));
+  }
+}
+
+static void acds_on_session_join(const acip_session_join_t *req, int client_socket, const char *client_ip,
+                                 void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_debug("SESSION_JOIN packet from %s", client_ip);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Rate limiting check
+  if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, client_socket,
+                                   "SESSION_JOIN")) {
+    return;
+  }
+
+  // Cryptographic identity verification (if required)
+  if (server->config.require_client_identity) {
+    // Validate timestamp (5 minute window)
+    if (!acds_validate_timestamp(req->timestamp, 300)) {
+      log_warn("SESSION_JOIN rejected from %s: invalid timestamp (replay attack protection)", client_ip);
+      acip_session_joined_t error_resp;
+      memset(&error_resp, 0, sizeof(error_resp));
+      error_resp.success = 0;
+      error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
+      SAFE_STRNCPY(error_resp.error_message, "Timestamp validation failed", sizeof(error_resp.error_message));
+      acip_send_session_joined(transport, &error_resp);
+      return;
+    }
+
+    // Verify Ed25519 signature
+    asciichat_error_t verify_result =
+        acds_verify_session_join(req->identity_pubkey, req->timestamp, req->session_string, req->signature);
+
+    if (verify_result != ASCIICHAT_OK) {
+      log_warn("SESSION_JOIN rejected from %s: invalid signature (identity verification failed)", client_ip);
+      acip_session_joined_t error_resp;
+      memset(&error_resp, 0, sizeof(error_resp));
+      error_resp.success = 0;
+      error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
+      SAFE_STRNCPY(error_resp.error_message, "Identity signature verification failed",
+                   sizeof(error_resp.error_message));
+      acip_send_session_joined(transport, &error_resp);
+      return;
+    }
+
+    log_debug("SESSION_JOIN signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
+              req->identity_pubkey[1]);
+  }
+
+  acip_session_joined_t resp;
+  memset(&resp, 0, sizeof(resp));
+
+  asciichat_error_t join_result = session_join(server->sessions, req, &resp);
+  if (join_result == ASCIICHAT_OK && resp.success) {
+    acip_send_session_joined(transport, &resp);
+
+    // Update client data in registry (update in place)
+    void *retrieved_data = NULL;
+    if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK && retrieved_data) {
+      acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
+      memcpy(client_data->session_id, resp.session_id, 16);
+      memcpy(client_data->participant_id, resp.participant_id, 16);
+      client_data->joined_session = true;
+    }
+
+    log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
+             resp.participant_id[1]);
+
+    // Save to database - look up session entry first
+    rwlock_rdlock(&server->sessions->lock);
+    session_entry_t *session_iter, *session_tmp;
+    session_entry_t *joined_session = NULL;
+    HASH_ITER(hh, server->sessions->sessions, session_iter, session_tmp) {
+      if (memcmp(session_iter->session_id, resp.session_id, 16) == 0) {
+        joined_session = session_iter;
+        break;
+      }
+    }
+    if (joined_session) {
+      database_save_session(server->db, joined_session);
+    }
+    rwlock_rdunlock(&server->sessions->lock);
+  } else {
+    acip_send_session_joined(transport, &resp);
+    log_warn("Session join failed for %s: %s", client_ip, resp.error_message);
+  }
+}
+
+static void acds_on_session_leave(const acip_session_leave_t *req, int client_socket, const char *client_ip,
+                                  void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_debug("SESSION_LEAVE packet from %s", client_ip);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  asciichat_error_t leave_result = session_leave(server->sessions, req->session_id, req->participant_id);
+  if (leave_result == ASCIICHAT_OK) {
+    log_info("Client %s left session", client_ip);
+
+    // Update client data to mark as not joined
+    void *retrieved_data = NULL;
+    if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK && retrieved_data) {
+      acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
+      client_data->joined_session = false;
+    }
+
+    // Save updated session to database - look up session entry first
+    rwlock_rdlock(&server->sessions->lock);
+    session_entry_t *session_iter, *session_tmp;
+    session_entry_t *left_session = NULL;
+    HASH_ITER(hh, server->sessions->sessions, session_iter, session_tmp) {
+      if (memcmp(session_iter->session_id, req->session_id, 16) == 0) {
+        left_session = session_iter;
+        break;
+      }
+    }
+    if (left_session) {
+      database_save_session(server->db, left_session);
+    }
+    rwlock_rdunlock(&server->sessions->lock);
+  } else {
+    acip_send_error(transport, leave_result, asciichat_error_string(leave_result));
+    log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));
+  }
+}
+
+static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, int client_socket, const char *client_ip, void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_debug("WEBRTC_SDP packet from %s", client_ip);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Calculate payload size (header + SDP string)
+  size_t payload_size = sizeof(acip_webrtc_sdp_t) + sdp->sdp_len;
+
+  asciichat_error_t relay_result = signaling_relay_sdp(server->sessions, &server->tcp_server, sdp, payload_size);
+  if (relay_result != ASCIICHAT_OK) {
+    acip_send_error(transport, relay_result, "SDP relay failed");
+    log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
+  }
+}
+
+static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, int client_socket, const char *client_ip, void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_debug("WEBRTC_ICE packet from %s", client_ip);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Calculate payload size (header + candidate string)
+  size_t payload_size = sizeof(acip_webrtc_ice_t) + ice->candidate_len;
+
+  asciichat_error_t relay_result = signaling_relay_ice(server->sessions, &server->tcp_server, ice, payload_size);
+  if (relay_result != ASCIICHAT_OK) {
+    acip_send_error(transport, relay_result, "ICE relay failed");
+    log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
+  }
+}
+
+static void acds_on_discovery_ping(const void *payload, size_t payload_len, int client_socket, const char *client_ip,
+                                   void *app_ctx) {
+  (void)payload;
+  (void)payload_len;
+  (void)app_ctx;
+
+  // Create ACIP transport for PONG response
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Send PONG response
+  log_debug("PING from %s, sending PONG", client_ip);
+  acip_send_pong(transport);
+
+  ACDS_DESTROY_TRANSPORT(transport);
+}
+
+// Global ACIP callback structure for ACDS
+static const acip_acds_callbacks_t g_acds_callbacks = {
+    .on_session_create = acds_on_session_create,
+    .on_session_lookup = acds_on_session_lookup,
+    .on_session_join = acds_on_session_join,
+    .on_session_leave = acds_on_session_leave,
+    .on_webrtc_sdp = acds_on_webrtc_sdp,
+    .on_webrtc_ice = acds_on_webrtc_ice,
+    .on_discovery_ping = acds_on_discovery_ping,
+    .app_ctx = NULL // Set dynamically to server instance
+};
+
 void *acds_client_handler(void *arg) {
   tcp_client_context_t *ctx = (tcp_client_context_t *)arg;
   if (!ctx) {
@@ -266,289 +584,17 @@ void *acds_client_handler(void *arg) {
 
     log_debug("Received packet type 0x%02X from %s, length=%zu", packet_type, client_ip, payload_size);
 
-    // Dispatch based on packet type
-    switch (packet_type) {
-    case PACKET_TYPE_ACIP_SESSION_CREATE: {
-      log_debug("SESSION_CREATE packet from %s", client_ip);
+    // O(1) ACIP array-based dispatch
+    // Set server context for callbacks
+    acip_acds_callbacks_t callbacks = g_acds_callbacks;
+    callbacks.app_ctx = server;
 
-      if (payload_size < sizeof(acip_session_create_t)) {
-        log_warn("SESSION_CREATE packet too small from %s", client_ip);
-        break;
-      }
+    asciichat_error_t dispatch_result =
+        acip_handle_acds_packet(NULL, packet_type, payload, payload_size, client_socket, client_ip, &callbacks);
 
-      // Rate limiting check
-      if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_CREATE, client_socket,
-                                       "SESSION_CREATE")) {
-        break;
-      }
-
-      acip_session_create_t *req = (acip_session_create_t *)payload;
-
-      // Cryptographic identity verification (if required)
-      if (server->config.require_server_identity) {
-        // Validate timestamp (5 minute window)
-        if (!acds_validate_timestamp(req->timestamp, 300)) {
-          log_warn("SESSION_CREATE rejected from %s: invalid timestamp (replay attack protection)", client_ip);
-          send_error_packet_message(client_socket, ERROR_CRYPTO_VERIFICATION,
-                                    "Timestamp validation failed - too old or in the future");
-          break;
-        }
-
-        // Verify Ed25519 signature
-        asciichat_error_t verify_result = acds_verify_session_create(
-            req->identity_pubkey, req->timestamp, req->capabilities, req->max_participants, req->signature);
-
-        if (verify_result != ASCIICHAT_OK) {
-          log_warn("SESSION_CREATE rejected from %s: invalid signature (identity verification failed)", client_ip);
-          send_error_packet_message(client_socket, ERROR_CRYPTO_VERIFICATION, "Identity signature verification failed");
-          break;
-        }
-
-        log_debug("SESSION_CREATE signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
-                  req->identity_pubkey[1]);
-      }
-
-      acip_session_created_t resp;
-      memset(&resp, 0, sizeof(resp));
-
-      asciichat_error_t create_result = session_create(server->sessions, req, &resp);
-      if (create_result == ASCIICHAT_OK) {
-        // Success - send SESSION_CREATED response
-        send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_CREATED, &resp, sizeof(resp));
-        log_info("Session created: %.*s (UUID: %02x%02x...)", resp.session_string_len, resp.session_string,
-                 resp.session_id[0], resp.session_id[1]);
-
-        // Save to database - look up session entry first
-        rwlock_rdlock(&server->sessions->lock);
-        session_entry_t *session = NULL;
-        HASH_FIND(hh, server->sessions->sessions, resp.session_string, strlen(resp.session_string), session);
-        if (session) {
-          database_save_session(server->db, session);
-        }
-        rwlock_rdunlock(&server->sessions->lock);
-      } else {
-        // Error - send error response using proper error code
-        send_error_packet_message(client_socket, create_result, "Failed to create session");
-        log_warn("Session creation failed for %s: %s", client_ip, asciichat_error_string(create_result));
-      }
-      break;
-    }
-
-    case PACKET_TYPE_ACIP_SESSION_LOOKUP: {
-      log_debug("SESSION_LOOKUP packet from %s", client_ip);
-
-      if (payload_size < sizeof(acip_session_lookup_t)) {
-        log_warn("SESSION_LOOKUP packet too small from %s", client_ip);
-        break;
-      }
-
-      // Rate limiting check
-      if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_LOOKUP, client_socket,
-                                       "SESSION_LOOKUP")) {
-        break;
-      }
-
-      acip_session_lookup_t *req = (acip_session_lookup_t *)payload;
-      acip_session_info_t resp;
-      memset(&resp, 0, sizeof(resp));
-
-      // Null-terminate session string for lookup
-      char session_string[49] = {0};
-      size_t copy_len =
-          (req->session_string_len < sizeof(session_string) - 1) ? req->session_string_len : sizeof(session_string) - 1;
-      memcpy(session_string, req->session_string, copy_len);
-
-      asciichat_error_t lookup_result = session_lookup(server->sessions, session_string, &server->config, &resp);
-      if (lookup_result == ASCIICHAT_OK) {
-        send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_INFO, &resp, sizeof(resp));
-        log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
-      } else {
-        send_error_packet_message(client_socket, lookup_result, "Session lookup failed");
-        log_warn("Session lookup failed for %s: %s", client_ip, asciichat_error_string(lookup_result));
-      }
-      break;
-    }
-
-    case PACKET_TYPE_ACIP_SESSION_JOIN: {
-      log_debug("SESSION_JOIN packet from %s", client_ip);
-
-      if (payload_size < sizeof(acip_session_join_t)) {
-        log_warn("SESSION_JOIN packet too small from %s", client_ip);
-        break;
-      }
-
-      // Rate limiting check
-      if (!check_and_record_rate_limit(server->rate_limiter, client_ip, RATE_EVENT_SESSION_JOIN, client_socket,
-                                       "SESSION_JOIN")) {
-        break;
-      }
-
-      acip_session_join_t *req = (acip_session_join_t *)payload;
-
-      // Cryptographic identity verification (if required)
-      if (server->config.require_client_identity) {
-        // Validate timestamp (5 minute window)
-        if (!acds_validate_timestamp(req->timestamp, 300)) {
-          log_warn("SESSION_JOIN rejected from %s: invalid timestamp (replay attack protection)", client_ip);
-          acip_session_joined_t error_resp;
-          memset(&error_resp, 0, sizeof(error_resp));
-          error_resp.success = 0;
-          error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
-          SAFE_STRNCPY(error_resp.error_message, "Timestamp validation failed", sizeof(error_resp.error_message));
-          send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_JOINED, &error_resp, sizeof(error_resp));
-          break;
-        }
-
-        // Verify Ed25519 signature
-        asciichat_error_t verify_result =
-            acds_verify_session_join(req->identity_pubkey, req->timestamp, req->session_string, req->signature);
-
-        if (verify_result != ASCIICHAT_OK) {
-          log_warn("SESSION_JOIN rejected from %s: invalid signature (identity verification failed)", client_ip);
-          acip_session_joined_t error_resp;
-          memset(&error_resp, 0, sizeof(error_resp));
-          error_resp.success = 0;
-          error_resp.error_code = ERROR_CRYPTO_VERIFICATION;
-          SAFE_STRNCPY(error_resp.error_message, "Identity signature verification failed",
-                       sizeof(error_resp.error_message));
-          send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_JOINED, &error_resp, sizeof(error_resp));
-          break;
-        }
-
-        log_debug("SESSION_JOIN signature verified from %s (pubkey: %02x%02x...)", client_ip, req->identity_pubkey[0],
-                  req->identity_pubkey[1]);
-      }
-
-      acip_session_joined_t resp;
-      memset(&resp, 0, sizeof(resp));
-
-      asciichat_error_t join_result = session_join(server->sessions, req, &resp);
-      if (join_result == ASCIICHAT_OK && resp.success) {
-        send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_JOINED, &resp, sizeof(resp));
-
-        // Update client data in registry (update in place)
-        void *retrieved_data = NULL;
-        if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK &&
-            retrieved_data) {
-          acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
-          memcpy(client_data->session_id, resp.session_id, 16);
-          memcpy(client_data->participant_id, resp.participant_id, 16);
-          client_data->joined_session = true;
-        }
-
-        log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
-                 resp.participant_id[1]);
-
-        // Save to database - look up session entry first
-        rwlock_rdlock(&server->sessions->lock);
-        session_entry_t *session_iter, *session_tmp;
-        session_entry_t *joined_session = NULL;
-        HASH_ITER(hh, server->sessions->sessions, session_iter, session_tmp) {
-          if (memcmp(session_iter->session_id, resp.session_id, 16) == 0) {
-            joined_session = session_iter;
-            break;
-          }
-        }
-        if (joined_session) {
-          database_save_session(server->db, joined_session);
-        }
-        rwlock_rdunlock(&server->sessions->lock);
-      } else {
-        send_packet(client_socket, PACKET_TYPE_ACIP_SESSION_JOINED, &resp, sizeof(resp));
-        log_warn("Session join failed for %s: %s", client_ip, resp.error_message);
-      }
-      break;
-    }
-
-    case PACKET_TYPE_ACIP_SESSION_LEAVE: {
-      log_debug("SESSION_LEAVE packet from %s", client_ip);
-
-      if (payload_size < sizeof(acip_session_leave_t)) {
-        log_warn("SESSION_LEAVE packet too small from %s", client_ip);
-        break;
-      }
-
-      acip_session_leave_t *req = (acip_session_leave_t *)payload;
-
-      asciichat_error_t leave_result = session_leave(server->sessions, req->session_id, req->participant_id);
-      if (leave_result == ASCIICHAT_OK) {
-        log_info("Client %s left session", client_ip);
-
-        // Update client data to mark as not joined
-        void *retrieved_data = NULL;
-        if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK &&
-            retrieved_data) {
-          acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
-          client_data->joined_session = false;
-        }
-
-        // Save updated session to database - look up session entry first
-        rwlock_rdlock(&server->sessions->lock);
-        session_entry_t *session_iter, *session_tmp;
-        session_entry_t *left_session = NULL;
-        HASH_ITER(hh, server->sessions->sessions, session_iter, session_tmp) {
-          if (memcmp(session_iter->session_id, req->session_id, 16) == 0) {
-            left_session = session_iter;
-            break;
-          }
-        }
-        if (left_session) {
-          database_save_session(server->db, left_session);
-        }
-        rwlock_rdunlock(&server->sessions->lock);
-      } else {
-        send_error_packet(client_socket, leave_result);
-        log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));
-      }
-      break;
-    }
-
-    case PACKET_TYPE_ACIP_WEBRTC_SDP: {
-      log_debug("WEBRTC_SDP packet from %s", client_ip);
-
-      if (payload_size < sizeof(acip_webrtc_sdp_t)) {
-        log_warn("WEBRTC_SDP packet too small from %s", client_ip);
-        break;
-      }
-
-      acip_webrtc_sdp_t *sdp = (acip_webrtc_sdp_t *)payload;
-
-      asciichat_error_t relay_result = signaling_relay_sdp(server->sessions, &server->tcp_server, sdp, payload_size);
-      if (relay_result != ASCIICHAT_OK) {
-        send_error_packet_message(client_socket, relay_result, "SDP relay failed");
-        log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
-      }
-      break;
-    }
-
-    case PACKET_TYPE_ACIP_WEBRTC_ICE: {
-      log_debug("WEBRTC_ICE packet from %s", client_ip);
-
-      if (payload_size < sizeof(acip_webrtc_ice_t)) {
-        log_warn("WEBRTC_ICE packet too small from %s", client_ip);
-        break;
-      }
-
-      acip_webrtc_ice_t *ice = (acip_webrtc_ice_t *)payload;
-
-      asciichat_error_t relay_result = signaling_relay_ice(server->sessions, &server->tcp_server, ice, payload_size);
-      if (relay_result != ASCIICHAT_OK) {
-        send_error_packet_message(client_socket, relay_result, "ICE relay failed");
-        log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
-      }
-      break;
-    }
-
-    case PACKET_TYPE_ACIP_DISCOVERY_PING:
-      // Send PONG response
-      log_debug("PING from %s, sending PONG", client_ip);
-      send_packet(client_socket, PACKET_TYPE_PONG, NULL, 0);
-      break;
-
-    default:
-      log_warn("Unknown packet type 0x%02X from %s", packet_type, client_ip);
-      send_error_packet(client_socket, ERROR_UNKNOWN_PACKET);
-      break;
+    if (dispatch_result != ASCIICHAT_OK) {
+      log_warn("ACIP handler failed for packet type 0x%02X from %s: %s", packet_type, client_ip,
+               asciichat_error_string(dispatch_result));
     }
 
     // Free payload

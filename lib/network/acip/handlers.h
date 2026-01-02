@@ -52,6 +52,9 @@ typedef struct {
   /** @brief Called when ASCII frame received from server */
   void (*on_ascii_frame)(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len, void *ctx);
 
+  /** @brief Called when raw audio received from server */
+  void (*on_audio)(const void *audio_data, size_t audio_len, void *ctx);
+
   /** @brief Called when audio batch received from server */
   void (*on_audio_batch)(const audio_batch_packet_t *header, const float *samples, size_t num_samples, void *ctx);
 
@@ -75,6 +78,15 @@ typedef struct {
 
   /** @brief Called when pong received */
   void (*on_pong)(void *ctx);
+
+  /** @brief Called when server requests console clear */
+  void (*on_clear_console)(void *ctx);
+
+  /** @brief Called when server sends crypto rekey request */
+  void (*on_crypto_rekey_request)(const void *payload, size_t payload_len, void *ctx);
+
+  /** @brief Called when server sends crypto rekey response */
+  void (*on_crypto_rekey_response)(const void *payload, size_t payload_len, void *ctx);
 
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;
@@ -107,9 +119,15 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
  * NULL callbacks are skipped (no-op).
  */
 typedef struct {
+  /** @brief Called when client sends protocol version */
+  void (*on_protocol_version)(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx);
+
   /** @brief Called when client sends image frame */
   void (*on_image_frame)(const image_frame_packet_t *header, const void *pixel_data, size_t data_len, void *client_ctx,
                          void *app_ctx);
+
+  /** @brief Called when client sends raw audio */
+  void (*on_audio)(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends audio batch */
   void (*on_audio_batch)(const audio_batch_packet_t *header, const float *samples, size_t num_samples, void *client_ctx,
@@ -139,8 +157,23 @@ typedef struct {
   /** @brief Called when ping received (should send pong) */
   void (*on_ping)(void *client_ctx, void *app_ctx);
 
+  /** @brief Called when pong received from client */
+  void (*on_pong)(void *client_ctx, void *app_ctx);
+
+  /** @brief Called when error message received from client */
+  void (*on_error)(const error_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
+
   /** @brief Called when remote log received from client */
   void (*on_remote_log)(const remote_log_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
+
+  /** @brief Called when client sends crypto rekey request */
+  void (*on_crypto_rekey_request)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
+
+  /** @brief Called when client sends crypto rekey response */
+  void (*on_crypto_rekey_response)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
+
+  /** @brief Called when client sends crypto rekey complete */
+  void (*on_crypto_rekey_complete)(const void *payload, size_t payload_len, void *client_ctx, void *app_ctx);
 
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;

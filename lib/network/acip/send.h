@@ -34,10 +34,31 @@
 
 #include "network/acip/transport.h"
 #include "network/acip/messages.h"
+#include "network/packet.h" // For packet_type_t
 #include "asciichat_errno.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+
+// =============================================================================
+// Generic Packet Sending
+// =============================================================================
+
+/**
+ * @brief Send arbitrary packet via transport (generic packet sender)
+ *
+ * Low-level function that builds packet header and sends via transport.
+ * Most code should use the type-specific functions (acip_send_ping, etc.),
+ * but this is useful for generic wrappers that handle multiple packet types.
+ *
+ * @param transport Transport instance
+ * @param type Packet type
+ * @param payload Packet payload (can be NULL if payload_len==0)
+ * @param payload_len Payload length
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
+                                            size_t payload_len);
 
 // =============================================================================
 // Video/ASCII Frame Sending
@@ -226,3 +247,34 @@ asciichat_error_t acip_send_error(acip_transport_t *transport, uint32_t error_co
  */
 asciichat_error_t acip_send_remote_log(acip_transport_t *transport, uint8_t log_level, uint8_t direction,
                                        const char *message);
+
+// =============================================================================
+// ACDS (Discovery Server) Response Sending
+// =============================================================================
+
+/**
+ * @brief Send SESSION_CREATED response packet
+ *
+ * @param transport Transport instance
+ * @param response Session created response structure
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t acip_send_session_created(acip_transport_t *transport, const acip_session_created_t *response);
+
+/**
+ * @brief Send SESSION_INFO response packet
+ *
+ * @param transport Transport instance
+ * @param info Session info structure
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t acip_send_session_info(acip_transport_t *transport, const acip_session_info_t *info);
+
+/**
+ * @brief Send SESSION_JOINED response packet
+ *
+ * @param transport Transport instance
+ * @param response Session joined response structure
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const acip_session_joined_t *response);

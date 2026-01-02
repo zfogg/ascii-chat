@@ -130,6 +130,7 @@
 #include "video/image.h"
 #include "network/compression.h"
 #include "network/packet_parsing.h"
+#include "network/acip/send.h"
 #include "util/format.h"
 #include "platform/system.h"
 #include "audio/opus_codec.h"
@@ -1721,17 +1722,10 @@ int send_server_state_to_client(client_info_t *client) {
   net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  // Send server state directly via socket
+  // Send server state via ACIP transport
   // CRITICAL: Protect socket writes with send_mutex to prevent race with send_thread
-  // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
-  // Crypto context is stable after handshake and stored in client struct
-  const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-
   mutex_lock(&client->send_mutex);
-
-  asciichat_error_t result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                                (crypto_context_t *)crypto_ctx);
-
+  asciichat_error_t result = acip_send_server_state(client->transport, &net_state);
   mutex_unlock(&client->send_mutex);
 
   if (result != ASCIICHAT_OK) {

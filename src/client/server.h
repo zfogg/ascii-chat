@@ -133,11 +133,11 @@ void server_connection_cleanup();
  * @param type Packet type identifier
  * @param data Packet payload
  * @param len Payload length
- * @return 0 on success, negative on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * @ingroup client_connection
  */
-int threaded_send_packet(packet_type_t type, const void *data, size_t len);
+asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len);
 
 /**
  * @brief Thread-safe batched audio packet transmission
@@ -161,11 +161,12 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
  * @param opus_size Size of encoded frame
  * @param sample_rate Sample rate in Hz
  * @param frame_duration Frame duration in milliseconds
- * @return 0 on success, negative on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * @ingroup client_connection
  */
-int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate, int frame_duration);
+asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate,
+                                           int frame_duration);
 
 /**
  * @brief Thread-safe Opus audio batch packet transmission
@@ -177,12 +178,12 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
  * @param opus_size Total size of Opus data in bytes
  * @param frame_sizes Array of individual frame sizes (variable-length frames)
  * @param frame_count Number of Opus frames in the batch
- * @return 0 on success, negative on error
+ * @return ASCIICHAT_OK on success, error code on failure
  *
  * @ingroup client_connection
  */
-int threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
-                                   int frame_count);
+asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
+                                                 const uint16_t *frame_sizes, int frame_count);
 
 /**
  * @brief Thread-safe ping packet transmission

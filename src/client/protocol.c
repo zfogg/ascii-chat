@@ -87,6 +87,8 @@
 #include "network/packet.h"
 #include "network/packet_parsing.h"
 #include "network/av.h"
+#include "network/acip/handlers.h"
+#include "network/acip/transport.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
@@ -872,6 +874,48 @@ static void handle_server_state_packet(const void *data, size_t len) {
 }
 
 /* ============================================================================
+ * ACIP Callback Forward Declarations and Structure
+ * ============================================================================ */
+
+// Forward declarations for ACIP callbacks (implemented after this section)
+static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len, void *ctx);
+static void acip_on_audio(const void *audio_data, size_t audio_len, void *ctx);
+static void acip_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
+                                void *ctx);
+static void acip_on_audio_opus(const void *opus_data, size_t opus_len, void *ctx);
+static void acip_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *ctx);
+static void acip_on_server_state(const server_state_packet_t *state, void *ctx);
+static void acip_on_error(const error_packet_t *header, const char *message, void *ctx);
+static void acip_on_remote_log(const remote_log_packet_t *header, const char *message, void *ctx);
+static void acip_on_ping(void *ctx);
+static void acip_on_pong(void *ctx);
+static void acip_on_clear_console(void *ctx);
+static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx);
+static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx);
+
+/**
+ * @brief Global ACIP client callbacks structure
+ *
+ * Handles all ACIP packet types including crypto rekey protocol.
+ * Integrates with existing client-side packet handlers.
+ */
+static const acip_client_callbacks_t g_acip_client_callbacks = {.on_ascii_frame = acip_on_ascii_frame,
+                                                                .on_audio = acip_on_audio,
+                                                                .on_audio_batch = acip_on_audio_batch,
+                                                                .on_audio_opus = acip_on_audio_opus,
+                                                                .on_audio_opus_batch = acip_on_audio_opus_batch,
+                                                                .on_server_state = acip_on_server_state,
+                                                                .on_error = acip_on_error,
+                                                                .on_remote_log = acip_on_remote_log,
+                                                                .on_ping = acip_on_ping,
+                                                                .on_pong = acip_on_pong,
+                                                                .on_clear_console = acip_on_clear_console,
+                                                                .on_crypto_rekey_request = acip_on_crypto_rekey_request,
+                                                                .on_crypto_rekey_response =
+                                                                    acip_on_crypto_rekey_response,
+                                                                .app_ctx = NULL};
+
+/* ============================================================================
  * Data Reception Thread
  * ============================================================================ */
 
@@ -949,95 +993,16 @@ static void *data_reception_thread_func(void *arg) {
     void *data = envelope.data;
     size_t len = envelope.len;
 
-    bool should_disconnect = false;
-
-    switch (type) {
-    case PACKET_TYPE_ASCII_FRAME:
-      handle_ascii_frame_packet(data, len);
-      break;
-
-    case PACKET_TYPE_AUDIO:
-      handle_audio_packet(data, len);
-      break;
-
-    case PACKET_TYPE_AUDIO_BATCH:
-      handle_audio_batch_packet(data, len);
-      break;
-
-    case PACKET_TYPE_AUDIO_OPUS:
-      handle_audio_opus_packet(data, len);
-      break;
-
-    case PACKET_TYPE_AUDIO_OPUS_BATCH:
-      handle_audio_opus_batch_packet(data, len);
-      break;
-
-    case PACKET_TYPE_PING:
-      // Respond with PONG
-      if (threaded_send_pong_packet() < 0) {
-        log_error("Failed to send PONG response");
-      }
-      break;
-
-    case PACKET_TYPE_PONG:
-      // Server acknowledged our PING - no action needed
-      break;
-
-    case PACKET_TYPE_CLEAR_CONSOLE:
-      // Server requested console clear
-      display_full_reset();
-      log_info("Console cleared by server");
-      break;
-
-    case PACKET_TYPE_SERVER_STATE:
-      handle_server_state_packet(data, len);
-      break;
-
-    case PACKET_TYPE_ERROR_MESSAGE:
-      should_disconnect = handle_error_message_packet(data, len);
-      break;
-
-    case PACKET_TYPE_REMOTE_LOG:
-      handle_remote_log_packet(data, len);
-      break;
-
-    // Session rekeying packets
-    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
-      // Process the server's rekey request
-      asciichat_error_t crypto_result = crypto_client_process_rekey_request(data, len);
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_REQUEST: %d", crypto_result);
-        break;
-      }
-
-      // Send REKEY_RESPONSE
-      crypto_result = crypto_client_send_rekey_response();
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
-      }
-      break;
+    // Handle all packets through ACIP protocol layer (including crypto rekey)
+    // Note: We don't have an actual transport instance, so pass NULL
+    // The handlers don't use the transport parameter for client-side processing
+    asciichat_error_t acip_result = acip_handle_client_packet(NULL, type, data, len, &g_acip_client_callbacks);
+    if (acip_result != ASCIICHAT_OK) {
+      log_warn("ACIP handler failed for packet type %d: %s", type, asciichat_error_string(acip_result));
     }
 
-    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
-      // Process server's response
-      asciichat_error_t crypto_result = crypto_client_process_rekey_response(data, len);
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_RESPONSE: %d", crypto_result);
-        break;
-      }
-
-      // Send REKEY_COMPLETE
-      crypto_result = crypto_client_send_rekey_complete();
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
-      }
-      break;
-    }
-
-    default:
-      log_warn("Unknown packet type: %d", type);
-      break;
-    }
+    // Check if error handler set disconnect flag
+    bool should_disconnect = (type == PACKET_TYPE_ERROR_MESSAGE);
 
     // Clean up packet buffer using the allocated_buffer pointer, not the data pointer
     // The data pointer is offset into the buffer, but we need to free the actual allocated buffer
@@ -1187,4 +1152,215 @@ void protocol_stop_connection() {
  */
 bool protocol_connection_lost() {
   return atomic_load(&g_data_thread_exited) || server_connection_is_lost();
+}
+
+/* ============================================================================
+ * ACIP Callback Implementations
+ * ============================================================================ */
+
+/**
+ * @brief ACIP callback for ASCII frame packets
+ *
+ * Wraps handle_ascii_frame_packet() to integrate with ACIP handler system.
+ */
+static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len,
+                                void *ctx) {
+  (void)ctx;
+
+  // Reconstruct full packet for existing handler (header + data)
+  size_t total_len = sizeof(*header) + data_len;
+  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  if (!packet) {
+    log_error("Failed to allocate buffer for ASCII frame callback");
+    return;
+  }
+
+  memcpy(packet, header, sizeof(*header));
+  memcpy(packet + sizeof(*header), frame_data, data_len);
+
+  handle_ascii_frame_packet(packet, total_len);
+  buffer_pool_free(NULL, packet, total_len);
+}
+
+/**
+ * @brief ACIP callback for audio batch packets
+ */
+static void acip_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
+                                void *ctx) {
+  (void)ctx;
+  (void)header;
+
+  if (!GET_OPTION(audio_enabled)) {
+    return;
+  }
+
+  // Process samples directly (already dequantized by ACIP handler)
+  audio_process_received_samples((float *)samples, (int)num_samples);
+
+  if (GET_OPTION(audio_analysis_enabled)) {
+    // Approximate packet size for analysis
+    size_t approx_size = sizeof(*header) + (num_samples * sizeof(uint32_t));
+    audio_analysis_track_received_packet(approx_size);
+  }
+
+  log_debug_every(LOG_RATE_DEFAULT, "Processed audio batch: %zu samples from server", num_samples);
+}
+
+/**
+ * @brief ACIP callback for Opus audio packets
+ */
+static void acip_on_audio_opus(const void *opus_data, size_t opus_len, void *ctx) {
+  (void)ctx;
+
+  // Call existing handler directly
+  handle_audio_opus_packet(opus_data, opus_len);
+}
+
+/**
+ * @brief ACIP callback for server state packets
+ */
+static void acip_on_server_state(const server_state_packet_t *state, void *ctx) {
+  (void)ctx;
+
+  // Call existing handler directly
+  handle_server_state_packet(state, sizeof(*state));
+}
+
+/**
+ * @brief ACIP callback for error packets
+ */
+static void acip_on_error(const error_packet_t *header, const char *message, void *ctx) {
+  (void)ctx;
+
+  // Reconstruct packet for existing handler
+  size_t msg_len = message ? strlen(message) : 0;
+  size_t total_len = sizeof(*header) + msg_len;
+
+  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  if (!packet) {
+    log_error("Failed to allocate buffer for error packet callback");
+    return;
+  }
+
+  memcpy(packet, header, sizeof(*header));
+  if (msg_len > 0) {
+    memcpy(packet + sizeof(*header), message, msg_len);
+  }
+
+  handle_error_message_packet(packet, total_len);
+  buffer_pool_free(NULL, packet, total_len);
+}
+
+/**
+ * @brief ACIP callback for ping packets
+ */
+static void acip_on_ping(void *ctx) {
+  (void)ctx;
+
+  // Respond with PONG
+  if (threaded_send_pong_packet() < 0) {
+    log_error("Failed to send PONG response");
+  }
+}
+
+/**
+ * @brief ACIP callback for raw audio packets
+ */
+static void acip_on_audio(const void *audio_data, size_t audio_len, void *ctx) {
+  (void)ctx;
+
+  // Call existing handler directly
+  handle_audio_packet(audio_data, audio_len);
+}
+
+/**
+ * @brief ACIP callback for Opus batch packets
+ */
+static void acip_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *ctx) {
+  (void)ctx;
+
+  // Call existing handler directly
+  handle_audio_opus_batch_packet(batch_data, batch_len);
+}
+
+/**
+ * @brief ACIP callback for remote log packets
+ */
+static void acip_on_remote_log(const remote_log_packet_t *header, const char *message, void *ctx) {
+  (void)ctx;
+
+  // Reconstruct packet for existing handler
+  size_t msg_len = strlen(message);
+  size_t total_len = sizeof(*header) + msg_len;
+
+  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  if (!packet) {
+    log_error("Failed to allocate buffer for remote log callback");
+    return;
+  }
+
+  memcpy(packet, header, sizeof(*header));
+  memcpy(packet + sizeof(*header), message, msg_len);
+
+  handle_remote_log_packet(packet, total_len);
+  buffer_pool_free(NULL, packet, total_len);
+}
+
+/**
+ * @brief ACIP callback for pong packets
+ */
+static void acip_on_pong(void *ctx) {
+  (void)ctx;
+  // Pong received - no action needed (server acknowledged our ping)
+}
+
+/**
+ * @brief ACIP callback for console clear packets
+ */
+static void acip_on_clear_console(void *ctx) {
+  (void)ctx;
+
+  // Server requested console clear
+  display_full_reset();
+  log_info("Console cleared by server");
+}
+
+/**
+ * @brief ACIP callback for crypto rekey request packets
+ */
+static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+
+  // Process the server's rekey request
+  asciichat_error_t crypto_result = crypto_client_process_rekey_request(payload, payload_len);
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to process REKEY_REQUEST: %d", crypto_result);
+    return;
+  }
+
+  // Send REKEY_RESPONSE
+  crypto_result = crypto_client_send_rekey_response();
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
+  }
+}
+
+/**
+ * @brief ACIP callback for crypto rekey response packets
+ */
+static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx) {
+  (void)ctx;
+
+  // Process server's response
+  asciichat_error_t crypto_result = crypto_client_process_rekey_response(payload, payload_len);
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to process REKEY_RESPONSE: %d", crypto_result);
+    return;
+  }
+
+  // Send REKEY_COMPLETE
+  crypto_result = crypto_client_send_rekey_complete();
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
+  }
 }
