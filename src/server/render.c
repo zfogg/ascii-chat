@@ -449,12 +449,6 @@ void *client_video_render_thread(void *arg) {
       // Fall through to render frame after sleeping
     }
 
-    // PROFILING: Mark start of frame generation
-    struct timespec profile_lock_start, profile_lock_end, profile_video_check_start, profile_video_check_end;
-    struct timespec profile_write_start, profile_write_end;
-
-    (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
-
     // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
     should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
                       !atomic_load(&client->shutting_down);
@@ -471,8 +465,6 @@ void *client_video_render_thread(void *arg) {
     unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
     bool active_snapshot = atomic_load(&client->active);           // Atomic read
 
-    (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
-
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
       break;
@@ -481,12 +473,8 @@ void *client_video_render_thread(void *arg) {
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
 
-    (void)clock_gettime(CLOCK_MONOTONIC, &profile_video_check_start);
-
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
-
-    (void)clock_gettime(CLOCK_MONOTONIC, &profile_video_check_end);
 
     if (!has_video_sources) {
       // No video sources - skip frame generation but DON'T update last_render_time
@@ -498,18 +486,8 @@ void *client_video_render_thread(void *arg) {
 
     int sources_count = 0; // Track number of video sources in this frame
 
-    // TIME THE ASCII GENERATION
-    struct timespec gen_start, gen_end;
-    (void)clock_gettime(CLOCK_MONOTONIC, &gen_start);
-
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
-
-    (void)clock_gettime(CLOCK_MONOTONIC, &gen_end);
-    uint64_t gen_time_us = ((uint64_t)gen_end.tv_sec * 1000000 + (uint64_t)gen_end.tv_nsec / 1000) -
-                           ((uint64_t)gen_start.tv_sec * 1000000 + (uint64_t)gen_start.tv_nsec / 1000);
-
-    (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_start);
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
@@ -547,24 +525,7 @@ void *client_video_render_thread(void *arg) {
         }
       }
 
-      (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
-
       SAFE_FREE(ascii_frame);
-
-      // PROFILING: Calculate and log timing breakdown on EVERY frame during debugging
-      uint64_t lock_time_us =
-          ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
-          ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
-      uint64_t video_check_time_us =
-          ((uint64_t)profile_video_check_end.tv_sec * 1000000 + (uint64_t)profile_video_check_end.tv_nsec / 1000) -
-          ((uint64_t)profile_video_check_start.tv_sec * 1000000 + (uint64_t)profile_video_check_start.tv_nsec / 1000);
-      uint64_t write_time_us =
-          ((uint64_t)profile_write_end.tv_sec * 1000000 + (uint64_t)profile_write_end.tv_nsec / 1000) -
-          ((uint64_t)profile_write_start.tv_sec * 1000000 + (uint64_t)profile_write_start.tv_nsec / 1000);
-      (void)lock_time_us;
-      (void)video_check_time_us;
-      (void)gen_time_us;
-      (void)write_time_us;
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
       log_debug_every(LOG_RATE_NORMAL, "Per-client render: No video sources available for client %u",
