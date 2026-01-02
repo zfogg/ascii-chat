@@ -116,14 +116,7 @@ static bool g_mirror_has_tty = false;
  * @return 0 on success, negative on error
  */
 static int mirror_display_init(void) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  g_mirror_tty_info = get_current_tty();
+  // Get options from RCU stateg_mirror_tty_info = get_current_tty();
 
   // Only use TTY output if stdout is also a TTY (respects shell redirection)
   // This ensures `cmd > file` works by detecting stdout redirection
@@ -135,7 +128,7 @@ static int mirror_display_init(void) {
   }
 
   // Initialize ASCII output
-  ascii_write_init(g_mirror_tty_info.fd, !(opts && opts->snapshot_mode));
+  ascii_write_init(g_mirror_tty_info.fd, !(opts && GET_OPTION(snapshot_mode)));
 
   return 0;
 }
@@ -161,14 +154,7 @@ static void mirror_display_cleanup(void) {
  * @param frame_data ASCII frame data to display
  */
 static void mirror_write_frame(const char *frame_data) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return;
-  }
-
-  if (!frame_data) {
+  // Get options from RCU stateif (!frame_data) {
     return;
   }
 
@@ -189,7 +175,7 @@ static void mirror_write_frame(const char *frame_data) {
 
     // Strip all ANSI escape sequences if --strip-ansi is set
     char *stripped = NULL;
-    if (opts && opts->strip_ansi) {
+    if (opts && GET_OPTION(strip_ansi)) {
       stripped = ansi_strip_escapes(output_data, output_len);
       if (stripped) {
         output_data = stripped;
@@ -197,7 +183,7 @@ static void mirror_write_frame(const char *frame_data) {
       }
     }
 
-    if (!opts || !opts->snapshot_mode) {
+    if (!opts || !GET_OPTION(snapshot_mode)) {
       cursor_reset(STDOUT_FILENO);
     }
     platform_write(STDOUT_FILENO, output_data, output_len);
@@ -221,14 +207,7 @@ static void mirror_write_frame(const char *frame_data) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  log_info("Starting mirror mode");
+  // Get options from RCU statelog_info("Starting mirror mode");
 
   // Install console control-c handler
   platform_set_console_ctrl_handler(mirror_console_ctrl_handler);
@@ -238,7 +217,7 @@ int mirror_main(void) {
 #endif
 
   // Initialize webcam
-  int webcam_result = webcam_init(opts ? opts->webcam_index : 0);
+  int webcam_result = webcam_init(opts ? GET_OPTION(webcam_index) : 0);
   if (webcam_result != 0) {
     log_fatal("Failed to initialize webcam: %s", asciichat_error_string(webcam_result));
     webcam_print_init_error_help(webcam_result);
@@ -270,8 +249,8 @@ int mirror_main(void) {
   size_t palette_len = 0;
   char luminance_palette[256] = {0};
 
-  const char *custom_chars = (opts && opts->palette_custom_set) ? opts->palette_custom : NULL;
-  palette_type_t palette_type = opts ? opts->palette_type : PALETTE_STANDARD;
+  const char *custom_chars = (opts && GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
+  palette_type_t palette_type = opts ? GET_OPTION(palette_type) : PALETTE_STANDARD;
   if (initialize_client_palette(palette_type, custom_chars, palette_chars, &palette_len, luminance_palette) != 0) {
     log_fatal("Failed to initialize palette");
     mirror_display_cleanup();
@@ -286,7 +265,7 @@ int mirror_main(void) {
   // Snapshot mode timing
   struct timespec snapshot_start_time = {0, 0};
   bool snapshot_done = false;
-  if (opts && opts->snapshot_mode) {
+  if (opts && GET_OPTION(snapshot_mode)) {
     (void)clock_gettime(CLOCK_MONOTONIC, &snapshot_start_time);
   }
 
@@ -312,11 +291,11 @@ int mirror_main(void) {
     }
 
     // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
-    if (opts && opts->snapshot_mode && !snapshot_done) {
+    if (opts && GET_OPTION(snapshot_mode) && !snapshot_done) {
       double elapsed_sec = (double)(current_time.tv_sec - snapshot_start_time.tv_sec) +
                            (double)(current_time.tv_nsec - snapshot_start_time.tv_nsec) / 1e9;
 
-      float snapshot_delay = opts->snapshot_delay;
+      float snapshot_delay = GET_OPTION(snapshot_delay);
       if (elapsed_sec >= snapshot_delay) {
         snapshot_done = true;
       }
@@ -332,9 +311,9 @@ int mirror_main(void) {
     // Convert image to ASCII
     // When stretch is 0 (disabled), we preserve aspect ratio (true)
     // When stretch is 1 (enabled), we allow stretching without aspect ratio preservation (false)
-    bool stretch = opts ? opts->stretch : false;
-    unsigned short int width = opts ? opts->width : 80;
-    unsigned short int height = opts ? opts->height : 24;
+    bool stretch = opts ? GET_OPTION(stretch) : false;
+    unsigned short int width = opts ? GET_OPTION(width) : 80;
+    unsigned short int height = opts ? GET_OPTION(height) : 24;
     bool preserve_aspect_ratio = !stretch;
     char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps, preserve_aspect_ratio, stretch,
                                                         palette_chars, luminance_palette);
@@ -342,7 +321,7 @@ int mirror_main(void) {
     if (ascii_frame) {
       // When piping/redirecting in snapshot mode, only output the final frame
       // When outputting to TTY, show live preview frames
-      bool snapshot_mode = opts && opts->snapshot_mode;
+      bool snapshot_mode = opts && GET_OPTION(snapshot_mode);
       bool should_write = !snapshot_mode || g_mirror_has_tty || snapshot_done;
       if (should_write) {
         mirror_write_frame(ascii_frame);
