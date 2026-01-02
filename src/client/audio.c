@@ -824,6 +824,13 @@ int audio_start_thread() {
     g_audio_capture_thread_created = false;
   }
 
+  // Notify server we're starting to send audio BEFORE spawning thread
+  // IMPORTANT: Must send STREAM_START before thread starts sending packets to avoid protocol violation
+  if (threaded_send_stream_start_packet(STREAM_TYPE_AUDIO) < 0) {
+    log_error("Failed to send audio stream start packet");
+    return -1; // Don't start thread if we can't notify server
+  }
+
   // Start audio capture thread
   atomic_store(&g_audio_capture_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, audio_capture_thread_func, NULL, 4, "audio_capture") != ASCIICHAT_OK) {
@@ -833,11 +840,6 @@ int audio_start_thread() {
   }
 
   g_audio_capture_thread_created = true;
-
-  // Notify server we're starting to send audio
-  if (threaded_send_stream_start_packet(STREAM_TYPE_AUDIO) < 0) {
-    log_error("Failed to send audio stream start packet");
-  }
 
   return 0;
 }
