@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include "platform/abstraction.h"
-#include "network/acds_protocol.h"
+#include "network/acip/acds.h"
 #include "acds/main.h"
 
 /**

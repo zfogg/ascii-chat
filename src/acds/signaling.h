@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include "acds/session.h"
-#include "network/acds_protocol.h"
+#include "network/acip/acds.h"
 #include "network/tcp_server.h"
 
 /**

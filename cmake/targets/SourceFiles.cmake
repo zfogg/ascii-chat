@@ -244,8 +244,10 @@ set(NETWORK_SRCS
     lib/network/http_client.c
     lib/network/tcp_server.c
     lib/network/tcp_client.c
-    lib/network/acds_client.c
     lib/network/errors.c
+    # ACIP protocol library (client and server)
+    lib/network/acip/client.c
+    lib/network/acip/server.c
     # Rate limiting library (backend abstraction)
     lib/network/rate_limit/rate_limit.c
     lib/network/rate_limit/memory.c

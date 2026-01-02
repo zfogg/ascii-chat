@@ -596,13 +596,13 @@ const options_t *options_get(void);
  *
  * @ingroup options
  */
-#define GET_OPTION(field) \
-  ({ \
-    const options_t *_opts = options_get(); \
-    if (!_opts) { \
-      log_warn("GET_OPTION(" #field ") called but options not initialized"); \
-    } \
-    (_opts ? (_opts->field) : ((typeof(((options_t *)0)->field)){0})); \
+#define GET_OPTION(field)                                                                                              \
+  ({                                                                                                                   \
+    const options_t *_opts = options_get();                                                                            \
+    if (!_opts) {                                                                                                      \
+      log_warn("GET_OPTION(" #field ") called but options not initialized");                                           \
+    }                                                                                                                  \
+    (_opts ? (_opts->field) : ((typeof(((options_t *)0)->field)){0}));                                                 \
   })
 
 /**
