@@ -132,6 +132,9 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
                           "DISCOVERY", false, NULL, NULL);
 
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
+                           "Enable WebRTC mode for ACDS session (default: Direct TCP)", "DISCOVERY", false, NULL);
+
   // Dependencies
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");

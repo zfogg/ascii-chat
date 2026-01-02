@@ -56,6 +56,20 @@ extern "C" {
 #endif
 
 /**
+ * @brief Session connection type
+ *
+ * Determines how clients connect to the session host:
+ * - DIRECT_TCP: Clients connect directly to server IP:port (default, requires public IP)
+ * - WEBRTC: Clients use WebRTC P2P mesh with STUN/TURN (works behind NAT)
+ *
+ * @ingroup acds
+ */
+typedef enum {
+  SESSION_TYPE_DIRECT_TCP = 0, ///< Direct TCP connection to server IP:port (default)
+  SESSION_TYPE_WEBRTC = 1      ///< WebRTC P2P mesh with STUN/TURN relay
+} acds_session_type_t;
+
+/**
  * @name ACDS Session Management Messages
  * @{
  * @ingroup acds
@@ -83,6 +97,7 @@ typedef struct __attribute__((packed)) {
 
   uint8_t capabilities;     ///< Bit 0: video, Bit 1: audio
   uint8_t max_participants; ///< 1-8 participants allowed
+  uint8_t session_type;     ///< acds_session_type_t: 0=DIRECT_TCP (default), 1=WEBRTC
 
   uint8_t has_password;       ///< 0 = no password, 1 = password protected
   uint8_t password_hash[128]; ///< Argon2id hash (only if has_password == 1)
@@ -93,6 +108,8 @@ typedef struct __attribute__((packed)) {
   // char  reserved_string[];        ///< Variable length, follows if len > 0
 
   // Server connection information (where clients should connect)
+  // For DIRECT_TCP: server_address and server_port specify where to connect
+  // For WEBRTC: these fields are ignored, signaling happens through ACDS
   char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
   uint16_t server_port;    ///< Port number for client connection
 } acip_session_create_t;
@@ -163,6 +180,7 @@ typedef struct __attribute__((packed)) {
   uint8_t capabilities;    ///< Session capabilities
   uint8_t max_participants;
   uint8_t current_participants;
+  uint8_t session_type; ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
   uint8_t has_password; ///< 1 = password required to join
   uint64_t created_at;  ///< Unix ms
   uint64_t expires_at;  ///< Unix ms
