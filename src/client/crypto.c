@@ -158,7 +158,7 @@
 #include "crypto/keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
-#include "network/acds_client.h"
+#include "network/acip/client.h"
 #include "util/time.h"
 #include "util/endian.h"
 #include "capture.h"
@@ -192,7 +192,7 @@ static bool g_crypto_initialized = false;
  * @ingroup client_crypto
  */
 int client_crypto_init(void) {
-  // Get options from RCU statelog_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
+  log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
   if (g_crypto_initialized) {
     log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
     crypto_handshake_cleanup(&g_crypto_ctx);
@@ -213,8 +213,15 @@ int client_crypto_init(void) {
   bool is_ssh_key = false;
   private_key_t private_key;
 
+  // Get string options safely
+  const options_t *opts = options_get();
+  const char *encrypt_key = opts && opts->encrypt_key[0] != '\0' ? opts->encrypt_key : "";
+  const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
+  const char *address = opts && opts->address[0] != '\0' ? opts->address : "localhost";
+  const char *port = opts && opts->port[0] != '\0' ? opts->port : "27224";
+  const char *server_key = opts && opts->server_key[0] != '\0' ? opts->server_key : "";
+
   // Load client private key if provided via --key
-  const char *encrypt_key = opts ? GET_OPTION(encrypt_key) : "";
   if (strlen(encrypt_key) > 0) {
     // --key supports file-based authentication (SSH keys, GPG keys via gpg:keyid)
 
@@ -288,7 +295,6 @@ int client_crypto_init(void) {
     sodium_memzero(&private_key, sizeof(private_key));
 
     // If password is also provided, derive password key for dual authentication
-    const char *password = opts ? GET_OPTION(password) : "";
     if (strlen(password) > 0) {
       log_debug("CLIENT_CRYPTO_INIT: Password also provided, deriving password key");
       crypto_result_t crypto_result = crypto_derive_password_key(&g_crypto_ctx.crypto_ctx, password);
@@ -319,17 +325,14 @@ int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded");
 
   // Set up server connection info for known_hosts
-  const char *address = opts ? GET_OPTION(address) : "localhost";
   SAFE_STRNCPY(g_crypto_ctx.server_hostname, address, sizeof(g_crypto_ctx.server_hostname) - 1);
   const char *server_ip = server_connection_get_ip();
   log_debug("CLIENT_CRYPTO_INIT: server_connection_get_ip() returned: '%s'", server_ip ? server_ip : "NULL");
   SAFE_STRNCPY(g_crypto_ctx.server_ip, server_ip ? server_ip : "", sizeof(g_crypto_ctx.server_ip) - 1);
-  const char *port = opts ? GET_OPTION(port) : "27224";
   g_crypto_ctx.server_port = (uint16_t)strtoint_safe(port);
   log_debug("CLIENT_CRYPTO_INIT: Set server_ip='%s', server_port=%u", g_crypto_ctx.server_ip, g_crypto_ctx.server_port);
 
   // Configure server key verification if specified
-  const char *server_key = opts ? GET_OPTION(server_key) : "";
   if (strlen(server_key) > 0) {
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
@@ -395,7 +398,7 @@ int client_crypto_init(void) {
  * @ingroup client_crypto
  */
 int client_crypto_handshake(socket_t socket) {
-  // Get options from RCU state// If client has --no-encrypt, skip handshake entirely
+  // If client has --no-encrypt, skip handshake entirely
   if (GET_OPTION(no_encrypt)) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
     return 0;
@@ -660,7 +663,7 @@ int client_crypto_handshake(socket_t socket) {
  * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
-  // Get options from RCU stateif (!g_crypto_initialized || (GET_OPTION(no_encrypt))) {
+  if (!g_crypto_initialized || GET_OPTION(no_encrypt)) {
     return false;
   }
 

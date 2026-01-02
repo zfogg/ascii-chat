@@ -85,7 +85,7 @@
 #include "video/palette.h"
 #include "network/network.h"
 #include "network/tcp_client.h"
-#include "network/acds_client.h"
+#include "network/acip/client.h"
 #include "util/path.h"
 
 #ifndef NDEBUG
@@ -206,14 +206,10 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
 
-  // Get options from RCU state
-  if (!opts)
-    return;
-
   // Terminal was resized, update dimensions and recalculate aspect ratio
   // ONLY if both width and height are auto (not manually set)
   if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
-    update_dimensions_to_terminal_size((options_t *)opts);
+    update_dimensions_to_terminal_size((options_t *)options_get());
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
@@ -242,7 +238,7 @@ static void sigwinch_handler(int sigwinch) {
  * to prevent race conditions and resource leaks.
  */
 static void shutdown_client() {
-  // Get options from RCU state// Set global shutdown flag to stop all threads
+  // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
 
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
@@ -323,7 +319,7 @@ static void shutdown_client() {
  * @return 0 on success, non-zero error code on failure
  */
 static int initialize_client_systems(bool shared_init_completed) {
-  // Get options from RCU stateif (!shared_init_completed) {
+  if (!shared_init_completed) {
     // Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != 0) {
       (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
@@ -332,8 +328,9 @@ static int initialize_client_systems(bool shared_init_completed) {
     (void)atexit(platform_cleanup);
 
     // Initialize palette based on command line options
-    const char *custom_chars = (GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
-    palette_type_t palette_type = opts ? GET_OPTION(palette_type) : PALETTE_STANDARD;
+    const options_t *opts = options_get();
+    const char *custom_chars = opts && opts->palette_custom_set ? opts->palette_custom : NULL;
+    palette_type_t palette_type = GET_OPTION(palette_type);
     if (apply_palette_config(palette_type, custom_chars) != 0) {
       log_error("Failed to apply palette configuration");
       return 1;
@@ -341,8 +338,8 @@ static int initialize_client_systems(bool shared_init_completed) {
 
     // Initialize logging with appropriate settings
     char *validated_log_file = NULL;
-    log_level_t log_level = opts ? GET_OPTION(log_level) : LOG_INFO;
-    const char *log_file = (GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : "";
+    log_level_t log_level = GET_OPTION(log_level);
+    const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "client.log";
 
     if (strlen(log_file) > 0) {
       asciichat_error_t log_path_result = path_validate_user_path(log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
@@ -444,7 +441,7 @@ static int initialize_client_systems(bool shared_init_completed) {
  * @return 0 on success, error code on failure
  */
 int client_main(void) {
-  // Get options from RCU state// Dispatcher already printed capabilities, but honor flag defensively
+  // Dispatcher already printed capabilities, but honor flag defensively
   if (GET_OPTION(show_capabilities)) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
@@ -500,8 +497,12 @@ int client_main(void) {
   const char *discovered_address = NULL;
   const char *discovered_port = NULL;
 
-  if (GET_OPTION(session_string)[0] != '\0') {
-    log_info("Session string detected: %s - performing ACDS discovery", GET_OPTION(session_string));
+  const options_t *opts_acds = options_get();
+  const char *session_string = opts_acds && opts_acds->session_string[0] != '\0' ? opts_acds->session_string : "";
+  const char *password = opts_acds && opts_acds->password[0] != '\0' ? opts_acds->password : "";
+
+  if (session_string[0] != '\0') {
+    log_info("Session string detected: %s - performing ACDS discovery", session_string);
 
     // Configure ACDS client
     acds_client_config_t acds_config;
@@ -523,11 +524,11 @@ int client_main(void) {
 
     // Lookup session
     acds_session_lookup_result_t lookup_result;
-    asciichat_error_t lookup_err = acds_session_lookup(&acds_client, GET_OPTION(session_string), &lookup_result);
+    asciichat_error_t lookup_err = acds_session_lookup(&acds_client, session_string, &lookup_result);
 
     if (lookup_err != ASCIICHAT_OK || !lookup_result.found) {
       acds_client_disconnect(&acds_client);
-      fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", GET_OPTION(session_string));
+      fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", session_string);
       fprintf(stderr, "  - Not a recognized mode (server, client, mirror)\n");
       fprintf(stderr, "  - Not an active session on the discovery server\n");
       fprintf(stderr, "\nDid you mean to:\n");
@@ -537,17 +538,16 @@ int client_main(void) {
       return 1;
     }
 
-    log_info("Session found: %s (%d/%d participants, password=%s)", GET_OPTION(session_string),
-             lookup_result.current_participants, lookup_result.max_participants,
-             lookup_result.has_password ? "required" : "not required");
+    log_info("Session found: %s (%d/%d participants, password=%s)", session_string, lookup_result.current_participants,
+             lookup_result.max_participants, lookup_result.has_password ? "required" : "not required");
 
     // Join session to get server connection information
     acds_session_join_params_t join_params;
     memset(&join_params, 0, sizeof(join_params));
-    join_params.session_string = GET_OPTION(session_string);
-    join_params.has_password = lookup_result.has_password && GET_OPTION(password)[0] != '\0';
+    join_params.session_string = session_string;
+    join_params.has_password = lookup_result.has_password && password[0] != '\0';
     if (join_params.has_password) {
-      SAFE_STRNCPY(join_params.password, GET_OPTION(password), sizeof(join_params.password));
+      SAFE_STRNCPY(join_params.password, password, sizeof(join_params.password));
     }
     // TODO: Provide Ed25519 identity for signature when required by ACDS policies
     memset(join_params.identity_pubkey, 0, 32);
@@ -558,7 +558,7 @@ int client_main(void) {
     acds_client_disconnect(&acds_client);
 
     if (join_err != ASCIICHAT_OK || !join_result.success) {
-      fprintf(stderr, "Error: Failed to join session '%s'\n", GET_OPTION(session_string));
+      fprintf(stderr, "Error: Failed to join session '%s'\n", session_string);
       if (join_result.error_message[0] != '\0') {
         fprintf(stderr, "  %s\n", join_result.error_message);
       }
@@ -578,10 +578,14 @@ int client_main(void) {
     discovered_port = port_buffer;
   }
 
+  const options_t *opts_conn = options_get();
   while (!should_exit()) {
     // Handle connection establishment or reconnection
-    const char *address = discovered_address ? discovered_address : (opts ? GET_OPTION(address) : "localhost");
-    const char *port_str = discovered_port ? discovered_port : (opts ? GET_OPTION(port) : "27224");
+    const char *address = discovered_address
+                              ? discovered_address
+                              : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
+    const char *port_str =
+        discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : "27224");
     int port = atoi(port_str);
     int connection_result =
         server_connection_establish(address, port, reconnect_attempt, first_connection, has_ever_connected);
@@ -604,7 +608,7 @@ int client_main(void) {
       reconnect_attempt++;
 
       // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
-      int reconnect_attempts = opts ? GET_OPTION(reconnect_attempts) : -1;
+      int reconnect_attempts = GET_OPTION(reconnect_attempts);
 
       // Check reconnection policy
       if (reconnect_attempts == 0) {

@@ -224,18 +224,18 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
   }
   // Calculate optimal dimensions
   ssize_t resized_width, resized_height;
-  calculate_optimal_dimensions(GET_OPTION(w), GET_OPTION(h), max_width, max_height, &resized_width,
+  calculate_optimal_dimensions(original_image->w, original_image->h, max_width, max_height, &resized_width,
                                &resized_height);
   // Check if resizing is needed
-  if (GET_OPTION(w) == resized_width && GET_OPTION(h) == resized_height) {
+  if (original_image->w == resized_width && original_image->h == resized_height) {
     // No resizing needed - create a copy to preserve original
-    image_t *copy = image_new(GET_OPTION(w), GET_OPTION(h));
+    image_t *copy = image_new(original_image->w, original_image->h);
     if (!copy) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate image copy");
       return NULL;
     }
     // Copy pixel data
-    memcpy(GET_OPTION(pixels), GET_OPTION(pixels), (size_t)GET_OPTION(w) * GET_OPTION(h) * sizeof(rgb_t));
+    memcpy(copy->pixels, original_image->pixels, (size_t)original_image->w * original_image->h * sizeof(rgb_t));
     return copy;
   }
   // Create new image for resized frame
@@ -351,15 +351,15 @@ static void *webcam_capture_thread_func(void *arg) {
     // Create image frame packet in new format: [width:4][height:4][compressed_flag:4][data_size:4][pixel_data]
     // This matches what the server expects in handle_image_frame_packet()
     // Validate image dimensions using utility function
-    if (image_validate_dimensions((size_t)GET_OPTION(w), (size_t)GET_OPTION(h)) != ASCIICHAT_OK) {
+    if (image_validate_dimensions((size_t)processed_image->w, (size_t)processed_image->h) != ASCIICHAT_OK) {
       image_destroy(processed_image);
       continue;
     }
 
     size_t pixel_count = 0;
-    if (safe_size_mul((size_t)GET_OPTION(w), (size_t)GET_OPTION(h), &pixel_count)) {
-      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Pixel count overflow for processed image dimensions: %dx%d", GET_OPTION(w),
-                GET_OPTION(h));
+    if (safe_size_mul((size_t)processed_image->w, (size_t)processed_image->h, &pixel_count)) {
+      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Pixel count overflow for processed image dimensions: %dx%d", processed_image->w,
+                processed_image->h);
       image_destroy(processed_image);
       continue;
     }
@@ -416,13 +416,13 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Build packet in new format
     uint32_t *header = (uint32_t *)packet_data;
-    header[0] = HOST_TO_NET_U32(GET_OPTION(w));   // width
-    header[1] = HOST_TO_NET_U32(GET_OPTION(h));   // height
+    header[0] = HOST_TO_NET_U32(processed_image->w);   // width
+    header[1] = HOST_TO_NET_U32(processed_image->h);   // height
     header[2] = HOST_TO_NET_U32(0);                    // compressed_flag = 0 (uncompressed)
     header[3] = HOST_TO_NET_U32((uint32_t)pixel_size); // data_size = pixel data length
 
     // Copy pixel data after header
-    memcpy(packet_data + header_size, GET_OPTION(pixels), pixel_size);
+    memcpy(packet_data + header_size, processed_image->pixels, pixel_size);
     // Check connection before sending
     if (!server_connection_is_active()) {
       log_warn("Connection lost before sending, stopping video transmission");
@@ -498,8 +498,8 @@ static void *webcam_capture_thread_func(void *arg) {
  * @ingroup client_capture
  */
 int capture_init() {
-  // Get options from RCU state// Initialize webcam capture
-  int webcam_index = opts ? GET_OPTION(webcam_index) : 0;
+  // Initialize webcam capture
+  int webcam_index = GET_OPTION(webcam_index);
   int result = webcam_init(webcam_index);
   if (result != 0) {
     SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam (error code: %d)", result);
