@@ -696,15 +696,12 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
         value = *(const char *const *)desc->default_value;
       }
 
-      if (value) {
-        char *dup = strdup(value);
-        if (!dup) {
-          return SET_ERRNO(ERROR_MEMORY, "Failed to duplicate default string");
-        }
-        *(char **)field = dup;
-        track_owned_string((options_config_t *)config, dup);
-      } else {
-        *(char **)field = NULL;
+      // Copy into fixed-size buffer (same as parsing logic in options_config_parse)
+      // String fields in options_t are char[OPTIONS_BUFF_SIZE] arrays, not pointers
+      if (value && value[0] != '\0') {
+        char *dest = (char *)field;
+        snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
+        dest[OPTIONS_BUFF_SIZE - 1] = '\0'; // Ensure null termination
       }
       break;
     }
@@ -725,10 +722,9 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     }
 
     case OPTION_TYPE_CALLBACK:
-      // Callbacks don't have automatic defaults
-      if (desc->default_value) {
-        memcpy(field, desc->default_value, desc->offset);
-      }
+      // Callbacks don't have automatic defaults in set_defaults
+      // Defaults are applied during parsing via the parse_fn callback
+      // Note: value_size is not stored in descriptor, so we can't memcpy safely
       break;
 
     case OPTION_TYPE_ACTION:
