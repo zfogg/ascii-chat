@@ -369,17 +369,14 @@ static void sigint_handler(int sigint) {
  * a system-initiated shutdown request that should be honored promptly.
  *
  * IMPLEMENTATION STRATEGY:
- * This handler is intentionally more conservative than sigint_handler():
- * - Uses logging system (has built-in signal safety mechanisms)
- * - Does NOT close client sockets (avoids potential race conditions)
- * - Relies on main thread cleanup for client socket management
- * - Focuses on minimal flag setting and thread wakeup
+ * This handler must aggressively interrupt the accept loop, just like SIGINT,
+ * to ensure responsive shutdown when triggered by automated systems like docker stop.
+ * Process managers and Docker expect clean shutdown within a timeout window.
  *
- * RATIONALE FOR CONSERVATIVE APPROACH:
- * SIGTERM often comes from automated systems that expect clean shutdown.
- * By being more careful and letting the main thread handle complex cleanup,
- * we reduce the risk of partial states or resource leaks that could affect
- * process monitoring systems.
+ * SIGNAL SAFETY:
+ * - Sets atomic flags (signal-safe)
+ * - Closes listening sockets to interrupt accept() (signal-safe)
+ * - Does NOT access complex data structures (avoids deadlocks)
  *
  * @param sigterm The signal number (unused, required by signal handler signature)
  */
@@ -392,8 +389,16 @@ static void sigterm_handler(int sigterm) {
   const char *msg = "SIGTERM received - shutting down server...\n";
   ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
   (void)unused; // Suppress unused variable warning
-  // Return immediately - signal handlers must be minimal
-  // Main thread will detect g_server_should_exit and perform complete shutdown
+
+  // CRITICAL: Stop the TCP server accept loop immediately
+  // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown
+  atomic_store(&g_tcp_server.running, false);
+  if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
+    socket_close(g_tcp_server.listen_socket);
+  }
+  if (g_tcp_server.listen_socket6 != INVALID_SOCKET_VALUE) {
+    socket_close(g_tcp_server.listen_socket6);
+  }
 }
 
 /**
