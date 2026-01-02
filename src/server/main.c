@@ -947,6 +947,9 @@ int server_main(void) {
     // Set IP disclosure policy (determined above)
     create_params.acds_expose_ip = acds_expose_ip_flag;
 
+    // Set session type (Direct TCP or WebRTC)
+    create_params.session_type = GET_OPTION(webrtc) ? SESSION_TYPE_WEBRTC : SESSION_TYPE_DIRECT_TCP;
+
     // Server connection information (where clients should connect)
     SAFE_STRNCPY(create_params.server_address, GET_OPTION(address), sizeof(create_params.server_address));
     create_params.server_port = port;
