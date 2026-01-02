@@ -1727,6 +1727,7 @@ static const acip_server_callbacks_t g_acip_server_callbacks = {
 // Callback implementations (delegate to existing handlers)
 
 static void acip_server_on_protocol_version(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx) {
+  // TODO: Use app_ctx for context-aware protocol handling or metrics collection in future versions
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
   handle_protocol_version_packet(client, (void *)version, sizeof(*version));

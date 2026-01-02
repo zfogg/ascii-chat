@@ -69,7 +69,8 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid callbacks");
   }
 
-  (void)transport; // May be used in future for transport abstraction
+  // TODO: Implement transport abstraction for ACDS responses or future protocol features
+  (void)transport;
 
   // O(1) array-based dispatch - bounds check packet type
   if (type >= 200) {

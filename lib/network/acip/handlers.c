@@ -119,7 +119,8 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
 
-  (void)transport; // May be used in future for sending responses
+  // TODO: Use transport for sending responses or out-of-band messages in future versions
+  (void)transport;
 
   // O(1) array-based dispatch - bounds check packet type
   if (type >= 200) {
@@ -189,6 +190,8 @@ static asciichat_error_t handle_client_audio_batch(const void *payload, size_t p
   uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
   uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
 
+  // TODO: Implement per-channel audio processing or validate sample_rate/channels
+  // Currently unused but parsed from packet header for future compatibility
   (void)batch_count;
   (void)sample_rate;
   (void)channels;
@@ -476,7 +479,8 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
 
-  (void)transport; // May be used in future for sending responses
+  // TODO: Use transport for sending responses or out-of-band messages in future versions
+  (void)transport;
 
   // O(1) array-based dispatch - bounds check packet type
   if (type >= 200) {
@@ -545,10 +549,6 @@ static asciichat_error_t handle_server_audio_batch(const void *payload, size_t p
   uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
   uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
   uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
-
-  (void)batch_count;
-  (void)sample_rate;
-  (void)channels;
 
   // Validate size
   size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
