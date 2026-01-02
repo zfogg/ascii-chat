@@ -236,7 +236,14 @@ asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const 
 
   // Build packet: header + sizes + opus_data
   memcpy(buffer, header, sizeof(header));
-  memcpy(buffer + sizeof(header), frame_sizes, sizes_len);
+
+  // Convert frame sizes to network byte order before copying
+  // IMPORTANT: Server expects network byte order and will apply NET_TO_HOST_U16()
+  uint16_t *sizes_buf = (uint16_t *)(buffer + sizeof(header));
+  for (uint32_t i = 0; i < frame_count; i++) {
+    sizes_buf[i] = HOST_TO_NET_U16(frame_sizes[i]);
+  }
+
   memcpy(buffer + sizeof(header) + sizes_len, opus_data, opus_len);
 
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, buffer, total_size);
@@ -290,7 +297,9 @@ asciichat_error_t acip_send_stream_start(acip_transport_t *transport, uint8_t st
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &stream_types, sizeof(stream_types));
+  // Server expects uint32_t (4 bytes), not uint8_t
+  uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
+  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_START, &stream_types_net, sizeof(stream_types_net));
 }
 
 asciichat_error_t acip_send_stream_stop(acip_transport_t *transport, uint8_t stream_types) {
@@ -298,7 +307,9 @@ asciichat_error_t acip_send_stream_stop(acip_transport_t *transport, uint8_t str
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &stream_types, sizeof(stream_types));
+  // Server expects uint32_t (4 bytes), not uint8_t
+  uint32_t stream_types_net = HOST_TO_NET_U32((uint32_t)stream_types);
+  return packet_send_via_transport(transport, PACKET_TYPE_STREAM_STOP, &stream_types_net, sizeof(stream_types_net));
 }
 
 asciichat_error_t acip_send_clear_console(acip_transport_t *transport) {
