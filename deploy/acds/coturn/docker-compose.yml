@@ -15,10 +15,10 @@ services:
       - coturn-data:/var/lib/coturn
       - coturn-logs:/var/log
 
-    # Environment
-    environment:
-      - DETECT_EXTERNAL_IP=yes
-      - DETECT_RELAY_IP=yes
+    # Environment (commented out - auto-detection doesn't work reliably)
+    # environment:
+    #   - DETECT_EXTERNAL_IP=yes
+    #   - DETECT_RELAY_IP=yes
 
     # Resource limits
     deploy:
