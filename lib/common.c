@@ -79,30 +79,29 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   (void)atexit(platform_cleanup);
 
   // Get options from RCU state (published by options_init)
-  const options_t *opts = options_get();
   if (!opts) {
     FATAL(ERROR_CONFIG, "Options not initialized (options_init must be called first)");
   }
 
   // Apply quiet mode setting BEFORE log_init so initialization messages are suppressed
-  if (opts->quiet) {
+  if (GET_OPTION(quiet)) {
     log_set_terminal_output(false);
   }
 
   // Initialize logging with default filename
   // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
-  const char *log_filename = (strlen(opts->log_file) > 0) ? opts->log_file : default_log_filename;
+  const char *log_filename = (strlen(GET_OPTION(log_file)) > 0) ? GET_OPTION(log_file) : default_log_filename;
   // Use log_level from parsed options (set by options_init)
   // Default levels (when no --log-level arg or LOG_LEVEL env var):
   //   Debug/Dev builds: LOG_DEBUG
   //   Release/RelWithDebInfo builds: LOG_INFO
   // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
   // use_mmap=true: Lock-free mmap logging for performance and crash safety
-  log_init(log_filename, opts->log_level, is_client, true /* use_mmap */);
+  log_init(log_filename, GET_OPTION(log_level), is_client, true /* use_mmap */);
 
   // Initialize palette based on command line options
-  const char *custom_chars = opts->palette_custom_set ? opts->palette_custom : NULL;
-  if (apply_palette_config(opts->palette_type, custom_chars) != 0) {
+  const char *custom_chars = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+  if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
     FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
   }
 
@@ -121,7 +120,7 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
 
   // Set quiet mode for memory debugging (registration done at function start)
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-  debug_memory_set_quiet_mode(opts->quiet);
+  debug_memory_set_quiet_mode(GET_OPTION(quiet));
 #endif
 
   return ASCIICHAT_OK;

@@ -192,14 +192,7 @@ static bool g_crypto_initialized = false;
  * @ingroup client_crypto
  */
 int client_crypto_init(void) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
+  // Get options from RCU statelog_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
   if (g_crypto_initialized) {
     log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
     crypto_handshake_cleanup(&g_crypto_ctx);
@@ -207,7 +200,7 @@ int client_crypto_init(void) {
   }
 
   // Check if encryption is disabled
-  if (opts && opts->no_encrypt) {
+  if (GET_OPTION(no_encrypt)) {
     log_info("Encryption disabled via --no-encrypt");
     log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
     return 0;
@@ -221,7 +214,7 @@ int client_crypto_init(void) {
   private_key_t private_key;
 
   // Load client private key if provided via --key
-  const char *encrypt_key = opts ? opts->encrypt_key : "";
+  const char *encrypt_key = opts ? GET_OPTION(encrypt_key) : "";
   if (strlen(encrypt_key) > 0) {
     // --key supports file-based authentication (SSH keys, GPG keys via gpg:keyid)
 
@@ -295,7 +288,7 @@ int client_crypto_init(void) {
     sodium_memzero(&private_key, sizeof(private_key));
 
     // If password is also provided, derive password key for dual authentication
-    const char *password = opts ? opts->password : "";
+    const char *password = opts ? GET_OPTION(password) : "";
     if (strlen(password) > 0) {
       log_debug("CLIENT_CRYPTO_INIT: Password also provided, deriving password key");
       crypto_result_t crypto_result = crypto_derive_password_key(&g_crypto_ctx.crypto_ctx, password);
@@ -307,10 +300,10 @@ int client_crypto_init(void) {
       log_info("Password authentication enabled alongside SSH key");
     }
 
-  } else if (opts && strlen(opts->password) > 0) {
+  } else if (strlen(GET_OPTION(password)) > 0) {
     // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
-    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, opts->password); // false = client
+    result = crypto_handshake_init_with_password(&g_crypto_ctx, false, GET_OPTION(password)); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake with password");
     }
@@ -326,17 +319,17 @@ int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: crypto_handshake_init succeeded");
 
   // Set up server connection info for known_hosts
-  const char *address = opts ? opts->address : "localhost";
+  const char *address = opts ? GET_OPTION(address) : "localhost";
   SAFE_STRNCPY(g_crypto_ctx.server_hostname, address, sizeof(g_crypto_ctx.server_hostname) - 1);
   const char *server_ip = server_connection_get_ip();
   log_debug("CLIENT_CRYPTO_INIT: server_connection_get_ip() returned: '%s'", server_ip ? server_ip : "NULL");
   SAFE_STRNCPY(g_crypto_ctx.server_ip, server_ip ? server_ip : "", sizeof(g_crypto_ctx.server_ip) - 1);
-  const char *port = opts ? opts->port : "27224";
+  const char *port = opts ? GET_OPTION(port) : "27224";
   g_crypto_ctx.server_port = (uint16_t)strtoint_safe(port);
   log_debug("CLIENT_CRYPTO_INIT: Set server_ip='%s', server_port=%u", g_crypto_ctx.server_ip, g_crypto_ctx.server_port);
 
   // Configure server key verification if specified
-  const char *server_key = opts ? opts->server_key : "";
+  const char *server_key = opts ? GET_OPTION(server_key) : "";
   if (strlen(server_key) > 0) {
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
@@ -344,8 +337,8 @@ int client_crypto_init(void) {
   }
 
   // If --require-client-verify is set, perform ACDS session lookup for server identity
-  if (opts && opts->require_client_verify && strlen(opts->session_string) > 0) {
-    log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", opts->session_string);
+  if (GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
+    log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
 
     // Connect to ACDS server (default: localhost:27225)
     // TODO: Make ACDS server address configurable via --acds-server option
@@ -364,11 +357,11 @@ int client_crypto_init(void) {
 
     // Perform SESSION_LOOKUP to get server's identity
     acds_session_lookup_result_t lookup_result;
-    acds_result = acds_session_lookup(&acds_client, opts->session_string, &lookup_result);
+    acds_result = acds_session_lookup(&acds_client, GET_OPTION(session_string), &lookup_result);
     acds_client_disconnect(&acds_client);
 
     if (acds_result != ASCIICHAT_OK || !lookup_result.found) {
-      log_error("ACDS session lookup failed for '%s': %s", opts->session_string,
+      log_error("ACDS session lookup failed for '%s': %s", GET_OPTION(session_string),
                 lookup_result.found ? "session not found" : "lookup error");
       return -1;
     }
@@ -402,15 +395,8 @@ int client_crypto_init(void) {
  * @ingroup client_crypto
  */
 int client_crypto_handshake(socket_t socket) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  // If client has --no-encrypt, skip handshake entirely
-  if (opts && opts->no_encrypt) {
+  // Get options from RCU state// If client has --no-encrypt, skip handshake entirely
+  if (GET_OPTION(no_encrypt)) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
     return 0;
   }
@@ -674,14 +660,7 @@ int client_crypto_handshake(socket_t socket) {
  * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return false;
-  }
-
-  if (!g_crypto_initialized || (opts && opts->no_encrypt)) {
+  // Get options from RCU stateif (!g_crypto_initialized || (GET_OPTION(no_encrypt))) {
     return false;
   }
 

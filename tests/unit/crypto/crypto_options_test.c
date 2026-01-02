@@ -26,7 +26,6 @@ static void reset_crypto_options(void) {
   options_state_init();
 
   // Get current options and create a writable copy
-  const options_t *current = options_get();
   options_t reset_opts;
   memcpy(&reset_opts, current, sizeof(options_t));
 
@@ -227,30 +226,29 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
   }
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Test the results (only if we expected success)
-  cr_assert_eq(opts->no_encrypt, tc->expect_no_encrypt, "No encrypt flag should match for case: %s", tc->description);
-  cr_assert_eq(opts->encrypt_key[0] != '\0', tc->expect_key_set, "Key should be set for case: %s", tc->description);
-  cr_assert_eq(opts->server_key[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s",
+  cr_assert_eq(GET_OPTION(no_encrypt), tc->expect_no_encrypt, "No encrypt flag should match for case: %s", tc->description);
+  cr_assert_eq(GET_OPTION(encrypt_key)[0] != '\0', tc->expect_key_set, "Key should be set for case: %s", tc->description);
+  cr_assert_eq(GET_OPTION(server_key)[0] != '\0', tc->expect_server_key_set, "Server key should be set for case: %s",
                tc->description);
-  cr_assert_eq(opts->client_keys[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s",
+  cr_assert_eq(GET_OPTION(client_keys)[0] != '\0', tc->expect_client_keys_set, "Client keys should be set for case: %s",
                tc->description);
 
   // Check expected values (use [0] != '\0' to check if string is non-empty)
   if (tc->expected_key[0] != '\0') {
-    cr_assert(opts->encrypt_key[0] != '\0', "Key should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->encrypt_key, tc->expected_key, "Key should match for case: %s", tc->description);
+    cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Key should not be empty for case: %s", tc->description);
+    cr_assert_str_eq(GET_OPTION(encrypt_key), tc->expected_key, "Key should match for case: %s", tc->description);
   }
 
   if (tc->expected_server_key[0] != '\0') {
-    cr_assert(opts->server_key[0] != '\0', "Server key should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s", tc->description);
+    cr_assert(GET_OPTION(server_key)[0] != '\0', "Server key should not be empty for case: %s", tc->description);
+    cr_assert_str_eq(GET_OPTION(server_key), tc->expected_server_key, "Server key should match for case: %s", tc->description);
   }
 
   if (tc->expected_client_keys[0] != '\0') {
-    cr_assert(opts->client_keys[0] != '\0', "Client keys should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->client_keys, tc->expected_client_keys, "Client keys should match for case: %s",
+    cr_assert(GET_OPTION(client_keys)[0] != '\0', "Client keys should not be empty for case: %s", tc->description);
+    cr_assert_str_eq(GET_OPTION(client_keys), tc->expected_client_keys, "Client keys should match for case: %s",
                      tc->description);
   }
 }
@@ -268,10 +266,9 @@ Test(crypto_options, client_only_options) {
   cr_assert_eq(result, ASCIICHAT_OK, "Client-only option should work for client");
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->server_key[0] != '\0', "Server key should be set for client");
-  cr_assert_str_eq(opts->server_key, "/path/to/server/key", "Server key should match");
+  cr_assert(GET_OPTION(server_key)[0] != '\0', "Server key should be set for client");
+  cr_assert_str_eq(GET_OPTION(server_key), "/path/to/server/key", "Server key should match");
 }
 
 Test(crypto_options, server_only_options) {
@@ -281,10 +278,9 @@ Test(crypto_options, server_only_options) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->client_keys[0] != '\0', "Client keys should be set for server");
-  cr_assert_str_eq(opts->client_keys, "/path/to/authorized_keys", "Client keys path should match");
+  cr_assert(GET_OPTION(client_keys)[0] != '\0', "Client keys should be set for server");
+  cr_assert_str_eq(GET_OPTION(client_keys), "/path/to/authorized_keys", "Client keys path should match");
 }
 
 Test(crypto_options, mutually_exclusive_options) {
@@ -293,11 +289,10 @@ Test(crypto_options, mutually_exclusive_options) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Both should be set, but --no-encrypt takes precedence
-  cr_assert(opts->no_encrypt, "No encrypt should be set");
-  cr_assert(opts->encrypt_key[0] != '\0', "Key should still be set");
+  cr_assert(GET_OPTION(no_encrypt), "No encrypt should be set");
+  cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Key should still be set");
 }
 
 Test(crypto_options, invalid_key_formats) {
@@ -319,11 +314,10 @@ Test(crypto_options, invalid_key_formats) {
     options_init(4, (char **)argv);
 
     // Get options from RCU state
-    const options_t *opts = options_get();
 
     // These should still be accepted by the parser (validation happens later)
-    cr_assert(opts->encrypt_key[0] != '\0', "Key should be set even for invalid format: %s", invalid_keys[i]);
-    cr_assert_str_eq(opts->encrypt_key, invalid_keys[i], "Key should match input: %s", invalid_keys[i]);
+    cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Key should be set even for invalid format: %s", invalid_keys[i]);
+    cr_assert_str_eq(GET_OPTION(encrypt_key), invalid_keys[i], "Key should match input: %s", invalid_keys[i]);
   }
 }
 
@@ -341,10 +335,9 @@ Test(crypto_options, very_long_key_value) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->encrypt_key[0] != '\0', "Long key should be accepted");
-  cr_assert_str_eq(opts->encrypt_key, long_key, "Long key should match input");
+  cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Long key should be accepted");
+  cr_assert_str_eq(GET_OPTION(encrypt_key), long_key, "Long key should match input");
 }
 
 Test(crypto_options, special_characters_in_key) {
@@ -354,10 +347,9 @@ Test(crypto_options, special_characters_in_key) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->encrypt_key[0] != '\0', "Special characters should be accepted");
-  cr_assert_str_eq(opts->encrypt_key, special_key, "Special characters should be preserved");
+  cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Special characters should be accepted");
+  cr_assert_str_eq(GET_OPTION(encrypt_key), special_key, "Special characters should be preserved");
 }
 
 Test(crypto_options, unicode_characters_in_key) {
@@ -367,10 +359,9 @@ Test(crypto_options, unicode_characters_in_key) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->encrypt_key[0] != '\0', "Unicode characters should be accepted");
-  cr_assert_str_eq(opts->encrypt_key, unicode_key, "Unicode characters should be preserved");
+  cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Unicode characters should be accepted");
+  cr_assert_str_eq(GET_OPTION(encrypt_key), unicode_key, "Unicode characters should be preserved");
 }
 
 Test(crypto_options, empty_arguments) {
@@ -379,11 +370,10 @@ Test(crypto_options, empty_arguments) {
   options_init(2, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Should have default values
-  cr_assert_not(opts->no_encrypt, "No encrypt should be false by default");
-  cr_assert(opts->encrypt_key[0] == '\0', "Key should be NULL by default");
+  cr_assert_not(GET_OPTION(no_encrypt), "No encrypt should be false by default");
+  cr_assert(GET_OPTION(encrypt_key)[0] == '\0', "Key should be NULL by default");
 }
 
 Test(crypto_options, null_arguments) {
@@ -391,11 +381,10 @@ Test(crypto_options, null_arguments) {
   options_init(0, NULL);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Should have default values
-  cr_assert_not(opts->no_encrypt, "No encrypt should be false by default");
-  cr_assert(opts->encrypt_key[0] == '\0', "Key should be NULL by default");
+  cr_assert_not(GET_OPTION(no_encrypt), "No encrypt should be false by default");
+  cr_assert(GET_OPTION(encrypt_key)[0] == '\0', "Key should be NULL by default");
 }
 
 // =============================================================================
@@ -437,11 +426,10 @@ Theory((bool is_client, bool no_encrypt, bool has_key), crypto_options, option_c
   options_init(argc, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Verify the options were parsed correctly
-  cr_assert_eq(opts->no_encrypt, no_encrypt, "No encrypt flag should match");
-  cr_assert_eq(opts->encrypt_key[0] != '\0', has_key, "Key should be set if specified");
+  cr_assert_eq(GET_OPTION(no_encrypt), no_encrypt, "No encrypt flag should match");
+  cr_assert_eq(GET_OPTION(encrypt_key)[0] != '\0', has_key, "Key should be set if specified");
 }
 
 // =============================================================================
@@ -455,10 +443,9 @@ Test(crypto_options, absolute_file_paths) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->server_key[0] != '\0', "Server key should be set");
-  cr_assert_str_eq(opts->server_key, "/etc/ascii-chat/server_key", "Server key path should match");
+  cr_assert(GET_OPTION(server_key)[0] != '\0', "Server key should be set");
+  cr_assert_str_eq(GET_OPTION(server_key), "/etc/ascii-chat/server_key", "Server key path should match");
 }
 
 Test(crypto_options, relative_file_paths) {
@@ -467,10 +454,9 @@ Test(crypto_options, relative_file_paths) {
   options_init(4, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
-  cr_assert(opts->client_keys[0] != '\0', "Client keys should be set");
-  cr_assert_str_eq(opts->client_keys, "./authorized_keys", "Client keys path should match");
+  cr_assert(GET_OPTION(client_keys)[0] != '\0', "Client keys should be set");
+  cr_assert_str_eq(GET_OPTION(client_keys), "./authorized_keys", "Client keys path should match");
 }
 
 // =============================================================================
@@ -511,12 +497,11 @@ Test(crypto_options, many_options) {
   options_init(6, (char **)argv); // true = client mode for --server-key
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Options should be set
-  cr_assert(opts->no_encrypt, "No encrypt should be set");
-  cr_assert(opts->encrypt_key[0] != '\0', "Key should be set");
-  cr_assert(opts->server_key[0] != '\0', "Server key should be set");
+  cr_assert(GET_OPTION(no_encrypt), "No encrypt should be set");
+  cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Key should be set");
+  cr_assert(GET_OPTION(server_key)[0] != '\0', "Server key should be set");
 }
 
 Test(crypto_options, repeated_options) {
@@ -525,9 +510,8 @@ Test(crypto_options, repeated_options) {
   options_init(5, (char **)argv);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Should use the last values
-  cr_assert(opts->encrypt_key[0] != '\0', "Key should be set");
-  cr_assert_str_eq(opts->encrypt_key, "second-key", "Should use last key");
+  cr_assert(GET_OPTION(encrypt_key)[0] != '\0', "Key should be set");
+  cr_assert_str_eq(GET_OPTION(encrypt_key), "second-key", "Should use last key");
 }

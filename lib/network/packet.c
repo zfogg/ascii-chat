@@ -79,16 +79,16 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
 
   // First validate packet length BEFORE converting from network byte order
   // This prevents potential integer overflow issues
-  uint32_t pkt_len_network = header->length;
+  uint32_t pkt_len_network = GET_OPTION(length);
   if (pkt_len_network == 0xFFFFFFFF) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet length in network byte order: 0xFFFFFFFF");
   }
 
   // Convert from network byte order using safe helpers
-  uint32_t magic = endian_unpack_u32(header->magic);
-  uint16_t type = endian_unpack_u16(header->type);
+  uint32_t magic = endian_unpack_u32(GET_OPTION(magic));
+  uint16_t type = endian_unpack_u16(GET_OPTION(type));
   uint32_t len = endian_unpack_u32(pkt_len_network);
-  uint32_t crc = endian_unpack_u32(header->crc32);
+  uint32_t crc = endian_unpack_u32(GET_OPTION(crc32));
 
   // Validate magic
   if (magic != PACKET_MAGIC) {
@@ -445,16 +445,15 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   void *compressed_data = NULL;
 
   // Get options from RCU state
-  const options_t *opts = options_get();
 
   // Skip compression for pre-compressed data (Opus audio) or if --no-compress flag is set
-  bool should_skip_compression = packet_is_precompressed(type) || (opts && opts->no_compress);
+  bool should_skip_compression = packet_is_precompressed(type) || (GET_OPTION(no_compress));
   if (!should_skip_compression && len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
     void *temp_compressed = NULL;
     size_t compressed_size = 0;
 
     // Use configured compression level from options (default: 1 for fastest compression)
-    int compression_level = (opts && opts->compression_level > 0) ? opts->compression_level : 1;
+    int compression_level = (GET_OPTION(compression_level) > 0) ? GET_OPTION(compression_level) : 1;
     asciichat_error_t compress_result = compress_data(data, len, &temp_compressed, &compressed_size, compression_level);
     if (compress_result == ASCIICHAT_OK) {
       double ratio = (double)compressed_size / (double)len;
@@ -665,9 +664,9 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
     // Parse decrypted header
     packet_header_t *decrypted_header = (packet_header_t *)plaintext;
-    pkt_type = NET_TO_HOST_U16(decrypted_header->type);
-    pkt_len = NET_TO_HOST_U32(decrypted_header->length);
-    expected_crc = NET_TO_HOST_U32(decrypted_header->crc32);
+    pkt_type = NET_TO_HOST_U16(GET_OPTION(type));
+    pkt_len = NET_TO_HOST_U32(GET_OPTION(length));
+    expected_crc = NET_TO_HOST_U32(GET_OPTION(crc32));
 
     // Extract payload
     size_t payload_len = plaintext_len - sizeof(packet_header_t);
@@ -688,11 +687,11 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     }
 
     // Set envelope
-    envelope->type = (packet_type_t)pkt_type;
-    envelope->data = plaintext + sizeof(packet_header_t);
-    envelope->len = pkt_len;
-    envelope->allocated_buffer = plaintext;
-    envelope->allocated_size = plaintext_size;
+    GET_OPTION(type) = (packet_type_t)pkt_type;
+    GET_OPTION(data) = plaintext + sizeof(packet_header_t);
+    GET_OPTION(len) = pkt_len;
+    GET_OPTION(allocated_buffer) = plaintext;
+    GET_OPTION(allocated_size) = plaintext_size;
 
     return PACKET_RECV_SUCCESS;
   }
@@ -727,13 +726,13 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    envelope->data = payload;
-    envelope->allocated_buffer = payload;
-    envelope->allocated_size = pkt_len;
+    GET_OPTION(data) = payload;
+    GET_OPTION(allocated_buffer) = payload;
+    GET_OPTION(allocated_size) = pkt_len;
   }
 
-  envelope->type = (packet_type_t)pkt_type;
-  envelope->len = pkt_len;
+  GET_OPTION(type) = (packet_type_t)pkt_type;
+  GET_OPTION(len) = pkt_len;
 
   return PACKET_RECV_SUCCESS;
 }
@@ -827,8 +826,8 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
   }
 
   error_packet_t *packet = (error_packet_t *)payload;
-  packet->error_code = HOST_TO_NET_U32((uint32_t)error_code);
-  packet->message_length = HOST_TO_NET_U32((uint32_t)message_len);
+  GET_OPTION(error_code) = HOST_TO_NET_U32((uint32_t)error_code);
+  GET_OPTION(message_length) = HOST_TO_NET_U32((uint32_t)message_len);
 
   if (message_len > 0) {
     memcpy(payload + sizeof(error_packet_t), message, message_len);
@@ -862,8 +861,8 @@ asciichat_error_t packet_parse_error_message(const void *data, size_t len, ascii
   }
 
   const error_packet_t *packet = (const error_packet_t *)data;
-  uint32_t raw_error_code = NET_TO_HOST_U32(packet->error_code);
-  uint32_t raw_message_length = NET_TO_HOST_U32(packet->message_length);
+  uint32_t raw_error_code = NET_TO_HOST_U32(GET_OPTION(error_code));
+  uint32_t raw_message_length = NET_TO_HOST_U32(GET_OPTION(message_length));
 
   if (raw_message_length > MAX_ERROR_MESSAGE_LENGTH) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error message length too large: %u", raw_message_length);
@@ -918,14 +917,14 @@ asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t
   }
 
   remote_log_packet_t *packet = (remote_log_packet_t *)payload;
-  packet->log_level = (uint8_t)level;
-  packet->direction = (uint8_t)direction;
+  GET_OPTION(log_level) = (uint8_t)level;
+  GET_OPTION(direction) = (uint8_t)direction;
   uint16_t final_flags = flags;
   if (truncated) {
     final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
   }
-  packet->flags = HOST_TO_NET_U16(final_flags);
-  packet->message_length = HOST_TO_NET_U32((uint32_t)message_len);
+  GET_OPTION(flags) = HOST_TO_NET_U16(final_flags);
+  GET_OPTION(message_length) = HOST_TO_NET_U32((uint32_t)message_len);
 
   if (message_len > 0) {
     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
@@ -964,22 +963,22 @@ asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_leve
   }
 
   const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
-  uint8_t raw_level = packet->log_level;
+  uint8_t raw_level = GET_OPTION(log_level);
   if (raw_level > LOG_FATAL) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid remote log level: %u", raw_level);
   }
   *out_level = (log_level_t)raw_level;
 
-  uint8_t raw_direction = packet->direction;
+  uint8_t raw_direction = GET_OPTION(direction);
   if (raw_direction > REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
     raw_direction = REMOTE_LOG_DIRECTION_UNKNOWN;
   }
   *out_direction = (remote_log_direction_t)raw_direction;
 
-  uint16_t raw_flags = NET_TO_HOST_U16(packet->flags);
+  uint16_t raw_flags = NET_TO_HOST_U16(GET_OPTION(flags));
   *out_flags = raw_flags;
 
-  uint32_t raw_message_length = NET_TO_HOST_U32(packet->message_length);
+  uint32_t raw_message_length = NET_TO_HOST_U32(GET_OPTION(message_length));
   if (raw_message_length > MAX_REMOTE_LOG_MESSAGE_LENGTH) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Remote log message length too large: %u", raw_message_length);
   }
@@ -1050,12 +1049,12 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
 
   // Create a copy and convert uint16_t fields to network byte order
   crypto_parameters_packet_t net_params = *params;
-  log_debug("NETWORK_DEBUG: Before htons: kex=%u, auth=%u, sig=%u, secret=%u", params->kex_public_key_size,
-            params->auth_public_key_size, params->signature_size, params->shared_secret_size);
-  net_params.kex_public_key_size = HOST_TO_NET_U16(params->kex_public_key_size);
-  net_params.auth_public_key_size = HOST_TO_NET_U16(params->auth_public_key_size);
-  net_params.signature_size = HOST_TO_NET_U16(params->signature_size);
-  net_params.shared_secret_size = HOST_TO_NET_U16(params->shared_secret_size);
+  log_debug("NETWORK_DEBUG: Before htons: kex=%u, auth=%u, sig=%u, secret=%u", GET_OPTION(kex_public_key_size),
+            GET_OPTION(auth_public_key_size), GET_OPTION(signature_size), GET_OPTION(shared_secret_size));
+  net_params.kex_public_key_size = HOST_TO_NET_U16(GET_OPTION(kex_public_key_size));
+  net_params.auth_public_key_size = HOST_TO_NET_U16(GET_OPTION(auth_public_key_size));
+  net_params.signature_size = HOST_TO_NET_U16(GET_OPTION(signature_size));
+  net_params.shared_secret_size = HOST_TO_NET_U16(GET_OPTION(shared_secret_size));
   log_debug("NETWORK_DEBUG: After htons: kex=%u, auth=%u, sig=%u, secret=%u", net_params.kex_public_key_size,
             net_params.auth_public_key_size, net_params.signature_size, net_params.shared_secret_size);
 

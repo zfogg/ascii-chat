@@ -37,8 +37,8 @@
 asciichat_error_t terminal_get_size(terminal_size_t *size) {
   struct winsize ws;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
-    size->rows = ws.ws_row;
-    size->cols = ws.ws_col;
+    GET_OPTION(rows) = ws.ws_row;
+    GET_OPTION(cols) = ws.ws_col;
     return 0;
   }
   return -1;
@@ -510,17 +510,17 @@ const char *terminal_color_level_name(terminal_color_level_t level) {
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   static char summary[256];
   const char *render_mode_str;
-  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+  if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
     render_mode_str = "half-block";
-  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
+  } else if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
     render_mode_str = "background";
   } else {
     render_mode_str = "foreground";
   }
 
-  SAFE_SNPRINTF(summary, sizeof(summary), "%s, %s, %s, %s", terminal_color_level_name(caps->color_level),
-                caps->utf8_support ? "UTF-8" : "ASCII", render_mode_str,
-                caps->detection_reliable ? "reliable" : "fallback");
+  SAFE_SNPRINTF(summary, sizeof(summary), "%s, %s, %s, %s", terminal_color_level_name(GET_OPTION(color_level)),
+                GET_OPTION(utf8_support) ? "UTF-8" : "ASCII", render_mode_str,
+                GET_OPTION(detection_reliable) ? "reliable" : "fallback");
   return summary;
 }
 
@@ -535,23 +535,23 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
 void print_terminal_capabilities(const terminal_capabilities_t *caps) {
   // Use printf instead of log_info since logging may not be initialized
   printf("Terminal Capabilities:\n");
-  printf("  Color Level: %s\n", terminal_color_level_name(caps->color_level));
-  printf("  Max Colors: %u\n", caps->color_count);
-  printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
-  printf("  Background Colors: %s\n", caps->render_mode == RENDER_MODE_BACKGROUND ? "Yes" : "No");
+  printf("  Color Level: %s\n", terminal_color_level_name(GET_OPTION(color_level)));
+  printf("  Max Colors: %u\n", GET_OPTION(color_count));
+  printf("  UTF-8 Support: %s\n", GET_OPTION(utf8_support) ? "Yes" : "No");
+  printf("  Background Colors: %s\n", GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND ? "Yes" : "No");
   const char *render_mode_str_print;
-  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+  if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
     render_mode_str_print = "half-block";
-  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
+  } else if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
     render_mode_str_print = "background";
   } else {
     render_mode_str_print = "foreground";
   }
   printf("  Render Mode: %s\n", render_mode_str_print);
-  printf("  TERM: %s\n", caps->term_type);
-  printf("  COLORTERM: %s\n", strlen(caps->colorterm) ? caps->colorterm : "(not set)");
-  printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
-  printf("  Capabilities Bitmask: 0x%08x\n", caps->capabilities);
+  printf("  TERM: %s\n", GET_OPTION(term_type));
+  printf("  COLORTERM: %s\n", strlen(GET_OPTION(colorterm)) ? GET_OPTION(colorterm) : "(not set)");
+  printf("  Detection Reliable: %s\n", GET_OPTION(detection_reliable) ? "Yes" : "No");
+  printf("  Capabilities Bitmask: 0x%08x\n", GET_OPTION(capabilities));
 }
 
 /**
@@ -598,14 +598,13 @@ void test_terminal_output_modes(void) {
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
   // Get options from RCU state
-  const options_t *opts = options_get();
   if (!opts) {
     return caps; // Options not initialized yet, return unmodified caps
   }
 
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
-  if (opts->color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
+  if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
     log_debug("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
@@ -615,10 +614,10 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 #endif
 
   // Apply color mode override if specified in options (not auto mode)
-  if (opts->color_mode != COLOR_MODE_AUTO) {
+  if (GET_OPTION(color_mode) != COLOR_MODE_AUTO) {
     // Map color_mode_t to terminal_color_level_t (enum values don't align)
     terminal_color_level_t override_level;
-    switch (opts->color_mode) {
+    switch (GET_OPTION(color_mode)) {
     case COLOR_MODE_NONE:
       override_level = TERM_COLOR_NONE;
       break;
@@ -667,7 +666,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 
   // Apply render mode from options (user can override via --render-mode)
   // The default render_mode is RENDER_MODE_FOREGROUND which is what we want
-  caps.render_mode = opts->render_mode;
+  caps.render_mode = GET_OPTION(render_mode);
 
   // Set default FPS based on platform
   extern int g_max_fps;
