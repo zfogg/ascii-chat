@@ -17,7 +17,7 @@
  * @version 1.0
  */
 
-#include "tcp_client.h"
+#include "networking/tcp/client.h"
 #include "common.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
