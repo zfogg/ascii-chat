@@ -188,8 +188,8 @@ These options apply to all modes (server, client, mirror) and must be specified 
 
 **Information:**
 
-- `-v --version`: Display version information
-- `-h --help`: Show help message
+- `--version`: Display version information
+- `--help`: Show help message
 
 **Example:**
 
