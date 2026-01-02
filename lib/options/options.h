@@ -351,7 +351,11 @@ int strtoint_safe(const char *str);
   char encrypt_keyfile[OPTIONS_BUFF_SIZE];                                                                             \
   unsigned short int no_encrypt;                                                                                       \
   char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
-  unsigned short int require_server_verify;
+  unsigned short int require_server_verify;                                                                            \
+  unsigned short int                                                                                                   \
+      acds_expose_ip; ///< Explicitly allow public IP disclosure in ACDS sessions (opt-in)              \
+  char acds_server[OPTIONS_BUFF_SIZE];                                                                                 \
+  int acds_port;
 
 /**
  * @brief Client mode options
@@ -408,7 +412,11 @@ int strtoint_safe(const char *str);
   unsigned short int require_server_identity;                                                                          \
   unsigned short int require_client_identity;                                                                          \
   unsigned short int require_server_verify;                                                                            \
-  unsigned short int require_client_verify;
+  unsigned short int require_client_verify;                                                                            \
+  char stun_servers[OPTIONS_BUFF_SIZE];                                                                                \
+  char turn_servers[OPTIONS_BUFF_SIZE];                                                                                \
+  char turn_username[OPTIONS_BUFF_SIZE];                                                                               \
+  char turn_credential[OPTIONS_BUFF_SIZE];
 
 /**
  * @brief Mode type for options parsing
@@ -456,6 +464,12 @@ typedef struct options_state {
   char port[OPTIONS_BUFF_SIZE];     ///< Server port number
   int max_clients;                  ///< Maximum concurrent clients (server only)
   char session_string[64];          ///< Session string for ACDS discovery (client only)
+
+  // ============================================================================
+  // ACDS Discovery Options (server only)
+  // ============================================================================
+  char acds_server[OPTIONS_BUFF_SIZE]; ///< ACDS server address (default: 127.0.0.1)
+  int acds_port;                       ///< ACDS server port (default: 27225)
 
   // ============================================================================
   // Network Performance Options
@@ -529,6 +543,15 @@ typedef struct options_state {
   unsigned short int require_client_identity; ///< ACDS: require clients to provide signed Ed25519 identity
   unsigned short int require_server_verify;   ///< Server: only accept clients who verified via ACDS
   unsigned short int require_client_verify;   ///< Client: only connect to servers whose identity was verified by ACDS
+  unsigned short int acds_expose_ip; ///< ACDS: explicitly allow public IP disclosure without verification (opt-in)
+
+  // ============================================================================
+  // WebRTC Connectivity Options (ACDS mode only)
+  // ============================================================================
+  char stun_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of STUN server URLs
+  char turn_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of TURN server URLs
+  char turn_username[OPTIONS_BUFF_SIZE];   ///< ACDS: Username for TURN authentication
+  char turn_credential[OPTIONS_BUFF_SIZE]; ///< ACDS: Credential/password for TURN authentication
 
   // ============================================================================
   // Palette Configuration

@@ -168,9 +168,9 @@ void session_registry_destroy(session_registry_t *registry) {
 // ============================================================================
 
 asciichat_error_t session_create(session_registry_t *registry, const acip_session_create_t *req,
-                                 acip_session_created_t *resp) {
-  if (!registry || !req || !resp) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, req, or resp is NULL");
+                                 const acds_config_t *config, acip_session_created_t *resp) {
+  if (!registry || !req || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, req, config, or resp is NULL");
   }
 
   memset(resp, 0, sizeof(*resp));
@@ -252,8 +252,10 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
   SAFE_STRNCPY(resp->session_string, session_string, sizeof(resp->session_string));
   memcpy(resp->session_id, session->session_id, 16);
   resp->expires_at = session->expires_at;
-  resp->stun_count = 0; // TODO: Add STUN/TURN server config
-  resp->turn_count = 0;
+
+  // Populate STUN/TURN server counts from config
+  resp->stun_count = config->stun_count;
+  resp->turn_count = config->turn_count;
 
   rwlock_wrunlock(&registry->lock);
 

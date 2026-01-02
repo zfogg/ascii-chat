@@ -134,8 +134,13 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
 
   req.has_password = params->has_password ? 1 : 0;
   if (params->has_password) {
-    // TODO: Hash password with Argon2id
-    // For now, use cleartext (server should hash it)
+    // Hash password with Argon2id using libsodium
+    // crypto_pwhash_str produces a null-terminated ASCII string
+    if (crypto_pwhash_str((char *)req.password_hash, params->password, strlen(params->password),
+                          crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0) {
+      return SET_ERRNO(ERROR_CRYPTO, "Failed to hash password (out of memory)");
+    }
+  } else {
     memset(req.password_hash, 0, sizeof(req.password_hash));
   }
 

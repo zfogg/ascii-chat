@@ -82,7 +82,7 @@ asciichat_error_t session_registry_init(session_registry_t *registry);
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t session_create(session_registry_t *registry, const acip_session_create_t *req,
-                                 acip_session_created_t *resp);
+                                 const acds_config_t *config, acip_session_created_t *resp);
 
 /**
  * @brief Lookup session by string
