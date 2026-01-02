@@ -24,7 +24,7 @@
 #pragma once
 
 #include "network/packet.h"
-#include "network/acip/acds.h"
+#include "networking/acip/acds.h"
 #include <stdint.h>
 #include <stdbool.h>
 

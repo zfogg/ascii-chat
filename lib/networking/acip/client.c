@@ -12,7 +12,7 @@
  * discovery and WebRTC signaling. ACDS is the reference server implementation.
  */
 
-#include "network/acip/client.h"
+#include "networking/acip/client.h"
 #include "common.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"

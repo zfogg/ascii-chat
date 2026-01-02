@@ -9,8 +9,8 @@
  * @date January 2026
  */
 
-#include "network/acip/acds_handlers.h"
-#include "network/acip/messages.h"
+#include "networking/acip/acds_handlers.h"
+#include "networking/acip/messages.h"
 #include "network/packet.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"

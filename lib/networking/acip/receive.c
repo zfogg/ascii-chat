@@ -9,7 +9,7 @@
  * @date January 2026
  */
 
-#include "network/acip/receive.h"
+#include "networking/acip/receive.h"
 #include "network/packet.h"
 #include "buffer_pool.h"
 #include "log/logging.h"

@@ -11,8 +11,8 @@
 
 #pragma once
 
-#include "network/acip/transport.h"
-#include "network/acip/messages.h"
+#include "networking/acip/transport.h"
+#include "networking/acip/messages.h"
 #include "asciichat_errno.h"
 #include <stddef.h>
 
