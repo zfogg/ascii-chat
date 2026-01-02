@@ -77,8 +77,9 @@ typedef struct {
   size_t offset;      ///< offsetof(struct, field) - where to store value
 
   // Documentation
-  const char *help_text; ///< Description for --help
-  const char *group;     ///< Group name for help sections (e.g., "NETWORK OPTIONS")
+  const char *help_text;    ///< Description for --help
+  const char *group;        ///< Group name for help sections (e.g., "NETWORK OPTIONS")
+  bool hide_from_mode_help; ///< If true, don't show in mode-specific help (binary-level only)
 
   // Default and validation
   const void *default_value; ///< Pointer to default value (or NULL if required)
@@ -415,6 +416,24 @@ void options_builder_add_dependency_implies(options_builder_t *builder, const ch
  * @param dependency Dependency to copy
  */
 void options_builder_add_dependency(options_builder_t *builder, const option_dependency_t *dependency);
+
+/**
+ * @brief Mark an option as binary-level only (hide from mode-specific help)
+ *
+ * Binary-level options are still parsed by mode-specific parsers (so they work
+ * anywhere in the command line), but they don't appear in mode-specific --help.
+ * They should only be documented in the top-level binary help.
+ *
+ * @param builder Builder containing the option
+ * @param option_name Long name of the option to mark
+ *
+ * Example:
+ * ```c
+ * options_builder_add_string(b, "log-file", 'L', ...);
+ * options_builder_mark_binary_only(b, "log-file");
+ * ```
+ */
+void options_builder_mark_binary_only(options_builder_t *builder, const char *option_name);
 
 // ============================================================================
 // Positional Arguments
