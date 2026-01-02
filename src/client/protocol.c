@@ -87,9 +87,11 @@
 #include "network/packet.h"
 #include "network/packet_parsing.h"
 #include "network/av.h"
-#include "network/acip/handlers.h"
-#include "network/acip/transport.h"
-#include "network/acip/receive.h"
+#include "networking/acip/handlers.h"
+#include "networking/acip/transport.h"
+#include "networking/acip/receive.h"
+#include "networking/acip/acds.h"
+#include "networking/webrtc/peer_manager.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
@@ -893,6 +895,8 @@ static void acip_on_pong(void *ctx);
 static void acip_on_clear_console(void *ctx);
 static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len, void *ctx);
 static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx);
+static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
+static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 
 /**
  * @brief Global ACIP client callbacks structure
@@ -914,6 +918,8 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {.on_ascii_frame 
                                                                 .on_crypto_rekey_request = acip_on_crypto_rekey_request,
                                                                 .on_crypto_rekey_response =
                                                                     acip_on_crypto_rekey_response,
+                                                                .on_webrtc_sdp = acip_on_webrtc_sdp,
+                                                                .on_webrtc_ice = acip_on_webrtc_ice,
                                                                 .app_ctx = NULL};
 
 /* ============================================================================
@@ -1342,5 +1348,67 @@ static void acip_on_crypto_rekey_response(const void *payload, size_t payload_le
   crypto_result = crypto_client_send_rekey_complete();
   if (crypto_result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
+  }
+}
+
+/**
+ * @brief ACIP callback for WebRTC SDP offer/answer packets
+ *
+ * Routes incoming SDP signaling messages to the peer manager for processing.
+ * Called when ACDS relays SDP from another session participant.
+ *
+ * @param sdp SDP packet (header + variable SDP data)
+ * @param total_len Total length of the SDP packet
+ * @param ctx Application context (unused)
+ */
+static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx) {
+  (void)ctx;
+  (void)total_len; // Peer manager reads variable data via pointer arithmetic
+
+  // Check if WebRTC is initialized
+  if (!g_peer_manager) {
+    log_warn("Received WebRTC SDP but peer manager not initialized - ignoring");
+    return;
+  }
+
+  // Log SDP type for debugging
+  const char *sdp_type_str = (sdp->sdp_type == 0) ? "offer" : "answer";
+  log_info("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str, (const char *)sdp->session_id);
+
+  // Handle SDP through peer manager (extracts variable data internally)
+  asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_peer_manager, sdp);
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to handle WebRTC SDP: %s", asciichat_error_string(result));
+  }
+}
+
+/**
+ * @brief ACIP callback for WebRTC ICE candidate packets
+ *
+ * Routes incoming ICE candidates to the peer manager for processing.
+ * Called when ACDS relays ICE candidates from another session participant.
+ *
+ * @param ice ICE packet (header + variable candidate/mid data)
+ * @param total_len Total length of the ICE packet
+ * @param ctx Application context (unused)
+ */
+static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx) {
+  (void)ctx;
+  (void)total_len; // Peer manager reads variable data via pointer arithmetic
+
+  // Check if WebRTC is initialized
+  if (!g_peer_manager) {
+    log_warn("Received WebRTC ICE but peer manager not initialized - ignoring");
+    return;
+  }
+
+  log_debug("Received WebRTC ICE candidate from participant (session_id=%.8s...)", (const char *)ice->session_id);
+
+  // Handle ICE through peer manager (extracts variable data internally)
+  asciichat_error_t result = webrtc_peer_manager_handle_ice(g_peer_manager, ice);
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to handle WebRTC ICE: %s", asciichat_error_string(result));
   }
 }

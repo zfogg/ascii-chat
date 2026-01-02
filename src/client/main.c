@@ -66,6 +66,7 @@
 #include "main.h"
 #include "server.h"
 #include "protocol.h"
+#include "crypto.h"
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
@@ -84,8 +85,11 @@
 #include "buffer_pool.h"
 #include "video/palette.h"
 #include "network/network.h"
-#include "network/tcp_client.h"
-#include "network/acip/client.h"
+#include "networking/tcp/client.h"
+#include "networking/acip/client.h"
+#include "networking/acip/acds.h"
+#include "networking/webrtc/peer_manager.h"
+#include "webrtc.h"
 #include "util/path.h"
 
 #ifndef NDEBUG
@@ -134,6 +138,51 @@ thread_pool_t *g_client_worker_pool = NULL;
  * Destroyed by tcp_client_destroy() at cleanup.
  */
 tcp_client_t *g_client = NULL;
+
+/**
+ * @brief Global WebRTC peer manager for P2P connections
+ *
+ * NULL if WebRTC not initialized. Initialized when joining/creating ACDS sessions.
+ */
+struct webrtc_peer_manager *g_peer_manager = NULL;
+
+/**
+ * @brief Global WebRTC peer transport (ACIP transport wrapping DataChannel)
+ *
+ * NULL until DataChannel opens. Set by webrtc_transport_ready_callback().
+ * This replaces g_client_transport when using WebRTC instead of TCP.
+ */
+static acip_transport_t *g_webrtc_peer_transport = NULL;
+
+/**
+ * @brief Callback when WebRTC DataChannel is ready
+ *
+ * Called by peer manager when DataChannel opens and gets wrapped in ACIP transport.
+ * This transport can then be used for ACIP communication instead of TCP.
+ *
+ * @param transport ACIP transport wrapping the DataChannel
+ * @param participant_id Remote participant UUID
+ * @param user_data User context (unused)
+ */
+static void webrtc_transport_ready_callback(acip_transport_t *transport, const uint8_t participant_id[16],
+                                            void *user_data) {
+  (void)user_data;
+
+  log_info("WebRTC DataChannel ready for participant %02x%02x%02x%02x...", participant_id[0], participant_id[1],
+           participant_id[2], participant_id[3]);
+
+  // Store transport for ACIP communication
+  // TODO: For multi-party sessions, need to manage multiple transports
+  // For now, just store the first one
+  if (!g_webrtc_peer_transport) {
+    g_webrtc_peer_transport = transport;
+    log_info("WebRTC peer transport established - ready for ACIP communication");
+  } else {
+    log_warn("Multiple WebRTC transports not yet supported - ignoring additional peer");
+    // TODO: Store in a hash table keyed by participant_id
+    acip_transport_destroy(transport);
+  }
+}
 
 /**
  * Check if shutdown has been requested
@@ -508,10 +557,12 @@ int client_main(void) {
     acds_client_config_t acds_config;
     acds_client_config_init_defaults(&acds_config);
 
-    // Use default ACDS server for now (TODO: make configurable via --acds-server option)
-    // Default: discovery.ascii.chat:27225 or localhost:27225
-    SAFE_STRNCPY(acds_config.server_address, "127.0.0.1", sizeof(acds_config.server_address));
-    acds_config.server_port = 27225;
+    // Use configured ACDS server (from --acds-server and --acds-port options)
+    const char *acds_server = opts_acds->acds_server[0] != '\0' ? opts_acds->acds_server : "127.0.0.1";
+    int acds_port = opts_acds->acds_port > 0 ? opts_acds->acds_port : 27225;
+
+    SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
+    acds_config.server_port = (uint16_t)acds_port;
     acds_config.timeout_ms = 5000;
 
     // Connect to ACDS server
@@ -555,9 +606,9 @@ int client_main(void) {
 
     acds_session_join_result_t join_result;
     asciichat_error_t join_err = acds_session_join(&acds_client, &join_params, &join_result);
-    acds_client_disconnect(&acds_client);
 
     if (join_err != ASCIICHAT_OK || !join_result.success) {
+      acds_client_disconnect(&acds_client);
       fprintf(stderr, "Error: Failed to join session '%s'\n", session_string);
       if (join_result.error_message[0] != '\0') {
         fprintf(stderr, "  %s\n", join_result.error_message);
@@ -565,17 +616,133 @@ int client_main(void) {
       return 1;
     }
 
-    // Use server address/port from join result (only revealed after authentication)
-    log_info("Joined session successfully, connecting to server: %s:%d", join_result.server_address,
-             join_result.server_port);
+    // Handle WebRTC vs Direct TCP sessions
+    if (join_result.session_type == SESSION_TYPE_WEBRTC) {
+      // WebRTC session: Keep ACDS connection for signaling
+      log_info("Joined WebRTC session successfully (participant ID: %02x%02x..., session ID: %02x%02x...)",
+               join_result.participant_id[0], join_result.participant_id[1], join_result.session_id[0],
+               join_result.session_id[1]);
 
-    // Set discovered address/port for connection
-    discovered_address = join_result.server_address;
+      // Get crypto context for transport encryption
+      const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
-    // Convert port to string for discovered_port
-    static char port_buffer[8];
-    snprintf(port_buffer, sizeof(port_buffer), "%d", join_result.server_port);
-    discovered_port = port_buffer;
+      // Configure STUN servers for ICE (using public Google STUN servers as defaults)
+      // TODO: Get STUN/TURN servers from ACDS SESSION_JOINED response or use configured servers
+      static stun_server_t default_stun_servers[] = {
+          {.host_len = 24, .host = "stun:stun.l.google.com:19302"},
+          {.host_len = 25, .host = "stun:stun1.l.google.com:19302"},
+      };
+
+      // Configure peer manager with joiner role (joiners initiate connections)
+      webrtc_peer_manager_config_t peer_config = {
+          .role = WEBRTC_ROLE_JOINER,
+          .stun_servers = default_stun_servers,
+          .stun_count = sizeof(default_stun_servers) / sizeof(default_stun_servers[0]),
+          .turn_servers = NULL, // TODO: Get from ACDS if available
+          .turn_count = 0,
+          .on_transport_ready = webrtc_transport_ready_callback,
+          .user_data = NULL,
+          .crypto_ctx = (crypto_context_t *)crypto_ctx,
+      };
+
+      // Get signaling callbacks (send SDP/ICE via ACDS)
+      webrtc_signaling_callbacks_t signaling_callbacks = webrtc_get_signaling_callbacks();
+
+      // Create peer manager
+      asciichat_error_t peer_result = webrtc_peer_manager_create(&peer_config, &signaling_callbacks, &g_peer_manager);
+      if (peer_result != ASCIICHAT_OK) {
+        log_error("Failed to create WebRTC peer manager: %s", asciichat_error_string(peer_result));
+        acds_client_disconnect(&acds_client);
+        return 1;
+      }
+
+      log_info("WebRTC peer manager created successfully");
+
+      // Create ACIP transport from ACDS socket for signaling
+      acip_transport_t *acds_transport = acip_tcp_transport_create(acds_client.socket, (crypto_context_t *)crypto_ctx);
+      if (!acds_transport) {
+        log_error("Failed to create ACDS transport for WebRTC signaling");
+        webrtc_peer_manager_destroy(g_peer_manager);
+        g_peer_manager = NULL;
+        acds_client_disconnect(&acds_client);
+        return 1;
+      }
+
+      // Set ACDS transport for signaling callbacks
+      webrtc_set_acds_transport(acds_transport);
+
+      // Set session context for signaling
+      webrtc_set_session_context(join_result.session_id, join_result.participant_id);
+
+      log_info("WebRTC peer manager initialized - waiting for connections");
+
+      // Initiate P2P connection to remote participants
+      // TODO: Get list of current participants from ACDS
+      // For now, we'll use broadcast (all zeros) to connect to all participants
+      // The session creator will respond with an answer, establishing the connection
+      uint8_t broadcast_id[16] = {0}; // All zeros = broadcast to all participants
+
+      log_info("Initiating WebRTC connection to session participants");
+      asciichat_error_t connect_result =
+          webrtc_peer_manager_connect(g_peer_manager, join_result.session_id, broadcast_id);
+
+      if (connect_result != ASCIICHAT_OK) {
+        log_error("Failed to initiate WebRTC connection: %s", asciichat_error_string(connect_result));
+        webrtc_peer_manager_destroy(g_peer_manager);
+        g_peer_manager = NULL;
+        acip_transport_destroy(acds_transport);
+        acds_client_disconnect(&acds_client);
+        return 1;
+      }
+
+      log_info("WebRTC connection initiated - SDP offer sent via ACDS");
+
+      // Simple event loop: wait for WebRTC connection to establish
+      // TODO: Implement proper event loop with DataChannel event handling
+      // For now, just sleep and wait for Ctrl+C
+      log_info("WebRTC session active - waiting for DataChannel to open");
+      log_info("Press Ctrl+C to exit");
+
+      // Wait for shutdown signal
+      while (!should_exit()) {
+        platform_sleep_ms(100);
+
+        // Check if DataChannel is ready
+        if (g_webrtc_peer_transport) {
+          log_info("WebRTC DataChannel established - ACIP communication ready");
+          // TODO: Start normal client operation (capture, display, etc.)
+          // For now, just keep the connection alive
+        }
+      }
+
+      // Cleanup
+      log_info("Shutting down WebRTC session");
+      if (g_webrtc_peer_transport) {
+        acip_transport_destroy(g_webrtc_peer_transport);
+        g_webrtc_peer_transport = NULL;
+      }
+      webrtc_peer_manager_destroy(g_peer_manager);
+      g_peer_manager = NULL;
+      acip_transport_destroy(acds_transport);
+      acds_client_disconnect(&acds_client);
+
+      log_info("WebRTC session ended");
+      return 0;
+    } else {
+      // Direct TCP session: Disconnect from ACDS and connect to server
+      acds_client_disconnect(&acds_client);
+
+      log_info("Joined Direct TCP session successfully, connecting to server: %s:%d", join_result.server_address,
+               join_result.server_port);
+
+      // Set discovered address/port for connection
+      discovered_address = join_result.server_address;
+
+      // Convert port to string for discovered_port
+      static char port_buffer[8];
+      snprintf(port_buffer, sizeof(port_buffer), "%d", join_result.server_port);
+      discovered_port = port_buffer;
+    }
   }
 
   const options_t *opts_conn = options_get();
