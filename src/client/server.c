@@ -67,6 +67,8 @@
 #include "network/packet.h"
 #include "network/network.h"
 #include "network/av.h"
+#include "network/acip/send.h"
+#include "network/acip/transport.h"
 #include "util/endian.h"
 #include "util/ip.h"
 #include "common.h"
@@ -107,6 +109,16 @@
  * @ingroup client_connection
  */
 static socket_t g_sockfd = INVALID_SOCKET_VALUE;
+
+/**
+ * @brief ACIP transport for server connection
+ *
+ * Wraps the socket connection with ACIP protocol abstraction. Created after
+ * crypto handshake completes, destroyed when connection closes.
+ *
+ * @ingroup client_connection
+ */
+static acip_transport_t *g_client_transport = NULL;
 
 /**
  * @brief Atomic flag indicating if connection is currently active
@@ -282,6 +294,7 @@ int server_connection_init() {
 
   // Initialize connection state
   g_sockfd = INVALID_SOCKET_VALUE;
+  g_client_transport = NULL;
   atomic_store(&g_connection_active, false);
   atomic_store(&g_connection_lost, false);
   atomic_store(&g_should_reconnect, false);
@@ -545,6 +558,18 @@ connection_success:
   }
   log_debug("CLIENT_CONNECT: client_crypto_handshake() succeeded");
 
+  // Create ACIP transport for protocol-agnostic packet sending
+  // The transport wraps the socket with encryption context from the handshake
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+  g_client_transport = acip_tcp_transport_create(g_sockfd, (crypto_context_t *)crypto_ctx);
+  if (!g_client_transport) {
+    log_error("Failed to create ACIP transport");
+    close_socket(g_sockfd);
+    g_sockfd = INVALID_SOCKET_VALUE;
+    return -1;
+  }
+  log_debug("CLIENT_CONNECT: Created ACIP transport with crypto context");
+
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message
   if (!GET_OPTION(snapshot_mode)) {
@@ -670,6 +695,12 @@ const char *server_connection_get_ip() {
 void server_connection_close() {
   atomic_store(&g_connection_active, false);
 
+  // Destroy ACIP transport before closing socket
+  if (g_client_transport) {
+    acip_transport_destroy(g_client_transport);
+    g_client_transport = NULL;
+  }
+
   if (g_sockfd != INVALID_SOCKET_VALUE) {
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
@@ -781,30 +812,27 @@ void server_connection_cleanup() {
  *
  * @ingroup client_connection
  */
-int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
+asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len) {
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
-  // The socket can be shutdown between an earlier check and this point
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+  // Recheck connection status and transport INSIDE the mutex to prevent TOCTOU race
+  if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
-  // Use send_packet_secure() which handles encryption and compression automatically
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-  asciichat_error_t result = send_packet_secure(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
+  // Use ACIP transport which handles encryption and compression automatically
+  asciichat_error_t result = packet_send_via_transport(g_client_transport, type, data, len);
 
   mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
     server_connection_lost();
-    return -1;
+    return result;
   }
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -859,27 +887,23 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
  *
  * @ingroup client_connection
  */
-int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate, int frame_duration) {
+asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate,
+                                           int frame_duration) {
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+  // Recheck connection status and transport INSIDE the mutex to prevent TOCTOU race
+  if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
-
-  // Get crypto context if encryption is enabled
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
 
   // Build Opus packet with header
   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
   size_t total_size = header_size + opus_size;
   void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
     mutex_unlock(&g_send_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
   }
 
   // Write header in network byte order
@@ -893,25 +917,21 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
   // Copy Opus data
   memcpy(buf + header_size, opus_data, opus_size);
 
-  // Send packet with encryption if available
-  int result;
-  if (crypto_ctx) {
-    result =
-        send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size, (crypto_context_t *)crypto_ctx);
-  } else {
-    result = packet_send(sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
-  }
+  // Send packet via ACIP transport (handles encryption automatically)
+  asciichat_error_t result =
+      packet_send_via_transport(g_client_transport, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
 
   // Clean up
   buffer_pool_free(NULL, packet_data, total_size);
   mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     server_connection_lost();
+    return result;
   }
 
-  return result;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -928,32 +948,29 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
  *
  * @ingroup client_connection
  */
-int threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
-                                   int frame_count) {
+asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
+                                                 const uint16_t *frame_sizes, int frame_count) {
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+  // Recheck connection status and transport INSIDE the mutex to prevent TOCTOU race
+  if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
-  // Get crypto context if encryption is enabled
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
-  int result = av_send_audio_opus_batch(sockfd, opus_data, opus_size, frame_sizes, 48000, 20, frame_count,
-                                        (crypto_context_t *)crypto_ctx);
+  asciichat_error_t result =
+      acip_send_audio_opus_batch(g_client_transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
 
   mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     server_connection_lost();
+    return result;
   }
 
-  return result;
+  return ASCIICHAT_OK;
 }
 
 /**

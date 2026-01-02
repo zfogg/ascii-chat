@@ -94,6 +94,7 @@ typedef struct {
   uint8_t max_participants;    ///< Maximum participants (1-8)
   bool has_password;           ///< Password protection enabled
   char password[128];          ///< Optional password (if has_password)
+  bool acds_expose_ip;         ///< Explicitly allow public IP disclosure (--acds-expose-ip opt-in)
   const char *reserved_string; ///< Optional reserved string (NULL = auto-generate)
   char server_address[64];     ///< Server address where clients should connect
   uint16_t server_port;        ///< Server port where clients should connect

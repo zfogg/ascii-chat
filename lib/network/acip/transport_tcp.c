@@ -25,6 +25,32 @@ typedef struct {
 } tcp_transport_data_t;
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * @brief Send all bytes on socket (handles partial sends)
+ */
+static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t len) {
+  const uint8_t *ptr = (const uint8_t *)data;
+  size_t remaining = len;
+
+  while (remaining > 0) {
+    ssize_t sent = socket_send(sockfd, ptr, remaining, 0);
+    if (sent < 0) {
+      return SET_ERRNO(ERROR_NETWORK, "Socket send failed");
+    }
+    if (sent == 0) {
+      return SET_ERRNO(ERROR_NETWORK, "Socket closed");
+    }
+    ptr += sent;
+    remaining -= (size_t)sent;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+// =============================================================================
 // TCP Transport Methods
 // =============================================================================
 
@@ -32,11 +58,11 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
   if (!tcp->is_connected) {
-    return SET_ERRNO(ERROR_NETWORK_SEND, "TCP transport not connected");
+    return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
   }
 
-  // Use existing packet send infrastructure (handles encryption if crypto_ctx present)
-  return send_packet_raw(tcp->sockfd, data, len, transport->crypto_ctx);
+  // Send raw data (already has packet header from send.c)
+  return tcp_send_all(tcp->sockfd, data, len);
 }
 
 static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
@@ -44,23 +70,28 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
   if (!tcp->is_connected) {
-    return SET_ERRNO(ERROR_NETWORK_RECV, "TCP transport not connected");
+    return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
   }
 
-  // Use existing packet receive infrastructure (handles decryption if crypto_ctx present)
-  packet_header_t header;
-  void *payload = NULL;
-  void *allocated_buffer = NULL;
+  // Use secure packet receive with envelope
+  packet_envelope_t envelope;
+  bool enforce_encryption = (transport->crypto_ctx != NULL);
+  packet_recv_result_t result =
+      receive_packet_secure(tcp->sockfd, transport->crypto_ctx, enforce_encryption, &envelope);
 
-  asciichat_error_t result = receive_packet(tcp->sockfd, &header, &payload, &allocated_buffer, transport->crypto_ctx);
-
-  if (result != ASCIICHAT_OK) {
-    return result;
+  if (result != PACKET_RECV_SUCCESS) {
+    if (result == PACKET_RECV_EOF) {
+      return SET_ERRNO(ERROR_NETWORK, "Connection closed");
+    } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
+      return SET_ERRNO(ERROR_CRYPTO, "Security violation");
+    } else {
+      return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
+    }
   }
 
-  *buffer = payload;
-  *out_len = header.length;
-  *out_allocated_buffer = allocated_buffer;
+  *buffer = envelope.data;
+  *out_len = envelope.len;
+  *out_allocated_buffer = envelope.allocated_buffer;
 
   return ASCIICHAT_OK;
 }

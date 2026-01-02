@@ -149,6 +149,11 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   SAFE_STRNCPY(req.server_address, params->server_address, sizeof(req.server_address));
   req.server_port = params->server_port;
 
+  // IP disclosure policy
+  // Auto-detection: If password is set, IP will be revealed after verification
+  // If no password, require explicit opt-in via acds_expose_ip
+  req.expose_ip_publicly = params->acds_expose_ip ? 1 : 0;
+
   // Send SESSION_CREATE packet
   asciichat_error_t send_result = send_packet(client->socket, PACKET_TYPE_ACIP_SESSION_CREATE, &req, sizeof(req));
   if (send_result != ASCIICHAT_OK) {

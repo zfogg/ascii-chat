@@ -34,7 +34,7 @@ acip_transport_t *acip_websocket_transport_create(socket_t sockfd, crypto_contex
   (void)crypto_ctx;
 
   log_error("WebSocket transport not yet implemented");
-  SET_ERRNO(ERROR_NOT_IMPLEMENTED, "WebSocket transport is not yet implemented");
+  SET_ERRNO(ERROR_INTERNAL, "WebSocket transport is not yet implemented");
 
   return NULL;
 }

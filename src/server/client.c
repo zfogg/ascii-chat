@@ -128,6 +128,9 @@
 #include "network/av.h"
 #include "network/packet_queue.h"
 #include "network/errors.h"
+#include "network/acip/handlers.h"
+#include "network/acip/transport.h"
+#include "network/acip/send.h"
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
@@ -546,6 +549,19 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
 
     log_debug("Crypto handshake completed successfully for client %u", atomic_load(&client->client_id));
 
+    // Create ACIP transport for protocol-agnostic packet sending
+    // The transport wraps the socket with encryption context from the handshake
+    const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
+    client->transport = acip_tcp_transport_create(socket, (crypto_context_t *)crypto_ctx);
+    if (!client->transport) {
+      log_error("Failed to create ACIP transport for client %u", atomic_load(&client->client_id));
+      if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
+        log_error("Failed to remove client after transport creation failure");
+      }
+      return -1;
+    }
+    log_debug("Created ACIP transport for client %u with crypto context", atomic_load(&client->client_id));
+
     // After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
     // We must read and process this packet BEFORE starting the receive thread to avoid a race condition
     // where the packet arrives but no thread is listening for it.
@@ -680,14 +696,8 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  // Send initial server state directly to the new client
-  const crypto_context_t *crypto_ctx = NULL;
-  if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx)) {
-    crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-  }
-
-  asciichat_error_t packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state,
-                                                            sizeof(net_state), (crypto_context_t *)crypto_ctx);
+  // Send initial server state via ACIP transport
+  asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
   if (packet_send_result != ASCIICHAT_OK) {
     log_warn("Failed to send initial server state to client %u: %s", atomic_load(&client->client_id),
              asciichat_error_string(packet_send_result));
@@ -817,6 +827,13 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
     // Continue with cleanup even if thread stopping failed
   }
 
+  // Destroy ACIP transport before closing socket
+  if (target_client && target_client->transport) {
+    acip_transport_destroy(target_client->transport);
+    target_client->transport = NULL;
+    log_debug("Destroyed ACIP transport for client %u", client_id);
+  }
+
   // Now safe to close the socket (threads are stopped)
   if (client_socket != INVALID_SOCKET_VALUE) {
     log_debug("SOCKET_DEBUG: Closing socket %d for client %u after thread cleanup", client_socket, client_id);
@@ -929,6 +946,9 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
  * Client Thread Functions
  * ============================================================================
  */
+
+// Forward declaration for ACIP server callbacks (defined later in file)
+static const acip_server_callbacks_t g_acip_server_callbacks;
 
 void *client_receive_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
@@ -1105,112 +1125,14 @@ void *client_receive_thread(void *arg) {
     size_t len = envelope.len;
     // Note: sender_id removed - client_id already validated by crypto handshake
 
-    // Handle different packet types from client
+    // Handle packet using ACIP handler system
     // NOTE: PACKET_TYPE_ENCRYPTED is now handled automatically by receive_packet_secure()
-    switch (type) {
-    case PACKET_TYPE_CLIENT_JOIN:
-    case PACKET_TYPE_STREAM_START:
-    case PACKET_TYPE_STREAM_STOP:
-    case PACKET_TYPE_IMAGE_FRAME:
-    case PACKET_TYPE_AUDIO:
-    case PACKET_TYPE_AUDIO_BATCH:
-    case PACKET_TYPE_AUDIO_OPUS:
-    case PACKET_TYPE_AUDIO_OPUS_BATCH:
-    case PACKET_TYPE_CLIENT_CAPABILITIES:
-    case PACKET_TYPE_PING:
-    case PACKET_TYPE_PONG:
-    case PACKET_TYPE_REMOTE_LOG:
-      // Process all packet types using the unified function
-      process_decrypted_packet(client, type, data, len);
-      break;
+    // Rate limiting is checked inside process_decrypted_packet() for legacy handlers
+    asciichat_error_t acip_result = acip_handle_server_packet(NULL, type, data, len, client, &g_acip_server_callbacks);
 
-    case PACKET_TYPE_ERROR_MESSAGE:
-      handle_client_error_packet(client, data, len);
-      break;
-
-    // Session rekeying packets
-    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
-      log_debug("Received REKEY_REQUEST from client %u", client->client_id);
-
-      // Process the client's rekey request
-      mutex_lock(&client->client_state_mutex);
-      asciichat_error_t crypto_result =
-          crypto_handshake_process_rekey_request(&client->crypto_handshake_ctx, data, len);
-      mutex_unlock(&client->client_state_mutex);
-
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_REQUEST from client %u: %d", client->client_id, crypto_result);
-        break;
-      }
-
-      // Send REKEY_RESPONSE
-      mutex_lock(&client->client_state_mutex);
-      // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
-      mutex_lock(&client->send_mutex);
-      crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
-      mutex_unlock(&client->send_mutex);
-      mutex_unlock(&client->client_state_mutex);
-
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, crypto_result);
-      } else {
-        log_debug("Sent REKEY_RESPONSE to client %u", client->client_id);
-      }
-      break;
-    }
-
-    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
-      log_debug("Received REKEY_RESPONSE from client %u", client->client_id);
-
-      // Process the client's rekey response
-      mutex_lock(&client->client_state_mutex);
-      asciichat_error_t crypto_result =
-          crypto_handshake_process_rekey_response(&client->crypto_handshake_ctx, data, len);
-      mutex_unlock(&client->client_state_mutex);
-
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, crypto_result);
-        break;
-      }
-
-      // Send REKEY_COMPLETE to confirm and activate new key
-      mutex_lock(&client->client_state_mutex);
-      // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
-      mutex_lock(&client->send_mutex);
-      crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
-      mutex_unlock(&client->send_mutex);
-      mutex_unlock(&client->client_state_mutex);
-
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, crypto_result);
-      } else {
-        log_debug("Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
-      }
-      break;
-    }
-
-    case PACKET_TYPE_CRYPTO_REKEY_COMPLETE: {
-      log_debug("Received REKEY_COMPLETE from client %u", client->client_id);
-
-      // Process and commit to new key
-      mutex_lock(&client->client_state_mutex);
-      asciichat_error_t crypto_result =
-          crypto_handshake_process_rekey_complete(&client->crypto_handshake_ctx, data, len);
-      mutex_unlock(&client->client_state_mutex);
-
-      if (crypto_result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, crypto_result);
-      } else {
-        log_debug("Session rekeying completed successfully with client %u", client->client_id);
-        // Notify client that rekeying is complete (new keys now active on both sides)
-        log_info_client(client, "Session rekey complete - new encryption keys active");
-      }
-      break;
-    }
-
-    default:
-      log_warn("Received unhandled packet type %d from client %u", type, client->client_id);
-      break;
+    if (acip_result != ASCIICHAT_OK) {
+      log_warn("ACIP handler failed for packet type %d from client %u: %s", type, client->client_id,
+               asciichat_error_string(acip_result));
     }
 
     // Free the allocated buffer (not the data pointer which may be offset into it)
@@ -1313,12 +1235,17 @@ void *client_send_thread_func(void *arg) {
       asciichat_error_t result = ASCIICHAT_OK;
 
       if (audio_packet_count == 1) {
-        // Single packet - send directly for low latency
+        // Single packet - send directly for low latency using ACIP transport
         packet_type_t pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
 
         mutex_lock(&client->send_mutex);
-        result = send_packet_secure(client->socket, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len,
-                                    (crypto_context_t *)crypto_ctx);
+        if (pkt_type == PACKET_TYPE_AUDIO_OPUS) {
+          result = acip_send_audio_opus(client->transport, audio_packets[0]->data, audio_packets[0]->data_len);
+        } else {
+          // Raw float audio - use generic packet sender
+          result = packet_send_via_transport(client->transport, pkt_type, audio_packets[0]->data,
+                                             audio_packets[0]->data_len);
+        }
         mutex_unlock(&client->send_mutex);
       } else {
         // Multiple packets - batch them together
@@ -1481,14 +1408,10 @@ void *client_send_thread_func(void *arg) {
       int sent_sources = atomic_load(&client->last_sent_grid_sources);
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
-        // Grid layout changed! Send CLEAR_CONSOLE before next frame
-        // Protect crypto context access with mutex during rekeying
-        mutex_lock(&client->client_state_mutex);
-        const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-        mutex_unlock(&client->client_state_mutex);
+        // Grid layout changed! Send CLEAR_CONSOLE before next frame using ACIP transport
         // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
         mutex_lock(&client->send_mutex);
-        send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
+        acip_send_clear_console(client->transport);
         mutex_unlock(&client->send_mutex);
         log_debug_every(LOG_RATE_FAST, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)",
                         client->client_id, sent_sources, rendered_sources);
@@ -1511,69 +1434,18 @@ void *client_send_thread_func(void *arg) {
       }
 
       // Snapshot frame metadata (safe with double-buffer system)
-      size_t frame_size = frame->size;
-      const void *frame_data = frame->data; // Pointer snapshot - data is stable in front buffer
+      const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
+      uint32_t width = atomic_load(&client->width);
+      uint32_t height = atomic_load(&client->height);
       (void)clock_gettime(CLOCK_MONOTONIC, &step1);
-
-      // Validate buffer size after releasing lock (fast check)
-      size_t payload_size = sizeof(ascii_frame_packet_t) + frame_size;
-      if (payload_size > client->send_buffer_size) {
-        char payload_str[64] = {0};
-        char buffer_str[64] = {0};
-        format_bytes_pretty(payload_size, payload_str, sizeof(payload_str));
-        format_bytes_pretty(client->send_buffer_size, buffer_str, sizeof(buffer_str));
-        SET_ERRNO(ERROR_NETWORK_SIZE, "Video frame too large for send buffer: %s > %s", payload_str, buffer_str);
-        break;
-      }
-
-      // Copy frame data to send buffer WITHOUT holding lock (safe with double-buffer)
-      uint8_t *payload = (uint8_t *)client->send_buffer;
-      memcpy(payload + sizeof(ascii_frame_packet_t), frame_data, frame_size);
       (void)clock_gettime(CLOCK_MONOTONIC, &step2);
-
-      // Calculate CRC32 on the copied data (NOT while holding lock!)
-      // This was the bottleneck - CRC32 takes 12-18ms and was blocking render thread
-      uint32_t frame_checksum = asciichat_crc32(payload + sizeof(ascii_frame_packet_t), frame_size);
       (void)clock_gettime(CLOCK_MONOTONIC, &step3);
-
-      // Build ASCII frame packet header (after lock released, with computed CRC)
-      ascii_frame_packet_t frame_header = {
-          .width = HOST_TO_NET_U32(atomic_load(&client->width)),
-          .height = HOST_TO_NET_U32(atomic_load(&client->height)),
-          .original_size = HOST_TO_NET_U32((uint32_t)frame_size),
-          .compressed_size = HOST_TO_NET_U32(0), // No compression
-          .checksum = HOST_TO_NET_U32(frame_checksum),
-          .flags = HOST_TO_NET_U32((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
-
-      // Copy header into payload buffer
-      memcpy(payload, &frame_header, sizeof(ascii_frame_packet_t));
       (void)clock_gettime(CLOCK_MONOTONIC, &step4);
 
-      // DEBUG: Verify CRC32 after header copy
-      uint32_t verify_crc = asciichat_crc32(payload + sizeof(ascii_frame_packet_t), frame_size);
-      if (verify_crc != frame_checksum) {
-        log_error("CRC mismatch after header copy! calculated=0x%x, verify=0x%x", frame_checksum, verify_crc);
-      } else {
-        static bool logged_once = false;
-        if (!logged_once) {
-          log_debug("SERVER: Sending frame with CRC=0x%x, size=%zu, first_bytes=%02x%02x%02x%02x", frame_checksum,
-                    frame_size, payload[sizeof(ascii_frame_packet_t) + 0], payload[sizeof(ascii_frame_packet_t) + 1],
-                    payload[sizeof(ascii_frame_packet_t) + 2], payload[sizeof(ascii_frame_packet_t) + 3]);
-          logged_once = true;
-        }
-      }
-
-      // Now perform network I/O without holding video buffer lock
-      // Protect crypto context access with mutex during rekeying
-      mutex_lock(&client->client_state_mutex);
-      const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-      mutex_unlock(&client->client_state_mutex);
-
       // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+      // ACIP transport handles header building, CRC32, encryption internally
       mutex_lock(&client->send_mutex);
-      // Send packet without holding any locks (crypto_ctx is safe to use)
-      asciichat_error_t send_result = send_packet_secure(client->socket, PACKET_TYPE_ASCII_FRAME, payload, payload_size,
-                                                         (crypto_context_t *)crypto_ctx);
+      asciichat_error_t send_result = acip_send_ascii_frame(client->transport, frame_data, width, height);
       mutex_unlock(&client->send_mutex);
       (void)clock_gettime(CLOCK_MONOTONIC, &step5);
 
@@ -1729,9 +1601,8 @@ void broadcast_server_state_to_all_clients(void) {
         continue;
       }
 
-      asciichat_error_t result =
-          send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                             (crypto_context_t *)client_snapshots[i].crypto_ctx);
+      // Send via ACIP transport
+      asciichat_error_t result = acip_send_server_state(target->transport, &net_state);
       mutex_unlock(&target->send_mutex);
 
       if (result != ASCIICHAT_OK) {
@@ -1898,6 +1769,360 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   return 0;
 }
 
+/* ============================================================================
+ * ACIP Server Callback Wrappers
+ * ============================================================================ */
+
+// Forward declarations for ACIP server callbacks
+static void acip_server_on_protocol_version(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx);
+static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
+                                       void *client_ctx, void *app_ctx);
+static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
+                                       void *client_ctx, void *app_ctx);
+static void acip_server_on_audio_opus(const void *opus_data, size_t opus_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_client_join(const void *join_data, size_t data_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_client_leave(void *client_ctx, void *app_ctx);
+static void acip_server_on_stream_start(uint8_t stream_types, void *client_ctx, void *app_ctx);
+static void acip_server_on_stream_stop(uint8_t stream_types, void *client_ctx, void *app_ctx);
+static void acip_server_on_capabilities(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx);
+static void acip_server_on_ping(void *client_ctx, void *app_ctx);
+static void acip_server_on_pong(void *client_ctx, void *app_ctx);
+static void acip_server_on_error(const error_packet_t *header, const char *message, void *client_ctx, void *app_ctx);
+static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx,
+                                      void *app_ctx);
+static void acip_server_on_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
+                                                void *app_ctx);
+static void acip_server_on_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
+                                                 void *app_ctx);
+static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
+                                                 void *app_ctx);
+
+/**
+ * @brief Global ACIP server callbacks structure
+ *
+ * Handles all ACIP packet types from clients including crypto rekey protocol.
+ * Callback wrappers delegate to existing handler functions in protocol.c
+ */
+static const acip_server_callbacks_t g_acip_server_callbacks = {
+    .on_protocol_version = acip_server_on_protocol_version,
+    .on_image_frame = acip_server_on_image_frame,
+    .on_audio = acip_server_on_audio,
+    .on_audio_batch = acip_server_on_audio_batch,
+    .on_audio_opus = acip_server_on_audio_opus,
+    .on_audio_opus_batch = acip_server_on_audio_opus_batch,
+    .on_client_join = acip_server_on_client_join,
+    .on_client_leave = acip_server_on_client_leave,
+    .on_stream_start = acip_server_on_stream_start,
+    .on_stream_stop = acip_server_on_stream_stop,
+    .on_capabilities = acip_server_on_capabilities,
+    .on_ping = acip_server_on_ping,
+    .on_pong = acip_server_on_pong,
+    .on_error = acip_server_on_error,
+    .on_remote_log = acip_server_on_remote_log,
+    .on_crypto_rekey_request = acip_server_on_crypto_rekey_request,
+    .on_crypto_rekey_response = acip_server_on_crypto_rekey_response,
+    .on_crypto_rekey_complete = acip_server_on_crypto_rekey_complete,
+    .app_ctx = NULL // Not used - client context passed per-call
+};
+
+// Callback implementations (delegate to existing handlers)
+
+static void acip_server_on_protocol_version(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_protocol_version_packet(client, (void *)version, sizeof(*version));
+}
+
+static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
+                                       void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  // Reconstruct full packet (header + data) for existing handler
+  size_t total_len = sizeof(*header) + data_len;
+  uint8_t *full_packet = SAFE_MALLOC(total_len, uint8_t *);
+  if (!full_packet) {
+    log_error("Failed to allocate buffer for IMAGE_FRAME reconstruction");
+    return;
+  }
+
+  memcpy(full_packet, header, sizeof(*header));
+  if (data_len > 0) {
+    memcpy(full_packet + sizeof(*header), pixel_data, data_len);
+  }
+
+  handle_image_frame_packet(client, full_packet, total_len);
+  SAFE_FREE(full_packet);
+}
+
+static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_audio_packet(client, (void *)audio_data, audio_len);
+}
+
+static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
+                                       void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  (void)header; // Header info not needed - ACIP already validated
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  // ACIP handler already dequantized samples - write directly to audio buffer
+  // This is more efficient than calling the existing handler which would re-dequantize
+  log_debug_every(LOG_RATE_DEFAULT, "Received audio batch from client %u (samples=%zu, is_sending_audio=%d)",
+                  atomic_load(&client->client_id), num_samples, atomic_load(&client->is_sending_audio));
+
+  if (!atomic_load(&client->is_sending_audio)) {
+    log_debug("Ignoring audio batch - client %u not in audio streaming mode", client->client_id);
+    return;
+  }
+
+  if (client->incoming_audio_buffer) {
+    asciichat_error_t write_result =
+        audio_ring_buffer_write(client->incoming_audio_buffer, (float *)samples, num_samples);
+    if (write_result != ASCIICHAT_OK) {
+      log_error("Failed to write decoded audio batch to buffer: %s", asciichat_error_string(write_result));
+    }
+  }
+}
+
+static void acip_server_on_audio_opus(const void *opus_data, size_t opus_len, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  // Special handling: Convert single-frame Opus to batch format
+  // This maintains compatibility with existing server-side Opus batch processing
+
+  if (opus_len < 16) {
+    log_warn("AUDIO_OPUS packet too small: %zu bytes", opus_len);
+    return;
+  }
+
+  const uint8_t *payload = (const uint8_t *)opus_data;
+  // Use unaligned read helpers - network data may not be aligned
+  int sample_rate = (int)NET_TO_HOST_U32(read_u32_unaligned(payload));
+  int frame_duration = (int)NET_TO_HOST_U32(read_u32_unaligned(payload + 4));
+  // Reserved bytes at offset 8-15
+  size_t actual_opus_size = opus_len - 16;
+
+  if (actual_opus_size > 0 && actual_opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
+    // Create a synthetic Opus batch packet (frame_count=1)
+    uint8_t batch_buffer[1024 + 20]; // Max Opus + header
+    uint8_t *batch_ptr = batch_buffer;
+
+    // Write batch header (batch_buffer is stack-aligned, writes are safe)
+    write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)sample_rate));
+    batch_ptr += 4;
+    write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)frame_duration));
+    batch_ptr += 4;
+    write_u32_unaligned(batch_ptr, HOST_TO_NET_U32(1)); // frame_count = 1
+    batch_ptr += 4;
+    memset(batch_ptr, 0, 4); // reserved
+    batch_ptr += 4;
+
+    // Write frame size
+    write_u16_unaligned(batch_ptr, HOST_TO_NET_U16((uint16_t)actual_opus_size));
+    batch_ptr += 2;
+
+    // Write Opus data
+    memcpy(batch_ptr, payload + 16, actual_opus_size);
+    batch_ptr += actual_opus_size;
+
+    // Process as batch packet
+    size_t batch_size = (size_t)(batch_ptr - batch_buffer);
+    handle_audio_opus_batch_packet(client, batch_buffer, batch_size);
+  }
+}
+
+static void acip_server_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_audio_opus_batch_packet(client, (void *)batch_data, batch_len);
+}
+
+static void acip_server_on_client_join(const void *join_data, size_t data_len, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_client_join_packet(client, (void *)join_data, data_len);
+}
+
+static void acip_server_on_client_leave(void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_client_leave_packet(client, NULL, 0);
+}
+
+static void acip_server_on_stream_start(uint8_t stream_types, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_stream_start_packet(client, &stream_types, sizeof(stream_types));
+}
+
+static void acip_server_on_stream_stop(uint8_t stream_types, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_stream_stop_packet(client, &stream_types, sizeof(stream_types));
+}
+
+static void acip_server_on_capabilities(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+  handle_client_capabilities_packet(client, (void *)cap_data, data_len);
+}
+
+static void acip_server_on_ping(void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  // Respond with PONG using ACIP transport
+  // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+  mutex_lock(&client->send_mutex);
+  asciichat_error_t pong_result = acip_send_pong(client->transport);
+  mutex_unlock(&client->send_mutex);
+
+  if (pong_result != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
+              asciichat_error_string(pong_result));
+  }
+}
+
+static void acip_server_on_pong(void *client_ctx, void *app_ctx) {
+  (void)client_ctx;
+  (void)app_ctx;
+  // Client acknowledged our PING - no action needed
+}
+
+static void acip_server_on_error(const error_packet_t *header, const char *message, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  // Reconstruct full packet for existing handler
+  size_t msg_len = strlen(message);
+  size_t total_len = sizeof(*header) + msg_len;
+  uint8_t *full_packet = SAFE_MALLOC(total_len, uint8_t *);
+  if (!full_packet) {
+    log_error("Failed to allocate buffer for ERROR_MESSAGE reconstruction");
+    return;
+  }
+
+  memcpy(full_packet, header, sizeof(*header));
+  memcpy(full_packet + sizeof(*header), message, msg_len);
+
+  handle_client_error_packet(client, full_packet, total_len);
+  SAFE_FREE(full_packet);
+}
+
+static void acip_server_on_remote_log(const remote_log_packet_t *header, const char *message, void *client_ctx,
+                                      void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  // Reconstruct full packet for existing handler
+  size_t msg_len = strlen(message);
+  size_t total_len = sizeof(*header) + msg_len;
+  uint8_t *full_packet = SAFE_MALLOC(total_len, uint8_t *);
+  if (!full_packet) {
+    log_error("Failed to allocate buffer for REMOTE_LOG reconstruction");
+    return;
+  }
+
+  memcpy(full_packet, header, sizeof(*header));
+  memcpy(full_packet + sizeof(*header), message, msg_len);
+
+  handle_remote_log_packet_from_client(client, full_packet, total_len);
+  SAFE_FREE(full_packet);
+}
+
+static void acip_server_on_crypto_rekey_request(const void *payload, size_t payload_len, void *client_ctx,
+                                                void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_debug("Received REKEY_REQUEST from client %u", client->client_id);
+
+  // Process the client's rekey request
+  mutex_lock(&client->client_state_mutex);
+  asciichat_error_t crypto_result =
+      crypto_handshake_process_rekey_request(&client->crypto_handshake_ctx, (void *)payload, payload_len);
+  mutex_unlock(&client->client_state_mutex);
+
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to process REKEY_REQUEST from client %u: %d", client->client_id, crypto_result);
+    return;
+  }
+
+  // Send REKEY_RESPONSE
+  mutex_lock(&client->client_state_mutex);
+  // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
+  mutex_lock(&client->send_mutex);
+  crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
+  mutex_unlock(&client->send_mutex);
+  mutex_unlock(&client->client_state_mutex);
+
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, crypto_result);
+  } else {
+    log_debug("Sent REKEY_RESPONSE to client %u", client->client_id);
+  }
+}
+
+static void acip_server_on_crypto_rekey_response(const void *payload, size_t payload_len, void *client_ctx,
+                                                 void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_debug("Received REKEY_RESPONSE from client %u", client->client_id);
+
+  // Process the client's rekey response
+  mutex_lock(&client->client_state_mutex);
+  asciichat_error_t crypto_result =
+      crypto_handshake_process_rekey_response(&client->crypto_handshake_ctx, (void *)payload, payload_len);
+  mutex_unlock(&client->client_state_mutex);
+
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, crypto_result);
+    return;
+  }
+
+  // Send REKEY_COMPLETE to confirm and activate new key
+  mutex_lock(&client->client_state_mutex);
+  // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
+  mutex_lock(&client->send_mutex);
+  crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
+  mutex_unlock(&client->send_mutex);
+  mutex_unlock(&client->client_state_mutex);
+
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, crypto_result);
+  } else {
+    log_debug("Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
+  }
+}
+
+static void acip_server_on_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
+                                                 void *app_ctx) {
+  (void)app_ctx;
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_debug("Received REKEY_COMPLETE from client %u", client->client_id);
+
+  // Process and commit to new key
+  mutex_lock(&client->client_state_mutex);
+  asciichat_error_t crypto_result =
+      crypto_handshake_process_rekey_complete(&client->crypto_handshake_ctx, (void *)payload, payload_len);
+  mutex_unlock(&client->client_state_mutex);
+
+  if (crypto_result != ASCIICHAT_OK) {
+    log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, crypto_result);
+  } else {
+    log_debug("Session rekeying completed successfully with client %u", client->client_id);
+    // Notify client that rekeying is complete (new keys now active on both sides)
+    log_info_client(client, "Session rekey complete - new encryption keys active");
+  }
+}
+
 /**
  * Process a decrypted packet from a client
  *
@@ -1999,15 +2224,10 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     break;
 
   case PACKET_TYPE_PING: {
-    // Respond with PONG
-    // Protect crypto context access with mutex during rekeying
-    mutex_lock(&client->client_state_mutex);
-    const crypto_context_t *ping_crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    mutex_unlock(&client->client_state_mutex);
+    // Respond with PONG using ACIP transport
     // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
     mutex_lock(&client->send_mutex);
-    asciichat_error_t pong_result =
-        send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx);
+    asciichat_error_t pong_result = acip_send_pong(client->transport);
     mutex_unlock(&client->send_mutex);
     if (pong_result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
