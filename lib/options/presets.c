@@ -72,14 +72,10 @@ const options_config_t *options_preset_server(void) {
   b->description = "Start ascii-chat server";
 
   // Network options
-  options_builder_add_string(b, "address", 'a', offsetof(options_t, address), OPT_ADDRESS_DEFAULT, "Bind address",
-                             "NETWORK", false, "ASCII_CHAT_ADDRESS", NULL);
+  // Note: Server bind addresses are positional arguments only, not flags
 
   options_builder_add_string(b, "port", 'p', offsetof(options_t, port), OPT_PORT_DEFAULT, "Server port", "NETWORK",
                              false, "ASCII_CHAT_PORT", NULL);
-
-  options_builder_add_string(b, "address6", '\0', offsetof(options_t, address6), OPT_ADDRESS6_DEFAULT,
-                             "IPv6 bind address", "NETWORK", false, NULL, NULL);
 
   options_builder_add_int(b, "max-clients", '\0', offsetof(options_t, max_clients), OPT_MAX_CLIENTS_DEFAULT,
                           "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL);
