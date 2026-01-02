@@ -26,12 +26,17 @@
 #include "platform/init.h"
 #include "util/path.h"
 #include "network/nat/upnp.h"
+#include "network/mdns.h"
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
 
 // Global UPnP context for cleanup on signal
 static nat_upnp_context_t *g_upnp_ctx = NULL;
+
+// Global mDNS context for LAN service discovery
+// Allows clients on local network to discover the ACDS server without knowing its IP
+static asciichat_mdns_t *g_mdns_ctx = NULL;
 
 /**
  * @brief Signal handler for clean shutdown
@@ -301,6 +306,40 @@ int main(int argc, char **argv) {
     printf("📡 WebRTC will be used for all clients\n");
   }
 
+  // Initialize mDNS for LAN discovery of ACDS server
+  // This allows clients on the local network to discover the discovery service itself
+  log_debug("Initializing mDNS for ACDS LAN service discovery...");
+  g_mdns_ctx = asciichat_mdns_init();
+  if (!g_mdns_ctx) {
+    LOG_ERRNO_IF_SET("Failed to initialize mDNS (non-fatal, LAN discovery disabled)");
+    log_warn("mDNS disabled for ACDS - LAN discovery of discovery service will not be available");
+  } else {
+    // Advertise ACDS service on the LAN
+    // Build hostname if available
+    char hostname[256] = {0};
+    gethostname(hostname, sizeof(hostname) - 1);
+
+    asciichat_mdns_service_t service = {
+        .name = "ASCII-Chat-Discovery-Service",
+        .type = "_ascii-chat-discovery-service._tcp",
+        .host = hostname,
+        .port = config.port,
+        .txt_records = NULL,
+        .txt_count = 0,
+    };
+
+    asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
+    if (mdns_advertise_result != ASCIICHAT_OK) {
+      LOG_ERRNO_IF_SET("Failed to advertise ACDS mDNS service");
+      log_warn("mDNS advertising failed for ACDS - LAN discovery disabled");
+      asciichat_mdns_shutdown(g_mdns_ctx);
+      g_mdns_ctx = NULL;
+    } else {
+      printf("🌐 mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' on LAN\n");
+      log_info("mDNS: ACDS advertised as '_ascii-chat-discovery-service._tcp.local' (port=%d)", config.port);
+    }
+  }
+
   // Install signal handlers for clean shutdown
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
@@ -325,6 +364,13 @@ int main(int argc, char **argv) {
   if (g_upnp_ctx) {
     nat_upnp_close(&g_upnp_ctx);
     log_debug("UPnP port mapping closed");
+  }
+
+  // Clean up mDNS context
+  if (g_mdns_ctx) {
+    asciichat_mdns_shutdown(g_mdns_ctx);
+    g_mdns_ctx = NULL;
+    log_debug("mDNS context shut down");
   }
 
   log_info("Discovery server stopped");
