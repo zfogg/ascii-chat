@@ -17,6 +17,7 @@
 #include "network/acip/acds.h"
 #include <criterion/criterion.h>
 #include <string.h>
+#include <sodium.h>
 
 // Test fixture
 TestSuite(acds_ip_privacy, .timeout = 10.0);
@@ -43,10 +44,11 @@ Test(acds_ip_privacy, password_protected_reveals_ip) {
   SAFE_STRNCPY(create_req.server_address, "192.168.1.100", sizeof(create_req.server_address));
   create_req.server_port = 27224;
 
-  // Hash password "test-password-123"
-  // TODO: Use proper Argon2id hashing when password hashing is implemented
-  // For now, just use a placeholder hash
-  memset(create_req.password_hash, 0xAB, sizeof(create_req.password_hash));
+  // Hash password "test-password-123" using Argon2id
+  const char *password = "test-password-123";
+  int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password),
+                                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
+  cr_assert_eq(hash_result, 0, "Password hashing should succeed");
 
   acip_session_created_t create_resp;
   result = session_create(&registry, &create_req, &config, &create_resp);
@@ -189,7 +191,12 @@ Test(acds_ip_privacy, wrong_password_withholds_ip) {
   create_req.expose_ip_publicly = 0;
   SAFE_STRNCPY(create_req.server_address, "192.168.1.100", sizeof(create_req.server_address));
   create_req.server_port = 27224;
-  memset(create_req.password_hash, 0xAB, sizeof(create_req.password_hash));
+
+  // Hash the correct password
+  const char *password = "test-password-123";
+  int hash_result = crypto_pwhash_str((char *)create_req.password_hash, password, strlen(password),
+                                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE);
+  cr_assert_eq(hash_result, 0, "Password hashing should succeed");
 
   acip_session_created_t create_resp;
   result = session_create(&registry, &create_req, &config, &create_resp);
@@ -206,10 +213,10 @@ Test(acds_ip_privacy, wrong_password_withholds_ip) {
   acip_session_joined_t join_resp;
   result = session_join(&registry, &join_req, &config, &join_resp);
 
-  // Join should fail with wrong password
-  // NOTE: This depends on password verification implementation in session_join()
-  // If password verification is not yet implemented, this test may need adjustment
-  cr_assert_neq(result, ASCIICHAT_OK, "Session join should fail with wrong password");
+  // session_join returns ASCIICHAT_OK but sets success=0 and error_code when password is wrong
+  cr_assert_eq(result, ASCIICHAT_OK, "session_join should return OK");
+  cr_assert_eq(join_resp.success, 0, "Join should fail with wrong password");
+  cr_assert_eq(join_resp.error_code, ACIP_ERROR_INVALID_PASSWORD, "Error code should be INVALID_PASSWORD");
 
   session_registry_destroy(&registry);
 }
