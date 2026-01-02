@@ -14,6 +14,10 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#ifdef _WIN32
+#include <direct.h> // For _mkdir
+#endif
+
 asciichat_error_t acds_identity_generate(uint8_t public_key[32], uint8_t secret_key[64]) {
   if (!public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "public_key and secret_key cannot be NULL");
@@ -57,13 +61,87 @@ asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], u
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Recursively create directories (mkdir -p equivalent)
+ *
+ * Creates all parent directories needed for the given path.
+ *
+ * @param path Directory path to create
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t ensure_directory_exists(const char *path) {
+  if (!path || path[0] == '\0') {
+    return ASCIICHAT_OK;
+  }
+
+  char tmp[512];
+  SAFE_STRNCPY(tmp, path, sizeof(tmp));
+
+  // Determine directory separator based on platform
+  const char sep =
+#ifdef _WIN32
+      '\\'
+#else
+      '/'
+#endif
+      ;
+
+  // Create each directory in the path
+  for (char *p = tmp + 1; *p; p++) {
+    if (*p == sep || *p == '/' || *p == '\\') {
+      char orig = *p;
+      *p = '\0';
+
+      // Skip empty components and root
+      if (tmp[0] != '\0' && strcmp(tmp, ".") != 0) {
+#ifdef _WIN32
+        // Windows: CreateDirectory or _mkdir
+        if (_mkdir(tmp) != 0 && errno != EEXIST) {
+          // Ignore EEXIST (directory already exists)
+          if (errno != ENOENT) { // But propagate other errors
+            log_debug("Failed to create directory: %s (errno=%d)", tmp, errno);
+          }
+        }
+#else
+        // Unix: mkdir with 0700 permissions
+        if (mkdir(tmp, 0700) != 0 && errno != EEXIST) {
+          // Ignore EEXIST (directory already exists)
+          if (errno != ENOENT) { // But propagate other errors
+            log_debug("Failed to create directory: %s (errno=%d)", tmp, errno);
+          }
+        }
+#endif
+      }
+
+      *p = orig;
+    }
+  }
+
+  // Create the final directory
+#ifdef _WIN32
+  if (_mkdir(tmp) != 0 && errno != EEXIST) {
+    if (errno != ENOENT) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
+    }
+  }
+#else
+  if (mkdir(tmp, 0700) != 0 && errno != EEXIST) {
+    if (errno != ENOENT) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
+    }
+  }
+#endif
+
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[32], const uint8_t secret_key[64]) {
   if (!path || !public_key || !secret_key) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path, public_key, and secret_key cannot be NULL");
   }
 
-  // Create directory if it doesn't exist
-  char dir_path[256];
+  // Extract directory path and create all parent directories
+  char dir_path[512];
   SAFE_STRNCPY(dir_path, path, sizeof(dir_path));
 
   // Find last directory separator
@@ -75,12 +153,11 @@ asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[
   if (last_sep) {
     *last_sep = '\0';
 
-// Create directory (Unix mkdir -p equivalent)
-#ifdef _WIN32
-    _mkdir(dir_path);
-#else
-    mkdir(dir_path, 0700);
-#endif
+    // Create directory recursively (mkdir -p equivalent)
+    asciichat_error_t result = ensure_directory_exists(dir_path);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
   }
 
   // Open file for writing (mode 0600 = owner read/write only)
