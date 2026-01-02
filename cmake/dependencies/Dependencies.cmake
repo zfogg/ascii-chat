@@ -54,6 +54,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Opus.cmake)
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WebRTC.cmake)
 
+# libdatachannel - WebRTC DataChannels for P2P ACIP transport
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
+
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 
