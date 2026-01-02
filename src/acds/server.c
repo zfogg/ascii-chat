@@ -127,6 +127,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   // Initialize TCP server
   result = tcp_server_init(&server->tcp_server, &tcp_config);
   if (result != ASCIICHAT_OK) {
+    rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
     session_registry_destroy(server->sessions);
     SAFE_FREE(server->sessions);
@@ -139,6 +140,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   if (!server->worker_pool) {
     log_warn("Failed to create worker thread pool");
     tcp_server_shutdown(&server->tcp_server);
+    rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
     session_registry_destroy(server->sessions);
     SAFE_FREE(server->sessions);
