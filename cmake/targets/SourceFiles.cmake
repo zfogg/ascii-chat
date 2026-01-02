@@ -237,7 +237,6 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/packet_parsing.c
-    lib/network/av.c
     lib/network/compression.c
     lib/network/crc32.c
     lib/network/packet_queue.c
@@ -248,25 +247,25 @@ set(NETWORK_SRCS
     lib/network/rate_limit/memory.c
     lib/network/rate_limit/sqlite.c
     # TCP transport layer
-    lib/networking/tcp/server.c
-    lib/networking/tcp/client.c
-    lib/networking/tcp/transport.c
+    lib/network/tcp/server.c
+    lib/network/tcp/client.c
+    lib/network/tcp/transport.c
     # WebSocket transport layer
-    lib/networking/websocket/transport.c
+    lib/network/websocket/transport.c
     # WebRTC P2P transport
-    lib/networking/webrtc/webrtc.c
-    lib/networking/webrtc/transport.c
-    lib/networking/webrtc/peer_manager.c
-    lib/networking/webrtc/turn_credentials.c
+    lib/network/webrtc/webrtc.c
+    lib/network/webrtc/transport.c
+    lib/network/webrtc/peer_manager.c
+    lib/network/webrtc/turn_credentials.c
     # ACIP protocol library (transport-agnostic)
-    lib/networking/acip/client.c
-    lib/networking/acip/server.c
-    lib/networking/acip/send.c
-    lib/networking/acip/receive.c
-    lib/networking/acip/handlers.c
-    lib/networking/acip/acds_handlers.c
+    lib/network/acip/client.c
+    lib/network/acip/server.c
+    lib/network/acip/send.c
+    lib/network/acip/receive.c
+    lib/network/acip/handlers.c
+    lib/network/acip/acds_handlers.c
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
-    lib/nat/upnp.c
+    lib/network/nat/upnp.c
 )
 
 # =============================================================================

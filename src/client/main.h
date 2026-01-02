@@ -42,7 +42,7 @@
 
 #include <stdbool.h>
 #include "thread_pool.h"
-#include "networking/tcp/client.h"
+#include "network/tcp/client.h"
 
 /**
  * @brief Global client worker thread pool

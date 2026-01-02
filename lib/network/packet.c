@@ -14,6 +14,8 @@
 #include "crypto/crypto.h"
 #include "network/compression.h"
 #include "util/endian.h"
+#include "util/overflow.h"
+#include "audio/audio.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
 #include <stdint.h>
@@ -1057,4 +1059,229 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
             net_params.auth_public_key_size, net_params.signature_size, net_params.shared_secret_size);
 
   return send_packet(sockfd, PACKET_TYPE_CRYPTO_PARAMETERS, &net_params, sizeof(net_params));
+}
+
+// =============================================================================
+// Audio Batch Packet Sending
+// =============================================================================
+// These functions were moved from lib/network/av.c during refactoring.
+// They provide socket-level audio packet sending with encryption support.
+// For transport-agnostic sending, use acip_send_audio_batch() instead.
+// =============================================================================
+
+asciichat_error_t send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
+                                          crypto_context_t *crypto_ctx) {
+  if (!samples || num_samples <= 0 || batch_count <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch: samples=%p, num_samples=%d, batch_count=%d", samples,
+                     num_samples, batch_count);
+  }
+
+  // Build batch header
+  audio_batch_packet_t header;
+  header.batch_count = HOST_TO_NET_U32((u_long)batch_count);
+  header.total_samples = HOST_TO_NET_U32((u_long)num_samples);
+  header.sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE); // Use system-defined sample rate
+  header.channels = HOST_TO_NET_U32(1UL);                  // Mono for now
+
+  // Calculate total payload size
+  size_t data_size = (size_t)num_samples * sizeof(uint32_t); // Send as 32-bit integers for portability
+  size_t total_size = sizeof(header) + data_size;
+
+  // Allocate buffer for header + data
+  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+  if (!buffer) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for audio batch packet");
+  }
+
+  // Copy header
+  memcpy(buffer, &header, sizeof(header));
+
+  // Convert floats to network byte order (as 32-bit integers with scaling)
+  // Floats in range [-1.0, 1.0] are scaled to INT32 range for transmission
+  // Use memcpy to avoid alignment issues when casting from uint8_t* to uint32_t*
+  uint8_t *sample_data_ptr = buffer + sizeof(header);
+  for (int i = 0; i < num_samples; i++) {
+    // Clamp samples to [-1.0, 1.0] range before scaling to prevent overflow
+    float clamped_sample = samples[i];
+    if (clamped_sample > 1.0f)
+      clamped_sample = 1.0f;
+    if (clamped_sample < -1.0f)
+      clamped_sample = -1.0f;
+
+    // Scale float [-1.0, 1.0] to int32 range and convert to network byte order
+    int32_t scaled = (int32_t)(clamped_sample * 2147483647.0f);
+    uint32_t network_value = HOST_TO_NET_U32((uint32_t)scaled);
+    memcpy(sample_data_ptr + (size_t)i * sizeof(uint32_t), &network_value, sizeof(uint32_t));
+  }
+
+#ifndef NDEBUG
+  // Debug: Log first few samples to verify conversion
+  static int send_count = 0;
+  send_count++;
+  if (send_count % 100 == 0) {
+    log_info("SEND: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", (double)samples[0], (double)samples[1],
+             (double)samples[2]);
+    log_info("SEND: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", (int32_t)(samples[0] * 2147483647.0f),
+             (int32_t)(samples[1] * 2147483647.0f), (int32_t)(samples[2] * 2147483647.0f));
+  }
+#endif
+
+  // Send packet with encryption support
+  asciichat_error_t result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);
+  buffer_pool_free(NULL, buffer, total_size);
+
+  return result;
+}
+
+asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size,
+                                           const uint16_t *frame_sizes, int sample_rate, int frame_duration,
+                                           int frame_count, crypto_context_t *crypto_ctx) {
+  if (!opus_data || opus_size == 0 || !frame_sizes || sample_rate <= 0 || frame_duration <= 0 || frame_count <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, frame_sizes=%p, sample_rate=%d, "
+                     "frame_duration=%d, frame_count=%d",
+                     (const void *)opus_data, opus_size, (const void *)frame_sizes, sample_rate, frame_duration,
+                     frame_count);
+  }
+
+  // Validate frame_count to prevent integer overflow in size calculations
+  // Max reasonable frames per batch: ~1 second of 10ms frames = 100 frames
+  if (frame_count > 1000) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Too many Opus frames: %d (max 1000)", frame_count);
+  }
+
+  // Allocate buffer for header + frame sizes + encoded data
+  size_t header_size = 16; // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
+  size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
+  size_t total_size = header_size + frame_sizes_bytes + opus_size;
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
+  if (!packet_data) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus batch packet: %zu bytes", total_size);
+  }
+
+  // Write header (network byte order for cross-platform compatibility)
+  uint8_t *buf = (uint8_t *)packet_data;
+  uint32_t sr = HOST_TO_NET_U32((uint32_t)sample_rate);
+  uint32_t fd = HOST_TO_NET_U32((uint32_t)frame_duration);
+  uint32_t fc = HOST_TO_NET_U32((uint32_t)frame_count);
+  memcpy(buf, &sr, 4);
+  memcpy(buf + 4, &fd, 4);
+  memcpy(buf + 8, &fc, 4);
+  memset(buf + 12, 0, 4); // Reserved
+
+  // Write frame sizes array (convert each to network byte order)
+  uint16_t *frame_sizes_out = (uint16_t *)(buf + header_size);
+  for (int i = 0; i < frame_count; i++) {
+    frame_sizes_out[i] = HOST_TO_NET_U16(frame_sizes[i]);
+  }
+
+  // Copy Opus data
+  memcpy(buf + header_size + frame_sizes_bytes, opus_data, opus_size);
+
+  // Send packet (with encryption support)
+  asciichat_error_t result =
+      send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, crypto_ctx);
+
+  // Clean up
+  buffer_pool_free(NULL, packet_data, total_size);
+
+  return result;
+}
+
+asciichat_error_t send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size) {
+  if (!frame_data || frame_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: frame_data=%p, frame_size=%zu", frame_data, frame_size);
+  }
+
+  // Create ASCII frame packet
+  ascii_frame_packet_t packet;
+  packet.width = 0;  // Will be set by receiver
+  packet.height = 0; // Will be set by receiver
+  packet.original_size = (uint32_t)frame_size;
+  packet.compressed_size = 0;
+  packet.checksum = 0;
+  packet.flags = 0;
+
+  // Calculate total packet size with overflow checking
+  size_t total_size;
+  if (checked_size_add(sizeof(ascii_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size calculation would overflow");
+  }
+
+  // Allocate buffer for complete packet
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
+  if (!packet_data) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ASCII frame packet: %zu bytes", total_size);
+  }
+
+  // Copy packet header and frame data
+  memcpy(packet_data, &packet, sizeof(ascii_frame_packet_t));
+  memcpy((char *)packet_data + sizeof(ascii_frame_packet_t), frame_data, frame_size);
+
+  // Send packet
+  asciichat_error_t result = packet_send(sockfd, PACKET_TYPE_ASCII_FRAME, packet_data, total_size);
+
+  // Clean up
+  buffer_pool_free(NULL, packet_data, total_size);
+
+  return result;
+}
+
+asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
+                                          uint8_t format) {
+  if (!image_data || width == 0 || height == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: image_data=%p, width=%u, height=%u", image_data, width,
+                     height);
+  }
+
+  // Validate dimensions to prevent integer overflow
+  // Max reasonable dimensions: 4K (3840x2160) = ~25MB per frame
+  if (width > 4096 || height > 4096) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large: %ux%u (max 4096x4096)", width, height);
+  }
+
+  // Create image frame packet
+  image_frame_packet_t packet;
+  packet.width = width;
+  packet.height = height;
+  packet.pixel_format = format;
+  packet.compressed_size = 0;
+  packet.checksum = 0;
+  packet.timestamp = 0; // Will be set by receiver
+
+  // Calculate total packet size
+  // Cast to size_t before multiplication to prevent integer overflow
+  // Use overflow-checked multiplication
+  size_t width_times_height;
+  if (checked_size_mul((size_t)width, (size_t)height, &width_times_height) != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Image dimensions too large: %d x %d", width, height);
+  }
+
+  size_t frame_size;
+  if (checked_size_mul(width_times_height, 3u, &frame_size) != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Frame size overflow for RGB format");
+  }
+
+  size_t total_size;
+  if (checked_size_add(sizeof(image_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Total packet size overflow");
+  }
+
+  // Allocate buffer for complete packet
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
+  if (!packet_data) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for image frame packet: %zu bytes", total_size);
+  }
+
+  // Copy packet header and image data
+  memcpy(packet_data, &packet, sizeof(image_frame_packet_t));
+  memcpy((char *)packet_data + sizeof(image_frame_packet_t), image_data, frame_size);
+
+  // Send packet
+  asciichat_error_t result = packet_send(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, total_size);
+
+  // Clean up
+  buffer_pool_free(NULL, packet_data, total_size);
+
+  return result;
 }

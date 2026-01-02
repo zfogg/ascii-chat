@@ -62,6 +62,7 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
       options_init(argc, argv);                                                                                  \
       /* Get options from RCU for assertions */                                                                        \
       const options_t *opts = options_get();                                                                           \
+      (void)opts; /* Reserved for future validation */                                                                 \
       option_assertions                                                                                                \
     }                                                                                                                  \
                                                                                                                        \
@@ -90,6 +91,7 @@ static void restore_options(const options_backup_t *backup) {
 
 // Helper function to test options_init with fork/exec to avoid exit() calls
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
+  (void)is_client; // Unused parameter
   pid_t pid = fork();
   if (pid == 0) {
     // Child process - redirect all output to /dev/null
@@ -157,6 +159,7 @@ Test(options, default_values) {
 
   // Get options from RCU for assertions
   const options_t *opts = options_get();
+  (void)opts; // Reserved for future validation
 
   // Test default values
   cr_assert_eq(opts->width, 110);

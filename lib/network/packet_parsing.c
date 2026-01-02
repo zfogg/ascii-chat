@@ -169,3 +169,49 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
 // NOTE: packet_parse_audio_batch_header has been moved to lib/audio/audio.c as audio_parse_batch_header
 // This module now provides a wrapper inline function in packet_parsing.h for backwards compatibility
 // See lib/audio/audio.h for the canonical implementation
+
+asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
+                                          size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
+                                          int *out_frame_duration, int *out_frame_count) {
+  if (!packet_data || !out_opus_data || !out_opus_size || !out_frame_sizes || !out_sample_rate || !out_frame_duration ||
+      !out_frame_count) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in Opus batch parsing");
+  }
+
+  // Verify minimum packet size (16-byte header)
+  const size_t header_size = 16;
+  if (packet_len < header_size) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small: %zu < %zu", packet_len, header_size);
+  }
+
+  // Parse header (convert from network byte order)
+  const uint8_t *buf = (const uint8_t *)packet_data;
+  uint32_t sr, fd, fc;
+  memcpy(&sr, buf, 4);
+  memcpy(&fd, buf + 4, 4);
+  memcpy(&fc, buf + 8, 4);
+  *out_sample_rate = (int)NET_TO_HOST_U32(sr);
+  *out_frame_duration = (int)NET_TO_HOST_U32(fd);
+  int frame_count = (int)NET_TO_HOST_U32(fc);
+  *out_frame_count = frame_count;
+
+  // Validate frame count to prevent overflow
+  if (frame_count < 0 || frame_count > 1000) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid Opus frame count: %d (must be 0-1000)", frame_count);
+  }
+
+  // Extract frame sizes array (after 16-byte header)
+  size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
+  if (packet_len < header_size + frame_sizes_bytes) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small for frame sizes: %zu < %zu", packet_len,
+                     header_size + frame_sizes_bytes);
+  }
+  // NOTE: Frame sizes are in network byte order - caller must use NET_TO_HOST_U16() when reading
+  *out_frame_sizes = (const uint16_t *)(buf + header_size);
+
+  // Extract Opus data (after header + frame sizes)
+  *out_opus_data = buf + header_size + frame_sizes_bytes;
+  *out_opus_size = packet_len - header_size - frame_sizes_bytes;
+
+  return ASCIICHAT_OK;
+}

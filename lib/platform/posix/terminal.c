@@ -653,6 +653,9 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
       case TERM_COLOR_NONE:
         caps.color_count = 0;
         break;
+      case TERM_COLOR_AUTO:
+        // Auto-detect - no override needed
+        break;
       }
 
       caps.detection_reliable = false; // Mark as overridden

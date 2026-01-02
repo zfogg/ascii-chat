@@ -254,4 +254,50 @@ static inline void packet_read_u16_net(const void *src, uint16_t *out_value) {
 
 /** @} */
 
+/** @name Opus Audio Batch Parsing
+ * @{
+ * @ingroup packet_parsing
+ * @brief Helpers for parsing Opus audio batch packets
+ */
+
+/**
+ * @brief Parse Opus audio batch packet header and extract frame data
+ *
+ * Parses PACKET_TYPE_AUDIO_OPUS_BATCH packet and extracts metadata and Opus data.
+ * The Opus data and frame_sizes pointers point into the packet_data buffer (NOT copied),
+ * so packet_data must remain valid while using these outputs.
+ *
+ * Packet format:
+ * - Offset 0-3:   sample_rate (uint32_t, network byte order)
+ * - Offset 4-7:   frame_duration (uint32_t, network byte order)
+ * - Offset 8-11:  frame_count (uint32_t, network byte order)
+ * - Offset 12-15: reserved (4 bytes, zeroed)
+ * - Offset 16+:   frame_sizes array (uint16_t[], network byte order)
+ * - After sizes:  Opus-encoded data (concatenated frames)
+ *
+ * @param packet_data Packet payload data
+ * @param packet_len Packet payload length
+ * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
+ * @param out_opus_size Output: Size of Opus-encoded data
+ * @param out_frame_sizes Output: Pointer to frame sizes array within packet (NOT copied)
+ * @param out_sample_rate Output: Sample rate in Hz
+ * @param out_frame_duration Output: Frame duration in milliseconds
+ * @param out_frame_count Output: Number of frames in batch
+ *
+ * @return ASCIICHAT_OK on success, error code on failure:
+ *         - ERROR_INVALID_PARAM: NULL pointers
+ *         - ERROR_NETWORK_PROTOCOL: Packet too small or malformed
+ *
+ * @note out_opus_data and out_frame_sizes point into packet_data - do not free separately
+ * @note Frame sizes in out_frame_sizes are in NETWORK byte order - use NET_TO_HOST_U16() when reading
+ * @warning packet_data must remain valid while using out_opus_data and out_frame_sizes
+ *
+ * @ingroup packet_parsing
+ */
+asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
+                                          size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
+                                          int *out_frame_duration, int *out_frame_count);
+
+/** @} */
+
 /** @} */

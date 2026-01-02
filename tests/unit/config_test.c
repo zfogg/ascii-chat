@@ -1595,6 +1595,7 @@ Test(config, negative_width_skipped) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Negative width should be skipped");
   const options_t *opts = options_get();
+  (void)opts; // Reserved for future validation
 
   unlink(config_path);
   SAFE_FREE(config_path);

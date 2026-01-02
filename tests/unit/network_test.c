@@ -14,7 +14,7 @@
 #include "tests/logging.h"
 #include "network/network.h"
 #include "network/packet.h"
-#include "network/av.h"
+#include "util/parsing.h"
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);
@@ -41,8 +41,14 @@ int send_client_join_packet(int sockfd, const char *username, uint32_t capabilit
   return -1; // Stub - client-specific function
 }
 
-int parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
-  return av_parse_size_message(message, width, height);
+asciichat_error_t parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
+  unsigned int w, h;
+  asciichat_error_t result = safe_parse_size_message(message, &w, &h);
+  if (result == ASCIICHAT_OK) {
+    *width = (unsigned short)w;
+    *height = (unsigned short)h;
+  }
+  return result;
 }
 
 static int create_test_socket(void) {

@@ -416,7 +416,6 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 
   // Check for port in address (format: address:port or [ipv6]:port)
   const char *colon = strrchr(arg, ':');
-  bool has_port_in_address = false;
 
   if (colon != NULL) {
     // Check if this is IPv6 with port [::1]:port or plain hostname:port
@@ -424,7 +423,6 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
       // IPv6 with brackets: [address]:port
       const char *closing_bracket = strchr(arg, ']');
       if (closing_bracket && closing_bracket < colon) {
-        has_port_in_address = true;
         // Extract address (remove brackets)
         size_t addr_len = (size_t)(closing_bracket - arg - 1);
         if (addr_len >= OPTIONS_BUFF_SIZE) {
@@ -462,7 +460,6 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 
       if (colon_count == 1) {
         // Likely hostname:port or IPv4:port
-        has_port_in_address = true;
         size_t addr_len = (size_t)(colon - arg);
         if (addr_len >= OPTIONS_BUFF_SIZE) {
           if (error_msg) {

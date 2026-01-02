@@ -352,11 +352,10 @@ int strtoint_safe(const char *str);
   unsigned short int no_encrypt;                                                                                       \
   char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
   unsigned short int require_server_verify;                                                                            \
-  unsigned short int                                                                                                   \
-      acds_expose_ip; ///< Explicitly allow public IP disclosure in ACDS sessions (opt-in)              \
+  unsigned short int acds_expose_ip; /* Explicitly allow public IP disclosure in ACDS sessions (opt-in) */             \
   char acds_server[OPTIONS_BUFF_SIZE];                                                                                 \
   int acds_port;                                                                                                       \
-  bool webrtc; ///< Enable WebRTC mode for ACDS session (default: Direct TCP)
+  bool webrtc; /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
 
 /**
  * @brief Client mode options
@@ -553,6 +552,7 @@ typedef struct options_state {
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)
   // ============================================================================
+  bool enable_upnp;                        ///< ACDS: Enable UPnP/NAT-PMP port mapping for direct TCP
   char stun_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of STUN server URLs
   char turn_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of TURN server URLs
   char turn_username[OPTIONS_BUFF_SIZE];   ///< ACDS: Username for TURN authentication
@@ -631,7 +631,8 @@ const options_t *options_get(void);
     if (!_opts) {                                                                                                      \
       log_warn("GET_OPTION(" #field ") called but options not initialized");                                           \
     }                                                                                                                  \
-    (_opts ? (_opts->field) : ((typeof(((options_t *)0)->field)){0}));                                                 \
+    static typeof(((options_t *)0)->field) _default = {0};                                                             \
+    (_opts ? (_opts->field) : _default);                                                                               \
   })
 
 /**

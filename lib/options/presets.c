@@ -135,6 +135,10 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
                            "Enable WebRTC mode for ACDS session (default: Direct TCP)", "DISCOVERY", false, NULL);
 
+  options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), true,
+                           "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
+                           "DISCOVERY", false, "ASCII_CHAT_UPNP");
+
   // Logging options
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);
@@ -585,6 +589,10 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_string(b, "turn-secret", '\0', offsetof(options_t, turn_secret), "",
                              "Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "WEBRTC", false,
                              "ASCII_CHAT_TURN_SECRET", NULL);
+
+  options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), true,
+                           "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
+                           "WEBRTC", false, "ASCII_CHAT_UPNP");
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");

@@ -25,7 +25,7 @@
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "util/path.h"
-#include "nat/upnp.h"
+#include "network/nat/upnp.h"
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
@@ -266,17 +266,22 @@ int main(int argc, char **argv) {
   //   1. UPnP (works on ~90% of home routers)
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-  asciichat_error_t upnp_result = nat_upnp_open(config.port, "ASCII-Chat ACDS", &g_upnp_ctx);
+  if (GET_OPTION(enable_upnp)) {
+    asciichat_error_t upnp_result = nat_upnp_open(config.port, "ASCII-Chat ACDS", &g_upnp_ctx);
 
-  if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
-    char public_addr[22];
-    if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
-      printf("🌐 Public endpoint: %s (direct TCP)\n", public_addr);
-      log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
+    if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
+      char public_addr[22];
+      if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
+        printf("🌐 Public endpoint: %s (direct TCP)\n", public_addr);
+        log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
+      }
+    } else {
+      log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
+      printf("📡 Clients behind strict NATs will use WebRTC fallback\n");
     }
   } else {
-    log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
-    printf("📡 Clients behind strict NATs will use WebRTC fallback\n");
+    log_info("UPnP: Disabled via --upnp=false option");
+    printf("📡 WebRTC will be used for all clients\n");
   }
 
   // Install signal handlers for clean shutdown
