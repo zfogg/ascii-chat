@@ -21,9 +21,9 @@
  */
 
 #include "webrtc.h"
-#include "networking/acip/acds.h"
-#include "networking/acip/protocol.h"
-#include "networking/acip/send.h"
+#include "network/acip/acds.h"
+#include "network/acip/protocol.h"
+#include "network/acip/send.h"
 #include "util/endian.h"
 #include "common.h"
 #include "platform/abstraction.h"

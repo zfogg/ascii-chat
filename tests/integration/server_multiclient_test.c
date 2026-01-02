@@ -12,7 +12,6 @@
 #include <stdio.h>
 
 #include "tests/common.h"
-#include "network/av.h"
 #include "network/packet.h"
 #include "video/simd/common.h"
 #include "util/overflow.h"
@@ -161,8 +160,9 @@ static int send_test_frame(int socket, int frame_id) {
                 "████████████\n",
                 frame_id, frame_id);
 
-  // Use the av_send_ascii_frame function from av.h
-  return av_send_ascii_frame(socket, ascii_data, strlen(ascii_data));
+  // Use the send_ascii_frame_packet function from packet.h
+  asciichat_error_t result = send_ascii_frame_packet(socket, ascii_data, strlen(ascii_data));
+  return (result == ASCIICHAT_OK) ? 0 : -1;
 }
 
 static int send_image_frame(int socket, int width, int height, int client_id) {
@@ -194,11 +194,11 @@ static int send_image_frame(int socket, int width, int height, int client_id) {
     }
   }
 
-  // Use the av_send_image_frame function from av.h
-  // Just use 0 for pixel_format since IMAGE_FORMAT_RGB24 doesn't exist
-  int result = av_send_image_frame(socket, image_data, width, height, 0);
+  // Use the send_image_frame_packet function from packet.h
+  // Just use 0 for pixel_format (RGB24)
+  asciichat_error_t result = send_image_frame_packet(socket, image_data, width, height, 0);
   SAFE_FREE(image_data);
-  return result;
+  return (result == ASCIICHAT_OK) ? 0 : -1;
 }
 
 static void cleanup_server(pid_t server_pid) {

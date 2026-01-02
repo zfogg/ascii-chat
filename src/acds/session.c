@@ -10,7 +10,7 @@
 #include "acds/main.h"
 #include "acds/strings.h"
 #include "log/logging.h"
-#include "networking/webrtc/turn_credentials.h"
+#include "network/webrtc/turn_credentials.h"
 #include <string.h>
 #include <time.h>
 #include <sodium.h>
@@ -49,7 +49,7 @@ static uint64_t get_current_time_ms(void) {
  * @param hash_out Output buffer for hash (128 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-static asciichat_error_t hash_password(const char *password, char hash_out[128]) {
+__attribute__((unused)) static asciichat_error_t hash_password(const char *password, char hash_out[128]) {
   // Use libsodium's crypto_pwhash_str for Argon2id hashing
   // Output is ASCII string (null-terminated)
   if (crypto_pwhash_str((char *)hash_out, password, strlen(password), crypto_pwhash_OPSLIMIT_INTERACTIVE,

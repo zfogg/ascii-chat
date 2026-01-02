@@ -12,8 +12,8 @@
 #include <stdbool.h>
 #include "common.h"
 #include "acds/session.h"
-#include "networking/acip/acds.h"
-#include "networking/tcp/server.h"
+#include "network/acip/acds.h"
+#include "network/tcp/server.h"
 
 /**
  * @brief Relay SDP offer/answer to recipient

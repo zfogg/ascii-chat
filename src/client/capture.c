@@ -120,7 +120,7 @@
  *
  * @ingroup client_capture
  */
-static asciithread_t g_capture_thread;
+__attribute__((unused)) static asciithread_t g_capture_thread;
 
 /**
  * @brief Flag indicating if capture thread was successfully created

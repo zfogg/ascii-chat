@@ -26,8 +26,8 @@
 
 #pragma once
 
-#include "networking/webrtc/peer_manager.h"
-#include "networking/acip/transport.h"
+#include "network/webrtc/peer_manager.h"
+#include "network/acip/transport.h"
 #include "asciichat_errno.h"
 #include <stdint.h>
 

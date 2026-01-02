@@ -87,7 +87,7 @@ static void ensure_positional_arg_capacity(options_builder_t *builder) {
 /**
  * @brief Track an owned string for cleanup
  */
-static void track_owned_string(options_config_t *config, char *str) {
+__attribute__((unused)) static void track_owned_string(options_config_t *config, char *str) {
   if (!str)
     return;
 
@@ -461,6 +461,7 @@ void options_builder_add_callback(options_builder_t *builder, const char *long_n
                                   const void *default_value, size_t value_size,
                                   bool (*parse_fn)(const char *, void *, char **), const char *help_text,
                                   const char *group, bool required, const char *env_var_name) {
+  (void)value_size; // Unused parameter
   ensure_descriptor_capacity(builder);
 
   option_descriptor_t desc = {.long_name = long_name,
@@ -559,7 +560,7 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
     return;
 
   // Find the option by name and mark it
-  for (int i = 0; i < builder->num_descriptors; i++) {
+  for (size_t i = 0; i < builder->num_descriptors; i++) {
     if (strcmp(builder->descriptors[i].long_name, option_name) == 0) {
       builder->descriptors[i].hide_from_mode_help = true;
       return;

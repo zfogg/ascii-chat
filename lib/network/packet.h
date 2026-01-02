@@ -1369,4 +1369,84 @@ int send_crypto_capabilities_packet(socket_t sockfd, const crypto_capabilities_p
  */
 int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packet_t *params);
 
+/**
+ * @brief Send a batched audio packet with encryption support
+ * @param sockfd Socket file descriptor
+ * @param samples Float audio samples buffer
+ * @param num_samples Total number of audio samples
+ * @param batch_count Number of chunks in batch
+ * @param crypto_ctx Cryptographic context for encryption (NULL for plaintext)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Sends PACKET_TYPE_AUDIO_BATCH with multiple audio chunks batched together.
+ * Reduces packet overhead by sending 32 chunks (~186ms) per packet.
+ * Uses system-defined AUDIO_SAMPLE_RATE and mono audio.
+ *
+ * @note Encryption is applied automatically when crypto_ctx is provided.
+ *
+ * @ingroup network
+ */
+asciichat_error_t send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
+                                          crypto_context_t *crypto_ctx);
+
+/**
+ * @brief Send Opus-encoded audio batch packet with encryption support
+ * @param sockfd Socket file descriptor
+ * @param opus_data Opus-encoded audio data buffer
+ * @param opus_size Size of Opus-encoded data in bytes
+ * @param frame_sizes Array of frame sizes (one per Opus frame)
+ * @param sample_rate Sample rate in Hz (e.g., 48000)
+ * @param frame_duration Frame duration in milliseconds (e.g., 20)
+ * @param frame_count Number of Opus frames in batch
+ * @param crypto_ctx Cryptographic context for encryption (NULL for plaintext)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Sends PACKET_TYPE_AUDIO_OPUS_BATCH with multiple Opus-encoded frames.
+ * Opus provides better compression than raw audio (30-100 bytes per 20ms frame).
+ *
+ * @note Opus packets are NOT compressed again (already compressed by Opus codec).
+ * @note Encryption is applied automatically when crypto_ctx is provided.
+ *
+ * @ingroup network
+ */
+asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size,
+                                           const uint16_t *frame_sizes, int sample_rate, int frame_duration,
+                                           int frame_count, crypto_context_t *crypto_ctx);
+
+/**
+ * @brief Send ASCII frame packet
+ * @param sockfd Socket file descriptor
+ * @param frame_data ASCII frame data buffer
+ * @param frame_size Size of frame data in bytes
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Sends PACKET_TYPE_ASCII_FRAME with ASCII text data.
+ * Used for transmitting terminal output or text-based frames.
+ *
+ * @note Frame dimensions (width, height) are set to 0 and determined by receiver.
+ *
+ * @ingroup network
+ */
+asciichat_error_t send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size);
+
+/**
+ * @brief Send image frame packet
+ * @param sockfd Socket file descriptor
+ * @param image_data Image pixel data buffer
+ * @param width Image width in pixels
+ * @param height Image height in pixels
+ * @param format Pixel format (0=RGB24)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Sends PACKET_TYPE_IMAGE_FRAME with RGB image data.
+ * Used for transmitting camera frames or video input.
+ *
+ * @note Maximum dimensions: 4096x4096 pixels (~25MB per frame).
+ * @note Pixel data must be in RGB24 format (3 bytes per pixel).
+ *
+ * @ingroup network
+ */
+asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
+                                          uint8_t format);
+
 /** @} */

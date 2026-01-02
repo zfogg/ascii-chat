@@ -86,8 +86,8 @@
 #include "video/simd/common.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
-#include "networking/tcp/server.h"
-#include "networking/acip/client.h"
+#include "network/tcp/server.h"
+#include "network/acip/client.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -103,6 +103,7 @@
 #include "crypto/keys.h"
 #include "network/rate_limit/rate_limit.h"
 #include "network/errors.h"
+#include "network/nat/upnp.h"
 
 /* ============================================================================
  * Global State
@@ -189,6 +190,17 @@ rate_limiter_t *g_rate_limiter = NULL;
  * @ingroup server_main
  */
 static tcp_server_t g_tcp_server;
+
+/**
+ * @brief Global UPnP context for port mapping on home routers
+ *
+ * Stores the active UPnP/NAT-PMP port mapping state. Enables direct TCP
+ * connectivity for ~70% of home users without requiring WebRTC.
+ * Set to NULL if UPnP is disabled, unavailable, or failed to map.
+ *
+ * @ingroup server_main
+ */
+static nat_upnp_context_t *g_upnp_ctx = NULL;
 
 /**
  * @brief Global client manager for signal handler access
@@ -781,6 +793,34 @@ int server_main(void) {
   asciichat_error_t tcp_init_result = tcp_server_init(&g_tcp_server, &tcp_config);
   if (tcp_init_result != ASCIICHAT_OK) {
     FATAL(ERROR_NETWORK, "Failed to initialize TCP server");
+  }
+
+  // =========================================================================
+  // UPnP Port Mapping (Quick Win for Direct TCP)
+  // =========================================================================
+  // Try to open port via UPnP so direct TCP works for ~70% of home users.
+  // If this fails, clients fall back to WebRTC automatically - not fatal.
+  //
+  // Strategy:
+  //   1. UPnP (works on ~90% of home routers)
+  //   2. NAT-PMP fallback (Apple routers)
+  //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
+  if (GET_OPTION(enable_upnp)) {
+    asciichat_error_t upnp_result = nat_upnp_open(port, "ASCII-Chat Server", &g_upnp_ctx);
+
+    if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
+      char public_addr[22];
+      if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
+        printf("🌐 Public endpoint: %s (direct TCP)\\n", public_addr);
+        log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
+      }
+    } else {
+      log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
+      printf("📡 Clients behind strict NATs will use WebRTC fallback\\n");
+    }
+  } else {
+    log_info("UPnP: Disabled via --upnp=false option");
+    printf("📡 WebRTC will be used for all clients\\n");
   }
 
   struct timespec last_stats_time;

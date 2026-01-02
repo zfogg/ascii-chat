@@ -10,8 +10,8 @@
 #include "acds/session.h"
 #include "acds/main.h"
 #include "asciichat_errno.h"
-#include "networking/acip/acds.h"
-#include "networking/webrtc/turn_credentials.h"
+#include "network/acip/acds.h"
+#include "network/webrtc/turn_credentials.h"
 #include <criterion/criterion.h>
 #include <string.h>
 #include <time.h>

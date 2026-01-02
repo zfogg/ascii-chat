@@ -86,12 +86,12 @@
 
 #include "network/packet.h"
 #include "network/packet_parsing.h"
-#include "network/av.h"
-#include "networking/acip/handlers.h"
-#include "networking/acip/transport.h"
-#include "networking/acip/receive.h"
-#include "networking/acip/acds.h"
-#include "networking/webrtc/peer_manager.h"
+#include "network/packet_parsing.h"
+#include "network/acip/handlers.h"
+#include "network/acip/transport.h"
+#include "network/acip/receive.h"
+#include "network/acip/acds.h"
+#include "network/webrtc/peer_manager.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
@@ -124,7 +124,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #endif
 
 #include "network/compression.h"
-#include "network/av.h"
+#include "network/packet_parsing.h"
 
 #include <errno.h>
 
@@ -140,7 +140,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  *
  * @ingroup client_protocol
  */
-static asciithread_t g_data_thread;
+__attribute__((unused)) static asciithread_t g_data_thread;
 
 /**
  * @brief Flag indicating if data thread was successfully created
@@ -558,7 +558,7 @@ static void handle_audio_packet(const void *data, size_t len) {
  *
  * @ingroup client_protocol
  */
-static void handle_audio_batch_packet(const void *data, size_t len) {
+__attribute__((unused)) static void handle_audio_batch_packet(const void *data, size_t len) {
   if (!data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch packet data");
     return;
@@ -719,10 +719,10 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
   int frame_duration = 0;
   int frame_count = 0;
 
-  int result = av_receive_audio_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
-                                           &frame_duration, &frame_count);
+  asciichat_error_t result = packet_parse_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
+                                                     &frame_duration, &frame_count);
 
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     log_warn("Failed to parse Opus batch packet");
     return;
   }

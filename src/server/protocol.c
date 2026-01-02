@@ -130,11 +130,11 @@
 #include "video/image.h"
 #include "network/compression.h"
 #include "network/packet_parsing.h"
-#include "networking/acip/send.h"
+#include "network/acip/send.h"
 #include "util/format.h"
 #include "platform/system.h"
 #include "audio/opus_codec.h"
-#include "network/av.h"
+#include "network/packet_parsing.h"
 #include "network/logging.h"
 #include "crypto/handshake/common.h"
 
@@ -1165,10 +1165,10 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   int frame_duration = 0;
   int frame_count = 0;
 
-  int result = av_receive_audio_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
-                                           &frame_duration, &frame_count);
+  asciichat_error_t result = packet_parse_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
+                                                     &frame_duration, &frame_count);
 
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     disconnect_client_for_bad_data(client, "Failed to parse AUDIO_OPUS_BATCH packet");
     return;
   }
