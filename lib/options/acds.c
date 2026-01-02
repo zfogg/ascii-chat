@@ -46,36 +46,6 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ============================================================================
 
 asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
-  // Pre-parse ACDS-specific options that use global variables (--key, --database)
-  // Reset getopt state for fresh parsing
-  optind = 1;
-  opterr = 0; // Suppress getopt error messages (we'll handle them)
-
-  static struct option long_options[] = {
-      {"key", required_argument, 0, 'k'}, {"database", required_argument, 0, 'd'}, {0, 0, 0, 0} // Terminator
-  };
-
-  int opt;
-  while ((opt = getopt_long(argc, argv, "k:d:", long_options, NULL)) != -1) {
-    switch (opt) {
-    case 'k':
-      SAFE_STRNCPY(opt_acds_key_path, optarg, sizeof(opt_acds_key_path));
-      break;
-    case 'd':
-      SAFE_STRNCPY(opt_acds_database_path, optarg, sizeof(opt_acds_database_path));
-      break;
-    case '?':
-      // Unknown option - will be handled by main options parser
-      break;
-    default:
-      break;
-    }
-  }
-
-  // Reset optind for the main options parser
-  optind = 1;
-  opterr = 1;
-
   const options_config_t *config = options_preset_acds();
   int remaining_argc;
   char **remaining_argv;
@@ -100,24 +70,28 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
     return option_error_invalid();
   }
 
-  // Set default paths for ACDS-specific globals if not specified
-  if (opt_acds_database_path[0] == '\0') {
+  // Set default paths if not specified
+  if (opts->acds_database_path[0] == '\0') {
     char *config_dir = get_config_dir();
     if (!config_dir) {
       return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
     }
-    snprintf(opt_acds_database_path, sizeof(opt_acds_database_path), "%sacds.db", config_dir);
+    snprintf(opts->acds_database_path, sizeof(opts->acds_database_path), "%sacds.db", config_dir);
     free(config_dir);
   }
 
-  if (opt_acds_key_path[0] == '\0') {
+  if (opts->acds_key_path[0] == '\0') {
     char *config_dir = get_config_dir();
     if (!config_dir) {
       return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for identity key path");
     }
-    snprintf(opt_acds_key_path, sizeof(opt_acds_key_path), "%sacds_identity", config_dir);
+    snprintf(opts->acds_key_path, sizeof(opts->acds_key_path), "%sacds_identity", config_dir);
     free(config_dir);
   }
+
+  // Copy to global variables for backward compatibility
+  SAFE_STRNCPY(opt_acds_database_path, opts->acds_database_path, sizeof(opt_acds_database_path));
+  SAFE_STRNCPY(opt_acds_key_path, opts->acds_key_path, sizeof(opt_acds_key_path));
 
   return ASCIICHAT_OK;
 }

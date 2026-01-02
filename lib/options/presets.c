@@ -508,8 +508,14 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_string(b, "address6", '\0', offsetof(options_t, address6), "::1", "IPv6 bind address", "NETWORK",
                              false, NULL, NULL);
 
-  // Note: ACDS --key/-k and --database/-d options are parsed separately in parse_acds_options()
-  // They use global variables (opt_acds_key_path, opt_acds_database_path) instead of options_t
+  // ACDS-specific options
+  options_builder_add_string(b, "key", 'k', offsetof(options_t, acds_key_path), "",
+                             "Path to ACDS identity key file (default: ~/.ascii-chat/acds_identity)", "ACDS", false,
+                             "ACDS_KEY_PATH", NULL);
+
+  options_builder_add_string(b, "database", 'd', offsetof(options_t, acds_database_path), "",
+                             "Path to ACDS database file (default: ~/.ascii-chat/acds.db)", "ACDS", false,
+                             "ACDS_DATABASE_PATH", NULL);
 
   // Logging options (ACDS-specific)
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Path to log file", "LOGGING",
