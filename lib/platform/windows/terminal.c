@@ -200,8 +200,8 @@ asciichat_error_t terminal_get_size(terminal_size_t *size) {
   }
 
   if (GetConsoleScreenBufferInfo(h, &csbi)) {
-    GET_OPTION(cols) = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-    GET_OPTION(rows) = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    size->cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    size->rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
     return ASCIICHAT_OK;
   }
 
@@ -830,33 +830,33 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   static char summary[256];
 
   safe_snprintf(summary, sizeof(summary), "%s (%d colors), UTF-8: %s, TERM: %s, COLORTERM: %s",
-                terminal_color_level_name(GET_OPTION(color_level)), GET_OPTION(color_count),
-                (GET_OPTION(capabilities) & TERM_CAP_UTF8) ? "yes" : "no", GET_OPTION(term_type), GET_OPTION(colorterm));
+                terminal_color_level_name(caps->color_level), caps->color_count,
+                (caps->capabilities & TERM_CAP_UTF8) ? "yes" : "no", caps->term_type, caps->colorterm);
 
   return summary;
 }
 
 void print_terminal_capabilities(const terminal_capabilities_t *caps) {
   printf("Terminal Capabilities (Windows):\n");
-  printf("  Color Level: %s\n", terminal_color_level_name(GET_OPTION(color_level)));
-  printf("  Max Colors: %d\n", GET_OPTION(color_count));
-  printf("  UTF-8 Support: %s\n", GET_OPTION(utf8_support) ? "Yes" : "No");
-  printf("  Background Colors: %s\n", (GET_OPTION(capabilities) & TERM_CAP_BACKGROUND) ? "Yes" : "No");
+  printf("  Color Level: %s\n", terminal_color_level_name(caps->color_level));
+  printf("  Max Colors: %d\n", caps->color_count);
+  printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
+  printf("  Background Colors: %s\n", (caps->capabilities & TERM_CAP_BACKGROUND) ? "Yes" : "No");
   const char *render_mode_str;
-  if (GET_OPTION(render_mode) == RENDER_MODE_FOREGROUND) {
+  if (caps->render_mode == RENDER_MODE_FOREGROUND) {
     render_mode_str = "foreground";
-  } else if (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND) {
+  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
     render_mode_str = "background";
-  } else if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
+  } else if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     render_mode_str = "half-block";
   } else {
     render_mode_str = "unknown";
   }
   printf("  Render Mode: %s\n", render_mode_str);
-  printf("  TERM: %s\n", GET_OPTION(term_type));
-  printf("  COLORTERM: %s\n", GET_OPTION(colorterm));
-  printf("  Detection Reliable: %s\n", GET_OPTION(detection_reliable) ? "Yes" : "No");
-  printf("  Capabilities Bitmask: 0x%08x\n", GET_OPTION(capabilities));
+  printf("  TERM: %s\n", caps->term_type);
+  printf("  COLORTERM: %s\n", caps->colorterm);
+  printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
+  printf("  Capabilities Bitmask: 0x%08x\n", caps->capabilities);
 }
 
 void test_terminal_output_modes(void) {
@@ -893,11 +893,6 @@ void test_terminal_output_modes(void) {
  * Apply color mode and render mode overrides to detected capabilities
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
-  // Get options from RCU state
-  if (!opts) {
-    return caps; // Options not initialized yet, return unmodified caps
-  }
-
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
   if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {

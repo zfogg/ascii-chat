@@ -86,7 +86,7 @@
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "network/tcp_server.h"
-#include "network/acds_client.h"
+#include "network/acip/client.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -427,15 +427,15 @@ static void *ascii_chat_client_handler(void *arg) {
   }
 
   // Extract server context from user_data
-  server_context_t *server_ctx = (server_context_t *)GET_OPTION(user_data);
+  server_context_t *server_ctx = (server_context_t *)ctx->user_data;
   if (!server_ctx) {
     log_error("Client handler: NULL server context");
-    socket_close(GET_OPTION(client_socket));
+    socket_close(ctx->client_socket);
     SAFE_FREE(ctx);
     return NULL;
   }
 
-  socket_t client_socket = GET_OPTION(client_socket);
+  socket_t client_socket = ctx->client_socket;
 
   // Extract client IP and port using tcp_server helpers
   char client_ip[INET6_ADDRSTRLEN] = {0};
@@ -451,17 +451,17 @@ static void *ascii_chat_client_handler(void *arg) {
   log_info("Client handler started for %s:%d", client_ip, client_port);
 
   // Check connection rate limit (prevent DoS attacks)
-  if (server_GET_OPTION(rate_limiter)) {
+  if (server_ctx->rate_limiter) {
     bool allowed = false;
     asciichat_error_t rate_check =
-        rate_limiter_check(server_GET_OPTION(rate_limiter), client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
+        rate_limiter_check(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION, NULL, &allowed);
     if (rate_check != ASCIICHAT_OK || !allowed) {
       tcp_server_reject_client(client_socket, "Connection rate limit exceeded");
       SAFE_FREE(ctx);
       return NULL;
     }
     // Record successful connection attempt
-    rate_limiter_record(server_GET_OPTION(rate_limiter), client_ip, RATE_EVENT_CONNECTION);
+    rate_limiter_record(server_ctx->rate_limiter, client_ip, RATE_EVENT_CONNECTION);
   }
 
   // Add client (initializes structures, spawns workers via tcp_server_spawn_thread)
@@ -481,7 +481,7 @@ static void *ascii_chat_client_handler(void *arg) {
   // Block until client disconnects (active flag is set by receive thread)
   client_info_t *client = find_client_by_id((uint32_t)client_id);
   if (client) {
-    while (atomic_load(&GET_OPTION(active)) && !atomic_load(server_GET_OPTION(server_should_exit))) {
+    while (atomic_load(&client->active) && !atomic_load(server_ctx->server_should_exit)) {
       platform_sleep_ms(100); // Check every 100ms
     }
     log_info("Client %d disconnected from %s:%d", client_id, client_ip, client_port);
@@ -565,7 +565,7 @@ static void *ascii_chat_client_handler(void *arg) {
  * @ingroup server_main
  */
 static int init_server_crypto(void) {
-  // Get options from RCU// Check if encryption is disabled
+  // Check if encryption is disabled
   if (GET_OPTION(no_encrypt)) {
     log_info("Encryption: DISABLED (--no-encrypt)");
     g_server_encryption_enabled = false;
@@ -630,7 +630,7 @@ int server_main(void) {
   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
   // This function focuses on server-specific initialization
 
-  // Get options from RCU// Register shutdown check callback for library code
+  // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
   // Initialize crypto after logging is ready
@@ -701,7 +701,8 @@ int server_main(void) {
   }
 
   // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
-  log_debug("Config check: GET_OPTION(address)='%s', GET_OPTION(address6)='%s'", GET_OPTION(address), GET_OPTION(address6));
+  log_debug("Config check: GET_OPTION(address)='%s', GET_OPTION(address6)='%s'", GET_OPTION(address),
+            GET_OPTION(address6));
 
   bool ipv4_has_value = (strlen(GET_OPTION(address)) > 0);
   bool ipv6_has_value = (strlen(GET_OPTION(address6)) > 0);
@@ -934,13 +935,13 @@ int server_main(void) {
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
   log_info("Closing all client sockets to unblock receive threads...");
 
-  // Use write lock since we're modifying GET_OPTION(socket)
+  // Use write lock since we're modifying client->socket
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (atomic_load(&GET_OPTION(client_id)) != 0 && GET_OPTION(socket) != INVALID_SOCKET_VALUE) {
-      socket_close(GET_OPTION(socket));
-      GET_OPTION(socket) = INVALID_SOCKET_VALUE;
+    if (atomic_load(&client->client_id) != 0 && client->socket != INVALID_SOCKET_VALUE) {
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
     }
   }
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -973,13 +974,13 @@ int server_main(void) {
     // Only attempt to clean up clients that were actually connected
     // (client_id is 0 for uninitialized clients, starts from 1 for connected clients)
     // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
-    if (atomic_load(&GET_OPTION(client_id)) == 0) {
+    if (atomic_load(&client->client_id) == 0) {
       continue; // Skip uninitialized clients
     }
 
     // Use snapshot pattern to avoid holding both locks simultaneously
     // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
-    uint32_t client_id_snapshot = atomic_load(&GET_OPTION(client_id)); // Atomic read is safe under rwlock
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
 
     // Clean up ANY client that was allocated, whether active or not
     // (disconnected clients may not be active but still have resources)

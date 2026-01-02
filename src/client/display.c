@@ -170,8 +170,8 @@ static tty_info_t display_get_current_tty(void) {
  * @ingroup client_display
  */
 static void full_terminal_reset(int fd) {
-  // Get options from RCU state// Skip terminal control sequences in snapshot mode - just print raw ASCII
-  if (!opts || !GET_OPTION(snapshot_mode)) {
+  // Skip terminal control sequences in snapshot mode - just print raw ASCII
+  if (!GET_OPTION(snapshot_mode)) {
     terminal_reset(fd);             // Reset using the proper TTY fd
     console_clear(fd);              // This calls terminal_clear_screen() + terminal_cursor_home(fd)
     terminal_clear_scrollback(fd);  // Clear scrollback using the proper TTY fd
@@ -215,7 +215,7 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
     return;
   }
 
-  // Get options from RCU stateif (use_direct_tty) {
+  if (use_direct_tty) {
     // Direct TTY for interactive use
     if (g_tty_info.fd >= 0) {
       // Always position cursor for TTY output (even in snapshot mode)
@@ -229,7 +229,7 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
   } else {
     // stdout for pipes/redirection/testing
     // Skip cursor reset in snapshot mode - just print raw ASCII
-    if (!opts || !GET_OPTION(snapshot_mode)) {
+    if (!GET_OPTION(snapshot_mode)) {
       cursor_reset(STDOUT_FILENO);
     }
     platform_write(STDOUT_FILENO, frame_data, frame_len);
@@ -357,7 +357,7 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
     return;
   }
 
-  // Get options from RCU state// For terminal: print every frame until final snapshot
+  // For terminal: print every frame until final snapshot
   // For non-terminal: only print the final snapshot frame
   if (g_has_tty || (!g_has_tty && GET_OPTION(snapshot_mode) && is_snapshot_frame)) {
     if (is_snapshot_frame) {

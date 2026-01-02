@@ -389,7 +389,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
   }
 
-  // Get options from RCU state// Handle snapshot mode timing
+  // Handle snapshot mode timing
   bool take_snapshot = false;
   if (GET_OPTION(snapshot_mode)) {
     static time_t first_frame_time = 0;
@@ -518,7 +518,7 @@ static void handle_audio_packet(const void *data, size_t len) {
     return;
   }
 
-  if (!(GET_OPTION(audio_enabled))) {
+  if (!GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received audio packet but audio is disabled");
     return;
   }
@@ -559,7 +559,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  if (!(GET_OPTION(audio_enabled))) {
+  if (!GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received audio batch packet but audio is disabled");
     return;
   }
@@ -571,10 +571,10 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
 
   // Parse batch header
   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t batch_count = NET_TO_HOST_U32(GET_OPTION(batch_count));
-  uint32_t total_samples = NET_TO_HOST_U32(GET_OPTION(total_samples));
-  uint32_t sample_rate = NET_TO_HOST_U32(GET_OPTION(sample_rate));
-  uint32_t channels = NET_TO_HOST_U32(GET_OPTION(channels));
+  uint32_t batch_count = NET_TO_HOST_U32(batch_header->batch_count);
+  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
+  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
+  uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
 
   (void)batch_count;
   (void)sample_rate;
@@ -646,8 +646,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
     return;
   }
 
-  // Get options from RCU state
-  if (!opts || !GET_OPTION(audio_enabled)) {
+  if (!GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received opus audio packet but audio is disabled");
     return;
   }
@@ -702,8 +701,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Get options from RCU state
-  if (!opts || !GET_OPTION(audio_enabled)) {
+  if (!GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received opus batch packet but audio is disabled");
     return;
   }
@@ -854,7 +852,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
   const server_state_packet_t *state = (const server_state_packet_t *)data;
 
   // Convert from network byte order
-  uint32_t active_count = NET_TO_HOST_U32(GET_OPTION(active_client_count));
+  uint32_t active_count = NET_TO_HOST_U32(state->active_client_count);
 
   // Check if connected count changed - if so, set flag to clear console before next frame
   if (g_server_state_initialized) {

@@ -315,7 +315,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     return -1;
   }
 
-  // Get options from RCU state// Close any existing connection
+  // Close any existing connection
   if (g_sockfd != INVALID_SOCKET_VALUE) {
     close_socket(g_sockfd);
     g_sockfd = INVALID_SOCKET_VALUE;
@@ -362,10 +362,10 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     int ipv6_result = getaddrinfo("::1", port_str, &hints, &res);
     if (ipv6_result == 0 && res != NULL) {
       // Try IPv6 loopback connection
-      g_sockfd = socket_create(GET_OPTION(ai_family), GET_OPTION(ai_socktype), GET_OPTION(ai_protocol));
+      g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
         log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
-        if (connect_with_timeout(g_sockfd, GET_OPTION(ai_addr), GET_OPTION(ai_addrlen), CONNECT_TIMEOUT)) {
+        if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
           SAFE_STRNCPY(g_server_ip, "::1", sizeof(g_server_ip));
           freeaddrinfo(res);
@@ -396,10 +396,10 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
     int ipv4_result = getaddrinfo("127.0.0.1", port_str, &hints, &res);
     if (ipv4_result == 0 && res != NULL) {
-      g_sockfd = socket_create(GET_OPTION(ai_family), GET_OPTION(ai_socktype), GET_OPTION(ai_protocol));
+      g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
         log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
-        if (connect_with_timeout(g_sockfd, GET_OPTION(ai_addr), GET_OPTION(ai_addrlen), CONNECT_TIMEOUT)) {
+        if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
           SAFE_STRNCPY(g_server_ip, "127.0.0.1", sizeof(g_server_ip));
           freeaddrinfo(res);
@@ -436,35 +436,35 @@ int server_connection_establish(const char *address, int port, int reconnect_att
   // Try each address returned by getaddrinfo() until one succeeds
   // Prefer IPv6 over IPv4: try IPv6 addresses first, then fall back to IPv4
   for (int address_family = AF_INET6; address_family >= AF_INET; address_family -= (AF_INET6 - AF_INET)) {
-    for (addr_iter = res; addr_iter != NULL; addr_iter = GET_OPTION(ai_next)) {
+    for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter->ai_next) {
       // Skip addresses that don't match current pass (IPv6 first, then IPv4)
-      if (GET_OPTION(ai_family) != address_family) {
+      if (addr_iter->ai_family != address_family) {
         continue;
       }
 
       // Create socket with appropriate address family
-      g_sockfd = socket_create(GET_OPTION(ai_family), GET_OPTION(ai_socktype), GET_OPTION(ai_protocol));
+      g_sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
       if (g_sockfd == INVALID_SOCKET_VALUE) {
-        log_debug("Could not create socket for address family %d: %s", GET_OPTION(ai_family), network_error_string());
+        log_debug("Could not create socket for address family %d: %s", addr_iter->ai_family, network_error_string());
         continue; // Try next address
       }
 
       // Log which address family we're trying
-      if (GET_OPTION(ai_family) == AF_INET) {
+      if (addr_iter->ai_family == AF_INET) {
         log_debug("Trying IPv4 connection...");
-      } else if (GET_OPTION(ai_family) == AF_INET6) {
+      } else if (addr_iter->ai_family == AF_INET6) {
         log_debug("Trying IPv6 connection...");
       }
 
       // Attempt connection with timeout
-      if (connect_with_timeout(g_sockfd, GET_OPTION(ai_addr), GET_OPTION(ai_addrlen), CONNECT_TIMEOUT)) {
+      if (connect_with_timeout(g_sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
         // Connection successful!
-        log_debug("Connection successful using %s", GET_OPTION(ai_family) == AF_INET    ? "IPv4"
-                                                    : GET_OPTION(ai_family) == AF_INET6 ? "IPv6"
+        log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
+                                                    : addr_iter->ai_family == AF_INET6 ? "IPv6"
                                                                                        : "unknown protocol");
 
         // Extract server IP address for known_hosts
-        if (format_ip_address(GET_OPTION(ai_family), GET_OPTION(ai_addr), g_server_ip, sizeof(g_server_ip)) ==
+        if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, g_server_ip, sizeof(g_server_ip)) ==
             ASCIICHAT_OK) {
           log_debug("Resolved server IP: %s", g_server_ip);
         } else {
@@ -1016,7 +1016,7 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
  */
 int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
 
-  // Get options from RCU statesocket_t sockfd = server_connection_get_socket();
+  socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
     return -1;
   }
@@ -1051,8 +1051,10 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   net_packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
   net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
 
+  const options_t *opts = options_get();
   if (GET_OPTION(palette_type) == PALETTE_CUSTOM && GET_OPTION(palette_custom_set)) {
-    SAFE_STRNCPY(net_packet.palette_custom, GET_OPTION(palette_custom), sizeof(net_packet.palette_custom));
+    const char *palette_custom = opts && opts->palette_custom_set ? opts->palette_custom : "";
+    SAFE_STRNCPY(net_packet.palette_custom, palette_custom, sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
     SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));

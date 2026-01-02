@@ -116,7 +116,7 @@ static bool g_mirror_has_tty = false;
  * @return 0 on success, negative on error
  */
 static int mirror_display_init(void) {
-  // Get options from RCU stateg_mirror_tty_info = get_current_tty();
+  g_mirror_tty_info = get_current_tty();
 
   // Only use TTY output if stdout is also a TTY (respects shell redirection)
   // This ensures `cmd > file` works by detecting stdout redirection
@@ -154,7 +154,7 @@ static void mirror_display_cleanup(void) {
  * @param frame_data ASCII frame data to display
  */
 static void mirror_write_frame(const char *frame_data) {
-  // Get options from RCU stateif (!frame_data) {
+  if (!frame_data) {
     return;
   }
 
@@ -183,7 +183,7 @@ static void mirror_write_frame(const char *frame_data) {
       }
     }
 
-    if (!opts || !GET_OPTION(snapshot_mode)) {
+    if (!GET_OPTION(snapshot_mode)) {
       cursor_reset(STDOUT_FILENO);
     }
     platform_write(STDOUT_FILENO, output_data, output_len);
@@ -207,7 +207,7 @@ static void mirror_write_frame(const char *frame_data) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  // Get options from RCU statelog_info("Starting mirror mode");
+  log_info("Starting mirror mode");
 
   // Install console control-c handler
   platform_set_console_ctrl_handler(mirror_console_ctrl_handler);
@@ -217,7 +217,7 @@ int mirror_main(void) {
 #endif
 
   // Initialize webcam
-  int webcam_result = webcam_init(opts ? GET_OPTION(webcam_index) : 0);
+  int webcam_result = webcam_init(GET_OPTION(webcam_index));
   if (webcam_result != 0) {
     log_fatal("Failed to initialize webcam: %s", asciichat_error_string(webcam_result));
     webcam_print_init_error_help(webcam_result);
@@ -249,8 +249,8 @@ int mirror_main(void) {
   size_t palette_len = 0;
   char luminance_palette[256] = {0};
 
-  const char *custom_chars = (GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
-  palette_type_t palette_type = opts ? GET_OPTION(palette_type) : PALETTE_STANDARD;
+  const char *custom_chars = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+  palette_type_t palette_type = GET_OPTION(palette_type);
   if (initialize_client_palette(palette_type, custom_chars, palette_chars, &palette_len, luminance_palette) != 0) {
     log_fatal("Failed to initialize palette");
     mirror_display_cleanup();
@@ -311,9 +311,9 @@ int mirror_main(void) {
     // Convert image to ASCII
     // When stretch is 0 (disabled), we preserve aspect ratio (true)
     // When stretch is 1 (enabled), we allow stretching without aspect ratio preservation (false)
-    bool stretch = opts ? GET_OPTION(stretch) : false;
-    unsigned short int width = opts ? GET_OPTION(width) : 80;
-    unsigned short int height = opts ? GET_OPTION(height) : 24;
+    bool stretch = GET_OPTION(stretch);
+    unsigned short int width = GET_OPTION(width);
+    unsigned short int height = GET_OPTION(height);
     bool preserve_aspect_ratio = !stretch;
     char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps, preserve_aspect_ratio, stretch,
                                                         palette_chars, luminance_palette);

@@ -189,17 +189,17 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
 
 static void update_log_file_updater(options_t *opts, void *context) {
   const char *validated_path = (const char *)context;
-  SAFE_STRNCPY(GET_OPTION(log_file), validated_path, sizeof(GET_OPTION(log_file)));
+  SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
 }
 
 static void clear_log_file_updater(options_t *opts, void *context) {
   (void)context;
-  GET_OPTION(log_file)[0] = '\0';
+  opts->log_file[0] = '\0';
 }
 
 static void update_color_mode_to_none_updater(options_t *opts, void *context) {
   (void)context;
-  GET_OPTION(color_mode) = COLOR_MODE_NONE;
+  opts->color_mode = COLOR_MODE_NONE;
 }
 
 /* ============================================================================
@@ -248,22 +248,26 @@ int main(int argc, char *argv[]) {
   }
 
   // Get parsed options including detected mode
-  // options_get() never returns NULL after successful options_init()
+  const options_t *opts = options_get();
+  if (!opts) {
+    fprintf(stderr, "Error: Options not initialized\n");
+    return 1;
+  }
 
   // Handle --help and --version (these are detected and flagged by options_init)
-  if (GET_OPTION(help)) {
+  if (opts->help) {
     print_usage();
     return 0;
   }
 
-  if (GET_OPTION(version)) {
+  if (opts->version) {
     print_version();
     return 0;
   }
 
   // Determine default log filename based on detected mode
   const char *default_log_filename;
-  switch (GET_OPTION(detected_mode)) {
+  switch (opts->detected_mode) {
   case MODE_SERVER:
     default_log_filename = "server.log";
     break;
@@ -279,7 +283,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Validate log file path if specified (security: prevent path traversal)
-  const char *log_file_from_opts = (GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : NULL;
+  const char *log_file_from_opts = (opts->log_file[0] != '\0') ? opts->log_file : NULL;
   if (log_file_from_opts && strlen(log_file_from_opts) > 0) {
     char *validated_log_file = NULL;
     asciichat_error_t log_path_result =
@@ -289,19 +293,21 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
               default_log_filename);
       options_update(clear_log_file_updater, NULL);
+      opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     } else {
       // Replace log_file with validated path
       options_update(update_log_file_updater, validated_log_file);
+      opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     }
   }
 
   // Determine if this mode uses client-like initialization (client and mirror modes)
-  bool is_client_or_mirror_mode = (GET_OPTION(detected_mode) == MODE_CLIENT || GET_OPTION(detected_mode) == MODE_MIRROR);
+  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR);
 
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
-  if (is_client_or_mirror_mode && GET_OPTION(show_capabilities)) {
+  if (is_client_or_mirror_mode && opts->show_capabilities) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
@@ -314,14 +320,15 @@ int main(int argc, char *argv[]) {
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
-  const char *final_log_file = (GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : default_log_filename;
+  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : default_log_filename;
   log_warn("Logging initialized to %s", final_log_file);
 
   // Client-specific: auto-detect piping and default to no color mode
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
-  terminal_color_mode_t color_mode = GET_OPTION(color_mode);
+  terminal_color_mode_t color_mode = opts->color_mode;
   if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
     options_update(update_color_mode_to_none_updater, NULL);
+    opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }
 
@@ -338,19 +345,19 @@ int main(int argc, char *argv[]) {
 
   // Set global FPS from command-line option if provided
   extern int g_max_fps;
-  if (GET_OPTION(fps) > 0) {
-    if (GET_OPTION(fps) < 1 || GET_OPTION(fps) > 144) {
-      log_warn("FPS value %d out of range (1-144), using default", GET_OPTION(fps));
+  if (opts->fps > 0) {
+    if (opts->fps < 1 || opts->fps > 144) {
+      log_warn("FPS value %d out of range (1-144), using default", opts->fps);
     } else {
-      g_max_fps = GET_OPTION(fps);
+      g_max_fps = opts->fps;
       log_debug("Set FPS from command line: %d", g_max_fps);
     }
   }
 
   // Find and dispatch to mode entry point
-  const mode_descriptor_t *mode = find_mode(GET_OPTION(detected_mode));
+  const mode_descriptor_t *mode = find_mode(opts->detected_mode);
   if (!mode) {
-    fprintf(stderr, "Error: Mode not found for detected_mode=%d\n", GET_OPTION(detected_mode));
+    fprintf(stderr, "Error: Mode not found for detected_mode=%d\n", opts->detected_mode);
     return 1;
   }
 

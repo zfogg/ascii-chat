@@ -63,7 +63,7 @@
  *
  * PER-CLIENT MUTEX PROTECTION:
  * All client state access uses the snapshot pattern:
- * 1. Acquire GET_OPTION(client_state_mutex)
+ * 1. Acquire client->client_state_mutex
  * 2. Copy needed state to local variables
  * 3. Release mutex immediately
  * 4. Process using local copies
@@ -303,7 +303,7 @@ extern mixer_t *g_audio_mixer;
  * =========================
  *
  * STATE SYNCHRONIZATION:
- * - Uses GET_OPTION(client_state_mutex) for all state access
+ * - Uses client->client_state_mutex for all state access
  * - Implements snapshot pattern (copy state, release lock)
  * - Prevents race conditions with other threads
  * - Safe concurrent access to client data
@@ -365,8 +365,8 @@ void *client_video_render_thread(void *arg) {
 
   // Take snapshot of client ID and socket at start to avoid race conditions
   // CRITICAL: Use atomic_load for client_id to prevent data races
-  uint32_t thread_client_id = atomic_load(&GET_OPTION(client_id));
-  socket_t thread_socket = GET_OPTION(socket);
+  uint32_t thread_client_id = atomic_load(&client->client_id);
+  socket_t thread_socket = client->socket;
 
   log_debug("Video render thread: client_id=%u", thread_client_id);
 
@@ -378,8 +378,8 @@ void *client_video_render_thread(void *arg) {
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
   // Use snapshot pattern to avoid mutex in render thread
-  bool has_caps = GET_OPTION(has_terminal_caps);
-  int desired_fps = has_caps ? GET_OPTION(terminal_caps).desired_fps : 0;
+  bool has_caps = client->has_terminal_caps;
+  int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
     log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
@@ -399,7 +399,7 @@ void *client_video_render_thread(void *arg) {
   fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&GET_OPTION(shutting_down))) {
+  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -407,9 +407,9 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    bool video_running = atomic_load(&GET_OPTION(video_render_thread_running));
-    bool active = atomic_load(&GET_OPTION(active));
-    bool shutting_down = atomic_load(&GET_OPTION(shutting_down));
+    bool video_running = atomic_load(&client->video_render_thread_running);
+    bool active = atomic_load(&client->active);
+    bool shutting_down = atomic_load(&client->shutting_down);
 
     should_continue = video_running && active && !shutting_down;
 
@@ -442,7 +442,7 @@ void *client_video_render_thread(void *arg) {
         if (atomic_load(&g_server_should_exit))
           break;
 
-        bool still_running = atomic_load(&GET_OPTION(video_render_thread_running)) && atomic_load(&GET_OPTION(active));
+        bool still_running = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
         if (!still_running)
           break;
       }
@@ -456,8 +456,8 @@ void *client_video_render_thread(void *arg) {
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
 
     // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
-    should_continue = atomic_load(&GET_OPTION(video_render_thread_running)) && atomic_load(&GET_OPTION(active)) &&
-                      !atomic_load(&GET_OPTION(shutting_down));
+    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
+                      !atomic_load(&client->shutting_down);
     if (!should_continue) {
       break;
     }
@@ -466,10 +466,10 @@ void *client_video_render_thread(void *arg) {
     // client_id: atomic_uint - use atomic_load for thread safety
     // width/height: atomic_ushort - use atomic_load
     // active: atomic_bool - use atomic_load
-    uint32_t client_id_snapshot = atomic_load(&GET_OPTION(client_id)); // Atomic read
-    unsigned short width_snapshot = atomic_load(&GET_OPTION(width));   // Atomic read
-    unsigned short height_snapshot = atomic_load(&GET_OPTION(height)); // Atomic read
-    bool active_snapshot = atomic_load(&GET_OPTION(active));           // Atomic read
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read
+    unsigned short width_snapshot = atomic_load(&client->width);   // Atomic read
+    unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
+    bool active_snapshot = atomic_load(&client->active);           // Atomic read
 
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
 
@@ -515,23 +515,23 @@ void *client_video_render_thread(void *arg) {
     if (ascii_frame && frame_size > 0) {
       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
       // Send thread will compare this with last sent count to detect grid changes
-      atomic_store(&GET_OPTION(last_rendered_grid_sources), sources_count);
+      atomic_store(&client->last_rendered_grid_sources, sources_count);
 
       // Use double-buffer system which has its own internal swap_mutex
       // No external locking needed - the double-buffer is thread-safe by design
-      video_frame_buffer_t *vfb_snapshot = GET_OPTION(outgoing_video_buffer);
+      video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
 
       if (vfb_snapshot) {
         video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
         if (write_frame) {
           // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
-          if (GET_OPTION(data) && frame_size <= GET_OPTION(allocated_buffer_size)) {
-            memcpy(GET_OPTION(data), ascii_frame, frame_size);
-            GET_OPTION(size) = frame_size;
-            GET_OPTION(capture_timestamp_us) =
+          if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
+            memcpy(write_frame->data, ascii_frame, frame_size);
+            write_frame->size = frame_size;
+            write_frame->capture_timestamp_us =
                 (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
 
-            // Commit the frame (swaps buffers atomically using GET_OPTION(swap_mutex), NOT rwlock)
+            // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
             video_frame_commit(vfb_snapshot);
 
             // Log occasionally for monitoring
@@ -539,7 +539,7 @@ void *client_video_render_thread(void *arg) {
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
           } else {
-            log_warn("Frame too large for buffer: %zu > %zu", frame_size, GET_OPTION(allocated_buffer_size));
+            log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
           }
 
           // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
@@ -649,7 +649,7 @@ void *client_video_render_thread(void *arg) {
  * =========================
  *
  * STATE SYNCHRONIZATION:
- * - Uses GET_OPTION(client_state_mutex) for state access
+ * - Uses client->client_state_mutex for state access
  * - Implements snapshot pattern for client ID and queues
  * - Prevents race conditions during client disconnect
  * - Safe concurrent access with other threads
@@ -701,23 +701,23 @@ void *client_video_render_thread(void *arg) {
  */
 
 void *client_audio_render_thread(void *arg) {
-  // Get options from RCU stateclient_info_t *client = (client_info_t *)arg;
+  client_info_t *client = (client_info_t *)arg;
 
-  if (!client || GET_OPTION(socket) == INVALID_SOCKET_VALUE) {
+  if (!client || client->socket == INVALID_SOCKET_VALUE) {
     log_error("Invalid client info in audio render thread");
     return NULL;
   }
 
   // Take snapshot of client ID and display name at start to avoid race conditions
   // CRITICAL: Use atomic_load for client_id to prevent data races
-  uint32_t thread_client_id = atomic_load(&GET_OPTION(client_id));
+  uint32_t thread_client_id = atomic_load(&client->client_id);
   char thread_display_name[64];
 
   // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
   // We already have a stable client pointer
-  mutex_lock(&GET_OPTION(client_state_mutex));
-  SAFE_STRNCPY(thread_display_name, GET_OPTION(display_name), sizeof(thread_display_name));
-  mutex_unlock(&GET_OPTION(client_state_mutex));
+  mutex_lock(&client->client_state_mutex);
+  SAFE_STRNCPY(thread_display_name, client->display_name, sizeof(thread_display_name));
+  mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
   log_debug("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
@@ -753,7 +753,7 @@ void *client_audio_render_thread(void *arg) {
   int server_audio_frame_count = 0;
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&GET_OPTION(shutting_down))) {
+  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
     // Capture loop start time for precise timing
     struct timespec loop_start_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &loop_start_time);
@@ -768,8 +768,8 @@ void *client_audio_render_thread(void *arg) {
 
     // CRITICAL: Check thread state BEFORE acquiring any locks to prevent use-after-destroy
     // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
-    should_continue = (((int)atomic_load(&GET_OPTION(audio_render_thread_running)) != 0) &&
-                       ((int)atomic_load(&GET_OPTION(active)) != 0) && !atomic_load(&GET_OPTION(shutting_down)));
+    should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) &&
+                       ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
 
     if (!should_continue) {
       log_debug("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
@@ -789,9 +789,9 @@ void *client_audio_render_thread(void *arg) {
     // client_id: atomic_uint - use atomic_load for thread safety
     // active: atomic_bool - use atomic_load
     // audio_queue: Assigned once at init and never changes
-    uint32_t client_id_snapshot = atomic_load(&GET_OPTION(client_id)); // Atomic read
-    bool active_snapshot = atomic_load(&GET_OPTION(active));           // Atomic read
-    packet_queue_t *audio_queue_snapshot = GET_OPTION(audio_queue);    // Stable after init
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read
+    bool active_snapshot = atomic_load(&client->active);           // Atomic read
+    packet_queue_t *audio_queue_snapshot = client->audio_queue;    // Stable after init
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
@@ -811,22 +811,22 @@ void *client_audio_render_thread(void *arg) {
     // Log latency at each stage in the server pipeline
     if (g_audio_mixer) {
       // Check source buffer latency for all sources
-      for (int i = 0; i < GET_OPTION(max_sources); i++) {
-        if (GET_OPTION(source_ids)[i] != 0 && GET_OPTION(source_ids)[i] != client_id_snapshot &&
-            GET_OPTION(source_buffers)[i]) {
-          size_t available = audio_ring_buffer_available_read(GET_OPTION(source_buffers)[i]);
+      for (int i = 0; i < g_audio_mixer->max_sources; i++) {
+        if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+            g_audio_mixer->source_buffers[i]) {
+          size_t available = audio_ring_buffer_available_read(g_audio_mixer->source_buffers[i]);
           float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
 
           // Log source buffer latency
           log_debug_every(500000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
-                          GET_OPTION(source_ids)[i], buffer_latency_ms, available);
+                          g_audio_mixer->source_ids[i], buffer_latency_ms, available);
 
           // If buffer is getting too full, read faster to reduce latency
           if (available > 1920) {  // > 40ms buffered - read faster!
             samples_to_read = 960; // Double read to catch up (20ms worth)
             log_debug_every(LOG_RATE_DEFAULT,
                             "LATENCY WARNING: Server buffer too full for client %u: %.1fms, reading double",
-                            GET_OPTION(source_ids)[i], buffer_latency_ms);
+                            g_audio_mixer->source_ids[i], buffer_latency_ms);
           }
         }
       }
@@ -847,13 +847,13 @@ void *client_audio_render_thread(void *arg) {
       if (g_audio_mixer) {
         int max_samples_in_frame = 0;
         // Simple mixing: just add all sources except current client
-        for (int i = 0; i < GET_OPTION(max_sources); i++) {
-          if (GET_OPTION(source_ids)[i] != 0 && GET_OPTION(source_ids)[i] != client_id_snapshot &&
-              GET_OPTION(source_buffers)[i]) {
+        for (int i = 0; i < g_audio_mixer->max_sources; i++) {
+          if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+              g_audio_mixer->source_buffers[i]) {
             // Read from this source and add to mix buffer
             float temp_buffer[960]; // Max adaptive read size
             int samples_read =
-                (int)audio_ring_buffer_read(GET_OPTION(source_buffers)[i], temp_buffer, samples_to_read);
+                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, samples_to_read);
 
             // Track the maximum samples we got from any source
             if (samples_read > max_samples_in_frame) {
@@ -1051,7 +1051,7 @@ void *client_audio_render_thread(void *arg) {
     } else {
       // Sleep for remaining time in ONE call to avoid chunked sleep overhead
       // Check shutdown first, then do one accurate sleep
-      if (!atomic_load(&g_server_should_exit) && atomic_load(&GET_OPTION(audio_render_thread_running))) {
+      if (!atomic_load(&g_server_should_exit) && atomic_load(&client->audio_render_thread_running)) {
         long remaining_sleep_us = (long)(target_loop_us - loop_elapsed_us);
         platform_sleep_usec(remaining_sleep_us);
       }
@@ -1155,7 +1155,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   }
 
 #ifdef DEBUG_THREADS
-  log_debug("Creating render threads for client %u", GET_OPTION(client_id));
+  log_debug("Creating render threads for client %u", client->client_id);
 #endif
 
   // NOTE: Mutexes are already initialized in add_client() before any threads start
@@ -1164,30 +1164,30 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   // Initialize render thread control flags
   // IMPORTANT: Set to true BEFORE creating thread to avoid race condition
   // where thread starts and immediately exits because flag is false
-  atomic_store(&GET_OPTION(video_render_thread_running), true);
-  atomic_store(&GET_OPTION(audio_render_thread_running), true);
+  atomic_store(&client->video_render_thread_running, true);
+  atomic_store(&client->audio_render_thread_running, true);
 
   // Create video rendering thread (stop_id=2, stop after receive thread)
   char thread_name[64];
-  snprintf(thread_name, sizeof(thread_name), "video_render_%u", GET_OPTION(client_id));
-  asciichat_error_t video_result = tcp_server_spawn_thread(GET_OPTION(tcp_server), GET_OPTION(socket),
+  snprintf(thread_name, sizeof(thread_name), "video_render_%u", client->client_id);
+  asciichat_error_t video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
                                                            client_video_render_thread, client, 2, thread_name);
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
-    atomic_store(&GET_OPTION(video_render_thread_running), false);
+    atomic_store(&client->video_render_thread_running, false);
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
 
   // Create audio rendering thread (stop_id=2, same priority as video)
-  snprintf(thread_name, sizeof(thread_name), "audio_render_%u", GET_OPTION(client_id));
-  asciichat_error_t audio_result = tcp_server_spawn_thread(GET_OPTION(tcp_server), GET_OPTION(socket),
+  snprintf(thread_name, sizeof(thread_name), "audio_render_%u", client->client_id);
+  asciichat_error_t audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
                                                            client_audio_render_thread, client, 2, thread_name);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
-    atomic_store(&GET_OPTION(video_render_thread_running), false);
+    atomic_store(&client->video_render_thread_running, false);
     // Reset audio flag since thread creation failed
-    atomic_store(&GET_OPTION(audio_render_thread_running), false);
+    atomic_store(&client->audio_render_thread_running, false);
     // tcp_server_stop_client_threads() will be called by remove_client()
     // to clean up the video thread we just created
     // Mutexes will be destroyed by remove_client() which called us
@@ -1195,7 +1195,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   }
 
 #ifdef DEBUG_THREADS
-  log_debug("Created render threads for client %u", GET_OPTION(client_id));
+  log_debug("Created render threads for client %u", client->client_id);
 #endif
 
   return 0;
@@ -1288,85 +1288,85 @@ void stop_client_render_threads(client_info_t *client) {
     return;
   }
 
-  log_debug("Stopping render threads for client %u", GET_OPTION(client_id));
+  log_debug("Stopping render threads for client %u", client->client_id);
 
   // Signal threads to stop (atomic operations, no mutex needed)
-  atomic_store(&GET_OPTION(video_render_thread_running), false);
-  atomic_store(&GET_OPTION(audio_render_thread_running), false);
+  atomic_store(&client->video_render_thread_running, false);
+  atomic_store(&client->audio_render_thread_running, false);
 
   // Wait for threads to finish (deterministic cleanup)
   // During shutdown, don't wait forever for threads to join
   bool is_shutting_down = atomic_load(&g_server_should_exit);
 
-  if (ascii_thread_is_initialized(&GET_OPTION(video_render_thread))) {
-    log_debug("Joining video render thread for client %u", GET_OPTION(client_id));
+  if (ascii_thread_is_initialized(&client->video_render_thread)) {
+    log_debug("Joining video render thread for client %u", client->client_id);
     int result;
     if (is_shutting_down) {
       // During shutdown, don't timeout - wait for thread to exit
       // Timeouts mask the real problem: threads that are still running
-      log_debug("Shutdown mode: joining video render thread for client %u (no timeout)", GET_OPTION(client_id));
-      result = ascii_thread_join(&GET_OPTION(video_render_thread), NULL);
+      log_debug("Shutdown mode: joining video render thread for client %u (no timeout)", client->client_id);
+      result = ascii_thread_join(&client->video_render_thread, NULL);
       if (result != 0) {
-        log_warn("Video render thread for client %u failed to join during shutdown: %s", GET_OPTION(client_id),
+        log_warn("Video render thread for client %u failed to join during shutdown: %s", client->client_id,
                  SAFE_STRERROR(result));
       }
     } else {
-      log_debug("Calling ascii_thread_join for video thread of client %u", GET_OPTION(client_id));
-      result = ascii_thread_join(&GET_OPTION(video_render_thread), NULL);
-      log_debug("ascii_thread_join returned %d for video thread of client %u", result, GET_OPTION(client_id));
+      log_debug("Calling ascii_thread_join for video thread of client %u", client->client_id);
+      result = ascii_thread_join(&client->video_render_thread, NULL);
+      log_debug("ascii_thread_join returned %d for video thread of client %u", result, client->client_id);
     }
 
     if (result == 0) {
 #ifdef DEBUG_THREADS
-      log_debug("Video render thread joined for client %u", GET_OPTION(client_id));
+      log_debug("Video render thread joined for client %u", client->client_id);
 #endif
     } else if (result != -2) { // Don't log timeout errors again
       if (is_shutting_down) {
-        log_warn("Failed to join video render thread for client %u during shutdown (continuing): %s", GET_OPTION(client_id),
+        log_warn("Failed to join video render thread for client %u during shutdown (continuing): %s", client->client_id,
                  SAFE_STRERROR(result));
       } else {
-        log_error("Failed to join video render thread for client %u: %s", GET_OPTION(client_id), SAFE_STRERROR(result));
+        log_error("Failed to join video render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
       }
     }
     // Clear thread handle safely using platform abstraction
-    ascii_thread_init(&GET_OPTION(video_render_thread));
+    ascii_thread_init(&client->video_render_thread);
   }
 
-  if (ascii_thread_is_initialized(&GET_OPTION(audio_render_thread))) {
+  if (ascii_thread_is_initialized(&client->audio_render_thread)) {
     int result;
     if (is_shutting_down) {
       // During shutdown, don't timeout - wait for thread to exit
       // Timeouts mask the real problem: threads that are still running
-      log_debug("Shutdown mode: joining audio render thread for client %u (no timeout)", GET_OPTION(client_id));
-      result = ascii_thread_join(&GET_OPTION(audio_render_thread), NULL);
+      log_debug("Shutdown mode: joining audio render thread for client %u (no timeout)", client->client_id);
+      result = ascii_thread_join(&client->audio_render_thread, NULL);
       if (result != 0) {
-        log_warn("Audio render thread for client %u failed to join during shutdown: %s", GET_OPTION(client_id),
+        log_warn("Audio render thread for client %u failed to join during shutdown: %s", client->client_id,
                  SAFE_STRERROR(result));
       }
     } else {
-      result = ascii_thread_join(&GET_OPTION(audio_render_thread), NULL);
+      result = ascii_thread_join(&client->audio_render_thread, NULL);
     }
 
     if (result == 0) {
 #ifdef DEBUG_THREADS
-      log_debug("Audio render thread joined for client %u", GET_OPTION(client_id));
+      log_debug("Audio render thread joined for client %u", client->client_id);
 #endif
     } else if (result != -2) { // Don't log timeout errors again
       if (is_shutting_down) {
-        log_warn("Failed to join audio render thread for client %u during shutdown (continuing): %s", GET_OPTION(client_id),
+        log_warn("Failed to join audio render thread for client %u during shutdown (continuing): %s", client->client_id,
                  SAFE_STRERROR(result));
       } else {
-        log_error("Failed to join audio render thread for client %u: %s", GET_OPTION(client_id), SAFE_STRERROR(result));
+        log_error("Failed to join audio render thread for client %u: %s", client->client_id, SAFE_STRERROR(result));
       }
     }
     // Clear thread handle safely using platform abstraction
-    ascii_thread_init(&GET_OPTION(audio_render_thread));
+    ascii_thread_init(&client->audio_render_thread);
   }
 
   // DO NOT destroy the mutex here - client.c will handle it
-  // mutex_destroy(&GET_OPTION(client_state_mutex));
+  // mutex_destroy(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_debug("Successfully destroyed render threads for client %u", GET_OPTION(client_id));
+  log_debug("Successfully destroyed render threads for client %u", client->client_id);
 #endif
 }
