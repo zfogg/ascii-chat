@@ -44,8 +44,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "asciichat_errno.h"
-#include "network/acip/protocol.h"
-#include "network/acip/acds.h"
+#include "networking/acip/protocol.h"
+#include "networking/acip/acds.h"
 #include "network/packet.h"
 #include "platform/socket.h"
 

@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "network/packet.h"
-#include "network/acip/protocol.h"
+#include "networking/acip/protocol.h"
 #include "networking/webrtc/stun.h"
 #include "networking/webrtc/turn.h"
 

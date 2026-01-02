@@ -9,8 +9,8 @@
  * @date January 2026
  */
 
-#include "network/acip/send.h"
-#include "network/acip/transport.h"
+#include "networking/acip/send.h"
+#include "networking/acip/transport.h"
 #include "network/packet.h"
 #include "buffer_pool.h"
 #include "util/overflow.h"

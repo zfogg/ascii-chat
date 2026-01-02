@@ -45,7 +45,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "../packet.h"
+#include "network/packet.h"
 
 #ifdef __cplusplus
 extern "C" {

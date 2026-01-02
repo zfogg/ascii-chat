@@ -32,7 +32,7 @@
 #include <stdbool.h>
 #include "asciichat_errno.h"
 #include "platform/socket.h"
-#include "network/acip/acds.h"
+#include "networking/acip/acds.h"
 
 // ============================================================================
 // ACDS Client Configuration
