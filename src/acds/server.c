@@ -429,7 +429,7 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
   acip_session_joined_t resp;
   memset(&resp, 0, sizeof(resp));
 
-  asciichat_error_t join_result = session_join(server->sessions, req, &resp);
+  asciichat_error_t join_result = session_join(server->sessions, req, &server->config, &resp);
   if (join_result == ASCIICHAT_OK && resp.success) {
     acip_send_session_joined(transport, &resp);
 
