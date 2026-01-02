@@ -1681,8 +1681,8 @@ static void acip_server_on_audio_opus(const void *opus_data, size_t opus_len, vo
 static void acip_server_on_audio_opus_batch(const void *batch_data, size_t batch_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_client_join(const void *join_data, size_t data_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_client_leave(void *client_ctx, void *app_ctx);
-static void acip_server_on_stream_start(uint8_t stream_types, void *client_ctx, void *app_ctx);
-static void acip_server_on_stream_stop(uint8_t stream_types, void *client_ctx, void *app_ctx);
+static void acip_server_on_stream_start(uint32_t stream_types, void *client_ctx, void *app_ctx);
+static void acip_server_on_stream_stop(uint32_t stream_types, void *client_ctx, void *app_ctx);
 static void acip_server_on_capabilities(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_ping(void *client_ctx, void *app_ctx);
 static void acip_server_on_pong(void *client_ctx, void *app_ctx);
@@ -1852,13 +1852,13 @@ static void acip_server_on_client_leave(void *client_ctx, void *app_ctx) {
   handle_client_leave_packet(client, NULL, 0);
 }
 
-static void acip_server_on_stream_start(uint8_t stream_types, void *client_ctx, void *app_ctx) {
+static void acip_server_on_stream_start(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
   handle_stream_start_packet(client, &stream_types, sizeof(stream_types));
 }
 
-static void acip_server_on_stream_stop(uint8_t stream_types, void *client_ctx, void *app_ctx) {
+static void acip_server_on_stream_stop(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
   handle_stream_stop_packet(client, &stream_types, sizeof(stream_types));
