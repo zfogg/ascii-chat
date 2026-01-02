@@ -351,10 +351,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-core
         ${ZSTD_LIBRARIES}
         sqlite3  # Rate limiting SQLite backend
+        libdatachannel  # WebRTC DataChannels for P2P transport
     )
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} sqlite3)
+    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} sqlite3 libdatachannel)
 endif()
 
 # Core module was moved earlier in the dependency chain (Module 7)
@@ -769,6 +770,11 @@ endif()
 # Link WebRTC audio processing library (AEC3) to shared library
 if(TARGET webrtc_audio_processing)
     target_link_libraries(ascii-chat-shared PRIVATE webrtc_audio_processing)
+endif()
+
+# Link libdatachannel for WebRTC P2P connections
+if(TARGET libdatachannel)
+    target_link_libraries(ascii-chat-shared PRIVATE libdatachannel)
 endif()
 
 # Add build timing for ascii-chat-shared library
