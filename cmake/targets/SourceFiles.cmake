@@ -257,6 +257,7 @@ set(NETWORK_SRCS
     lib/networking/webrtc/webrtc.c
     lib/networking/webrtc/transport.c
     lib/networking/webrtc/peer_manager.c
+    lib/networking/webrtc/turn_credentials.c
     # ACIP protocol library (transport-agnostic)
     lib/networking/acip/client.c
     lib/networking/acip/server.c
