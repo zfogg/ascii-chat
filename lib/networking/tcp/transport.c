@@ -9,7 +9,7 @@
  * @date January 2026
  */
 
-#include "network/acip/transport.h"
+#include "networking/acip/transport.h"
 #include "network/packet.h"
 #include "network/network.h"
 #include "log/logging.h"
@@ -137,6 +137,7 @@ static const acip_transport_methods_t tcp_methods = {
     .get_type = tcp_get_type,
     .get_socket = tcp_get_socket,
     .is_connected = tcp_is_connected,
+    .destroy_impl = NULL, // No custom cleanup needed
 };
 
 // =============================================================================
@@ -191,6 +192,11 @@ void acip_transport_destroy(acip_transport_t *transport) {
   if (transport->methods && transport->methods->close && transport->methods->is_connected &&
       transport->methods->is_connected(transport)) {
     transport->methods->close(transport);
+  }
+
+  // Call custom destroy implementation if provided
+  if (transport->methods && transport->methods->destroy_impl) {
+    transport->methods->destroy_impl(transport);
   }
 
   // Free implementation data

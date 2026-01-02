@@ -10,7 +10,7 @@
 #include <netdb.h>
 #include <errno.h>
 
-#include "network/tcp_server.h"
+#include "networking/tcp/server.h"
 #include "common.h"
 #include "log/logging.h"
 #include "platform/socket.h"
