@@ -14,6 +14,10 @@
 #include "network/network.h"
 #include "log/logging.h"
 #include "platform/socket.h"
+#include "crypto/crypto.h"
+#include "buffer_pool.h"
+#include "util/endian.h"
+#include "network/crc32.h"
 #include <string.h>
 
 /**
@@ -61,8 +65,64 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
     return SET_ERRNO(ERROR_NETWORK, "TCP transport not connected");
   }
 
-  // Send raw data (already has packet header from send.c)
-  return tcp_send_all(tcp->sockfd, data, len);
+  // Data already has packet header from send.c, so we need to extract the type
+  // to determine if this is a handshake packet (which should NOT be encrypted)
+  if (len < sizeof(packet_header_t)) {
+    return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", len, sizeof(packet_header_t));
+  }
+
+  // Extract packet type from header
+  const packet_header_t *header = (const packet_header_t *)data;
+  uint16_t packet_type = NET_TO_HOST_U16(header->type);
+
+  // Check if encryption is needed
+  bool should_encrypt = false;
+  if (transport->crypto_ctx && crypto_is_ready(transport->crypto_ctx)) {
+    // Handshake packets are ALWAYS sent unencrypted
+    if (!packet_is_handshake_type((packet_type_t)packet_type)) {
+      should_encrypt = true;
+    }
+  }
+
+  // If no encryption needed, send raw data
+  if (!should_encrypt) {
+    return tcp_send_all(tcp->sockfd, data, len);
+  }
+
+  // Encrypt the entire packet (header + payload)
+  size_t ciphertext_size = len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
+  uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
+  if (!ciphertext) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ciphertext buffer");
+  }
+
+  size_t ciphertext_len;
+  crypto_result_t result =
+      crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
+  if (result != CRYPTO_OK) {
+    buffer_pool_free(NULL, ciphertext, ciphertext_size);
+    return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
+  }
+
+  // Build PACKET_TYPE_ENCRYPTED header
+  packet_header_t encrypted_header;
+  encrypted_header.magic = HOST_TO_NET_U32(PACKET_MAGIC);
+  encrypted_header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
+  encrypted_header.length = HOST_TO_NET_U32((uint32_t)ciphertext_len);
+  encrypted_header.crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len));
+  encrypted_header.client_id = 0;
+
+  // Send encrypted packet: header + ciphertext
+  asciichat_error_t send_result = ASCIICHAT_OK;
+  send_result = tcp_send_all(tcp->sockfd, &encrypted_header, sizeof(encrypted_header));
+  if (send_result == ASCIICHAT_OK) {
+    send_result = tcp_send_all(tcp->sockfd, ciphertext, ciphertext_len);
+  }
+
+  buffer_pool_free(NULL, ciphertext, ciphertext_size);
+
+  log_debug_every(LOG_RATE_SLOW, "Sent encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", packet_type);
+  return send_result;
 }
 
 static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, size_t *out_len,
