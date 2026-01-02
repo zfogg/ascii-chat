@@ -488,7 +488,7 @@ void log_set_terminal_output(bool enabled) {
     log_error("Options not initialized");
     return;
   }
-  if (enabled && opts && GET_OPTION(quiet)) {
+  if (enabled && GET_OPTION(quiet)) {
     return; // Silently ignore attempts to enable terminal output when --quiet is set
   }
   atomic_store(&g_log.terminal_output_enabled, enabled);

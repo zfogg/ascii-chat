@@ -586,7 +586,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Track sent samples for analysis
-      if (opts && GET_OPTION(audio_analysis_enabled)) {
+      if (GET_OPTION(audio_analysis_enabled)) {
         for (int i = 0; i < samples_read; i++) {
           audio_analysis_track_sent_sample(audio_buffer[i]);
         }
@@ -636,7 +636,7 @@ static void *audio_capture_thread_func(void *arg) {
               batch_total_size += (size_t)opus_len;
               batch_frame_count++;
 
-              if (opts && GET_OPTION(audio_analysis_enabled)) {
+              if (GET_OPTION(audio_analysis_enabled)) {
                 audio_analysis_track_sent_packet((size_t)opus_len);
               }
             }

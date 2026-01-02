@@ -200,7 +200,7 @@ int client_crypto_init(void) {
   }
 
   // Check if encryption is disabled
-  if (opts && GET_OPTION(no_encrypt)) {
+  if (GET_OPTION(no_encrypt)) {
     log_info("Encryption disabled via --no-encrypt");
     log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
     return 0;
@@ -300,7 +300,7 @@ int client_crypto_init(void) {
       log_info("Password authentication enabled alongside SSH key");
     }
 
-  } else if (opts && strlen(GET_OPTION(password)) > 0) {
+  } else if (strlen(GET_OPTION(password)) > 0) {
     // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
     result = crypto_handshake_init_with_password(&g_crypto_ctx, false, GET_OPTION(password)); // false = client
@@ -337,7 +337,7 @@ int client_crypto_init(void) {
   }
 
   // If --require-client-verify is set, perform ACDS session lookup for server identity
-  if (opts && GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
+  if (GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
     log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
 
     // Connect to ACDS server (default: localhost:27225)
@@ -396,7 +396,7 @@ int client_crypto_init(void) {
  */
 int client_crypto_handshake(socket_t socket) {
   // Get options from RCU state// If client has --no-encrypt, skip handshake entirely
-  if (opts && GET_OPTION(no_encrypt)) {
+  if (GET_OPTION(no_encrypt)) {
     log_debug("Client has --no-encrypt, skipping crypto handshake");
     return 0;
   }
@@ -660,7 +660,7 @@ int client_crypto_handshake(socket_t socket) {
  * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
-  // Get options from RCU stateif (!g_crypto_initialized || (opts && GET_OPTION(no_encrypt))) {
+  // Get options from RCU stateif (!g_crypto_initialized || (GET_OPTION(no_encrypt))) {
     return false;
   }
 

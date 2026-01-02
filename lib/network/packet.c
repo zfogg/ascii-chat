@@ -447,13 +447,13 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   // Get options from RCU state
 
   // Skip compression for pre-compressed data (Opus audio) or if --no-compress flag is set
-  bool should_skip_compression = packet_is_precompressed(type) || (opts && GET_OPTION(no_compress));
+  bool should_skip_compression = packet_is_precompressed(type) || (GET_OPTION(no_compress));
   if (!should_skip_compression && len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
     void *temp_compressed = NULL;
     size_t compressed_size = 0;
 
     // Use configured compression level from options (default: 1 for fastest compression)
-    int compression_level = (opts && GET_OPTION(compression_level) > 0) ? GET_OPTION(compression_level) : 1;
+    int compression_level = (GET_OPTION(compression_level) > 0) ? GET_OPTION(compression_level) : 1;
     asciichat_error_t compress_result = compress_data(data, len, &temp_compressed, &compressed_size, compression_level);
     if (compress_result == ASCIICHAT_OK) {
       double ratio = (double)compressed_size / (double)len;

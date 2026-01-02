@@ -128,7 +128,7 @@ static int mirror_display_init(void) {
   }
 
   // Initialize ASCII output
-  ascii_write_init(g_mirror_tty_info.fd, !(opts && GET_OPTION(snapshot_mode)));
+  ascii_write_init(g_mirror_tty_info.fd, !(GET_OPTION(snapshot_mode)));
 
   return 0;
 }
@@ -175,7 +175,7 @@ static void mirror_write_frame(const char *frame_data) {
 
     // Strip all ANSI escape sequences if --strip-ansi is set
     char *stripped = NULL;
-    if (opts && GET_OPTION(strip_ansi)) {
+    if (GET_OPTION(strip_ansi)) {
       stripped = ansi_strip_escapes(output_data, output_len);
       if (stripped) {
         output_data = stripped;
@@ -249,7 +249,7 @@ int mirror_main(void) {
   size_t palette_len = 0;
   char luminance_palette[256] = {0};
 
-  const char *custom_chars = (opts && GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
+  const char *custom_chars = (GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
   palette_type_t palette_type = opts ? GET_OPTION(palette_type) : PALETTE_STANDARD;
   if (initialize_client_palette(palette_type, custom_chars, palette_chars, &palette_len, luminance_palette) != 0) {
     log_fatal("Failed to initialize palette");
@@ -265,7 +265,7 @@ int mirror_main(void) {
   // Snapshot mode timing
   struct timespec snapshot_start_time = {0, 0};
   bool snapshot_done = false;
-  if (opts && GET_OPTION(snapshot_mode)) {
+  if (GET_OPTION(snapshot_mode)) {
     (void)clock_gettime(CLOCK_MONOTONIC, &snapshot_start_time);
   }
 
@@ -291,7 +291,7 @@ int mirror_main(void) {
     }
 
     // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
-    if (opts && GET_OPTION(snapshot_mode) && !snapshot_done) {
+    if (GET_OPTION(snapshot_mode) && !snapshot_done) {
       double elapsed_sec = (double)(current_time.tv_sec - snapshot_start_time.tv_sec) +
                            (double)(current_time.tv_nsec - snapshot_start_time.tv_nsec) / 1e9;
 
@@ -321,7 +321,7 @@ int mirror_main(void) {
     if (ascii_frame) {
       // When piping/redirecting in snapshot mode, only output the final frame
       // When outputting to TTY, show live preview frames
-      bool snapshot_mode = opts && GET_OPTION(snapshot_mode);
+      bool snapshot_mode = GET_OPTION(snapshot_mode);
       bool should_write = !snapshot_mode || g_mirror_has_tty || snapshot_done;
       if (should_write) {
         mirror_write_frame(ascii_frame);

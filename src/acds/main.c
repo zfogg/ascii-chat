@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   }
 
   // Initialize logging using parsed options
-  const char *log_file = (opts && GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : NULL;
+  const char *log_file = (GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : NULL;
   log_level_t log_level = opts ? GET_OPTION(log_level) : LOG_INFO;
   log_init(log_file, log_level, false, false);
 

@@ -359,7 +359,7 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
 
   // Get options from RCU state// For terminal: print every frame until final snapshot
   // For non-terminal: only print the final snapshot frame
-  if (g_has_tty || (!g_has_tty && opts && GET_OPTION(snapshot_mode) && is_snapshot_frame)) {
+  if (g_has_tty || (!g_has_tty && GET_OPTION(snapshot_mode) && is_snapshot_frame)) {
     if (is_snapshot_frame) {
       // Write the final frame to the terminal as well, not just to stdout
       write_frame_to_output(frame_data, true);
@@ -368,7 +368,7 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
     // The real ASCII data frame write call
     write_frame_to_output(frame_data, g_has_tty && !is_snapshot_frame);
 
-    if (opts && GET_OPTION(snapshot_mode) && is_snapshot_frame) {
+    if (GET_OPTION(snapshot_mode) && is_snapshot_frame) {
       // A newline at the end of the snapshot of ASCII art to end the file
       printf("\n");
     }
