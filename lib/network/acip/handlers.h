@@ -152,10 +152,10 @@ typedef struct {
   void (*on_client_leave)(void *client_ctx, void *app_ctx);
 
   /** @brief Called when client starts streaming */
-  void (*on_stream_start)(uint8_t stream_types, void *client_ctx, void *app_ctx);
+  void (*on_stream_start)(uint32_t stream_types, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client stops streaming */
-  void (*on_stream_stop)(uint8_t stream_types, void *client_ctx, void *app_ctx);
+  void (*on_stream_stop)(uint32_t stream_types, void *client_ctx, void *app_ctx);
 
   /** @brief Called when client sends capabilities */
   void (*on_capabilities)(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx);
