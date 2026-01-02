@@ -633,11 +633,16 @@ static asciichat_error_t handle_server_stream_start(const void *payload, size_t 
     return ASCIICHAT_OK;
   }
 
-  if (payload_len < sizeof(uint8_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_START payload too small");
+  if (payload_len < sizeof(uint32_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_START payload too small (got %zu, expected %zu)", payload_len,
+                     sizeof(uint32_t));
   }
 
-  uint8_t stream_types = *(const uint8_t *)payload;
+  // Read stream_types as uint32_t (network byte order)
+  uint32_t stream_types_net;
+  memcpy(&stream_types_net, payload, sizeof(uint32_t));
+  uint32_t stream_types = NET_TO_HOST_U32(stream_types_net);
+
   callbacks->on_stream_start(stream_types, client_ctx, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
@@ -648,11 +653,16 @@ static asciichat_error_t handle_server_stream_stop(const void *payload, size_t p
     return ASCIICHAT_OK;
   }
 
-  if (payload_len < sizeof(uint8_t)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_STOP payload too small");
+  if (payload_len < sizeof(uint32_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "STREAM_STOP payload too small (got %zu, expected %zu)", payload_len,
+                     sizeof(uint32_t));
   }
 
-  uint8_t stream_types = *(const uint8_t *)payload;
+  // Read stream_types as uint32_t (network byte order)
+  uint32_t stream_types_net;
+  memcpy(&stream_types_net, payload, sizeof(uint32_t));
+  uint32_t stream_types = NET_TO_HOST_U32(stream_types_net);
+
   callbacks->on_stream_stop(stream_types, client_ctx, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
