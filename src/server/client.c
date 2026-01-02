@@ -131,6 +131,7 @@
 #include "network/acip/handlers.h"
 #include "network/acip/transport.h"
 #include "network/acip/send.h"
+#include "network/acip/receive.h"
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
@@ -997,147 +998,44 @@ void *client_receive_thread(void *arg) {
          client->socket != INVALID_SOCKET_VALUE) {
 
     // Use unified secure packet reception with auto-decryption
-    // CRITICAL: Check client_id is still valid before accessing client fields
+    // CRITICAL: Check client_id is still valid before accessing transport
     // This prevents accessing freed memory if remove_client() has zeroed the client struct
     if (atomic_load(&client->client_id) == 0) {
       log_debug("Client client_id reset, exiting receive thread");
       break;
     }
 
-    // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
-    // Crypto context is stable after handshake and stored in client struct
-    // BUT: Must verify client is still active before accessing crypto context
-    const crypto_context_t *crypto_ctx = NULL;
-
-    // Check if crypto is ready without acquiring rwlock (optimization for receive thread)
-    // CRITICAL: Check client_id before accessing crypto fields to prevent use-after-free
-    uint32_t client_id_check = atomic_load(&client->client_id);
-    if (client_id_check == 0) {
-      log_debug("Client client_id reset during crypto check, exiting receive thread");
-      break;
-    }
-
-    // CRITICAL: Check client_id AGAIN before accessing crypto fields - they may have been zeroed
-    client_id_check = atomic_load(&client->client_id);
-    if (client_id_check == 0) {
-      log_debug("Client client_id reset before crypto check, exiting receive thread");
-      break;
-    }
-
-    // Protect crypto field access with mutex to prevent race conditions
-    mutex_lock(&client->client_state_mutex);
-    bool crypto_ready = !GET_OPTION(no_encrypt) && client->crypto_initialized &&
-                        crypto_handshake_is_ready(&client->crypto_handshake_ctx);
-
-    if (crypto_ready) {
-      // CRITICAL: Check client_id again before getting crypto context - prevent use-after-free
-      client_id_check = atomic_load(&client->client_id);
-      if (client_id_check == 0) {
-        mutex_unlock(&client->client_state_mutex);
-        log_debug("Client client_id reset before getting crypto context, exiting receive thread");
-        break;
-      }
-      crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    }
-    mutex_unlock(&client->client_state_mutex);
-    packet_envelope_t envelope;
-
-    // CRITICAL: Check client_id again before accessing socket - prevent use-after-free
-    client_id_check = atomic_load(&client->client_id);
-    if (client_id_check == 0) {
-      log_debug("Client client_id reset before socket access, exiting receive thread");
-      break;
-    }
-
-    // Socket access needs mutex protection to prevent race with remove_client()
-    mutex_lock(&client->client_state_mutex);
-    socket_t socket = client->socket;
-    mutex_unlock(&client->client_state_mutex);
-
-    if (socket == INVALID_SOCKET_VALUE) {
-      log_warn("SOCKET_DEBUG: socket is INVALID, client may be disconnecting");
-      break;
-    }
-
-    // Use per-client crypto_ready state instead of global GET_OPTION(no_encrypt)
-    // This ensures encryption is only enforced AFTER this specific client completes the handshake
-    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, crypto_ready, &envelope);
-
-    // Check if socket became invalid during the receive operation
-    if (result == PACKET_RECV_ERROR && (errno == EIO || errno == EBADF)) {
-      // CRITICAL: Check client_id before accessing mutex - mutex may have been destroyed
-      client_id_check = atomic_load(&client->client_id);
-      if (client_id_check == 0) {
-        log_debug("Client client_id reset during error check, exiting receive thread");
-        break;
-      }
-
-      // Socket was closed by another thread, check if client is being removed
-      // NOTE: Even though we checked client_id, the mutex might still be destroyed
-      // if remove_client() is destroying it. Use try-lock or check client_id again after.
-      mutex_lock(&client->client_state_mutex);
-      client_id_check = atomic_load(&client->client_id);
-      bool socket_invalid = (client_id_check == 0) || (client->socket == INVALID_SOCKET_VALUE);
-      mutex_unlock(&client->client_state_mutex);
-      if (socket_invalid || client_id_check == 0) {
-        log_warn("SOCKET_DEBUG: Client %d socket was closed by another thread (errno=%d)", client_id_check, errno);
-        break;
-      }
-    }
+    // Receive and dispatch packet using ACIP transport API
+    // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
+    asciichat_error_t acip_result =
+        acip_transport_receive_and_dispatch_server(client->transport, client, &g_acip_server_callbacks);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
-      // Free any data that might have been allocated
-      if (envelope.allocated_buffer) {
-        buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
-      }
       break;
     }
 
-    // Handle different result codes
-    if (result == PACKET_RECV_EOF) {
-      log_debug("Client %u disconnected (clean close)", client->client_id);
-      break;
-    }
-
-    if (result == PACKET_RECV_ERROR) {
-      // Check if this is a timeout error
-      if (errno == ETIMEDOUT) {
-        log_debug("Client %u receive timeout (normal behavior)", client->client_id);
-        // Timeout is normal - just continue the loop
-        continue;
-      }
-      log_error("DISCONNECT: Error receiving from client %u: %s", client->client_id, SAFE_STRERROR(errno));
-      break;
-    }
-
-    if (result == PACKET_RECV_SECURITY_VIOLATION) {
-      log_error_client(
-          client, "SECURITY VIOLATION: Unencrypted packet received when encryption required - terminating connection");
-      // Exit the server as a security measure
-      atomic_store(&g_server_should_exit, true);
-      break;
-    }
-
-    // Extract packet details from envelope
-    packet_type_t type = envelope.type;
-    void *data = envelope.data;
-    size_t len = envelope.len;
-    // Note: sender_id removed - client_id already validated by crypto handshake
-
-    // Handle packet using ACIP handler system
-    // NOTE: PACKET_TYPE_ENCRYPTED is now handled automatically by receive_packet_secure()
-    // Rate limiting is checked inside process_decrypted_packet() for legacy handlers
-    asciichat_error_t acip_result = acip_handle_server_packet(NULL, type, data, len, client, &g_acip_server_callbacks);
-
+    // Handle receive errors
     if (acip_result != ASCIICHAT_OK) {
-      log_warn("ACIP handler failed for packet type %d from client %u: %s", type, client->client_id,
-               asciichat_error_string(acip_result));
-    }
+      // Check error type to determine if we should disconnect
+      asciichat_error_context_t err_ctx;
+      if (HAS_ERRNO(&err_ctx)) {
+        if (err_ctx.code == ERROR_NETWORK) {
+          // Network error or EOF - client disconnected
+          log_debug("Client %u disconnected (network error): %s", client->client_id, err_ctx.context_message);
+          break;
+        } else if (err_ctx.code == ERROR_CRYPTO) {
+          // Security violation
+          log_error_client(client,
+                           "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
+          atomic_store(&g_server_should_exit, true);
+          break;
+        }
+      }
 
-    // Free the allocated buffer (not the data pointer which may be offset into it)
-    if (envelope.allocated_buffer) {
-      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+      // Other errors - log but don't disconnect immediately
+      log_warn("ACIP receive/dispatch failed for client %u: %s", client->client_id,
+               asciichat_error_string(acip_result));
     }
   }
 

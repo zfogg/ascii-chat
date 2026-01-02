@@ -89,6 +89,7 @@
 #include "network/av.h"
 #include "network/acip/handlers.h"
 #include "network/acip/transport.h"
+#include "network/acip/receive.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "util/endian.h"
@@ -961,58 +962,37 @@ static void *data_reception_thread_func(void *arg) {
       continue;
     }
 
-    // Use unified secure packet reception with auto-decryption
-    // Use per-client crypto ready state instead of global opt_no_encrypt
-    // Encryption is enforced only AFTER this client completes the handshake
-    bool crypto_ready = crypto_client_is_ready();
-    const crypto_context_t *crypto_ctx = crypto_ready ? crypto_client_get_context() : NULL;
-    packet_envelope_t envelope;
-    packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx, crypto_ready, &envelope);
-
-    // Handle different result codes
-    if (result == PACKET_RECV_EOF) {
-      log_debug("Server closed connection");
+    // Receive and dispatch packet using ACIP transport API
+    // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
+    acip_transport_t *transport = server_connection_get_transport();
+    if (!transport) {
+      log_error("Transport not available, connection lost");
       server_connection_lost();
       break;
     }
 
-    if (result == PACKET_RECV_ERROR) {
-      log_error("Failed to receive packet, errno=%d (%s)", errno, SAFE_STRERROR(errno));
-      server_connection_lost();
-      break;
-    }
+    asciichat_error_t acip_result = acip_transport_receive_and_dispatch_client(transport, &g_acip_client_callbacks);
 
-    if (result == PACKET_RECV_SECURITY_VIOLATION) {
-      log_error("SECURITY: Server violated encryption policy");
-      log_error("SECURITY: This is a critical security violation - exiting immediately");
-      exit(1); // Exit immediately on security violation
-    }
-
-    // Extract packet details from envelope
-    packet_type_t type = envelope.type;
-    void *data = envelope.data;
-    size_t len = envelope.len;
-
-    // Handle all packets through ACIP protocol layer (including crypto rekey)
-    // Note: We don't have an actual transport instance, so pass NULL
-    // The handlers don't use the transport parameter for client-side processing
-    asciichat_error_t acip_result = acip_handle_client_packet(NULL, type, data, len, &g_acip_client_callbacks);
+    // Handle receive/dispatch errors
     if (acip_result != ASCIICHAT_OK) {
-      log_warn("ACIP handler failed for packet type %d: %s", type, asciichat_error_string(acip_result));
-    }
+      // Check error type to determine action
+      asciichat_error_context_t err_ctx;
+      if (HAS_ERRNO(&err_ctx)) {
+        if (err_ctx.code == ERROR_NETWORK) {
+          // Network error or EOF - server disconnected
+          log_debug("Server disconnected (network error): %s", err_ctx.context_message);
+          server_connection_lost();
+          break;
+        } else if (err_ctx.code == ERROR_CRYPTO) {
+          // Security violation - exit immediately
+          log_error("SECURITY: Server violated encryption policy");
+          log_error("SECURITY: This is a critical security violation - exiting immediately");
+          exit(1);
+        }
+      }
 
-    // Check if error handler set disconnect flag
-    bool should_disconnect = (type == PACKET_TYPE_ERROR_MESSAGE);
-
-    // Clean up packet buffer using the allocated_buffer pointer, not the data pointer
-    // The data pointer is offset into the buffer, but we need to free the actual allocated buffer
-    if (envelope.allocated_buffer && envelope.allocated_size > 0) {
-      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
-    }
-
-    if (should_disconnect) {
-      log_info("Terminating data reception thread due to server error packet");
-      break;
+      // Other errors - log warning but continue
+      log_warn("ACIP receive/dispatch failed: %s", asciichat_error_string(acip_result));
     }
   }
 
