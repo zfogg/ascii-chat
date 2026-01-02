@@ -25,6 +25,7 @@ function(configure_include_directories)
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/deps/tomlc17/src
         ${CMAKE_SOURCE_DIR}/deps/uthash/src
+        ${CMAKE_SOURCE_DIR}/deps/mdns
     )
 
     # Add dependency include directories (matching pkg-config approach)
