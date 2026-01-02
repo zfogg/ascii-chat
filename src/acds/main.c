@@ -77,6 +77,19 @@ int main(int argc, char **argv) {
 
   // Initialize logging using parsed options
   const options_t *opts = options_get();
+
+  // Handle --help and --version early
+  if (opts && opts->help) {
+    usage(stdout, MODE_ACDS);
+    return 0;
+  }
+
+  if (opts && opts->version) {
+    printf("ascii-chat-acds version %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE,
+           ASCII_CHAT_BUILD_DATE);
+    return 0;
+  }
+
   const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "acds.log";
   log_level_t log_level = GET_OPTION(log_level);
   log_init(log_file, log_level, false, false);
@@ -266,7 +279,7 @@ int main(int argc, char **argv) {
   //   1. UPnP (works on ~90% of home routers)
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-  if (GET_OPTION(enable_upnp)) {
+  if (GET_OPTION(enable_upnp) && !GET_OPTION(no_upnp)) {
     asciichat_error_t upnp_result = nat_upnp_open(config.port, "ASCII-Chat ACDS", &g_upnp_ctx);
 
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
@@ -280,7 +293,11 @@ int main(int argc, char **argv) {
       printf("📡 Clients behind strict NATs will use WebRTC fallback\n");
     }
   } else {
-    log_info("UPnP: Disabled via --upnp=false option");
+    if (GET_OPTION(no_upnp)) {
+      log_info("UPnP: Disabled via --no-upnp option");
+    } else {
+      log_info("UPnP: Disabled via environment variable or configuration");
+    }
     printf("📡 WebRTC will be used for all clients\n");
   }
 
