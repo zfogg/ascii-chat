@@ -55,6 +55,7 @@ typedef enum {
   ERROR_CRYPTO_INIT = 5,   /**< Cryptographic initialization failed */
   ERROR_LOGGING_INIT = 6,  /**< Logging system initialization failed */
   ERROR_PLATFORM_INIT = 7, /**< Platform-specific initialization failed */
+  ERROR_INIT = 8,          /**< General initialization failed */
 
   /* Hardware/Device errors (20-39) */
   ERROR_WEBCAM = 20,            /**< Webcam initialization or capture failed */
@@ -149,6 +150,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Logging initialization failed";
   case ERROR_PLATFORM_INIT:
     return "Platform initialization failed";
+  case ERROR_INIT:
+    return "Initialization failed";
   case ERROR_WEBCAM:
     return "Webcam error";
   case ERROR_WEBCAM_IN_USE:
