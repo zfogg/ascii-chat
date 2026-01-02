@@ -242,22 +242,28 @@ set(NETWORK_SRCS
     lib/network/crc32.c
     lib/network/packet_queue.c
     lib/network/http_client.c
-    lib/network/tcp_server.c
-    lib/network/tcp_client.c
     lib/network/errors.c
-    # ACIP protocol library (client and server)
-    lib/network/acip/client.c
-    lib/network/acip/server.c
-    lib/network/acip/send.c
-    lib/network/acip/receive.c
-    lib/network/acip/handlers.c
-    lib/network/acip/acds_handlers.c
-    lib/network/acip/transport_tcp.c
-    lib/network/acip/transport_websocket.c
     # Rate limiting library (backend abstraction)
     lib/network/rate_limit/rate_limit.c
     lib/network/rate_limit/memory.c
     lib/network/rate_limit/sqlite.c
+    # TCP transport layer
+    lib/networking/tcp/server.c
+    lib/networking/tcp/client.c
+    lib/networking/tcp/transport.c
+    # WebSocket transport layer
+    lib/networking/websocket/transport.c
+    # WebRTC P2P transport
+    lib/networking/webrtc/webrtc.c
+    lib/networking/webrtc/transport.c
+    lib/networking/webrtc/peer_manager.c
+    # ACIP protocol library (transport-agnostic)
+    lib/networking/acip/client.c
+    lib/networking/acip/server.c
+    lib/networking/acip/send.c
+    lib/networking/acip/receive.c
+    lib/networking/acip/handlers.c
+    lib/networking/acip/acds_handlers.c
 )
 
 # =============================================================================
@@ -346,6 +352,7 @@ set(APP_SRCS
     src/client/capture.c
     src/client/audio.c
     src/client/keepalive.c
+    src/client/webrtc.c
     # Mirror mode sources
     src/mirror/main.c
 )
