@@ -339,34 +339,68 @@ asciichat_error_t options_init(int argc, char **argv) {
   opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
   opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 
-  // Set default log file paths for Release builds
-#ifdef NDEBUG
-  char temp_dir[256];
-  if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
-    char default_log_path[PLATFORM_MAX_PATH_LENGTH];
-    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%sascii-chat.%s.log", temp_dir,
-#if defined(_WIN32) || defined(WIN32)
-                  "\\",
-#else
-                  "/",
-#endif
-                  detected_mode == MODE_SERVER ? "server" : (detected_mode == MODE_MIRROR ? "mirror" : "client"));
+  // Set default log file paths based on build type
+  // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
+  // Debug: MODE.log in current working directory (e.g., ./server.log)
+  char *log_dir = get_log_dir();
+  if (log_dir) {
+    // Determine log filename based on mode
+    const char *log_filename;
+    switch (detected_mode) {
+    case MODE_SERVER:
+      log_filename = "server.log";
+      break;
+    case MODE_CLIENT:
+      log_filename = "client.log";
+      break;
+    case MODE_MIRROR:
+      log_filename = "mirror.log";
+      break;
+    case MODE_ACDS:
+      log_filename = "acds.log";
+      break;
+    default:
+      log_filename = "ascii-chat.log";
+      break;
+    }
 
+    // Build full log file path: log_dir + separator + log_filename
+    char default_log_path[PLATFORM_MAX_PATH_LENGTH];
+    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
+
+    // Validate and normalize the path
     char *normalized_default_log = NULL;
     if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
       SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
       SAFE_FREE(normalized_default_log);
     } else {
+      // Validation failed - use the path as-is (validation may fail in debug builds)
       SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
     }
+
+    SAFE_FREE(log_dir);
   } else {
-    // Fallback if platform_get_temp_dir fails
-    SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
+    // Fallback if get_log_dir() fails - use simple filename in CWD
+    const char *log_filename;
+    switch (detected_mode) {
+    case MODE_SERVER:
+      log_filename = "server.log";
+      break;
+    case MODE_CLIENT:
+      log_filename = "client.log";
+      break;
+    case MODE_MIRROR:
+      log_filename = "mirror.log";
+      break;
+    case MODE_ACDS:
+      log_filename = "acds.log";
+      break;
+    default:
+      log_filename = "ascii-chat.log";
+      break;
+    }
+    SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
   }
-#else
-  // Debug builds: No default log file (empty string)
-  opts.log_file[0] = '\0';
-#endif
 
   // Encryption options default to disabled/empty
   opts.no_encrypt = 0;

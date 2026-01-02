@@ -778,6 +778,44 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size);
  */
 bool platform_get_cwd(char *cwd, size_t path_size);
 
+/**
+ * @brief Access modes for platform_access()
+ *
+ * @ingroup platform
+ */
+#define PLATFORM_ACCESS_EXISTS 0 ///< Check if file/directory exists
+#define PLATFORM_ACCESS_WRITE 2  ///< Check if file/directory is writable
+#define PLATFORM_ACCESS_READ 4   ///< Check if file/directory is readable
+
+/**
+ * @brief Check file/directory access permissions
+ *
+ * Platform-safe wrapper for access() / _access(). Tests whether the calling
+ * process has the requested access to the specified path.
+ *
+ * Platform-specific implementations:
+ *   - POSIX: Uses access() with F_OK, R_OK, W_OK, X_OK modes
+ *   - Windows: Uses _access() with 0, 2, 4, 6 modes
+ *
+ * @param path File or directory path to check
+ * @param mode Access mode to test (PLATFORM_ACCESS_EXISTS, PLATFORM_ACCESS_WRITE, PLATFORM_ACCESS_READ)
+ * @return 0 on success (access permitted), -1 on failure (access denied or path doesn't exist)
+ *
+ * @note Thread-safe on all platforms
+ * @note Does not follow symbolic links on POSIX (uses access() not faccessat())
+ * @note Returns -1 if path is NULL
+ *
+ * @par Example:
+ * @code{.c}
+ * if (platform_access("/tmp", PLATFORM_ACCESS_WRITE) == 0) {
+ *   // Directory is writable
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+int platform_access(const char *path, int mode);
+
 #ifdef __cplusplus
 }
 #endif

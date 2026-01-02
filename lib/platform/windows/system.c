@@ -1592,6 +1592,16 @@ bool platform_get_cwd(char *cwd, size_t path_size) {
   return true;
 }
 
+int platform_access(const char *path, int mode) {
+  if (!path) {
+    return -1;
+  }
+
+  // Windows _access uses the same mode values as our platform-independent modes:
+  // 0 = exists, 2 = write, 4 = read, 6 = read+write
+  return _access(path, mode);
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 // Note: Uses uthash for binary PATH cache (included via system.c)
 #include "../system.c"

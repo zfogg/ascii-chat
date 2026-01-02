@@ -166,6 +166,43 @@ char *expand_path(const char *path);
 char *get_config_dir(void);
 
 /**
+ * @brief Get log directory path appropriate for current build type
+ * @return Path to log directory (must be freed by caller), or NULL on failure
+ *
+ * Returns the appropriate log directory path based on build type. The directory
+ * is created if it doesn't exist (for release builds). The path does NOT include
+ * a trailing directory separator.
+ *
+ * Log directory resolution:
+ * - Debug builds: Current working directory (for fast iteration)
+ * - Release builds: $TMPDIR/ascii-chat/ (Unix: /tmp/ascii-chat/, Windows: %TEMP%\ascii-chat\)
+ *
+ * For release builds, this function automatically creates the ascii-chat subdirectory
+ * if it doesn't exist and verifies it's writable.
+ *
+ * @note Returned path is allocated with malloc() and must be freed by caller.
+ * @note Path does NOT include directory separator at the end.
+ * @note Returns NULL on failure (memory allocation error, directory creation failed, etc.).
+ * @note For release builds, the directory is created with 0700 permissions (owner-only).
+ *
+ * @par Example (Debug Build)
+ * @code
+ * char *log_dir = get_log_dir();
+ * // Returns: "/home/user/myproject" (current working directory)
+ * free(log_dir);
+ * @endcode
+ *
+ * @par Example (Release Build)
+ * @code
+ * char *log_dir = get_log_dir();
+ * // Returns: "/tmp/ascii-chat" (on Unix)
+ * // or: "C:\Users\user\AppData\Local\Temp\ascii-chat" (on Windows)
+ * free(log_dir);
+ * @endcode
+ */
+char *get_log_dir(void);
+
+/**
  * @brief Normalize a path and copy it into the provided buffer.
  *
  * Resolves '.' and '..' components without requiring the path to exist on disk.
