@@ -476,6 +476,11 @@ typedef struct options_state {
   char acds_database_path[OPTIONS_BUFF_SIZE]; ///< ACDS database file path (default: ~/.ascii-chat/acds.db)
 
   // ============================================================================
+  // LAN Discovery Options (client only)
+  // ============================================================================
+  bool lan_discovery; ///< Enable LAN service discovery via mDNS (client only)
+
+  // ============================================================================
   // Network Performance Options
   // ============================================================================
   int compression_level; ///< zstd compression level (1-9)
