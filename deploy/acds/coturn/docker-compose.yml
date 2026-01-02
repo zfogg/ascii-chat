@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  coturn:
+    image: coturn/coturn:latest
+    container_name: ascii-chat-coturn
+    restart: unless-stopped
+
+    # Use host networking for STUN/TURN (required for proper NAT traversal)
+    network_mode: host
+
+    # Mount configuration and data
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - coturn-data:/var/lib/coturn
+      - coturn-logs:/var/log
+
+    # Environment
+    environment:
+      - DETECT_EXTERNAL_IP=yes
+      - DETECT_RELAY_IP=yes
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "nc -zvu localhost 3478 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  coturn-data:
+    driver: local
+  coturn-logs:
+    driver: local

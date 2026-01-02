@@ -1,0 +1,27 @@
+[Unit]
+Description=ASCII-Chat Coturn STUN/TURN Server
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ascii-chat/deploy/acds/coturn
+
+# Start container
+ExecStart=/usr/local/bin/docker-compose up -d
+
+# Stop container
+ExecStop=/usr/local/bin/docker-compose down
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+
+# Security
+User=root
+Group=docker
+
+[Install]
+WantedBy=multi-user.target
