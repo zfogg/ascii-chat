@@ -80,6 +80,12 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
   int remaining_argc;
   char **remaining_argv;
 
+  // Apply defaults from preset before parsing command-line args
+  asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
+  if (defaults_result != ASCIICHAT_OK) {
+    return defaults_result;
+  }
+
   asciichat_error_t result = options_config_parse(config, argc, argv, opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     return result;
