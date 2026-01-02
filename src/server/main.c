@@ -102,6 +102,7 @@
 #include "platform/system.h"
 #include "crypto/keys.h"
 #include "network/rate_limit/rate_limit.h"
+#include "network/mdns.h"
 #include "network/errors.h"
 #include "network/nat/upnp.h"
 
@@ -201,6 +202,17 @@ static tcp_server_t g_tcp_server;
  * @ingroup server_main
  */
 static nat_upnp_context_t *g_upnp_ctx = NULL;
+
+/**
+ * @brief Global mDNS context for LAN service discovery
+ *
+ * Used to advertise the server on the local network via mDNS (Multicast DNS).
+ * Set to NULL if mDNS is disabled or fails to initialize.
+ * Advertises service as "_ascii-chat._tcp.local"
+ *
+ * @ingroup server_main
+ */
+static asciichat_mdns_t *g_mdns_ctx = NULL;
 
 /**
  * @brief Global client manager for signal handler access
@@ -887,6 +899,47 @@ int server_main(void) {
     }
   }
 
+  // Initialize mDNS for LAN service discovery (optional)
+  // mDNS allows clients on the LAN to discover this server without knowing its IP
+  if (!atomic_load(&g_server_should_exit)) {
+    log_debug("Initializing mDNS for LAN service discovery...");
+    g_mdns_ctx = asciichat_mdns_init();
+    if (!g_mdns_ctx) {
+      LOG_ERRNO_IF_SET("Failed to initialize mDNS (non-fatal, LAN discovery disabled)");
+      log_warn("mDNS disabled - LAN service discovery will not be available");
+      g_mdns_ctx = NULL;
+    } else {
+      // Advertise service on the LAN
+      // Build session name from hostname if available
+      char session_name[256] = "ASCII-Chat-Server";
+      char hostname[256] = {0};
+      if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
+        snprintf(session_name, sizeof(session_name), "%s", hostname);
+      }
+
+      asciichat_mdns_service_t service = {
+          .name = session_name,
+          .type = "_ascii-chat._tcp",
+          .host = hostname,
+          .port = (uint16_t)port,
+          .txt_records = NULL,
+          .txt_count = 0,
+      };
+
+      asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
+      if (mdns_advertise_result != ASCIICHAT_OK) {
+        LOG_ERRNO_IF_SET("Failed to advertise mDNS service");
+        log_warn("mDNS advertising failed - LAN discovery disabled");
+        asciichat_mdns_shutdown(g_mdns_ctx);
+        g_mdns_ctx = NULL;
+      } else {
+        printf("🌐 mDNS: Server advertised as '%s.local' on LAN\\n", session_name);
+        log_info("mDNS: Service advertised as '%s._tcp.local' (name=%s, port=%d)", service.type, service.name,
+                 service.port);
+      }
+    }
+  }
+
   // ========================================================================
   // MAIN CONNECTION LOOP - Delegated to tcp_server
   // ========================================================================
@@ -1130,6 +1183,13 @@ skip_acds_session:
   if (g_audio_mixer) {
     mixer_destroy(g_audio_mixer);
     g_audio_mixer = NULL;
+  }
+
+  // Clean up mDNS context
+  if (g_mdns_ctx) {
+    asciichat_mdns_shutdown(g_mdns_ctx);
+    g_mdns_ctx = NULL;
+    log_info("mDNS context shut down");
   }
 
   // Clean up synchronization primitives
