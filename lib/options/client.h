@@ -8,7 +8,7 @@
  * sending local webcam/audio data.
  *
  * **Client-Specific Options**:
- * - Network: `[address][:port]` positional, `--port`
+ * - Network: `[address][:port]` positional, `--port`, `--lan`
  * - Webcam: `--webcam-index`, `--webcam-flip`, `--test-pattern`
  * - Display: `--width`, `--height`, `--color-mode`, `--render-mode`, `--fps`
  * - Audio: `--audio`, `--microphone-index`, `--speakers-index`, `--audio-analysis`
