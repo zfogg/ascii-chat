@@ -57,6 +57,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WebRTC.cmake)
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
 
+# miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Miniupnpc.cmake)
+
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 

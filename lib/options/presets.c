@@ -582,6 +582,10 @@ const options_config_t *options_preset_acds(void) {
                              "0aa9917b4dad1b01631e87a32b875e09", "Credential/password for TURN server authentication",
                              "WEBRTC", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
 
+  options_builder_add_string(b, "turn-secret", '\0', offsetof(options_t, turn_secret), "",
+                             "Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "WEBRTC", false,
+                             "ASCII_CHAT_TURN_SECRET", NULL);
+
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
 

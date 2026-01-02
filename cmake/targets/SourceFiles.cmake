@@ -265,6 +265,8 @@ set(NETWORK_SRCS
     lib/networking/acip/receive.c
     lib/networking/acip/handlers.c
     lib/networking/acip/acds_handlers.c
+    # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
+    lib/nat/upnp.c
 )
 
 # =============================================================================
@@ -364,10 +366,7 @@ set(APP_SRCS
 set(ACDS_SRCS
     src/acds/main.c
     src/acds/server.c
-    src/acds/session.c
     src/acds/signaling.c
-    src/acds/database.c
-    src/acds/identity.c
-    src/acds/strings.c
+    # session.c, database.c, identity.c, strings.c are now in ascii-chat-acds library
 )
 

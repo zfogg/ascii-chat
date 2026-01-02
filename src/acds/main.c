@@ -25,9 +25,13 @@
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "util/path.h"
+#include "nat/upnp.h"
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
+
+// Global UPnP context for cleanup on signal
+static nat_upnp_context_t *g_upnp_ctx = NULL;
 
 /**
  * @brief Signal handler for clean shutdown
@@ -37,6 +41,7 @@ static void signal_handler(int sig) {
   if (g_server) {
     atomic_store(&g_server->tcp_server.running, false);
   }
+  // UPnP context will be cleaned up after server shutdown
 }
 
 int main(int argc, char **argv) {
@@ -230,6 +235,15 @@ int main(int argc, char **argv) {
     }
   }
 
+  // Copy TURN secret for dynamic credential generation
+  const char *turn_secret_str = GET_OPTION(turn_secret);
+  if (turn_secret_str && turn_secret_str[0] != '\0') {
+    SAFE_STRNCPY(config.turn_secret, turn_secret_str, sizeof(config.turn_secret));
+    log_info("TURN dynamic credential generation enabled");
+  } else {
+    config.turn_secret[0] = '\0';
+  }
+
   // Initialize server
   acds_server_t server;
   memset(&server, 0, sizeof(server));
@@ -240,6 +254,29 @@ int main(int argc, char **argv) {
     log_error("Server initialization failed");
     g_server = NULL;
     return result;
+  }
+
+  // =========================================================================
+  // UPnP Port Mapping (Quick Win for Direct TCP)
+  // =========================================================================
+  // Try to open port via UPnP so direct TCP works for ~70% of home users.
+  // If this fails, clients fall back to WebRTC automatically - not fatal.
+  //
+  // Strategy:
+  //   1. UPnP (works on ~90% of home routers)
+  //   2. NAT-PMP fallback (Apple routers)
+  //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
+  asciichat_error_t upnp_result = nat_upnp_open(config.port, "ASCII-Chat ACDS", &g_upnp_ctx);
+
+  if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
+    char public_addr[22];
+    if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
+      printf("🌐 Public endpoint: %s (direct TCP)\n", public_addr);
+      log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
+    }
+  } else {
+    log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
+    printf("📡 Clients behind strict NATs will use WebRTC fallback\n");
   }
 
   // Install signal handlers for clean shutdown
@@ -261,6 +298,12 @@ int main(int argc, char **argv) {
   log_info("Shutting down discovery server...");
   acds_server_shutdown(&server);
   g_server = NULL;
+
+  // Clean up UPnP port mapping
+  if (g_upnp_ctx) {
+    nat_upnp_close(&g_upnp_ctx);
+    log_debug("UPnP port mapping closed");
+  }
 
   log_info("Discovery server stopped");
   return result;
