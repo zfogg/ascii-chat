@@ -86,4 +86,5 @@ typedef struct {
   stun_server_t stun_servers[4]; ///< STUN server configurations
   uint8_t turn_count;            ///< Number of configured TURN servers (0-4)
   turn_server_t turn_servers[4]; ///< TURN server configurations
+  char turn_secret[256];         ///< Shared secret for TURN credential generation (HMAC-SHA1)
 } acds_config_t;

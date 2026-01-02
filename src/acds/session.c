@@ -10,6 +10,7 @@
 #include "acds/main.h"
 #include "acds/strings.h"
 #include "log/logging.h"
+#include "networking/webrtc/turn_credentials.h"
 #include <string.h>
 #include <time.h>
 #include <sodium.h>
@@ -321,9 +322,9 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
 }
 
 asciichat_error_t session_join(session_registry_t *registry, const acip_session_join_t *req,
-                               acip_session_joined_t *resp) {
-  if (!registry || !req || !resp) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, req, or resp is NULL");
+                               const acds_config_t *config, acip_session_joined_t *resp) {
+  if (!registry || !req || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, req, config, or resp is NULL");
   }
 
   memset(resp, 0, sizeof(*resp));
@@ -438,6 +439,21 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
     SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
     resp->server_port = session->server_port;
     resp->session_type = session->session_type;
+
+    // Generate TURN credentials for WebRTC sessions
+    if (session->session_type == SESSION_TYPE_WEBRTC && config->turn_secret[0] != '\0') {
+      turn_credentials_t turn_creds;
+      asciichat_error_t turn_result = turn_generate_credentials(session_string, config->turn_secret, 86400, // 24 hours
+                                                                &turn_creds);
+      if (turn_result == ASCIICHAT_OK) {
+        SAFE_STRNCPY(resp->turn_username, turn_creds.username, sizeof(resp->turn_username));
+        SAFE_STRNCPY(resp->turn_password, turn_creds.password, sizeof(resp->turn_password));
+        log_debug("Generated TURN credentials for session %s", session_string);
+      } else {
+        log_warn("Failed to generate TURN credentials for session %s", session_string);
+      }
+    }
+
     log_info("Participant joined session %s (participants=%d/%d, server=%s:%d, type=%s)", session_string,
              session->current_participants, session->max_participants, resp->server_address, resp->server_port,
              session->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");

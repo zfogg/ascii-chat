@@ -102,11 +102,12 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
  *
  * @param registry Session registry
  * @param req Join request
+ * @param config ACDS server configuration (for TURN credentials)
  * @param resp Join response (output)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t session_join(session_registry_t *registry, const acip_session_join_t *req,
-                               acip_session_joined_t *resp);
+                               const acds_config_t *config, acip_session_joined_t *resp);
 
 /**
  * @brief Leave session
