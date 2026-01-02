@@ -1038,6 +1038,30 @@ bool platform_get_cwd(char *cwd, size_t path_size) {
   return true;
 }
 
+int platform_access(const char *path, int mode) {
+  if (!path) {
+    return -1;
+  }
+
+  // Map platform-independent modes to POSIX modes
+  int posix_mode;
+  switch (mode) {
+  case 0: // PLATFORM_ACCESS_EXISTS
+    posix_mode = F_OK;
+    break;
+  case 2: // PLATFORM_ACCESS_WRITE
+    posix_mode = W_OK;
+    break;
+  case 4: // PLATFORM_ACCESS_READ
+    posix_mode = R_OK;
+    break;
+  default:
+    return -1; // Invalid mode
+  }
+
+  return access(path, posix_mode);
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 #include "../system.c"
 

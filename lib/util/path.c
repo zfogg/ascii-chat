@@ -7,6 +7,7 @@
 #include "path.h"
 #include "common.h"
 #include "platform/system.h"
+#include "platform/fs.h"
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -270,6 +271,75 @@ char *get_config_dir(void) {
   }
 
   return NULL;
+#endif
+}
+
+char *get_log_dir(void) {
+#ifdef NDEBUG
+  // Release builds: Use $TMPDIR/ascii-chat/
+  // Get system temp directory
+  char temp_dir[256];
+  if (!platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
+    // Fallback: Use current working directory if temp dir unavailable
+    char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+    if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+      return NULL;
+    }
+    char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
+    if (!result) {
+      return NULL;
+    }
+    safe_snprintf(result, strlen(cwd_buf) + 1, "%s", cwd_buf);
+    return result;
+  }
+
+  // Build path to ascii-chat subdirectory
+  size_t log_dir_len = strlen(temp_dir) + strlen(PATH_SEPARATOR_STR) + strlen("ascii-chat") + 1;
+  char *log_dir = SAFE_MALLOC(log_dir_len, char *);
+  if (!log_dir) {
+    return NULL;
+  }
+  safe_snprintf(log_dir, log_dir_len, "%s%sascii-chat", temp_dir, PATH_SEPARATOR_STR);
+
+  // Create the directory if it doesn't exist (with owner-only permissions)
+  asciichat_error_t mkdir_result = platform_mkdir(log_dir, DIR_PERM_PRIVATE);
+  if (mkdir_result != ASCIICHAT_OK) {
+    // Directory creation failed - fall back to temp_dir without subdirectory
+    SAFE_FREE(log_dir);
+    char *result = SAFE_MALLOC(strlen(temp_dir) + 1, char *);
+    if (!result) {
+      return NULL;
+    }
+    safe_snprintf(result, strlen(temp_dir) + 1, "%s", temp_dir);
+    return result;
+  }
+
+  // Verify the directory is writable
+  if (platform_access(log_dir, PLATFORM_ACCESS_WRITE) != 0) {
+    // Directory not writable - fall back to temp_dir
+    SAFE_FREE(log_dir);
+    char *result = SAFE_MALLOC(strlen(temp_dir) + 1, char *);
+    if (!result) {
+      return NULL;
+    }
+    safe_snprintf(result, strlen(temp_dir) + 1, "%s", temp_dir);
+    return result;
+  }
+
+  return log_dir;
+#else
+  // Debug builds: Use current working directory
+  char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+    return NULL;
+  }
+
+  char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
+  if (!result) {
+    return NULL;
+  }
+  safe_snprintf(result, strlen(cwd_buf) + 1, "%s", cwd_buf);
+  return result;
 #endif
 }
 
