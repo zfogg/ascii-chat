@@ -479,20 +479,23 @@ These options must appear **before** the mode name:
 --config FILE                # Load configuration from FILE
 --config-create [FILE]       # Create default config and exit
 
-# Logging (IMPORTANT: These come BEFORE the mode!)
+# Logging (can be placed before OR after the mode)
 -L, --log-file FILE          # Redirect logs to FILE
 --log-level LEVEL            # Set log level: dev, debug, info, warn, error, fatal
 -V, --verbose                # Increase log verbosity (stackable: -VV, -VVV)
 -q, --quiet                  # Disable console logging (log to file only)
 ```
 
-**Example:**
+**Examples:**
 ```bash
-# ✅ CORRECT - Binary options before mode
+# ✅ Binary options before mode
 ./build/bin/ascii-chat --log-file /tmp/server.log --verbose server --port 8080
 
-# ❌ WRONG - Binary options after mode will be interpreted as mode options
-./build/bin/ascii-chat server --log-file /tmp/server.log --port 8080  # --log-file not recognized!
+# ✅ Binary options after mode (also works!)
+./build/bin/ascii-chat server --log-file /tmp/server.log --port 8080
+
+# ✅ Mixed positioning
+./build/bin/ascii-chat --log-level debug server --quiet --port 8080
 ```
 
 #### Mode-Level Options: `server`

@@ -52,10 +52,10 @@ Perfect for testing webcam, palette settings, and terminal rendering.
 .SS "Binary-Level Options"
 These options apply to all modes and must be specified \fBbefore\fR the mode argument.
 .TP
-.BR \-h ", " \-\-help
+.BR \-\-help
 Print usage information and exit.
 .TP
-.BR \-V ", " \-\-version
+.BR \-\-version
 Print version information and exit.
 .TP
 .BR \-\-config =\fIPATH\fR
@@ -67,15 +67,15 @@ If PATH is not specified, uses the default location.
 If the file exists, prompts for confirmation to overwrite.
 Supports piped input for scripting (e.g., \fCecho "y" | ascii-chat --config-create\fR).
 .TP
-.BR \-v ", " \-\-verbose
+.BR \-V ", " \-\-verbose
 Increase output verbosity. Can be specified multiple times for increased detail:
 .RS
 .IP \(bu 2
-\fB\-v\fR: More detailed output
+\fB\-V\fR: More detailed output
 .IP \(bu 2
-\fB\-vv\fR: Even more detail
+\fB\-VV\fR: Even more detail
 .IP \(bu 2
-\fB\-vvv\fR: Maximum verbosity
+\fB\-VVV\fR: Maximum verbosity
 .RE
 .TP
 .BR \-L ", " \-\-log\-file =\fIPATH\fR
