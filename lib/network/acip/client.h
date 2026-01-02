@@ -179,6 +179,7 @@ typedef struct {
   uint8_t session_id[16];     ///< Session UUID (if success)
   uint8_t error_code;         ///< Error code (if !success)
   char error_message[129];    ///< Error message (if !success, null-terminated)
+  uint8_t session_type;       ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC (if success)
   char server_address[65];    ///< Server IP/hostname (if success, null-terminated)
   uint16_t server_port;       ///< Server port (if success)
 } acds_session_join_result_t;

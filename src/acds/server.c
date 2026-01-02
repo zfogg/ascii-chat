@@ -273,6 +273,22 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
               req->identity_pubkey[1]);
   }
 
+  // Reachability verification for Direct TCP sessions
+  // WebRTC sessions don't need this since they use P2P mesh with STUN/TURN
+  if (req->session_type == SESSION_TYPE_DIRECT_TCP) {
+    // Verify that the server is actually reachable at the IP it claims
+    // Compare the claimed server address with the actual connection source
+    if (strcmp(req->server_address, client_ip) != 0) {
+      log_warn("SESSION_CREATE rejected from %s: server_address '%s' does not match actual connection IP", client_ip,
+               req->server_address);
+      acip_send_error(transport, ERROR_INVALID_PARAM,
+                      "Direct TCP sessions require server_address to match your actual IP");
+      ACDS_DESTROY_TRANSPORT(transport);
+      return;
+    }
+    log_debug("SESSION_CREATE reachability verified: %s matches connection source", req->server_address);
+  }
+
   acip_session_created_t resp;
   memset(&resp, 0, sizeof(resp));
 
