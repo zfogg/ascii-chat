@@ -438,10 +438,13 @@ The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -
 ./build/bin/ascii-chat.exe client  # Windows
 
 # Connect to a specific server
-./build/bin/ascii-chat client --address 127.0.0.1 --port 27224
+./build/bin/ascii-chat client 127.0.0.1:27224
+
+# Connect to remote server on default port
+./build/bin/ascii-chat client example.com
 
 # Run with custom dimensions (by default it uses terminal size)
-./build/bin/ascii-chat client --width 80 --height 24
+./build/bin/ascii-chat client example.com --width 80 --height 24
 
 # Color support and audio (audio is always enabled on server, optional for client)
 ./build/bin/ascii-chat server --color
@@ -497,10 +500,16 @@ These options must appear **before** the mode name:
 Server-specific options (after `server` keyword):
 
 ```bash
+# Positional Arguments (0-2 addresses)
+[bind-address] [bind-address]  # IPv4 and/or IPv6 bind addresses (default: 127.0.0.1 ::1)
+                               # Examples:
+                               #   server                    (both IPv4 and IPv6 on localhost)
+                               #   server 0.0.0.0            (IPv4 on all interfaces)
+                               #   server 0.0.0.0 ::         (both IPv4 and IPv6 on all interfaces)
+                               #   server :: 192.168.1.100   (IPv6 all + specific IPv4)
+
 # Network Configuration
--a, --address ADDR           # IPv4 bind address (default: 127.0.0.1)
 -p, --port PORT              # Server port (default: 27224)
---address6 ADDR              # IPv6 bind address (default: ::1)
 --max-clients N              # Maximum concurrent clients (default: 32)
 
 # Security
@@ -528,8 +537,14 @@ Server-specific options (after `server` keyword):
 
 **Examples:**
 ```bash
-# Basic server on custom port
-./build/bin/ascii-chat server --port 8080
+# Basic server on localhost (IPv4 + IPv6)
+./build/bin/ascii-chat server
+
+# Server on all interfaces (IPv4 only)
+./build/bin/ascii-chat server 0.0.0.0 --port 8080
+
+# Server on all interfaces (IPv4 + IPv6)
+./build/bin/ascii-chat server 0.0.0.0 :: --port 8080
 
 # Server with password protection
 ./build/bin/ascii-chat server --password "my-secret" --port 8080
@@ -549,9 +564,15 @@ Server-specific options (after `server` keyword):
 Client-specific options (after `client` keyword):
 
 ```bash
+# Positional Argument
+[address][:port]             # Server address with optional port (default: 127.0.0.1:27224)
+                             # Examples:
+                             #   client                       (connect to localhost:27224)
+                             #   client example.com           (connect to example.com:27224)
+                             #   client example.com:8080      (connect to example.com:8080)
+                             #   client 192.168.1.100:9000    (connect to specific IP:port)
+
 # Connection
--a, --address ADDR           # Server address (default: 127.0.0.1)
--p, --port PORT              # Server port (default: 27224)
 --password SECRET            # Password for server authentication
 --server-key KEY             # Expected server key (SSH pub key, github:user, gpg:fingerprint)
 
@@ -578,11 +599,14 @@ Client-specific options (after `client` keyword):
 # Connect to server on localhost
 ./build/bin/ascii-chat client
 
-# Connect to remote server
-./build/bin/ascii-chat client --address example.com --port 8080
+# Connect to remote server on default port
+./build/bin/ascii-chat client example.com
+
+# Connect to remote server on custom port
+./build/bin/ascii-chat client example.com:8080
 
 # Connect with password and custom dimensions
-./build/bin/ascii-chat client --address example.com --password "secret" --width 120 --height 40
+./build/bin/ascii-chat client example.com --password "secret" --width 120 --height 40
 
 # Snapshot mode for testing (single frame)
 ./build/bin/ascii-chat client --snapshot
@@ -591,7 +615,7 @@ Client-specific options (after `client` keyword):
 ./build/bin/ascii-chat client --snapshot --snapshot-delay 5
 
 # Client with debug logging
-./build/bin/ascii-chat --log-file /tmp/client.log --verbose client --address example.com
+./build/bin/ascii-chat --log-file /tmp/client.log --verbose client example.com
 ```
 
 #### Mode-Level Options: `mirror`
