@@ -1,24 +1,38 @@
 #pragma once
 
 /**
- * @file acds/client.h
- * @brief ACDS (ASCII-Chat Discovery Service) client library
+ * @file network/acip/client.h
+ * @brief ACIP client-side protocol library
+ * @ingroup acip
  *
- * This library provides client-side functions for interacting with an ACDS server:
- * - Creating new sessions
- * - Looking up existing sessions
- * - Joining sessions
- * - Managing session lifecycle
+ * Client-side ACIP (ASCII-Chat IP Protocol) implementation for:
+ * - Session discovery and management (create, lookup, join, leave)
+ * - WebRTC signaling relay (SDP, ICE candidates)
+ * - String reservation (future feature)
  *
- * This is part of libasciichat and can be used by any application that needs
- * to integrate with ACDS for session discovery.
+ * **ACIP Protocol Overview:**
+ * - Binary TCP protocol (not HTTP/JSON)
+ * - Packet-based with CRC32 validation
+ * - Ed25519 identity signatures
+ * - Optional password protection
+ *
+ * **Primary Use Case:**
+ * Connecting to ACDS (ASCII-Chat Discovery Service) servers for
+ * session discovery and WebRTC peer coordination.
+ *
+ * **Integration:**
+ * This library is part of libasciichat and can be used by any
+ * application needing ACIP/ACDS integration.
+ *
+ * @see network/acip/acds.h for ACDS message structures
+ * @see network/acip/protocol.h for ACIP packet types
  */
 
 #include <stdint.h>
 #include <stdbool.h>
 #include "asciichat_errno.h"
 #include "platform/socket.h"
-#include "network/acds_protocol.h"
+#include "network/acip/acds.h"
 
 // ============================================================================
 // ACDS Client Configuration

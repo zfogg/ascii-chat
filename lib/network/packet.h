@@ -362,6 +362,8 @@ typedef enum {
   // Discovery Service Protocol (ACDS)
   // ============================================================================
   // ACIP packets use range 100-199 to avoid conflicts with ascii-chat protocol (1-35)
+  // See network/acip/protocol.h for protocol overview and utility functions
+  // See network/acip/acds.h for ACDS message structures and detailed documentation
 
   /** @brief Create new session (Client -> Discovery Server) */
   PACKET_TYPE_ACIP_SESSION_CREATE = 100,

@@ -1,9 +1,18 @@
 /**
- * @file acds/client.c
- * @brief ACDS client library implementation
+ * @file network/acip/client.c
+ * @brief ACIP client-side protocol implementation
+ * @ingroup acip
+ *
+ * Provides client-side ACIP protocol implementation for:
+ * - Session discovery and management
+ * - WebRTC signaling relay
+ * - String reservation (future)
+ *
+ * ACIP (ASCII-Chat IP Protocol) is the wire protocol for session
+ * discovery and WebRTC signaling. ACDS is the reference server implementation.
  */
 
-#include "network/acds_client.h"
+#include "network/acip/client.h"
 #include "common.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
