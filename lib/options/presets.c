@@ -135,6 +135,10 @@ const options_config_t *options_preset_server(void) {
                            "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
                            "DISCOVERY", false, "ASCII_CHAT_UPNP");
 
+  options_builder_add_bool(b, "no-upnp", '\0', offsetof(options_t, no_upnp), false,
+                           "Disable UPnP/NAT-PMP port mapping (requires manual port forwarding)", "DISCOVERY", false,
+                           NULL);
+
   // Logging options
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);
@@ -516,6 +520,9 @@ const options_config_t *options_preset_acds(void) {
   b->program_name = "ascii-chat acds";
   b->description = "ASCII Chat Discovery Service - session management and WebRTC signaling";
 
+  // Help and version
+  options_builder_add_bool(b, "help", 'h', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
+
   // Network options
   options_builder_add_string(b, "address", 'a', offsetof(options_t, address), "127.0.0.1", "Bind address", "NETWORK",
                              false, "ACDS_ADDRESS", NULL);
@@ -589,6 +596,10 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), true,
                            "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
                            "WEBRTC", false, "ASCII_CHAT_UPNP");
+
+  options_builder_add_bool(b, "no-upnp", '\0', offsetof(options_t, no_upnp), false,
+                           "Disable UPnP/NAT-PMP port mapping (requires manual port forwarding)", "WEBRTC", false,
+                           NULL);
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");

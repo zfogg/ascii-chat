@@ -553,6 +553,7 @@ typedef struct options_state {
   // WebRTC Connectivity Options (ACDS mode only)
   // ============================================================================
   bool enable_upnp;                        ///< ACDS: Enable UPnP/NAT-PMP port mapping for direct TCP
+  bool no_upnp;                            ///< ACDS: Explicitly disable UPnP/NAT-PMP port mapping
   char stun_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of STUN server URLs
   char turn_servers[OPTIONS_BUFF_SIZE];    ///< ACDS: Comma-separated list of TURN server URLs
   char turn_username[OPTIONS_BUFF_SIZE];   ///< ACDS: Username for TURN authentication
@@ -964,6 +965,41 @@ void usage_client(FILE *desc);
  * @ingroup options
  */
 void usage_server(FILE *desc);
+
+/**
+ * @brief Print mirror usage information
+ * @param desc File descriptor to write to (typically stdout or stderr)
+ *
+ * Prints mirror mode (local webcam preview) usage information.
+ *
+ * **Usage**: Called when displaying mirror help or error messages.
+ *
+ * **Includes**: Mirror-specific options:
+ * - Display options (color mode, palette)
+ * - Webcam options
+ * - Terminal dimension options
+ *
+ * @ingroup options
+ */
+void usage_mirror(FILE *desc);
+
+/**
+ * @brief Print ACDS usage information
+ * @param desc File descriptor to write to (typically stdout or stderr)
+ *
+ * Prints ACDS (ASCII Chat Discovery Service) specific usage information.
+ *
+ * **Usage**: Called when displaying ACDS help or error messages.
+ *
+ * **Includes**: All ACDS-specific options:
+ * - Network binding options (address, port)
+ * - Database configuration
+ * - Identity key management
+ * - STUN/TURN server configuration
+ *
+ * @ingroup options
+ */
+void usage_acds(FILE *desc);
 
 /** @} */
 
