@@ -80,6 +80,7 @@
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
+#include "platform/question.h"
 #include "video/image.h"
 #include "video/simd/ascii_simd.h"
 #include "video/simd/common.h"
@@ -853,7 +854,57 @@ int server_main(void) {
   // - Calls remove_client() to cleanup and stop worker threads
 
   // ACDS Session Creation: Register this server with discovery service
+  // Security Requirement Check (Issue #239):
+  // Server IP must be protected by password, identity verification, or explicit opt-in
   char session_string[64] = {0};
+
+  // Auto-detection: Check if password or identity verification is configured
+  const char *password = GET_OPTION(password);
+  bool has_password = password && strlen(password) > 0;
+  const char *encrypt_key = GET_OPTION(encrypt_key);
+  bool has_identity = encrypt_key && strlen(encrypt_key) > 0;
+  bool explicit_expose = GET_OPTION(acds_expose_ip) != 0;
+
+  // Validate security configuration BEFORE attempting ACDS connection
+  bool acds_expose_ip_flag = false;
+
+  if (has_password || has_identity) {
+    // Auto-enable privacy: IP revealed only after verification
+    acds_expose_ip_flag = false;
+    log_plain("🔒 ACDS privacy enabled: IP disclosed only after %s verification",
+              has_password ? "password" : "identity");
+  } else if (explicit_expose) {
+    // Explicit opt-in to public IP disclosure - requires confirmation
+    log_plain_stderr("");
+    log_plain_stderr("⚠️  WARNING: You are about to allow PUBLIC IP disclosure!");
+    log_plain_stderr("⚠️  Anyone with the session string will be able to see your IP address.");
+    log_plain_stderr("⚠️  This is NOT RECOMMENDED unless you understand the privacy implications.");
+    log_plain_stderr("");
+
+    if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
+      log_plain_stderr("");
+      log_plain_stderr("❌ IP disclosure not confirmed. Server will run WITHOUT discovery service.");
+      goto skip_acds_session;
+    }
+
+    // User confirmed - proceed with public IP disclosure
+    acds_expose_ip_flag = true;
+    log_plain_stderr("");
+    log_plain_stderr("⚠️  Public IP disclosure CONFIRMED");
+    log_plain_stderr("⚠️  Your IP address will be visible to anyone with the session string");
+  } else {
+    // Security violation: No password, no identity, no explicit opt-in
+    log_plain_stderr("❌ Cannot create ACDS session: No security configured!");
+    log_plain_stderr("   You must either:");
+    log_plain_stderr("   1. Set a password: --password \"your-secret\"");
+    log_plain_stderr("   2. Use identity key: --key ~/.ssh/id_ed25519");
+    log_plain_stderr("   3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)");
+    log_plain_stderr("");
+    log_plain_stderr("Server will run WITHOUT discovery service.");
+    goto skip_acds_session;
+  }
+
+  // Security is configured, proceed with ACDS connection
   // TODO: Make ACDS server address configurable via --acds-server option
   const char *acds_server = "127.0.0.1";
   uint16_t acds_port = 27225;
@@ -879,7 +930,16 @@ int server_main(void) {
 
     create_params.capabilities = 0x03; // Video + Audio
     create_params.max_participants = GET_OPTION(max_clients);
-    create_params.has_password = false; // TODO: Support password-protected sessions
+
+    // Set password if configured
+    create_params.has_password = has_password;
+    if (has_password) {
+      // TODO: Hash password with Argon2id
+      SAFE_STRNCPY(create_params.password, password, sizeof(create_params.password));
+    }
+
+    // Set IP disclosure policy (determined above)
+    create_params.acds_expose_ip = acds_expose_ip_flag;
 
     // Server connection information (where clients should connect)
     SAFE_STRNCPY(create_params.server_address, GET_OPTION(address), sizeof(create_params.server_address));
@@ -892,10 +952,10 @@ int server_main(void) {
 
     if (create_err == ASCIICHAT_OK) {
       SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
-      log_info("✨ Session created successfully!");
-      log_info("📋 Session string: %s", session_string);
-      log_info("🔗 Share this with others to join:");
-      log_info("   ascii-chat %s", session_string);
+      log_plain("✨ Session created successfully!");
+      log_plain("📋 Session string: %s", session_string);
+      log_plain("🔗 Share this with others to join:");
+      log_plain("   ascii-chat %s", session_string);
     } else {
       log_warn("Failed to create session on ACDS server (server will run without discovery)");
     }
@@ -903,6 +963,7 @@ int server_main(void) {
     log_warn("Could not connect to ACDS server at %s:%d (server will run without discovery)", acds_server, acds_port);
   }
 
+skip_acds_session:
   log_info("Server entering accept loop (port %d)...", port);
 
   // Run TCP server (blocks until shutdown signal received)

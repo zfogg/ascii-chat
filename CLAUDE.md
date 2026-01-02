@@ -203,26 +203,51 @@ ascii-chat is a terminal-based video chat application that converts webcam video
 - Customizable ASCII palettes
 - Comprehensive test suite with Criterion framework
 
-## Project Structure (Updated September 2025)
+## Project Structure (Updated January 2026)
 
 ```
 ascii-chat/
 ├── bin/                                # Hard links to compiled binaries for convenience
 ├── build/                              # CMake build directory (all platforms)
+├── docs/                               # Documentation (crypto.md, tooling/, etc.)
 ├── notes/                              # Development notes and documentation
 ├── todo/                               # Experimental code and future features
 ├── tests/                              # Comprehensive test suite using Criterion
 │   ├── scripts/                        # Test infrastructure scripts
-│   │   └── run-docker-tests.ps1        # Docker-based test runner for Windows
+│   │   ├── run-docker-tests.ps1        # Docker-based test runner for Windows
+│   │   ├── test_query_*.sh             # Query tool integration tests
+│   │   └── setup-test-gpg-keyring.sh   # GPG test environment setup
 │   ├── unit/                           # Unit tests for individual components
+│   │   ├── crypto/                     # Cryptography tests
+│   │   ├── network/                    # Network protocol tests
+│   │   └── audio/                      # Audio processing tests
 │   ├── integration/                    # Multi-component integration tests
-│   ├── performance/                    # Performance and stress tests
+│   └── performance/                    # Performance and stress tests
 ├── src/                                # Main application entry points
-│   ├── server.c                        # Server main - handles multiple clients
-│   └── client.c                        # Client main - captures/displays video
+│   ├── main.c                          # Unified binary entry point (mode selection)
+│   ├── server/                         # Server mode implementation
+│   │   ├── main.c                      # Server initialization and lifecycle
+│   │   ├── client.c                    # Per-client management and threading
+│   │   ├── protocol.c                  # Packet handling and protocol logic
+│   │   ├── stream.c                    # Video mixing and frame generation
+│   │   ├── render.c                    # Per-client rendering threads
+│   │   └── stats.c                     # Performance monitoring
+│   ├── client/                         # Client mode implementation
+│   │   ├── main.c                      # Client initialization
+│   │   ├── crypto.c                    # Client-side crypto setup
+│   │   └── protocol.c                  # Client protocol handling
+│   ├── mirror/                         # Mirror mode (local preview)
+│   │   └── main.c                      # Mirror mode entry point
+│   └── acds/                           # ACDS discovery service
+│       ├── main.c                      # ACDS server main
+│       ├── identity.c                  # ACDS identity management
+│       ├── database.c                  # Session database (SQLite)
+│       └── strings.c                   # Session string generation
 ├── lib/                                # Core library components
 │   ├── common.c/h                      # Shared utilities, macros, memory debugging, constants
 │   ├── platform/                       # Cross-platform abstraction layer
+│   │   ├── abstraction.h               # Platform API definitions
+│   │   ├── question.h/c                # Interactive prompts (yes/no, text input)
 │   │   ├── README.md                   # Platform abstraction documentation
 │   │   ├── abstraction.h               # Main abstraction header with all API definitions
 │   │   ├── abstraction.c               # Common implementation (currently minimal)
@@ -428,16 +453,197 @@ The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -
 ./build/bin/ascii-chat --help  # Shows mode selection help
 ```
 
+### Command-Line Options
+
+ascii-chat has two levels of command-line options:
+
+1. **Binary-Level Options**: Global options that apply before selecting a mode
+2. **Mode-Level Options**: Options specific to each mode (server, client, mirror, acds)
+
+**Syntax:**
+```bash
+ascii-chat [binary-options] <mode> [mode-options]
+```
+
+#### Binary-Level Options (`ascii-chat` binary)
+
+These options must appear **before** the mode name:
+
+```bash
+# General
+--help                       # Show mode selection help
+--version                    # Show version information
+--config FILE                # Load configuration from FILE
+--config-create [FILE]       # Create default config and exit
+
+# Logging (IMPORTANT: These come BEFORE the mode!)
+-L, --log-file FILE          # Redirect logs to FILE
+--log-level LEVEL            # Set log level: dev, debug, info, warn, error, fatal
+-V, --verbose                # Increase log verbosity (stackable: -VV, -VVV)
+-q, --quiet                  # Disable console logging (log to file only)
+```
+
+**Example:**
+```bash
+# ✅ CORRECT - Binary options before mode
+./build/bin/ascii-chat --log-file /tmp/server.log --verbose server --port 8080
+
+# ❌ WRONG - Binary options after mode will be interpreted as mode options
+./build/bin/ascii-chat server --log-file /tmp/server.log --port 8080  # --log-file not recognized!
+```
+
+#### Mode-Level Options: `server`
+
+Server-specific options (after `server` keyword):
+
+```bash
+# Network Configuration
+-a, --address ADDR           # IPv4 bind address (default: 127.0.0.1)
+-p, --port PORT              # Server port (default: 27224)
+--address6 ADDR              # IPv6 bind address (default: ::1)
+--max-clients N              # Maximum concurrent clients (default: 32)
+
+# Security
+--password SECRET            # Require password for client connections
+--key PATH                   # Server identity key (SSH Ed25519 format)
+--client-keys PATH           # Whitelist of allowed client keys
+--acds-expose-ip             # Allow public IP disclosure in ACDS (requires confirmation)
+--no-encrypt                 # Disable encryption (NOT RECOMMENDED)
+
+# Display
+--color                      # Enable color support
+--color-mode MODE            # Color mode: auto, mono, 16, 256, truecolor
+--palette TYPE               # ASCII palette: standard, blocks, custom
+--palette-chars CHARS        # Custom palette characters (for palette=custom)
+
+# ACDS Discovery Service
+--acds                       # Enable ACDS registration
+--acds-server ADDR           # ACDS server address (default: 127.0.0.1)
+--acds-port PORT             # ACDS server port (default: 27225)
+
+# Performance
+--audio-sample-rate RATE     # Audio sample rate in Hz (default: 48000)
+--frame-rate FPS             # Target frame rate (default: 60)
+```
+
+**Examples:**
+```bash
+# Basic server on custom port
+./build/bin/ascii-chat server --port 8080
+
+# Server with password protection
+./build/bin/ascii-chat server --password "my-secret" --port 8080
+
+# Server with SSH key identity and ACDS registration
+./build/bin/ascii-chat --verbose server --key ~/.ssh/id_ed25519 --acds
+
+# Public server with explicit IP disclosure (requires y/N confirmation)
+./build/bin/ascii-chat server --acds-expose-ip
+
+# Server with debug logging to file
+./build/bin/ascii-chat --log-file /tmp/server.log --verbose server --port 8080
+```
+
+#### Mode-Level Options: `client`
+
+Client-specific options (after `client` keyword):
+
+```bash
+# Connection
+-a, --address ADDR           # Server address (default: 127.0.0.1)
+-p, --port PORT              # Server port (default: 27224)
+--password SECRET            # Password for server authentication
+--server-key KEY             # Expected server key (SSH pub key, github:user, gpg:fingerprint)
+
+# Display
+-W, --width N                # Terminal width (default: auto-detect)
+-H, --height N               # Terminal height (default: auto-detect)
+--color                      # Enable color support
+--color-mode MODE            # Color mode: auto, mono, 16, 256, truecolor
+--palette TYPE               # ASCII palette: standard, blocks, custom
+--palette-chars CHARS        # Custom palette characters
+
+# Media
+--audio                      # Enable audio capture/playback
+--no-webcam                  # Disable webcam capture (receive-only mode)
+--webcam-device ID           # Webcam device ID (platform-specific)
+
+# Testing/Debug
+--snapshot                   # Capture single frame and exit
+--snapshot-delay SECONDS     # Capture for N seconds then exit (requires --snapshot)
+```
+
+**Examples:**
+```bash
+# Connect to server on localhost
+./build/bin/ascii-chat client
+
+# Connect to remote server
+./build/bin/ascii-chat client --address example.com --port 8080
+
+# Connect with password and custom dimensions
+./build/bin/ascii-chat client --address example.com --password "secret" --width 120 --height 40
+
+# Snapshot mode for testing (single frame)
+./build/bin/ascii-chat client --snapshot
+
+# Snapshot with 5-second capture window
+./build/bin/ascii-chat client --snapshot --snapshot-delay 5
+
+# Client with debug logging
+./build/bin/ascii-chat --log-file /tmp/client.log --verbose client --address example.com
+```
+
+#### Mode-Level Options: `mirror`
+
+Mirror mode (local webcam preview, no networking):
+
+```bash
+--color                      # Enable color support
+--palette TYPE               # ASCII palette type
+--width N                    # Display width
+--height N                   # Display height
+```
+
+**Example:**
+```bash
+# View local webcam as ASCII art
+./build/bin/ascii-chat mirror --color --width 120 --height 40
+```
+
+#### Binary-Level Options (`acds` binary)
+
+The ACDS (ASCII-Chat Discovery Service) is a separate binary for running the discovery server:
+
+```bash
+# General
+--help                       # Show help
+--database PATH              # Database file path (default: ./acds.db)
+--address ADDR               # Bind address (default: 127.0.0.1)
+--port PORT                  # Server port (default: 27225)
+--key PATH                   # Identity key path (default: ./acds_identity.key)
+
+# Logging
+--log-file FILE              # Redirect logs to FILE
+--log-level LEVEL            # Log level: dev, debug, info, warn, error, fatal
+```
+
+**Example:**
+```bash
+# Run ACDS server
+./build/bin/acds --database /var/lib/acds/sessions.db --port 27225
+```
+
 ### Debug Helpers
 
 ```bash
-# --log-file helps with debugging (better than pipe redirects)
-./build/bin/ascii-chat server --log-file /tmp/server-test.log
-./build/bin/ascii-chat client --log-file /tmp/client-test.log
-
-# --snapshot mode for testing without continuous capture
+# Snapshot mode for testing without continuous capture
 ./build/bin/ascii-chat client --snapshot                    # Single frame and exit
 ./build/bin/ascii-chat client --snapshot --snapshot-delay 10 # Capture for 10 seconds then exit
+
+# Debug logging to file (binary-level option BEFORE mode)
+./build/bin/ascii-chat --log-file /tmp/server-test.log server --port 8080
+./build/bin/ascii-chat --log-file /tmp/client-test.log client --address example.com
 ```
 
 ## Testing Framework
