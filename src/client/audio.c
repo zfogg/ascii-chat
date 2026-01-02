@@ -230,12 +230,12 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
 
   // Copy packet to queue
   audio_send_packet_t *packet = &g_audio_send_queue[g_audio_send_queue_head];
-  if (opus_size <= sizeof(packet->data)) {
-    memcpy(packet->data, opus_data, opus_size);
-    packet->size = opus_size;
-    packet->frame_count = frame_count;
+  if (opus_size <= sizeof(GET_OPTION(data))) {
+    memcpy(GET_OPTION(data), opus_data, opus_size);
+    GET_OPTION(size) = opus_size;
+    GET_OPTION(frame_count) = frame_count;
     for (int i = 0; i < frame_count && i < 8; i++) {
-      packet->frame_sizes[i] = frame_sizes[i];
+      GET_OPTION(frame_sizes)[i] = frame_sizes[i];
     }
     g_audio_send_queue_head = next_head;
   }
@@ -373,8 +373,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   }
 
   // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts || !opts->audio_enabled) {
+  if (!opts || !GET_OPTION(audio_enabled)) {
     log_warn_every(1000000, "Received audio samples but audio is disabled");
     return;
   }
@@ -398,7 +397,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   }
 
   // Track samples for analysis
-  if (opts->audio_analysis_enabled) {
+  if (GET_OPTION(audio_analysis_enabled)) {
     for (int i = 0; i < num_samples; i++) {
       audio_analysis_track_received_sample(samples[i]);
     }
@@ -470,14 +469,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
 static void *audio_capture_thread_func(void *arg) {
   (void)arg;
 
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return NULL;
-  }
-
-  log_info("Audio capture thread started");
+  // Get options from RCU statelog_info("Audio capture thread started");
 
   // FPS tracking for audio capture thread (tracking Opus frames, ~50 FPS at 20ms per frame)
   static fps_t fps_tracker = {0};
@@ -594,7 +586,7 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Track sent samples for analysis
-      if (opts && opts->audio_analysis_enabled) {
+      if (GET_OPTION(audio_analysis_enabled)) {
         for (int i = 0; i < samples_read; i++) {
           audio_analysis_track_sent_sample(audio_buffer[i]);
         }
@@ -644,7 +636,7 @@ static void *audio_capture_thread_func(void *arg) {
               batch_total_size += (size_t)opus_len;
               batch_frame_count++;
 
-              if (opts && opts->audio_analysis_enabled) {
+              if (GET_OPTION(audio_analysis_enabled)) {
                 audio_analysis_track_sent_packet((size_t)opus_len);
               }
             }
@@ -709,14 +701,7 @@ static void *audio_capture_thread_func(void *arg) {
  * @ingroup client_audio
  */
 int audio_client_init() {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  if (!opts || !opts->audio_enabled) {
+  // Get options from RCU stateif (!opts || !GET_OPTION(audio_enabled)) {
     return 0; // Audio disabled - not an error
   }
 
@@ -762,17 +747,7 @@ int audio_client_init() {
   // We don't tune this; let the system adapt to its actual conditions
   pipeline_config.jitter_margin_ms = 100;
 
-  g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
-  if (!g_audio_pipeline) {
-    log_error("Failed to create audio pipeline");
-    audio_destroy(&g_audio_context);
-    // Clean up WAV writer if it was opened
-    if (g_wav_playback_received) {
-      wav_writer_close(g_wav_playback_received);
-      g_wav_playback_received = NULL;
-    }
-    return -1;
-  }
+  g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);  }
 
   log_info("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
            pipeline_config.opus_bitrate);
@@ -813,16 +788,9 @@ int audio_client_init() {
  * @ingroup client_audio
  */
 int audio_start_thread() {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
+  // Get options from RCU statelog_info("audio_start_thread called: audio_enabled=%d", opts ? GET_OPTION(audio_enabled) : 0);
 
-  log_info("audio_start_thread called: audio_enabled=%d", opts ? opts->audio_enabled : 0);
-
-  if (!opts || !opts->audio_enabled) {
+  if (!opts || !GET_OPTION(audio_enabled)) {
     log_info("Audio is disabled, skipping audio capture thread creation");
     return 0; // Audio disabled - not an error
   }
@@ -918,14 +886,7 @@ bool audio_thread_exited() {
  * @ingroup client_audio
  */
 void audio_cleanup() {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return;
-  }
-
-  if (!opts || !opts->audio_enabled) {
+  // Get options from RCU stateif (!opts || !GET_OPTION(audio_enabled)) {
     return;
   }
 

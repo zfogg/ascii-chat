@@ -104,72 +104,72 @@ tcp_client_t *tcp_client_create(void) {
   memset(client, 0, sizeof(*client));
 
   /* Connection State */
-  client->sockfd = INVALID_SOCKET_VALUE;
-  atomic_store(&client->connection_active, false);
-  atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
-  client->my_client_id = 0;
-  memset(client->server_ip, 0, sizeof(client->server_ip));
-  client->encryption_enabled = false;
+  GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
+  atomic_store(&GET_OPTION(connection_active), false);
+  atomic_store(&GET_OPTION(connection_lost), false);
+  atomic_store(&GET_OPTION(should_reconnect), false);
+  GET_OPTION(my_client_id) = 0;
+  memset(GET_OPTION(server_ip), 0, sizeof(GET_OPTION(server_ip)));
+  GET_OPTION(encryption_enabled) = false;
 
   // Initialize send mutex
-  if (mutex_init(&client->send_mutex) != 0) {
+  if (mutex_init(&GET_OPTION(send_mutex)) != 0) {
     log_error("Failed to initialize send mutex");
     SAFE_FREE(client);
     return NULL;
   }
 
   /* Audio State */
-  memset(&client->audio_ctx, 0, sizeof(client->audio_ctx));
-  memset(client->audio_send_queue, 0, sizeof(client->audio_send_queue));
-  client->audio_send_queue_head = 0;
-  client->audio_send_queue_tail = 0;
-  client->audio_send_queue_initialized = false;
-  atomic_store(&client->audio_sender_should_exit, false);
+  memset(&GET_OPTION(audio_ctx), 0, sizeof(GET_OPTION(audio_ctx)));
+  memset(GET_OPTION(audio_send_queue), 0, sizeof(GET_OPTION(audio_send_queue)));
+  GET_OPTION(audio_send_queue_head) = 0;
+  GET_OPTION(audio_send_queue_tail) = 0;
+  GET_OPTION(audio_send_queue_initialized) = false;
+  atomic_store(&GET_OPTION(audio_sender_should_exit), false);
 
   // Initialize audio queue mutex and condition variable
-  if (mutex_init(&client->audio_send_queue_mutex) != 0) {
+  if (mutex_init(&GET_OPTION(audio_send_queue_mutex)) != 0) {
     log_error("Failed to initialize audio queue mutex");
-    mutex_destroy(&client->send_mutex);
+    mutex_destroy(&GET_OPTION(send_mutex));
     SAFE_FREE(client);
     return NULL;
   }
 
-  if (cond_init(&client->audio_send_queue_cond) != 0) {
+  if (cond_init(&GET_OPTION(audio_send_queue_cond)) != 0) {
     log_error("Failed to initialize audio queue cond");
-    mutex_destroy(&client->audio_send_queue_mutex);
-    mutex_destroy(&client->send_mutex);
+    mutex_destroy(&GET_OPTION(audio_send_queue_mutex));
+    mutex_destroy(&GET_OPTION(send_mutex));
     SAFE_FREE(client);
     return NULL;
   }
 
-  client->audio_capture_thread_created = false;
-  client->audio_sender_thread_created = false;
-  atomic_store(&client->audio_capture_thread_exited, false);
+  GET_OPTION(audio_capture_thread_created) = false;
+  GET_OPTION(audio_sender_thread_created) = false;
+  atomic_store(&GET_OPTION(audio_capture_thread_exited), false);
 
   /* Protocol State */
-  client->data_thread_created = false;
-  atomic_store(&client->data_thread_exited, false);
-  client->last_active_count = 0;
-  client->server_state_initialized = false;
-  client->should_clear_before_next_frame = false;
+  GET_OPTION(data_thread_created) = false;
+  atomic_store(&GET_OPTION(data_thread_exited), false);
+  GET_OPTION(last_active_count) = 0;
+  GET_OPTION(server_state_initialized) = false;
+  GET_OPTION(should_clear_before_next_frame) = false;
 
   /* Capture State */
-  client->capture_thread_created = false;
-  atomic_store(&client->capture_thread_exited, false);
+  GET_OPTION(capture_thread_created) = false;
+  atomic_store(&GET_OPTION(capture_thread_exited), false);
 
   /* Keepalive State */
-  client->ping_thread_created = false;
-  atomic_store(&client->ping_thread_exited, false);
+  GET_OPTION(ping_thread_created) = false;
+  atomic_store(&GET_OPTION(ping_thread_exited), false);
 
   /* Display State */
-  client->has_tty = false;
-  atomic_store(&client->is_first_frame_of_connection, true);
-  memset(&client->tty_info, 0, sizeof(client->tty_info));
+  GET_OPTION(has_tty) = false;
+  atomic_store(&GET_OPTION(is_first_frame_of_connection), true);
+  memset(&GET_OPTION(tty_info), 0, sizeof(GET_OPTION(tty_info)));
 
   /* Crypto State */
-  memset(&client->crypto_ctx, 0, sizeof(client->crypto_ctx));
-  client->crypto_initialized = false;
+  memset(&GET_OPTION(crypto_ctx), 0, sizeof(GET_OPTION(crypto_ctx)));
+  GET_OPTION(crypto_initialized) = false;
 
   log_debug("TCP client created successfully");
   return client;
@@ -189,30 +189,30 @@ void tcp_client_destroy(tcp_client_t **client_ptr) {
 
 #ifndef NDEBUG
   // Debug: verify all threads have exited
-  if (client->audio_capture_thread_created && !atomic_load(&client->audio_capture_thread_exited)) {
+  if (GET_OPTION(audio_capture_thread_created) && !atomic_load(&GET_OPTION(audio_capture_thread_exited))) {
     log_warn("Destroying client while audio capture thread may still be running");
   }
-  if (client->data_thread_created && !atomic_load(&client->data_thread_exited)) {
+  if (GET_OPTION(data_thread_created) && !atomic_load(&GET_OPTION(data_thread_exited))) {
     log_warn("Destroying client while data thread may still be running");
   }
-  if (client->capture_thread_created && !atomic_load(&client->capture_thread_exited)) {
+  if (GET_OPTION(capture_thread_created) && !atomic_load(&GET_OPTION(capture_thread_exited))) {
     log_warn("Destroying client while capture thread may still be running");
   }
-  if (client->ping_thread_created && !atomic_load(&client->ping_thread_exited)) {
+  if (GET_OPTION(ping_thread_created) && !atomic_load(&GET_OPTION(ping_thread_exited))) {
     log_warn("Destroying client while ping thread may still be running");
   }
 #endif
 
   // Close socket if still open
-  if (socket_is_valid(client->sockfd)) {
-    close_socket_safe(client->sockfd);
-    client->sockfd = INVALID_SOCKET_VALUE;
+  if (socket_is_valid(GET_OPTION(sockfd))) {
+    close_socket_safe(GET_OPTION(sockfd));
+    GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
   }
 
   // Destroy synchronization primitives
-  mutex_destroy(&client->send_mutex);
-  mutex_destroy(&client->audio_send_queue_mutex);
-  cond_destroy(&client->audio_send_queue_cond);
+  mutex_destroy(&GET_OPTION(send_mutex));
+  mutex_destroy(&GET_OPTION(audio_send_queue_mutex));
+  cond_destroy(&GET_OPTION(audio_send_queue_cond));
 
   // Free client structure
   SAFE_FREE(client);
@@ -231,7 +231,7 @@ void tcp_client_destroy(tcp_client_t **client_ptr) {
 bool tcp_client_is_active(const tcp_client_t *client) {
   if (!client)
     return false;
-  return atomic_load(&client->connection_active);
+  return atomic_load(&GET_OPTION(connection_active));
 }
 
 /**
@@ -240,21 +240,21 @@ bool tcp_client_is_active(const tcp_client_t *client) {
 bool tcp_client_is_lost(const tcp_client_t *client) {
   if (!client)
     return false;
-  return atomic_load(&client->connection_lost);
+  return atomic_load(&GET_OPTION(connection_lost));
 }
 
 /**
  * @brief Get current socket descriptor
  */
 socket_t tcp_client_get_socket(const tcp_client_t *client) {
-  return client ? client->sockfd : INVALID_SOCKET_VALUE;
+  return client ? GET_OPTION(sockfd) : INVALID_SOCKET_VALUE;
 }
 
 /**
  * @brief Get client ID assigned by server
  */
 uint32_t tcp_client_get_id(const tcp_client_t *client) {
-  return client ? client->my_client_id : 0;
+  return client ? GET_OPTION(my_client_id) : 0;
 }
 
 /* ============================================================================
@@ -268,9 +268,9 @@ void tcp_client_signal_lost(tcp_client_t *client) {
   if (!client)
     return;
 
-  if (!atomic_load(&client->connection_lost)) {
-    atomic_store(&client->connection_lost, true);
-    atomic_store(&client->connection_active, false);
+  if (!atomic_load(&GET_OPTION(connection_lost))) {
+    atomic_store(&GET_OPTION(connection_lost), true);
+    atomic_store(&GET_OPTION(connection_active), false);
     log_info("Connection lost signaled");
   }
 }
@@ -285,16 +285,16 @@ void tcp_client_close(tcp_client_t *client) {
   log_debug("Closing client connection");
 
   // Mark connection as inactive
-  atomic_store(&client->connection_active, false);
+  atomic_store(&GET_OPTION(connection_active), false);
 
   // Close socket
-  if (socket_is_valid(client->sockfd)) {
-    close_socket_safe(client->sockfd);
-    client->sockfd = INVALID_SOCKET_VALUE;
+  if (socket_is_valid(GET_OPTION(sockfd))) {
+    close_socket_safe(GET_OPTION(sockfd));
+    GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
   }
 
   // Reset client ID
-  client->my_client_id = 0;
+  GET_OPTION(my_client_id) = 0;
 }
 
 /**
@@ -304,11 +304,11 @@ void tcp_client_shutdown(tcp_client_t *client) {
   if (!client)
     return;
 
-  atomic_store(&client->connection_active, false);
+  atomic_store(&GET_OPTION(connection_active), false);
 
   // Shutdown socket for reading/writing to interrupt blocking calls
-  if (socket_is_valid(client->sockfd)) {
-    socket_shutdown(client->sockfd, SHUT_RDWR);
+  if (socket_is_valid(GET_OPTION(sockfd))) {
+    socket_shutdown(GET_OPTION(sockfd), SHUT_RDWR);
   }
 }
 
@@ -323,9 +323,9 @@ void tcp_client_cleanup(tcp_client_t *client) {
   tcp_client_close(client);
 
   // Reset state flags
-  atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
-  memset(client->server_ip, 0, sizeof(client->server_ip));
+  atomic_store(&GET_OPTION(connection_lost), false);
+  atomic_store(&GET_OPTION(should_reconnect), false);
+  memset(GET_OPTION(server_ip), 0, sizeof(GET_OPTION(server_ip)));
 }
 
 /* ============================================================================
@@ -343,23 +343,23 @@ int tcp_client_send_packet(tcp_client_t *client, packet_type_t type, const void 
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
 
-  if (!atomic_load(&client->connection_active)) {
+  if (!atomic_load(&GET_OPTION(connection_active))) {
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Acquire send mutex for thread-safe transmission
-  mutex_lock(&client->send_mutex);
+  mutex_lock(&GET_OPTION(send_mutex));
 
   // Determine if encryption should be used
   crypto_context_t *crypto_ctx = NULL;
-  if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_ctx)) {
-    crypto_ctx = crypto_handshake_get_context(&client->crypto_ctx);
+  if (GET_OPTION(crypto_initialized) && crypto_handshake_is_ready(&GET_OPTION(crypto_ctx))) {
+    crypto_ctx = crypto_handshake_get_context(&GET_OPTION(crypto_ctx));
   }
 
   // Send packet (encrypted if crypto context available)
-  asciichat_error_t result = send_packet_secure(client->sockfd, type, data, len, crypto_ctx);
+  asciichat_error_t result = send_packet_secure(GET_OPTION(sockfd), type, data, len, crypto_ctx);
 
-  mutex_unlock(&client->send_mutex);
+  mutex_unlock(&GET_OPTION(send_mutex));
 
   if (result != ASCIICHAT_OK) {
     log_debug("Failed to send packet type %d: %s", type, asciichat_error_string(result));
@@ -419,9 +419,9 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
   }
 
   // Close any existing connection
-  if (socket_is_valid(client->sockfd)) {
-    close_socket_safe(client->sockfd);
-    client->sockfd = INVALID_SOCKET_VALUE;
+  if (socket_is_valid(GET_OPTION(sockfd))) {
+    close_socket_safe(GET_OPTION(sockfd));
+    GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
   }
 
   // Apply reconnection delay if this is a retry
@@ -455,18 +455,18 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
     int ipv6_result = getaddrinfo("::1", port_str, &hints, &res);
     if (ipv6_result == 0 && res != NULL) {
       // Try IPv6 loopback connection
-      client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (client->sockfd != INVALID_SOCKET_VALUE) {
+      GET_OPTION(sockfd) = socket_create(GET_OPTION(ai_family), GET_OPTION(ai_socktype), GET_OPTION(ai_protocol));
+      if (GET_OPTION(sockfd) != INVALID_SOCKET_VALUE) {
         log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
-        if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
+        if (connect_with_timeout(GET_OPTION(sockfd), GET_OPTION(ai_addr), GET_OPTION(ai_addrlen), CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
-          SAFE_STRNCPY(client->server_ip, "::1", sizeof(client->server_ip));
+          SAFE_STRNCPY(GET_OPTION(server_ip), "::1", sizeof(GET_OPTION(server_ip)));
           freeaddrinfo(res);
           res = NULL; // Prevent double-free at connection_success label
           goto connection_success;
         }
-        close_socket_safe(client->sockfd);
-        client->sockfd = INVALID_SOCKET_VALUE;
+        close_socket_safe(GET_OPTION(sockfd));
+        GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
       }
       freeaddrinfo(res);
       res = NULL;
@@ -478,18 +478,18 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
 
     int ipv4_result = getaddrinfo("127.0.0.1", port_str, &hints, &res);
     if (ipv4_result == 0 && res != NULL) {
-      client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (client->sockfd != INVALID_SOCKET_VALUE) {
+      GET_OPTION(sockfd) = socket_create(GET_OPTION(ai_family), GET_OPTION(ai_socktype), GET_OPTION(ai_protocol));
+      if (GET_OPTION(sockfd) != INVALID_SOCKET_VALUE) {
         log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
-        if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
+        if (connect_with_timeout(GET_OPTION(sockfd), GET_OPTION(ai_addr), GET_OPTION(ai_addrlen), CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
-          SAFE_STRNCPY(client->server_ip, "127.0.0.1", sizeof(client->server_ip));
+          SAFE_STRNCPY(GET_OPTION(server_ip), "127.0.0.1", sizeof(GET_OPTION(server_ip)));
           freeaddrinfo(res);
           res = NULL;
           goto connection_success;
         }
-        close_socket_safe(client->sockfd);
-        client->sockfd = INVALID_SOCKET_VALUE;
+        close_socket_safe(GET_OPTION(sockfd));
+        GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
       }
       freeaddrinfo(res);
       res = NULL;
@@ -512,31 +512,31 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
 
   // Try each address returned by getaddrinfo() - prefer IPv6, fall back to IPv4
   for (int address_family = AF_INET6; address_family >= AF_INET; address_family -= (AF_INET6 - AF_INET)) {
-    for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter->ai_next) {
-      if (addr_iter->ai_family != address_family) {
+    for (addr_iter = res; addr_iter != NULL; addr_iter = GET_OPTION(ai_next)) {
+      if (GET_OPTION(ai_family) != address_family) {
         continue;
       }
 
-      client->sockfd = socket_create(addr_iter->ai_family, addr_iter->ai_socktype, addr_iter->ai_protocol);
-      if (client->sockfd == INVALID_SOCKET_VALUE) {
+      GET_OPTION(sockfd) = socket_create(GET_OPTION(ai_family), GET_OPTION(ai_socktype), GET_OPTION(ai_protocol));
+      if (GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
         continue;
       }
 
-      if (addr_iter->ai_family == AF_INET) {
+      if (GET_OPTION(ai_family) == AF_INET) {
         log_debug("Trying IPv4 connection...");
-      } else if (addr_iter->ai_family == AF_INET6) {
+      } else if (GET_OPTION(ai_family) == AF_INET6) {
         log_debug("Trying IPv6 connection...");
       }
 
-      if (connect_with_timeout(client->sockfd, addr_iter->ai_addr, addr_iter->ai_addrlen, CONNECT_TIMEOUT)) {
-        log_debug("Connection successful using %s", addr_iter->ai_family == AF_INET    ? "IPv4"
-                                                    : addr_iter->ai_family == AF_INET6 ? "IPv6"
+      if (connect_with_timeout(GET_OPTION(sockfd), GET_OPTION(ai_addr), GET_OPTION(ai_addrlen), CONNECT_TIMEOUT)) {
+        log_debug("Connection successful using %s", GET_OPTION(ai_family) == AF_INET    ? "IPv4"
+                                                    : GET_OPTION(ai_family) == AF_INET6 ? "IPv6"
                                                                                        : "unknown protocol");
 
         // Extract server IP address for known_hosts
-        if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, client->server_ip, sizeof(client->server_ip)) ==
+        if (format_ip_address(GET_OPTION(ai_family), GET_OPTION(ai_addr), GET_OPTION(server_ip), sizeof(GET_OPTION(server_ip))) ==
             ASCIICHAT_OK) {
-          log_debug("Resolved server IP: %s", client->server_ip);
+          log_debug("Resolved server IP: %s", GET_OPTION(server_ip));
         } else {
           log_warn("Failed to format server IP address");
         }
@@ -544,8 +544,8 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
         goto connection_success;
       }
 
-      close_socket_safe(client->sockfd);
-      client->sockfd = INVALID_SOCKET_VALUE;
+      close_socket_safe(GET_OPTION(sockfd));
+      GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
     }
   }
 
@@ -556,7 +556,7 @@ connection_success:
   }
 
   // If we exhausted all addresses without success, fail
-  if (client->sockfd == INVALID_SOCKET_VALUE) {
+  if (GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
     log_warn("Could not connect to server %s:%d (tried all addresses)", address, port);
     return -1;
   }
@@ -564,10 +564,10 @@ connection_success:
   // Extract local port for client ID
   struct sockaddr_storage local_addr = {0};
   socklen_t addr_len = sizeof(local_addr);
-  if (getsockname(client->sockfd, (struct sockaddr *)&local_addr, &addr_len) == -1) {
+  if (getsockname(GET_OPTION(sockfd), (struct sockaddr *)&local_addr, &addr_len) == -1) {
     log_error("Failed to get local socket address: %s", network_error_string());
-    close_socket_safe(client->sockfd);
-    client->sockfd = INVALID_SOCKET_VALUE;
+    close_socket_safe(GET_OPTION(sockfd));
+    GET_OPTION(sockfd) = INVALID_SOCKET_VALUE;
     return -1;
   }
 
@@ -578,27 +578,27 @@ connection_success:
   } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
     local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
   }
-  client->my_client_id = (uint32_t)local_port;
+  GET_OPTION(my_client_id) = (uint32_t)local_port;
 
   // Mark connection as active
-  atomic_store(&client->connection_active, true);
-  atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
+  atomic_store(&GET_OPTION(connection_active), true);
+  atomic_store(&GET_OPTION(connection_lost), false);
+  atomic_store(&GET_OPTION(should_reconnect), false);
 
   // Initialize crypto (application must set crypto_initialized flag)
   // This is done outside this function by calling client_crypto_init()
 
   // Configure socket options
-  if (socket_set_keepalive(client->sockfd, true) < 0) {
+  if (socket_set_keepalive(GET_OPTION(sockfd), true) < 0) {
     log_warn("Failed to set socket keepalive: %s", network_error_string());
   }
 
-  asciichat_error_t sock_config_result = socket_configure_buffers(client->sockfd);
+  asciichat_error_t sock_config_result = socket_configure_buffers(GET_OPTION(sockfd));
   if (sock_config_result != ASCIICHAT_OK) {
     log_warn("Failed to configure socket: %s", network_error_string());
   }
 
-  log_debug("Connection established successfully to %s:%d (client_id=%u)", address, port, client->my_client_id);
+  log_debug("Connection established successfully to %s:%d (client_id=%u)", address, port, GET_OPTION(my_client_id));
   return 0;
 }
 
@@ -622,22 +622,22 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client or opus_data");
   }
 
-  if (!atomic_load(&client->connection_active)) {
+  if (!atomic_load(&GET_OPTION(connection_active))) {
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
-  mutex_lock(&client->send_mutex);
+  mutex_lock(&GET_OPTION(send_mutex));
 
   // Recheck connection status inside mutex to prevent TOCTOU race
-  if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
-    mutex_unlock(&client->send_mutex);
+  if (!atomic_load(&GET_OPTION(connection_active)) || GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&GET_OPTION(send_mutex));
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
   // Get crypto context if encryption is enabled
   crypto_context_t *crypto_ctx = NULL;
-  if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_ctx)) {
-    crypto_ctx = crypto_handshake_get_context(&client->crypto_ctx);
+  if (GET_OPTION(crypto_initialized) && crypto_handshake_is_ready(&GET_OPTION(crypto_ctx))) {
+    crypto_ctx = crypto_handshake_get_context(&GET_OPTION(crypto_ctx));
   }
 
   // Build Opus packet with header
@@ -645,7 +645,7 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
   size_t total_size = header_size + opus_size;
   void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
-    mutex_unlock(&client->send_mutex);
+    mutex_unlock(&GET_OPTION(send_mutex));
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
   }
 
@@ -663,13 +663,13 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
   // Send packet with encryption if available
   asciichat_error_t result;
   if (crypto_ctx) {
-    result = send_packet_secure(client->sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size, crypto_ctx);
+    result = send_packet_secure(GET_OPTION(sockfd), PACKET_TYPE_AUDIO_OPUS, packet_data, total_size, crypto_ctx);
   } else {
-    result = packet_send(client->sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
+    result = packet_send(GET_OPTION(sockfd), PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
   }
 
   buffer_pool_free(NULL, packet_data, total_size);
-  mutex_unlock(&client->send_mutex);
+  mutex_unlock(&GET_OPTION(send_mutex));
 
   if (result != ASCIICHAT_OK) {
     tcp_client_signal_lost(client);
@@ -694,27 +694,27 @@ int tcp_client_send_audio_opus_batch(tcp_client_t *client, const uint8_t *opus_d
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client, opus_data, or frame_sizes");
   }
 
-  if (!atomic_load(&client->connection_active)) {
+  if (!atomic_load(&GET_OPTION(connection_active))) {
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
-  mutex_lock(&client->send_mutex);
+  mutex_lock(&GET_OPTION(send_mutex));
 
-  if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
-    mutex_unlock(&client->send_mutex);
+  if (!atomic_load(&GET_OPTION(connection_active)) || GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&GET_OPTION(send_mutex));
     return -1;
   }
 
   crypto_context_t *crypto_ctx = NULL;
-  if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_ctx)) {
-    crypto_ctx = crypto_handshake_get_context(&client->crypto_ctx);
+  if (GET_OPTION(crypto_initialized) && crypto_handshake_is_ready(&GET_OPTION(crypto_ctx))) {
+    crypto_ctx = crypto_handshake_get_context(&GET_OPTION(crypto_ctx));
   }
 
   // Opus uses 20ms frames at 48kHz
   int result =
-      av_send_audio_opus_batch(client->sockfd, opus_data, opus_size, frame_sizes, 48000, 20, frame_count, crypto_ctx);
+      av_send_audio_opus_batch(GET_OPTION(sockfd), opus_data, opus_size, frame_sizes, 48000, 20, frame_count, crypto_ctx);
 
-  mutex_unlock(&client->send_mutex);
+  mutex_unlock(&GET_OPTION(send_mutex));
 
   if (result < 0) {
     tcp_client_signal_lost(client);
@@ -736,12 +736,11 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
 
-  if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
+  if (!atomic_load(&GET_OPTION(connection_active)) || GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
     return -1;
   }
 
   // Get options from RCU state
-  const options_t *opts = options_get();
   if (!opts) {
     log_error("Options not initialized");
     return -1;
@@ -754,7 +753,7 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
   caps = apply_color_mode_override(caps);
 
   // Check if detection was reliable, use fallback only for auto-detection
-  if (!caps.detection_reliable && (int)opts->color_mode == COLOR_MODE_AUTO) {
+  if (!caps.detection_reliable && (int)GET_OPTION(color_mode) == COLOR_MODE_AUTO) {
     log_warn("Terminal capability detection not reliable, using fallback");
     SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
     caps.color_level = TERM_COLOR_NONE;
@@ -773,11 +772,11 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
   net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
   net_packet.width = HOST_TO_NET_U16(width);
   net_packet.height = HOST_TO_NET_U16(height);
-  net_packet.palette_type = HOST_TO_NET_U32(opts->palette_type);
+  net_packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
   net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
 
-  if (opts->palette_type == PALETTE_CUSTOM && opts->palette_custom_set) {
-    SAFE_STRNCPY(net_packet.palette_custom, opts->palette_custom, sizeof(net_packet.palette_custom));
+  if (GET_OPTION(palette_type) == PALETTE_CUSTOM && GET_OPTION(palette_custom_set)) {
+    SAFE_STRNCPY(net_packet.palette_custom, GET_OPTION(palette_custom), sizeof(net_packet.palette_custom));
     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
   } else {
     SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
@@ -802,7 +801,7 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
-  net_packet.utf8_support = opts->force_utf8 ? 1 : 0;
+  net_packet.utf8_support = GET_OPTION(force_utf8) ? 1 : 0;
 
   SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 
@@ -822,7 +821,7 @@ int tcp_client_send_join(tcp_client_t *client, const char *display_name, uint32_
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
 
-  if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
+  if (!atomic_load(&GET_OPTION(connection_active)) || GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
     return -1;
   }
 
@@ -835,19 +834,19 @@ int tcp_client_send_join(tcp_client_t *client, const char *display_name, uint32_
 
   int send_result = tcp_client_send_packet(client, PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
   if (send_result == 0) {
-    mutex_lock(&client->send_mutex);
-    bool active = atomic_load(&client->connection_active);
-    socket_t socket_snapshot = client->sockfd;
+    mutex_lock(&GET_OPTION(send_mutex));
+    bool active = atomic_load(&GET_OPTION(connection_active));
+    socket_t socket_snapshot = GET_OPTION(sockfd);
     crypto_context_t *crypto_ctx = NULL;
-    if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_ctx)) {
-      crypto_ctx = crypto_handshake_get_context(&client->crypto_ctx);
+    if (GET_OPTION(crypto_initialized) && crypto_handshake_is_ready(&GET_OPTION(crypto_ctx))) {
+      crypto_ctx = crypto_handshake_get_context(&GET_OPTION(crypto_ctx));
     }
     if (active && socket_snapshot != INVALID_SOCKET_VALUE) {
       (void)log_network_message(
           socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
           "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
     }
-    mutex_unlock(&client->send_mutex);
+    mutex_unlock(&GET_OPTION(send_mutex));
   }
   return send_result;
 }
@@ -864,7 +863,7 @@ int tcp_client_send_stream_start(tcp_client_t *client, uint32_t stream_type) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
 
-  if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
+  if (!atomic_load(&GET_OPTION(connection_active)) || GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
     return -1;
   }
 
@@ -886,25 +885,25 @@ int tcp_client_send_audio_batch(tcp_client_t *client, const float *samples, int 
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client or samples");
   }
 
-  if (!atomic_load(&client->connection_active)) {
+  if (!atomic_load(&GET_OPTION(connection_active))) {
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
-  mutex_lock(&client->send_mutex);
+  mutex_lock(&GET_OPTION(send_mutex));
 
-  if (!atomic_load(&client->connection_active) || client->sockfd == INVALID_SOCKET_VALUE) {
-    mutex_unlock(&client->send_mutex);
+  if (!atomic_load(&GET_OPTION(connection_active)) || GET_OPTION(sockfd) == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&GET_OPTION(send_mutex));
     return -1;
   }
 
   crypto_context_t *crypto_ctx = NULL;
-  if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_ctx)) {
-    crypto_ctx = crypto_handshake_get_context(&client->crypto_ctx);
+  if (GET_OPTION(crypto_initialized) && crypto_handshake_is_ready(&GET_OPTION(crypto_ctx))) {
+    crypto_ctx = crypto_handshake_get_context(&GET_OPTION(crypto_ctx));
   }
 
-  int result = send_audio_batch_packet(client->sockfd, samples, num_samples, batch_count, crypto_ctx);
+  int result = send_audio_batch_packet(GET_OPTION(sockfd), samples, num_samples, batch_count, crypto_ctx);
 
-  mutex_unlock(&client->send_mutex);
+  mutex_unlock(&GET_OPTION(send_mutex));
 
   if (result < 0) {
     tcp_client_signal_lost(client);

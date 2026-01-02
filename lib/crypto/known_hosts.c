@@ -572,7 +572,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
     return true;
   }
 #endif
-  if (!platform_isatty(STDIN_FILENO) || options_get()->snapshot_mode) {
+  if (!platform_isatty(STDIN_FILENO) || GET_OPTION(snapshot_mode)) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify unknown host in non-interactive mode");
     log_error("ERROR: Cannot verify unknown host in non-interactive mode without environment variable bypass.\n"
@@ -698,7 +698,7 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
            ip_with_port);
 
   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
-  if (!platform_isatty(STDIN_FILENO) || options_get()->snapshot_mode) {
+  if (!platform_isatty(STDIN_FILENO) || GET_OPTION(snapshot_mode)) {
     // SECURITY: Non-interactive mode - REJECT unknown hosts without identity
     SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify server without identity key in non-interactive mode");
     log_error("ERROR: Cannot verify server without identity key in non-interactive mode.\n"

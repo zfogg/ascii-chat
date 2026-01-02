@@ -484,12 +484,11 @@ log_level_t log_get_level(void) {
 
 void log_set_terminal_output(bool enabled) {
   // Respect --quiet flag: if quiet is set, never enable terminal output
-  const options_t *opts = options_get();
   if (!opts) {
     log_error("Options not initialized");
     return;
   }
-  if (enabled && opts && opts->quiet) {
+  if (enabled && GET_OPTION(quiet)) {
     return; // Silently ignore attempts to enable terminal output when --quiet is set
   }
   atomic_store(&g_log.terminal_output_enabled, enabled);

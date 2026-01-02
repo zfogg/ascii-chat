@@ -207,18 +207,17 @@ static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
 
   // Get options from RCU state
-  const options_t *opts = options_get();
   if (!opts)
     return;
 
   // Terminal was resized, update dimensions and recalculate aspect ratio
   // ONLY if both width and height are auto (not manually set)
-  if (opts->auto_width && opts->auto_height) {
+  if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
     update_dimensions_to_terminal_size((options_t *)opts);
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
-      if (threaded_send_terminal_size_with_auto_detect(opts->width, opts->height) < 0) {
+      if (threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height)) < 0) {
         log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
       } else {
         display_full_reset();
@@ -243,14 +242,7 @@ static void sigwinch_handler(int sigwinch) {
  * to prevent race conditions and resource leaks.
  */
 static void shutdown_client() {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return;
-  }
-
-  // Set global shutdown flag to stop all threads
+  // Get options from RCU state// Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
 
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
@@ -279,7 +271,7 @@ static void shutdown_client() {
   capture_cleanup();
 
   // Print audio analysis report if enabled
-  if (opts && opts->audio_analysis_enabled) {
+  if (GET_OPTION(audio_analysis_enabled)) {
     audio_analysis_print_report();
     audio_analysis_cleanup();
   }
@@ -331,14 +323,7 @@ static void shutdown_client() {
  * @return 0 on success, non-zero error code on failure
  */
 static int initialize_client_systems(bool shared_init_completed) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  if (!shared_init_completed) {
+  // Get options from RCU stateif (!shared_init_completed) {
     // Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != 0) {
       (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
@@ -347,8 +332,8 @@ static int initialize_client_systems(bool shared_init_completed) {
     (void)atexit(platform_cleanup);
 
     // Initialize palette based on command line options
-    const char *custom_chars = (opts && opts->palette_custom_set) ? opts->palette_custom : NULL;
-    palette_type_t palette_type = opts ? opts->palette_type : PALETTE_STANDARD;
+    const char *custom_chars = (GET_OPTION(palette_custom_set)) ? GET_OPTION(palette_custom) : NULL;
+    palette_type_t palette_type = opts ? GET_OPTION(palette_type) : PALETTE_STANDARD;
     if (apply_palette_config(palette_type, custom_chars) != 0) {
       log_error("Failed to apply palette configuration");
       return 1;
@@ -356,8 +341,8 @@ static int initialize_client_systems(bool shared_init_completed) {
 
     // Initialize logging with appropriate settings
     char *validated_log_file = NULL;
-    log_level_t log_level = opts ? opts->log_level : LOG_INFO;
-    const char *log_file = (opts && opts->log_file[0] != '\0') ? opts->log_file : "";
+    log_level_t log_level = opts ? GET_OPTION(log_level) : LOG_INFO;
+    const char *log_file = (GET_OPTION(log_file)[0] != '\0') ? GET_OPTION(log_file) : "";
 
     if (strlen(log_file) > 0) {
       asciichat_error_t log_path_result = path_validate_user_path(log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
@@ -375,9 +360,9 @@ static int initialize_client_systems(bool shared_init_completed) {
 
     // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
-    bool quiet_mode = (opts && opts->quiet) || (opts && opts->snapshot_mode);
+    bool quiet_mode = (GET_OPTION(quiet)) || (GET_OPTION(snapshot_mode));
     debug_memory_set_quiet_mode(quiet_mode);
-    if (!(opts && opts->snapshot_mode)) {
+    if (!(GET_OPTION(snapshot_mode))) {
       (void)atexit(debug_memory_report);
     }
 #endif
@@ -430,14 +415,14 @@ static int initialize_client_systems(bool shared_init_completed) {
   }
 
   // Initialize audio if enabled
-  if (opts && opts->audio_enabled) {
+  if (GET_OPTION(audio_enabled)) {
     if (audio_client_init() != 0) {
       log_fatal("Failed to initialize audio system");
       return ERROR_AUDIO;
     }
 
     // Initialize audio analysis if requested
-    if (opts && opts->audio_analysis_enabled) {
+    if (GET_OPTION(audio_analysis_enabled)) {
       if (audio_analysis_init() != 0) {
         log_warn("Failed to initialize audio analysis");
       }
@@ -459,15 +444,8 @@ static int initialize_client_systems(bool shared_init_completed) {
  * @return 0 on success, error code on failure
  */
 int client_main(void) {
-  // Get options from RCU state
-  const options_t *opts = options_get();
-  if (!opts) {
-    log_error("Options not initialized");
-    return -1;
-  }
-
-  // Dispatcher already printed capabilities, but honor flag defensively
-  if (opts && opts->show_capabilities) {
+  // Get options from RCU state// Dispatcher already printed capabilities, but honor flag defensively
+  if (GET_OPTION(show_capabilities)) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
@@ -522,8 +500,8 @@ int client_main(void) {
   const char *discovered_address = NULL;
   const char *discovered_port = NULL;
 
-  if (opts && opts->session_string[0] != '\0') {
-    log_info("Session string detected: %s - performing ACDS discovery", opts->session_string);
+  if (GET_OPTION(session_string)[0] != '\0') {
+    log_info("Session string detected: %s - performing ACDS discovery", GET_OPTION(session_string));
 
     // Configure ACDS client
     acds_client_config_t acds_config;
@@ -545,11 +523,11 @@ int client_main(void) {
 
     // Lookup session
     acds_session_lookup_result_t lookup_result;
-    asciichat_error_t lookup_err = acds_session_lookup(&acds_client, opts->session_string, &lookup_result);
+    asciichat_error_t lookup_err = acds_session_lookup(&acds_client, GET_OPTION(session_string), &lookup_result);
 
     if (lookup_err != ASCIICHAT_OK || !lookup_result.found) {
       acds_client_disconnect(&acds_client);
-      fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", opts->session_string);
+      fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", GET_OPTION(session_string));
       fprintf(stderr, "  - Not a recognized mode (server, client, mirror)\n");
       fprintf(stderr, "  - Not an active session on the discovery server\n");
       fprintf(stderr, "\nDid you mean to:\n");
@@ -559,17 +537,17 @@ int client_main(void) {
       return 1;
     }
 
-    log_info("Session found: %s (%d/%d participants, password=%s)", opts->session_string,
+    log_info("Session found: %s (%d/%d participants, password=%s)", GET_OPTION(session_string),
              lookup_result.current_participants, lookup_result.max_participants,
              lookup_result.has_password ? "required" : "not required");
 
     // Join session to get server connection information
     acds_session_join_params_t join_params;
     memset(&join_params, 0, sizeof(join_params));
-    join_params.session_string = opts->session_string;
-    join_params.has_password = lookup_result.has_password && opts->password[0] != '\0';
+    join_params.session_string = GET_OPTION(session_string);
+    join_params.has_password = lookup_result.has_password && GET_OPTION(password)[0] != '\0';
     if (join_params.has_password) {
-      SAFE_STRNCPY(join_params.password, opts->password, sizeof(join_params.password));
+      SAFE_STRNCPY(join_params.password, GET_OPTION(password), sizeof(join_params.password));
     }
     // TODO: Provide Ed25519 identity for signature when required by ACDS policies
     memset(join_params.identity_pubkey, 0, 32);
@@ -580,7 +558,7 @@ int client_main(void) {
     acds_client_disconnect(&acds_client);
 
     if (join_err != ASCIICHAT_OK || !join_result.success) {
-      fprintf(stderr, "Error: Failed to join session '%s'\n", opts->session_string);
+      fprintf(stderr, "Error: Failed to join session '%s'\n", GET_OPTION(session_string));
       if (join_result.error_message[0] != '\0') {
         fprintf(stderr, "  %s\n", join_result.error_message);
       }
@@ -602,8 +580,8 @@ int client_main(void) {
 
   while (!should_exit()) {
     // Handle connection establishment or reconnection
-    const char *address = discovered_address ? discovered_address : (opts ? opts->address : "localhost");
-    const char *port_str = discovered_port ? discovered_port : (opts ? opts->port : "27224");
+    const char *address = discovered_address ? discovered_address : (opts ? GET_OPTION(address) : "localhost");
+    const char *port_str = discovered_port ? discovered_port : (opts ? GET_OPTION(port) : "27224");
     int port = atoi(port_str);
     int connection_result =
         server_connection_establish(address, port, reconnect_attempt, first_connection, has_ever_connected);
@@ -617,7 +595,7 @@ int client_main(void) {
 
       // In snapshot mode, exit immediately on connection failure - no retries
       // Snapshot mode is for quick single-frame captures, not persistent connections
-      if (opts && opts->snapshot_mode) {
+      if (GET_OPTION(snapshot_mode)) {
         log_error("Connection failed in snapshot mode - exiting without retry");
         return 1;
       }
@@ -626,7 +604,7 @@ int client_main(void) {
       reconnect_attempt++;
 
       // Get reconnect attempts setting (-1 = unlimited, 0 = no retry, >0 = retry N times)
-      int reconnect_attempts = opts ? opts->reconnect_attempts : -1;
+      int reconnect_attempts = opts ? GET_OPTION(reconnect_attempts) : -1;
 
       // Check reconnection policy
       if (reconnect_attempts == 0) {
@@ -685,7 +663,7 @@ int client_main(void) {
       server_connection_close();
 
       // In snapshot mode, exit immediately on protocol failure - no retries
-      if (opts && opts->snapshot_mode) {
+      if (GET_OPTION(snapshot_mode)) {
         log_error("Protocol startup failed in snapshot mode - exiting without retry");
         return 1;
       }
@@ -733,7 +711,7 @@ int client_main(void) {
 
     // In snapshot mode, exit immediately on connection loss - no reconnection
     // Snapshot mode is for quick single-frame captures, not persistent connections
-    if (opts && opts->snapshot_mode) {
+    if (GET_OPTION(snapshot_mode)) {
       log_error("Connection lost in snapshot mode - exiting without reconnection");
       return 1;
     }
