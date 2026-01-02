@@ -48,8 +48,6 @@ static asciichat_error_t upnp_error_to_asciichat(int upnp_result) {
   case UPNPCOMMAND_UNKNOWN_ERROR:
   case UPNPCOMMAND_INVALID_ARGS:
   case UPNPCOMMAND_HTTP_ERROR:
-  case UPNPCOMMAND_SOCKET_ERROR:
-  case UPNPCOMMAND_MEMORY_ERROR:
     SET_ERRNO(ERROR_NETWORK, "UPnP error: %d", upnp_result);
     return ERROR_NETWORK;
   default:
@@ -94,11 +92,14 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
   log_debug("UPnP: Found %d device(s)", 1); // device_list is a linked list, just log 1 for now
 
   // Step 2: Find the Internet Gateway Device (IGD)
-  upnp_result = UPNP_GetValidIGD(device_list, &urls, &data, external_addr, sizeof(external_addr));
+  // Note: UPNP_GetValidIGD signature changed in newer miniupnpc versions
+  // Older: UPNP_GetValidIGD(devlist, urls, data, external_addr, len)
+  // Newer: UPNP_GetValidIGD(devlist, urls, data, external_addr, len, lanaddr, lanaddr_len)
+  upnp_result = UPNP_GetValidIGD(device_list, &urls, &data, external_addr, sizeof(external_addr), NULL, 0);
 
-  if (upnp_result != UPNP_IGD_VALID_CONNECTED) {
+  if (upnp_result != 1) { // 1 = UPNP_IGD_VALID_CONNECTED (value may vary between versions)
     SET_ERRNO(ERROR_NETWORK, "UPnP: No valid Internet Gateway found");
-    freeUPNPDevList(device_list);
+    freeUPNPDevlist(device_list);
     FreeUPNPUrls(&urls);
     return ERROR_NETWORK;
   }
@@ -110,7 +111,7 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
 
   if (upnp_result != UPNPCOMMAND_SUCCESS) {
     SET_ERRNO(ERROR_NETWORK, "UPnP: Failed to get external IP: %s", strupnperror(upnp_result));
-    freeUPNPDevList(device_list);
+    freeUPNPDevlist(device_list);
     FreeUPNPUrls(&urls);
     return ERROR_NETWORK;
   }
@@ -135,7 +136,7 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
 
   if (upnp_result != UPNPCOMMAND_SUCCESS) {
     SET_ERRNO(ERROR_NETWORK, "UPnP: Failed to add port mapping: %s", strupnperror(upnp_result));
-    freeUPNPDevList(device_list);
+    freeUPNPDevlist(device_list);
     FreeUPNPUrls(&urls);
     return ERROR_NETWORK;
   }
@@ -150,7 +151,7 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
   ctx->is_mapped = true;
 
   // Cleanup UPnP structures
-  freeUPNPDevList(device_list);
+  freeUPNPDevlist(device_list);
   FreeUPNPUrls(&urls);
 
   return ASCIICHAT_OK;
