@@ -135,6 +135,21 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
                            "Enable WebRTC mode for ACDS session (default: Direct TCP)", "DISCOVERY", false, NULL);
 
+  // Logging options
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
+                             false, "ASCII_CHAT_LOG_FILE", NULL);
+
+  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
+                               &(log_level_t){LOG_INFO}, // Default: info level
+                               sizeof(log_level_t), parse_log_level,
+                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
+
+  options_builder_add_int(b, "verbose", '\0', offsetof(options_t, verbose_level), 0,
+                          "Increase log verbosity (stackable: --verbose --verbose)", "LOGGING", false, NULL, NULL);
+
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
+
   // Dependencies
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
@@ -284,6 +299,16 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
                            "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
 
+  // ACDS Discovery options
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), "127.0.0.1",
+                             "ACDS discovery server address (default: 127.0.0.1)", "DISCOVERY", false, NULL, NULL);
+
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
+                          "DISCOVERY", false, NULL, NULL);
+
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
+                           "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
+
   // Security options
   options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
                            "SECURITY", false, NULL);
@@ -299,6 +324,21 @@ const options_config_t *options_preset_client(void) {
 
   options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
+
+  // Logging options
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
+                             false, "ASCII_CHAT_LOG_FILE", NULL);
+
+  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
+                               &(log_level_t){LOG_INFO}, // Default: info level
+                               sizeof(log_level_t), parse_log_level,
+                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
+
+  options_builder_add_int(b, "verbose", '\0', offsetof(options_t, verbose_level), 0,
+                          "Increase log verbosity (stackable: --verbose --verbose)", "LOGGING", false, NULL, NULL);
+
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -409,6 +449,21 @@ const options_config_t *options_preset_mirror(void) {
   options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
                              "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
 
+  // Logging options
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
+                             false, "ASCII_CHAT_LOG_FILE", NULL);
+
+  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
+                               &(log_level_t){LOG_INFO}, // Default: info level
+                               sizeof(log_level_t), parse_log_level,
+                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
+
+  options_builder_add_int(b, "verbose", '\0', offsetof(options_t, verbose_level), 0,
+                          "Increase log verbosity (stackable: --verbose --verbose)", "LOGGING", false, NULL, NULL);
+
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
+
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
                                           "Option --snapshot-delay requires --snapshot");
@@ -482,19 +537,22 @@ const options_config_t *options_preset_acds(void) {
                            NULL);
 
   // WebRTC connectivity options
-  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers), "",
-                             "Comma-separated list of STUN server URLs (e.g., stun:stun.l.google.com:19302)", "WEBRTC",
-                             false, NULL, NULL);
+  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers),
+                             "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
+                             "Comma-separated list of STUN server URLs", "WEBRTC", false, "ASCII_CHAT_STUN_SERVERS",
+                             NULL);
 
-  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers), "",
-                             "Comma-separated list of TURN server URLs (e.g., turn:relay.example.com:3478)", "WEBRTC",
-                             false, NULL, NULL);
+  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers),
+                             "turn:turn.ascii-chat.com:3478", "Comma-separated list of TURN server URLs", "WEBRTC",
+                             false, "ASCII_CHAT_TURN_SERVERS", NULL);
 
-  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "",
-                             "Username for TURN server authentication", "WEBRTC", false, NULL, NULL);
+  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "ascii",
+                             "Username for TURN server authentication", "WEBRTC", false, "ASCII_CHAT_TURN_USERNAME",
+                             NULL);
 
-  options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential), "",
-                             "Credential/password for TURN server authentication", "WEBRTC", false, NULL, NULL);
+  options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential),
+                             "0aa9917b4dad1b01631e87a32b875e09", "Credential/password for TURN server authentication",
+                             "WEBRTC", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
