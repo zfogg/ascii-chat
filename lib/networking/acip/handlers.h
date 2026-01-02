@@ -33,8 +33,8 @@
 
 #pragma once
 
-#include "network/acip/transport.h"
-#include "network/acip/messages.h"
+#include "networking/acip/transport.h"
+#include "networking/acip/messages.h"
 #include "asciichat_errno.h"
 #include <stddef.h>
 
@@ -87,6 +87,12 @@ typedef struct {
 
   /** @brief Called when server sends crypto rekey response */
   void (*on_crypto_rekey_response)(const void *payload, size_t payload_len, void *ctx);
+
+  /** @brief Called when WebRTC SDP offer/answer received */
+  void (*on_webrtc_sdp)(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
+
+  /** @brief Called when WebRTC ICE candidate received */
+  void (*on_webrtc_ice)(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;

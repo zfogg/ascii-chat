@@ -22,6 +22,56 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
   dst[i] = '\0';
 }
 
+/**
+ * @brief Validate if a string matches session string format
+ *
+ * Session strings must:
+ * - Have length 1-47 characters
+ * - Not start or end with hyphen
+ * - Have exactly 2 hyphens (3 words)
+ * - Only contain lowercase letters and hyphens
+ * - No consecutive hyphens
+ *
+ * Examples: "swift-river-mountain", "quiet-forest-peak"
+ *
+ * @param str String to validate
+ * @return true if valid session string format, false otherwise
+ */
+static bool is_session_string(const char *str) {
+  if (!str) {
+    return false;
+  }
+
+  size_t len = strlen(str);
+  if (len == 0 || len > 47) {
+    return false;
+  }
+
+  // Must not start or end with hyphen
+  if (str[0] == '-' || str[len - 1] == '-') {
+    return false;
+  }
+
+  // Count hyphens and validate characters
+  int hyphen_count = 0;
+  for (size_t i = 0; i < len; i++) {
+    char c = str[i];
+    if (c == '-') {
+      hyphen_count++;
+      // No consecutive hyphens
+      if (i > 0 && str[i - 1] == '-') {
+        return false;
+      }
+    } else if (!islower(c)) {
+      // Only lowercase letters and hyphens allowed
+      return false;
+    }
+  }
+
+  // Must have exactly 2 hyphens (3 words)
+  return hyphen_count == 2;
+}
+
 bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
@@ -349,6 +399,17 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return -1;
   }
 
+  // Check if this is a session string (format: adjective-noun-noun)
+  // Session strings have exactly 2 hyphens, only lowercase letters, length 1-47
+  if (is_session_string(arg)) {
+    // This is a session string, not a server address
+    char *session_string = (char *)config + offsetof(struct options_state, session_string);
+    SAFE_SNPRINTF(session_string, 64, "%s", arg);
+    log_debug("Detected session string: %s", arg);
+    return 1; // Consumed 1 arg
+  }
+
+  // Not a session string, parse as server address
   // Access address and port fields from options_state struct
   char *address = (char *)config + offsetof(struct options_state, address);
   char *port = (char *)config + offsetof(struct options_state, port);

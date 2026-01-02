@@ -13,6 +13,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include "networking/acip/handlers.h"
 
 /**
  * @brief Start protocol connection handling
@@ -36,3 +37,13 @@ void protocol_stop_connection();
  * @ingroup client_protocol
  */
 bool protocol_connection_lost();
+
+/**
+ * @brief Get ACIP client callbacks for packet dispatch
+ * @return Pointer to client callbacks structure
+ *
+ * Used by WebRTC sessions to receive and dispatch ACDS signaling packets.
+ *
+ * @ingroup client_protocol
+ */
+const acip_client_callbacks_t *protocol_get_acip_callbacks();
