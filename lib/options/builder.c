@@ -554,6 +554,22 @@ void options_builder_add_dependency(options_builder_t *builder, const option_dep
   builder->dependencies[builder->num_dependencies++] = *dependency;
 }
 
+void options_builder_mark_binary_only(options_builder_t *builder, const char *option_name) {
+  if (!builder || !option_name)
+    return;
+
+  // Find the option by name and mark it
+  for (int i = 0; i < builder->num_descriptors; i++) {
+    if (strcmp(builder->descriptors[i].long_name, option_name) == 0) {
+      builder->descriptors[i].hide_from_mode_help = true;
+      return;
+    }
+  }
+
+  // Option not found - this is a programming error
+  log_warn("Attempted to mark non-existent option '%s' as binary-only", option_name);
+}
+
 // ============================================================================
 // Positional Arguments
 // ============================================================================
@@ -1006,6 +1022,11 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
 
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
+
+    // Skip binary-level options (they're shown in top-level help only)
+    if (desc->hide_from_mode_help) {
+      continue;
+    }
 
     // Print group header if changed
     if (desc->group && (!current_group || strcmp(current_group, desc->group) != 0)) {

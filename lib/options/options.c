@@ -66,22 +66,6 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     out_session_string[0] = '\0';
   }
 
-  // Check for --help or --version BEFORE scanning for mode
-  for (int i = 1; i < argc; i++) {
-    if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-        // Will be handled by caller
-        *out_mode = MODE_SERVER; // Default, won't be used
-        return ASCIICHAT_OK;
-      }
-      if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
-        // Will be handled by caller
-        *out_mode = MODE_SERVER; // Default, won't be used
-        return ASCIICHAT_OK;
-      }
-    }
-  }
-
   // Find the first non-option argument (potential mode or session string)
   int first_positional_idx = -1;
   for (int i = 1; i < argc; i++) {
@@ -179,20 +163,33 @@ asciichat_error_t options_init(int argc, char **argv) {
   options_t opts = {0}; // Zero-initialize all fields
 
   // ========================================================================
-  // STAGE 1: Mode Detection
+  // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================
 
   asciichat_mode_t detected_mode = MODE_SERVER; // Default mode
   char detected_session_string[64] = {0};
   int mode_index = -1;
 
-  // Check for --help, --version, or --config-create early (these bypass mode detection)
+  // First, detect the mode from command-line arguments
+  asciichat_error_t mode_detect_result =
+      options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
+  if (mode_detect_result != ASCIICHAT_OK) {
+    return mode_detect_result;
+  }
+
+  opts.detected_mode = detected_mode;
+
+  // Check for binary-level --help, --version, or --config-create
+  // These only trigger if:
+  // 1. No mode was detected (mode_index == -1), OR
+  // 2. The option appears BEFORE the mode in argv
   bool show_help = false;
   bool show_version = false;
   bool create_config = false;
   const char *config_create_path = NULL;
 
-  for (int i = 1; i < argc; i++) {
+  int search_limit = (mode_index == -1) ? argc : mode_index;
+  for (int i = 1; i < search_limit; i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
         show_help = true;
@@ -214,21 +211,15 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   if (show_help) {
-    // Show top-level help from src/main.c
-    // We'll signal this via the detected_mode field (use a special marker)
-    // Actually, we need to handle this differently...
-    // For now, we'll just set detected_mode and let main.c handle help display
-    // But since there's no help mode, we just need to signal that we want help
-    // We can return ASCIICHAT_OK but set detected_mode to default
+    // Show binary-level help from src/main.c
     opts.help = true;
-    opts.detected_mode = MODE_SERVER; // Default
     options_state_set(&opts);
     return ASCIICHAT_OK;
   }
 
   if (show_version) {
+    // Show binary-level version from src/main.c
     opts.version = true;
-    opts.detected_mode = MODE_SERVER; // Default
     options_state_set(&opts);
     return ASCIICHAT_OK;
   }
@@ -265,15 +256,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     printf("Created default config file at: %s\n", config_path);
     exit(0); // Exit successfully after creating config
   }
-
-  // Now detect the actual mode
-  asciichat_error_t mode_detect_result =
-      options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
-  if (mode_detect_result != ASCIICHAT_OK) {
-    return mode_detect_result;
-  }
-
-  opts.detected_mode = detected_mode;
 
   // ========================================================================
   // STAGE 2: Build argv for mode-specific parsing
