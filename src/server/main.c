@@ -86,8 +86,8 @@
 #include "video/simd/common.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
-#include "network/tcp_server.h"
-#include "network/acip/client.h"
+#include "networking/tcp/server.h"
+#include "networking/acip/client.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access

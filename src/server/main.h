@@ -41,7 +41,7 @@
 #pragma once
 
 #include "network/rate_limit/rate_limit.h"
-#include "network/tcp_server.h"
+#include "networking/tcp/server.h"
 #include "audio/mixer.h"
 #include "crypto/key_types.h"
 #include "stats.h"
