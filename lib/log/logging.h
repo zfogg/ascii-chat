@@ -669,6 +669,27 @@ asciichat_error_t log_enable_mmap_sized(const char *log_path, size_t max_size);
  */
 void log_disable_mmap(void);
 
+/**
+ * @brief Begin shutdown phase - disable console logging but keep file logging
+ *
+ * Call this before logging shutdown messages. Disables console output but
+ * keeps file logging so messages are recorded for debugging.
+ *
+ * Useful when you want final messages (like "no servers found") to go to the
+ * log file only, not to stdout where it might interfere with output.
+ *
+ * @ingroup logging
+ */
+void log_shutdown_begin(void);
+
+/**
+ * @brief End shutdown phase - restore previous logging settings
+ *
+ * Call after shutdown messages have been logged to restore console output.
+ * @ingroup logging
+ */
+void log_shutdown_end(void);
+
 #ifdef __cplusplus
 }
 #endif
