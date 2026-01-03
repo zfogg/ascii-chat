@@ -692,7 +692,7 @@ int client_main(void) {
   }
 
   // =========================================================================
-  // PHASE 1 ACDS DISCOVERY: Parallel mDNS + ACDS Discovery
+  // PHASE 1: Parallel mDNS + ACDS Session Discovery
   // =========================================================================
   //
   // When a session string is detected (e.g., "swift-river-mountain"),
@@ -712,42 +712,53 @@ int client_main(void) {
   const char *discovered_address = NULL;
   const char *discovered_port = NULL;
 
-  const options_t *opts_acds = options_get();
-  const char *session_string = opts_acds && opts_acds->session_string[0] != '\0' ? opts_acds->session_string : "";
-  const char *password = opts_acds && opts_acds->password[0] != '\0' ? opts_acds->password : "";
+  const options_t *opts_discovery = options_get();
+  const char *session_string =
+      opts_discovery && opts_discovery->session_string[0] != '\0' ? opts_discovery->session_string : "";
 
   if (session_string[0] != '\0') {
-    log_info("Session string detected: %s - performing parallel discovery (mDNS + ACDS)", session_string);
+    log_info("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
 
-    // Configure ACDS client
-    acds_client_config_t acds_config;
-    acds_client_config_init_defaults(&acds_config);
+    // Configure discovery coordinator
+    discovery_config_t discovery_cfg;
+    discovery_config_init_defaults(&discovery_cfg);
 
-    // Use configured ACDS server (from --acds-server and --acds-port options)
-    const char *acds_server = opts_acds->acds_server[0] != '\0' ? opts_acds->acds_server : "127.0.0.1";
-    int acds_port = opts_acds->acds_port > 0 ? opts_acds->acds_port : 27225;
-
-    SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
-    acds_config.server_port = (uint16_t)acds_port;
-    acds_config.timeout_ms = 5000;
-
-    // Connect to ACDS server
-    acds_client_t acds_client;
-    asciichat_error_t acds_connect_result = acds_client_connect(&acds_client, &acds_config);
-    if (acds_connect_result != ASCIICHAT_OK) {
-      log_error("Failed to connect to ACDS server at %s:%d", acds_config.server_address, acds_config.server_port);
-      return 1;
+    // Parse expected server key if provided
+    uint8_t expected_pubkey[32];
+    memset(expected_pubkey, 0, 32);
+    if (opts_discovery && opts_discovery->server_key[0] != '\0') {
+      asciichat_error_t parse_err = hex_to_pubkey(opts_discovery->server_key, expected_pubkey);
+      if (parse_err == ASCIICHAT_OK) {
+        discovery_cfg.expected_pubkey = expected_pubkey;
+        log_info("Server key verification enabled");
+      } else {
+        log_warn("Failed to parse server key - skipping verification");
+      }
     }
 
-    // Lookup session
-    acds_session_lookup_result_t lookup_result;
-    asciichat_error_t lookup_err = acds_session_lookup(&acds_client, session_string, &lookup_result);
+    // Enable insecure mode if requested
+    if (opts_discovery && opts_discovery->acds_insecure) {
+      discovery_cfg.insecure_mode = true;
+      log_warn("ACDS insecure mode enabled - no server key verification");
+    }
 
-    if (lookup_err != ASCIICHAT_OK || !lookup_result.found) {
-      acds_client_disconnect(&acds_client);
-      fprintf(stderr, "Error: '%s' is not a valid mode or session string\n", session_string);
-      fprintf(stderr, "  - Not a recognized mode (server, client, mirror)\n");
-      fprintf(stderr, "  - Not an active session on the discovery server\n");
+    // Configure ACDS connection details
+    if (opts_discovery && opts_discovery->acds_server[0] != '\0') {
+      SAFE_STRNCPY(discovery_cfg.acds_server, opts_discovery->acds_server, sizeof(discovery_cfg.acds_server));
+    }
+    if (opts_discovery && opts_discovery->acds_port > 0) {
+      discovery_cfg.acds_port = (uint16_t)opts_discovery->acds_port;
+    }
+
+    // Perform parallel discovery
+    discovery_result_t discovery_result;
+    memset(&discovery_result, 0, sizeof(discovery_result));
+    asciichat_error_t discovery_err = discover_session_parallel(session_string, &discovery_cfg, &discovery_result);
+
+    if (discovery_err != ASCIICHAT_OK || !discovery_result.success) {
+      fprintf(stderr, "Error: Failed to discover session '%s'\n", session_string);
+      fprintf(stderr, "  - Not found via mDNS (local network)\n");
+      fprintf(stderr, "  - Not found via ACDS (discovery server)\n");
       fprintf(stderr, "\nDid you mean to:\n");
       fprintf(stderr, "  ascii-chat server           # Start a new server\n");
       fprintf(stderr, "  ascii-chat client           # Connect to localhost\n");
@@ -755,184 +766,22 @@ int client_main(void) {
       return 1;
     }
 
-    log_info("Session found: %s (%d/%d participants, password=%s)", session_string, lookup_result.current_participants,
-             lookup_result.max_participants, lookup_result.has_password ? "required" : "not required");
+    // Log discovery result
+    const char *source_name = discovery_result.source == DISCOVERY_SOURCE_MDNS ? "mDNS (LAN)" : "ACDS (internet)";
+    log_info("Session discovered via %s: %s:%d", source_name, discovery_result.server_address,
+             discovery_result.server_port);
 
-    // Join session to get server connection information
-    acds_session_join_params_t join_params;
-    memset(&join_params, 0, sizeof(join_params));
-    join_params.session_string = session_string;
-    join_params.has_password = lookup_result.has_password && password[0] != '\0';
-    if (join_params.has_password) {
-      SAFE_STRNCPY(join_params.password, password, sizeof(join_params.password));
-    }
-    // TODO: Provide Ed25519 identity for signature when required by ACDS policies
-    memset(join_params.identity_pubkey, 0, 32);
-    memset(join_params.identity_seckey, 0, 64);
+    // Set discovered address/port for connection
+    discovered_address = discovery_result.server_address;
 
-    acds_session_join_result_t join_result;
-    asciichat_error_t join_err = acds_session_join(&acds_client, &join_params, &join_result);
+    // Convert port to string for compatibility with connection code
+    static char port_buffer[8];
+    snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
+    discovered_port = port_buffer;
 
-    if (join_err != ASCIICHAT_OK || !join_result.success) {
-      acds_client_disconnect(&acds_client);
-      fprintf(stderr, "Error: Failed to join session '%s'\n", session_string);
-      if (join_result.error_message[0] != '\0') {
-        fprintf(stderr, "  %s\n", join_result.error_message);
-      }
-      return 1;
-    }
-
-    // Handle WebRTC vs Direct TCP sessions
-    if (join_result.session_type == SESSION_TYPE_WEBRTC) {
-      // WebRTC session: Keep ACDS connection for signaling
-      log_info("Joined WebRTC session successfully (participant ID: %02x%02x..., session ID: %02x%02x...)",
-               join_result.participant_id[0], join_result.participant_id[1], join_result.session_id[0],
-               join_result.session_id[1]);
-
-      // Get crypto context for transport encryption
-      const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-
-      // Configure STUN servers for ICE (using public Google STUN servers as defaults)
-      // TODO: Get STUN/TURN servers from ACDS SESSION_JOINED response or use configured servers
-      static stun_server_t default_stun_servers[] = {
-          {.host_len = 24, .host = "stun:stun.l.google.com:19302"},
-          {.host_len = 25, .host = "stun:stun1.l.google.com:19302"},
-      };
-
-      // Configure peer manager with joiner role (joiners initiate connections)
-      webrtc_peer_manager_config_t peer_config = {
-          .role = WEBRTC_ROLE_JOINER,
-          .stun_servers = default_stun_servers,
-          .stun_count = sizeof(default_stun_servers) / sizeof(default_stun_servers[0]),
-          .turn_servers = NULL, // TODO: Get from ACDS if available
-          .turn_count = 0,
-          .on_transport_ready = webrtc_transport_ready_callback,
-          .user_data = NULL,
-          .crypto_ctx = (crypto_context_t *)crypto_ctx,
-      };
-
-      // Get signaling callbacks (send SDP/ICE via ACDS)
-      webrtc_signaling_callbacks_t signaling_callbacks = webrtc_get_signaling_callbacks();
-
-      // Create peer manager
-      asciichat_error_t peer_result = webrtc_peer_manager_create(&peer_config, &signaling_callbacks, &g_peer_manager);
-      if (peer_result != ASCIICHAT_OK) {
-        log_error("Failed to create WebRTC peer manager: %s", asciichat_error_string(peer_result));
-        acds_client_disconnect(&acds_client);
-        return 1;
-      }
-
-      log_info("WebRTC peer manager created successfully");
-
-      // Create ACIP transport from ACDS socket for signaling
-      acip_transport_t *acds_transport = acip_tcp_transport_create(acds_client.socket, (crypto_context_t *)crypto_ctx);
-      if (!acds_transport) {
-        log_error("Failed to create ACDS transport for WebRTC signaling");
-        webrtc_peer_manager_destroy(g_peer_manager);
-        g_peer_manager = NULL;
-        acds_client_disconnect(&acds_client);
-        return 1;
-      }
-
-      // Set ACDS transport for signaling callbacks
-      webrtc_set_acds_transport(acds_transport);
-
-      // Set session context for signaling
-      webrtc_set_session_context(join_result.session_id, join_result.participant_id);
-
-      log_info("WebRTC peer manager initialized - waiting for connections");
-
-      // Initiate P2P connection to remote participants
-      // TODO: Get list of current participants from ACDS
-      // For now, we'll use broadcast (all zeros) to connect to all participants
-      // The session creator will respond with an answer, establishing the connection
-      uint8_t broadcast_id[16] = {0}; // All zeros = broadcast to all participants
-
-      log_info("Initiating WebRTC connection to session participants");
-      asciichat_error_t connect_result =
-          webrtc_peer_manager_connect(g_peer_manager, join_result.session_id, broadcast_id);
-
-      if (connect_result != ASCIICHAT_OK) {
-        log_error("Failed to initiate WebRTC connection: %s", asciichat_error_string(connect_result));
-        webrtc_peer_manager_destroy(g_peer_manager);
-        g_peer_manager = NULL;
-        acip_transport_destroy(acds_transport);
-        acds_client_disconnect(&acds_client);
-        return 1;
-      }
-
-      log_info("WebRTC connection initiated - SDP offer sent via ACDS");
-
-      // Start ACDS receive thread for incoming SDP/ICE signaling
-      g_acds_receive_thread_active = true;
-      int thread_result = ascii_thread_create(&g_acds_receive_thread, acds_receive_thread_func, acds_transport);
-      if (thread_result != 0) {
-        log_error("Failed to create ACDS receive thread: %d", thread_result);
-        g_acds_receive_thread_active = false;
-        webrtc_peer_manager_destroy(g_peer_manager);
-        g_peer_manager = NULL;
-        acip_transport_destroy(acds_transport);
-        acds_client_disconnect(&acds_client);
-        return 1;
-      }
-
-      log_info("ACDS receive thread started - ready to process incoming WebRTC signaling");
-
-      // Simple event loop: wait for WebRTC connection to establish
-      // TODO: Implement proper event loop with DataChannel event handling
-      // For now, just sleep and wait for Ctrl+C
-      log_info("WebRTC session active - waiting for DataChannel to open");
-      log_info("Press Ctrl+C to exit");
-
-      // Wait for shutdown signal
-      while (!should_exit()) {
-        platform_sleep_ms(100);
-
-        // Check if DataChannel is ready
-        if (g_webrtc_peer_transport) {
-          log_info("WebRTC DataChannel established - ACIP communication ready");
-          // TODO: Start normal client operation (capture, display, etc.)
-          // For now, just keep the connection alive
-        }
-      }
-
-      // Cleanup
-      log_info("Shutting down WebRTC session");
-
-      // Stop ACDS receive thread
-      if (g_acds_receive_thread_active) {
-        g_acds_receive_thread_active = false;
-        log_info("Waiting for ACDS receive thread to exit");
-        ascii_thread_join(&g_acds_receive_thread, NULL);
-        log_info("ACDS receive thread stopped");
-      }
-
-      if (g_webrtc_peer_transport) {
-        acip_transport_destroy(g_webrtc_peer_transport);
-        g_webrtc_peer_transport = NULL;
-      }
-      webrtc_peer_manager_destroy(g_peer_manager);
-      g_peer_manager = NULL;
-      acip_transport_destroy(acds_transport);
-      acds_client_disconnect(&acds_client);
-
-      log_info("WebRTC session ended");
-      return 0;
-    } else {
-      // Direct TCP session: Disconnect from ACDS and connect to server
-      acds_client_disconnect(&acds_client);
-
-      log_info("Joined Direct TCP session successfully, connecting to server: %s:%d", join_result.server_address,
-               join_result.server_port);
-
-      // Set discovered address/port for connection
-      discovered_address = join_result.server_address;
-
-      // Convert port to string for discovered_port
-      static char port_buffer[8];
-      snprintf(port_buffer, sizeof(port_buffer), "%d", join_result.server_port);
-      discovered_port = port_buffer;
-    }
+    // TODO: For ACDS results, handle WebRTC vs Direct TCP sessions
+    // For now, all sessions use Direct TCP connection
+    log_info("Connecting to server: %s:%d", discovered_address, discovery_result.server_port);
   }
 
   const options_t *opts_conn = options_get();
