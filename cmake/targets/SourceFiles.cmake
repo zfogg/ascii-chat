@@ -267,8 +267,8 @@ set(NETWORK_SRCS
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)
     lib/network/nat/upnp.c
     # mDNS service discovery for LAN
-    lib/network/mdns.c
-    lib/network/lan_discovery.c
+    lib/network/mdns/mdns.c
+    lib/network/mdns/lan_discovery.c
     deps/mdns/mdns.c
 )
 

@@ -1,12 +1,12 @@
 /**
- * @file lib/network/mdns.c
+ * @file lib/network/mdns/mdns.c
  * @brief mDNS service discovery implementation for ASCII-Chat
  *
  * Wraps the mdns library (https://github.com/mjansson/mdns) with ASCII-Chat specific API.
  * This implementation provides service advertisement and discovery for LAN-based sessions.
  */
 
-#include "network/mdns.h"
+#include "network/mdns/mdns.h"
 #include "common.h"
 #include "platform/socket.h"
 #include <string.h>

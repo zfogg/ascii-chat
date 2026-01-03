@@ -17,7 +17,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "network/mdns.h"
+#include "network/mdns/mdns.h"
 #include "common.h"
 
 // Static callbacks for integration tests (must be at file scope, not inside Test())
