@@ -93,6 +93,7 @@
 #include "network/acip/receive.h"
 #include "network/webrtc/peer_manager.h"
 #include "webrtc.h"
+#include "connection_state.h"
 #include "util/path.h"
 
 #ifndef NDEBUG
@@ -692,6 +693,29 @@ int client_main(void) {
   }
 
   // =========================================================================
+  // Connection Fallback Context Setup
+  // =========================================================================
+  //
+  // Initialize connection fallback context for 3-stage connection attempts:
+  // 1. Direct TCP (3s timeout)
+  // 2. WebRTC + STUN (8s timeout)
+  // 3. WebRTC + TURN (15s timeout)
+  //
+  connection_attempt_context_t connection_ctx = {0};
+  asciichat_error_t ctx_init_result =
+      connection_context_init(&connection_ctx,
+                              GET_OPTION(prefer_webrtc),      // --prefer-webrtc flag
+                              GET_OPTION(no_webrtc),          // --no-webrtc flag
+                              GET_OPTION(webrtc_skip_stun),   // --webrtc-skip-stun flag
+                              GET_OPTION(webrtc_disable_turn) // --webrtc-disable-turn flag
+      );
+
+  if (ctx_init_result != ASCIICHAT_OK) {
+    log_error("Failed to initialize connection context");
+    return 1;
+  }
+
+  // =========================================================================
   // PHASE 1: Parallel mDNS + ACDS Session Discovery
   // =========================================================================
   //
@@ -793,15 +817,25 @@ int client_main(void) {
     const char *port_str =
         discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : "27224");
     int port = atoi(port_str);
-    int connection_result =
-        server_connection_establish(address, port, reconnect_attempt, first_connection, has_ever_connected);
 
-    if (connection_result != 0) {
-      // Check for authentication failure (code -2) - exit immediately without retry
-      if (connection_result == -2) {
-        // Detailed error message already printed by crypto handshake code
-        return 1;
-      }
+    // Update connection context with current attempt number
+    connection_ctx.reconnect_attempt = reconnect_attempt;
+
+    // Attempt connection with 3-stage fallback (TCP → STUN → TURN)
+    // TODO Part 5: Get ACDS server address/port from CLI options
+    asciichat_error_t connection_result =
+        connection_attempt_with_fallback(&connection_ctx, address, (uint16_t)port, "127.0.0.1",
+                                         27225 // ACDS server defaults (will be CLI options in Part 5)
+        );
+
+    // Check if connection attempt succeeded
+    // Handle the error result appropriately
+    int connection_success = (connection_result == ASCIICHAT_OK) ? 0 : -1;
+
+    if (connection_success != 0) {
+      // TODO Part 5: Handle specific error codes from connection_result
+      // For now, treat all non-OK results as connection failure
+      // Authentication errors would be returned as ERROR_CRYPTO_HANDSHAKE
 
       // In snapshot mode, exit immediately on connection failure - no retries
       // Snapshot mode is for quick single-frame captures, not persistent connections
@@ -934,6 +968,9 @@ int client_main(void) {
 
     log_info("Cleanup complete, will attempt reconnection");
   }
+
+  // Cleanup connection context (closes any active transports)
+  connection_context_cleanup(&connection_ctx);
 
   log_info("ascii-chat client shutting down");
   return 0;

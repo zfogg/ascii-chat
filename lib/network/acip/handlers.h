@@ -94,6 +94,9 @@ typedef struct {
   /** @brief Called when WebRTC ICE candidate received */
   void (*on_webrtc_ice)(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
 
+  /** @brief Called when ACDS session join response received (Phase 3 WebRTC integration) */
+  void (*on_session_joined)(const acip_session_joined_t *joined, void *ctx);
+
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;
 } acip_client_callbacks_t;

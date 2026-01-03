@@ -729,6 +729,265 @@ error_cleanup:
   // Clean up all partially allocated resources
   // NOTE: This label is reached when allocation or initialization fails
   // Resources are cleaned up in reverse order of allocation
+}
+
+/**
+ * @brief Register a WebRTC client with the server
+ *
+ * Registers a client that connected via WebRTC data channel instead of TCP socket.
+ * This function reuses most of add_client() logic but skips:
+ * - Crypto handshake (already done via ACDS signaling)
+ * - Socket-specific configuration
+ * - TCP thread pool registration
+ *
+ * DIFFERENCES FROM add_client():
+ * - Takes an already-created acip_transport_t* instead of socket
+ * - No crypto handshake (WebRTC signaling handled authentication)
+ * - No socket configuration (WebRTC handles buffering)
+ * - Uses generic thread spawning instead of tcp_server thread pool
+ *
+ * @param server_ctx Server context
+ * @param transport WebRTC transport (already created and connected)
+ * @param client_ip Client IP address for logging (may be empty for P2P)
+ * @return Client ID on success, -1 on failure
+ *
+ * @note The transport must be fully initialized and ready to send/receive
+ * @note Client capabilities are still expected as first packet
+ */
+// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
+__attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
+                                                              const char *client_ip) {
+  if (!server_ctx || !transport || !client_ip) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_webrtc_client");
+    return -1;
+  }
+
+  rwlock_wrlock(&g_client_manager_rwlock);
+
+  // Find empty slot - this is the authoritative check
+  int slot = -1;
+  int existing_count = 0;
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    if (slot == -1 && atomic_load(&g_client_manager.clients[i].client_id) == 0) {
+      slot = i; // Take first available slot
+    }
+    // Count only active clients
+    if (atomic_load(&g_client_manager.clients[i].client_id) != 0 && atomic_load(&g_client_manager.clients[i].active)) {
+      existing_count++;
+    }
+  }
+
+  // Check if we've hit the configured max-clients limit (not the array size)
+  if (existing_count >= GET_OPTION(max_clients)) {
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count,
+              GET_OPTION(max_clients));
+    log_error("Maximum client limit reached (%d/%d active clients)", existing_count, GET_OPTION(max_clients));
+    return -1;
+  }
+
+  if (slot == -1) {
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "No available client slots (all %d array slots are in use)", MAX_CLIENTS);
+    log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
+    return -1;
+  }
+
+  // Update client_count to match actual count before adding new client
+  g_client_manager.client_count = existing_count;
+
+  // Initialize client
+  client_info_t *client = &g_client_manager.clients[slot];
+  memset(client, 0, sizeof(client_info_t));
+
+  // Set up WebRTC-specific fields
+  client->socket = INVALID_SOCKET_VALUE; // WebRTC has no traditional socket
+  client->transport = transport;         // Use provided transport
+  uint32_t new_client_id = atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1;
+  atomic_store(&client->client_id, new_client_id);
+  SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
+  client->port = 0; // WebRTC doesn't use port numbers
+  atomic_store(&client->active, true);
+  log_info("Added new WebRTC client ID=%u from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
+  atomic_store(&client->shutting_down, false);
+  atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
+  atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
+  log_debug("WebRTC client slot assigned: client_id=%u assigned to slot %d", atomic_load(&client->client_id), slot);
+  client->connected_at = time(NULL);
+
+  // Initialize crypto context for this client
+  memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
+  client->crypto_initialized = true; // Already done via ACDS signaling
+
+  // Initialize pending packet storage (unused for WebRTC, but keep for consistency)
+  client->pending_packet_type = 0;
+  client->pending_packet_payload = NULL;
+  client->pending_packet_length = 0;
+
+  safe_snprintf(client->display_name, sizeof(client->display_name), "WebRTC%u", atomic_load(&client->client_id));
+
+  // Create individual video buffer for this client using modern double-buffering
+  client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
+  if (!client->incoming_video_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for WebRTC client %u", atomic_load(&client->client_id));
+    log_error("Failed to create video buffer for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
+  // Create individual audio buffer for this client
+  client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
+  if (!client->incoming_audio_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for WebRTC client %u", atomic_load(&client->client_id));
+    log_error("Failed to create audio buffer for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
+  // Create packet queues for outgoing data
+  client->audio_queue = packet_queue_create_with_pools(500, 1000, false);
+  if (!client->audio_queue) {
+    LOG_ERRNO_IF_SET("Failed to create audio queue for WebRTC client");
+    goto error_cleanup_webrtc;
+  }
+
+  // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
+  client->outgoing_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
+  if (!client->outgoing_video_buffer) {
+    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for WebRTC client");
+    goto error_cleanup_webrtc;
+  }
+
+  // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
+  client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
+  client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
+  if (!client->send_buffer) {
+    log_error("Failed to allocate send buffer for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
+  g_client_manager.client_count = existing_count + 1; // We just added a client
+  log_debug("Client count updated: now %d clients (added WebRTC client_id=%u to slot %d)",
+            g_client_manager.client_count, atomic_load(&client->client_id), slot);
+
+  // Add client to uthash table for O(1) lookup
+  uint32_t cid = atomic_load(&client->client_id);
+  HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
+  log_debug("Added WebRTC client %u to uthash table", cid);
+
+  // Register this client's audio buffer with the mixer
+  if (g_audio_mixer && client->incoming_audio_buffer) {
+    if (mixer_add_source(g_audio_mixer, atomic_load(&client->client_id), client->incoming_audio_buffer) < 0) {
+      log_warn("Failed to add WebRTC client %u to audio mixer", atomic_load(&client->client_id));
+    } else {
+#ifdef DEBUG_AUDIO
+      log_debug("Added WebRTC client %u to audio mixer", atomic_load(&client->client_id));
+#endif
+    }
+  }
+
+  // Initialize mutexes BEFORE creating any threads to prevent race conditions
+  if (mutex_init(&client->client_state_mutex) != 0) {
+    log_error("Failed to initialize client state mutex for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
+  // Initialize send mutex to protect concurrent socket writes
+  if (mutex_init(&client->send_mutex) != 0) {
+    log_error("Failed to initialize send mutex for WebRTC client %u", atomic_load(&client->client_id));
+    goto error_cleanup_webrtc;
+  }
+
+  rwlock_wrunlock(&g_client_manager_rwlock);
+
+  // For WebRTC clients, the capabilities packet will be received by the receive thread
+  // when it starts. Unlike TCP clients where we handle it synchronously in add_client(),
+  // WebRTC uses the transport abstraction which handles packet reception automatically.
+  log_debug("WebRTC client %u initialized - receive thread will process capabilities", atomic_load(&client->client_id));
+
+  // Start threads for this client
+  // Note: WebRTC clients don't use tcp_server thread pool (no socket)
+  // Instead, use generic thread creation
+  char thread_name[64];
+  uint32_t client_id_snapshot = atomic_load(&client->client_id);
+
+  // Create receive thread for WebRTC client
+  snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id_snapshot);
+  asciichat_error_t recv_result = ascii_thread_create(&client->receive_thread, client_receive_thread, client);
+  if (recv_result != ASCIICHAT_OK) {
+    log_error("Failed to create receive thread for WebRTC client %u: %s", client_id_snapshot,
+              asciichat_error_string(recv_result));
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after receive thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
+
+  // Create send thread for this client
+  snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
+  asciichat_error_t send_result = ascii_thread_create(&client->send_thread, client_send_thread_func, client);
+  if (send_result != ASCIICHAT_OK) {
+    log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,
+              asciichat_error_string(send_result));
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after send thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Created send thread for WebRTC client %u", client_id_snapshot);
+
+  // Send initial server state to the new client
+  if (send_server_state_to_client(client) != 0) {
+    log_warn("Failed to send initial server state to WebRTC client %u", client_id_snapshot);
+  } else {
+#ifdef DEBUG_NETWORK
+    log_info("Sent initial server state to WebRTC client %u", client_id_snapshot);
+#endif
+  }
+
+  // Send initial server state via ACIP transport
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  server_state_packet_t state;
+  state.connected_client_count = connected_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
+  if (packet_send_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial server state to WebRTC client %u: %s", client_id_snapshot,
+             asciichat_error_string(packet_send_result));
+  } else {
+    log_debug("Sent initial server state to WebRTC client %u: %u connected clients", client_id_snapshot,
+              state.connected_client_count);
+  }
+
+  // Create per-client rendering threads
+  log_debug("Creating render threads for WebRTC client %u", client_id_snapshot);
+  if (create_client_render_threads(server_ctx, client) != 0) {
+    log_error("Failed to create render threads for WebRTC client %u", client_id_snapshot);
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after render thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Successfully created render threads for WebRTC client %u", client_id_snapshot);
+
+  // Broadcast server state to ALL clients AFTER the new client is fully set up
+  // This notifies all clients (including the new one) about the updated grid
+  broadcast_server_state_to_all_clients();
+
+  return (int)client_id_snapshot;
+
+error_cleanup_webrtc:
+  // Clean up all partially allocated resources for WebRTC client
   if (client->send_buffer) {
     SAFE_FREE(client->send_buffer);
     client->send_buffer = NULL;
@@ -817,14 +1076,42 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   // This prevents deadlock with render threads that need read locks
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  // Phase 2: Stop all client threads using tcp_server thread pool
-  // This joins threads in stop_id order: receive(1), render(2), send(3)
-  // IMPORTANT: Use saved client_socket (not target_client->socket which may be closed)
+  // Phase 2: Stop all client threads
+  // For TCP clients: use tcp_server thread pool management
+  // For WebRTC clients: manually join threads (no socket-based thread pool)
   log_debug("Stopping all threads for client %u (socket %d)", client_id, client_socket);
-  asciichat_error_t stop_result = tcp_server_stop_client_threads(server_ctx->tcp_server, client_socket);
-  if (stop_result != ASCIICHAT_OK) {
-    log_warn("Failed to stop threads for client %u: error %d", client_id, stop_result);
-    // Continue with cleanup even if thread stopping failed
+
+  if (client_socket != INVALID_SOCKET_VALUE) {
+    // TCP client: use tcp_server thread pool
+    // This joins threads in stop_id order: receive(1), render(2), send(3)
+    asciichat_error_t stop_result = tcp_server_stop_client_threads(server_ctx->tcp_server, client_socket);
+    if (stop_result != ASCIICHAT_OK) {
+      log_warn("Failed to stop threads for TCP client %u: error %d", client_id, stop_result);
+      // Continue with cleanup even if thread stopping failed
+    }
+  } else {
+    // WebRTC client: manually join threads
+    log_debug("Stopping WebRTC client %u threads (receive and send)", client_id);
+    if (target_client) {
+      // Join receive thread
+      void *recv_result = NULL;
+      asciichat_error_t recv_join_result = ascii_thread_join(&target_client->receive_thread, &recv_result);
+      if (recv_join_result != ASCIICHAT_OK) {
+        log_warn("Failed to join receive thread for WebRTC client %u: error %d", client_id, recv_join_result);
+      } else {
+        log_debug("Joined receive thread for WebRTC client %u", client_id);
+      }
+      // Join send thread
+      void *send_result = NULL;
+      asciichat_error_t send_join_result = ascii_thread_join(&target_client->send_thread, &send_result);
+      if (send_join_result != ASCIICHAT_OK) {
+        log_warn("Failed to join send thread for WebRTC client %u: error %d", client_id, send_join_result);
+      } else {
+        log_debug("Joined send thread for WebRTC client %u", client_id);
+      }
+    }
+    // Note: Render threads still need to be stopped - they're created the same way for both TCP and WebRTC
+    // For now, render threads are expected to exit when they check g_server_should_exit and client->active
   }
 
   // Destroy ACIP transport before closing socket

@@ -443,6 +443,19 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   // ACDS Discovery options (shared with server)
   add_acds_discovery_options(b);
 
+  // WebRTC Connection Strategy Options (Phase 3 fallback control)
+  options_builder_add_bool(b, "prefer-webrtc", '\0', offsetof(options_t, prefer_webrtc), false,
+                           "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL);
+
+  options_builder_add_bool(b, "no-webrtc", '\0', offsetof(options_t, no_webrtc), false,
+                           "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL);
+
+  options_builder_add_bool(b, "webrtc-skip-stun", '\0', offsetof(options_t, webrtc_skip_stun), false,
+                           "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL);
+
+  options_builder_add_bool(b, "webrtc-disable-turn", '\0', offsetof(options_t, webrtc_disable_turn), false,
+                           "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL);
+
   // Security options (common with server, plus client-specific server-key)
   add_crypto_common_options(b);
 

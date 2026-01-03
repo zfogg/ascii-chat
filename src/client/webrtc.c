@@ -43,6 +43,15 @@
 static acip_transport_t *g_acds_transport = NULL;
 
 /**
+ * @brief WebRTC data channel transport for peer-to-peer connection
+ *
+ * Set when WebRTC connection is established, cleared on disconnect.
+ * This is the actual data channel transport, separate from ACDS signaling.
+ * Protected by g_signaling_mutex.
+ */
+static acip_transport_t *g_webrtc_transport = NULL;
+
+/**
  * @brief Local session context
  *
  * Set when joining ACDS session, cleared on leave.
@@ -277,6 +286,75 @@ void webrtc_set_session_context(const uint8_t session_id[16], const uint8_t part
 
   log_info("Session context set for WebRTC signaling (session=%.8s..., participant=%.8s...)", (const char *)session_id,
            (const char *)participant_id);
+
+  mutex_unlock(&g_signaling_mutex);
+}
+
+/**
+ * @brief Set the WebRTC data channel transport
+ *
+ * Stores the active WebRTC transport that will be used for peer-to-peer communication.
+ * This is different from the ACDS signaling transport - it's the actual data channel.
+ *
+ * @param transport WebRTC transport (NULL to clear)
+ *
+ * @note Called when WebRTC connection is established or when falling back to TCP
+ * @note If NULL is passed, the transport is cleared (e.g., on disconnect)
+ */
+void webrtc_set_transport(acip_transport_t *transport) {
+  ensure_mutex_initialized();
+  mutex_lock(&g_signaling_mutex);
+
+  g_webrtc_transport = transport;
+
+  if (transport) {
+    log_debug("WebRTC data channel transport set");
+  } else {
+    log_debug("WebRTC data channel transport cleared");
+  }
+
+  mutex_unlock(&g_signaling_mutex);
+}
+
+/**
+ * @brief Get the current WebRTC data channel transport
+ *
+ * Retrieves the active WebRTC transport for peer-to-peer communication.
+ *
+ * @return Current WebRTC transport pointer (NULL if not set)
+ *
+ * @note Caller must not free the returned pointer
+ * @note Pointer is valid only until webrtc_set_transport(NULL) is called
+ */
+acip_transport_t *webrtc_get_transport(void) {
+  ensure_mutex_initialized();
+  mutex_lock(&g_signaling_mutex);
+
+  acip_transport_t *transport = g_webrtc_transport;
+
+  mutex_unlock(&g_signaling_mutex);
+
+  return transport;
+}
+
+/**
+ * @brief Cleanup and release the WebRTC data channel transport
+ *
+ * Closes and releases the WebRTC transport. Called when disconnecting
+ * or falling back to a different transport type.
+ *
+ * @note This is a convenience function that sets transport to NULL
+ * @note Actual transport cleanup (closing sockets, freeing peer manager)
+ *       should be done by the caller before calling this
+ */
+void webrtc_cleanup_transport(void) {
+  ensure_mutex_initialized();
+  mutex_lock(&g_signaling_mutex);
+
+  if (g_webrtc_transport) {
+    log_debug("Cleaning up WebRTC data channel transport");
+    g_webrtc_transport = NULL;
+  }
 
   mutex_unlock(&g_signaling_mutex);
 }

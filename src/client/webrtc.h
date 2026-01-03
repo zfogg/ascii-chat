@@ -72,3 +72,38 @@ void webrtc_set_acds_transport(acip_transport_t *transport);
  * @note Callbacks will fail with ERROR_INVALID_STATE if IDs are not set.
  */
 void webrtc_set_session_context(const uint8_t session_id[16], const uint8_t participant_id[16]);
+
+/**
+ * @brief Set the WebRTC data channel transport
+ *
+ * Stores the active WebRTC transport for peer-to-peer communication.
+ * Separate from ACDS signaling transport.
+ *
+ * @param transport WebRTC transport (NULL to clear)
+ *
+ * @note Thread-safe - uses internal mutex protection
+ */
+void webrtc_set_transport(acip_transport_t *transport);
+
+/**
+ * @brief Get the current WebRTC data channel transport
+ *
+ * Retrieves the active WebRTC transport for peer-to-peer communication.
+ *
+ * @return Current WebRTC transport pointer (NULL if not set)
+ *
+ * @note Thread-safe - uses internal mutex protection
+ * @note Pointer is valid only until webrtc_set_transport(NULL) is called
+ */
+acip_transport_t *webrtc_get_transport(void);
+
+/**
+ * @brief Cleanup and release the WebRTC data channel transport
+ *
+ * Clears the WebRTC transport. Called on disconnect or fallback.
+ *
+ * @note Thread-safe - uses internal mutex protection
+ * @note Actual transport cleanup (closing connections, freeing resources)
+ *       should be done by caller before calling this
+ */
+void webrtc_cleanup_transport(void);

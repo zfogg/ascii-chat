@@ -369,6 +369,7 @@ set(APP_SRCS
     src/client/audio.c
     src/client/keepalive.c
     src/client/webrtc.c
+    src/client/connection_attempt.c
     # Mirror mode sources
     src/mirror/main.c
 )
