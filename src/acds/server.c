@@ -35,6 +35,7 @@
 
 /* RCU library includes for lock-free session registry access in worker threads */
 #include <urcu.h>
+#include <urcu/rculfhash.h>
 
 /**
  * @brief Background thread for periodic rate limit cleanup
@@ -356,14 +357,31 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     log_info("Session created: %.*s (UUID: %02x%02x..., %d STUN, %d TURN servers)", resp.session_string_len,
              resp.session_string, resp.session_id[0], resp.session_id[1], resp.stun_count, resp.turn_count);
 
-    // Save to database - look up session entry first
-    rwlock_rdlock(&server->sessions->lock);
+    /* Save to database - look up session entry first using RCU lock-free access */
+    rcu_read_lock();
+
     session_entry_t *session = NULL;
-    HASH_FIND(hh, server->sessions->sessions, resp.session_string, strlen(resp.session_string), session);
-    if (session) {
-      database_save_session(server->db, session);
+    session_entry_t *iter;
+    struct cds_lfht_iter iter_ctx;
+
+    /* Find session by session_string (primary key in hash table) */
+    unsigned long hash = 5381; // DJB2 hash
+    const char *str = resp.session_string;
+    int c;
+    while ((c = (unsigned char)*str++)) {
+      hash = ((hash << 5) + hash) + c;
     }
-    rwlock_rdunlock(&server->sessions->lock);
+
+    cds_lfht_lookup(server->sessions->sessions, hash, NULL, resp.session_string, &iter_ctx);
+    struct cds_lfht_node *node = cds_lfht_iter_get_node(&iter_ctx);
+    if (node) {
+      session = caa_container_of(node, session_entry_t, hash_node);
+      if (session) {
+        database_save_session(server->db, session);
+      }
+    }
+
+    rcu_read_unlock();
   } else {
     // Error - send error response using proper error code
     acip_send_error(transport, create_result, "Failed to create session");
@@ -475,20 +493,26 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
              resp.participant_id[1]);
 
-    // Save to database - look up session entry first
-    rwlock_rdlock(&server->sessions->lock);
-    session_entry_t *session_iter, *session_tmp;
+    // Save to database - look up session entry first (RCU lock-free iteration)
+    rcu_read_lock();
+
+    session_entry_t *session_iter;
     session_entry_t *joined_session = NULL;
-    HASH_ITER(hh, server->sessions->sessions, session_iter, session_tmp) {
+    struct cds_lfht_iter iter_ctx;
+
+    /* Iterate through hash table using RCU-safe iterator */
+    cds_lfht_for_each_entry(server->sessions->sessions, &iter_ctx, session_iter, hash_node) {
       if (memcmp(session_iter->session_id, resp.session_id, 16) == 0) {
         joined_session = session_iter;
         break;
       }
     }
+
     if (joined_session) {
       database_save_session(server->db, joined_session);
     }
-    rwlock_rdunlock(&server->sessions->lock);
+
+    rcu_read_unlock();
   } else {
     acip_send_session_joined(transport, &resp);
     log_warn("Session join failed for %s: %s", client_ip, resp.error_message);
@@ -515,20 +539,26 @@ static void acds_on_session_leave(const acip_session_leave_t *req, int client_so
       client_data->joined_session = false;
     }
 
-    // Save updated session to database - look up session entry first
-    rwlock_rdlock(&server->sessions->lock);
-    session_entry_t *session_iter, *session_tmp;
+    // Save updated session to database - look up session entry first (RCU lock-free iteration)
+    rcu_read_lock();
+
+    session_entry_t *session_iter;
     session_entry_t *left_session = NULL;
-    HASH_ITER(hh, server->sessions->sessions, session_iter, session_tmp) {
+    struct cds_lfht_iter iter_ctx;
+
+    /* Iterate through hash table using RCU-safe iterator */
+    cds_lfht_for_each_entry(server->sessions->sessions, &iter_ctx, session_iter, hash_node) {
       if (memcmp(session_iter->session_id, req->session_id, 16) == 0) {
         left_session = session_iter;
         break;
       }
     }
+
     if (left_session) {
       database_save_session(server->db, left_session);
     }
-    rwlock_rdunlock(&server->sessions->lock);
+
+    rcu_read_unlock();
   } else {
     acip_send_error(transport, leave_result, asciichat_error_string(leave_result));
     log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));

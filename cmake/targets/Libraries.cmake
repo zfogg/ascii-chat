@@ -287,10 +287,13 @@ endif()
 # Module 8: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
+
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-core
         ascii-chat-util
         ascii-chat-platform
+        liburcu
+        sqlite3
     )
 endif()
 
@@ -683,7 +686,7 @@ else()
 
         target_link_libraries(ascii-chat-shared PRIVATE
             ${CORE_SYS_LIBS}
-            m
+            m liburcu
             ${CMAKE_THREAD_LIBS_INIT}
         )
         target_include_directories(ascii-chat-shared PRIVATE
@@ -722,7 +725,7 @@ else()
         # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
         get_core_deps_libraries(CORE_LIBS)
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${CORE_LIBS} m sqlite3
+            ${CORE_LIBS} m sqlite3 liburcu
         )
         # Link miniupnpc if available (UPnP/NAT-PMP support)
         if(MINIUPNPC_FOUND)

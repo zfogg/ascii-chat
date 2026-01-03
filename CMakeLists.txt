@@ -221,7 +221,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/targets/ACDSLibrary.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/ACDSExecutable.cmake)
 ascii_panic_finalize()
 ascii_defer_finalize()
