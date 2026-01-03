@@ -40,6 +40,142 @@ static void add_binary_logging_options(options_builder_t *b) {
 }
 
 // ============================================================================
+// Webcam & Display Options Helper (Client + Mirror)
+// ============================================================================
+
+/**
+ * @brief Add webcam options (device selection, flipping, test pattern)
+ * Used by: client, mirror modes
+ */
+static void add_webcam_options(options_builder_t *b) {
+  options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
+                          "Webcam device index", "WEBCAM", false, NULL, NULL);
+
+  options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
+                           "Flip webcam horizontally", "WEBCAM", false, NULL);
+
+  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
+                           "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
+}
+
+/**
+ * @brief Add display/rendering options (color mode, palette, etc.)
+ * Used by: client, mirror modes
+ */
+static void add_display_options(options_builder_t *b) {
+  options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
+                               &(terminal_color_level_t){TERM_COLOR_AUTO}, // Auto-detect by default
+                               sizeof(terminal_color_level_t), parse_color_mode,
+                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
+                               &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
+                               sizeof(render_mode_t), parse_render_mode,
+                               "Render mode (foreground, background, half-block)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(
+      b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
+      sizeof(palette_type_t), parse_palette_type,
+      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
+
+  options_builder_add_callback(b, "palette-chars", 'C', offsetof(options_t, palette_custom), "",
+                               sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
+                               "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
+                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
+                           false, NULL);
+
+  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
+                           "DISPLAY", false, NULL);
+
+  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
+                           "DISPLAY", false, NULL);
+
+  options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
+                          "DISPLAY", false, NULL, NULL);
+}
+
+/**
+ * @brief Add snapshot mode options (snapshot, snapshot-delay)
+ * Used by: client, mirror modes
+ */
+static void add_snapshot_options(options_builder_t *b) {
+  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
+                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
+
+  options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
+                             "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
+}
+
+// ============================================================================
+// Compression Options Helper (Client + Server)
+// ============================================================================
+
+/**
+ * @brief Add compression and audio encoding options
+ * Used by: client, server modes
+ */
+static void add_compression_options(options_builder_t *b) {
+  options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
+                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
+                          NULL);
+
+  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
+                           "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
+                           "Enable Opus audio encoding", "PERFORMANCE", false, NULL);
+
+  options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
+                           "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
+}
+
+// ============================================================================
+// Crypto/Security Options Helper (Client + Server)
+// ============================================================================
+
+/**
+ * @brief Add encryption and authentication options
+ * Common options used by: client, server modes
+ * Note: Server has client-keys, client has server-key
+ */
+static void add_crypto_common_options(options_builder_t *b) {
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
+                           "SECURITY", false, NULL);
+
+  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
+                             false, "ASCII_CHAT_KEY", NULL);
+
+  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
+                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
+
+  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
+                             "SECURITY", false, NULL, NULL);
+}
+
+// ============================================================================
+// ACDS Discovery Options Helper (Client + Server)
+// ============================================================================
+
+/**
+ * @brief Add ACDS discovery service options
+ * Used by: client, server modes
+ */
+static void add_acds_discovery_options(options_builder_t *b) {
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), "127.0.0.1",
+                             "ACDS discovery server address (default: 127.0.0.1)", "DISCOVERY", false, NULL, NULL);
+
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
+                          "DISCOVERY", false, NULL, NULL);
+
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
+                           "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
+}
+
+// ============================================================================
 // Binary-Level Options Preset
 // ============================================================================
 
@@ -94,36 +230,14 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_int(b, "max-clients", '\0', offsetof(options_t, max_clients), OPT_MAX_CLIENTS_DEFAULT,
                           "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL);
 
-  // Performance options
-  options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
-                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
-                          NULL);
-
-  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
-                           "PERFORMANCE", false, NULL);
-
-  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
-                           "Enable Opus audio encoding", "PERFORMANCE", false, NULL);
-
-  options_builder_add_bool(b, "no-encode-audio", '\0',
-                           offsetof(options_t, encode_audio), // Note: sets same field to opposite value
-                           !OPT_ENCODE_AUDIO_DEFAULT, "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
+  // Compression and audio encoding options (shared with client)
+  add_compression_options(b);
 
   options_builder_add_bool(b, "no-audio-mixer", '\0', offsetof(options_t, no_audio_mixer), false,
                            "Disable audio mixer (debug)", "PERFORMANCE", false, NULL);
 
-  // Security options
-  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
-                           "SECURITY", false, NULL);
-
-  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
-                             false, "ASCII_CHAT_KEY", NULL);
-
-  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
-                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
-
-  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
-                             "SECURITY", false, NULL, NULL);
+  // Security options (common with client, plus server-specific client-keys and no-encrypt)
+  add_crypto_common_options(b);
 
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
@@ -135,15 +249,8 @@ const options_config_t *options_preset_server(void) {
   options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
                            "SECURITY", false, NULL);
 
-  // ACDS Discovery options
-  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), "127.0.0.1",
-                             "ACDS discovery server address", "DISCOVERY", false, NULL, NULL);
-
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
-                          "DISCOVERY", false, NULL, NULL);
-
-  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
-                           "Enable WebRTC mode for ACDS session (default: Direct TCP)", "DISCOVERY", false, NULL);
+  // ACDS Discovery options (shared with client)
+  add_acds_discovery_options(b);
 
   options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), true,
                            "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
@@ -230,57 +337,10 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
                           "Terminal height in characters", "TERMINAL", false, NULL, NULL);
 
-  // Webcam options
-  options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
-                          "Webcam device index", "WEBCAM", false, NULL, NULL);
-
-  options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
-                           "Flip webcam horizontally", "WEBCAM", false, NULL);
-
-  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
-                           "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
-
-  // Display options - use custom parsers for enum types
-  options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
-                               &(terminal_color_level_t){TERM_COLOR_AUTO}, // Auto-detect by default
-                               sizeof(terminal_color_level_t), parse_color_mode,
-                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
-
-  options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
-                               &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
-                               sizeof(render_mode_t), parse_render_mode,
-                               "Render mode (foreground, background, half-block)", "DISPLAY", false, NULL);
-
-  options_builder_add_callback(
-      b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
-      sizeof(palette_type_t), parse_palette_type,
-      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
-
-  options_builder_add_callback(b, "palette-chars", 'C', offsetof(options_t, palette_custom), "",
-                               sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
-                               "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
-
-  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
-                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
-
-  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
-                           false, NULL);
-
-  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
-                           "DISPLAY", false, NULL);
-
-  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
-                           "DISPLAY", false, NULL);
-
-  options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
-                          "DISPLAY", false, NULL, NULL);
-
-  // Snapshot mode
-  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
-                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
-
-  options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
-                             "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
+  // Webcam, display, and snapshot options (shared with mirror)
+  add_webcam_options(b);
+  add_display_options(b);
+  add_snapshot_options(b);
 
   // Audio options
   options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), false, "Enable audio streaming",
@@ -299,44 +359,16 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback), false,
                            "Disable speaker playback (debug)", "AUDIO", false, NULL);
 
-  // Performance options
-  options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
-                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
-                          NULL);
+  // Compression and audio encoding options (shared with server)
+  add_compression_options(b);
 
-  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
-                           "PERFORMANCE", false, NULL);
+  // ACDS Discovery options (shared with server)
+  add_acds_discovery_options(b);
 
-  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
-                           "Enable Opus audio encoding", "PERFORMANCE", false, NULL);
-
-  options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
-                           "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
-
-  // ACDS Discovery options
-  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), "127.0.0.1",
-                             "ACDS discovery server address (default: 127.0.0.1)", "DISCOVERY", false, NULL, NULL);
-
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
-                          "DISCOVERY", false, NULL, NULL);
-
-  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
-                           "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
-
-  // Security options
-  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
-                           "SECURITY", false, NULL);
-
-  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
-                             false, "ASCII_CHAT_KEY", NULL);
+  // Security options (common with server, plus client-specific server-key)
+  add_crypto_common_options(b);
 
   options_builder_add_string(b, "server-key", '\0', offsetof(options_t, server_key), "", "Expected server public key",
-                             "SECURITY", false, NULL, NULL);
-
-  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
-                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
-
-  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
 
   // Add binary-level logging options (--log-file, --log-level, -V, -q)
@@ -400,57 +432,10 @@ const options_config_t *options_preset_mirror(void) {
   options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
                           "Terminal height in characters", "TERMINAL", false, NULL, NULL);
 
-  // Webcam options
-  options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
-                          "Webcam device index", "WEBCAM", false, NULL, NULL);
-
-  options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
-                           "Flip webcam horizontally", "WEBCAM", false, NULL);
-
-  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
-                           "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
-
-  // Display options - use custom parsers for enum types
-  options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
-                               &(terminal_color_level_t){TERM_COLOR_AUTO}, // Auto-detect by default
-                               sizeof(terminal_color_level_t), parse_color_mode,
-                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
-
-  options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
-                               &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
-                               sizeof(render_mode_t), parse_render_mode,
-                               "Render mode (foreground, background, half-block)", "DISPLAY", false, NULL);
-
-  options_builder_add_callback(
-      b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
-      sizeof(palette_type_t), parse_palette_type,
-      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
-
-  options_builder_add_callback(b, "palette-chars", 'C', offsetof(options_t, palette_custom), "",
-                               sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
-                               "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
-
-  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
-                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
-
-  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
-                           false, NULL);
-
-  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
-                           "DISPLAY", false, NULL);
-
-  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
-                           "DISPLAY", false, NULL);
-
-  options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 30)",
-                          "DISPLAY", false, NULL, NULL);
-
-  // Snapshot mode
-  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
-                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
-
-  options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
-                             "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
+  // Webcam, display, and snapshot options (shared with client)
+  add_webcam_options(b);
+  add_display_options(b);
+  add_snapshot_options(b);
 
   // Add binary-level logging options (--log-file, --log-level, -V, -q)
   // These work before or after the mode name
@@ -513,14 +498,29 @@ const options_config_t *options_preset_acds(void) {
                              "ACDS_DATABASE_PATH", NULL);
 
   // Logging options (binary-level, work before or after mode name)
-  // Note: ACDS doesn't include --verbose/-V and --quiet/-q since they conflict with
-  // ACDS-specific security options (require-server-verify uses 'V')
+  // Note: ACDS uses partial logging options due to short name conflicts with identity verification options
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);
 
   options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level), &(log_level_t){LOG_INFO},
                                sizeof(log_level_t), parse_log_level,
                                "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
+
+  // Encryption options (shared with client and server)
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
+                           "SECURITY", false, NULL);
+
+  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
+                             false, "ASCII_CHAT_KEY", NULL);
+
+  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
+                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
+
+  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
+                             "SECURITY", false, NULL, NULL);
+
+  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
+                           "SECURITY", false, NULL);
 
   // Identity verification options
   options_builder_add_bool(b, "require-server-identity", 'S', offsetof(options_t, require_server_identity), false,
