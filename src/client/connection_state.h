@@ -30,6 +30,7 @@
 #include "common.h"
 #include "network/acip/transport.h"
 #include "network/webrtc/peer_manager.h"
+#include "platform/abstraction.h"
 
 /* ============================================================================
  * Connection State Enumeration
@@ -149,6 +150,7 @@ typedef struct {
   // ─────────────────────────────────────────────────────────────
 
   acip_transport_t *tcp_transport;    ///< TCP transport (Stage 1) - may be NULL
+  acip_transport_t *acds_transport;   ///< ACDS signaling transport (Stages 2/3) - may be NULL
   acip_transport_t *webrtc_transport; ///< WebRTC transport (Stages 2/3) - may be NULL
   acip_transport_t *active_transport; ///< Currently active transport (whichever succeeded)
 
@@ -158,6 +160,14 @@ typedef struct {
 
   connection_session_context_t session_ctx; ///< Session context from ACDS
   webrtc_peer_manager_t *peer_manager;      ///< WebRTC peer manager (Stages 2/3)
+
+  // ─────────────────────────────────────────────────────────────
+  // WebRTC Connection Synchronization
+  // ─────────────────────────────────────────────────────────────
+
+  mutex_t webrtc_mutex;           ///< Mutex for WebRTC callback synchronization
+  cond_t webrtc_ready_cond;       ///< Condition variable for on_transport_ready
+  bool webrtc_transport_received; ///< Flag: transport_ready callback fired
 
   // ─────────────────────────────────────────────────────────────
   // STUN/TURN Configuration
