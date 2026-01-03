@@ -15,9 +15,8 @@
  */
 
 /* CRITICAL: RCU macros MUST be defined before urcu headers are included.
- * These are defined globally via cmake but must also be here for header processing. */
-#define _LGPL_SOURCE
-#define RCU_MB
+ * These are defined globally via cmake (cmake/targets/SourceFiles.cmake)
+ * and passed via -D compiler flags, so we don't redefine them here. */
 
 #include <stdint.h>
 #include <stdbool.h>

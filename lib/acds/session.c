@@ -17,6 +17,7 @@
 #include "acds/strings.h"
 #include "log/logging.h"
 #include "network/webrtc/turn_credentials.h"
+#include "util/fnv1a.h"
 #include <string.h>
 #include <time.h>
 #include <sodium.h>
@@ -64,17 +65,17 @@ static bool verify_password(const char *password, const char *hash) {
 // ============================================================================
 
 /**
- * @brief Hash function for session string lookup (DJB2 algorithm)
+ * @brief Hash function for session string lookup
+ *
+ * Uses FNV-1a hash from lib/util/fnv1a.h which is UBSan-safe.
+ * FNV-1a provides good distribution for hash table keys.
+ *
  * @param session_string Session string (null-terminated)
- * @return Hash value for RCU hash table
+ * @return Hash value for RCU hash table (cast to unsigned long)
  */
 static unsigned long session_string_hash(const char *session_string) {
-  unsigned long hash = 5381;
-  int c;
-  while ((c = (unsigned char)*session_string++)) {
-    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-  }
-  return hash;
+  // Use FNV-1a hash (sanitizer-safe implementation)
+  return (unsigned long)fnv1a_hash_string(session_string);
 }
 
 /**
