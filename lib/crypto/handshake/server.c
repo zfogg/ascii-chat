@@ -9,7 +9,7 @@
 #include "buffer_pool.h"
 #include "common.h"
 #include "crypto/crypto.h"
-#include "crypto/gpg.h"
+#include "crypto/gpg/gpg.h"
 #include "network/packet.h"
 #include <stdio.h>
 #include <string.h>

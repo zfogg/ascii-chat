@@ -205,9 +205,10 @@ asciichat_error_t validate_gpg_key_format(const char *key_text) {
   const char *start_pos = strstr(key_text, "\n\n");
   const char *end_pos = strstr(key_text, "\n-----END");
   if (start_pos && end_pos && start_pos < end_pos) {
-    size_t content_len = (size_t)(end_pos - start_pos - 2); // -2 for \n\n
-    if (content_len == 0) {
-      SET_ERRNO(ERROR_CRYPTO_KEY, "GPG key has empty body content");
+    // -2 for \n\n at start_pos; check for underflow before casting to size_t
+    ptrdiff_t diff = end_pos - start_pos - 2;
+    if (diff <= 0) {
+      SET_ERRNO(ERROR_CRYPTO_KEY, "GPG key has empty or malformed body content");
       return ERROR_CRYPTO_KEY;
     }
   }
@@ -359,17 +360,32 @@ asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_pat
   }
 
   // Check for alternating bit patterns (e.g., 0xAA 0xBB 0xAA 0xBB or 0x55 0xAA 0x55 0xAA)
-  bool is_alternating_pattern = true;
+  // A proper alternating pattern has at most 2 unique byte values that truly alternate
+  bool byte_appeared[256] = {0};
+  int unique_values = 0;
   for (size_t i = 0; i < 32; i++) {
-    // Check for simple alternating bytes
-    if (i > 0 && key->key[i] == key->key[i - 1]) {
-      is_alternating_pattern = false;
-      break;
+    if (!byte_appeared[key->key[i]]) {
+      byte_appeared[key->key[i]] = true;
+      unique_values++;
     }
   }
-  if (is_alternating_pattern) {
-    *has_weak_patterns = true;
-    return ASCIICHAT_OK;
+
+  // Only consider it weak if there are 2 or fewer unique values AND they properly alternate
+  if (unique_values <= 2) {
+    bool is_alternating = true;
+    for (size_t i = 1; i < 32; i++) {
+      // In a true alternating pattern:
+      // 1. Adjacent bytes must be different
+      // 2. Pattern must repeat every 2 bytes (byte[i] == byte[i-2])
+      if (key->key[i] == key->key[i - 1] || (i >= 2 && key->key[i] != key->key[i - 2])) {
+        is_alternating = false;
+        break;
+      }
+    }
+    if (is_alternating) {
+      *has_weak_patterns = true;
+      return ASCIICHAT_OK;
+    }
   }
 
   // Check for common cryptographic initialization patterns
