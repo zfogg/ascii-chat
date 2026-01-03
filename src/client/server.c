@@ -670,6 +670,35 @@ acip_transport_t *server_connection_get_transport(void) {
 }
 
 /**
+ * @brief Set ACIP transport instance from connection fallback
+ *
+ * Used to integrate the transport from the 3-stage connection fallback orchestrator
+ * (TCP → STUN → TURN) into the server connection management layer.
+ *
+ * @param transport Transport instance created by connection_attempt_with_fallback()
+ *
+ * @ingroup client_connection
+ */
+void server_connection_set_transport(acip_transport_t *transport) {
+  // Clean up any existing transport
+  if (g_client_transport) {
+    log_warn("Replacing existing transport with new fallback transport");
+    acip_transport_destroy(g_client_transport);
+  }
+
+  g_client_transport = transport;
+
+  // Mark connection as active when transport is set
+  if (transport) {
+    atomic_store(&g_connection_active, true);
+    log_debug("Server connection transport set and marked active");
+  } else {
+    atomic_store(&g_connection_active, false);
+    log_debug("Server connection transport cleared and marked inactive");
+  }
+}
+
+/**
  * @brief Get client ID assigned by server
  *
  * @return Client ID (based on local port) or 0 if not connected
