@@ -43,12 +43,18 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
                                                 const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_discovery_ping(const void *payload, size_t payload_len, int client_socket,
                                                     const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_len, int client_socket,
+                                          const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, int client_socket,
+                                          const char *client_ip, const acip_acds_callbacks_t *callbacks);
 
 // =============================================================================
 // ACDS Packet Dispatch Table (O(1) lookup)
 // =============================================================================
 
 static const acip_acds_handler_func_t g_acds_packet_handlers[200] = {
+    [PACKET_TYPE_PING] = handle_acds_ping,
+    [PACKET_TYPE_PONG] = handle_acds_pong,
     [PACKET_TYPE_ACIP_SESSION_CREATE] = handle_acds_session_create,
     [PACKET_TYPE_ACIP_SESSION_LOOKUP] = handle_acds_session_lookup,
     [PACKET_TYPE_ACIP_SESSION_JOIN] = handle_acds_session_join,
@@ -106,9 +112,9 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   const acip_session_create_t *req = (const acip_session_create_t *)payload;
 
   // Validate session parameters
-  if (req->max_participants == 0 || req->max_participants > 8) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-8)", req->max_participants,
-                     client_ip);
+  if (req->max_participants == 0 || req->max_participants > 32) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants: %u from %s (expected: 1-32)",
+                     req->max_participants, client_ip);
   }
 
   if (req->session_type > 1) {
@@ -209,5 +215,35 @@ static asciichat_error_t handle_acds_discovery_ping(const void *payload, size_t 
   if (callbacks->on_discovery_ping) {
     callbacks->on_discovery_ping(payload, payload_len, client_socket, client_ip, callbacks->app_ctx);
   }
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_len, int client_socket,
+                                          const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+  (void)payload;
+  (void)payload_len;
+  (void)callbacks;
+
+  log_debug("ACDS keepalive: Received PING from %s, responding with PONG", client_ip);
+
+  // Respond with PONG to keep connection alive
+  asciichat_error_t result = packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
+  if (result != ASCIICHAT_OK) {
+    log_warn("ACDS keepalive: Failed to send PONG to %s: %s", client_ip, asciichat_error_string(result));
+    return result;
+  }
+
+  log_debug("ACDS keepalive: Sent PONG to %s", client_ip);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, int client_socket,
+                                          const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+  (void)payload;
+  (void)payload_len;
+  (void)client_socket;
+  (void)callbacks;
+
+  log_debug("ACDS keepalive: Received PONG from %s", client_ip);
   return ASCIICHAT_OK;
 }

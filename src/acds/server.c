@@ -28,6 +28,7 @@
 #include "log/logging.h"
 #include "platform/socket.h"
 #include "network/network.h"
+#include "buffer_pool.h"
 #include "network/tcp/server.h"
 #include "util/ip.h"
 #include <string.h>
@@ -679,7 +680,7 @@ void *acds_client_handler(void *arg) {
       // Connection error - client disconnected
       log_info("Client %s disconnected", client_ip);
       if (payload) {
-        SAFE_FREE(payload);
+        buffer_pool_free(NULL, payload, payload_size);
       }
       break;
     }
@@ -699,9 +700,9 @@ void *acds_client_handler(void *arg) {
                asciichat_error_string(dispatch_result));
     }
 
-    // Free payload
+    // Free payload (allocated by receive_packet via buffer_pool_alloc)
     if (payload) {
-      SAFE_FREE(payload);
+      buffer_pool_free(NULL, payload, payload_size);
     }
   }
 

@@ -36,12 +36,20 @@ static inline void *data_from_node(buffer_node_t *node) {
   return (void *)((char *)node + sizeof(buffer_node_t));
 }
 
-/** @brief Check if a buffer is from a pool (has valid magic) */
+/** @brief Check if a buffer is from a pool (has valid pool magic, not fallback) */
 static inline bool is_pooled_buffer(void *data) {
   if (!data)
     return false;
   buffer_node_t *node = node_from_data(data);
   return node->magic == BUFFER_POOL_MAGIC;
+}
+
+/** @brief Check if a buffer has any valid magic (pool or fallback) */
+static inline bool has_buffer_header(void *data) {
+  if (!data)
+    return false;
+  buffer_node_t *node = node_from_data(data);
+  return node->magic == BUFFER_POOL_MAGIC || node->magic == BUFFER_POOL_MAGIC_FALLBACK;
 }
 
 /** @brief Atomically update peak if new value is higher */
@@ -116,13 +124,21 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     pool = buffer_pool_get_global();
   }
 
-  // Size out of range - use malloc directly
+  // Size out of range - use malloc with node header for consistent cleanup
   if (!pool || size < BUFFER_POOL_MIN_SIZE || size > BUFFER_POOL_MAX_SINGLE_SIZE) {
-    void *data = SAFE_MALLOC(size, void *);
+    size_t total_size = sizeof(buffer_node_t) + size;
+    buffer_node_t *node = SAFE_MALLOC(total_size, buffer_node_t *);
+    node->magic = BUFFER_POOL_MAGIC_FALLBACK; // Different magic for fallbacks
+    node->_pad = 0;
+    node->size = size;
+    atomic_init(&node->next, NULL);
+    atomic_init(&node->returned_at_ms, 0);
+    node->pool = NULL; // No pool for fallbacks
+
     if (pool) {
       atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
     }
-    return data;
+    return data_from_node(node);
   }
 
   // Try to pop from lock-free stack (LIFO)
@@ -196,25 +212,27 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
 }
 
 void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
+  (void)size; // Size parameter not needed with header-based detection
+
   if (!data)
     return;
 
-  // If size is out of range, it's definitely not from pool
-  if (size != 0 && (size < BUFFER_POOL_MIN_SIZE || size > BUFFER_POOL_MAX_SINGLE_SIZE)) {
-    SAFE_FREE(data);
-    return;
-  }
-
-  // Only check magic if size suggests it might be pooled
-  // This avoids reading before non-pooled allocations
-  if (!is_pooled_buffer(data)) {
-    // Not from pool - use regular free
-    SAFE_FREE(data);
-    return;
-  }
-
+  // All buffer_pool allocations have headers, safe to check magic
   buffer_node_t *node = node_from_data(data);
 
+  // If it's a malloc fallback (has fallback magic), free the node directly
+  if (node->magic == BUFFER_POOL_MAGIC_FALLBACK) {
+    SAFE_FREE(node); // Free the node (includes header + data)
+    return;
+  }
+
+  // If it's not a pooled buffer (no valid magic), it's external - use platform free
+  if (node->magic != BUFFER_POOL_MAGIC) {
+    free(data); // Unknown allocation, just free the data pointer
+    return;
+  }
+
+  // It's a pooled buffer - return to pool
   // Use the pool stored in the node if none provided
   if (!pool) {
     pool = node->pool;
