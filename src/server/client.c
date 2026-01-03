@@ -1738,19 +1738,66 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
 
-  // Reconstruct full packet (header + data) for existing handler
-  size_t total_len = sizeof(*header) + data_len;
+  log_debug(
+      "ACIP callback received IMAGE_FRAME: width=%u, height=%u, pixel_format=%u, compressed_size=%u, data_len=%zu",
+      header->width, header->height, header->pixel_format, header->compressed_size, data_len);
+
+  // Validate frame dimensions to prevent DoS and buffer overflow attacks
+  if (header->width == 0 || header->height == 0) {
+    log_error("Invalid image dimensions: %ux%u (width and height must be > 0)", header->width, header->height);
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME invalid dimensions");
+    return;
+  }
+
+  const uint32_t MAX_WIDTH = 8192;
+  const uint32_t MAX_HEIGHT = 8192;
+  if (header->width > MAX_WIDTH || header->height > MAX_HEIGHT) {
+    log_error("Image dimensions too large: %ux%u (max: %ux%u)", header->width, header->height, MAX_WIDTH, MAX_HEIGHT);
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME dimensions too large");
+    return;
+  }
+
+  // Auto-enable video stream if not already enabled
+  bool was_sending_video = atomic_load(&client->is_sending_video);
+  if (!was_sending_video) {
+    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+      log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", atomic_load(&client->client_id));
+      log_info_client(client, "First video frame received - streaming active");
+    }
+  } else {
+    // Log periodically
+    mutex_lock(&client->client_state_mutex);
+    client->frames_received_logged++;
+    if (client->frames_received_logged % 25000 == 0) {
+      char pretty[64];
+      format_bytes_pretty(data_len, pretty, sizeof(pretty));
+      log_debug("Client %u has sent %u IMAGE_FRAME packets (%s)", atomic_load(&client->client_id),
+                client->frames_received_logged, pretty);
+    }
+    mutex_unlock(&client->client_state_mutex);
+  }
+
+  // Reconstruct packet in old format for legacy handler: [width:4][height:4][rgb_data]
+  // Header from ACIP is in HOST byte order, must convert back to NETWORK byte order
+  const size_t legacy_header_size = sizeof(uint32_t) * 2;
+  size_t total_len = legacy_header_size + data_len;
+
   uint8_t *full_packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!full_packet) {
     log_error("Failed to allocate buffer for IMAGE_FRAME reconstruction");
     return;
   }
 
-  memcpy(full_packet, header, sizeof(*header));
+  uint32_t width_net = HOST_TO_NET_U32(header->width);
+  uint32_t height_net = HOST_TO_NET_U32(header->height);
+
+  memcpy(full_packet, &width_net, sizeof(uint32_t));
+  memcpy(full_packet + sizeof(uint32_t), &height_net, sizeof(uint32_t));
   if (data_len > 0) {
-    memcpy(full_packet + sizeof(*header), pixel_data, data_len);
+    memcpy(full_packet + legacy_header_size, pixel_data, data_len);
   }
 
+  log_debug("Reconstructed old-format packet (total_len=%zu), calling legacy handler", total_len);
   handle_image_frame_packet(client, full_packet, total_len);
   SAFE_FREE(full_packet);
 }
