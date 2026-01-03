@@ -169,6 +169,22 @@ static void add_crypto_common_options(options_builder_t *b) {
 }
 
 // ============================================================================
+// Port Option Helper (Server + Client + ACDS)
+// ============================================================================
+
+/**
+ * @brief Add port option to a builder
+ * Used by: server, client, acds modes
+ * @param b Options builder
+ * @param default_port Default port value (as string)
+ * @param env_var Environment variable name for port override
+ */
+static void add_port_option(options_builder_t *b, const char *default_port, const char *env_var) {
+  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), default_port, "Server port", "NETWORK", false,
+                             env_var, NULL);
+}
+
+// ============================================================================
 // ACDS Discovery Options Helper (Client + Server)
 // ============================================================================
 
@@ -201,7 +217,7 @@ const options_config_t *options_preset_binary(void) {
     return NULL;
 
   b->program_name = "ascii-chat";
-  b->description = "Terminal-based video chat with ASCII art rendering";
+  b->description = "Video chat in your terminal";
 
   // Help and version
   options_builder_add_bool(b, "help", '\0', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
@@ -235,9 +251,7 @@ const options_config_t *options_preset_server(void) {
 
   // Network options
   // Note: Server bind addresses are positional arguments only, not flags
-
-  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), OPT_PORT_DEFAULT, "Server port", "NETWORK",
-                             false, "ASCII_CHAT_PORT", NULL);
+  add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
 
   options_builder_add_int(b, "max-clients", '\0', offsetof(options_t, max_clients), OPT_MAX_CLIENTS_DEFAULT,
                           "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL);
@@ -333,8 +347,7 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_string(b, "address", 'a', offsetof(options_t, address), OPT_ADDRESS_DEFAULT, "Server address",
                              "NETWORK", false, "ASCII_CHAT_SERVER", NULL);
 
-  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), OPT_PORT_DEFAULT, "Server port", "NETWORK",
-                             false, "ASCII_CHAT_PORT", NULL);
+  add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
 
   options_builder_add_int(b, "reconnect", 'r', offsetof(options_t, reconnect_attempts), OPT_RECONNECT_ATTEMPTS_DEFAULT,
                           "Reconnection attempts (-1=infinite)", "NETWORK", false, NULL, NULL);
@@ -482,8 +495,7 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_string(b, "address", 'a', offsetof(options_t, address), "127.0.0.1", "Bind address", "NETWORK",
                              false, "ACDS_ADDRESS", NULL);
 
-  options_builder_add_string(b, "port", 'p', offsetof(options_t, port), "27225", "Server port", "NETWORK", false,
-                             "ACDS_PORT", NULL);
+  add_port_option(b, "27225", "ACDS_PORT");
 
   options_builder_add_string(b, "address6", '\0', offsetof(options_t, address6), "::1", "IPv6 bind address", "NETWORK",
                              false, NULL, NULL);
