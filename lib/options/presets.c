@@ -139,6 +139,10 @@ const options_config_t *options_preset_server(void) {
                            "Disable UPnP/NAT-PMP port mapping (requires manual port forwarding)", "DISCOVERY", false,
                            NULL);
 
+  options_builder_add_bool(b, "no-mdns-advertise", '\0', offsetof(options_t, no_mdns_advertise), false,
+                           "Disable mDNS service advertisement on local network (LAN discovery won't find this server)",
+                           "DISCOVERY", false, NULL);
+
   // Logging options
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);

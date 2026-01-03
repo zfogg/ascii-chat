@@ -901,7 +901,8 @@ int server_main(void) {
 
   // Initialize mDNS for LAN service discovery (optional)
   // mDNS allows clients on the LAN to discover this server without knowing its IP
-  if (!atomic_load(&g_server_should_exit)) {
+  // Can be disabled with --no-mdns-advertise
+  if (!atomic_load(&g_server_should_exit) && !GET_OPTION(no_mdns_advertise)) {
     log_debug("Initializing mDNS for LAN service discovery...");
     g_mdns_ctx = asciichat_mdns_init();
     if (!g_mdns_ctx) {
@@ -933,11 +934,13 @@ int server_main(void) {
         asciichat_mdns_shutdown(g_mdns_ctx);
         g_mdns_ctx = NULL;
       } else {
-        printf("🌐 mDNS: Server advertised as '%s.local' on LAN\\n", session_name);
+        printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
         log_info("mDNS: Service advertised as '%s._tcp.local' (name=%s, port=%d)", service.type, service.name,
                  service.port);
       }
     }
+  } else if (GET_OPTION(no_mdns_advertise)) {
+    log_info("mDNS service advertisement disabled via --no-mdns-advertise");
   }
 
   // ========================================================================

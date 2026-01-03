@@ -476,9 +476,10 @@ typedef struct options_state {
   char acds_database_path[OPTIONS_BUFF_SIZE]; ///< ACDS database file path (default: ~/.ascii-chat/acds.db)
 
   // ============================================================================
-  // LAN Discovery Options (client only)
+  // LAN Discovery Options
   // ============================================================================
-  bool lan_discovery; ///< Enable LAN service discovery via mDNS (client only)
+  bool lan_discovery;     ///< Enable LAN service discovery via mDNS (client only)
+  bool no_mdns_advertise; ///< Disable mDNS service advertisement (server only)
 
   // ============================================================================
   // Network Performance Options
