@@ -39,12 +39,15 @@
   - `--no-webrtc` - Disable WebRTC, use Direct TCP only
   - `--webrtc-skip-stun` - Skip STUN, go straight to TURN
   - `--webrtc-disable-turn` - Disable TURN, use STUN only
+- ✅ **Client-Side Integration Complete:**
+  - connection_attempt.c in CMake build (cmake/targets/SourceFiles.cmake:372)
+  - Fallback integrated in src/client/main.c:827
+  - SESSION_JOINED callback implemented in src/client/protocol.c:1451
+  - SDP and ICE modules build successfully
 - ⚠️ **Remaining Work:**
-  - Add connection_attempt.c to CMake build
-  - Integrate fallback into src/client/main.c
-  - Add SESSION_JOINED callback handling
-  - Implement server-side WebRTC support
-  - Write integration tests
+  - Server-side WebRTC support (src/server/main.c, src/server/client.c)
+  - ACDS signaling relay for SDP/ICE exchange (src/acds/signaling.c)
+  - Integration tests for connection fallback and WebRTC
 
 ---
 
@@ -1026,12 +1029,14 @@ Note these SDP ideas are just ideas and have to be molded to our codebase.
 ### Phase 3: WebRTC Signaling + Connection Fallback
 1. [x] Implement connection attempt sequence (Direct TCP → STUN → TURN) - src/client/connection_attempt.c
 2. [x] Implement SDP offer/answer exchange - lib/network/webrtc/sdp.c
-3. [ ] Implement ICE candidate relay - ice.c has parsing/formatting, ACDS relay pending
-4. [ ] Integrate into client main.c - connection_attempt.c not in CMake build yet
-5. [ ] Add SESSION_JOINED callback handling
-6. [ ] Implement server-side WebRTC support
-7. [ ] Test peer-to-peer connections through TURN
-8. [ ] Write integration tests
+3. [x] Implement ICE candidate relay - ice.c parsing/formatting complete, lib/network/webrtc/ice.c
+4. [x] Integrate into client main.c - connection_attempt_with_fallback() called from main.c:827
+5. [x] Add SESSION_JOINED callback handling - src/client/protocol.c:1451-1481
+6. [x] CMake build integration - sdp.c, ice.c, connection_attempt.c in SourceFiles.cmake
+7. [ ] Implement server-side WebRTC support - src/server/main.c, src/server/client.c
+8. [ ] ACDS signaling relay for SDP/ICE - src/acds/signaling.c
+9. [ ] Test peer-to-peer connections through TURN
+10. [ ] Write integration tests
 
 ### Phase 4: Hardening & Testing
 1. Add rate limiting and security checks to ACDS
