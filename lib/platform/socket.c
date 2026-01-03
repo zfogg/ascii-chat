@@ -67,3 +67,38 @@ void socket_optimize_for_streaming(socket_t sock) {
   int keepalive = 1;
   socket_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
 }
+
+/**
+ * @brief Set socket receive and send timeouts
+ * @param sock Socket to configure
+ * @param timeout_ms Timeout in milliseconds
+ * @return 0 on success, non-zero on error
+ *
+ * Cross-platform implementation that sets both SO_RCVTIMEO and SO_SNDTIMEO.
+ * Platform-specific socket_setsockopt() handles the differences between
+ * Windows (DWORD milliseconds) and POSIX (struct timeval).
+ */
+int socket_set_timeout(socket_t sock, uint32_t timeout_ms) {
+#ifdef _WIN32
+  // Windows: SO_RCVTIMEO and SO_SNDTIMEO use DWORD (milliseconds)
+  DWORD timeout_val = (DWORD)timeout_ms;
+  if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout_val, sizeof(timeout_val)) != 0) {
+    return -1;
+  }
+  if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout_val, sizeof(timeout_val)) != 0) {
+    return -1;
+  }
+#else
+  // POSIX: SO_RCVTIMEO and SO_SNDTIMEO use struct timeval (seconds + microseconds)
+  struct timeval tv;
+  tv.tv_sec = timeout_ms / 1000;
+  tv.tv_usec = (timeout_ms % 1000) * 1000;
+  if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
+    return -1;
+  }
+  if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != 0) {
+    return -1;
+  }
+#endif
+  return 0;
+}

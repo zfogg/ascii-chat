@@ -181,7 +181,25 @@ void acds_server_shutdown(acds_server_t *server) {
   // Shutdown TCP server (closes listen sockets, stops accept loop)
   tcp_server_shutdown(&server->tcp_server);
 
-  // TODO: Wait for all client handler threads to exit
+  // Wait for all client handler threads to exit
+  // We need to stop all active client connections gracefully
+  size_t remaining_clients;
+  int shutdown_attempts = 0;
+  const int max_shutdown_attempts = 100; // 10 seconds (100 * 100ms)
+
+  while ((remaining_clients = tcp_server_get_client_count(&server->tcp_server)) > 0 &&
+         shutdown_attempts < max_shutdown_attempts) {
+    log_debug("Waiting for %zu client handler threads to exit (attempt %d/%d)",
+              remaining_clients, shutdown_attempts + 1, max_shutdown_attempts);
+    platform_sleep_ms(100);
+    shutdown_attempts++;
+  }
+
+  if (remaining_clients > 0) {
+    log_warn("Server shutdown: %zu client handler threads still running after 10 seconds", remaining_clients);
+  } else if (shutdown_attempts > 0) {
+    log_debug("All client handler threads exited gracefully");
+  }
 
   // Stop and destroy worker thread pool (cleanup thread, etc.)
   if (server->worker_pool) {

@@ -327,6 +327,23 @@ int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interv
 int socket_set_linger(socket_t sock, bool enable, int timeout);
 
 /**
+ * @brief Set socket receive and send timeouts
+ * @param sock Socket to configure
+ * @param timeout_ms Timeout in milliseconds
+ * @return 0 on success, non-zero on error
+ *
+ * Sets both SO_RCVTIMEO (receive timeout) and SO_SNDTIMEO (send timeout)
+ * to prevent indefinite blocking on socket operations.
+ *
+ * Platform-specific implementations:
+ * - Windows: Uses DWORD timeout in milliseconds
+ * - POSIX: Uses struct timeval with seconds and microseconds
+ *
+ * @ingroup platform
+ */
+int socket_set_timeout(socket_t sock, uint32_t timeout_ms);
+
+/**
  * @brief Set socket buffer sizes
  * @param sock Socket to configure
  * @param recv_size Receive buffer size in bytes

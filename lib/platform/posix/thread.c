@@ -7,12 +7,14 @@
 #ifndef _WIN32
 
 #include "../abstraction.h"
+#include "../../asciichat_errno.h"
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sched.h>
 
 /**
  * @brief Create a new thread
@@ -194,6 +196,46 @@ void *ascii_tls_get(tls_key_t key) {
  */
 int ascii_tls_set(tls_key_t key, void *value) {
   return pthread_setspecific(key, value);
+}
+
+/**
+ * @brief Set the current thread to real-time priority (POSIX implementation)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Uses SCHED_FIFO with priority 80 for Linux/POSIX systems.
+ * Requires CAP_SYS_NICE capability or appropriate rtprio resource limit.
+ */
+asciichat_error_t ascii_thread_set_realtime_priority(void) {
+#ifdef __APPLE__
+  // macOS: Use thread_policy_set for real-time scheduling
+  #include <mach/mach.h>
+  #include <mach/thread_policy.h>
+
+  thread_time_constraint_policy_data_t policy;
+  policy.period = 0;
+  policy.computation = 5000; // 5ms computation time
+  policy.constraint = 10000; // 10ms constraint
+  policy.preemptible = 0;    // Not preemptible
+
+  kern_return_t result = thread_policy_set(mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY,
+                                          (thread_policy_t)&policy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+  if (result != KERN_SUCCESS) {
+    return SET_ERRNO(ERROR_THREAD, "Failed to set real-time thread priority on macOS");
+  }
+  return ASCIICHAT_OK;
+
+#else
+  // Linux: Use SCHED_FIFO with high priority
+  struct sched_param param;
+  int policy = SCHED_FIFO;
+  param.sched_priority = 80; // High priority (1-99 range for SCHED_FIFO)
+
+  if (pthread_setschedparam(pthread_self(), policy, &param) != 0) {
+    return SET_ERRNO_SYS(ERROR_THREAD,
+                        "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
+  }
+  return ASCIICHAT_OK;
+#endif
 }
 
 #endif // !_WIN32

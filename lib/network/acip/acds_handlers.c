@@ -104,6 +104,25 @@ static asciichat_error_t handle_acds_session_create(const void *payload, size_t 
   }
 
   const acip_session_create_t *req = (const acip_session_create_t *)payload;
+
+  // Validate session parameters
+  if (req->max_participants == 0 || req->max_participants > 8) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "Invalid max_participants: %u from %s (expected: 1-8)", req->max_participants, client_ip);
+  }
+
+  if (req->session_type > 1) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "Invalid session_type: %u from %s (expected: 0=DIRECT_TCP or 1=WEBRTC)", req->session_type, client_ip);
+  }
+
+  // Validate server port (0 = system assigned, 1-65535 = valid)
+  // Allow 0 for auto-assignment during WEBRTC mode
+  if (req->session_type == 0 && req->server_port == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "DIRECT_TCP session requires valid server_port from %s", client_ip);
+  }
+
   callbacks->on_session_create(req, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }

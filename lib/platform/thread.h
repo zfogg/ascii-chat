@@ -155,6 +155,26 @@ bool ascii_thread_is_initialized(asciithread_t *thread);
 void ascii_thread_init(asciithread_t *thread);
 
 /**
+ * @brief Set the current thread to real-time priority
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Attempts to set the current thread to real-time priority for
+ * time-critical operations like audio processing.
+ *
+ * Platform-specific implementations:
+ *   - Linux: Uses pthread_setschedparam() with SCHED_FIFO at priority 80
+ *   - macOS: Uses thread_policy_set() with THREAD_TIME_CONSTRAINT_POLICY
+ *   - Windows: Uses SetThreadPriority() with THREAD_PRIORITY_TIME_CRITICAL
+ *
+ * @note On Linux, requires CAP_SYS_NICE capability or rtprio resource limit
+ * @note On Windows, does not require special privileges
+ * @note On macOS, requires mach_thread_self() to work
+ *
+ * @ingroup platform
+ */
+asciichat_error_t ascii_thread_set_realtime_priority(void);
+
+/**
  * @brief Create a thread with standardized error handling and logging
  * @param thread Thread handle to fill on success
  * @param func Thread function to execute
