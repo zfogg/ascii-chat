@@ -44,6 +44,18 @@ static void add_binary_logging_options(options_builder_t *b) {
 // ============================================================================
 
 /**
+ * @brief Add terminal dimension options (width, height)
+ * Used by: client, mirror modes
+ */
+static void add_terminal_dimension_options(options_builder_t *b) {
+  options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
+                          "Terminal width in characters", "TERMINAL", false, NULL, NULL);
+
+  options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
+                          "Terminal height in characters", "TERMINAL", false, NULL, NULL);
+}
+
+/**
  * @brief Add webcam options (device selection, flipping, test pattern)
  * Used by: client, mirror modes
  */
@@ -330,14 +342,8 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_bool(b, "scan", '\0', offsetof(options_t, lan_discovery), false,
                            "Scan for ASCII-Chat servers on local network (mDNS)", "NETWORK", false, NULL);
 
-  // Terminal dimensions
-  options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
-                          "Terminal width in characters", "TERMINAL", false, NULL, NULL);
-
-  options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
-                          "Terminal height in characters", "TERMINAL", false, NULL, NULL);
-
-  // Webcam, display, and snapshot options (shared with mirror)
+  // Terminal dimensions, webcam, display, and snapshot options (shared with mirror)
+  add_terminal_dimension_options(b);
   add_webcam_options(b);
   add_display_options(b);
   add_snapshot_options(b);
@@ -425,14 +431,8 @@ const options_config_t *options_preset_mirror(void) {
   b->program_name = "ascii-chat mirror";
   b->description = "Local webcam viewing (no network)";
 
-  // Terminal dimensions
-  options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
-                          "Terminal width in characters", "TERMINAL", false, NULL, NULL);
-
-  options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
-                          "Terminal height in characters", "TERMINAL", false, NULL, NULL);
-
-  // Webcam, display, and snapshot options (shared with client)
+  // Terminal dimensions, webcam, display, and snapshot options (shared with client)
+  add_terminal_dimension_options(b);
   add_webcam_options(b);
   add_display_options(b);
   add_snapshot_options(b);
