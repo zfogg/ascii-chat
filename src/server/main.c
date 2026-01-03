@@ -935,8 +935,7 @@ int server_main(void) {
         g_mdns_ctx = NULL;
       } else {
         printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
-        log_info("mDNS: Service advertised as '%s._tcp.local' (name=%s, port=%d)", service.type, service.name,
-                 service.port);
+        log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d)", service.type, service.name, service.port);
       }
     }
   } else if (GET_OPTION(no_mdns_advertise)) {
