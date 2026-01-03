@@ -219,8 +219,8 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_int(b, "reconnect", 'r', offsetof(options_t, reconnect_attempts), OPT_RECONNECT_ATTEMPTS_DEFAULT,
                           "Reconnection attempts (-1=infinite)", "NETWORK", false, NULL, NULL);
 
-  options_builder_add_bool(b, "lan", 'l', offsetof(options_t, lan_discovery), false,
-                           "Discover services on local network via mDNS", "NETWORK", false, NULL);
+  options_builder_add_bool(b, "scan", '\0', offsetof(options_t, lan_discovery), false,
+                           "Scan for ASCII-Chat servers on local network (mDNS)", "NETWORK", false, NULL);
 
   // Terminal dimensions
   options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
