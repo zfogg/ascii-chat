@@ -231,11 +231,19 @@ int main(int argc, char *argv[]) {
 
   // UNIFIED OPTION INITIALIZATION
   // This single call handles:
-  // - Mode detection from command-line arguments
+  // - Mode detection from command-line arguments (including session string auto-detection)
   // - Binary-level option parsing (--help, --version, --log-file, etc.)
   // - Mode-specific option parsing
   // - Configuration file loading
   // - Post-processing and validation
+  //
+  // Session String Detection (Phase 1 ACDS):
+  // When a positional argument matches word-word-word pattern (e.g., "swift-river-mountain"),
+  // it's automatically detected as a session string by options_init(), which:
+  // 1. Sets detected_mode to MODE_CLIENT
+  // 2. Stores the session string in options.session_string
+  // 3. Triggers automatic discovery on LAN (mDNS) and/or internet (ACDS)
+  // This enables: `ascii-chat swift-river-mountain` (no explicit "client" mode needed)
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;

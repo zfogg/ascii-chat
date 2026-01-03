@@ -25,6 +25,7 @@
 #include "platform/terminal.h"
 #include "platform/util.h"
 #include "util/path.h"
+#include "network/mdns/discovery.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -120,25 +121,15 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   }
 
   // Not a known mode - check if it's a session string (word-word-word pattern)
-  int hyphen_count = 0;
-  bool looks_like_session = true;
-
-  for (const char *p = positional; *p != '\0'; p++) {
-    if (*p == '-') {
-      hyphen_count++;
-    } else if (!(*p >= 'a' && *p <= 'z') && !(*p >= 'A' && *p <= 'Z') && !(*p >= '0' && *p <= '9')) {
-      looks_like_session = false;
-      break;
-    }
-  }
-
-  if (looks_like_session && hyphen_count == 2 && strlen(positional) >= 5 && strlen(positional) <= 48) {
-    // This is a session string - treat as client mode
+  // Use the robust session string validator from discovery module
+  if (is_session_string(positional)) {
+    // This is a session string - treat as client mode with automatic discovery
     *out_mode = MODE_CLIENT;
     *out_mode_index = first_positional_idx;
     if (out_session_string) {
       SAFE_STRNCPY(out_session_string, positional, 64);
     }
+    log_debug("Detected session string mode: '%s'", positional);
     return ASCIICHAT_OK;
   }
 

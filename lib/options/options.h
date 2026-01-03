@@ -353,6 +353,7 @@ int strtoint_safe(const char *str);
   char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
   unsigned short int require_server_verify;                                                                            \
   unsigned short int acds_expose_ip; /* Explicitly allow public IP disclosure in ACDS sessions (opt-in) */             \
+  unsigned short int acds_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */    \
   char acds_server[OPTIONS_BUFF_SIZE];                                                                                 \
   int acds_port;                                                                                                       \
   bool webrtc; /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
@@ -554,6 +555,7 @@ typedef struct options_state {
   unsigned short int require_server_verify;   ///< Server: only accept clients who verified via ACDS
   unsigned short int require_client_verify;   ///< Client: only connect to servers whose identity was verified by ACDS
   unsigned short int acds_expose_ip; ///< ACDS: explicitly allow public IP disclosure without verification (opt-in)
+  unsigned short int acds_insecure;  ///< ACDS: skip server key verification (MITM-vulnerable, requires explicit opt-in)
 
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)

@@ -103,6 +103,7 @@
 #include "crypto/keys.h"
 #include "network/rate_limit/rate_limit.h"
 #include "network/mdns/mdns.h"
+#include "network/mdns/discovery.h"
 #include "network/errors.h"
 #include "network/nat/upnp.h"
 
@@ -918,13 +919,42 @@ int server_main(void) {
         snprintf(session_name, sizeof(session_name), "%s", hostname);
       }
 
+      // Prepare TXT records with session string and host public key
+      char txt_session_string[512];
+      char txt_host_pubkey[512];
+      const char *txt_records[2];
+      int txt_count = 0;
+
+      // Add session string to TXT records (for client discovery)
+      // Use hostname-based session string for Phase 1
+      snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_name);
+      txt_records[txt_count++] = txt_session_string;
+
+      // Add host public key to TXT records (for cryptographic verification)
+      // Convert server's Ed25519 public key to hex format
+      if (g_server_encryption_enabled) {
+        char hex_pubkey[65];
+        pubkey_to_hex(g_server_private_key.public_key, hex_pubkey);
+        snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
+        txt_records[txt_count++] = txt_host_pubkey;
+        log_debug("mDNS: Host pubkey=%s", hex_pubkey);
+      } else {
+        // If encryption is disabled, still advertise a zero pubkey for clients to detect
+        snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
+        for (int i = 0; i < 32; i++) {
+          snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
+        }
+        txt_records[txt_count++] = txt_host_pubkey;
+        log_debug("mDNS: Encryption disabled, advertising zero pubkey");
+      }
+
       asciichat_mdns_service_t service = {
           .name = session_name,
           .type = "_ascii-chat._tcp",
           .host = hostname,
           .port = (uint16_t)port,
-          .txt_records = NULL,
-          .txt_count = 0,
+          .txt_records = txt_records,
+          .txt_count = txt_count,
       };
 
       asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
@@ -935,7 +965,8 @@ int server_main(void) {
         g_mdns_ctx = NULL;
       } else {
         printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
-        log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d)", service.type, service.name, service.port);
+        log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, txt_count=%d)", service.type, service.name,
+                 service.port, service.txt_count);
       }
     }
   } else if (GET_OPTION(no_mdns_advertise)) {
