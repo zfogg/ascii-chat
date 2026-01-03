@@ -190,11 +190,22 @@ static asciichat_error_t handle_client_audio_batch(const void *payload, size_t p
   uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
   uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
 
-  // TODO: Implement per-channel audio processing or validate sample_rate/channels
-  // Currently unused but parsed from packet header for future compatibility
+  // Validate sample rate and channels
+  // Supported sample rates: 8000, 16000, 24000, 32000, 44100, 48000, 96000, 192000 Hz
+  if (sample_rate == 0 || (sample_rate < 8000 || sample_rate > 192000) ||
+      (sample_rate != 8000 && sample_rate != 16000 && sample_rate != 24000 && sample_rate != 32000 &&
+       sample_rate != 44100 && sample_rate != 48000 && sample_rate != 96000 && sample_rate != 192000)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio sample rate: %u Hz (expected: 8000, 16000, 24000, 32000, 44100, 48000, 96000, or 192000)",
+                     sample_rate);
+  }
+
+  // Validate channel count (1-8 channels supported)
+  if (channels == 0 || channels > 8) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio channel count: %u (expected: 1-8)", channels);
+  }
+
+  // Validate batch count
   (void)batch_count;
-  (void)sample_rate;
-  (void)channels;
 
   // Validate size
   size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
