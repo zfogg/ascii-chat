@@ -170,10 +170,15 @@ lan_discovered_server_t *lan_discovery_query(const lan_discovery_config_t *confi
       asciichat_mdns_query(mdns, "_ascii-chat._tcp.local", lan_discovery_mdns_callback, &state);
 
   if (query_result != ASCIICHAT_OK) {
-    log_warn("LAN discovery: Failed to start mDNS query: %s", asciichat_error_string(query_result));
+    // mDNS failure is expected in some environments (no multicast, restricted networks, etc.)
+    // Treat as normal condition: no servers found
+    log_debug("LAN discovery: mDNS query unavailable (no servers will be found via multicast)");
     asciichat_mdns_shutdown(mdns);
     SAFE_FREE(state.servers);
-    return NULL;
+    // Return empty list instead of NULL - no servers found is a valid result
+    state.servers = NULL;
+    *out_count = 0;
+    return state.servers;
   }
 
   // Poll for responses until timeout

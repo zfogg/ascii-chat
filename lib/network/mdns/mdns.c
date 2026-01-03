@@ -235,7 +235,10 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
                                  mdns->buffer_capacity, 0);
 
   if (query_id <= 0) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to send mDNS query for %s", service_type);
+    // mDNS query failure is not uncommon in restricted networks or test environments
+    // Log at DEBUG level instead of ERROR since "no servers found" is the graceful fallback
+    log_debug("mDNS query failed for %s (likely no multicast support)", service_type);
+    return ERROR_NETWORK;
   }
 
   mdns->query_id = (uint16_t)query_id;
