@@ -1,0 +1,17 @@
+diff --git a/mdns.c b/mdns.c
+index f1903aa..5c8d3ae 100644
+--- a/mdns.c
++++ b/mdns.c
+@@ -1158,6 +1158,7 @@ void signal_handler(int signal) {
+ }
+ #endif
+
++#ifndef MDNS_NO_MAIN
+ int
+ main(int argc, const char* const* argv) {
+ 	int mode = 0;
+@@ -1261,3 +1262,4 @@ main(int argc, const char* const* argv) {
+
+ 	return 0;
+ }
++#endif /* MDNS_NO_MAIN */
