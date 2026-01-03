@@ -4,24 +4,26 @@
  * @ingroup network_discovery
  *
  * This module provides automated discovery of ascii-chat servers via parallel
- * mDNS (local LAN) and ACDS (internet) lookups. It reuses the existing
- * discovery_tui module for mDNS queries to avoid code duplication.
+ * mDNS (local LAN) and ACDS (internet) lookups.
  *
  * Architecture:
- * - mDNS discovery: Uses discovery_tui_query() for robustness and compatibility
- * - ACDS discovery: Custom ACDS client implementation for centralized lookup
- * - Thread coordination: Parallel threads with "race to success" semantics
+ * - mDNS discovery: discovery_mdns_query() - core implementation (this module)
+ * - ACDS discovery: ACDS client implementation for centralized lookup
+ * - Parallel coordination: Concurrent threads with "race to success" semantics
+ * - TUI wrapper: discovery_tui.c calls discovery_mdns_query() for interactive selection
  */
 
 #include "network/mdns/discovery.h"
-#include "network/mdns/discovery_tui.h"
+#include "network/mdns/discovery_tui.h" // For discovery_tui_server_t struct only
 #include "network/acip/client.h"
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "log/logging.h"
+#include "mdns.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <time.h>
 
 // ============================================================================
 // Thread Coordination
@@ -202,10 +204,199 @@ static asciichat_error_t parse_txt_records(const char *txt, char *session_string
 }
 
 // ============================================================================
+// mDNS Query Implementation (Core Module)
+// ============================================================================
+
+/**
+ * @brief Internal state for collecting discovered services
+ */
+typedef struct {
+  discovery_tui_server_t *servers; ///< Array of discovered servers
+  int count;                       ///< Number of servers discovered so far
+  int capacity;                    ///< Allocated capacity
+  int64_t start_time_ms;           ///< When discovery started (for timeout)
+  int timeout_ms;                  ///< Discovery timeout in milliseconds
+  bool query_complete;             ///< Set when discovery completes
+} mdns_query_state_t;
+
+/**
+ * @brief Get current time in milliseconds since epoch
+ */
+static int64_t discovery_get_time_ms(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000;
+}
+
+/**
+ * @brief mDNS callback for discovered services
+ * Called by mDNS library when a service is discovered.
+ */
+static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery, void *user_data) {
+  mdns_query_state_t *state = (mdns_query_state_t *)user_data;
+  if (!state || !discovery) {
+    return;
+  }
+
+  // Check if we've exceeded capacity
+  if (state->count >= state->capacity) {
+    log_warn("mDNS: Reached maximum server capacity (%d)", state->capacity);
+    return;
+  }
+
+  // Check if timeout exceeded
+  int64_t elapsed = discovery_get_time_ms() - state->start_time_ms;
+  if (elapsed > state->timeout_ms) {
+    state->query_complete = true;
+    return;
+  }
+
+  // Only accept services of the right type
+  if (strstr(discovery->type, "_ascii-chat._tcp") == NULL) {
+    return;
+  }
+
+  // Check if we already have this server (avoid duplicates)
+  for (int i = 0; i < state->count; i++) {
+    if (strcmp(state->servers[i].name, discovery->name) == 0 && state->servers[i].port == discovery->port) {
+      // Update TTL if newer
+      if (discovery->ttl > state->servers[i].ttl) {
+        state->servers[i].ttl = discovery->ttl;
+      }
+      return; // Already have this server
+    }
+  }
+
+  // Add new server to our array
+  discovery_tui_server_t *server = &state->servers[state->count];
+  memset(server, 0, sizeof(discovery_tui_server_t));
+
+  // Copy service information
+  SAFE_STRNCPY(server->name, discovery->name, sizeof(server->name));
+  SAFE_STRNCPY(server->ipv4, discovery->ipv4, sizeof(server->ipv4));
+  SAFE_STRNCPY(server->ipv6, discovery->ipv6, sizeof(server->ipv6));
+  server->port = discovery->port;
+  server->ttl = discovery->ttl;
+
+  // Prefer IPv4 address as the primary address, fall back to hostname
+  if (discovery->ipv4[0] != '\0') {
+    SAFE_STRNCPY(server->address, discovery->ipv4, sizeof(server->address));
+  } else if (discovery->host[0] != '\0') {
+    SAFE_STRNCPY(server->address, discovery->host, sizeof(server->address));
+  } else if (discovery->ipv6[0] != '\0') {
+    SAFE_STRNCPY(server->address, discovery->ipv6, sizeof(server->address));
+  }
+
+  state->count++;
+  log_debug("mDNS: Found server '%s' at %s:%u", discovery->name, server->address, discovery->port);
+}
+
+/**
+ * @brief Public mDNS query function used by both parallel discovery and TUI wrapper
+ *
+ * @param timeout_ms Query timeout in milliseconds
+ * @param max_servers Maximum servers to discover
+ * @param quiet If true, suppresses progress messages
+ * @param out_count Output: number of servers discovered
+ * @return Array of discovered servers, or NULL on error. Use discovery_mdns_free() to free.
+ */
+discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count) {
+  if (!out_count) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "out_count pointer is NULL");
+    return NULL;
+  }
+
+  *out_count = 0;
+
+  // Apply defaults
+  if (timeout_ms <= 0) {
+    timeout_ms = 2000;
+  }
+  if (max_servers <= 0) {
+    max_servers = 20;
+  }
+
+  // Allocate state for collecting servers
+  mdns_query_state_t state;
+  memset(&state, 0, sizeof(state));
+  state.capacity = max_servers;
+  state.timeout_ms = timeout_ms;
+  state.start_time_ms = discovery_get_time_ms();
+
+  // Allocate server array
+  state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(discovery_tui_server_t), discovery_tui_server_t *);
+  if (!state.servers) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate mDNS discovery server array");
+    return NULL;
+  }
+  memset(state.servers, 0, state.capacity * sizeof(discovery_tui_server_t));
+
+  if (!quiet) {
+    log_info("mDNS: Searching for ASCII-Chat servers on local network (timeout: %dms)", state.timeout_ms);
+    printf("🔍 Searching for ASCII-Chat servers on LAN...\n");
+  }
+
+  // Initialize mDNS
+  asciichat_mdns_t *mdns = asciichat_mdns_init();
+  if (!mdns) {
+    log_warn("mDNS: Failed to initialize mDNS - discovery unavailable");
+    SAFE_FREE(state.servers);
+    return NULL;
+  }
+
+  // Start mDNS query for _ascii-chat._tcp services
+  asciichat_error_t query_result =
+      asciichat_mdns_query(mdns, "_ascii-chat._tcp.local", discovery_mdns_callback, &state);
+
+  if (query_result != ASCIICHAT_OK) {
+    log_info("mDNS: Query failed - no servers found via service discovery");
+    asciichat_mdns_shutdown(mdns);
+    SAFE_FREE(state.servers);
+    return NULL;
+  }
+
+  // Poll for responses until timeout
+  int64_t deadline = state.start_time_ms + state.timeout_ms;
+  while (!state.query_complete && discovery_get_time_ms() < deadline) {
+    int poll_timeout = (int)(deadline - discovery_get_time_ms());
+    if (poll_timeout < 0) {
+      poll_timeout = 0;
+    }
+    if (poll_timeout > 100) {
+      poll_timeout = 100; // Check every 100ms
+    }
+    asciichat_mdns_update(mdns, poll_timeout);
+  }
+
+  // Cleanup mDNS
+  asciichat_mdns_shutdown(mdns);
+
+  if (!quiet) {
+    if (state.count > 0) {
+      printf("✅ Found %d ASCII-Chat server%s on LAN\n", state.count, state.count == 1 ? "" : "s");
+      log_info("mDNS: Found %d server(s)", state.count);
+    } else {
+      printf("❌ No ASCII-Chat servers found on LAN\n");
+      log_info("mDNS: No servers found");
+    }
+  }
+
+  *out_count = state.count;
+  return state.servers;
+}
+
+/**
+ * @brief Free memory from mDNS discovery results
+ */
+void discovery_mdns_free(discovery_tui_server_t *servers) {
+  SAFE_FREE(servers);
+}
+
+// ============================================================================
 // mDNS Discovery Thread
 // ============================================================================
 
-/** Context for mDNS discovery thread using discovery_tui_query() */
+/** Context for mDNS discovery thread */
 typedef struct {
   const char *session_string;
   discovery_thread_state_t *state;
@@ -213,26 +404,21 @@ typedef struct {
   uint32_t timeout_ms;
 } mdns_thread_context_t;
 
-/** Thread function for mDNS discovery - reuses discovery_tui_query() to avoid duplication */
+/** Thread function for mDNS discovery */
 static void *mdns_thread_fn(void *arg) {
   mdns_thread_context_t *ctx = (mdns_thread_context_t *)arg;
   if (!ctx)
     return NULL;
 
-  // Use discovery_tui_query() for mDNS discovery (avoids reimplementing mDNS logic)
-  discovery_tui_config_t lan_config = {
-      .timeout_ms = (int)(ctx->timeout_ms > 0 ? ctx->timeout_ms : 2000),
-      .max_servers = 20,
-      .quiet = true,
-  };
-
+  // Call the public mDNS query function in this module
   int discovered_count = 0;
-  discovery_tui_server_t *discovered_servers = discovery_tui_query(&lan_config, &discovered_count);
+  discovery_tui_server_t *discovered_servers =
+      discovery_mdns_query((int)(ctx->timeout_ms > 0 ? ctx->timeout_ms : 2000), 20, true, &discovered_count);
 
   if (!discovered_servers || discovered_count == 0) {
     log_debug("mDNS: No servers found (this is normal if no servers are on LAN)");
     if (discovered_servers) {
-      discovery_tui_free_results(discovered_servers);
+      discovery_mdns_free(discovered_servers);
     }
     mutex_lock(&ctx->state->lock);
     ctx->state->mdns_done = true;
@@ -243,13 +429,11 @@ static void *mdns_thread_fn(void *arg) {
   }
 
   // Search for server matching our session string
-  // The service name from mDNS contains the session string (e.g., "swift-river-mountain")
   for (int i = 0; i < discovered_count; i++) {
     discovery_tui_server_t *server = &discovered_servers[i];
 
-    // Check if service name matches session string
     if (strcmp(server->name, ctx->session_string) == 0) {
-      // Found a match! Extract connection details
+      // Found a match!
       mutex_lock(&ctx->state->lock);
       {
         if (!ctx->state->found) {
@@ -258,7 +442,6 @@ static void *mdns_thread_fn(void *arg) {
           ctx->state->result->source = DISCOVERY_SOURCE_MDNS;
           ctx->state->result->server_port = server->port;
 
-          // Prefer IPv4, fallback to IPv6
           const char *best_addr = (server->ipv4[0] != '\0') ? server->ipv4 : server->ipv6;
           strncpy(ctx->state->result->server_address, best_addr, sizeof(ctx->state->result->server_address) - 1);
           ctx->state->result->server_address[sizeof(ctx->state->result->server_address) - 1] = '\0';
@@ -273,11 +456,11 @@ static void *mdns_thread_fn(void *arg) {
         }
       }
       mutex_unlock(&ctx->state->lock);
-      break; // Found the server, exit loop
+      break;
     }
   }
 
-  discovery_tui_free_results(discovered_servers);
+  discovery_mdns_free(discovered_servers);
 
   mutex_lock(&ctx->state->lock);
   ctx->state->mdns_done = true;
