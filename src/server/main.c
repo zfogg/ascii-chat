@@ -106,6 +106,13 @@
 #include "network/mdns/discovery.h"
 #include "network/errors.h"
 #include "network/nat/upnp.h"
+#include "network/webrtc/peer_manager.h"
+#include "network/webrtc/webrtc.h"
+#include "network/acip/send.h"
+#include "network/acip/protocol.h"
+#include "network/acip/transport.h"
+#include "network/acip/handlers.h"
+#include "network/acip/receive.h"
 
 /* ============================================================================
  * Global State
@@ -214,6 +221,58 @@ static nat_upnp_context_t *g_upnp_ctx = NULL;
  * @ingroup server_main
  */
 static asciichat_mdns_t *g_mdns_ctx = NULL;
+
+/**
+ * @brief Global ACDS client for WebRTC signaling relay
+ *
+ * Stores the active ACDS connection for receiving WebRTC SDP/ICE packets.
+ * Used when server is registered with ACDS and session_type == SESSION_TYPE_WEBRTC.
+ * Set to NULL if ACDS is disabled or connection fails.
+ *
+ * @ingroup server_main
+ */
+static acds_client_t *g_acds_client = NULL;
+
+/**
+ * @brief Global ACDS transport wrapper for sending signaling packets
+ *
+ * ACIP transport wrapping the ACDS client socket for sending SDP/ICE packets.
+ * Created after successful ACDS connection, destroyed on shutdown.
+ *
+ * @ingroup server_main
+ */
+static acip_transport_t *g_acds_transport = NULL;
+
+/**
+ * @brief Global WebRTC peer manager for accepting client connections
+ *
+ * Manages WebRTC peer connections when acting as session creator (server role).
+ * Handles SDP offer/answer exchange and ICE candidate gathering.
+ * Set to NULL if WebRTC is disabled or peer manager creation fails.
+ *
+ * @ingroup server_main
+ */
+static webrtc_peer_manager_t *g_webrtc_peer_manager = NULL;
+
+/**
+ * @brief Global ACDS receive thread handle
+ *
+ * Background thread that receives WebRTC signaling packets from ACDS.
+ * Dispatches SDP/ICE to peer_manager via callbacks.
+ * Joined during server shutdown.
+ *
+ * @ingroup server_main
+ */
+static asciithread_t g_acds_receive_thread;
+
+/**
+ * @brief Flag indicating if ACDS receive thread was started
+ *
+ * Used to determine if thread needs to be joined during shutdown.
+ *
+ * @ingroup server_main
+ */
+static bool g_acds_receive_thread_started = false;
 
 /**
  * @brief Global client manager for signal handler access
@@ -373,6 +432,310 @@ static void sigint_handler(int sigint) {
 }
 
 // bind_and_listen() function removed - now using lib/network/tcp_server abstraction
+
+/* ============================================================================
+ * WebRTC Callbacks
+ * ============================================================================
+ */
+
+/**
+ * @brief Send SDP answer/offer via ACDS signaling relay
+ *
+ * Called by peer_manager when it needs to send SDP to a remote participant.
+ * Relays the SDP through the ACDS server to the target client.
+ *
+ * @param session_id Session UUID (16 bytes)
+ * @param recipient_id Recipient participant UUID (16 bytes)
+ * @param sdp_type SDP type ("offer" or "answer")
+ * @param sdp SDP string (null-terminated)
+ * @param user_data User context pointer (unused)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uint8_t recipient_id[16],
+                                         const char *sdp_type, const char *sdp, void *user_data) {
+  (void)user_data;
+
+  if (!g_acds_transport) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "ACDS transport not available for SDP relay");
+  }
+
+  // Calculate SDP length
+  size_t sdp_len = strlen(sdp);
+  if (sdp_len == 0 || sdp_len >= 8192) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid SDP length: %zu", sdp_len);
+  }
+
+  // Allocate packet buffer (header + SDP string)
+  size_t total_len = sizeof(acip_webrtc_sdp_t) + sdp_len;
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
+  if (!packet) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SDP packet");
+  }
+
+  // Fill header
+  acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
+  memcpy(header->session_id, session_id, 16);
+  // Server participant_id: Currently zero, ACDS relay identifies sender by socket connection
+  // NOTE: If ACDS requires explicit participant_id, server needs to join its own session
+  memset(header->sender_id, 0, 16);
+  memcpy(header->recipient_id, recipient_id, 16);
+  header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
+  header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
+
+  // Copy SDP string after header
+  memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
+
+  log_debug("Server sending WebRTC SDP %s to participant (%.8s...) via ACDS", sdp_type, (const char *)recipient_id);
+
+  // Send via ACDS transport using generic packet sender
+  asciichat_error_t result =
+      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, packet, total_len);
+
+  SAFE_FREE(packet);
+
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(result, "Failed to send SDP via ACDS");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Send ICE candidate via ACDS signaling relay
+ *
+ * Called by peer_manager when it gathers a new ICE candidate.
+ * Relays the candidate through the ACDS server to the target client.
+ *
+ * @param session_id Session UUID (16 bytes)
+ * @param recipient_id Recipient participant UUID (16 bytes)
+ * @param candidate ICE candidate string (null-terminated)
+ * @param mid Media stream ID (null-terminated)
+ * @param user_data User context pointer (unused)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uint8_t recipient_id[16],
+                                         const char *candidate, const char *mid, void *user_data) {
+  (void)user_data;
+
+  if (!g_acds_transport) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "ACDS transport not available for ICE relay");
+  }
+
+  // Calculate payload length (candidate + null + mid + null)
+  size_t candidate_len = strlen(candidate);
+  size_t mid_len = strlen(mid);
+  size_t payload_len = candidate_len + 1 + mid_len + 1;
+
+  if (payload_len >= 8192) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "ICE payload too large: %zu", payload_len);
+  }
+
+  // Allocate packet buffer (header + payload)
+  size_t total_len = sizeof(acip_webrtc_ice_t) + payload_len;
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
+  if (!packet) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ICE packet");
+  }
+
+  // Fill header
+  acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
+  memcpy(header->session_id, session_id, 16);
+  // Server participant_id: Currently zero, ACDS relay identifies sender by socket connection
+  memset(header->sender_id, 0, 16);
+  memcpy(header->recipient_id, recipient_id, 16);
+  header->candidate_len = HOST_TO_NET_U16((uint16_t)payload_len);
+
+  // Copy candidate and mid after header
+  uint8_t *payload = packet + sizeof(acip_webrtc_ice_t);
+  memcpy(payload, candidate, candidate_len);
+  payload[candidate_len] = '\0';
+  memcpy(payload + candidate_len + 1, mid, mid_len);
+  payload[candidate_len + 1 + mid_len] = '\0';
+
+  log_debug("Server sending WebRTC ICE candidate to participant (%.8s..., mid=%s) via ACDS", (const char *)recipient_id,
+            mid);
+
+  // Send via ACDS transport using generic packet sender
+  asciichat_error_t result =
+      packet_send_via_transport(g_acds_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, packet, total_len);
+
+  SAFE_FREE(packet);
+
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(result, "Failed to send ICE via ACDS");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Callback when WebRTC DataChannel is ready and wrapped in ACIP transport
+ *
+ * Called by the WebRTC peer_manager when a client's DataChannel opens.
+ * Adds the client to the server's client manager and starts media threads.
+ *
+ * @param transport ACIP transport wrapping the WebRTC DataChannel (ownership transferred)
+ * @param participant_id Remote participant UUID (16 bytes)
+ * @param user_data User context pointer (server_context_t*)
+ */
+static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16], void *user_data) {
+  server_context_t *server_ctx = (server_context_t *)user_data;
+  if (!transport || !participant_id || !server_ctx) {
+    log_error("on_webrtc_transport_ready: Invalid parameters");
+    if (transport) {
+      acip_transport_destroy(transport);
+    }
+    return;
+  }
+
+  log_info("WebRTC transport ready for participant %.8s...", (const char *)participant_id);
+
+  // Convert participant_id to string for logging (ASCII-safe portion)
+  char participant_str[33];
+  for (int i = 0; i < 16; i++) {
+    snprintf(participant_str + (i * 2), 3, "%02x", participant_id[i]);
+  }
+  participant_str[32] = '\0';
+
+  // Add client to server (calls add_webrtc_client internally)
+  int client_id = add_webrtc_client(server_ctx, transport, participant_str);
+  if (client_id < 0) {
+    log_error("Failed to add WebRTC client for participant %s", participant_str);
+    acip_transport_destroy(transport);
+    return;
+  }
+
+  log_info("Successfully added WebRTC client ID=%d for participant %s", client_id, participant_str);
+}
+
+/**
+ * @brief Callback when WebRTC SDP received from ACDS signaling relay
+ *
+ * Called when a client sends SDP offer/answer via ACDS.
+ * Forwards the SDP to the WebRTC peer_manager for processing.
+ *
+ * @param sdp SDP packet header (session_id, sender_id, recipient_id, sdp_type, sdp_len)
+ * @param total_len Total packet length (header + SDP string)
+ * @param ctx User context (unused, server uses globals)
+ */
+static void on_webrtc_sdp_server(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx) {
+  (void)ctx;
+
+  if (!sdp || !g_webrtc_peer_manager) {
+    log_error("on_webrtc_sdp_server: Invalid parameters or peer_manager not initialized");
+    return;
+  }
+
+  // Validate packet length
+  uint16_t sdp_len = NET_TO_HOST_U16(sdp->sdp_len);
+  if (total_len < sizeof(acip_webrtc_sdp_t) + sdp_len) {
+    log_error("on_webrtc_sdp_server: Invalid packet length (total=%zu, expected>=%zu)", total_len,
+              sizeof(acip_webrtc_sdp_t) + sdp_len);
+    return;
+  }
+
+  // Determine SDP type (offer=0, answer=1)
+  const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
+
+  log_info("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id, sdp_len);
+
+  // Forward to peer_manager (pass full packet structure)
+  asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_webrtc_peer_manager, sdp);
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to handle remote SDP from participant %.8s...: %s", (const char *)sdp->sender_id,
+              asciichat_error_string(result));
+  }
+}
+
+/**
+ * @brief Callback when WebRTC ICE candidate received from ACDS signaling relay
+ *
+ * Called when a client sends ICE candidate via ACDS.
+ * Forwards the candidate to the WebRTC peer_manager for processing.
+ *
+ * @param ice ICE packet header (session_id, sender_id, recipient_id, candidate_len)
+ * @param total_len Total packet length (header + candidate + mid)
+ * @param ctx User context (unused, server uses globals)
+ */
+static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx) {
+  (void)ctx;
+
+  if (!ice || !g_webrtc_peer_manager) {
+    log_error("on_webrtc_ice_server: Invalid parameters or peer_manager not initialized");
+    return;
+  }
+
+  // Validate packet length
+  uint16_t payload_len = NET_TO_HOST_U16(ice->candidate_len);
+  if (total_len < sizeof(acip_webrtc_ice_t) + payload_len) {
+    log_error("on_webrtc_ice_server: Invalid packet length (total=%zu, expected>=%zu)", total_len,
+              sizeof(acip_webrtc_ice_t) + payload_len);
+    return;
+  }
+
+  log_debug("Received WebRTC ICE candidate from participant %.8s...", (const char *)ice->sender_id);
+
+  // Forward to peer_manager (pass full packet structure)
+  asciichat_error_t result = webrtc_peer_manager_handle_ice(g_webrtc_peer_manager, ice);
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to handle remote ICE candidate from participant %.8s...: %s", (const char *)ice->sender_id,
+              asciichat_error_string(result));
+  }
+}
+
+/**
+ * @brief ACDS receive thread - processes WebRTC signaling packets
+ *
+ * Receives packets from ACDS transport and dispatches to WebRTC callbacks.
+ * Runs until g_acds_transport is destroyed or connection closes.
+ *
+ * @param arg Unused (server uses globals)
+ * @return NULL
+ */
+static void *acds_receive_thread(void *arg) {
+  (void)arg;
+
+  log_info("ACDS receive thread started");
+
+  // Configure callbacks for WebRTC signaling packets
+  acip_client_callbacks_t callbacks = {
+      .on_ascii_frame = NULL,
+      .on_audio = NULL,
+      .on_webrtc_sdp = on_webrtc_sdp_server,
+      .on_webrtc_ice = on_webrtc_ice_server,
+      .on_session_joined = NULL,
+      .app_ctx = NULL,
+  };
+
+  // Receive loop - blocks on each packet until connection closes
+  while (!atomic_load(&g_server_should_exit)) {
+    if (!g_acds_transport) {
+      log_debug("ACDS transport destroyed, exiting receive thread");
+      break;
+    }
+
+    asciichat_error_t result = acip_transport_receive_and_dispatch_client(g_acds_transport, &callbacks);
+
+    if (result != ASCIICHAT_OK) {
+      if (result == ERROR_NETWORK) {
+        log_info("ACDS connection closed");
+      } else {
+        log_error("ACDS receive error: %s", asciichat_error_string(result));
+      }
+      break;
+    }
+  }
+
+  log_info("ACDS receive thread exiting");
+  return NULL;
+}
+
+/* ============================================================================
+ * Signal Handlers
+ * ============================================================================
+ */
 
 /**
  * @brief Handler for SIGTERM (termination request) signals
@@ -1080,8 +1443,14 @@ int server_main(void) {
     acds_config.server_port = acds_port;
     acds_config.timeout_ms = 5000;
 
-    acds_client_t acds_client;
-    asciichat_error_t acds_connect_result = acds_client_connect(&acds_client, &acds_config);
+    // Allocate ACDS client on heap for server lifecycle
+    g_acds_client = SAFE_MALLOC(sizeof(acds_client_t), acds_client_t *);
+    if (!g_acds_client) {
+      log_error("Failed to allocate ACDS client");
+      goto skip_acds_session;
+    }
+
+    asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &acds_config);
     if (acds_connect_result == ASCIICHAT_OK) {
       // Prepare session creation parameters
       acds_session_create_params_t create_params;
@@ -1120,8 +1489,7 @@ int server_main(void) {
 
       // Create session
       acds_session_create_result_t create_result;
-      asciichat_error_t create_err = acds_session_create(&acds_client, &create_params, &create_result);
-      acds_client_disconnect(&acds_client);
+      asciichat_error_t create_err = acds_session_create(g_acds_client, &create_params, &create_result);
 
       if (create_err == ASCIICHAT_OK) {
         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
@@ -1129,8 +1497,77 @@ int server_main(void) {
         log_plain("📋 Session string: %s", session_string);
         log_plain("🔗 Share this with others to join:");
         log_plain("   ascii-chat %s", session_string);
+
+        // Keep ACDS connection alive for WebRTC signaling relay
+        log_debug("Server staying connected to ACDS for signaling relay");
+
+        // Create ACDS transport wrapper for sending signaling packets
+        g_acds_transport = acip_tcp_transport_create(g_acds_client->socket, NULL);
+        if (!g_acds_transport) {
+          log_error("Failed to create ACDS transport wrapper");
+        } else {
+          log_debug("ACDS transport wrapper created for signaling");
+        }
+
+        // Initialize WebRTC peer_manager if session type is WebRTC
+        if (create_params.session_type == SESSION_TYPE_WEBRTC) {
+          log_info("Initializing WebRTC peer manager for session (role=CREATOR)...");
+
+          // Configure STUN servers for ICE gathering
+          stun_server_t stun_servers[2];
+          stun_servers[0].host_len = (uint8_t)strlen("stun:stun.l.google.com:19302");
+          SAFE_STRNCPY(stun_servers[0].host, "stun:stun.l.google.com:19302", sizeof(stun_servers[0].host));
+          stun_servers[1].host_len = (uint8_t)strlen("stun:stun1.l.google.com:19302");
+          SAFE_STRNCPY(stun_servers[1].host, "stun:stun1.l.google.com:19302", sizeof(stun_servers[1].host));
+
+          // Configure peer_manager
+          webrtc_peer_manager_config_t pm_config = {
+              .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+              .stun_servers = stun_servers,
+              .stun_count = 2,
+              .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
+              .turn_count = 0,
+              .on_transport_ready = on_webrtc_transport_ready,
+              .user_data = &server_ctx,
+              .crypto_ctx = NULL // WebRTC handles crypto internally
+          };
+
+          // Configure signaling callbacks for relaying SDP/ICE via ACDS
+          webrtc_signaling_callbacks_t signaling_callbacks = {
+              .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
+
+          // Create peer_manager
+          asciichat_error_t pm_result =
+              webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
+          if (pm_result != ASCIICHAT_OK) {
+            log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
+            g_webrtc_peer_manager = NULL;
+          } else {
+            log_info("WebRTC peer_manager initialized successfully");
+
+            // Start ACDS receive thread for WebRTC signaling relay
+            int thread_result = ascii_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
+            if (thread_result != 0) {
+              log_error("Failed to create ACDS receive thread: %d", thread_result);
+              // Cleanup peer_manager since signaling won't work
+              webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+              g_webrtc_peer_manager = NULL;
+            } else {
+              log_info("ACDS receive thread started for WebRTC signaling relay");
+              g_acds_receive_thread_started = true;
+            }
+          }
+        } else {
+          log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
+        }
       } else {
         log_warn("Failed to create session on ACDS server (server will run without discovery)");
+        // Clean up failed ACDS client
+        if (g_acds_client) {
+          acds_client_disconnect(g_acds_client);
+          SAFE_FREE(g_acds_client);
+          g_acds_client = NULL;
+        }
       }
     } else {
       log_warn("Could not connect to ACDS server at %s:%d (server will run without discovery)", acds_server, acds_port);
@@ -1274,6 +1711,37 @@ skip_acds_session:
 
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_shutdown(&g_tcp_server);
+
+  // Join ACDS receive thread (if started)
+  // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
+  if (g_acds_receive_thread_started) {
+    log_debug("Joining ACDS receive thread");
+    ascii_thread_join(&g_acds_receive_thread, NULL);
+    g_acds_receive_thread_started = false;
+    log_debug("ACDS receive thread joined");
+  }
+
+  // Clean up WebRTC peer manager (if initialized for ACDS signaling relay)
+  if (g_webrtc_peer_manager) {
+    log_debug("Destroying WebRTC peer manager");
+    webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+    g_webrtc_peer_manager = NULL;
+  }
+
+  // Clean up ACDS transport wrapper (if created)
+  if (g_acds_transport) {
+    log_debug("Destroying ACDS transport wrapper");
+    acip_transport_destroy(g_acds_transport);
+    g_acds_transport = NULL;
+  }
+
+  // Disconnect from ACDS server (if connected for WebRTC signaling relay)
+  if (g_acds_client) {
+    log_debug("Disconnecting from ACDS server");
+    acds_client_disconnect(g_acds_client);
+    SAFE_FREE(g_acds_client);
+    g_acds_client = NULL;
+  }
 
   // Clean up SIMD caches
   simd_caches_destroy_all();
