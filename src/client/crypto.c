@@ -343,12 +343,11 @@ int client_crypto_init(void) {
   if (GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
     log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
 
-    // Connect to ACDS server (default: localhost:27225)
-    // TODO: Make ACDS server address configurable via --acds-server option
+    // Connect to ACDS server (configurable via --acds-server and --acds-port options)
     acds_client_config_t acds_config;
     acds_client_config_init_defaults(&acds_config);
-    SAFE_STRNCPY(acds_config.server_address, "127.0.0.1", sizeof(acds_config.server_address));
-    acds_config.server_port = 27225;
+    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(acds_server), sizeof(acds_config.server_address));
+    acds_config.server_port = GET_OPTION(acds_port);
     acds_config.timeout_ms = 5000;
 
     acds_client_t acds_client;
