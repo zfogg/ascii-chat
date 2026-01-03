@@ -837,4 +837,19 @@ int ascii_tls_set(tls_key_t key, void *value) {
   return -1;
 }
 
+/**
+ * @brief Set the current thread to real-time priority (Windows implementation)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Uses SetThreadPriority with THREAD_PRIORITY_TIME_CRITICAL priority class.
+ * Does not require elevated privileges on Windows.
+ */
+asciichat_error_t ascii_thread_set_realtime_priority(void) {
+  HANDLE current_thread = GetCurrentThread();
+  if (!SetThreadPriority(current_thread, THREAD_PRIORITY_TIME_CRITICAL)) {
+    return SET_ERRNO_SYS(ERROR_THREAD, "Failed to set audio thread priority on Windows");
+  }
+  return ASCIICHAT_OK;
+}
+
 #endif // _WIN32

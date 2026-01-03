@@ -24,7 +24,6 @@
 #ifdef _WIN32
 #include <malloc.h> // For _alloca on Windows
 #define alloca _alloca
-#include <windows.h> // For SetThreadPriority, GetCurrentThread
 #else
 #include <unistd.h> // For dup, dup2, close, STDERR_FILENO
 #include <fcntl.h>  // For O_WRONLY
@@ -1374,49 +1373,12 @@ asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t 
 }
 
 asciichat_error_t audio_set_realtime_priority(void) {
-#if defined(__linux__)
-  struct sched_param param;
-  int policy = SCHED_FIFO;
-  // Set high priority for real-time scheduling
-  param.sched_priority = 80; // High priority (1-99 range)
-  // Try to set real-time scheduling for current thread
-  if (pthread_setschedparam(ascii_thread_self(), policy, &param) != 0) {
-    return SET_ERRNO_SYS(
-        ERROR_THREAD,
-        "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
+  // Delegate to platform abstraction layer
+  asciichat_error_t result = ascii_thread_set_realtime_priority();
+  if (result == ASCIICHAT_OK) {
+    log_info("✓ Audio thread real-time priority set successfully");
   }
-  log_info("✓ Audio thread real-time priority set to %d with SCHED_FIFO", param.sched_priority);
-  return ASCIICHAT_OK;
-
-#elif defined(__APPLE__)
-  // macOS: Use thread_policy_set for real-time scheduling
-  thread_time_constraint_policy_data_t policy;
-  policy.period = 0;
-  policy.computation = 5000; // 5ms computation time
-  policy.constraint = 10000; // 10ms constraint
-  policy.preemptible = 0;    // Not preemptible
-  kern_return_t result = thread_policy_set(mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&policy,
-                                           THREAD_TIME_CONSTRAINT_POLICY_COUNT);
-  if (result != KERN_SUCCESS) {
-    return SET_ERRNO(ERROR_THREAD, "Failed to set real-time thread priority on macOS");
-  }
-  log_info("✓ Audio thread real-time priority set on macOS");
-  return ASCIICHAT_OK;
-
-#elif defined(_WIN32)
-  // Windows: Use SetThreadPriority for audio thread priority
-  // THREAD_PRIORITY_TIME_CRITICAL is the highest available priority class
-  // without requiring PROCESS_MODE_BACKGROUND_BEGIN privilege escalation
-  HANDLE current_thread = GetCurrentThread();
-  if (!SetThreadPriority(current_thread, THREAD_PRIORITY_TIME_CRITICAL)) {
-    return SET_ERRNO_SYS(ERROR_THREAD, "Failed to set audio thread priority on Windows");
-  }
-  log_info("✓ Audio thread priority set to THREAD_PRIORITY_TIME_CRITICAL on Windows");
-  return ASCIICHAT_OK;
-
-#else
-  return SET_ERRNO(ERROR_THREAD, "Setting a real-time thread priority is not available for this platform");
-#endif
+  return result;
 }
 
 /* ============================================================================
