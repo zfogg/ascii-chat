@@ -7,7 +7,7 @@
 #include <criterion/logging.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../../lib/crypto/gpg.h"
+#include "../../lib/crypto/gpg/gpg.h"
 #include "../../lib/crypto/keys.h"
 #include "../../lib/crypto/gpg/gpg_keys.h"
 

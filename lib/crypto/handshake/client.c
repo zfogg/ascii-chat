@@ -12,7 +12,7 @@
 #include "util/ip.h"
 #include "crypto/crypto.h"
 #include "crypto/known_hosts.h"
-#include "crypto/gpg.h"
+#include "crypto/gpg/gpg.h"
 #include "network/packet.h"
 #include "util/password.h"
 #include <stdio.h>

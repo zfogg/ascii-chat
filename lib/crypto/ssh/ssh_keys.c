@@ -14,7 +14,7 @@
 #include "util/path.h"
 #include "util/bytes.h"
 #include "ssh_agent.h"
-#include "../gpg.h" // For GPG agent signing support
+#include "../gpg/gpg.h" // For GPG agent signing support
 #include <bearssl.h>
 #include <sodium_bcrypt_pbkdf.h>
 #include <string.h>
