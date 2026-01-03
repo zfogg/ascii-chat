@@ -23,6 +23,13 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#include <sys/types.h>
+#endif
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -58,7 +65,12 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
     return SET_ERRNO(ERROR_NETWORK, "Failed to create socket: %s", socket_get_error_string());
   }
 
-  // TODO: Set socket timeouts (SO_RCVTIMEO/SO_SNDTIMEO)
+  // Set socket timeouts using platform abstraction
+  if (socket_set_timeout(client->socket, config->timeout_ms) != 0) {
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket timeouts");
+  }
 
   // Connect to server
   struct sockaddr_in server_addr;

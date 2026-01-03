@@ -169,6 +169,21 @@ static asciichat_error_t handle_client_ascii_frame(const void *payload, size_t p
   const void *frame_data = (const uint8_t *)payload + sizeof(ascii_frame_packet_t);
   size_t frame_data_len = payload_len - sizeof(ascii_frame_packet_t);
 
+  // Validate frame dimensions to prevent DoS and buffer overflow attacks
+  if (header.width == 0 || header.height == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid frame dimensions: %ux%u (width and height must be > 0)",
+                     header.width, header.height);
+  }
+
+  // Sanity check: prevent unreasonably large frames (e.g., > 16K resolution)
+  // This protects against resource exhaustion attacks
+  const uint32_t MAX_WIDTH = 16384;  // 16K
+  const uint32_t MAX_HEIGHT = 16384; // 16K
+  if (header.width > MAX_WIDTH || header.height > MAX_HEIGHT) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Frame dimensions too large: %ux%u (max: %ux%u)", header.width,
+                     header.height, MAX_WIDTH, MAX_HEIGHT);
+  }
+
   callbacks->on_ascii_frame(&header, frame_data, frame_data_len, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
@@ -190,11 +205,22 @@ static asciichat_error_t handle_client_audio_batch(const void *payload, size_t p
   uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
   uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
 
-  // TODO: Implement per-channel audio processing or validate sample_rate/channels
-  // Currently unused but parsed from packet header for future compatibility
+  // Validate sample rate and channels
+  // Supported sample rates: 8000, 16000, 24000, 32000, 44100, 48000, 96000, 192000 Hz
+  if (sample_rate == 0 || (sample_rate < 8000 || sample_rate > 192000) ||
+      (sample_rate != 8000 && sample_rate != 16000 && sample_rate != 24000 && sample_rate != 32000 &&
+       sample_rate != 44100 && sample_rate != 48000 && sample_rate != 96000 && sample_rate != 192000)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio sample rate: %u Hz (expected: 8000, 16000, 24000, 32000, 44100, 48000, 96000, or 192000)",
+                     sample_rate);
+  }
+
+  // Validate channel count (1-8 channels supported)
+  if (channels == 0 || channels > 8) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio channel count: %u (expected: 1-8)", channels);
+  }
+
+  // Validate batch count
   (void)batch_count;
-  (void)sample_rate;
-  (void)channels;
 
   // Validate size
   size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
@@ -528,6 +554,27 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   // Get pixel data (after header)
   const void *pixel_data = (const uint8_t *)payload + sizeof(image_frame_packet_t);
   size_t pixel_data_len = payload_len - sizeof(image_frame_packet_t);
+
+  // Validate frame dimensions to prevent DoS and buffer overflow attacks
+  if (header.width == 0 || header.height == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions: %ux%u (width and height must be > 0)",
+                     header.width, header.height);
+  }
+
+  // Sanity check: prevent unreasonably large frames (e.g., > 8K resolution for RGB)
+  // This protects against resource exhaustion attacks
+  const uint32_t MAX_WIDTH = 8192;   // 8K for RGB data
+  const uint32_t MAX_HEIGHT = 8192;  // 8K for RGB data
+  if (header.width > MAX_WIDTH || header.height > MAX_HEIGHT) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large: %ux%u (max: %ux%u)", header.width,
+                     header.height, MAX_WIDTH, MAX_HEIGHT);
+  }
+
+  // Validate pixel format
+  // Valid formats: RGB24 (3), RGBA32 (4), YUV420 (1.5)
+  if (header.pixel_format == 0 || header.pixel_format > 4) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pixel format: %u (expected: 1-4)", header.pixel_format);
+  }
 
   callbacks->on_image_frame(&header, pixel_data, pixel_data_len, client_ctx, callbacks->app_ctx);
   return ASCIICHAT_OK;
