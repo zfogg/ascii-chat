@@ -82,12 +82,12 @@ static unsigned long session_string_hash(const char *session_string) {
  * @brief Match function for RCU hash table lookups
  * @param node Hash table node (session_entry_t)
  * @param key Session string from lookup request
- * @return 0 if match, non-zero otherwise
+ * @return Non-zero if match, 0 otherwise (liburcu convention)
  */
 static int session_string_match(struct cds_lfht_node *node, const void *key) {
   const session_entry_t *entry = caa_container_of(node, session_entry_t, hash_node);
   const char *session_string = (const char *)key;
-  return strcmp(entry->session_string, session_string) != 0 ? 1 : 0;
+  return strcmp(entry->session_string, session_string) == 0;
 }
 
 /**
