@@ -361,7 +361,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     rcu_read_lock();
 
     session_entry_t *session = NULL;
-    session_entry_t *iter;
     struct cds_lfht_iter iter_ctx;
 
     /* Find session by session_string (primary key in hash table) */
