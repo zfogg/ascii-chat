@@ -614,6 +614,327 @@ Typical success: 2-8 seconds
 
 ---
 
+from claude: Oh nice, that's a clever abuse of SDP! 🧠 Using codec negotiation for terminal capabilities. Let me add those sections:
+
+---
+
+## 32. Media Codecs
+
+### 32.1 Audio: Opus
+
+Opus is used for voice chat over DataChannel or direct TCP.
+
+#### 32.1.1 libdatachannel Configuration (Corrected)
+
+```
+-DRTC_ENABLE_MEDIA=ON       # Enable media support
+-DRTC_ENABLE_WEBSOCKET=OFF  # Not needed
+```
+
+#### 32.1.2 Opus Parameters
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Sample rate | 48000 Hz | Opus native rate |
+| Channels | 1 (mono) | Voice chat, save bandwidth |
+| Bitrate | 24 kbps | Good quality for speech |
+| Frame size | 20ms | Balance latency/efficiency |
+| Application | VOIP | Optimized for speech |
+| DTX | Enabled | Silence suppression |
+| FEC | Enabled | Forward error correction for lossy networks |
+
+#### 32.1.3 Audio SDP
+
+```
+m=audio 9 UDP/TLS/RTP/SAVPF 111
+a=rtpmap:111 opus/48000/2
+a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1
+a=rtcp-fb:111 transport-cc
+```
+
+---
+
+## 33. Terminal Capability Negotiation via SDP
+
+### 33.1 Concept
+
+SDP codec negotiation is designed for audio/video codecs, but we repurpose it to negotiate terminal rendering capabilities. Each "codec" represents a color mode the peer can render.
+
+This lets ascii-chat servers render the appropriate color depth for each client without a separate capability exchange.
+
+### 33.2 ACIP Video "Codecs"
+
+| Payload Type | Codec Name | Description |
+|--------------|------------|-------------|
+| 96 | `ACIP-TC/30` | Truecolor (24-bit RGB) |
+| 97 | `ACIP-256/30` | 256-color (xterm palette) |
+| 98 | `ACIP-16/30` | 16-color (ANSI standard) |
+| 99 | `ACIP-MONO/30` | Monochrome (no color, ASCII only) |
+
+The `/30` indicates nominal "frame rate" (can be adjusted).
+
+### 33.3 SDP Offer Example
+
+Client advertises what it supports, in preference order:
+
+```
+m=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99
+a=rtpmap:96 ACIP-TC/90000
+a=rtpmap:97 ACIP-256/90000
+a=rtpmap:98 ACIP-16/90000
+a=rtpmap:99 ACIP-MONO/90000
+a=fmtp:96 resolution=80x24;renderer=halfblock;charset=utf8
+a=fmtp:97 resolution=80x24;renderer=halfblock;charset=utf8
+a=fmtp:98 resolution=80x24;renderer=block;charset=ascii
+a=fmtp:99 resolution=80x24;renderer=block;charset=ascii
+```
+
+### 33.4 SDP Answer Example
+
+Server selects the best mutually-supported mode:
+
+```
+m=video 9 UDP/TLS/RTP/SAVPF 97
+a=rtpmap:97 ACIP-256/90000
+a=fmtp:97 resolution=80x24;renderer=halfblock;charset=utf8
+```
+
+Server selected 256-color because:
+- Client supports it (listed in offer)
+- Server prefers it over truecolor (maybe bandwidth, maybe server terminal limitation)
+
+### 33.5 Format Parameters (fmtp)
+
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `resolution` | `WxH` (e.g., `80x24`, `120x40`) | Terminal dimensions in characters |
+| `renderer` | `block`, `halfblock`, `braille` | Character cell rendering mode |
+| `charset` | `ascii`, `utf8`, `utf8-wide` | Character set support |
+| `palette` | `default`, `solarized`, `custom` | Color palette hint |
+| `compression` | `none`, `rle`, `zstd` | Per-frame compression |
+| `csi-rep` | `0`, `1` | CSI REP (repeat) support |
+
+### 33.6 Capability Detection
+
+Client auto-detects terminal capabilities at startup:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Terminal Capability Detection               │
+└─────────────────────────────────────────────────────────────┘
+
+1. Check COLORTERM env var
+   - "truecolor" or "24bit" → ACIP-TC
+   
+2. Query terminal with XTGETTCAP or terminfo
+   - colors >= 16777216 → ACIP-TC
+   - colors >= 256 → ACIP-256
+   - colors >= 16 → ACIP-16
+   - else → ACIP-MONO
+
+3. Check UTF-8 support
+   - LANG contains "UTF-8" → charset=utf8
+   - Print test character, query cursor position
+   
+4. Detect CSI REP support
+   - Send CSI REP sequence, check if terminal echoes correctly
+   
+5. Get terminal size
+   - ioctl(TIOCGWINSZ) or ANSI escape query
+```
+
+### 33.7 Dynamic Renegotiation
+
+If terminal is resized or capabilities change mid-session:
+
+```
+WEBRTC_OFFER with new SDP → triggers renegotiation
+Server adjusts rendering for new resolution/capabilities
+```
+
+For direct TCP mode, use existing ACIP control message:
+
+```
+ACIP_CAPABILITY_UPDATE (0x0F):
+  - color_mode: uint8
+  - width: uint16
+  - height: uint16
+  - flags: uint16 (renderer, charset, compression)
+```
+
+### 33.8 Codec Preference Negotiation
+
+#### 33.8.1 Client Preferences
+
+Client orders codecs by preference in the offer. Typical orderings:
+
+**Modern terminal (iTerm2, Kitty, Alacritty):**
+```
+96 97 98 99  (prefer truecolor)
+```
+
+**Legacy terminal (xterm, older PuTTY):**
+```
+97 98 99     (no truecolor support)
+```
+
+**Minimal/embedded:**
+```
+99           (monochrome only)
+```
+
+**Bandwidth-constrained:**
+```
+98 99 97 96  (prefer lower bandwidth modes)
+```
+
+#### 33.8.2 Server Selection
+
+Server picks from offered codecs based on:
+
+1. Server's own terminal capabilities (if server is also rendering)
+2. Bandwidth constraints
+3. Session policy
+
+Server MUST select a codec from the client's offer. If no overlap, connection fails.
+
+### 33.9 Bandwidth Estimates by Mode
+
+| Mode | Typical Bandwidth (80x24 @ 30fps) |
+|------|-----------------------------------|
+| ACIP-TC | ~200-400 kbps |
+| ACIP-256 | ~100-200 kbps |
+| ACIP-16 | ~50-100 kbps |
+| ACIP-MONO | ~20-50 kbps |
+
+With compression (zstd + CSI REP):
+
+| Mode | Compressed Bandwidth |
+|------|---------------------|
+| ACIP-TC | ~80-150 kbps |
+| ACIP-256 | ~40-80 kbps |
+| ACIP-16 | ~20-40 kbps |
+| ACIP-MONO | ~10-20 kbps |
+
+### 33.10 Example Full SDP
+
+Complete SDP offer from a modern terminal client:
+
+```
+v=0
+o=- 8472653892 2 IN IP4 127.0.0.1
+s=ascii-chat
+t=0 0
+a=group:BUNDLE 0 1
+a=ice-options:trickle
+a=fingerprint:sha-256 AB:CD:EF:...
+a=setup:actpass
+
+m=audio 9 UDP/TLS/RTP/SAVPF 111
+c=IN IP4 0.0.0.0
+a=mid:0
+a=sendrecv
+a=rtcp-mux
+a=rtpmap:111 opus/48000/2
+a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1
+a=ice-ufrag:abc123
+a=ice-pwd:verysecretpassword
+
+m=video 9 UDP/TLS/RTP/SAVPF 96 97 98
+c=IN IP4 0.0.0.0
+a=mid:1
+a=sendrecv
+a=rtcp-mux
+a=rtpmap:96 ACIP-TC/90000
+a=rtpmap:97 ACIP-256/90000
+a=rtpmap:98 ACIP-16/90000
+a=fmtp:96 resolution=120x40;renderer=halfblock;charset=utf8;compression=zstd;csi-rep=1
+a=fmtp:97 resolution=120x40;renderer=halfblock;charset=utf8;compression=zstd;csi-rep=1
+a=fmtp:98 resolution=120x40;renderer=block;charset=utf8;compression=rle;csi-rep=1
+a=ice-ufrag:abc123
+a=ice-pwd:verysecretpassword
+```
+
+---
+
+## 34. Renderer Modes in fmtp
+
+### 34.1 Block Renderer (`renderer=block`)
+
+Standard ASCII/Unicode block characters. One character per "pixel":
+
+```
+█▓▒░ ░▒▓█
+```
+
+Resolution: terminal width × terminal height
+
+### 34.2 Half-Block Renderer (`renderer=halfblock`)
+
+Uses Unicode half-block characters (▀▄) to double vertical resolution:
+
+```
+▀▄█▀▄█▀▄
+▄▀█▄▀█▄▀
+```
+
+Resolution: terminal width × (terminal height × 2)
+
+### 34.3 Braille Renderer (`renderer=braille`)
+
+Uses Unicode braille patterns for maximum resolution:
+
+```
+⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
+```
+
+Resolution: (terminal width × 2) × (terminal height × 4)
+
+Each braille cell is 2×4 "pixels".
+
+### 34.4 Renderer Selection
+
+| Renderer | Resolution Multiplier | Best For |
+|----------|----------------------|----------|
+| block | 1×1 | Compatibility, low bandwidth |
+| halfblock | 1×2 | Good balance (default) |
+| braille | 2×4 | Maximum detail, high bandwidth |
+
+---
+
+## 35. Charset Negotiation
+
+### 35.1 ASCII (`charset=ascii`)
+
+7-bit ASCII only. Compatible with everything.
+
+Character palette limited to:
+```
+ .:-=+*#%@
+```
+
+### 35.2 UTF-8 (`charset=utf8`)
+
+Full Unicode support. Enables:
+- Box-drawing characters
+- Block elements
+- Braille patterns
+- Extended character palettes
+
+### 35.3 UTF-8 Wide (`charset=utf8-wide`)
+
+UTF-8 with wide character support (CJK, emoji).
+
+Requires wcwidth() handling for proper cursor positioning.
+
+---
+
+This gives you full codec-style negotiation for terminal capabilities through standard SDP, which is beautifully cursed and practical at the same time 🎨🤖
+
+Note these SDP ideas are just ideas and have to be molded to our codebase.
+
+---
+
 ## 📦 Dependencies & Infrastructure
 
 ### Already Live
