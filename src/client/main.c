@@ -724,12 +724,19 @@ int client_main(void) {
     // Update connection context with current attempt number
     connection_ctx.reconnect_attempt = reconnect_attempt;
 
+    // Get ACDS server configuration from CLI options (defaults: 127.0.0.1:27225)
+    const char *acds_server = GET_OPTION(acds_server);
+    if (!acds_server || acds_server[0] == '\0') {
+      acds_server = "127.0.0.1"; // Fallback if option not set
+    }
+    int acds_port = GET_OPTION(acds_port);
+    if (acds_port <= 0 || acds_port > 65535) {
+      acds_port = 27225; // Fallback to default ACDS port
+    }
+
     // Attempt connection with 3-stage fallback (TCP → STUN → TURN)
-    // TODO Part 5: Get ACDS server address/port from CLI options
     asciichat_error_t connection_result =
-        connection_attempt_with_fallback(&connection_ctx, address, (uint16_t)port, "127.0.0.1",
-                                         27225 // ACDS server defaults (will be CLI options in Part 5)
-        );
+        connection_attempt_with_fallback(&connection_ctx, address, (uint16_t)port, acds_server, (uint16_t)acds_port);
 
     // Check if connection attempt succeeded
     // Handle the error result appropriately
@@ -795,6 +802,16 @@ int client_main(void) {
     // Connection successful - reset counters and flags
     reconnect_attempt = 0;
     first_connection = false;
+
+    // Integrate the active transport from connection fallback into server connection layer
+    // (Transport is TCP for Stage 1, WebRTC DataChannel for Stages 2/3)
+    if (connection_ctx.active_transport) {
+      server_connection_set_transport(connection_ctx.active_transport);
+      log_debug("Active transport integrated into server connection layer");
+    } else {
+      log_error("Connection succeeded but no active transport - this should never happen");
+      continue; // Retry connection
+    }
 
     // Show appropriate connection message based on whether this is first connection or reconnection
     if (!has_ever_connected) {

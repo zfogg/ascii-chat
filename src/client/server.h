@@ -81,6 +81,17 @@ socket_t server_connection_get_socket();
 struct acip_transport *server_connection_get_transport(void);
 
 /**
+ * @brief Set ACIP transport instance from connection fallback
+ * @param transport Transport instance created by connection_attempt_with_fallback()
+ *
+ * Used to integrate the transport from the 3-stage connection fallback orchestrator
+ * (TCP → STUN → TURN) into the server connection management layer.
+ *
+ * @ingroup client_connection
+ */
+void server_connection_set_transport(struct acip_transport *transport);
+
+/**
  * @brief Get client ID assigned by server
  * @return Client ID or 0 if not connected
  *
