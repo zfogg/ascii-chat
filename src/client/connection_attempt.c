@@ -31,6 +31,7 @@
 #include "log/logging.h"
 #include "network/acip/client.h"
 #include "network/acip/acds.h"
+#include "network/acip/receive.h"
 #include "network/tcp/client.h"
 #include "network/webrtc/peer_manager.h"
 #include "platform/abstraction.h"
@@ -475,20 +476,48 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
 
   connection_state_transition(ctx, CONN_STATE_WEBRTC_STUN_SIGNALING);
 
-  // Wait for on_transport_ready callback with 8-second timeout
-  mutex_lock(&ctx->webrtc_mutex);
-
-  time_t wait_start = time(NULL);
-  time_t timeout_seconds = CONN_TIMEOUT_WEBRTC_STUN;
-
-  while (!ctx->webrtc_transport_received && (time(NULL) - wait_start) < timeout_seconds) {
-    // Wait with 1-second timeout in milliseconds (platform API expects int ms)
-    int timeout_ms = 1000;
-    cond_timedwait(&ctx->webrtc_ready_cond, &ctx->webrtc_mutex, timeout_ms);
+  // Get client callbacks for receiving SDP/ICE responses from server
+  const acip_client_callbacks_t *callbacks = protocol_get_acip_callbacks();
+  if (!callbacks) {
+    log_error("Failed to get ACIP client callbacks for WebRTC signaling");
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Missing ACIP callbacks");
   }
 
-  bool connection_successful = ctx->webrtc_transport_received;
-  mutex_unlock(&ctx->webrtc_mutex);
+  // Receive-and-wait loop: Process incoming ACDS signaling packets while waiting for DataChannel
+  // The peer_manager automatically sends SDP offer via send_sdp callback after creation.
+  // We need to receive the SDP answer and ICE candidates from the server via ACDS.
+  time_t wait_start = time(NULL);
+  time_t timeout_seconds = CONN_TIMEOUT_WEBRTC_STUN;
+  bool connection_successful = false;
+
+  while ((time(NULL) - wait_start) < timeout_seconds) {
+    // Check if transport is ready (set by on_transport_ready callback)
+    mutex_lock(&ctx->webrtc_mutex);
+    if (ctx->webrtc_transport_received) {
+      connection_successful = true;
+      mutex_unlock(&ctx->webrtc_mutex);
+      break;
+    }
+    mutex_unlock(&ctx->webrtc_mutex);
+
+    // Receive one ACDS packet (SDP answer, ICE candidate, etc.)
+    // This dispatches to on_webrtc_sdp/on_webrtc_ice in client/protocol.c
+    // which forward to the peer_manager for processing
+    asciichat_error_t recv_result = acip_transport_receive_and_dispatch_client(ctx->acds_transport, callbacks);
+
+    if (recv_result != ASCIICHAT_OK) {
+      if (recv_result == ERROR_NETWORK) {
+        log_warn("ACDS connection closed during WebRTC signaling");
+        break;
+      } else if (recv_result == ERROR_CRYPTO) {
+        log_error("ACDS crypto error during WebRTC signaling");
+        break;
+      }
+      // Other errors are non-fatal, continue waiting
+      log_debug("ACDS receive error (non-fatal): %s", asciichat_error_string(recv_result));
+    }
+  }
 
   if (!connection_successful) {
     log_warn("WebRTC+STUN connection timed out after %ld seconds", timeout_seconds);
@@ -679,20 +708,49 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
 
   connection_state_transition(ctx, CONN_STATE_WEBRTC_TURN_SIGNALING);
 
-  // Wait for on_transport_ready callback with 15-second timeout (TURN is slower)
-  mutex_lock(&ctx->webrtc_mutex);
-
-  time_t wait_start = time(NULL);
-  time_t timeout_seconds = CONN_TIMEOUT_WEBRTC_TURN;
-
-  while (!ctx->webrtc_transport_received && (time(NULL) - wait_start) < timeout_seconds) {
-    // Wait with 1-second timeout in milliseconds (platform API expects int ms)
-    int timeout_ms = 1000;
-    cond_timedwait(&ctx->webrtc_ready_cond, &ctx->webrtc_mutex, timeout_ms);
+  // Get client callbacks for receiving SDP/ICE responses from server
+  const acip_client_callbacks_t *callbacks = protocol_get_acip_callbacks();
+  if (!callbacks) {
+    log_error("Failed to get ACIP client callbacks for TURN signaling");
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Missing ACIP callbacks");
   }
 
-  bool connection_successful = ctx->webrtc_transport_received;
-  mutex_unlock(&ctx->webrtc_mutex);
+  // Receive-and-wait loop: Process incoming ACDS signaling packets while waiting for DataChannel
+  // (Must actively receive SDP answer + ICE candidates from server or connection will never establish)
+  time_t wait_start = time(NULL);
+  time_t timeout_seconds = CONN_TIMEOUT_WEBRTC_TURN;
+  bool connection_successful = false;
+
+  while ((time(NULL) - wait_start) < timeout_seconds) {
+    // Check if transport is ready (set by on_transport_ready callback)
+    mutex_lock(&ctx->webrtc_mutex);
+    if (ctx->webrtc_transport_received) {
+      connection_successful = true;
+      mutex_unlock(&ctx->webrtc_mutex);
+      break;
+    }
+    mutex_unlock(&ctx->webrtc_mutex);
+
+    // Receive one ACDS packet (SDP answer, ICE candidate, etc.)
+    // This dispatches to on_webrtc_sdp/on_webrtc_ice in client/protocol.c
+    asciichat_error_t recv_result = acip_transport_receive_and_dispatch_client(ctx->acds_transport, callbacks);
+
+    if (recv_result != ASCIICHAT_OK) {
+      if (recv_result == ERROR_NETWORK) {
+        log_warn("ACDS connection closed during WebRTC TURN signaling");
+        break;
+      } else if (recv_result == ERROR_CRYPTO) {
+        log_error("ACDS crypto error during WebRTC TURN signaling");
+        break;
+      }
+      // Non-fatal errors (e.g., timeout on receive): log and continue
+      log_debug("ACDS receive error (non-fatal): %s", asciichat_error_string(recv_result));
+    }
+
+    // Yield CPU to avoid busy-wait (10ms sleep)
+    platform_sleep_ms(10);
+  }
 
   if (!connection_successful) {
     log_warn("WebRTC+TURN connection timed out after %ld seconds", timeout_seconds);
