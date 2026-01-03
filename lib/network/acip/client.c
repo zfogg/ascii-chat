@@ -13,6 +13,7 @@
  */
 
 #include "network/acip/client.h"
+#include "buffer_pool.h"
 #include "common.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
@@ -196,16 +197,16 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   if (resp_type != PACKET_TYPE_ACIP_SESSION_CREATED) {
     if (resp_type == PACKET_TYPE_ERROR_MESSAGE || resp_type == PACKET_TYPE_ACIP_ERROR) {
       log_error("Session creation failed: server returned error packet");
-      SAFE_FREE(resp_payload);
+      buffer_pool_free(NULL, resp_payload, resp_size);
       return SET_ERRNO(ERROR_NETWORK, "Session creation failed");
     }
-    SAFE_FREE(resp_payload);
+    buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
 
   // Parse SESSION_CREATED response
   if (resp_size < sizeof(acip_session_created_t)) {
-    SAFE_FREE(resp_payload);
+    buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "SESSION_CREATED response too small: %zu bytes", resp_size);
   }
 
@@ -223,7 +224,7 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
 
   log_info("Session created: %s (expires at %llu)", result->session_string, (unsigned long long)result->expires_at);
 
-  SAFE_FREE(resp_payload);
+  buffer_pool_free(NULL, resp_payload, resp_size);
   return ASCIICHAT_OK;
 }
 
@@ -267,12 +268,12 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
   }
 
   if (resp_type != PACKET_TYPE_ACIP_SESSION_INFO) {
-    SAFE_FREE(resp_payload);
+    buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
 
   if (resp_size < sizeof(acip_session_info_t)) {
-    SAFE_FREE(resp_payload);
+    buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "SESSION_INFO response too small");
   }
 
@@ -300,7 +301,7 @@ asciichat_error_t acds_session_lookup(acds_client_t *client, const char *session
     log_info("Session not found: %s", session_string);
   }
 
-  SAFE_FREE(resp_payload);
+  buffer_pool_free(NULL, resp_payload, resp_size);
   return ASCIICHAT_OK;
 }
 
@@ -361,12 +362,12 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
   }
 
   if (resp_type != PACKET_TYPE_ACIP_SESSION_JOINED) {
-    SAFE_FREE(resp_payload);
+    buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "Unexpected response type: 0x%02X", resp_type);
   }
 
   if (resp_size < sizeof(acip_session_joined_t)) {
-    SAFE_FREE(resp_payload);
+    buffer_pool_free(NULL, resp_payload, resp_size);
     return SET_ERRNO(ERROR_NETWORK, "SESSION_JOINED response too small");
   }
 
@@ -395,7 +396,7 @@ asciichat_error_t acds_session_join(acds_client_t *client, const acds_session_jo
     log_warn("Failed to join session: %s (code %d)", result->error_message, result->error_code);
   }
 
-  SAFE_FREE(resp_payload);
+  buffer_pool_free(NULL, resp_payload, resp_size);
   return ASCIICHAT_OK;
 }
 
