@@ -134,14 +134,14 @@ if ($Triplet -like "*-static") {
 # Define required packages
 # These match what CMakeLists.txt looks for
 # Note: For Release builds with x64-windows-static triplet, these will be static libraries
-# Note: liburcu (userspace RCU) is not available in vcpkg and is Linux-only (for ACDS server)
 $RequiredPackages = @(
     "mimalloc",    # Memory allocator (high-performance replacement for malloc)
     "zstd",        # Compression library for frame data
     "libsodium",   # Cryptography library for encryption
     "portaudio",   # Audio I/O library for capture/playback
     "opus",        # Audio codec library for real-time compression
-    "sqlite3"      # Database library for discovery service
+    "sqlite3",     # Database library for discovery service
+    "liburcu"      # Userspace RCU for lock-free concurrent data structures
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan

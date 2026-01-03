@@ -571,8 +571,19 @@ ascii-chat is built on operating system code and several libraries.
   - **License**: BSD
 
 - [Sokol](https://github.com/floooh/sokol) - Utility Library
+
   - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
   - **License**: zlib/libpng
+
+- [liburcu](https://liburcu.org/) - Userspace RCU (Read-Copy-Update) Library
+
+  - **Purpose**: Lock-free synchronization for high-performance concurrent data structures in the ACDS (ASCII-Chat Discovery Service). Provides read-side access that scales linearly with CPU cores, achieving 5-10x performance improvement on read-heavy workloads compared to traditional rwlock approaches.
+  - **License**: LGPLv2.1
+
+- [SQLite3](https://www.sqlite.org/) - Embedded SQL Database Engine
+
+  - **Purpose**: Persistent storage for the ACDS (ASCII-Chat Discovery Service) session database. Stores active sessions, user identities, and connection metadata for the discovery service.
+  - **License**: Public Domain
 
 #### Operating System APIs
 
@@ -595,7 +606,7 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 **macOS**:
 
 ```bash
-brew install make cmake ninja llvm zstd portaudio opus libsodium criterion
+brew install make cmake ninja llvm zstd portaudio opus libsodium criterion userspace-rcu sqlite3
 ```
 
 #### Install Dependencies on Windows
@@ -627,10 +638,10 @@ brew install make cmake ninja llvm zstd portaudio opus libsodium criterion
    .\bootstrap-vcpkg.bat
 
    # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows
+   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows liburcu:x64-windows sqlite3:x64-windows
 
    # If you want to do a release build
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static liburcu:x64-windows-static sqlite3:x64-windows-static mimalloc:x64-windows
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
