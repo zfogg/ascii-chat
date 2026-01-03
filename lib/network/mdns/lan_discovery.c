@@ -288,12 +288,8 @@ int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int c
  */
 int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count) {
   if (!servers || count <= 0) {
-    // No servers found - show message only in log, not on console
-    log_shutdown_begin();
-    log_plain_msg("\n");
-    log_plain_msg("No ASCII-Chat servers found on the local network.\n");
-    log_plain_msg("Use 'ascii-chat client <address>' to connect manually.\n");
-    log_shutdown_end();
+    // No servers found - return special code
+    // Message will be printed at exit in client main
     return -1;
   }
 

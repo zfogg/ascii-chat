@@ -131,6 +131,48 @@ void lan_discovery_free_results(lan_discovered_server_t *servers);
 int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int count);
 
 /**
+ * @brief TUI-based server selection with formatted display
+ *
+ * Displays discovered servers in a formatted terminal UI with:
+ * - Clear screen and boxed display
+ * - Server list with numbering and addresses
+ * - "No results" message if no servers available
+ * - Interactive numeric selection prompt
+ *
+ * **Display Example (3 servers):**
+ * ```
+ * ╭─ 🔍 ASCII-Chat Server Discovery ────────────╮
+ * │
+ * │ Found 3 servers on your local network:
+ * │
+ * │   [1] swift-river-canyon     192.168.1.100:27224
+ * │   [2] quiet-mountain-lake    192.168.1.101:27224
+ * │   [3] gentle-forest-breeze   192.168.1.102:27224
+ * │
+ * ╰────────────────────────────────────────────╯
+ *
+ * Enter server number (1-3) or press Enter to cancel:
+ * ```
+ *
+ * **No Results Display:**
+ * ```
+ * ╭─ 🔍 ASCII-Chat Server Discovery ─╮
+ * │
+ * │   No servers found on local network
+ * │
+ * │   Make sure an ASCII-Chat server is running on your LAN
+ * │   Or provide a server address manually: ascii-chat client <address>
+ * │
+ * ╰─────────────────────────────────────────╯
+ * ```
+ *
+ * @param servers Array of discovered servers
+ * @param count Number of servers (0 for "no results")
+ * @return 0-based index of selected server, or -1 to cancel
+ */
+int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count);
+
+/**
  * @brief Get best address representation for a discovered server
  *
  * Returns the most suitable address representation (IPv4 > hostname > IPv6)

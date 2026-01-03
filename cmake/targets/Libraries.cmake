@@ -343,6 +343,8 @@ endif()
 # Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
+# Exclude main() function from mdns library
+target_compile_definitions(ascii-chat-network PRIVATE MDNS_NO_MAIN)
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-network
         ascii-chat-util
