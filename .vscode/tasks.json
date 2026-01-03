@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Configure (CMake default preset)",
+      "label": "configure",
       "type": "shell",
       "command": "cmake",
       "args": ["--preset", "default"],
@@ -18,7 +18,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Build (CMake default Debug)",
+      "label": "build",
       "type": "shell",
       "command": "cmake",
       "args": ["--build", "--preset", "default"],
