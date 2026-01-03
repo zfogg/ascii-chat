@@ -26,7 +26,7 @@
 #include "platform/init.h"
 #include "util/path.h"
 #include "network/nat/upnp.h"
-#include "network/mdns.h"
+#include "network/mdns/mdns.h"
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;

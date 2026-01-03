@@ -102,7 +102,7 @@
 #include "platform/system.h"
 #include "crypto/keys.h"
 #include "network/rate_limit/rate_limit.h"
-#include "network/mdns.h"
+#include "network/mdns/mdns.h"
 #include "network/errors.h"
 #include "network/nat/upnp.h"
 

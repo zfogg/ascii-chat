@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "network/mdns.h"
+#include "network/mdns/mdns.h"
 #include "common.h"
 
 // Static callback for query tests (must be at file scope, not inside Test())

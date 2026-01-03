@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "network/lan_discovery.h"
+#include "network/mdns/lan_discovery.h"
 #include "common.h"
 
 /**
