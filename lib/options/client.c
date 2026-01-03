@@ -55,11 +55,13 @@ asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts) {
   // Apply defaults from preset before parsing command-line args
   asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
   if (defaults_result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return defaults_result;
   }
 
   asciichat_error_t result = options_config_parse(config, argc, argv, opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return result;
   }
 
@@ -69,9 +71,11 @@ asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts) {
     for (int i = 0; i < remaining_argc; i++) {
       (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
     }
+    options_config_destroy(config);
     return option_error_invalid();
   }
 
+  options_config_destroy(config);
   return ASCIICHAT_OK;
 }
 
@@ -91,15 +95,22 @@ void usage_client(FILE *desc) {
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
   (void)fprintf(desc, "USAGE:\n");
   (void)fprintf(desc, "  %s [address][:port] [options...]\n\n", config->program_name);
-  (void)fprintf(desc, "ADDRESS FORMATS:\n");
-  (void)fprintf(desc, "  (none)                     connect to localhost:27224\n");
-  (void)fprintf(desc, "  hostname                   connect to hostname:27224\n");
-  (void)fprintf(desc, "  hostname:port              connect to hostname:port\n");
-  (void)fprintf(desc, "  192.168.1.1                connect to IPv4:27224\n");
-  (void)fprintf(desc, "  192.168.1.1:8080           connect to IPv4:port\n");
-  (void)fprintf(desc, "  ::1                        connect to IPv6:27224\n");
-  (void)fprintf(desc, "  [::1]:8080                 connect to IPv6:port (brackets required with port)\n\n");
+
+  // Print positional argument examples programmatically
+  if (config->num_positional_args > 0) {
+    const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
+    if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
+      (void)fprintf(desc, "%s:\n", pos_arg->section_heading);
+      for (size_t i = 0; i < pos_arg->num_examples; i++) {
+        (void)fprintf(desc, "  %s\n", pos_arg->examples[i]);
+      }
+      (void)fprintf(desc, "\n");
+    }
+  }
 
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
+
+  // Clean up the config
+  options_config_destroy(config);
 }

@@ -53,11 +53,13 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
   // Apply defaults from preset before parsing command-line args
   asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
   if (defaults_result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return defaults_result;
   }
 
   asciichat_error_t result = options_config_parse(config, argc, argv, opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return result;
   }
 
@@ -67,6 +69,7 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
     for (int i = 0; i < remaining_argc; i++) {
       (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
     }
+    options_config_destroy(config);
     return option_error_invalid();
   }
 
@@ -74,25 +77,28 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
   if (opts->acds_database_path[0] == '\0') {
     char *config_dir = get_config_dir();
     if (!config_dir) {
+      options_config_destroy(config);
       return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
     }
     snprintf(opts->acds_database_path, sizeof(opts->acds_database_path), "%sacds.db", config_dir);
-    free(config_dir);
+    SAFE_FREE(config_dir);
   }
 
   if (opts->acds_key_path[0] == '\0') {
     char *config_dir = get_config_dir();
     if (!config_dir) {
+      options_config_destroy(config);
       return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for identity key path");
     }
     snprintf(opts->acds_key_path, sizeof(opts->acds_key_path), "%sacds_identity", config_dir);
-    free(config_dir);
+    SAFE_FREE(config_dir);
   }
 
   // Copy to global variables for backward compatibility
   SAFE_STRNCPY(opt_acds_database_path, opts->acds_database_path, sizeof(opt_acds_database_path));
   SAFE_STRNCPY(opt_acds_key_path, opts->acds_key_path, sizeof(opt_acds_key_path));
 
+  options_config_destroy(config);
   return ASCIICHAT_OK;
 }
 
@@ -112,6 +118,21 @@ void usage_acds(FILE *desc) {
   (void)fprintf(desc, "USAGE:\n");
   (void)fprintf(desc, "  %s [options...]\n\n", config->program_name);
 
+  // Print positional argument examples programmatically if they exist
+  if (config->num_positional_args > 0) {
+    const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
+    if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
+      (void)fprintf(desc, "%s:\n", pos_arg->section_heading);
+      for (size_t i = 0; i < pos_arg->num_examples; i++) {
+        (void)fprintf(desc, "  %s\n", pos_arg->examples[i]);
+      }
+      (void)fprintf(desc, "\n");
+    }
+  }
+
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
+
+  // Clean up the config
+  options_config_destroy(config);
 }

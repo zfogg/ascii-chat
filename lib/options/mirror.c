@@ -40,11 +40,13 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
   // Apply defaults from preset before parsing command-line args
   asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
   if (defaults_result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return defaults_result;
   }
 
   asciichat_error_t result = options_config_parse(config, argc, argv, opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return result;
   }
 
@@ -54,9 +56,11 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
     for (int i = 0; i < remaining_argc; i++) {
       (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
     }
+    options_config_destroy(config);
     return option_error_invalid();
   }
 
+  options_config_destroy(config);
   return ASCIICHAT_OK;
 }
 
@@ -78,4 +82,7 @@ void usage_mirror(FILE *desc) {
 
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
+
+  // Clean up the config
+  options_config_destroy(config);
 }

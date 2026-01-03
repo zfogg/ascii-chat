@@ -49,11 +49,13 @@ asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
   // Apply defaults from preset before parsing command-line args
   asciichat_error_t defaults_result = options_config_set_defaults(config, opts);
   if (defaults_result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return defaults_result;
   }
 
   asciichat_error_t result = options_config_parse(config, argc, argv, opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
+    options_config_destroy(config);
     return result;
   }
 
@@ -63,9 +65,11 @@ asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
     for (int i = 0; i < remaining_argc; i++) {
       (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
     }
+    options_config_destroy(config);
     return option_error_invalid();
   }
 
+  options_config_destroy(config);
   return ASCIICHAT_OK;
 }
 
@@ -86,13 +90,22 @@ void usage_server(FILE *desc) {
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
   (void)fprintf(desc, "USAGE:\n");
   (void)fprintf(desc, "  %s [bind-address] [bind-address6] [options...]\n\n", config->program_name);
-  (void)fprintf(desc, "BIND ADDRESS FORMATS:\n");
-  (void)fprintf(desc, "  (none)                     bind to 127.0.0.1 and ::1 (localhost)\n");
-  (void)fprintf(desc, "  192.168.1.100              bind to IPv4 address only\n");
-  (void)fprintf(desc, "  ::                         bind to all IPv6 addresses\n");
-  (void)fprintf(desc, "  0.0.0.0                    bind to all IPv4 addresses\n");
-  (void)fprintf(desc, "  192.168.1.100 ::           bind to IPv4 and IPv6 (dual-stack)\n\n");
+
+  // Print positional argument examples programmatically
+  if (config->num_positional_args > 0) {
+    const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
+    if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
+      (void)fprintf(desc, "%s:\n", pos_arg->section_heading);
+      for (size_t i = 0; i < pos_arg->num_examples; i++) {
+        (void)fprintf(desc, "  %s\n", pos_arg->examples[i]);
+      }
+      (void)fprintf(desc, "\n");
+    }
+  }
 
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
+
+  // Clean up the config
+  options_config_destroy(config);
 }

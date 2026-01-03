@@ -197,8 +197,8 @@ options_builder_t *options_builder_create(size_t struct_size) {
 
   builder->dependencies = SAFE_MALLOC(INITIAL_DEPENDENCY_CAPACITY * sizeof(option_dependency_t), option_dependency_t *);
   if (!builder->dependencies) {
-    free(builder->descriptors);
-    free(builder);
+    SAFE_FREE(builder->descriptors);
+    SAFE_FREE(builder);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate dependencies array");
     return NULL;
   }
@@ -244,7 +244,9 @@ options_builder_t *options_builder_from_preset(const options_config_t *preset) {
   // Copy all positional arguments
   for (size_t i = 0; i < preset->num_positional_args; i++) {
     const positional_arg_descriptor_t *pos_arg = &preset->positional_args[i];
-    options_builder_add_positional(builder, pos_arg->name, pos_arg->help_text, pos_arg->required, pos_arg->parse_fn);
+    options_builder_add_positional(builder, pos_arg->name, pos_arg->help_text, pos_arg->required,
+                                   pos_arg->section_heading, pos_arg->examples, pos_arg->num_examples,
+                                   pos_arg->parse_fn);
   }
 
   return builder;
@@ -254,10 +256,10 @@ void options_builder_destroy(options_builder_t *builder) {
   if (!builder)
     return;
 
-  free(builder->descriptors);
-  free(builder->dependencies);
-  free(builder->positional_args);
-  free(builder);
+  SAFE_FREE(builder->descriptors);
+  SAFE_FREE(builder->dependencies);
+  SAFE_FREE(builder->positional_args);
+  SAFE_FREE(builder);
 }
 
 options_config_t *options_builder_build(options_builder_t *builder) {
@@ -275,7 +277,7 @@ options_config_t *options_builder_build(options_builder_t *builder) {
   // Allocate and copy descriptors
   config->descriptors = SAFE_MALLOC(builder->num_descriptors * sizeof(option_descriptor_t), option_descriptor_t *);
   if (!config->descriptors && builder->num_descriptors > 0) {
-    free(config);
+    SAFE_FREE(config);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate descriptors");
     return NULL;
   }
@@ -285,8 +287,8 @@ options_config_t *options_builder_build(options_builder_t *builder) {
   // Allocate and copy dependencies
   config->dependencies = SAFE_MALLOC(builder->num_dependencies * sizeof(option_dependency_t), option_dependency_t *);
   if (!config->dependencies && builder->num_dependencies > 0) {
-    free(config->descriptors);
-    free(config);
+    SAFE_FREE(config->descriptors);
+    SAFE_FREE(config);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate dependencies");
     return NULL;
   }
@@ -298,9 +300,9 @@ options_config_t *options_builder_build(options_builder_t *builder) {
     config->positional_args =
         SAFE_MALLOC(builder->num_positional_args * sizeof(positional_arg_descriptor_t), positional_arg_descriptor_t *);
     if (!config->positional_args) {
-      free(config->descriptors);
-      free(config->dependencies);
-      free(config);
+      SAFE_FREE(config->descriptors);
+      SAFE_FREE(config->dependencies);
+      SAFE_FREE(config);
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate positional args");
       return NULL;
     }
@@ -328,11 +330,11 @@ void options_config_destroy(options_config_t *config) {
   if (!config)
     return;
 
-  free(config->descriptors);
-  free(config->dependencies);
-  free(config->positional_args);
-  free(config->owned_strings);
-  free(config);
+  SAFE_FREE(config->descriptors);
+  SAFE_FREE(config->dependencies);
+  SAFE_FREE(config->positional_args);
+  SAFE_FREE(config->owned_strings);
+  SAFE_FREE(config);
 }
 
 // ============================================================================
@@ -581,6 +583,7 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
 // ============================================================================
 
 void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
+                                    const char *section_heading, const char **examples, size_t num_examples,
                                     int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
                                                     char **error_msg)) {
   if (!builder || !name || !parse_fn)
@@ -588,8 +591,13 @@ void options_builder_add_positional(options_builder_t *builder, const char *name
 
   ensure_positional_arg_capacity(builder);
 
-  positional_arg_descriptor_t pos_arg = {
-      .name = name, .help_text = help_text, .required = required, .parse_fn = parse_fn};
+  positional_arg_descriptor_t pos_arg = {.name = name,
+                                         .help_text = help_text,
+                                         .required = required,
+                                         .section_heading = section_heading,
+                                         .examples = examples,
+                                         .num_examples = num_examples,
+                                         .parse_fn = parse_fn};
 
   builder->positional_args[builder->num_positional_args++] = pos_arg;
 }

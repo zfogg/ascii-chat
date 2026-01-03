@@ -412,6 +412,9 @@ static void shutdown_client() {
   // Clean up errno context (allocated strings, backtrace symbols)
   asciichat_errno_cleanup();
 
+  // Clean up RCU-based options state
+  options_state_shutdown();
+
   log_info("Client shutdown complete");
   log_destroy();
 

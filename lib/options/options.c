@@ -238,7 +238,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         return ERROR_CONFIG;
       }
       snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
-      free(config_dir);
+      SAFE_FREE(config_dir);
     }
 
     // Create config with default options
@@ -279,7 +279,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
 
     // Allocate mode_argc+1 to accommodate NULL terminator
-    char **new_mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
+    char **new_mode_argv = SAFE_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
     if (!new_mode_argv) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
     }
@@ -441,7 +441,7 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Free the temporary mode_argv if we allocated it
   if (mode_argv != (char **)argv) {
-    UNTRACKED_FREE(mode_argv);
+    SAFE_FREE(mode_argv);
   }
 
   if (result != ASCIICHAT_OK) {
