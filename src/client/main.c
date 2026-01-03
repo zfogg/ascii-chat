@@ -105,6 +105,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <unistd.h>
 
 #ifdef _WIN32
 #include <windows.h>
