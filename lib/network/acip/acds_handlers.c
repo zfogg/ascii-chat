@@ -69,7 +69,13 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid callbacks");
   }
 
-  // TODO: Implement transport abstraction for ACDS responses or future protocol features
+  // NOTE: Transport parameter is reserved for future protocol evolution
+  // Current ACDS implementation uses per-packet responses via client_socket
+  // Future versions could use transport for:
+  // - Streaming responses (e.g., participant list updates)
+  // - Out-of-band notifications (e.g., session lifecycle events)
+  // - Protocol extensions (e.g., WebRTC SDP/ICE relay)
+  // This abstraction enables migration to alternative transports (WebRTC, QUIC)
   (void)transport;
 
   // O(1) array-based dispatch - bounds check packet type
