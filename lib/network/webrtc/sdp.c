@@ -565,50 +565,41 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
   *detected_count = 0;
   memset(capabilities, 0, capability_count * sizeof(terminal_capability_t));
 
-  // Step 1: Check COLORTERM environment variable for truecolor support
+  // Detect terminal color level using platform terminal module
   const char *colorterm = SAFE_GETENV("COLORTERM");
-  bool has_truecolor = (colorterm && (strcmp(colorterm, "truecolor") == 0 || strcmp(colorterm, "24bit") == 0));
-
-  // Step 2: Get terminal color capability count
-  // For now, use a simplified approach:
-  // - If COLORTERM indicates truecolor, support it
-  // - Otherwise check TERM environment variable for hints
   const char *term = SAFE_GETENV("TERM");
-  int color_count = 8; // default to basic colors
+  terminal_color_level_t color_level = TERM_COLOR_NONE;
 
-  if (has_truecolor) {
-    color_count = 16777216;
+  if (colorterm && (strcmp(colorterm, "truecolor") == 0 || strcmp(colorterm, "24bit") == 0)) {
+    color_level = TERM_COLOR_TRUECOLOR;
   } else if (term) {
     if (strstr(term, "256color") || strstr(term, "256")) {
-      color_count = 256;
+      color_level = TERM_COLOR_256;
     } else if (strstr(term, "color") || strcmp(term, "xterm") == 0) {
-      color_count = 16;
+      color_level = TERM_COLOR_16;
     }
   }
 
-  // Step 3: Detect UTF-8 support
+  // Detect UTF-8 support from LANG environment variable
   const char *lang = SAFE_GETENV("LANG");
-  bool has_utf8 = (lang && strstr(lang, "UTF-8")) || (lang && strstr(lang, "utf8"));
+  bool has_utf8 = (lang && (strstr(lang, "UTF-8") || strstr(lang, "utf8")));
 
-  // Step 4: Detect CSI REP support (simplified - mark as supported if UTF-8)
+  // CSI REP support correlates with UTF-8
   bool has_csi_rep = has_utf8;
 
-  // Step 5: Get terminal size (get from terminal_detect module)
+  // Get terminal size from platform module
   uint16_t term_width = 80;  // default
   uint16_t term_height = 24; // default
 
-  // Try to get actual terminal dimensions
   asciichat_error_t term_err = terminal_detect_get_size(&term_width, &term_height);
   if (term_err != ASCIICHAT_OK) {
     log_debug("SDP: Using default terminal size %ux%u", term_width, term_height);
   }
 
-  // Step 6: Fill capabilities array in preference order
-  // Preference: Truecolor > 256-color > 16-color > Mono
-
+  // Fill capabilities array based on detected color level (preference order)
   size_t idx = 0;
 
-  if (color_count >= 16777216 && idx < capability_count) {
+  if (color_level >= TERM_COLOR_TRUECOLOR && idx < capability_count) {
     capabilities[idx].codec = ACIP_CODEC_TRUECOLOR;
     capabilities[idx].format.width = term_width;
     capabilities[idx].format.height = term_height;
@@ -619,7 +610,7 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
     idx++;
   }
 
-  if (color_count >= 256 && idx < capability_count) {
+  if (color_level >= TERM_COLOR_256 && idx < capability_count) {
     capabilities[idx].codec = ACIP_CODEC_256COLOR;
     capabilities[idx].format.width = term_width;
     capabilities[idx].format.height = term_height;
@@ -630,13 +621,13 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
     idx++;
   }
 
-  if (color_count >= 16 && idx < capability_count) {
+  if (color_level >= TERM_COLOR_16 && idx < capability_count) {
     capabilities[idx].codec = ACIP_CODEC_16COLOR;
     capabilities[idx].format.width = term_width;
     capabilities[idx].format.height = term_height;
     capabilities[idx].format.renderer = RENDERER_BLOCK;
     capabilities[idx].format.charset = has_utf8 ? CHARSET_UTF8 : CHARSET_ASCII;
-    capabilities[idx].format.compression = COMPRESSION_NONE; // RLE not useful for 16-color
+    capabilities[idx].format.compression = COMPRESSION_NONE;
     capabilities[idx].format.csi_rep_support = has_csi_rep;
     idx++;
   }
@@ -656,7 +647,7 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
   *detected_count = idx;
 
   log_debug("SDP: Detected %zu terminal capabilities (colors=%d, utf8=%s, csi_rep=%s, size=%ux%u)", *detected_count,
-            color_count, has_utf8 ? "yes" : "no", has_csi_rep ? "yes" : "no", term_width, term_height);
+            color_level, has_utf8 ? "yes" : "no", has_csi_rep ? "yes" : "no", term_width, term_height);
 
   return ASCIICHAT_OK;
 }
