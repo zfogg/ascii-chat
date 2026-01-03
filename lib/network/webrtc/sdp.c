@@ -9,7 +9,7 @@
  */
 
 #include "sdp.h"
-#include "logging.h"
+#include "log/logging.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -118,7 +118,8 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
   for (size_t i = 1; i < capability_count; i++) {
     char codec_num[4];
     snprintf(codec_num, sizeof(codec_num), " %d", 96 + (int)i);
-    SAFE_STRNCAT(codec_list, codec_num, sizeof(codec_list));
+    size_t len = strlen(codec_list);
+    strncat(codec_list, codec_num, sizeof(codec_list) - len - 1);
   }
 
   written = snprintf(sdp, remaining, "m=video 9 UDP/TLS/RTP/SAVPF %s\r\n", codec_list);
@@ -458,7 +459,8 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
           SAFE_STRNCPY(fmtp_copy, fmtp, sizeof(fmtp_copy));
 
           // Skip PT number
-          strtok_r(fmtp_copy, " ", NULL);
+          char *saveptr = NULL;
+          strtok_r(fmtp_copy, " ", &saveptr);
           const char *params = fmtp_copy + strcspn(fmtp_copy, " ") + 1;
 
           // Parse width=N
@@ -591,8 +593,12 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
   uint16_t term_width = 80;  // default
   uint16_t term_height = 24; // default
 
-  asciichat_error_t term_err = terminal_detect_get_size(&term_width, &term_height);
-  if (term_err != ASCIICHAT_OK) {
+  terminal_size_t term_size;
+  asciichat_error_t term_err = terminal_get_size(&term_size);
+  if (term_err == ASCIICHAT_OK) {
+    term_width = (uint16_t)term_size.cols;
+    term_height = (uint16_t)term_size.rows;
+  } else {
     log_debug("SDP: Using default terminal size %ux%u", term_width, term_height);
   }
 

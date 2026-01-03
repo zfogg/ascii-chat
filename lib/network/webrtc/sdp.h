@@ -251,5 +251,3 @@ const char *sdp_renderer_name(int renderer_type);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* NETWORK_WEBRTC_SDP_H */
