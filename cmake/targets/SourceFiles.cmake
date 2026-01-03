@@ -20,6 +20,10 @@
 #   - DATA_STRUCTURES_SRCS
 # =============================================================================
 
+# liburcu requires _LGPL_SOURCE and RCU_MB defines for inline RCU implementations
+# Add globally so all targets that use liburcu have proper macro mappings
+add_compile_definitions(_LGPL_SOURCE RCU_MB)
+
 # =============================================================================
 # Module 1: Utilities (ultra-stable - changes rarely)
 # =============================================================================
@@ -296,6 +300,11 @@ set(CORE_SRCS
     lib/options/parsers.c          # Custom enum parsers (NEW)
     lib/options/actions.c          # Action option callbacks (NEW)
     lib/version.c
+    # ACDS Discovery Service core (reused by acds executable and tests)
+    lib/acds/session.c
+    lib/acds/database.c
+    lib/acds/identity.c
+    lib/acds/strings.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
@@ -365,12 +374,14 @@ set(APP_SRCS
 )
 
 # =============================================================================
-# Discovery Server (ACDS) Sources
+# Discovery Server (ACDS) Sources - Executable only
+# Note: session.c, database.c, identity.c, strings.c are in lib/acds (part of CORE_SRCS)
 # =============================================================================
 set(ACDS_SRCS
     src/acds/main.c
     src/acds/server.c
     src/acds/signaling.c
-    # session.c, database.c, identity.c, strings.c are now in ascii-chat-acds library
 )
+
+# =============================================================================
 

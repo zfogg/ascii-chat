@@ -5,13 +5,20 @@
  * Pure relay server for WebRTC signaling - no media processing.
  * Relays SDP offers/answers and ICE candidates between participants
  * using participant_id → socket mapping from tcp_server client registry.
+ *
+ * RCU Integration:
+ * - Session lookups use RCU read-side critical sections (no locks)
+ * - Lock-free hash table access with cds_lfht_for_each_entry
  */
 
 #include "acds/signaling.h"
 #include "acds/server.h"
+#include "acds/session.h"
 #include "log/logging.h"
 #include "network/network.h"
 #include <string.h>
+#include <urcu.h>
+#include <urcu/rculfhash.h>
 
 /**
  * @brief Helper: Check if UUID is all zeros (broadcast indicator)
@@ -109,13 +116,15 @@ asciichat_error_t signaling_relay_sdp(session_registry_t *registry, tcp_server_t
     return SET_ERRNO(ERROR_INVALID_PARAM, "registry, tcp_server, or sdp is NULL");
   }
 
-  // Verify session exists
-  rwlock_rdlock(&registry->lock);
-  session_entry_t *session = NULL;
+  /* Find session by UUID - uses RCU lock-free iteration (no lock needed!) */
+  rcu_read_lock();
 
-  // Find session by iterating hash table (session_id is not the hash key, session_string is)
-  session_entry_t *iter, *tmp;
-  HASH_ITER(hh, registry->sessions, iter, tmp) {
+  session_entry_t *session = NULL;
+  session_entry_t *iter;
+  struct cds_lfht_iter iter_ctx;
+
+  /* Iterate through hash table using RCU-safe iterator */
+  cds_lfht_for_each_entry(registry->sessions, &iter_ctx, iter, hash_node) {
     if (uuid_equals(iter->session_id, sdp->session_id)) {
       session = iter;
       break;
@@ -123,11 +132,11 @@ asciichat_error_t signaling_relay_sdp(session_registry_t *registry, tcp_server_t
   }
 
   if (!session) {
-    rwlock_rdunlock(&registry->lock);
+    rcu_read_unlock();
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for SDP relay");
   }
 
-  rwlock_rdunlock(&registry->lock);
+  rcu_read_unlock();
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(sdp->recipient_id)) {
@@ -164,13 +173,15 @@ asciichat_error_t signaling_relay_ice(session_registry_t *registry, tcp_server_t
     return SET_ERRNO(ERROR_INVALID_PARAM, "registry, tcp_server, or ice is NULL");
   }
 
-  // Verify session exists
-  rwlock_rdlock(&registry->lock);
-  session_entry_t *session = NULL;
+  /* Find session by UUID - uses RCU lock-free iteration (no lock needed!) */
+  rcu_read_lock();
 
-  // Find session by iterating hash table
-  session_entry_t *iter, *tmp;
-  HASH_ITER(hh, registry->sessions, iter, tmp) {
+  session_entry_t *session = NULL;
+  session_entry_t *iter;
+  struct cds_lfht_iter iter_ctx;
+
+  /* Iterate through hash table using RCU-safe iterator */
+  cds_lfht_for_each_entry(registry->sessions, &iter_ctx, iter, hash_node) {
     if (uuid_equals(iter->session_id, ice->session_id)) {
       session = iter;
       break;
@@ -178,11 +189,11 @@ asciichat_error_t signaling_relay_ice(session_registry_t *registry, tcp_server_t
   }
 
   if (!session) {
-    rwlock_rdunlock(&registry->lock);
+    rcu_read_unlock();
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for ICE relay");
   }
 
-  rwlock_rdunlock(&registry->lock);
+  rcu_read_unlock();
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(ice->recipient_id)) {
@@ -220,13 +231,15 @@ asciichat_error_t signaling_broadcast(session_registry_t *registry, tcp_server_t
     return SET_ERRNO(ERROR_INVALID_PARAM, "registry, tcp_server, session_id, or packet is NULL");
   }
 
-  // Verify session exists
-  rwlock_rdlock(&registry->lock);
-  session_entry_t *session = NULL;
+  /* Find session by UUID - uses RCU lock-free iteration (no lock needed!) */
+  rcu_read_lock();
 
-  // Find session by iterating hash table
-  session_entry_t *iter, *tmp;
-  HASH_ITER(hh, registry->sessions, iter, tmp) {
+  session_entry_t *session = NULL;
+  session_entry_t *iter;
+  struct cds_lfht_iter iter_ctx;
+
+  /* Iterate through hash table using RCU-safe iterator */
+  cds_lfht_for_each_entry(registry->sessions, &iter_ctx, iter, hash_node) {
     if (uuid_equals(iter->session_id, session_id)) {
       session = iter;
       break;
@@ -234,11 +247,11 @@ asciichat_error_t signaling_broadcast(session_registry_t *registry, tcp_server_t
   }
 
   if (!session) {
-    rwlock_rdunlock(&registry->lock);
+    rcu_read_unlock();
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for broadcast");
   }
 
-  rwlock_rdunlock(&registry->lock);
+  rcu_read_unlock();
 
   // Broadcast to all participants in session
   broadcast_context_t ctx = {.target_session_id = session_id,

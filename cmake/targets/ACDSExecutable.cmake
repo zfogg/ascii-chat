@@ -29,7 +29,7 @@ endif()
 
 # Link against unified ascii-chat library (reuses all existing code)
 add_dependencies(acds ascii-chat-static-build generate_version)
-target_link_libraries(acds PRIVATE ascii-chat-static ascii-chat-acds)
+target_link_libraries(acds PRIVATE ascii-chat-static)
 
 # Link system libraries explicitly (libsodium, sqlite3, etc.)
 get_core_deps_libraries(CORE_LIBS)

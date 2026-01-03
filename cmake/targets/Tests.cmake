@@ -320,7 +320,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ascii-chat-platform
                 ascii-chat-data-structures
                 ascii-chat-util
-                ascii-chat-acds
             )
             # Add query runtime if available (must be in group for symbol resolution)
             if(TARGET ascii-query-runtime)
@@ -342,14 +341,12 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ascii-chat-util
                 ascii-chat-network
                 ascii-chat-crypto
-                ascii-chat-acds
             )
         else()
             # Windows
             target_link_libraries(${test_exe_name}
                 ascii-chat-lib
                 ascii-chat-panic
-                ascii-chat-acds
                 ${TEST_LDFLAGS}
             )
         endif()
