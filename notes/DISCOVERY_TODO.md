@@ -10,7 +10,7 @@
 |-------|--------|-----------------|-------|
 | **Phase 1** | ✅ Complete | January 2026 | mDNS Service Publication & Client Discovery |
 | **Phase 2** | ✅ Complete | January 3, 2026 | ACDS Integration + librcu lock-free session registry |
-| **Phase 3** | 📋 Planned | TBD | WebRTC Signaling + Connection Fallback |
+| **Phase 3** | 🔄 In Progress | January 2026 | WebRTC Signaling + Connection Fallback (Core modules complete) |
 
 **Phase 2 Summary:**
 - ✅ Server-side ACDS registration (`--acds` flag) with security validation
@@ -18,6 +18,33 @@
 - ✅ Lock-free RCU session registry (liburcu integration, 8/8 tests passing)
 - ✅ CMake dependency management for liburcu
 - ✅ Comprehensive documentation (docs/LIBRCU_INTEGRATION.md)
+
+**Phase 3 Summary (In Progress):**
+- ✅ Connection state machine with 13 states (src/client/connection_state.h)
+- ✅ 3-stage fallback orchestrator (src/client/connection_attempt.c):
+  - Stage 1: Direct TCP (3s timeout)
+  - Stage 2: WebRTC + STUN (8s timeout, stun.ascii-chat.com primary)
+  - Stage 3: WebRTC + TURN (15s timeout, turn.ascii-chat.com)
+- ✅ Complete SDP module (lib/network/webrtc/sdp.h/c):
+  - Offer/answer generation and parsing
+  - Opus audio codec negotiation (48kHz, mono, 24kbps)
+  - Terminal capability negotiation via custom ACIP "codecs" (PT 96-99)
+  - Auto-detection using terminal_color_level_t enum
+- ✅ Complete ICE module (lib/network/webrtc/ice.h/c):
+  - Candidate parsing and formatting (RFC 5245)
+  - Priority calculation
+  - Integration points for libdatachannel
+- ✅ CLI options for connection control:
+  - `--prefer-webrtc` - Try WebRTC before Direct TCP
+  - `--no-webrtc` - Disable WebRTC, use Direct TCP only
+  - `--webrtc-skip-stun` - Skip STUN, go straight to TURN
+  - `--webrtc-disable-turn` - Disable TURN, use STUN only
+- ⚠️ **Remaining Work:**
+  - Add connection_attempt.c to CMake build
+  - Integrate fallback into src/client/main.c
+  - Add SESSION_JOINED callback handling
+  - Implement server-side WebRTC support
+  - Write integration tests
 
 ---
 
@@ -997,10 +1024,14 @@ Note these SDP ideas are just ideas and have to be molded to our codebase.
    - Manual tests confirm flags are wired correctly in option parser
 
 ### Phase 3: WebRTC Signaling + Connection Fallback
-1. Implement connection attempt sequence (Direct TCP → STUN → TURN/UDP → TURN/TCP → TURN/TLS)
-2. Implement SDP offer/answer exchange
-3. Implement ICE candidate relay
-4. Test peer-to-peer connections through TURN
+1. [x] Implement connection attempt sequence (Direct TCP → STUN → TURN) - src/client/connection_attempt.c
+2. [x] Implement SDP offer/answer exchange - lib/network/webrtc/sdp.c
+3. [ ] Implement ICE candidate relay - ice.c has parsing/formatting, ACDS relay pending
+4. [ ] Integrate into client main.c - connection_attempt.c not in CMake build yet
+5. [ ] Add SESSION_JOINED callback handling
+6. [ ] Implement server-side WebRTC support
+7. [ ] Test peer-to-peer connections through TURN
+8. [ ] Write integration tests
 
 ### Phase 4: Hardening & Testing
 1. Add rate limiting and security checks to ACDS
