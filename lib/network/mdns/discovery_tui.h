@@ -1,9 +1,9 @@
 /**
- * @file lan_discovery.h
- * @brief LAN-based service discovery for ascii-chat client
+ * @file discovery_tui.h
+ * @brief TUI-based service discovery for ascii-chat client
  *
- * Implements mDNS-based discovery of ascii-chat servers on the local network.
- * Allows clients to browse and connect to available servers without manual IP entry.
+ * Implements interactive mDNS-based discovery of ascii-chat servers on the local network.
+ * Provides a terminal UI for browsing and selecting available servers without manual IP entry.
  */
 
 #pragma once
@@ -25,16 +25,16 @@ typedef struct {
   char ipv4[16];     ///< IPv4 address (if available)
   char ipv6[46];     ///< IPv6 address (if available)
   uint32_t ttl;      ///< TTL remaining (seconds)
-} lan_discovered_server_t;
+} discovery_tui_server_t;
 
 /**
- * @brief Configuration for LAN discovery
+ * @brief Configuration for TUI discovery
  */
 typedef struct {
   int timeout_ms;  ///< Maximum time to wait for responses (default: 2000)
   int max_servers; ///< Maximum servers to collect (default: 20)
   bool quiet;      ///< Suppress discovery messages (default: false)
-} lan_discovery_config_t;
+} discovery_tui_config_t;
 
 /**
  * @brief Discover ASCII-Chat servers on the local network via mDNS
@@ -72,31 +72,31 @@ typedef struct {
  *
  * Example:
  * @code
- * lan_discovery_config_t config = {.timeout_ms = 2000, .max_servers = 20};
+ * discovery_tui_config_t config = {.timeout_ms = 2000, .max_servers = 20};
  * int count = 0;
- * lan_discovered_server_t *servers = lan_discovery_query(&config, &count);
+ * discovery_tui_server_t *servers = discovery_tui_query(&config, &count);
  *
  * if (servers && count > 0) {
  *     for (int i = 0; i < count; i++) {
  *         printf("%d: %s (%s:%d)\n", i+1, servers[i].name, servers[i].address, servers[i].port);
  *     }
  *     // User selects server...
- *     lan_discovery_free_results(servers);
+ *     discovery_tui_free_results(servers);
  * }
  * @endcode
  */
-lan_discovered_server_t *lan_discovery_query(const lan_discovery_config_t *config, int *out_count);
+discovery_tui_server_t *discovery_tui_query(const discovery_tui_config_t *config, int *out_count);
 
 /**
- * @brief Free results from LAN discovery query
+ * @brief Free results from TUI discovery query
  *
- * Releases memory allocated by lan_discovery_query().
+ * Releases memory allocated by discovery_tui_query().
  *
  * @param servers Pointer to server array (safe to pass NULL)
  *
  * @note Safe to call multiple times or with NULL pointer
  */
-void lan_discovery_free_results(lan_discovered_server_t *servers);
+void discovery_tui_free_results(discovery_tui_server_t *servers);
 
 /**
  * @brief Display discovered servers to user and prompt for selection
@@ -128,7 +128,7 @@ void lan_discovery_free_results(lan_discovered_server_t *servers);
  * @note This function performs interactive I/O - may not be suitable for automated contexts
  * @note For automated selection, use servers[0] directly instead
  */
-int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int count);
+int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int count);
 
 /**
  * @brief TUI-based server selection with formatted display
@@ -170,7 +170,7 @@ int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int c
  * @param count Number of servers (0 for "no results")
  * @return 0-based index of selected server, or -1 to cancel
  */
-int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count);
+int discovery_tui_select(const discovery_tui_server_t *servers, int count);
 
 /**
  * @brief Get best address representation for a discovered server
@@ -186,7 +186,7 @@ int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count);
  * @param server Discovered server
  * @return Pointer to best address string (points to field in server struct)
  */
-const char *lan_discovery_get_best_address(const lan_discovered_server_t *server);
+const char *discovery_tui_get_best_address(const discovery_tui_server_t *server);
 
 #ifdef __cplusplus
 }

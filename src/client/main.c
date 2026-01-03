@@ -72,7 +72,8 @@
 #include "audio.h"
 #include "audio/analysis.h"
 #include "video/webcam/webcam.h"
-#include "network/mdns/lan_discovery.h"
+#include "network/mdns/discovery_tui.h"
+#include "network/mdns/discovery.h"
 
 #include "platform/abstraction.h"
 #include "platform/init.h"
@@ -615,17 +616,17 @@ int client_main(void) {
        strcmp(opts->address, "localhost") == 0)) {
     log_info("LAN discovery: --scan flag set, querying for available servers");
 
-    lan_discovery_config_t lan_config;
+    discovery_tui_config_t lan_config;
     memset(&lan_config, 0, sizeof(lan_config));
     lan_config.timeout_ms = 2000; // Wait up to 2 seconds for responses
     lan_config.max_servers = 20;  // Support up to 20 servers on LAN
     lan_config.quiet = true;      // Quiet during discovery, TUI will show status
 
     int discovered_count = 0;
-    lan_discovered_server_t *discovered_servers = lan_discovery_query(&lan_config, &discovered_count);
+    discovery_tui_server_t *discovered_servers = discovery_tui_query(&lan_config, &discovered_count);
 
     // Use TUI for server selection
-    int selected_index = lan_discovery_tui_select(discovered_servers, discovered_count);
+    int selected_index = discovery_tui_select(discovered_servers, discovered_count);
 
     if (selected_index < 0) {
       // User cancelled or no servers found
@@ -659,14 +660,14 @@ int client_main(void) {
       // User cancelled (had servers to choose from but pressed cancel)
       log_info("LAN discovery: User cancelled server selection");
       if (discovered_servers) {
-        lan_discovery_free_results(discovered_servers);
+        discovery_tui_free_results(discovered_servers);
       }
       return 1; // User cancelled
     }
 
     // Update options with discovered server's address and port
-    lan_discovered_server_t *selected = &discovered_servers[selected_index];
-    const char *selected_address = lan_discovery_get_best_address(selected);
+    discovery_tui_server_t *selected = &discovered_servers[selected_index];
+    const char *selected_address = discovery_tui_get_best_address(selected);
 
     // We need to modify options, but they're immutable via RCU
     // Create a new options copy with updated address/port
@@ -687,10 +688,27 @@ int client_main(void) {
       // This is a known limitation - proper RCU update requires more infrastructure
     }
 
-    lan_discovery_free_results(discovered_servers);
+    discovery_tui_free_results(discovered_servers);
   }
 
-  // ACDS Discovery: If session_string is set, lookup server via ACDS
+  // =========================================================================
+  // PHASE 1 ACDS DISCOVERY: Parallel mDNS + ACDS Discovery
+  // =========================================================================
+  //
+  // When a session string is detected (e.g., "swift-river-mountain"),
+  // we perform parallel discovery on both mDNS (local LAN) and ACDS (internet):
+  //
+  // 1. **mDNS Discovery**: Query _ascii-chat._tcp.local for servers with
+  //    matching session_string in TXT records (2s timeout)
+  // 2. **ACDS Discovery**: Lookup session on ACDS server (5s timeout)
+  // 3. **Race to Success**: Return first successful result, cancel the other
+  // 4. **Verification**: Check host_pubkey against --server-key or --acds-insecure
+  //
+  // Usage modes:
+  // - `ascii-chat swift-river-mountain` → mDNS-only (local LAN, no verification)
+  // - `ascii-chat --server-key PUBKEY swift-river-mountain` → verified
+  // - `ascii-chat --acds-insecure swift-river-mountain` → parallel without verification
+  //
   const char *discovered_address = NULL;
   const char *discovered_port = NULL;
 
@@ -699,7 +717,7 @@ int client_main(void) {
   const char *password = opts_acds && opts_acds->password[0] != '\0' ? opts_acds->password : "";
 
   if (session_string[0] != '\0') {
-    log_info("Session string detected: %s - performing ACDS discovery", session_string);
+    log_info("Session string detected: %s - performing parallel discovery (mDNS + ACDS)", session_string);
 
     // Configure ACDS client
     acds_client_config_t acds_config;

@@ -1,9 +1,9 @@
 /**
- * @file lan_discovery.c
- * @brief LAN service discovery implementation for ascii-chat client
+ * @file discovery_tui.c
+ * @brief TUI-based service discovery implementation for ascii-chat client
  */
 
-#include "network/mdns/lan_discovery.h"
+#include "network/mdns/discovery_tui.h"
 #include "common.h"
 #include "log/logging.h"
 #include "mdns.h"
@@ -19,13 +19,13 @@
  * @brief Internal state for collecting discovered services
  */
 typedef struct {
-  lan_discovered_server_t *servers; ///< Array of discovered servers
+  discovery_tui_server_t *servers; ///< Array of discovered servers
   int count;                        ///< Number of servers discovered so far
   int capacity;                     ///< Allocated capacity
   int64_t start_time_ms;            ///< When discovery started (for timeout)
   int timeout_ms;                   ///< Discovery timeout in milliseconds
   bool query_complete;              ///< Set when discovery completes
-} lan_discovery_state_t;
+} discovery_tui_state_t;
 
 /**
  * @brief Get current time in milliseconds since epoch
@@ -42,8 +42,8 @@ static int64_t get_time_ms(void) {
  * Called by mDNS library when a service is discovered.
  * Collects service information into the state array.
  */
-static void lan_discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery, void *user_data) {
-  lan_discovery_state_t *state = (lan_discovery_state_t *)user_data;
+static void discovery_tui_mdns_callback(const asciichat_mdns_discovery_t *discovery, void *user_data) {
+  discovery_tui_state_t *state = (discovery_tui_state_t *)user_data;
   if (!state || !discovery) {
     return;
   }
@@ -79,8 +79,8 @@ static void lan_discovery_mdns_callback(const asciichat_mdns_discovery_t *discov
   }
 
   // Add new server to our array
-  lan_discovered_server_t *server = &state->servers[state->count];
-  memset(server, 0, sizeof(lan_discovered_server_t));
+  discovery_tui_server_t *server = &state->servers[state->count];
+  memset(server, 0, sizeof(discovery_tui_server_t));
 
   // Copy service information
   SAFE_STRNCPY(server->name, discovery->name, sizeof(server->name));
@@ -105,7 +105,7 @@ static void lan_discovery_mdns_callback(const asciichat_mdns_discovery_t *discov
 /**
  * @brief Get default discovery configuration
  */
-static void lan_discovery_config_set_defaults(lan_discovery_config_t *config) {
+static void discovery_tui_config_set_defaults(discovery_tui_config_t *config) {
   if (!config) {
     return;
   }
@@ -118,9 +118,9 @@ static void lan_discovery_config_set_defaults(lan_discovery_config_t *config) {
 }
 
 /**
- * @brief Implement LAN discovery query
+ * @brief Implement TUI discovery query
  */
-lan_discovered_server_t *lan_discovery_query(const lan_discovery_config_t *config, int *out_count) {
+discovery_tui_server_t *discovery_tui_query(const discovery_tui_config_t *config, int *out_count) {
   if (!out_count) {
     SET_ERRNO(ERROR_INVALID_PARAM, "out_count pointer is NULL");
     return NULL;
@@ -129,28 +129,28 @@ lan_discovered_server_t *lan_discovery_query(const lan_discovery_config_t *confi
   *out_count = 0;
 
   // Create config with defaults
-  lan_discovery_config_t effective_config;
+  discovery_tui_config_t effective_config;
   if (config) {
     effective_config = *config;
   } else {
     memset(&effective_config, 0, sizeof(effective_config));
   }
-  lan_discovery_config_set_defaults(&effective_config);
+  discovery_tui_config_set_defaults(&effective_config);
 
   // Allocate state for collecting servers
-  lan_discovery_state_t state;
+  discovery_tui_state_t state;
   memset(&state, 0, sizeof(state));
   state.capacity = effective_config.max_servers;
   state.timeout_ms = effective_config.timeout_ms;
   state.start_time_ms = get_time_ms();
 
   // Allocate server array
-  state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(lan_discovered_server_t), lan_discovered_server_t *);
+  state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(discovery_tui_server_t), discovery_tui_server_t *);
   if (!state.servers) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate LAN discovery server array");
     return NULL;
   }
-  memset(state.servers, 0, state.capacity * sizeof(lan_discovered_server_t));
+  memset(state.servers, 0, state.capacity * sizeof(discovery_tui_server_t));
 
   if (!effective_config.quiet) {
     log_info("LAN discovery: Searching for ASCII-Chat servers on local network (timeout: %dms)", state.timeout_ms);
@@ -167,7 +167,7 @@ lan_discovered_server_t *lan_discovery_query(const lan_discovery_config_t *confi
 
   // Start mDNS query for _ascii-chat._tcp services
   asciichat_error_t query_result =
-      asciichat_mdns_query(mdns, "_ascii-chat._tcp.local", lan_discovery_mdns_callback, &state);
+      asciichat_mdns_query(mdns, "_ascii-chat._tcp.local", discovery_tui_mdns_callback, &state);
 
   if (query_result != ASCIICHAT_OK) {
     // mDNS query failed - could be due to network issues, no servers available, or other reasons
@@ -216,14 +216,14 @@ lan_discovered_server_t *lan_discovery_query(const lan_discovery_config_t *confi
 /**
  * @brief Free results from LAN discovery
  */
-void lan_discovery_free_results(lan_discovered_server_t *servers) {
+void discovery_tui_free_results(discovery_tui_server_t *servers) {
   SAFE_FREE(servers);
 }
 
 /**
  * @brief Interactive server selection
  */
-int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int count) {
+int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int count) {
   if (!servers || count <= 0) {
     return -1;
   }
@@ -231,8 +231,8 @@ int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int c
   // Display available servers
   printf("\nAvailable ASCII-Chat servers on LAN:\n");
   for (int i = 0; i < count; i++) {
-    const lan_discovered_server_t *srv = &servers[i];
-    const char *addr = lan_discovery_get_best_address(srv);
+    const discovery_tui_server_t *srv = &servers[i];
+    const char *addr = discovery_tui_get_best_address(srv);
     printf("  %d. %s (%s:%u)\n", i + 1, srv->name, addr, srv->port);
   }
 
@@ -259,7 +259,7 @@ int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int c
   // Validate input
   if (selection < 1 || selection > count) {
     printf("⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
-    return lan_discovery_prompt_selection(servers, count); // Re-prompt
+    return discovery_tui_prompt_selection(servers, count); // Re-prompt
   }
 
   return (int)(selection - 1); // Convert to 0-based index
@@ -291,7 +291,7 @@ int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int c
  * @param count Number of servers
  * @return 0-based index of selected server, or -1 to cancel
  */
-int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count) {
+int discovery_tui_select(const discovery_tui_server_t *servers, int count) {
   if (!servers || count <= 0) {
     // No servers found - return special code
     // Message will be printed at exit in client main
@@ -314,8 +314,8 @@ int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count) 
 
   // Display server list with formatting
   for (int i = 0; i < count; i++) {
-    const lan_discovered_server_t *srv = &servers[i];
-    const char *addr = lan_discovery_get_best_address(srv);
+    const discovery_tui_server_t *srv = &servers[i];
+    const char *addr = discovery_tui_get_best_address(srv);
 
     log_plain("%s│%s  ", ANSI_BOLD, ANSI_RESET);
     log_plain("%s[%d]%s %-30s %s%s:%u%s", ANSI_CYAN, i + 1, ANSI_RESET, srv->name, ANSI_YELLOW, addr, srv->port,
@@ -352,7 +352,7 @@ int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count) 
   // Validate input
   if (selection < 1 || selection > count) {
     printf("%sError:%s Please enter a number between 1 and %d\n\n", ANSI_YELLOW, ANSI_RESET, count);
-    return lan_discovery_tui_select(servers, count); // Re-prompt
+    return discovery_tui_select(servers, count); // Re-prompt
   }
 
   // Lock terminal again for final output
@@ -377,7 +377,7 @@ int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count) 
 /**
  * @brief Get best address for a server
  */
-const char *lan_discovery_get_best_address(const lan_discovered_server_t *server) {
+const char *discovery_tui_get_best_address(const discovery_tui_server_t *server) {
   if (!server) {
     return "";
   }

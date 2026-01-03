@@ -444,6 +444,10 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_string(b, "server-key", '\0', offsetof(options_t, server_key), "", "Expected server public key",
                              "SECURITY", false, NULL, NULL);
 
+  options_builder_add_bool(b, "acds-insecure", '\0', offsetof(options_t, acds_insecure), false,
+                           "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY",
+                           false, NULL);
+
   // Add binary-level logging options (--log-file, --log-level, -V, -q)
   // These work before or after the mode name
   add_binary_logging_options(b);

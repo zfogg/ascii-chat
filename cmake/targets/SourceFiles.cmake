@@ -268,7 +268,8 @@ set(NETWORK_SRCS
     lib/network/nat/upnp.c
     # mDNS service discovery for LAN
     lib/network/mdns/mdns.c
-    lib/network/mdns/lan_discovery.c
+    lib/network/mdns/discovery_tui.c
+    lib/network/mdns/discovery.c
     deps/mdns/mdns.c
 )
 
