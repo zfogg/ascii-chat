@@ -344,9 +344,7 @@ const options_config_t *options_preset_client(void) {
   b->description = "Connect to ascii-chat server";
 
   // Network options
-  options_builder_add_string(b, "address", 'a', offsetof(options_t, address), OPT_ADDRESS_DEFAULT, "Server address",
-                             "NETWORK", false, "ASCII_CHAT_SERVER", NULL);
-
+  // Note: Server address and port are specified via positional argument [address][:port], not flags
   add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
 
   options_builder_add_int(b, "reconnect", 'r', offsetof(options_t, reconnect_attempts), OPT_RECONNECT_ATTEMPTS_DEFAULT,
@@ -492,13 +490,8 @@ const options_config_t *options_preset_acds(void) {
   options_builder_add_bool(b, "help", 'h', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
 
   // Network options
-  options_builder_add_string(b, "address", 'a', offsetof(options_t, address), "127.0.0.1", "Bind address", "NETWORK",
-                             false, "ACDS_ADDRESS", NULL);
-
+  // Note: Bind addresses are specified via positional arguments, not flags
   add_port_option(b, "27225", "ACDS_PORT");
-
-  options_builder_add_string(b, "address6", '\0', offsetof(options_t, address6), "::1", "IPv6 bind address", "NETWORK",
-                             false, NULL, NULL);
 
   // ACDS-specific options
   options_builder_add_string(b, "key", 'k', offsetof(options_t, acds_key_path), "",
