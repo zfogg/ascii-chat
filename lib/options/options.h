@@ -560,6 +560,14 @@ typedef struct options_state {
   bool acds_insecure;           ///< ACDS: skip server key verification (MITM-vulnerable, requires explicit opt-in)
 
   // ============================================================================
+  // WebRTC Connection Strategy Options (client-side fallback control)
+  // ============================================================================
+  bool prefer_webrtc;       ///< --prefer-webrtc: Try WebRTC before Direct TCP
+  bool no_webrtc;           ///< --no-webrtc: Disable WebRTC, use Direct TCP only
+  bool webrtc_skip_stun;    ///< --webrtc-skip-stun: Skip Stage 2 (STUN), go to TURN
+  bool webrtc_disable_turn; ///< --webrtc-disable-turn: Disable Stage 3 (TURN), use STUN only
+
+  // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)
   // ============================================================================
   bool enable_upnp;                        ///< ACDS: Enable UPnP/NAT-PMP port mapping for direct TCP

@@ -897,6 +897,7 @@ static void acip_on_crypto_rekey_request(const void *payload, size_t payload_len
 static void acip_on_crypto_rekey_response(const void *payload, size_t payload_len, void *ctx);
 static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, void *ctx);
 static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, void *ctx);
+static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx);
 
 /**
  * @brief Global ACIP client callbacks structure
@@ -920,6 +921,7 @@ static const acip_client_callbacks_t g_acip_client_callbacks = {.on_ascii_frame 
                                                                     acip_on_crypto_rekey_response,
                                                                 .on_webrtc_sdp = acip_on_webrtc_sdp,
                                                                 .on_webrtc_ice = acip_on_webrtc_ice,
+                                                                .on_session_joined = acip_on_session_joined,
                                                                 .app_ctx = NULL};
 
 /**
@@ -1423,5 +1425,57 @@ static void acip_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t total_len, v
 
   if (result != ASCIICHAT_OK) {
     log_error("Failed to handle WebRTC ICE: %s", asciichat_error_string(result));
+  }
+}
+
+/**
+ * @brief Handle ACDS SESSION_JOINED response (Phase 3 WebRTC integration)
+ *
+ * Called when server responds to ACDS session join request.
+ * Validates join success and stores session context for WebRTC handshake.
+ *
+ * Flow:
+ * 1. Check if join succeeded
+ * 2. If failed, log error and return (connection will timeout and fallback)
+ * 3. If successful:
+ *    - Store session context (session_id, participant_id)
+ *    - Check session_type (DIRECT_TCP or WEBRTC)
+ *    - For WEBRTC: signal WebRTC initialization with TURN credentials
+ *    - For DIRECT_TCP: continue with existing TCP flow
+ *
+ * @param joined SESSION_JOINED response from ACDS
+ * @param ctx Application context (unused for now)
+ *
+ * @ingroup client_protocol
+ */
+static void acip_on_session_joined(const acip_session_joined_t *joined, void *ctx) {
+  (void)ctx; // Unused for now, may be used in future for context passing
+
+  if (!joined) {
+    log_error("SESSION_JOINED callback received NULL response");
+    return;
+  }
+
+  // Check if join was successful
+  if (!joined->success) {
+    log_error("ACDS session join failed: error %d: %s", joined->error_code, joined->error_message);
+    // Connection will timeout waiting for SDP/WebRTC completion and fallback to next stage
+    return;
+  }
+
+  // Join succeeded - we have session context now
+  log_info("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)",
+           (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
+           joined->server_address, joined->server_port);
+
+  // Check if this is a WebRTC session
+  if (joined->session_type == SESSION_TYPE_WEBRTC) {
+    // TODO: Phase 3 - Initialize WebRTC connection with TURN credentials
+    // webrtc_initialize_session(joined->session_id, joined->participant_id,
+    //                           joined->turn_username, joined->turn_password);
+    log_info("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
+  } else {
+    // Direct TCP - connection is already established or will be established
+    log_info("Direct TCP session - using existing connection");
   }
 }

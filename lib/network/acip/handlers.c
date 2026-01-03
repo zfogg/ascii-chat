@@ -88,6 +88,8 @@ static asciichat_error_t handle_client_webrtc_sdp(const void *payload, size_t pa
                                                   const acip_client_callbacks_t *callbacks);
 static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t payload_len,
                                                   const acip_client_callbacks_t *callbacks);
+static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len,
+                                                      const acip_client_callbacks_t *callbacks);
 
 /**
  * @brief Client packet handler dispatch table (O(1) lookup)
@@ -111,6 +113,7 @@ static const acip_client_handler_func_t g_client_packet_handlers[200] = {
     [PACKET_TYPE_CRYPTO_REKEY_RESPONSE] = handle_client_crypto_rekey_response,
     [PACKET_TYPE_ACIP_WEBRTC_SDP] = handle_client_webrtc_sdp,
     [PACKET_TYPE_ACIP_WEBRTC_ICE] = handle_client_webrtc_ice,
+    [PACKET_TYPE_ACIP_SESSION_JOINED] = handle_client_session_joined,
 };
 
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
@@ -429,6 +432,34 @@ static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t pa
 
   const acip_webrtc_ice_t *ice = (const acip_webrtc_ice_t *)payload;
   callbacks->on_webrtc_ice(ice, payload_len, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len,
+                                                      const acip_client_callbacks_t *callbacks) {
+  if (!callbacks->on_session_joined) {
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(acip_session_joined_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "SESSION_JOINED payload too small (got %zu, need %zu)", payload_len,
+                     sizeof(acip_session_joined_t));
+  }
+
+  // Parse the session_joined response
+  const acip_session_joined_t *joined = (const acip_session_joined_t *)payload;
+
+  // Log the result
+  if (joined->success) {
+    log_debug("Session join succeeded: session_id=%.16s, participant_id=%.16s, server=%s:%u, type=%s",
+              (const char *)joined->session_id, (const char *)joined->participant_id, joined->server_address,
+              joined->server_port, joined->session_type == 1 ? "WebRTC" : "DirectTCP");
+  } else {
+    log_warn("Session join failed: error %d: %s", joined->error_code, joined->error_message);
+  }
+
+  // Dispatch to application callback
+  callbacks->on_session_joined(joined, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
