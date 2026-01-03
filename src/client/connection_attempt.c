@@ -296,6 +296,39 @@ static asciichat_error_t attempt_direct_tcp(connection_attempt_context_t *ctx, c
 }
 
 /* ============================================================================
+ * WebRTC Transport Ready Callback
+ * ============================================================================ */
+
+/**
+ * @brief Callback when WebRTC DataChannel is ready
+ *
+ * Called by peer_manager when the WebRTC connection succeeds and
+ * the DataChannel is ready for use. Stores the transport and signals
+ * the waiting thread via condition variable.
+ *
+ * @param transport WebRTC ACIP transport (ownership transferred)
+ * @param participant_id Remote participant UUID
+ * @param user_data Connection context pointer
+ */
+static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16], void *user_data) {
+  connection_attempt_context_t *ctx = (connection_attempt_context_t *)user_data;
+
+  if (!ctx || !transport) {
+    log_error("on_webrtc_transport_ready: Invalid parameters");
+    return;
+  }
+
+  log_info("WebRTC transport ready (participant_id=%.*s)", 16, (const char *)participant_id);
+
+  // Store transport and signal waiting thread
+  mutex_lock(&ctx->webrtc_mutex);
+  ctx->webrtc_transport = transport;
+  ctx->webrtc_transport_received = true;
+  cond_signal(&ctx->webrtc_ready_cond);
+  mutex_unlock(&ctx->webrtc_mutex);
+}
+
+/* ============================================================================
  * Stage 2: WebRTC + STUN Connection
  * ============================================================================ */
 
@@ -397,19 +430,37 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
 
   stun_server_t stun_servers[] = {stun_server1, stun_server2};
 
+  // Initialize synchronization primitives for transport_ready callback
+  ctx->webrtc_transport_received = false;
+
   webrtc_peer_manager_config_t pm_config = {
       .role = WEBRTC_ROLE_JOINER, // Client joins, server creates
       .stun_servers = stun_servers,
       .stun_count = 2,
       .turn_servers = NULL,
       .turn_count = 0,
-      .on_transport_ready = NULL, // Will be set when needed
+      .on_transport_ready = on_webrtc_transport_ready, // Callback when DataChannel ready
       .user_data = (void *)ctx,
       .crypto_ctx = NULL, // TODO: Get crypto context from client
   };
 
   // Get signaling callbacks (returns struct, not pointer)
   webrtc_signaling_callbacks_t signaling_callbacks = webrtc_get_signaling_callbacks();
+
+  // Create ACIP transport wrapper for ACDS signaling
+  // This transport is used to send SDP/ICE messages via ACDS relay
+  ctx->acds_transport = acip_tcp_transport_create(acds_client.socket, NULL);
+  if (!ctx->acds_transport) {
+    log_error("Failed to create ACDS transport wrapper");
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create ACDS transport");
+  }
+
+  // Set ACDS transport for signaling (SDP/ICE will be sent via this)
+  webrtc_set_acds_transport(ctx->acds_transport);
+
+  // Set session context (session_id, participant_id) for signaling
+  webrtc_set_session_context(ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
 
   result = webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &ctx->peer_manager);
   if (result != ASCIICHAT_OK) {
@@ -422,10 +473,30 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   // Step 4-7: Exchange SDP/ICE and wait for connection
   // ─────────────────────────────────────────────────────────────
 
-  // TODO: Implement signaling sequence:
-  // - Connect SDP/ICE callbacks to use ACDS transport
-  // - Wait for on_transport_ready callback with timeout
-  // - Connect to actual server via returned transport
+  connection_state_transition(ctx, CONN_STATE_WEBRTC_STUN_SIGNALING);
+
+  // Wait for on_transport_ready callback with 8-second timeout
+  mutex_lock(&ctx->webrtc_mutex);
+
+  time_t wait_start = time(NULL);
+  time_t timeout_seconds = CONN_TIMEOUT_WEBRTC_STUN;
+
+  while (!ctx->webrtc_transport_received && (time(NULL) - wait_start) < timeout_seconds) {
+    // Wait with 1-second timeout in milliseconds (platform API expects int ms)
+    int timeout_ms = 1000;
+    cond_timedwait(&ctx->webrtc_ready_cond, &ctx->webrtc_mutex, timeout_ms);
+  }
+
+  bool connection_successful = ctx->webrtc_transport_received;
+  mutex_unlock(&ctx->webrtc_mutex);
+
+  if (!connection_successful) {
+    log_warn("WebRTC+STUN connection timed out after %ld seconds", timeout_seconds);
+    connection_state_transition(ctx, CONN_STATE_WEBRTC_STUN_FAILED);
+    ctx->stage_failures++;
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "WebRTC+STUN connection timeout");
+  }
 
   log_info("WebRTC+STUN connection established");
   connection_state_transition(ctx, CONN_STATE_WEBRTC_STUN_CONNECTED);
@@ -497,7 +568,7 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // ─────────────────────────────────────────────────────────────
 
   // Use same session string from context if already joined, otherwise error
-  if (!ctx->session_ctx.session_id || ctx->session_ctx.server_port == 0) {
+  if (ctx->session_ctx.server_port == 0 || ctx->session_ctx.session_id[0] == 0) {
     log_warn("No session context available for TURN stage (should have been set in STUN stage)");
     acds_client_disconnect(&acds_client);
     return SET_ERRNO(ERROR_NETWORK, "Session context not available");
@@ -563,19 +634,37 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
 
   turn_server_t turn_servers[] = {turn_server};
 
+  // Initialize synchronization primitives for transport_ready callback
+  ctx->webrtc_transport_received = false;
+
   webrtc_peer_manager_config_t pm_config = {
       .role = WEBRTC_ROLE_JOINER, // Client joins, server creates
       .stun_servers = stun_servers,
       .stun_count = 2,
       .turn_servers = turn_servers,
       .turn_count = 1,
-      .on_transport_ready = NULL, // Will be set when needed
+      .on_transport_ready = on_webrtc_transport_ready, // Callback when DataChannel ready
       .user_data = (void *)ctx,
       .crypto_ctx = NULL, // TODO: Get crypto context from client
   };
 
   // Get signaling callbacks (returns struct, not pointer)
   webrtc_signaling_callbacks_t signaling_callbacks_turn = webrtc_get_signaling_callbacks();
+
+  // Create ACIP transport wrapper for ACDS signaling
+  // This transport is used to send SDP/ICE messages via ACDS relay
+  ctx->acds_transport = acip_tcp_transport_create(acds_client.socket, NULL);
+  if (!ctx->acds_transport) {
+    log_error("Failed to create ACDS transport wrapper for TURN");
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create ACDS transport");
+  }
+
+  // Set ACDS transport for signaling (SDP/ICE will be sent via this)
+  webrtc_set_acds_transport(ctx->acds_transport);
+
+  // Set session context (session_id, participant_id) for signaling
+  webrtc_set_session_context(ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
 
   result = webrtc_peer_manager_create(&pm_config, &signaling_callbacks_turn, &ctx->peer_manager);
   if (result != ASCIICHAT_OK) {
@@ -588,10 +677,30 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // Step 4-7: Exchange SDP/ICE and wait for connection
   // ─────────────────────────────────────────────────────────────
 
-  // TODO: Implement signaling sequence:
-  // - Connect SDP/ICE callbacks to use ACDS transport
-  // - Wait for on_transport_ready callback with timeout (15s for TURN)
-  // - Connect to actual server via returned transport
+  connection_state_transition(ctx, CONN_STATE_WEBRTC_TURN_SIGNALING);
+
+  // Wait for on_transport_ready callback with 15-second timeout (TURN is slower)
+  mutex_lock(&ctx->webrtc_mutex);
+
+  time_t wait_start = time(NULL);
+  time_t timeout_seconds = CONN_TIMEOUT_WEBRTC_TURN;
+
+  while (!ctx->webrtc_transport_received && (time(NULL) - wait_start) < timeout_seconds) {
+    // Wait with 1-second timeout in milliseconds (platform API expects int ms)
+    int timeout_ms = 1000;
+    cond_timedwait(&ctx->webrtc_ready_cond, &ctx->webrtc_mutex, timeout_ms);
+  }
+
+  bool connection_successful = ctx->webrtc_transport_received;
+  mutex_unlock(&ctx->webrtc_mutex);
+
+  if (!connection_successful) {
+    log_warn("WebRTC+TURN connection timed out after %ld seconds", timeout_seconds);
+    connection_state_transition(ctx, CONN_STATE_WEBRTC_TURN_FAILED);
+    ctx->stage_failures++;
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK_TIMEOUT, "WebRTC+TURN connection timeout");
+  }
 
   log_info("WebRTC+TURN connection established");
   connection_state_transition(ctx, CONN_STATE_WEBRTC_TURN_CONNECTED);
