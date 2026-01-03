@@ -14,6 +14,32 @@
 #include "log/logging.h"
 
 // ============================================================================
+// Binary-Level Options Helper
+// ============================================================================
+
+/**
+ * @brief Add binary-level logging options to a builder
+ *
+ * This ensures consistent option definitions across all modes.
+ * These options can be used before OR after the mode name.
+ */
+static void add_binary_logging_options(options_builder_t *b) {
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
+                             false, "ASCII_CHAT_LOG_FILE", NULL);
+
+  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
+                               &(log_level_t){LOG_INFO}, // Default: info level
+                               sizeof(log_level_t), parse_log_level,
+                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
+
+  options_builder_add_int(b, "verbose", 'V', offsetof(options_t, verbose_level), 0,
+                          "Increase log verbosity (stackable: -VV, -VVV)", "LOGGING", false, NULL, NULL);
+
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
+}
+
+// ============================================================================
 // Binary-Level Options Preset
 // ============================================================================
 
@@ -35,20 +61,8 @@ const options_config_t *options_preset_binary(void) {
   options_builder_add_bool(b, "version", '\0', offsetof(options_t, version), false, "Show version information",
                            "GENERAL", false, NULL);
 
-  // Logging options
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
-                             false, "ASCII_CHAT_LOG_FILE", NULL);
-
-  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
-                               &(log_level_t){LOG_INFO}, // Default: info level
-                               sizeof(log_level_t), parse_log_level,
-                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
-
-  options_builder_add_int(b, "verbose", 'V', offsetof(options_t, verbose_level), 0,
-                          "Increase log verbosity (stackable: -VV, -VVV)", "LOGGING", false, NULL, NULL);
-
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
-                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
+  // Add logging options
+  add_binary_logging_options(b);
 
   config = options_builder_build(b);
   options_builder_destroy(b);
@@ -143,26 +157,9 @@ const options_config_t *options_preset_server(void) {
                            "Disable mDNS service advertisement on local network (LAN discovery won't find this server)",
                            "DISCOVERY", false, NULL);
 
-  // Logging options
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
-                             false, "ASCII_CHAT_LOG_FILE", NULL);
-
-  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
-                               &(log_level_t){LOG_INFO}, // Default: info level
-                               sizeof(log_level_t), parse_log_level,
-                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
-
-  options_builder_add_int(b, "verbose", '\0', offsetof(options_t, verbose_level), 0,
-                          "Increase log verbosity (stackable: --verbose --verbose)", "LOGGING", false, NULL, NULL);
-
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
-                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
-
-  // Mark logging options as binary-level only (hide from mode-specific help)
-  options_builder_mark_binary_only(b, "log-file");
-  options_builder_mark_binary_only(b, "log-level");
-  options_builder_mark_binary_only(b, "verbose");
-  options_builder_mark_binary_only(b, "quiet");
+  // Add binary-level logging options (--log-file, --log-level, -V, -q)
+  // These work before or after the mode name
+  add_binary_logging_options(b);
 
   // Dependencies
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
@@ -342,26 +339,9 @@ const options_config_t *options_preset_client(void) {
   options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
 
-  // Logging options
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
-                             false, "ASCII_CHAT_LOG_FILE", NULL);
-
-  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
-                               &(log_level_t){LOG_INFO}, // Default: info level
-                               sizeof(log_level_t), parse_log_level,
-                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
-
-  options_builder_add_int(b, "verbose", '\0', offsetof(options_t, verbose_level), 0,
-                          "Increase log verbosity (stackable: --verbose --verbose)", "LOGGING", false, NULL, NULL);
-
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
-                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
-
-  // Mark logging options as binary-level only (hide from mode-specific help)
-  options_builder_mark_binary_only(b, "log-file");
-  options_builder_mark_binary_only(b, "log-level");
-  options_builder_mark_binary_only(b, "verbose");
-  options_builder_mark_binary_only(b, "quiet");
+  // Add binary-level logging options (--log-file, --log-level, -V, -q)
+  // These work before or after the mode name
+  add_binary_logging_options(b);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -472,26 +452,9 @@ const options_config_t *options_preset_mirror(void) {
   options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
                              "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
 
-  // Logging options
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
-                             false, "ASCII_CHAT_LOG_FILE", NULL);
-
-  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
-                               &(log_level_t){LOG_INFO}, // Default: info level
-                               sizeof(log_level_t), parse_log_level,
-                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
-
-  options_builder_add_int(b, "verbose", '\0', offsetof(options_t, verbose_level), 0,
-                          "Increase log verbosity (stackable: --verbose --verbose)", "LOGGING", false, NULL, NULL);
-
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
-                           "Disable console logging (log to file only)", "LOGGING", false, NULL);
-
-  // Mark logging options as binary-level only (hide from mode-specific help)
-  options_builder_mark_binary_only(b, "log-file");
-  options_builder_mark_binary_only(b, "log-level");
-  options_builder_mark_binary_only(b, "verbose");
-  options_builder_mark_binary_only(b, "quiet");
+  // Add binary-level logging options (--log-file, --log-level, -V, -q)
+  // These work before or after the mode name
+  add_binary_logging_options(b);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -549,17 +512,15 @@ const options_config_t *options_preset_acds(void) {
                              "Path to ACDS database file (default: ~/.ascii-chat/acds.db)", "ACDS", false,
                              "ACDS_DATABASE_PATH", NULL);
 
-  // Logging options (ACDS-specific)
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Path to log file", "LOGGING",
-                             false, NULL, NULL);
+  // Logging options (binary-level, work before or after mode name)
+  // Note: ACDS doesn't include --verbose/-V and --quiet/-q since they conflict with
+  // ACDS-specific security options (require-server-verify uses 'V')
+  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
+                             false, "ASCII_CHAT_LOG_FILE", NULL);
 
-  options_builder_add_callback(
-      b, "log-level", 'l', offsetof(options_t, log_level), &(log_level_t){LOG_INFO}, // Default: info level
-      sizeof(log_level_t), parse_log_level, "Log level (dev, debug, info, warn, error, fatal)", "LOGGING", false, NULL);
-
-  // Mark logging options as binary-level only (hide from mode-specific help)
-  options_builder_mark_binary_only(b, "log-file");
-  options_builder_mark_binary_only(b, "log-level");
+  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level), &(log_level_t){LOG_INFO},
+                               sizeof(log_level_t), parse_log_level,
+                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
 
   // Identity verification options
   options_builder_add_bool(b, "require-server-identity", 'S', offsetof(options_t, require_server_identity), false,
