@@ -23,6 +23,13 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#include <sys/types.h>
+#endif
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -58,7 +65,37 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
     return SET_ERRNO(ERROR_NETWORK, "Failed to create socket: %s", socket_get_error_string());
   }
 
-  // TODO: Set socket timeouts (SO_RCVTIMEO/SO_SNDTIMEO)
+  // Set socket timeouts (SO_RCVTIMEO/SO_SNDTIMEO)
+  // Convert timeout_ms to platform-specific format
+#ifdef _WIN32
+  // Windows uses DWORD (milliseconds)
+  DWORD timeout_val = config->timeout_ms;
+  if (setsockopt(client->socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_val, sizeof(timeout_val)) < 0) {
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket receive timeout");
+  }
+  if (setsockopt(client->socket, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout_val, sizeof(timeout_val)) < 0) {
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket send timeout");
+  }
+#else
+  // POSIX uses struct timeval (seconds and microseconds)
+  struct timeval tv;
+  tv.tv_sec = config->timeout_ms / 1000;
+  tv.tv_usec = (config->timeout_ms % 1000) * 1000;
+  if (setsockopt(client->socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv)) < 0) {
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket receive timeout");
+  }
+  if (setsockopt(client->socket, SOL_SOCKET, SO_SNDTIMEO, (const void *)&tv, sizeof(tv)) < 0) {
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket send timeout");
+  }
+#endif
 
   // Connect to server
   struct sockaddr_in server_addr;
