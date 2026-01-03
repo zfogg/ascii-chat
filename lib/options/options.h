@@ -352,8 +352,9 @@ int strtoint_safe(const char *str);
   unsigned short int no_encrypt;                                                                                       \
   char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
   unsigned short int require_server_verify;                                                                            \
-  unsigned short int acds_expose_ip; /* Explicitly allow public IP disclosure in ACDS sessions (opt-in) */             \
-  unsigned short int acds_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */    \
+  bool acds;           /* Enable ACDS session registration (default: false) */                                         \
+  bool acds_expose_ip; /* Explicitly allow public IP disclosure in ACDS sessions (opt-in) */                           \
+  bool acds_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */                  \
   char acds_server[OPTIONS_BUFF_SIZE];                                                                                 \
   int acds_port;                                                                                                       \
   bool webrtc; /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
@@ -470,6 +471,7 @@ typedef struct options_state {
   // ============================================================================
   // ACDS Discovery Options (server only)
   // ============================================================================
+  bool acds;                                  ///< Enable ACDS session registration (default: false)
   char acds_server[OPTIONS_BUFF_SIZE];        ///< ACDS server address (default: 127.0.0.1)
   int acds_port;                              ///< ACDS server port (default: 27225)
   bool webrtc;                                ///< Enable WebRTC mode for ACDS session (default: false, Direct TCP)
@@ -550,12 +552,12 @@ typedef struct options_state {
   // ============================================================================
   // Identity Verification Options (ACDS + Crypto Handshake)
   // ============================================================================
-  unsigned short int require_server_identity; ///< ACDS: require servers to provide signed Ed25519 identity
-  unsigned short int require_client_identity; ///< ACDS: require clients to provide signed Ed25519 identity
-  unsigned short int require_server_verify;   ///< Server: only accept clients who verified via ACDS
-  unsigned short int require_client_verify;   ///< Client: only connect to servers whose identity was verified by ACDS
-  unsigned short int acds_expose_ip; ///< ACDS: explicitly allow public IP disclosure without verification (opt-in)
-  unsigned short int acds_insecure;  ///< ACDS: skip server key verification (MITM-vulnerable, requires explicit opt-in)
+  bool require_server_identity; ///< ACDS: require servers to provide signed Ed25519 identity
+  bool require_client_identity; ///< ACDS: require clients to provide signed Ed25519 identity
+  bool require_server_verify;   ///< Server: only accept clients who verified via ACDS
+  bool require_client_verify;   ///< Client: only connect to servers whose identity was verified by ACDS
+  bool acds_expose_ip;          ///< ACDS: explicitly allow public IP disclosure without verification (opt-in)
+  bool acds_insecure;           ///< ACDS: skip server key verification (MITM-vulnerable, requires explicit opt-in)
 
   // ============================================================================
   // WebRTC Connectivity Options (ACDS mode only)

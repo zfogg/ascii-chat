@@ -332,6 +332,11 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
                            "SECURITY", false, NULL);
 
+  // ACDS Session Registration
+  options_builder_add_bool(b, "acds", '\0', offsetof(options_t, acds), false,
+                           "Enable ACDS session registration (requires --key or --password or --acds-expose-ip)",
+                           "DISCOVERY", false, NULL);
+
   // ACDS Discovery options (shared with client)
   add_acds_discovery_options(b);
 
