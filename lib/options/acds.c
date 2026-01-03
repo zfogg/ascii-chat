@@ -46,7 +46,7 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ============================================================================
 
 asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_acds();
+  const options_config_t *config = options_preset_acds("acds", "ascii-chat discovery service");
   int remaining_argc;
   char **remaining_argv;
 
@@ -101,16 +101,17 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
 // ============================================================================
 
 void usage_acds(FILE *desc) {
-  (void)fprintf(desc, "ascii-chat-acds - ASCII Chat Discovery Service\n\n");
+  // Get config with program name and description
+  const options_config_t *config = options_preset_acds("acds", "ascii-chat discovery service");
+  if (!config) {
+    (void)fprintf(desc, "Error: Failed to create options config\n");
+    return;
+  }
+
+  (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
   (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  acds [options...]\n\n");
-  (void)fprintf(desc, "DESCRIPTION:\n");
-  (void)fprintf(desc, "  Discovery server for session management and WebRTC signaling\n");
-  (void)fprintf(desc, "  using the ACIP protocol over raw TCP.\n\n");
+  (void)fprintf(desc, "  %s [options...]\n\n", config->program_name);
 
   // Generate options from builder configuration
-  const options_config_t *config = options_preset_acds();
-  if (config) {
-    options_config_print_usage(config, desc);
-  }
+  options_config_print_usage(config, desc);
 }

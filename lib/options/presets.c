@@ -207,17 +207,14 @@ static void add_acds_discovery_options(options_builder_t *b) {
 // Binary-Level Options Preset
 // ============================================================================
 
-const options_config_t *options_preset_binary(void) {
-  static options_config_t *config = NULL;
-  if (config)
-    return config;
-
+const options_config_t *options_preset_binary(const char *program_name, const char *description) {
+  // Note: Each call creates a new config (no static caching) since program_name/description vary
   options_builder_t *b = options_builder_create(sizeof(options_t));
   if (!b)
     return NULL;
 
-  b->program_name = "ascii-chat";
-  b->description = "Video chat in your terminal";
+  b->program_name = program_name ? program_name : "ascii-chat";
+  b->description = description ? description : "Video chat in your terminal";
 
   // Help and version
   options_builder_add_bool(b, "help", '\0', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
@@ -228,7 +225,7 @@ const options_config_t *options_preset_binary(void) {
   // Add logging options
   add_binary_logging_options(b);
 
-  config = options_builder_build(b);
+  const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
   return config;
 }
@@ -237,17 +234,14 @@ const options_config_t *options_preset_binary(void) {
 // Server Mode Options Preset
 // ============================================================================
 
-const options_config_t *options_preset_server(void) {
-  static options_config_t *config = NULL;
-  if (config)
-    return config;
-
+const options_config_t *options_preset_server(const char *program_name, const char *description) {
+  // Note: Each call creates a new config (no static caching) since program_name/description vary
   options_builder_t *b = options_builder_create(sizeof(options_t));
   if (!b)
     return NULL;
 
-  b->program_name = "ascii-chat server";
-  b->description = "Start ascii-chat server";
+  b->program_name = program_name ? program_name : "ascii-chat server";
+  b->description = description ? description : "Start ascii-chat server";
 
   // Network options
   // Note: Server bind addresses are positional arguments only, not flags
@@ -322,7 +316,7 @@ const options_config_t *options_preset_server(void) {
                                  false, // Not required (defaults to localhost)
                                  parse_server_bind_address);
 
-  config = options_builder_build(b);
+  const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
   return config;
 }
@@ -331,17 +325,14 @@ const options_config_t *options_preset_server(void) {
 // Client Mode Options Preset
 // ============================================================================
 
-const options_config_t *options_preset_client(void) {
-  static options_config_t *config = NULL;
-  if (config)
-    return config;
-
+const options_config_t *options_preset_client(const char *program_name, const char *description) {
+  // Note: Each call creates a new config (no static caching) since program_name/description vary
   options_builder_t *b = options_builder_create(sizeof(options_t));
   if (!b)
     return NULL;
 
-  b->program_name = "ascii-chat client";
-  b->description = "Connect to ascii-chat server";
+  b->program_name = program_name ? program_name : "ascii-chat client";
+  b->description = description ? description : "Connect to ascii-chat server";
 
   // Network options
   // Note: Server address and port are specified via positional argument [address][:port], not flags
@@ -421,7 +412,7 @@ const options_config_t *options_preset_client(void) {
                                  false, // Not required (defaults to localhost:27224)
                                  parse_client_address);
 
-  config = options_builder_build(b);
+  const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
   return config;
 }
@@ -430,17 +421,14 @@ const options_config_t *options_preset_client(void) {
 // Mirror Mode Options Preset
 // ============================================================================
 
-const options_config_t *options_preset_mirror(void) {
-  static options_config_t *config = NULL;
-  if (config)
-    return config;
-
+const options_config_t *options_preset_mirror(const char *program_name, const char *description) {
+  // Note: Each call creates a new config (no static caching) since program_name/description vary
   options_builder_t *b = options_builder_create(sizeof(options_t));
   if (!b)
     return NULL;
 
-  b->program_name = "ascii-chat mirror";
-  b->description = "Local webcam viewing (no network)";
+  b->program_name = program_name ? program_name : "ascii-chat mirror";
+  b->description = description ? description : "Local webcam viewing (no network)";
 
   // Terminal dimensions, webcam, display, and snapshot options (shared with client)
   add_terminal_dimension_options(b);
@@ -465,7 +453,7 @@ const options_config_t *options_preset_mirror(void) {
   options_builder_add_action(b, "show-capabilities", '\0', action_show_capabilities,
                              "Show terminal capabilities and exit", "ACTIONS");
 
-  config = options_builder_build(b);
+  const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
   return config;
 }
@@ -474,17 +462,14 @@ const options_config_t *options_preset_mirror(void) {
 // ACDS Mode Options Preset
 // ============================================================================
 
-const options_config_t *options_preset_acds(void) {
-  static options_config_t *config = NULL;
-  if (config)
-    return config;
-
+const options_config_t *options_preset_acds(const char *program_name, const char *description) {
+  // Note: Each call creates a new config (no static caching) since program_name/description vary
   options_builder_t *b = options_builder_create(sizeof(options_t));
   if (!b)
     return NULL;
 
-  b->program_name = "ascii-chat acds";
-  b->description = "ASCII Chat Discovery Service - session management and WebRTC signaling";
+  b->program_name = program_name ? program_name : "ascii-chat discovery service";
+  b->description = description ? description : "session management and WebRTC signaling";
 
   // Help and version
   options_builder_add_bool(b, "help", 'h', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
@@ -582,7 +567,7 @@ const options_config_t *options_preset_acds(void) {
                                  false, // Not required (defaults to localhost)
                                  parse_server_bind_address);
 
-  config = options_builder_build(b);
+  const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
   return config;
 }
