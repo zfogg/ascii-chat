@@ -275,6 +275,26 @@ static asciithread_t g_acds_receive_thread;
 static bool g_acds_receive_thread_started = false;
 
 /**
+ * @brief Global ACDS ping thread handle
+ *
+ * Background thread that sends periodic PING packets to keep ACDS connection alive.
+ * Prevents 15-second receive timeout on idle connections.
+ * Joined during server shutdown.
+ *
+ * @ingroup server_main
+ */
+static asciithread_t g_acds_ping_thread;
+
+/**
+ * @brief Flag indicating if ACDS ping thread was started
+ *
+ * Used to determine if thread needs to be joined during shutdown.
+ *
+ * @ingroup server_main
+ */
+static bool g_acds_ping_thread_started = false;
+
+/**
  * @brief Global client manager for signal handler access
  *
  * Made global so signal handler can close client sockets immediately
@@ -686,6 +706,121 @@ static void on_webrtc_ice_server(const acip_webrtc_ice_t *ice, size_t total_len,
 }
 
 /**
+ * @brief Advertise server via mDNS with given session string
+ *
+ * Called after session string is determined (either from ACDS or random generation).
+ * Advertises the server on the LAN via mDNS for local discovery.
+ *
+ * @param session_string Session string to advertise
+ * @param port Server port
+ */
+static void advertise_mdns_with_session(const char *session_string, uint16_t port) {
+  if (!g_mdns_ctx) {
+    log_debug("mDNS context not initialized, skipping advertisement");
+    return;
+  }
+
+  // Build session name from hostname for mDNS service name
+  char hostname[256] = {0};
+  char session_name[256] = "ASCII-Chat-Server";
+  if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
+    snprintf(session_name, sizeof(session_name), "%s", hostname);
+  }
+
+  // Prepare TXT records with session string and host public key
+  char txt_session_string[512];
+  char txt_host_pubkey[512];
+  const char *txt_records[2];
+  int txt_count = 0;
+
+  // Add session string to TXT records (for client discovery)
+  snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
+  txt_records[txt_count++] = txt_session_string;
+
+  // Add host public key to TXT records (for cryptographic verification)
+  // Convert server's Ed25519 public key to hex format
+  if (g_server_encryption_enabled) {
+    char hex_pubkey[65];
+    pubkey_to_hex(g_server_private_key.public_key, hex_pubkey);
+    snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
+    txt_records[txt_count++] = txt_host_pubkey;
+    log_debug("mDNS: Host pubkey=%s", hex_pubkey);
+  } else {
+    // If encryption is disabled, still advertise a zero pubkey for clients to detect
+    snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
+    for (int i = 0; i < 32; i++) {
+      snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
+    }
+    txt_records[txt_count++] = txt_host_pubkey;
+    log_debug("mDNS: Encryption disabled, advertising zero pubkey");
+  }
+
+  asciichat_mdns_service_t service = {
+      .name = session_name,
+      .type = "_ascii-chat._tcp",
+      .host = hostname,
+      .port = port,
+      .txt_records = txt_records,
+      .txt_count = txt_count,
+  };
+
+  asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
+  if (mdns_advertise_result != ASCIICHAT_OK) {
+    LOG_ERRNO_IF_SET("Failed to advertise mDNS service");
+    log_warn("mDNS advertising failed - LAN discovery disabled");
+    asciichat_mdns_shutdown(g_mdns_ctx);
+    g_mdns_ctx = NULL;
+  } else {
+    printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
+    printf("📋 Session String: %s\n", session_string);
+    printf("   Join with: ascii-chat %s\n", session_string);
+    log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
+             service.name, service.port, session_string, service.txt_count);
+  }
+}
+
+/**
+ * @brief ACDS ping thread - sends periodic keepalive PING packets
+ *
+ * Sends PING packet every 10 seconds to keep ACDS connection alive.
+ * Prevents 15-second receive timeout on idle connections.
+ *
+ * @param arg Unused (server uses globals)
+ * @return NULL
+ */
+static void *acds_ping_thread(void *arg) {
+  (void)arg;
+
+  log_info("ACDS keepalive ping thread started");
+
+  while (!atomic_load(&g_server_should_exit)) {
+    if (!g_acds_transport) {
+      log_debug("ACDS transport destroyed, exiting ping thread");
+      break;
+    }
+
+    // Send PING every 10 seconds to keep connection alive
+    socket_t acds_socket = g_acds_transport->methods->get_socket(g_acds_transport);
+    if (acds_socket != INVALID_SOCKET_VALUE) {
+      asciichat_error_t ping_result = packet_send(acds_socket, PACKET_TYPE_PING, NULL, 0);
+      if (ping_result == ASCIICHAT_OK) {
+        log_debug("ACDS keepalive: Sent periodic PING");
+      } else {
+        log_warn("ACDS keepalive: Failed to send PING: %s", asciichat_error_string(ping_result));
+      }
+    }
+
+    // Sleep for 10 seconds before next ping (well before 15s timeout)
+    for (int i = 0; i < 100 && !atomic_load(&g_server_should_exit); i++) {
+      platform_sleep_ms(100); // Check exit flag every 100ms
+    }
+  }
+
+  log_info("ACDS keepalive ping thread exiting");
+  return NULL;
+}
+
+/**
  * @brief ACDS receive thread - processes WebRTC signaling packets
  *
  * Receives packets from ACDS transport and dispatches to WebRTC callbacks.
@@ -709,7 +844,8 @@ static void *acds_receive_thread(void *arg) {
       .app_ctx = NULL,
   };
 
-  // Receive loop - blocks on each packet until connection closes
+  // Receive loop - just handle incoming packets
+  // Keepalive is handled by separate ping thread
   while (!atomic_load(&g_server_should_exit)) {
     if (!g_acds_transport) {
       log_debug("ACDS transport destroyed, exiting receive thread");
@@ -1179,6 +1315,10 @@ int server_main(void) {
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)
   // =========================================================================
+  // Track UPnP success for ACDS session type decision
+  // If UPnP fails, we need to create a WebRTC session to enable client connectivity
+  bool upnp_succeeded = false;
+
   // Try to open port via UPnP so direct TCP works for ~70% of home users.
   // If this fails, clients fall back to WebRTC automatically - not fatal.
   //
@@ -1194,6 +1334,7 @@ int server_main(void) {
       if (nat_upnp_get_address(g_upnp_ctx, public_addr, sizeof(public_addr)) == ASCIICHAT_OK) {
         printf("🌐 Public endpoint: %s (direct TCP)\\n", public_addr);
         log_info("UPnP: Port mapping successful, public endpoint: %s", public_addr);
+        upnp_succeeded = true;
       }
     } else {
       log_info("UPnP: Port mapping unavailable or failed - will use WebRTC fallback");
@@ -1263,9 +1404,10 @@ int server_main(void) {
     }
   }
 
-  // Initialize mDNS for LAN service discovery (optional)
+  // Initialize mDNS context for LAN service discovery (optional)
   // mDNS allows clients on the LAN to discover this server without knowing its IP
   // Can be disabled with --no-mdns-advertise
+  // Note: Actual advertisement is deferred until after ACDS session creation (if --acds is enabled)
   if (!atomic_load(&g_server_should_exit) && !GET_OPTION(no_mdns_advertise)) {
     log_debug("Initializing mDNS for LAN service discovery...");
     g_mdns_ctx = asciichat_mdns_init();
@@ -1274,89 +1416,7 @@ int server_main(void) {
       log_warn("mDNS disabled - LAN service discovery will not be available");
       g_mdns_ctx = NULL;
     } else {
-      // Advertise service on the LAN
-      // Build session name from hostname for mDNS service name
-      char hostname[256] = {0};
-      char session_name[256] = "ASCII-Chat-Server";
-      if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
-        snprintf(session_name, sizeof(session_name), "%s", hostname);
-      }
-
-      // Generate a proper word-word-word session string for Phase 1 mDNS discovery
-      // This uses simple word lists to create memorable session strings
-      static const char *adjectives[] = {
-          "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "proud",
-          "quick", "warm",   "wise",   "true", "safe", "keen",  "just",  "fair",
-      };
-      static const char *nouns[] = {
-          "river",  "mountain", "forest", "ocean", "valley", "peak",  "lake", "hill",
-          "meadow", "canyon",   "stream", "sky",   "stone",  "eagle", "wolf", "bear",
-      };
-      static const size_t adj_count = sizeof(adjectives) / sizeof(adjectives[0]);
-      static const size_t noun_count = sizeof(nouns) / sizeof(nouns[0]);
-
-      // Generate random indices for session string (deterministic per server start for testing)
-      uint32_t seed = (uint32_t)time(NULL) ^ (uint32_t)getpid();
-      uint32_t adj1_idx = (seed / 1) % adj_count;
-      uint32_t noun1_idx = (seed / 13) % noun_count;
-      uint32_t adj2_idx = (seed / 31) % adj_count;
-
-      char session_string[64];
-      snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
-               adjectives[adj2_idx]);
-
-      log_info("mDNS: Generated session string for LAN discovery: '%s'", session_string);
-
-      // Prepare TXT records with session string and host public key
-      char txt_session_string[512];
-      char txt_host_pubkey[512];
-      const char *txt_records[2];
-      int txt_count = 0;
-
-      // Add session string to TXT records (for client discovery)
-      snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
-      txt_records[txt_count++] = txt_session_string;
-
-      // Add host public key to TXT records (for cryptographic verification)
-      // Convert server's Ed25519 public key to hex format
-      if (g_server_encryption_enabled) {
-        char hex_pubkey[65];
-        pubkey_to_hex(g_server_private_key.public_key, hex_pubkey);
-        snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
-        txt_records[txt_count++] = txt_host_pubkey;
-        log_debug("mDNS: Host pubkey=%s", hex_pubkey);
-      } else {
-        // If encryption is disabled, still advertise a zero pubkey for clients to detect
-        snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
-        for (int i = 0; i < 32; i++) {
-          snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
-        }
-        txt_records[txt_count++] = txt_host_pubkey;
-        log_debug("mDNS: Encryption disabled, advertising zero pubkey");
-      }
-
-      asciichat_mdns_service_t service = {
-          .name = session_name,
-          .type = "_ascii-chat._tcp",
-          .host = hostname,
-          .port = (uint16_t)port,
-          .txt_records = txt_records,
-          .txt_count = txt_count,
-      };
-
-      asciichat_error_t mdns_advertise_result = asciichat_mdns_advertise(g_mdns_ctx, &service);
-      if (mdns_advertise_result != ASCIICHAT_OK) {
-        LOG_ERRNO_IF_SET("Failed to advertise mDNS service");
-        log_warn("mDNS advertising failed - LAN discovery disabled");
-        asciichat_mdns_shutdown(g_mdns_ctx);
-        g_mdns_ctx = NULL;
-      } else {
-        printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
-        printf("📋 Session String: %s\n", session_string);
-        printf("   Join with: ascii-chat %s\n", session_string);
-        log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
-                 service.name, service.port, session_string, service.txt_count);
-      }
+      log_debug("mDNS context initialized, advertisement deferred until session string is ready");
     }
   } else if (GET_OPTION(no_mdns_advertise)) {
     log_info("mDNS service advertisement disabled via --no-mdns-advertise");
@@ -1378,6 +1438,7 @@ int server_main(void) {
   // - Calls remove_client() to cleanup and stop worker threads
 
   // ACDS Session Creation: Register this server with discovery service
+  // This also determines the session string for mDNS (if --acds is enabled)
   char session_string[64] = {0};
 
   // ACDS Registration (conditional on --acds flag)
@@ -1481,7 +1542,16 @@ int server_main(void) {
       create_params.acds_expose_ip = acds_expose_ip_flag;
 
       // Set session type (Direct TCP or WebRTC)
-      create_params.session_type = GET_OPTION(webrtc) ? SESSION_TYPE_WEBRTC : SESSION_TYPE_DIRECT_TCP;
+      // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
+      // This ensures clients can connect even when server is behind NAT without UPnP
+      if (!upnp_succeeded || GET_OPTION(webrtc)) {
+        create_params.session_type = SESSION_TYPE_WEBRTC;
+        log_info("ACDS session type: WebRTC (UPnP %s, --webrtc %s)", upnp_succeeded ? "succeeded" : "failed",
+                 GET_OPTION(webrtc) ? "enabled" : "disabled");
+      } else {
+        create_params.session_type = SESSION_TYPE_DIRECT_TCP;
+        log_info("ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)");
+      }
 
       // Server connection information (where clients should connect)
       SAFE_STRNCPY(create_params.server_address, GET_OPTION(address), sizeof(create_params.server_address));
@@ -1507,6 +1577,15 @@ int server_main(void) {
           log_error("Failed to create ACDS transport wrapper");
         } else {
           log_debug("ACDS transport wrapper created for signaling");
+
+          // Start ACDS ping thread to keep connection alive (for ALL session types)
+          int ping_thread_result = ascii_thread_create(&g_acds_ping_thread, acds_ping_thread, NULL);
+          if (ping_thread_result != 0) {
+            log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
+          } else {
+            log_info("ACDS ping thread started to keep connection alive");
+            g_acds_ping_thread_started = true;
+          }
         }
 
         // Initialize WebRTC peer_manager if session type is WebRTC
@@ -1560,6 +1639,10 @@ int server_main(void) {
         } else {
           log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
         }
+
+        // Advertise mDNS with ACDS session string
+        // This ensures both mDNS and ACDS discovery return the same session string
+        advertise_mdns_with_session(session_string, (uint16_t)port);
       } else {
         log_warn("Failed to create session on ACDS server (server will run without discovery)");
         // Clean up failed ACDS client
@@ -1577,6 +1660,39 @@ int server_main(void) {
   }
 
 skip_acds_session:
+  // Fallback: If no session string was set by ACDS (either disabled or failed),
+  // generate a random session string for mDNS discovery only
+  if (session_string[0] == '\0' && g_mdns_ctx) {
+    log_debug("No ACDS session string available, generating random session for mDNS");
+
+    // Generate a proper word-word-word session string for mDNS discovery
+    // This uses simple word lists to create memorable session strings
+    static const char *adjectives[] = {
+        "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "proud",
+        "quick", "warm",   "wise",   "true", "safe", "keen",  "just",  "fair",
+    };
+    static const char *nouns[] = {
+        "river",  "mountain", "forest", "ocean", "valley", "peak",  "lake", "hill",
+        "meadow", "canyon",   "stream", "sky",   "stone",  "eagle", "wolf", "bear",
+    };
+    static const size_t adj_count = sizeof(adjectives) / sizeof(adjectives[0]);
+    static const size_t noun_count = sizeof(nouns) / sizeof(nouns[0]);
+
+    // Generate random indices for session string (deterministic per server start for testing)
+    uint32_t seed = (uint32_t)time(NULL) ^ (uint32_t)getpid();
+    uint32_t adj1_idx = (seed / 1) % adj_count;
+    uint32_t noun1_idx = (seed / 13) % noun_count;
+    uint32_t adj2_idx = (seed / 31) % adj_count;
+
+    snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
+             adjectives[adj2_idx]);
+
+    log_info("Generated random session string for mDNS: '%s'", session_string);
+
+    // Advertise mDNS with random session string
+    advertise_mdns_with_session(session_string, (uint16_t)port);
+  }
+
   log_info("Server entering accept loop (port %d)...", port);
 
   // Run TCP server (blocks until shutdown signal received)
@@ -1712,8 +1828,15 @@ skip_acds_session:
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_shutdown(&g_tcp_server);
 
-  // Join ACDS receive thread (if started)
+  // Join ACDS threads (if started)
   // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
+  if (g_acds_ping_thread_started) {
+    log_debug("Joining ACDS ping thread");
+    ascii_thread_join(&g_acds_ping_thread, NULL);
+    g_acds_ping_thread_started = false;
+    log_debug("ACDS ping thread joined");
+  }
+
   if (g_acds_receive_thread_started) {
     log_debug("Joining ACDS receive thread");
     ascii_thread_join(&g_acds_receive_thread, NULL);

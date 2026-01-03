@@ -56,6 +56,8 @@ using std::atomic_size_t;
 
 /** @brief Magic value to identify pooled buffers */
 #define BUFFER_POOL_MAGIC 0xBF00B001U
+/** @brief Magic value for malloc fallback buffers (not in pool) */
+#define BUFFER_POOL_MAGIC_FALLBACK 0xBF00FA11U
 
 /* ============================================================================
  * Data Structures
