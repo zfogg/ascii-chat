@@ -63,6 +63,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Miniupnpc.cmake)
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 
+# mdns - mDNS service discovery library (requires patching to exclude main())
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
+configure_mdns()
+
 # =============================================================================
 # Test Dependencies
 # =============================================================================
