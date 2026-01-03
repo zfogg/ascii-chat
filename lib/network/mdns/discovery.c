@@ -84,43 +84,60 @@ bool is_session_string(const char *str) {
   if (!str || strlen(str) == 0)
     return false;
 
-  // Parse as word-word-word where each word is 3-64 alphanumerics/hyphens
+  // Parse as word-word-word where each word is 3-64 alphanumerics
+  // Hyphens are separators between words
   // No leading/trailing hyphens, no consecutive hyphens
-  int word_count = 0;
-  int current_len = 0;
-  bool in_word = false;
+  size_t len = strlen(str);
+
+  // Check length bounds (minimum: "a-a-a" = 5, maximum: 64 chars per word * 3 + 2 hyphens = 194)
+  if (len < 5 || len > 194) {
+    return false;
+  }
+
+  // Must not start or end with hyphen
+  if (str[0] == '-' || str[len - 1] == '-') {
+    return false;
+  }
+
+  // Count words separated by hyphens
+  int word_count = 1; // Start with 1 (not 0) to account for first word
+  int current_word_len = 0;
   bool last_was_hyphen = false;
 
-  for (size_t i = 0; i < strlen(str); i++) {
+  for (size_t i = 0; i < len; i++) {
     char c = str[i];
 
     if (isalnum(c)) {
-      if (!in_word) {
-        in_word = true;
-        word_count++;
-        current_len = 1;
-      } else {
-        current_len++;
+      current_word_len++;
+
+      // Individual word must be 3-64 characters
+      if (current_word_len > 64) {
+        return false;
       }
       last_was_hyphen = false;
     } else if (c == '-') {
-      if (!in_word || last_was_hyphen) {
-        // Leading hyphen or consecutive hyphens
+      // Hyphen marks end of current word
+      if (last_was_hyphen) {
+        // Consecutive hyphens
         return false;
       }
+
+      // Current word must have been at least 3 chars
+      if (current_word_len < 3) {
+        return false;
+      }
+
+      word_count++;
+      current_word_len = 0;
       last_was_hyphen = true;
-      current_len++;
-      if (current_len > 64) {
-        // Word too long
-        return false;
-      }
     } else {
-      return false; // Invalid character
+      // Invalid character
+      return false;
     }
   }
 
-  // Check final word length and no trailing hyphen
-  if (last_was_hyphen || current_len < 3 || current_len > 64) {
+  // Final word must be 3-64 characters
+  if (current_word_len < 3 || current_word_len > 64) {
     return false;
   }
 
