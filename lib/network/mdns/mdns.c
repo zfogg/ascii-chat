@@ -235,9 +235,9 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
                                  mdns->buffer_capacity, 0);
 
   if (query_id <= 0) {
-    // mDNS query failure is not uncommon in restricted networks or test environments
+    // mDNS query failure could be due to network restrictions, unavailable service, or other issues
     // Log at INFO level so users understand why no servers are found via LAN discovery
-    log_info("mDNS query failed for %s (likely no multicast support)", service_type);
+    log_info("mDNS query failed for %s", service_type);
     return ERROR_NETWORK;
   }
 
