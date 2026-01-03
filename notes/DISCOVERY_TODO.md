@@ -51,6 +51,11 @@
   - ACDS receive thread for server-side signaling
   - Client ACDS receive loops (commit 68620f17)
   - Transport integration into server connection layer (commit 9ac34842)
+- ✅ **ACDS Signaling Relay Verified** (src/acds/signaling.c):
+  - SDP offer/answer relay with RCU lock-free lookups
+  - ICE candidate relay with broadcast/unicast support
+  - ACIP callback integration (on_webrtc_sdp, on_webrtc_ice)
+  - Proper error handling and participant lookup
 - ✅ **Basic Integration Tests** (5/5 passing, commit 353e00da):
   - Connection state enumeration validation
   - Timeout constant verification (3s/8s/15s)
@@ -58,7 +63,6 @@
   - Session context UUID validation
   - STUN/TURN configuration structure testing
 - ⚠️ **Remaining Work:**
-  - ACDS signaling relay verification for SDP/ICE exchange (src/acds/signaling.c)
   - Manual NAT/firewall traversal testing (STUN/TURN validation)
   - Performance validation (connection latency measurements)
   - Full integration tests (deferred pending test architecture decision)
@@ -1050,7 +1054,7 @@ todo: when using sdp for audio and terminal capabilities, don't communicate them
 5. [x] Add SESSION_JOINED callback handling - src/client/protocol.c:1451-1481
 6. [x] CMake build integration - sdp.c, ice.c, connection_attempt.c in SourceFiles.cmake
 7. [x] Implement server-side WebRTC support - src/server/main.c (commit 353e00da, 68620f17, 9ac34842)
-8. [ ] ACDS signaling relay for SDP/ICE - src/acds/signaling.c (needs verification)
+8. [x] ACDS signaling relay for SDP/ICE - src/acds/signaling.c (verified complete)
 9. [ ] Test peer-to-peer connections through TURN (manual NAT/firewall testing pending)
 10. [x] Write integration tests - Basic tests (5/5 passing); full tests deferred pending test architecture decision
 
