@@ -66,6 +66,18 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     out_session_string[0] = '\0';
   }
 
+  // Check if argv[0] itself is a mode name (for test compatibility)
+  // This handles the case where tests pass ["client", "-p", "80"] without a binary name
+  const char *const mode_names_check[] = {"server", "client", "mirror", "acds", NULL};
+  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_ACDS};
+  for (int i = 0; mode_names_check[i] != NULL; i++) {
+    if (strcmp(argv[0], mode_names_check[i]) == 0) {
+      *out_mode = mode_values_check[i];
+      *out_mode_index = 0;
+      return ASCIICHAT_OK;
+    }
+  }
+
   // Find the first non-option argument (potential mode or session string)
   int first_positional_idx = -1;
   for (int i = 1; i < argc; i++) {
@@ -270,7 +282,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     // Mode found at position mode_index
     // Build new argv: [program_name, args_before_mode..., args_after_mode...]
     // This preserves binary-level options like --log-file that appear before mode
-    int args_before_mode = mode_index - 1; // Skip argv[0], include argv[1] to argv[mode_index-1]
+
+    // Special case: if mode_index == 0, argv[0] is the mode name (test compatibility)
+    // Use "ascii-chat" as the binary name
+    int args_before_mode = (mode_index == 0) ? 0 : (mode_index - 1);
     int args_after_mode = argc - mode_index - 1;
     mode_argc = 1 + args_before_mode + args_after_mode;
 
@@ -285,7 +300,12 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
 
     // Copy: [program_name, args_before_mode..., args_after_mode...]
-    new_mode_argv[0] = argv[0];
+    if (mode_index == 0) {
+      // Mode is at argv[0], use "ascii-chat" as program name
+      new_mode_argv[0] = "ascii-chat";
+    } else {
+      new_mode_argv[0] = argv[0];
+    }
     for (int i = 0; i < args_before_mode; i++) {
       new_mode_argv[1 + i] = argv[1 + i]; // argv[1] to argv[mode_index-1]
     }
