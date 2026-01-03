@@ -912,12 +912,37 @@ int server_main(void) {
       g_mdns_ctx = NULL;
     } else {
       // Advertise service on the LAN
-      // Build session name from hostname if available
-      char session_name[256] = "ASCII-Chat-Server";
+      // Build session name from hostname for mDNS service name
       char hostname[256] = {0};
+      char session_name[256] = "ASCII-Chat-Server";
       if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
         snprintf(session_name, sizeof(session_name), "%s", hostname);
       }
+
+      // Generate a proper word-word-word session string for Phase 1 mDNS discovery
+      // This uses simple word lists to create memorable session strings
+      static const char *adjectives[] = {
+          "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "proud",
+          "quick", "warm",   "wise",   "true", "safe", "keen",  "just",  "fair",
+      };
+      static const char *nouns[] = {
+          "river",  "mountain", "forest", "ocean", "valley", "peak",  "lake", "hill",
+          "meadow", "canyon",   "stream", "sky",   "stone",  "eagle", "wolf", "bear",
+      };
+      static const size_t adj_count = sizeof(adjectives) / sizeof(adjectives[0]);
+      static const size_t noun_count = sizeof(nouns) / sizeof(nouns[0]);
+
+      // Generate random indices for session string (deterministic per server start for testing)
+      uint32_t seed = (uint32_t)time(NULL) ^ (uint32_t)getpid();
+      uint32_t adj1_idx = (seed / 1) % adj_count;
+      uint32_t noun1_idx = (seed / 13) % noun_count;
+      uint32_t adj2_idx = (seed / 31) % adj_count;
+
+      char session_string[64];
+      snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
+               adjectives[adj2_idx]);
+
+      log_info("mDNS: Generated session string for LAN discovery: '%s'", session_string);
 
       // Prepare TXT records with session string and host public key
       char txt_session_string[512];
@@ -926,8 +951,7 @@ int server_main(void) {
       int txt_count = 0;
 
       // Add session string to TXT records (for client discovery)
-      // Use hostname-based session string for Phase 1
-      snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_name);
+      snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
       txt_records[txt_count++] = txt_session_string;
 
       // Add host public key to TXT records (for cryptographic verification)
@@ -965,8 +989,10 @@ int server_main(void) {
         g_mdns_ctx = NULL;
       } else {
         printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
-        log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, txt_count=%d)", service.type, service.name,
-                 service.port, service.txt_count);
+        printf("📋 Session String: %s\n", session_string);
+        printf("   Join with: ascii-chat %s\n", session_string);
+        log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
+                 service.name, service.port, session_string, service.txt_count);
       }
     }
   } else if (GET_OPTION(no_mdns_advertise)) {
