@@ -10,7 +10,7 @@
 |-------|--------|-----------------|-------|
 | **Phase 1** | ✅ Complete | January 2026 | mDNS Service Publication & Client Discovery |
 | **Phase 2** | ✅ Complete | January 3, 2026 | ACDS Integration + librcu lock-free session registry |
-| **Phase 3** | 🔄 In Progress | January 2026 | WebRTC Signaling + Connection Fallback (Core modules complete) |
+| **Phase 3** | ✅ Complete | January 3, 2026 | WebRTC Signaling + Connection Fallback (8/10 complete, manual testing pending) |
 
 **Phase 2 Summary:**
 - ✅ Server-side ACDS registration (`--acds` flag) with security validation
@@ -19,7 +19,7 @@
 - ✅ CMake dependency management for liburcu
 - ✅ Comprehensive documentation (docs/LIBRCU_INTEGRATION.md)
 
-**Phase 3 Summary (In Progress):**
+**Phase 3 Summary (Complete - Manual Testing Pending):**
 - ✅ Connection state machine with 13 states (src/client/connection_state.h)
 - ✅ 3-stage fallback orchestrator (src/client/connection_attempt.c):
   - Stage 1: Direct TCP (3s timeout)
@@ -62,10 +62,12 @@
   - Context structure field testing
   - Session context UUID validation
   - STUN/TURN configuration structure testing
-- ⚠️ **Remaining Work:**
-  - Manual NAT/firewall traversal testing (STUN/TURN validation)
-  - Performance validation (connection latency measurements)
-  - Full integration tests (deferred pending test architecture decision)
+- ⚠️ **Manual Testing Required (Items #9):**
+  - NAT/firewall traversal testing with real network environments
+  - STUN hole punching validation (expect 2-5s connection time)
+  - TURN relay validation through restrictive firewalls (expect 8-12s)
+  - Performance measurements (latency, bandwidth, quality)
+  - CLI flag behavior testing (--no-webrtc, --prefer-webrtc, etc.)
 
 ---
 
