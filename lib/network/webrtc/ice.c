@@ -9,7 +9,7 @@
  */
 
 #include "ice.h"
-#include "logging.h"
+#include "log/logging.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,7 +231,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
                          candidate->port, ice_candidate_type_name(candidate->type));
 
   if (written < 0 || (size_t)written >= line_size) {
-    return SET_ERRNO(ERROR_BUFFER_TOO_SMALL, "Candidate line too large for buffer");
+    return SET_ERRNO(ERROR_BUFFER_FULL, "Candidate line too large for buffer");
   }
 
   size_t remaining = line_size - (size_t)written;
@@ -243,7 +243,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
     if (candidate->raddr[0] != '\0') {
       int appended = snprintf(pos, remaining, " raddr %s rport %u", candidate->raddr, candidate->rport);
       if (appended < 0 || (size_t)appended >= remaining) {
-        return SET_ERRNO(ERROR_BUFFER_TOO_SMALL, "Cannot append raddr/rport to candidate line");
+        return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append raddr/rport to candidate line");
       }
       pos += appended;
       remaining -= (size_t)appended;
@@ -261,7 +261,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
 
     int appended = snprintf(pos, remaining, " tcptype %s", tcptype_str);
     if (appended < 0 || (size_t)appended >= remaining) {
-      return SET_ERRNO(ERROR_BUFFER_TOO_SMALL, "Cannot append tcptype to candidate line");
+      return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append tcptype to candidate line");
     }
     pos += appended;
     remaining -= (size_t)appended;
@@ -271,7 +271,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   if (candidate->extensions[0] != '\0') {
     int appended = snprintf(pos, remaining, " %s", candidate->extensions);
     if (appended < 0 || (size_t)appended >= remaining) {
-      return SET_ERRNO(ERROR_BUFFER_TOO_SMALL, "Cannot append extensions to candidate line");
+      return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append extensions to candidate line");
     }
   }
 
@@ -370,5 +370,5 @@ asciichat_error_t ice_get_selected_pair(ice_candidate_t *local_candidate, ice_ca
   // 4. Copy remote candidate if remote_candidate != NULL
   // 5. Return error if no pair selected yet
 
-  return SET_ERRNO(ERROR_NOT_READY, "No candidate pair selected yet");
+  return SET_ERRNO(ERROR_INVALID_STATE, "No candidate pair selected yet");
 }

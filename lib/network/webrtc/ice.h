@@ -273,5 +273,3 @@ const char *ice_protocol_name(ice_protocol_t protocol);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* NETWORK_WEBRTC_ICE_H */
