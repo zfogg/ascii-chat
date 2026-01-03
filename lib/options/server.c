@@ -41,7 +41,8 @@
 // ============================================================================
 
 asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_server();
+  const options_config_t *config =
+      options_preset_server("ascii-chat server", "host a server mixing video and audio for ascii-chat clients");
   int remaining_argc;
   char **remaining_argv;
 
@@ -73,10 +74,18 @@ asciichat_error_t parse_server_options(int argc, char **argv, options_t *opts) {
 // ============================================================================
 
 void usage_server(FILE *desc) {
+  // Get config with program name and description
+  const options_config_t *config =
+      options_preset_server("ascii-chat server", "host a server mixing video and audio for ascii-chat clients");
+  if (!config) {
+    (void)fprintf(desc, "Error: Failed to create options config\n");
+    return;
+  }
+
   // Print custom bind address help first
-  (void)fprintf(desc, "ascii-chat server - Run as multi-client video chat server\n\n");
+  (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
   (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  ascii-chat server [bind-address] [bind-address6] [options...]\n\n");
+  (void)fprintf(desc, "  %s [bind-address] [bind-address6] [options...]\n\n", config->program_name);
   (void)fprintf(desc, "BIND ADDRESS FORMATS:\n");
   (void)fprintf(desc, "  (none)                     bind to 127.0.0.1 and ::1 (localhost)\n");
   (void)fprintf(desc, "  192.168.1.100              bind to IPv4 address only\n");
@@ -85,8 +94,5 @@ void usage_server(FILE *desc) {
   (void)fprintf(desc, "  192.168.1.100 ::           bind to IPv4 and IPv6 (dual-stack)\n\n");
 
   // Generate options from builder configuration
-  const options_config_t *config = options_preset_server();
-  if (config) {
-    options_config_print_usage(config, desc);
-  }
+  options_config_print_usage(config, desc);
 }

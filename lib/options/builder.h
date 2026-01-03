@@ -507,37 +507,47 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
  * Binary options are parsed BEFORE mode selection.
  * Includes: --help, --version, --log-file, --log-level, etc.
  *
- * @return Preset config (static, do not free)
+ * @param program_name Optional program name (defaults to "ascii-chat")
+ * @param description Optional program description
+ * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_binary(void);
+const options_config_t *options_preset_binary(const char *program_name, const char *description);
 
 /**
  * @brief Get server mode options preset
  *
- * @return Preset config (static, do not free)
+ * @param program_name Optional program name (defaults to "ascii-chat server")
+ * @param description Optional program description (defaults to "Start ascii-chat server")
+ * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_server(void);
+const options_config_t *options_preset_server(const char *program_name, const char *description);
 
 /**
  * @brief Get client mode options preset
  *
- * @return Preset config (static, do not free)
+ * @param program_name Optional program name (defaults to "ascii-chat client")
+ * @param description Optional program description (defaults to "Connect to ascii-chat server")
+ * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_client(void);
+const options_config_t *options_preset_client(const char *program_name, const char *description);
 
 /**
  * @brief Get mirror mode options preset
  *
- * @return Preset config (static, do not free)
+ * @param program_name Optional program name (defaults to "ascii-chat mirror")
+ * @param description Optional program description (defaults to "Local webcam viewing (no network)")
+ * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_mirror(void);
+const options_config_t *options_preset_mirror(const char *program_name, const char *description);
 
 /**
  * @brief Get acds mode options preset
  *
- * @return Preset config (static, do not free)
+ * @param program_name Optional program name (defaults to "ascii-chat acds")
+ * @param description Optional program description (defaults to "ASCII Chat Discovery Service")
+ * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_acds(void);
+const options_config_t *options_preset_acds(const char *program_name, const char *description);
 
 // ============================================================================
 // Parsing and Validation

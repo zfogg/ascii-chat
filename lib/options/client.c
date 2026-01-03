@@ -48,7 +48,7 @@
 // ============================================================================
 
 asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_client();
+  const options_config_t *config = options_preset_client("ascii-chat client", "connect to an ascii-chat server");
   int remaining_argc;
   char **remaining_argv;
 
@@ -80,10 +80,17 @@ asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts) {
 // ============================================================================
 
 void usage_client(FILE *desc) {
+  // Get config with program name and description
+  const options_config_t *config = options_preset_client("ascii-chat client", "connect to an ascii-chat server");
+  if (!config) {
+    (void)fprintf(desc, "Error: Failed to create options config\n");
+    return;
+  }
+
   // Print custom address format help first
-  (void)fprintf(desc, "ascii-chat client - Connect to ascii-chat server\n\n");
+  (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
   (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  ascii-chat client [address][:port] [options...]\n\n");
+  (void)fprintf(desc, "  %s [address][:port] [options...]\n\n", config->program_name);
   (void)fprintf(desc, "ADDRESS FORMATS:\n");
   (void)fprintf(desc, "  (none)                     connect to localhost:27224\n");
   (void)fprintf(desc, "  hostname                   connect to hostname:27224\n");
@@ -94,8 +101,5 @@ void usage_client(FILE *desc) {
   (void)fprintf(desc, "  [::1]:8080                 connect to IPv6:port (brackets required with port)\n\n");
 
   // Generate options from builder configuration
-  const options_config_t *config = options_preset_client();
-  if (config) {
-    options_config_print_usage(config, desc);
-  }
+  options_config_print_usage(config, desc);
 }

@@ -33,7 +33,7 @@
 // ============================================================================
 
 asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_mirror();
+  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "view local webcam as ascii art");
   int remaining_argc;
   char **remaining_argv;
 
@@ -65,13 +65,17 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
 // ============================================================================
 
 void usage_mirror(FILE *desc) {
-  (void)fprintf(desc, "ascii-chat mirror - View local webcam as ASCII art (no server)\n\n");
+  // Get config with program name and description
+  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "view local webcam as ascii art");
+  if (!config) {
+    (void)fprintf(desc, "Error: Failed to create options config\n");
+    return;
+  }
+
+  (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
   (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  ascii-chat mirror [options...]\n\n");
+  (void)fprintf(desc, "  %s [options...]\n\n", config->program_name);
 
   // Generate options from builder configuration
-  const options_config_t *config = options_preset_mirror();
-  if (config) {
-    options_config_print_usage(config, desc);
-  }
+  options_config_print_usage(config, desc);
 }
