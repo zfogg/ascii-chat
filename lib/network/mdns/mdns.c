@@ -236,8 +236,8 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
 
   if (query_id <= 0) {
     // mDNS query failure is not uncommon in restricted networks or test environments
-    // Log at DEBUG level instead of ERROR since "no servers found" is the graceful fallback
-    log_debug("mDNS query failed for %s (likely no multicast support)", service_type);
+    // Log at INFO level so users understand why no servers are found via LAN discovery
+    log_info("mDNS query failed for %s (likely no multicast support)", service_type);
     return ERROR_NETWORK;
   }
 
