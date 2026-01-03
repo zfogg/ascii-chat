@@ -119,12 +119,7 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
 
-  // NOTE: Transport parameter is reserved for future use
-  // Currently, handlers use callbacks to notify application layer
-  // In future versions, transport can be used for out-of-band messages
-  // (e.g., sending error responses, notifications) without routing through
-  // the normal callback mechanisms. This enables bidirectional communication
-  // and reduces coupling between handlers and application layer.
+  // TODO: Use transport for sending responses or out-of-band messages in future versions
   (void)transport;
 
   // O(1) array-based dispatch - bounds check packet type
@@ -510,10 +505,7 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
 
-  // NOTE: Transport parameter is reserved for future use
-  // Currently uses callbacks for asynchronous response handling
-  // Future versions could use transport for immediate response transmission
-  // and state machine control (e.g., flow control, priority messaging)
+  // TODO: Use transport for sending responses or out-of-band messages in future versions
   (void)transport;
 
   // O(1) array-based dispatch - bounds check packet type
