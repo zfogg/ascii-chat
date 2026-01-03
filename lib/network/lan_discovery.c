@@ -3,7 +3,7 @@
  * @brief LAN service discovery implementation for ascii-chat client
  */
 
-#include "client/lan_discovery.h"
+#include "network/lan_discovery.h"
 #include "common.h"
 #include "log/logging.h"
 #include "network/mdns.h"
