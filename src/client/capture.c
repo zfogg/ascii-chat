@@ -102,6 +102,7 @@
 #include "util/thread.h"
 #include "util/endian.h"
 #include "util/fps.h"
+#include "network/acip/send.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
@@ -348,96 +349,24 @@ static void *webcam_capture_thread_func(void *arg) {
     // processed_image is always a new image (copy or resized) - we own it and must destroy it
     // Serialize image data for network transmission
 
-    // Create image frame packet in new format: [width:4][height:4][compressed_flag:4][data_size:4][pixel_data]
-    // This matches what the server expects in handle_image_frame_packet()
-    // Validate image dimensions using utility function
-    if (image_validate_dimensions((size_t)processed_image->w, (size_t)processed_image->h) != ASCIICHAT_OK) {
-      image_destroy(processed_image);
-      continue;
-    }
-
-    size_t pixel_count = 0;
-    if (safe_size_mul((size_t)processed_image->w, (size_t)processed_image->h, &pixel_count)) {
-      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Pixel count overflow for processed image dimensions: %dx%d", processed_image->w,
-                processed_image->h);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    size_t pixel_size = 0;
-    if (safe_size_mul(pixel_count, sizeof(rgb_t), &pixel_size)) {
-      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Pixel size overflow while preparing frame (%zu pixels)", pixel_count);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    if (pixel_size > IMAGE_MAX_PIXELS_SIZE) {
-      char pixel_str[32], max_str[32];
-      format_bytes_pretty(pixel_size, pixel_str, sizeof(pixel_str));
-      format_bytes_pretty(IMAGE_MAX_PIXELS_SIZE, max_str, sizeof(max_str));
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds maximum size: %s (max %s)", pixel_str, max_str);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    if (pixel_size > UINT32_MAX) {
-      char pixel_str[32];
-      format_bytes_pretty(pixel_size, pixel_str, sizeof(pixel_str));
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds protocol limit: %s (> 4 GB)", pixel_str);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    size_t header_size = sizeof(uint32_t) * 4; // width, height, compressed_flag, data_size
-    if (pixel_size > SIZE_MAX - header_size) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Packet size overflow while preparing frame");
-      image_destroy(processed_image);
-      continue;
-    }
-    size_t packet_size = header_size + pixel_size;
-
-    // Check packet size limits
-    if (packet_size > MAX_PACKET_SIZE) {
-      char packet_str[32], max_str[32];
-      format_bytes_pretty(packet_size, packet_str, sizeof(packet_str));
-      format_bytes_pretty(MAX_PACKET_SIZE, max_str, sizeof(max_str));
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %s (max %s)", packet_str, max_str);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    // Allocate packet buffer
-    uint8_t *packet_data = SAFE_MALLOC(packet_size, void *);
-    if (!packet_data) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer of size %zu", packet_size);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    // Build packet in new format
-    uint32_t *header = (uint32_t *)packet_data;
-    header[0] = HOST_TO_NET_U32(processed_image->w);   // width
-    header[1] = HOST_TO_NET_U32(processed_image->h);   // height
-    header[2] = HOST_TO_NET_U32(0);                    // compressed_flag = 0 (uncompressed)
-    header[3] = HOST_TO_NET_U32((uint32_t)pixel_size); // data_size = pixel data length
-
-    // Copy pixel data after header
-    memcpy(packet_data + header_size, processed_image->pixels, pixel_size);
     // Check connection before sending
     if (!server_connection_is_active()) {
       log_warn("Connection lost before sending, stopping video transmission");
-      SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
 
-    // Send frame packet to server
-    int send_result = threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
+    // Send frame packet to server using proper packet format
+    // This handles the full image_frame_packet_t structure with all required fields
+    acip_transport_t *transport = server_connection_get_transport();
+    asciichat_error_t send_result = acip_send_image_frame(transport, (const void *)processed_image->pixels,
+                                                          (uint32_t)processed_image->w, (uint32_t)processed_image->h,
+                                                          1); // pixel_format = 1 (RGB24)
 
-    if (send_result < 0) {
+    if (send_result != ASCIICHAT_OK) {
       // Signal connection loss for reconnection
+      log_error("Failed to send image frame: %d", send_result);
       server_connection_lost();
-      SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
@@ -465,12 +394,10 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Update capture timing
     last_capture_time = current_time;
-    // Clean up resources - must always free both packet and image
-    SAFE_FREE(packet_data);
-    if (processed_image) {
-      image_destroy(processed_image);
-      processed_image = NULL;
-    }
+
+    // Clean up resources
+    image_destroy(processed_image);
+    processed_image = NULL;
   }
 
 #ifdef DEBUG_THREADS

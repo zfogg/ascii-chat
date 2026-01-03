@@ -718,8 +718,11 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width = NET_TO_HOST_U32(img_width_net);
   uint32_t img_height = NET_TO_HOST_U32(img_height_net);
 
+  log_debug("IMAGE_FRAME packet: width=%u, height=%u, payload_len=%zu", img_width, img_height, len);
+
   // Validate dimensions using image utility functions
   if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
+    log_error("IMAGE_FRAME validation failed for dimensions: %u x %u", img_width, img_height);
     disconnect_client_for_bad_data(client, "IMAGE_FRAME invalid dimensions");
     return;
   }

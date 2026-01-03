@@ -189,8 +189,8 @@ void acds_server_shutdown(acds_server_t *server) {
 
   while ((remaining_clients = tcp_server_get_client_count(&server->tcp_server)) > 0 &&
          shutdown_attempts < max_shutdown_attempts) {
-    log_debug("Waiting for %zu client handler threads to exit (attempt %d/%d)",
-              remaining_clients, shutdown_attempts + 1, max_shutdown_attempts);
+    log_debug("Waiting for %zu client handler threads to exit (attempt %d/%d)", remaining_clients,
+              shutdown_attempts + 1, max_shutdown_attempts);
     platform_sleep_ms(100);
     shutdown_attempts++;
   }

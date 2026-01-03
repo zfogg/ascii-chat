@@ -207,9 +207,9 @@ int ascii_tls_set(tls_key_t key, void *value) {
  */
 asciichat_error_t ascii_thread_set_realtime_priority(void) {
 #ifdef __APPLE__
-  // macOS: Use thread_policy_set for real-time scheduling
-  #include <mach/mach.h>
-  #include <mach/thread_policy.h>
+// macOS: Use thread_policy_set for real-time scheduling
+#include <mach/mach.h>
+#include <mach/thread_policy.h>
 
   thread_time_constraint_policy_data_t policy;
   policy.period = 0;
@@ -217,8 +217,8 @@ asciichat_error_t ascii_thread_set_realtime_priority(void) {
   policy.constraint = 10000; // 10ms constraint
   policy.preemptible = 0;    // Not preemptible
 
-  kern_return_t result = thread_policy_set(mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY,
-                                          (thread_policy_t)&policy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+  kern_return_t result = thread_policy_set(mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&policy,
+                                           THREAD_TIME_CONSTRAINT_POLICY_COUNT);
   if (result != KERN_SUCCESS) {
     return SET_ERRNO(ERROR_THREAD, "Failed to set real-time thread priority on macOS");
   }
@@ -231,8 +231,9 @@ asciichat_error_t ascii_thread_set_realtime_priority(void) {
   param.sched_priority = 80; // High priority (1-99 range for SCHED_FIFO)
 
   if (pthread_setschedparam(pthread_self(), policy, &param) != 0) {
-    return SET_ERRNO_SYS(ERROR_THREAD,
-                        "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
+    return SET_ERRNO_SYS(
+        ERROR_THREAD,
+        "Failed to set real-time thread priority (try running with elevated privileges or configuring rtprio limits)");
   }
   return ASCIICHAT_OK;
 #endif
