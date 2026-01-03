@@ -18,6 +18,36 @@
 // ============================================================================
 
 /**
+ * @brief Custom parser for --verbose flag
+ *
+ * Allows --verbose to work both as a flag (without argument) and with an optional
+ * count argument. Increments verbose_level each time called.
+ */
+static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
+  // If arg is NULL or starts with a flag, just increment
+  // Otherwise try to parse as integer count
+  unsigned short int *verbose_level = (unsigned short int *)dest;
+
+  if (!arg || arg[0] == '\0') {
+    // No argument provided, just increment
+    (*verbose_level)++;
+    return true;
+  }
+
+  // Try to parse as integer count
+  char *endptr;
+  long value = strtol(arg, &endptr, 10);
+  if (*endptr == '\0' && value >= 0 && value <= 100) {
+    *verbose_level = (unsigned short int)value;
+    return true;
+  }
+
+  // If it didn't parse as int, treat as flag increment
+  (*verbose_level)++;
+  return true;
+}
+
+/**
  * @brief Add binary-level logging options to a builder
  *
  * This ensures consistent option definitions across all modes.
@@ -32,8 +62,12 @@ static void add_binary_logging_options(options_builder_t *b) {
                                sizeof(log_level_t), parse_log_level,
                                "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
 
-  options_builder_add_int(b, "verbose", 'V', offsetof(options_t, verbose_level), 0,
-                          "Increase log verbosity (stackable: -VV, -VVV)", "LOGGING", false, NULL, NULL);
+  options_builder_add_callback_optional(b, "verbose", 'V', offsetof(options_t, verbose_level),
+                                        &(unsigned short int){0}, // Default: 0 (no extra verbosity)
+                                        sizeof(unsigned short int), parse_verbose_flag,
+                                        "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false,
+                                        NULL,
+                                        true); // optional_arg = true
 
   options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
                            "Disable console logging (log to file only)", "LOGGING", false, NULL);
@@ -204,6 +238,35 @@ static void add_acds_discovery_options(options_builder_t *b) {
 }
 
 // ============================================================================
+// Positional Argument Examples (Programmatic Help)
+// ============================================================================
+
+/**
+ * @brief Server bind address format examples
+ *
+ * Shows how to specify bind addresses for server mode (0-2 addresses).
+ */
+static const char *g_server_bind_address_examples[] = {
+    "(none)                     bind to 127.0.0.1 and ::1 (localhost)",
+    "192.168.1.100              bind to IPv4 address only", "::                         bind to all IPv6 addresses",
+    "0.0.0.0                    bind to all IPv4 addresses",
+    "192.168.1.100 ::           bind to IPv4 and IPv6 (dual-stack)"};
+
+/**
+ * @brief Client address format examples
+ *
+ * Shows how to specify server addresses for client mode.
+ */
+static const char *g_client_address_examples[] = {
+    "(none)                     connect to localhost:27224",
+    "hostname                   connect to hostname:27224",
+    "hostname:port              connect to hostname:port",
+    "192.168.1.1                connect to IPv4:27224",
+    "192.168.1.1:8080           connect to IPv4:port",
+    "::1                        connect to IPv6:27224",
+    "[::1]:8080                 connect to IPv6:port (brackets required with port)"};
+
+// ============================================================================
 // Binary-Level Options Preset
 // ============================================================================
 
@@ -314,6 +377,8 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
   options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
                                  false, // Not required (defaults to localhost)
+                                 "BIND ADDRESS FORMATS", g_server_bind_address_examples,
+                                 sizeof(g_server_bind_address_examples) / sizeof(g_server_bind_address_examples[0]),
                                  parse_server_bind_address);
 
   const options_config_t *config = options_builder_build(b);
@@ -407,10 +472,11 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                              "Show terminal capabilities and exit", "ACTIONS");
 
   // Positional argument: [address][:port]
-  options_builder_add_positional(b, "address",
-                                 "[address][:port] - Server address (IPv4, IPv6, or hostname) with optional port",
-                                 false, // Not required (defaults to localhost:27224)
-                                 parse_client_address);
+  options_builder_add_positional(
+      b, "address", "[address][:port] - Server address (IPv4, IPv6, or hostname) with optional port",
+      false, // Not required (defaults to localhost:27224)
+      "ADDRESS FORMATS", g_client_address_examples,
+      sizeof(g_client_address_examples) / sizeof(g_client_address_examples[0]), parse_client_address);
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
@@ -565,6 +631,8 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
   options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
                                  false, // Not required (defaults to localhost)
+                                 "BIND ADDRESS FORMATS", g_server_bind_address_examples,
+                                 sizeof(g_server_bind_address_examples) / sizeof(g_server_bind_address_examples[0]),
                                  parse_server_bind_address);
 
   const options_config_t *config = options_builder_build(b);

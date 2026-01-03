@@ -482,7 +482,49 @@ void options_builder_add_callback(options_builder_t *builder, const char *long_n
                               .env_var_name = env_var_name,
                               .validate = NULL,
                               .parse_fn = parse_fn,
-                              .owns_memory = false};
+                              .owns_memory = false,
+                              .optional_arg = false};
+
+  builder->descriptors[builder->num_descriptors++] = desc;
+}
+
+/**
+ * @brief Add callback option with optional argument support
+ *
+ * @param builder Builder to add to
+ * @param long_name Long option name
+ * @param short_name Short option char (or '\0')
+ * @param offset offsetof(struct, field)
+ * @param default_value Pointer to default value (or NULL)
+ * @param value_size sizeof(field_type)
+ * @param parse_fn Custom parser function
+ * @param help_text Help description
+ * @param group Group name for help
+ * @param required If true, option must be provided
+ * @param env_var_name Environment variable fallback (or NULL)
+ * @param optional_arg If true, argument is optional (parser receives NULL if not provided)
+ */
+void options_builder_add_callback_optional(options_builder_t *builder, const char *long_name, char short_name,
+                                           size_t offset, const void *default_value, size_t value_size,
+                                           bool (*parse_fn)(const char *, void *, char **), const char *help_text,
+                                           const char *group, bool required, const char *env_var_name,
+                                           bool optional_arg) {
+  (void)value_size; // Unused parameter
+  ensure_descriptor_capacity(builder);
+
+  option_descriptor_t desc = {.long_name = long_name,
+                              .short_name = short_name,
+                              .type = OPTION_TYPE_CALLBACK,
+                              .offset = offset,
+                              .help_text = help_text,
+                              .group = group,
+                              .default_value = default_value,
+                              .required = required,
+                              .env_var_name = env_var_name,
+                              .validate = NULL,
+                              .parse_fn = parse_fn,
+                              .owns_memory = false,
+                              .optional_arg = optional_arg};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -768,146 +810,313 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
   return ASCIICHAT_OK;
 }
 
+// ============================================================================
+// Unified Argument Parser (Supports Mixed Positional and Flag Arguments)
+// ============================================================================
+
+/**
+ * @brief Check if an argument looks like a flag
+ *
+ * An argument is considered a flag if it starts with `-`.
+ * Special cases:
+ * - `--` is treated as the end-of-options marker
+ * - Numbers starting with `-` (like `-5`) could be ambiguous, but we treat them as flags
+ */
+static bool is_flag_argument(const char *arg) {
+  if (!arg || arg[0] == '\0')
+    return false;
+  return arg[0] == '-';
+}
+
+/**
+ * @brief Find option descriptor by short or long name
+ */
+static const option_descriptor_t *find_option_descriptor(const options_config_t *config, const char *opt_name) {
+  if (!opt_name || opt_name[0] == '\0')
+    return NULL;
+
+  // Handle short options: -x (single dash, single char)
+  if (opt_name[0] == '-' && opt_name[1] != '-' && opt_name[1] != '\0') {
+    // This is a short option like -x
+    char short_char = opt_name[1];
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      if (config->descriptors[i].short_name == short_char) {
+        return &config->descriptors[i];
+      }
+    }
+    // Short option not found
+    return NULL;
+  }
+
+  // Handle long options: --name (double dash)
+  if (opt_name[0] == '-' && opt_name[1] == '-' && opt_name[2] != '\0') {
+    const char *long_name = opt_name + 2; // Skip the '--'
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      if (strcmp(config->descriptors[i].long_name, long_name) == 0) {
+        return &config->descriptors[i];
+      }
+    }
+    // Long option not found
+    return NULL;
+  }
+
+  // Not a recognized option format
+  return NULL;
+}
+
+/**
+ * @brief Parse a single flag option with its argument
+ *
+ * Handles both long options (--name, --name=value) and short options (-n value)
+ *
+ * @param config Options configuration
+ * @param argv Current argv array
+ * @param argv_index Current index in argv
+ * @param argc Total number of arguments
+ * @param options_struct Destination struct for parsed values
+ * @param consumed_count Output: number of argv elements consumed (1 or 2)
+ * @return Error code
+ */
+static asciichat_error_t parse_single_flag(const options_config_t *config, char **argv, int argv_index, int argc,
+                                           void *options_struct, int *consumed_count) {
+  *consumed_count = 1;
+
+  const char *arg = argv[argv_index];
+  char *long_opt_value = NULL;
+  char *equals = NULL;
+
+  // Handle long options with `=` (e.g., --port=8080)
+  if (strncmp(arg, "--", 2) == 0) {
+    equals = strchr(arg, '=');
+    if (equals) {
+      long_opt_value = equals + 1;
+      // Temporarily null-terminate to get option name
+      *equals = '\0';
+    }
+  }
+
+  // Find matching descriptor
+  const option_descriptor_t *desc = find_option_descriptor(config, arg);
+  if (!desc) {
+    if (equals)
+      *equals = '='; // Restore
+    return SET_ERRNO(ERROR_USAGE, "Unknown option: %s", arg);
+  }
+
+  void *field = (char *)options_struct + desc->offset;
+  const char *opt_value = NULL;
+
+  // Get option value if needed
+  if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
+    if (long_opt_value) {
+      // Value came from --name=value
+      opt_value = long_opt_value;
+    } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
+      // Value from next argument
+      opt_value = argv[argv_index + 1];
+      (*consumed_count)++;
+    } else if (desc->type == OPTION_TYPE_CALLBACK && desc->optional_arg) {
+      // Optional argument for callback - pass NULL
+      opt_value = NULL;
+    } else {
+      if (equals)
+        *equals = '=';
+      return SET_ERRNO(ERROR_USAGE, "Option %s requires an argument", arg);
+    }
+  }
+
+  // Parse value based on type
+  switch (desc->type) {
+  case OPTION_TYPE_BOOL:
+    *(bool *)field = true;
+    break;
+
+  case OPTION_TYPE_INT: {
+    char *endptr;
+    long value = strtol(opt_value, &endptr, 10);
+    if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
+      if (equals)
+        *equals = '=';
+      return SET_ERRNO(ERROR_USAGE, "Invalid integer value for %s", arg);
+    }
+    int int_value = (int)value;
+    memcpy(field, &int_value, sizeof(int));
+    break;
+  }
+
+  case OPTION_TYPE_STRING: {
+    char *dest = (char *)field;
+    snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
+    dest[OPTIONS_BUFF_SIZE - 1] = '\0';
+    break;
+  }
+
+  case OPTION_TYPE_DOUBLE: {
+    char *endptr;
+    double value = strtod(opt_value, &endptr);
+    if (*endptr != '\0') {
+      if (equals)
+        *equals = '=';
+      return SET_ERRNO(ERROR_USAGE, "Invalid double value for %s", arg);
+    }
+    memcpy(field, &value, sizeof(double));
+    break;
+  }
+
+  case OPTION_TYPE_CALLBACK:
+    if (desc->parse_fn) {
+      char *error_msg = NULL;
+      if (!desc->parse_fn(opt_value, field, &error_msg)) {
+        asciichat_error_t err =
+            SET_ERRNO(ERROR_USAGE, "Parse error for %s: %s", arg, error_msg ? error_msg : "unknown");
+        free(error_msg);
+        if (equals)
+          *equals = '=';
+        return err;
+      }
+    }
+    break;
+
+  case OPTION_TYPE_ACTION:
+    if (desc->action_fn) {
+      desc->action_fn();
+    }
+    break;
+  }
+
+  if (equals)
+    *equals = '='; // Restore
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Unified argument parser supporting mixed positional and flag arguments
+ *
+ * Unlike the traditional two-phase approach, this parser handles both positional
+ * and flag arguments in a single pass, allowing them to be intermixed in any order.
+ *
+ * Special case: `--` stops all option parsing and treats remaining args as positional.
+ */
+static asciichat_error_t options_config_parse_unified(const options_config_t *config, int argc, char **argv,
+                                                      void *options_struct) {
+  if (!config || !options_struct) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
+  }
+
+  char *base = (char *)options_struct;
+
+  // Separate positional and flag arguments while respecting order
+  char **positional_args = SAFE_MALLOC(argc * sizeof(char *), char **);
+  if (!positional_args) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate positional args buffer");
+  }
+  int positional_count = 0;
+  bool end_of_options = false;
+
+  // Parse arguments in order
+  for (int i = 1; i < argc; i++) { // Skip argv[0] (program name)
+    const char *arg = argv[i];
+
+    // Handle `--` as end-of-options marker
+    if (!end_of_options && strcmp(arg, "--") == 0) {
+      end_of_options = true;
+      continue;
+    }
+
+    // If we've seen `--` or arg doesn't look like a flag, treat as positional
+    if (end_of_options || !is_flag_argument(arg)) {
+      positional_args[positional_count++] = argv[i];
+      continue;
+    }
+
+    // Parse this flag
+    int consumed = 0;
+    asciichat_error_t err = parse_single_flag(config, argv, i, argc, options_struct, &consumed);
+    if (err != ASCIICHAT_OK) {
+      SAFE_FREE(positional_args);
+      return err;
+    }
+
+    // Skip consumed arguments
+    i += (consumed - 1);
+  }
+
+  // Now parse positional arguments
+  asciichat_error_t pos_err = ASCIICHAT_OK;
+
+  if (config->num_positional_args > 0) {
+    // Parse positional arguments in order
+    int arg_index = 0;
+    for (size_t pos_idx = 0; pos_idx < config->num_positional_args && arg_index < positional_count; pos_idx++) {
+      const positional_arg_descriptor_t *pos_arg = &config->positional_args[pos_idx];
+
+      const char *arg = positional_args[arg_index];
+      char **remaining = (arg_index + 1 < positional_count) ? &positional_args[arg_index + 1] : NULL;
+      int num_remaining = positional_count - arg_index - 1;
+      char *error_msg = NULL;
+
+      int consumed = pos_arg->parse_fn(arg, options_struct, remaining, num_remaining, &error_msg);
+
+      if (consumed < 0) {
+        (void)fprintf(stderr, "Error parsing positional argument '%s': %s\n", pos_arg->name,
+                      error_msg ? error_msg : arg);
+        free(error_msg);
+        SAFE_FREE(positional_args);
+        return ERROR_USAGE;
+      }
+
+      arg_index += consumed;
+    }
+
+    // Check for extra unconsumed positional arguments
+    if (arg_index < positional_count) {
+      (void)fprintf(stderr, "Error: Unexpected positional argument '%s'\n", positional_args[arg_index]);
+      SAFE_FREE(positional_args);
+      return ERROR_USAGE;
+    }
+
+    // Check if required positional args are missing
+    for (size_t i = 0; i < config->num_positional_args; i++) {
+      const positional_arg_descriptor_t *pos_arg = &config->positional_args[i];
+      if (pos_arg->required && i >= (size_t)arg_index) {
+        (void)fprintf(stderr, "Error: Missing required positional argument '%s'\n", pos_arg->name);
+        if (pos_arg->help_text) {
+          (void)fprintf(stderr, "  %s\n", pos_arg->help_text);
+        }
+        SAFE_FREE(positional_args);
+        return ERROR_USAGE;
+      }
+    }
+  } else if (positional_count > 0) {
+    // No positional args expected, but we got some
+    (void)fprintf(stderr, "Error: Unexpected positional argument '%s'\n", positional_args[0]);
+    SAFE_FREE(positional_args);
+    return ERROR_USAGE;
+  }
+
+  SAFE_FREE(positional_args);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct,
                                        int *remaining_argc, char ***remaining_argv) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
 
-  // Build getopt strings
-  char short_opts[512] = "";
-  struct option long_opts[256];
-  size_t long_opt_count = 0;
-
-  for (size_t i = 0; i < config->num_descriptors && i < 255; i++) {
-    const option_descriptor_t *desc = &config->descriptors[i];
-
-    // Add short option
-    if (desc->short_name != '\0') {
-      size_t len = strlen(short_opts);
-      short_opts[len] = desc->short_name;
-      if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        short_opts[len + 1] = ':'; // Requires argument
-        short_opts[len + 2] = '\0';
-      } else {
-        short_opts[len + 1] = '\0';
-      }
-    }
-
-    // Add long option
-    long_opts[long_opt_count].name = desc->long_name;
-    long_opts[long_opt_count].has_arg =
-        (desc->type == OPTION_TYPE_BOOL || desc->type == OPTION_TYPE_ACTION) ? no_argument : required_argument;
-    long_opts[long_opt_count].flag = NULL;
-    long_opts[long_opt_count].val = desc->short_name ? desc->short_name : (1000 + i);
-    long_opt_count++;
+  // Use the new unified parser that handles mixed positional and flag arguments
+  asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct);
+  if (result != ASCIICHAT_OK) {
+    return result;
   }
 
-  // Terminate long options array
-  long_opts[long_opt_count].name = NULL;
-  long_opts[long_opt_count].has_arg = 0;
-  long_opts[long_opt_count].flag = NULL;
-  long_opts[long_opt_count].val = 0;
-
-  // Parse options
-  char *base = (char *)options_struct;
-  int opt;
-  int option_index = 0;
-
-  // Reset getopt state
-  optind = 1;
-
-  while ((opt = getopt_long(argc, argv, short_opts, long_opts, &option_index)) != -1) {
-    if (opt == '?') {
-      return SET_ERRNO(ERROR_USAGE, "Unknown option");
-    }
-
-    // Find matching descriptor
-    const option_descriptor_t *desc = NULL;
-    for (size_t i = 0; i < config->num_descriptors; i++) {
-      if (config->descriptors[i].short_name == opt || (opt >= 1000 && (opt - 1000) == (int)i)) {
-        desc = &config->descriptors[i];
-        break;
-      }
-    }
-
-    if (!desc)
-      continue;
-
-    void *field = base + desc->offset;
-
-    // Parse value based on type
-    switch (desc->type) {
-    case OPTION_TYPE_BOOL:
-      *(bool *)field = true;
-      break;
-
-    case OPTION_TYPE_INT: {
-      char *endptr;
-      long value = strtol(optarg, &endptr, 10);
-      if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
-        return SET_ERRNO(ERROR_USAGE, "Invalid integer value for --%s", desc->long_name);
-      }
-      // Use memcpy to handle potentially misaligned memory safely
-      int int_value = (int)value;
-      memcpy(field, &int_value, sizeof(int));
-      break;
-    }
-
-    case OPTION_TYPE_STRING: {
-      // For safety: copy into fixed-size buffer using the first CHARACTER_LIMIT characters
-      // This handles both char* pointers and char[N] arrays safely
-      // Most string fields in options_t are char[OPTIONS_BUFF_SIZE] arrays
-
-      // Check if the field looks like an array (the simplest heuristic is that
-      // arrays will have some data/pattern, pointers will be NULL or a valid heap address)
-      // For our use case, all option string fields are char[OPTIONS_BUFF_SIZE] arrays
-      // So we'll just copy into the buffer safely using snprintf
-
-      char *dest = (char *)field;
-      snprintf(dest, OPTIONS_BUFF_SIZE, "%s", optarg);
-      dest[OPTIONS_BUFF_SIZE - 1] = '\0'; // Ensure null termination
-      break;
-    }
-
-    case OPTION_TYPE_DOUBLE: {
-      char *endptr;
-      double value = strtod(optarg, &endptr);
-      if (*endptr != '\0') {
-        return SET_ERRNO(ERROR_USAGE, "Invalid double value for --%s", desc->long_name);
-      }
-      // Use memcpy to handle potentially misaligned memory safely
-      memcpy(field, &value, sizeof(double));
-      break;
-    }
-
-    case OPTION_TYPE_CALLBACK:
-      if (desc->parse_fn) {
-        char *error_msg = NULL;
-        if (!desc->parse_fn(optarg, field, &error_msg)) {
-          asciichat_error_t err = SET_ERRNO(ERROR_USAGE, "Parse error for --%s: %s", desc->long_name,
-                                            error_msg ? error_msg : "unknown error");
-          free(error_msg);
-          return err;
-        }
-      }
-      break;
-
-    case OPTION_TYPE_ACTION:
-      // Execute action immediately (may exit program)
-      if (desc->action_fn) {
-        desc->action_fn();
-      }
-      break;
-    }
-  }
-
-  // Return remaining args
+  // Since unified parser handles all arguments, there are no remaining args
+  // (backward compatibility: set remaining_argc to 0)
   if (remaining_argc) {
-    *remaining_argc = argc - optind;
+    *remaining_argc = 0;
   }
   if (remaining_argv) {
-    *remaining_argv = &argv[optind];
+    *remaining_argv = NULL;
   }
 
   return ASCIICHAT_OK;

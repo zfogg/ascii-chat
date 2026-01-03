@@ -97,6 +97,9 @@ typedef struct {
 
   // Memory management
   bool owns_memory; ///< If true, strings are strdup'd and freed on cleanup
+
+  // Optional argument support (for OPTION_TYPE_CALLBACK)
+  bool optional_arg; ///< If true, argument is optional (for callbacks like --verbose)
 } option_descriptor_t;
 
 /**
@@ -134,6 +137,11 @@ typedef struct {
   const char *name;      ///< Name for help text (e.g., "address", "bind-addr")
   const char *help_text; ///< Description for usage message
   bool required;         ///< If true, this positional arg must be provided
+
+  // Programmatic help examples
+  const char *section_heading; ///< Section heading for examples (e.g., "ADDRESS FORMATS")
+  const char **examples;       ///< Array of example strings with descriptions
+  size_t num_examples;         ///< Number of examples
 
   /**
    * Custom parser function
@@ -349,6 +357,30 @@ void options_builder_add_callback(options_builder_t *builder, const char *long_n
                                   const char *help_text, const char *group, bool required, const char *env_var_name);
 
 /**
+ * @brief Add option with custom callback parser that supports optional arguments
+ *
+ * Allows the callback to receive NULL if no argument is provided (when next arg is a flag).
+ *
+ * @param builder Builder to add to
+ * @param long_name Long option name
+ * @param short_name Short option char (or '\0')
+ * @param offset offsetof(struct, field)
+ * @param default_value Pointer to default value (or NULL)
+ * @param value_size sizeof(field_type)
+ * @param parse_fn Custom parser function (receives NULL if arg not provided)
+ * @param help_text Help description
+ * @param group Group name for help
+ * @param required If true, option must be provided
+ * @param env_var_name Environment variable fallback (or NULL)
+ * @param optional_arg If true, argument is optional for this callback
+ */
+void options_builder_add_callback_optional(options_builder_t *builder, const char *long_name, char short_name,
+                                           size_t offset, const void *default_value, size_t value_size,
+                                           bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
+                                           const char *help_text, const char *group, bool required,
+                                           const char *env_var_name, bool optional_arg);
+
+/**
  * @brief Add action option (executes action and may exit)
  *
  * Action options execute a callback function when encountered during parsing.
@@ -472,10 +504,14 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
  * @param name Name for help text (e.g., "address")
  * @param help_text Description for usage message
  * @param required If true, this positional arg must be provided
+ * @param section_heading Optional section heading for examples (e.g., "ADDRESS FORMATS")
+ * @param examples Optional array of example strings with descriptions
+ * @param num_examples Number of examples in array
  * @param parse_fn Custom parser (receives arg, config, remaining args, error_msg)
  *                 Returns number of args consumed (usually 1), or -1 on error
  */
 void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
+                                    const char *section_heading, const char **examples, size_t num_examples,
                                     int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
                                                     char **error_msg));
 
