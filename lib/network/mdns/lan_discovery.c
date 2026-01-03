@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 /**
  * @brief Internal state for collecting discovered services
@@ -255,6 +256,119 @@ int lan_discovery_prompt_selection(const lan_discovered_server_t *servers, int c
     printf("⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
     return lan_discovery_prompt_selection(servers, count); // Re-prompt
   }
+
+  return (int)(selection - 1); // Convert to 0-based index
+}
+
+/**
+ * @brief ANSI escape codes for TUI
+ */
+#define ANSI_CLEAR "\033[2J\033[H"   // Clear screen and move cursor to top
+#define ANSI_BOLD "\033[1m"          // Bold text
+#define ANSI_RESET "\033[0m"         // Reset formatting
+#define ANSI_CYAN "\033[36m"         // Cyan text
+#define ANSI_GREEN "\033[32m"        // Green text
+#define ANSI_YELLOW "\033[33m"       // Yellow text
+#define ANSI_HIDE_CURSOR "\033[?25l" // Hide cursor
+#define ANSI_SHOW_CURSOR "\033[?25h" // Show cursor
+#define ANSI_CLEAR_LINE "\033[K"     // Clear to end of line
+
+/**
+ * @brief TUI-based server selection with formatted display
+ *
+ * Displays discovered servers in a terminal UI with the following features:
+ * - Clears terminal and displays formatted server list
+ * - Shows "No results" message if no servers available
+ * - Allows numeric input for selection
+ * - Shows helpful prompts and icons
+ *
+ * @param servers Array of discovered servers
+ * @param count Number of servers
+ * @return 0-based index of selected server, or -1 to cancel
+ */
+int lan_discovery_tui_select(const lan_discovered_server_t *servers, int count) {
+  if (!servers || count <= 0) {
+    // No servers found - show message only in log, not on console
+    log_shutdown_begin();
+    log_plain_msg("\n");
+    log_plain_msg("No ASCII-Chat servers found on the local network.\n");
+    log_plain_msg("Use 'ascii-chat client <address>' to connect manually.\n");
+    log_shutdown_end();
+    return -1;
+  }
+
+  // Lock terminal to prevent concurrent logging from overwriting TUI
+  bool prev_lock_state = log_lock_terminal();
+
+  // Clear terminal
+  log_plain("%s", ANSI_CLEAR);
+
+  // Display header
+  log_plain("\n");
+  log_plain("%s╭─ 🔍 ASCII-Chat Server Discovery %s────────────╮%s\n", ANSI_BOLD, ANSI_RESET, ANSI_BOLD);
+  log_plain("│%s\n", ANSI_RESET);
+  log_plain("%s│%s Found %d server%s on your local network:%s\n", ANSI_BOLD, ANSI_GREEN, count, count == 1 ? "" : "s",
+            ANSI_RESET);
+  log_plain("%s│%s\n", ANSI_BOLD, ANSI_RESET);
+
+  // Display server list with formatting
+  for (int i = 0; i < count; i++) {
+    const lan_discovered_server_t *srv = &servers[i];
+    const char *addr = lan_discovery_get_best_address(srv);
+
+    log_plain("%s│%s  ", ANSI_BOLD, ANSI_RESET);
+    log_plain("%s[%d]%s %-30s %s%s:%u%s", ANSI_CYAN, i + 1, ANSI_RESET, srv->name, ANSI_YELLOW, addr, srv->port,
+              ANSI_RESET);
+    log_plain("\n");
+  }
+
+  log_plain("%s│%s\n", ANSI_BOLD, ANSI_RESET);
+  log_plain("%s╰────────────────────────────────────────────╯%s\n", ANSI_BOLD, ANSI_RESET);
+
+  // Prompt for selection
+  log_plain("\n");
+  log_plain("Enter server number (1-%d) or press Enter to cancel: ", count);
+  fflush(stdout);
+
+  // Unlock before waiting for input (user might take time)
+  log_unlock_terminal(prev_lock_state);
+
+  // Read user input
+  char input[32];
+  if (fgets(input, sizeof(input), stdin) == NULL) {
+    return -1;
+  }
+
+  // Check for empty input (Enter pressed)
+  if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
+    return -1;
+  }
+
+  // Parse input as number
+  char *endptr;
+  long selection = strtol(input, &endptr, 10);
+
+  // Validate input
+  if (selection < 1 || selection > count) {
+    printf("%sError:%s Please enter a number between 1 and %d\n\n", ANSI_YELLOW, ANSI_RESET, count);
+    return lan_discovery_tui_select(servers, count); // Re-prompt
+  }
+
+  // Lock terminal again for final output
+  prev_lock_state = log_lock_terminal();
+
+  // Clear screen and show connection status
+  log_plain("%s", ANSI_CLEAR);
+  log_plain("\n");
+  log_plain("%s🔗 Connecting to %s...%s\n", ANSI_GREEN, servers[selection - 1].name, ANSI_RESET);
+  log_plain("\n");
+  fflush(stdout);
+
+  // Brief delay so user can see the selection before logs overwrite it
+  platform_sleep_ms(200);
+
+  // Unlock terminal now that TUI is complete
+  log_unlock_terminal(prev_lock_state);
 
   return (int)(selection - 1); // Convert to 0-based index
 }

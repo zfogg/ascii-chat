@@ -119,6 +119,10 @@ static terminal_capabilities_t g_terminal_caps = {0};
 static bool g_terminal_caps_initialized = false;
 static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 
+/* Shutdown logging state */
+static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shutdown_begin/end */
+static bool g_shutdown_in_progress = false;          /* Track if shutdown phase is active */
+
 size_t get_current_time_formatted(char *time_buf) {
   /* Log the rotation event */
   struct timespec ts;
@@ -1127,4 +1131,29 @@ void log_disable_mmap(void) {
     log_mmap_destroy();
     log_info("Lock-free mmap logging disabled");
   }
+}
+
+/* ============================================================================
+ * Shutdown Logging Control
+ * ============================================================================ */
+
+void log_shutdown_begin(void) {
+  if (g_shutdown_in_progress) {
+    return; /* Already in shutdown phase */
+  }
+
+  /* Save current terminal output state and disable console output */
+  g_shutdown_saved_terminal_output = atomic_load(&g_log.terminal_output_enabled);
+  atomic_store(&g_log.terminal_output_enabled, false);
+  g_shutdown_in_progress = true;
+}
+
+void log_shutdown_end(void) {
+  if (!g_shutdown_in_progress) {
+    return; /* Not in shutdown phase */
+  }
+
+  /* Restore previous terminal output state */
+  atomic_store(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
+  g_shutdown_in_progress = false;
 }
