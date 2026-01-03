@@ -272,10 +272,9 @@ int display_init() {
   // we can still show interactive output on the terminal
   if (g_tty_info.fd >= 0) {
     g_has_tty = platform_isatty(g_tty_info.fd) != 0; // We have a valid controlling terminal
+    // Initialize ASCII output for this connection (only if we have a valid TTY)
+    ascii_write_init(g_tty_info.fd, false);
   }
-
-  // Initialize ASCII output for this connection
-  ascii_write_init(g_tty_info.fd, false);
 
   return 0;
 }
