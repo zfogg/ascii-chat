@@ -24,6 +24,7 @@
 #ifdef _WIN32
 #include <malloc.h> // For _alloca on Windows
 #define alloca _alloca
+#include <windows.h> // For SetThreadPriority, GetCurrentThread
 #else
 #include <unistd.h> // For dup, dup2, close, STDERR_FILENO
 #include <fcntl.h>  // For O_WRONLY
@@ -1403,9 +1404,14 @@ asciichat_error_t audio_set_realtime_priority(void) {
   return ASCIICHAT_OK;
 
 #elif defined(_WIN32)
-  // Windows thread priority setting is handled differently
-  // TODO: Implement Windows-specific thread priority setting
-  log_warn("Setting a real-time thread priority is not yet implemented for the Windows platform");
+  // Windows: Use SetThreadPriority for audio thread priority
+  // THREAD_PRIORITY_TIME_CRITICAL is the highest available priority class
+  // without requiring PROCESS_MODE_BACKGROUND_BEGIN privilege escalation
+  HANDLE current_thread = GetCurrentThread();
+  if (!SetThreadPriority(current_thread, THREAD_PRIORITY_TIME_CRITICAL)) {
+    return SET_ERRNO_SYS(ERROR_THREAD, "Failed to set audio thread priority on Windows");
+  }
+  log_info("✓ Audio thread priority set to THREAD_PRIORITY_TIME_CRITICAL on Windows");
   return ASCIICHAT_OK;
 
 #else
