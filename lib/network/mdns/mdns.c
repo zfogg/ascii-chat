@@ -222,6 +222,14 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mDNS query parameters");
   }
 
+  /* Validate service type is non-empty and has minimum length
+   * Prevents underflow bug in mdns library when processing empty strings
+   */
+  size_t service_type_len = strlen(service_type);
+  if (service_type_len == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Service type cannot be empty");
+  }
+
   mdns->callback = callback;
   mdns->callback_data = user_data;
 
@@ -231,14 +239,11 @@ asciichat_error_t asciichat_mdns_query(asciichat_mdns_t *mdns, const char *servi
    * PTR query discovers all instances of a service type
    * mdns_query_send returns the query ID for response filtering
    */
-  int query_id = mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, strlen(service_type), mdns->buffer,
+  int query_id = mdns_query_send(mdns->socket_fd, MDNS_RECORDTYPE_PTR, service_type, service_type_len, mdns->buffer,
                                  mdns->buffer_capacity, 0);
 
   if (query_id <= 0) {
-    // mDNS query failure could be due to network restrictions, unavailable service, or other issues
-    // Log at INFO level so users understand why no servers are found via LAN discovery
-    log_info("mDNS query failed for %s", service_type);
-    return ERROR_NETWORK;
+    return SET_ERRNO(ERROR_NETWORK, "mDNS query send failed for %s (query_id=%d)", service_type, query_id);
   }
 
   mdns->query_id = (uint16_t)query_id;
