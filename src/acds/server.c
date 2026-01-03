@@ -643,13 +643,18 @@ void *acds_client_handler(void *arg) {
   char client_ip[INET6_ADDRSTRLEN] = {0};
   tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip));
 
-  log_info("Client handler started for %s", client_ip);
+  /* Register this client handler thread with RCU library before any RCU operations.
+     This ensures the thread is tracked in the RCU synchronization scheme for
+     lock-free hash table access. */
+  rcu_register_thread();
+  log_info("Client handler started for %s (RCU registered)", client_ip);
 
   // Register client in TCP server registry with allocated client data
   acds_client_data_t *client_data = SAFE_MALLOC(sizeof(acds_client_data_t), acds_client_data_t *);
   if (!client_data) {
     tcp_server_reject_client(client_socket, "Failed to allocate client data");
     SAFE_FREE(ctx);
+    rcu_unregister_thread();
     return NULL;
   }
   memset(client_data, 0, sizeof(*client_data));
@@ -659,6 +664,7 @@ void *acds_client_handler(void *arg) {
     SAFE_FREE(client_data);
     tcp_server_reject_client(client_socket, "Failed to register client in registry");
     SAFE_FREE(ctx);
+    rcu_unregister_thread();
     return NULL;
   }
 
@@ -713,6 +719,7 @@ void *acds_client_handler(void *arg) {
   socket_close(client_socket);
   SAFE_FREE(ctx);
 
-  log_info("Client handler finished for %s", client_ip);
+  rcu_unregister_thread();
+  log_info("Client handler finished for %s (RCU unregistered)", client_ip);
   return NULL;
 }
