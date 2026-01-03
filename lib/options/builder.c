@@ -156,8 +156,13 @@ static bool is_option_set(const options_config_t *config, const void *options_st
     return strcmp(value, default_val) != 0;
   }
   case OPTION_TYPE_DOUBLE: {
-    double value = *(const double *)field;
-    double default_val = desc->default_value ? *(const double *)desc->default_value : 0.0;
+    double value = 0.0;
+    double default_val = 0.0;
+    // Use memcpy to safely handle potentially misaligned memory
+    memcpy(&value, field, sizeof(double));
+    if (desc->default_value) {
+      memcpy(&default_val, desc->default_value, sizeof(double));
+    }
     return value != default_val;
   }
   case OPTION_TYPE_CALLBACK:
@@ -701,7 +706,8 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
       } else if (desc->default_value) {
         value = *(const int *)desc->default_value;
       }
-      *(int *)field = value;
+      // Use memcpy to handle potentially misaligned memory safely
+      memcpy(field, &value, sizeof(int));
       break;
     }
 
@@ -734,7 +740,8 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
       } else if (desc->default_value) {
         value = *(const double *)desc->default_value;
       }
-      *(double *)field = value;
+      // Use memcpy to handle potentially misaligned memory safely
+      memcpy(field, &value, sizeof(double));
       break;
     }
 
@@ -833,7 +840,9 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
       if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
         return SET_ERRNO(ERROR_USAGE, "Invalid integer value for --%s", desc->long_name);
       }
-      *(int *)field = (int)value;
+      // Use memcpy to handle potentially misaligned memory safely
+      int int_value = (int)value;
+      memcpy(field, &int_value, sizeof(int));
       break;
     }
 
@@ -859,7 +868,8 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
       if (*endptr != '\0') {
         return SET_ERRNO(ERROR_USAGE, "Invalid double value for --%s", desc->long_name);
       }
-      *(double *)field = value;
+      // Use memcpy to handle potentially misaligned memory safely
+      memcpy(field, &value, sizeof(double));
       break;
     }
 
@@ -1078,15 +1088,21 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       case OPTION_TYPE_BOOL:
         fprintf(stream, "%s", *(const bool *)desc->default_value ? "true" : "false");
         break;
-      case OPTION_TYPE_INT:
-        fprintf(stream, "%d", *(const int *)desc->default_value);
+      case OPTION_TYPE_INT: {
+        int int_val = 0;
+        memcpy(&int_val, desc->default_value, sizeof(int));
+        fprintf(stream, "%d", int_val);
         break;
+      }
       case OPTION_TYPE_STRING:
         fprintf(stream, "%s", *(const char *const *)desc->default_value);
         break;
-      case OPTION_TYPE_DOUBLE:
-        fprintf(stream, "%.2f", *(const double *)desc->default_value);
+      case OPTION_TYPE_DOUBLE: {
+        double double_val = 0.0;
+        memcpy(&double_val, desc->default_value, sizeof(double));
+        fprintf(stream, "%.2f", double_val);
         break;
+      }
       default:
         break;
       }
