@@ -18,6 +18,7 @@
 
 #include "common/error_codes.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 
