@@ -72,7 +72,7 @@
 #include "audio.h"
 #include "audio/analysis.h"
 #include "video/webcam/webcam.h"
-#include "lan_discovery.h"
+#include "network/lan_discovery.h"
 
 #include "platform/abstraction.h"
 #include "platform/init.h"
