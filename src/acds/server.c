@@ -33,11 +33,17 @@
 #include <string.h>
 #include <time.h>
 
+/* RCU library includes for lock-free session registry access in worker threads */
+#include <urcu.h>
+
 /**
  * @brief Background thread for periodic rate limit cleanup
  *
  * Wakes up every 5 minutes to remove old rate limit events from the database.
  * This prevents the rate_events table from growing unbounded.
+ *
+ * Thread is RCU-aware: registered with liburcu to safely access the lock-free
+ * session registry if needed during cleanup operations.
  */
 static void *cleanup_thread_func(void *arg) {
   acds_server_t *server = (acds_server_t *)arg;
@@ -45,7 +51,10 @@ static void *cleanup_thread_func(void *arg) {
     return NULL;
   }
 
-  log_info("Rate limit cleanup thread started");
+  /* Register this worker thread with RCU library before any RCU operations.
+     This ensures the thread is tracked in the RCU synchronization scheme. */
+  rcu_register_thread();
+  log_info("Rate limit cleanup thread started (RCU registered)");
 
   while (!atomic_load(&server->shutdown)) {
     // Sleep for 5 minutes (or until shutdown)
@@ -65,7 +74,10 @@ static void *cleanup_thread_func(void *arg) {
     }
   }
 
-  log_info("Rate limit cleanup thread exiting");
+  /* Unregister from RCU library before exiting thread.
+     This finalizes any pending RCU grace periods for this thread. */
+  rcu_unregister_thread();
+  log_info("Rate limit cleanup thread exiting (RCU unregistered)");
   return NULL;
 }
 

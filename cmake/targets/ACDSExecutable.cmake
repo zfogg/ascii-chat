@@ -38,6 +38,9 @@ target_link_libraries(acds PRIVATE ${CORE_LIBS})
 # Link SQLite3 explicitly (acds-specific dependency)
 target_link_libraries(acds PRIVATE sqlite3)
 
+# Link liburcu for lock-free session registry (RCU synchronization)
+target_link_libraries(acds PRIVATE liburcu)
+
 # Include generated version header
 target_include_directories(acds PRIVATE
     $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
