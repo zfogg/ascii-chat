@@ -105,6 +105,8 @@ void log_labeled(const char *label, log_color_t color, const char *message, ...)
                formatted_message);
 
   log_file("%s: %s", label, formatted_message);
+
+  SAFE_FREE(formatted_message);
 }
 
 /* ============================================================================
@@ -295,8 +297,9 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   if (format) {
     va_list args;
     va_start(args, format);
-    const char *formatted_message = format_message(format, args);
+    char *formatted_message = format_message(format, args);
     log_plain("  Error message: %s", formatted_message);
+    SAFE_FREE(formatted_message);
     va_end(args);
   }
 
