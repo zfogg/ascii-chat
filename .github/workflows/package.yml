@@ -51,6 +51,10 @@ jobs:
             type=sha,prefix={{branch}}-
             type=ref,event=branch
             type=ref,event=pr
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Video chat in your terminal
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
