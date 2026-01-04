@@ -94,13 +94,16 @@ asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Empty frame data");
   }
 
+  // Calculate CRC32 checksum of frame data for integrity verification
+  uint32_t checksum_value = asciichat_crc32(frame_data, frame_size);
+
   // Create ASCII frame packet header
   ascii_frame_packet_t header;
   header.width = HOST_TO_NET_U32(width);
   header.height = HOST_TO_NET_U32(height);
   header.original_size = HOST_TO_NET_U32((uint32_t)frame_size);
   header.compressed_size = 0;
-  header.checksum = 0;
+  header.checksum = HOST_TO_NET_U32(checksum_value);
   header.flags = 0;
 
   // Calculate total packet size
