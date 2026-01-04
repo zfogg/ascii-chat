@@ -29,17 +29,19 @@
  * ============================================================================ */
 
 static struct {
-  platform_mmap_t mmap;       /* Memory-mapped file handle */
-  char *text_region;          /* Pointer to text area (entire file is text) */
-  size_t text_capacity;       /* Total file size */
-  _Atomic uint64_t write_pos; /* Current write position (in memory only) */
-  bool initialized;           /* Initialization flag */
+  platform_mmap_t mmap;                     /* Memory-mapped file handle */
+  char *text_region;                        /* Pointer to text area (entire file is text) */
+  size_t text_capacity;                     /* Total file size */
+  _Atomic uint64_t write_pos;               /* Current write position (in memory only) */
+  bool initialized;                         /* Initialization flag */
+  char file_path[PLATFORM_MAX_PATH_LENGTH]; /* Path to log file for truncation */
 
   /* Statistics */
   _Atomic uint64_t bytes_written;
   _Atomic uint64_t wrap_count;
 } g_mmap_log = {
     .initialized = false,
+    .file_path = {0},
 };
 
 /* ============================================================================
@@ -199,6 +201,9 @@ asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
     file_size = 1024; /* Minimum reasonable size */
   }
 
+  /* Store file path for later truncation */
+  SAFE_STRNCPY(g_mmap_log.file_path, config->log_path, sizeof(g_mmap_log.file_path) - 1);
+
   /* Open mmap file */
   platform_mmap_init(&g_mmap_log.mmap);
   asciichat_error_t result = platform_mmap_open(config->log_path, file_size, &g_mmap_log.mmap);
@@ -214,7 +219,8 @@ asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
   size_t existing_pos = find_content_end(g_mmap_log.text_region, file_size);
   atomic_store(&g_mmap_log.write_pos, existing_pos);
 
-  /* Clear unused portion with newlines (grep-friendly, visually clean) */
+  /* Clear unused portion with newlines (grep-friendly without needing -a flag)
+   * We truncate the file on clean shutdown to save space */
   if (existing_pos < file_size) {
     memset(g_mmap_log.text_region + existing_pos, '\n', file_size - existing_pos);
   }
@@ -259,9 +265,42 @@ void log_mmap_destroy(void) {
   /* Sync to disk */
   platform_mmap_sync(&g_mmap_log.mmap, true);
 
-  /* Close mmap */
-  platform_mmap_close(&g_mmap_log.mmap);
+  /* Truncate file to actual content size to save space
+   * This converts the large mmap file (4MB with newlines) to just the actual log content */
+  uint64_t final_pos = atomic_load(&g_mmap_log.write_pos);
+  if (final_pos < g_mmap_log.text_capacity && strlen(g_mmap_log.file_path) > 0) {
+#ifdef _WIN32
+    /* Windows: Close mmap first, then truncate file, then reopen for truncation */
+    platform_mmap_close(&g_mmap_log.mmap);
+    HANDLE hFile =
+        CreateFileA(g_mmap_log.file_path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE) {
+      LARGE_INTEGER size;
+      size.QuadPart = (LONGLONG)final_pos;
+      if (SetFilePointerEx(hFile, size, NULL, FILE_BEGIN)) {
+        SetEndOfFile(hFile);
+      }
+      CloseHandle(hFile);
+      log_info("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
+               g_mmap_log.text_capacity / 1024 / 1024);
+    }
+#else
+    /* POSIX: Use ftruncate() on the file descriptor */
+    if (g_mmap_log.mmap.fd >= 0) {
+      if (ftruncate(g_mmap_log.mmap.fd, (off_t)final_pos) == 0) {
+        log_info("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
+                 g_mmap_log.text_capacity / 1024 / 1024);
+      }
+    }
+    platform_mmap_close(&g_mmap_log.mmap);
+#endif
+  } else {
+    /* No truncation needed or path not set */
+    platform_mmap_close(&g_mmap_log.mmap);
+  }
+
   g_mmap_log.text_region = NULL;
+  g_mmap_log.file_path[0] = '\0';
 
   g_mmap_log.initialized = false;
   log_info("mmap log: destroyed");
@@ -408,7 +447,7 @@ void log_mmap_rotate(void) {
   /* Move the tail to the beginning using memmove (handles overlap) */
   memmove(g_mmap_log.text_region, keep_start, actual_keep);
 
-  /* Clear the rest with newlines (grep-friendly) */
+  /* Clear the rest with newlines (grep-friendly without needing -a flag) */
   memset(g_mmap_log.text_region + actual_keep, '\n', capacity - actual_keep);
 
   /* Update write position */
