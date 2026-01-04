@@ -1192,6 +1192,9 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   (void)ctx;
 
   // Reconstruct full packet for existing handler (header + data)
+  // IMPORTANT: header is already in HOST byte order from ACIP layer,
+  // but handle_ascii_frame_packet() expects NETWORK byte order and does conversion.
+  // So we need to convert back to network order before passing.
   size_t total_len = sizeof(*header) + data_len;
   uint8_t *packet = buffer_pool_alloc(NULL, total_len);
   if (!packet) {
@@ -1199,8 +1202,17 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
     return;
   }
 
-  memcpy(packet, header, sizeof(*header));
-  memcpy(packet + sizeof(*header), frame_data, data_len);
+  // Convert header fields back to network byte order for handle_ascii_frame_packet()
+  ascii_frame_packet_t net_header = *header;
+  net_header.width = HOST_TO_NET_U32(header->width);
+  net_header.height = HOST_TO_NET_U32(header->height);
+  net_header.original_size = HOST_TO_NET_U32(header->original_size);
+  net_header.compressed_size = HOST_TO_NET_U32(header->compressed_size);
+  net_header.checksum = HOST_TO_NET_U32(header->checksum);
+  net_header.flags = HOST_TO_NET_U32(header->flags);
+
+  memcpy(packet, &net_header, sizeof(net_header));
+  memcpy(packet + sizeof(net_header), frame_data, data_len);
 
   handle_ascii_frame_packet(packet, total_len);
   buffer_pool_free(NULL, packet, total_len);
