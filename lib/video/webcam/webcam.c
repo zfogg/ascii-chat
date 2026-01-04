@@ -57,97 +57,97 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
 image_t *webcam_read(void) {
   // Check if test pattern mode is enabled
   if (GET_OPTION(test_pattern)) {
-    // Generate a test pattern image with animation
+    // Use cached test pattern for 60 FPS performance
+    // Generate once on first call, reuse for subsequent calls
+    static image_t *cached_pattern = NULL;
     static int frame_counter = 0;
+
+    if (!cached_pattern) {
+      // Generate a colorful test pattern ONCE on first call
+      cached_pattern = image_new(1280, 720);
+      if (!cached_pattern) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
+        return NULL;
+      }
+
+      // Generate a simple color bar pattern (FAST - no per-pixel calculations)
+      for (int y = 0; y < cached_pattern->h; y++) {
+        for (int x = 0; x < cached_pattern->w; x++) {
+          rgb_pixel_t *pixel = &cached_pattern->pixels[y * cached_pattern->w + x];
+
+          // Simple color bars (8 vertical sections)
+          int grid_x = x / 160;
+
+          // Base pattern: color bars (no floating-point math)
+          switch (grid_x) {
+          case 0: // Red
+            pixel->r = 255;
+            pixel->g = 0;
+            pixel->b = 0;
+            break;
+          case 1: // Green
+            pixel->r = 0;
+            pixel->g = 255;
+            pixel->b = 0;
+            break;
+          case 2: // Blue
+            pixel->r = 0;
+            pixel->g = 0;
+            pixel->b = 255;
+            break;
+          case 3: // Yellow
+            pixel->r = 255;
+            pixel->g = 255;
+            pixel->b = 0;
+            break;
+          case 4: // Cyan
+            pixel->r = 0;
+            pixel->g = 255;
+            pixel->b = 255;
+            break;
+          case 5: // Magenta
+            pixel->r = 255;
+            pixel->g = 0;
+            pixel->b = 255;
+            break;
+          case 6: // White
+            pixel->r = 255;
+            pixel->g = 255;
+            pixel->b = 255;
+            break;
+          case 7: // Gray gradient
+          default: {
+            uint8_t gray = (uint8_t)((y * 255) / cached_pattern->h);
+            pixel->r = gray;
+            pixel->g = gray;
+            pixel->b = gray;
+            break;
+          }
+          }
+
+          // Add grid lines for visual separation
+          if (x % 160 == 0 || y % 120 == 0) {
+            pixel->r = 0;
+            pixel->g = 0;
+            pixel->b = 0;
+          }
+        }
+      }
+    }
+
     frame_counter++;
 
-    // Create a new image for each call - caller owns and frees it (same as real webcam)
-    image_t *test_frame = image_new(1280, 720);
+    // Clone the cached pattern for each call (caller owns and frees it)
+    // This is MUCH faster than regenerating the pattern each time
+    image_t *test_frame = image_new(cached_pattern->w, cached_pattern->h);
     if (!test_frame) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
       return NULL;
     }
 
-    // Generate a colorful test pattern with moving elements
-    for (int y = 0; y < test_frame->h; y++) {
-      for (int x = 0; x < test_frame->w; x++) {
-        rgb_pixel_t *pixel = &test_frame->pixels[y * test_frame->w + x];
-
-        // Create a grid pattern with color bars and animated elements
-        int grid_x = x / 160; // 8 vertical sections
-        // int grid_y = y / 120;  // 6 horizontal sections (unused for now)
-
-        // Base pattern: color bars
-        switch (grid_x) {
-        case 0: // Red
-          pixel->r = 255;
-          pixel->g = 0;
-          pixel->b = 0;
-          break;
-        case 1: // Green
-          pixel->r = 0;
-          pixel->g = 255;
-          pixel->b = 0;
-          break;
-        case 2: // Blue
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 255;
-          break;
-        case 3: // Yellow
-          pixel->r = 255;
-          pixel->g = 255;
-          pixel->b = 0;
-          break;
-        case 4: // Cyan
-          pixel->r = 0;
-          pixel->g = 255;
-          pixel->b = 255;
-          break;
-        case 5: // Magenta
-          pixel->r = 255;
-          pixel->g = 0;
-          pixel->b = 255;
-          break;
-        case 6: // White
-          pixel->r = 255;
-          pixel->g = 255;
-          pixel->b = 255;
-          break;
-        case 7: // Gray gradient
-        default: {
-          uint8_t gray = (uint8_t)((y * 255) / test_frame->h);
-          pixel->r = gray;
-          pixel->g = gray;
-          pixel->b = gray;
-          break;
-        }
-        }
-
-        // Add subtle brightness pulsing for animation (keeps colors vibrant)
-        // Create a horizontal wave pattern that moves across the screen
-        int wave_offset = (x + frame_counter * 5) % 256;
-        float brightness_factor = 0.85f + 0.15f * (wave_offset / 255.0f); // Range: 0.85 to 1.0
-
-        // Apply brightness modulation while preserving color saturation
-        pixel->r = (uint8_t)(pixel->r * brightness_factor);
-        pixel->g = (uint8_t)(pixel->g * brightness_factor);
-        pixel->b = (uint8_t)(pixel->b * brightness_factor);
-
-        // Add grid lines for visual separation (but skip center lines to avoid artifacts)
-        int center_x = test_frame->w / 2;
-        int center_y = test_frame->h / 2;
-        bool is_center_line = (x == center_x || y == center_y);
-        if (!is_center_line && (x % 160 == 0 || y % 120 == 0)) {
-          pixel->r = 0;
-          pixel->g = 0;
-          pixel->b = 0;
-        }
-      }
-    }
-
-    // Note: Center crosshair removed to avoid visual artifacts in ASCII output
-    // The bright white line was creating a horizontal 'M' stripe across the display
+    // Fast memcpy instead of per-pixel loop
+    memcpy(test_frame->pixels, cached_pattern->pixels,
+           (size_t)cached_pattern->w * cached_pattern->h * sizeof(rgb_pixel_t));
 
     // Apply horizontal flip if requested (same as real webcam)
     if (GET_OPTION(webcam_flip)) {
