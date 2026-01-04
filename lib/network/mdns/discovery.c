@@ -15,7 +15,7 @@
 
 #include "network/mdns/discovery.h"
 #include "network/mdns/discovery_tui.h" // For discovery_tui_server_t struct only
-#include "network/acip/client.h"
+#include "network/acip/acds_client.h"
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "log/logging.h"

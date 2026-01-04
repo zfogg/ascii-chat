@@ -32,7 +32,7 @@
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/rcu.h"
-#include "network/acip/client.h"
+#include "network/acip/acds_client.h"
 #include "network/acip/acds.h"
 #include "network/acip/receive.h"
 #include "network/tcp/client.h"

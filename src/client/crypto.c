@@ -158,7 +158,7 @@
 #include "crypto/keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
-#include "network/acip/client.h"
+#include "network/acip/acds_client.h"
 #include "util/time.h"
 #include "util/endian.h"
 #include "capture.h"
