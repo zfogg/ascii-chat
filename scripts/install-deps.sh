@@ -289,7 +289,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl mimalloc \
       zstd zlib libsodium portaudio opus sqlite \
       criterion \
-      userspace-rcu \
+      liburcu \
       protobuf-c \
       doxygen \
       dpkg rpm-tools

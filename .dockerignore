@@ -1,0 +1,58 @@
+# Build artifacts
+build/
+build_*/
+bin/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitmodules
+
+# Documentation
+docs/
+notes/
+todo/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Test files
+tests/
+test_*.sh
+
+# Package files
+*.deb
+*.rpm
+*.pkg
+*.tar.gz
+*.zip
+
+# Temporary files
+*.log
+*.tmp
+/tmp/
+.cache/
+.ccache/
+
+# CMake cache
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake

@@ -1,10 +1,10 @@
 services:
-  # Arch Linux container (x86_64 only)
+  # Ubuntu container (x86_64 + ARM64)
   ascii-chat-tests:
-    image: zfogg/ascii-chat-tests:latest
+    image: zfogg/ascii-chat:latest
     build:
       context: ..
-      dockerfile: tests/Dockerfile
+      dockerfile: Dockerfile
 
     # Mount source code and cache volumes
     volumes:
