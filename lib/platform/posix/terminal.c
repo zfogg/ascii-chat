@@ -484,7 +484,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
  * @param level Terminal color support level
  * @return String description of color level
  */
-const char *terminal_color_level_name(terminal_color_level_t level) {
+const char *terminal_color_level_name(terminal_color_mode_t level) {
   switch (level) {
   case TERM_COLOR_NONE:
     return "none";
@@ -610,8 +610,8 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 
   // Apply color mode override if specified in options (not auto mode)
   if (GET_OPTION(color_mode) != COLOR_MODE_AUTO) {
-    // Map color_mode_t to terminal_color_level_t (enum values don't align)
-    terminal_color_level_t override_level;
+    // Map terminal_color_mode_t to terminal_color_mode_t (enum values don't align)
+    terminal_color_mode_t override_level;
     switch (GET_OPTION(color_mode)) {
     case COLOR_MODE_NONE:
       override_level = TERM_COLOR_NONE;

@@ -664,7 +664,7 @@ bool is_valid_tty_path(const char *path) {
 /**
  * Detect color support on Windows - check ANSI support
  */
-static terminal_color_level_t detect_windows_color_support(void) {
+static terminal_color_mode_t detect_windows_color_support(void) {
   // Check if we can enable ANSI processing
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
   if (console_handle == INVALID_HANDLE_VALUE) {
@@ -811,7 +811,7 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
 /**
  * Helper functions for capability reporting
  */
-const char *terminal_color_level_name(terminal_color_level_t level) {
+const char *terminal_color_level_name(terminal_color_mode_t level) {
   switch (level) {
   case TERM_COLOR_NONE:
     return "monochrome";
