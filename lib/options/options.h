@@ -152,9 +152,6 @@
 #include "platform/terminal.h"
 #include "video/palette.h"
 
-/** @brief Backward compatibility alias for terminal_color_level_t */
-typedef terminal_color_level_t terminal_color_mode_t;
-
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
 #define COLOR_MODE_NONE TERM_COLOR_NONE           ///< Monochrome mode
@@ -372,7 +369,7 @@ int strtoint_safe(const char *str);
   unsigned short int webcam_index;                                                                                     \
   bool webcam_flip;                                                                                                    \
   bool test_pattern;                                                                                                   \
-  terminal_color_level_t color_mode;                                                                                   \
+  terminal_color_mode_t color_mode;                                                                                    \
   render_mode_t render_mode;                                                                                           \
   unsigned short int show_capabilities;                                                                                \
   unsigned short int force_utf8;                                                                                       \
@@ -381,7 +378,7 @@ int strtoint_safe(const char *str);
   int speakers_index;                                                                                                  \
   unsigned short int stretch;                                                                                          \
   unsigned short int snapshot_mode;                                                                                    \
-  float snapshot_delay;                                                                                                \
+  double snapshot_delay;                                                                                               \
   char server_key[OPTIONS_BUFF_SIZE];                                                                                  \
   char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
   char password[OPTIONS_BUFF_SIZE];                                                                                    \
@@ -397,7 +394,7 @@ int strtoint_safe(const char *str);
   unsigned short int webcam_index;                                                                                     \
   bool webcam_flip;                                                                                                    \
   bool test_pattern;                                                                                                   \
-  terminal_color_level_t color_mode;                                                                                   \
+  terminal_color_mode_t color_mode;                                                                                    \
   render_mode_t render_mode;                                                                                           \
   unsigned short int force_utf8;                                                                                       \
   unsigned short int stretch;
@@ -507,7 +504,7 @@ typedef struct options_state {
   // ============================================================================
   // Display Options
   // ============================================================================
-  terminal_color_level_t color_mode;    ///< Color mode (auto/none/16/256/truecolor)
+  terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
   unsigned short int force_utf8;        ///< Force UTF-8 support
@@ -533,7 +530,7 @@ typedef struct options_state {
   unsigned short int quiet;         ///< Quiet mode (suppress logs)
   unsigned short int verbose_level; ///< Verbosity level (stackable -V)
   unsigned short int snapshot_mode; ///< Snapshot mode (one frame and exit)
-  float snapshot_delay;             ///< Snapshot delay in seconds
+  double snapshot_delay;            ///< Snapshot delay in seconds
   unsigned short int strip_ansi;    ///< Strip ANSI escape sequences
   char log_file[OPTIONS_BUFF_SIZE]; ///< Log file path
   log_level_t log_level;            ///< Log level threshold
@@ -689,7 +686,7 @@ asciichat_error_t options_set_dimensions(unsigned short int width, unsigned shor
  * @param mode New color mode
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t options_set_color_mode(terminal_color_level_t mode);
+asciichat_error_t options_set_color_mode(terminal_color_mode_t mode);
 
 /**
  * @brief Update render mode
