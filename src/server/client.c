@@ -130,7 +130,7 @@
 #include "network/acip/handlers.h"
 #include "network/acip/transport.h"
 #include "network/acip/send.h"
-#include "network/acip/receive.h"
+#include "network/acip/server.h"
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
@@ -1294,7 +1294,7 @@ void *client_receive_thread(void *arg) {
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     asciichat_error_t acip_result =
-        acip_transport_receive_and_dispatch_server(client->transport, client, &g_acip_server_callbacks);
+        acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {

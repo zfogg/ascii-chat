@@ -112,7 +112,8 @@
 #include "network/acip/protocol.h"
 #include "network/acip/transport.h"
 #include "network/acip/handlers.h"
-#include "network/acip/receive.h"
+#include "network/acip/server.h"
+#include "network/acip/client.h"
 
 /* ============================================================================
  * Global State
@@ -852,7 +853,7 @@ static void *acds_receive_thread(void *arg) {
       break;
     }
 
-    asciichat_error_t result = acip_transport_receive_and_dispatch_client(g_acds_transport, &callbacks);
+    asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
     if (result != ASCIICHAT_OK) {
       if (result == ERROR_NETWORK) {

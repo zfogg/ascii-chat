@@ -103,6 +103,7 @@
 #include "util/endian.h"
 #include "util/fps.h"
 #include "network/acip/send.h"
+#include "network/acip/client.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>

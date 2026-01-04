@@ -131,6 +131,7 @@
 #include "network/compression.h"
 #include "network/packet_parsing.h"
 #include "network/acip/send.h"
+#include "network/acip/server.h"
 #include "util/format.h"
 #include "platform/system.h"
 #include "audio/opus_codec.h"

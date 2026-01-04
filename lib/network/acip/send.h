@@ -1,30 +1,18 @@
 /**
  * @file network/acip/send.h
- * @brief ACIP protocol packet sending functions (transport-agnostic)
+ * @brief ACIP shared/bidirectional packet sending functions
  *
- * Provides functions to send all ACIP packet types over any transport.
- * Functions use acip_transport_t interface, making them work with
- * TCP, WebSocket, or any future transport.
+ * Provides bidirectional send functions (used by both client and server):
+ * - Audio sending (PCM, Opus, batched)
+ * - Ping/Pong keepalive
+ * - Error messages and remote logging
+ * - Low-level packet_send_via_transport() utility
  *
- * DESIGN PATTERN:
- * ===============
- * All send functions follow the same pattern:
- * 1. Take acip_transport_t* instead of socket_t
- * 2. Build packet structure
- * 3. Call acip_transport_send()
- * 4. Return asciichat_error_t
+ * For client-specific sends (image frames, join/leave, capabilities):
+ *   → See lib/network/acip/client.h
  *
- * Example usage:
- * ```c
- * acip_transport_t *tcp = acip_tcp_transport_create(sockfd, crypto_ctx);
- *
- * // Send ASCII frame over TCP
- * acip_send_ascii_frame(tcp, frame_data, width, height);
- *
- * // Same code works with WebSocket
- * acip_transport_t *ws = acip_websocket_transport_create(ws_handle, crypto_ctx);
- * acip_send_ascii_frame(ws, frame_data, width, height);
- * ```
+ * For server-specific sends (ASCII frames, state updates, console control):
+ *   → See lib/network/acip/server.h
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
@@ -60,34 +48,9 @@
 asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len);
 
-// =============================================================================
-// Video/ASCII Frame Sending
-// =============================================================================
-
-/**
- * @brief Send ASCII frame packet
- *
- * @param transport Transport instance
- * @param frame_data ASCII frame data (null-terminated string)
- * @param width Terminal width in characters
- * @param height Terminal height in characters
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, uint32_t width,
-                                        uint32_t height);
-
-/**
- * @brief Send image frame packet
- *
- * @param transport Transport instance
- * @param pixel_data RGB pixel data
- * @param width Image width in pixels
- * @param height Image height in pixels
- * @param pixel_format Pixel format (0=RGB24, 1=RGBA32, etc.)
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
-                                        uint32_t height, uint32_t pixel_format);
+// Video/ASCII frame functions moved to:
+// - acip_send_ascii_frame → lib/network/acip/server.h
+// - acip_send_image_frame → lib/network/acip/client.h
 
 // =============================================================================
 // Audio Sending
@@ -151,76 +114,13 @@ asciichat_error_t acip_send_ping(acip_transport_t *transport);
  */
 asciichat_error_t acip_send_pong(acip_transport_t *transport);
 
-/**
- * @brief Send client join packet
- *
- * @param transport Transport instance
- * @param capabilities Client capability flags
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_client_join(acip_transport_t *transport, uint8_t capabilities);
-
-/**
- * @brief Send client leave packet
- *
- * @param transport Transport instance
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_client_leave(acip_transport_t *transport);
-
-/**
- * @brief Send stream start packet
- *
- * @param transport Transport instance
- * @param stream_types Stream type flags (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_stream_start(acip_transport_t *transport, uint8_t stream_types);
-
-/**
- * @brief Send stream stop packet
- *
- * @param transport Transport instance
- * @param stream_types Stream type flags
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_stream_stop(acip_transport_t *transport, uint8_t stream_types);
-
-/**
- * @brief Send clear console packet
- *
- * @param transport Transport instance
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_clear_console(acip_transport_t *transport);
-
-/**
- * @brief Send server state packet
- *
- * @param transport Transport instance
- * @param state Server state structure
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_server_state(acip_transport_t *transport, const server_state_packet_t *state);
-
-/**
- * @brief Send client capabilities packet
- *
- * @param transport Transport instance
- * @param cap_data Capability data
- * @param cap_len Data length
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_capabilities(acip_transport_t *transport, const void *cap_data, size_t cap_len);
-
-/**
- * @brief Send protocol version packet
- *
- * @param transport Transport instance
- * @param version Protocol version structure
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t acip_send_protocol_version(acip_transport_t *transport, const protocol_version_packet_t *version);
+// Client control functions moved to lib/network/acip/client.h:
+// - acip_send_client_join, acip_send_client_leave
+// - acip_send_stream_start, acip_send_stream_stop
+// - acip_send_capabilities, acip_send_protocol_version
+//
+// Server control functions moved to lib/network/acip/server.h:
+// - acip_send_clear_console, acip_send_server_state
 
 // =============================================================================
 // Messages/Errors
