@@ -14,8 +14,8 @@ LOCAL_REPO="/home/zfogg/src/github.com/zfogg/ascii-chat"
 ACDS_PORT=27225
 SERVER_PORT=27224
 TEST_PASSWORD="nat-traversal-$(date +%s)"
-CONNECTION_TEST_DURATION=15  # How long to keep client connected
-SNAPSHOT_DELAY=10  # Capture frames for this long
+CONNECTION_TEST_DURATION=5  # How long to keep client connected
+SNAPSHOT_DELAY=3  # Capture frames for this long
 
 # Cleanup function for Ctrl+C
 cleanup() {
@@ -54,14 +54,17 @@ sleep 1
 echo "[2/9] Cleaning up old logs..."
 run_remote "rm -f /tmp/acds_test.log /tmp/server_test.log /tmp/server_output.txt"
 
-# [3/9] Copy latest session.c to remote
-echo "[3/9] Copying fixed session.c to remote..."
+# [3/9] Copy latest code to remote
+echo "[3/9] Copying fixed code to remote..."
 scp lib/acds/session.c $REMOTE_HOST:$REMOTE_REPO/lib/acds/session.c
+scp src/acds/server.c $REMOTE_HOST:$REMOTE_REPO/src/acds/server.c
+scp src/server/main.c $REMOTE_HOST:$REMOTE_REPO/src/server/main.c
+scp src/client/main.c $REMOTE_HOST:$REMOTE_REPO/src/client/main.c
 
-# [4/9] Rebuild ACDS on remote
-echo "[4/9] Rebuilding ACDS on remote..."
-run_remote "cmake --build build --target acds 2>&1 | tail -5" || {
-  echo "ERROR: ACDS build failed on remote"
+# [4/9] Rebuild binaries on remote
+echo "[4/9] Rebuilding binaries on remote..."
+run_remote "cmake --build build --target acds ascii-chat 2>&1 | tail -10" || {
+  echo "ERROR: Build failed on remote"
   exit 1
 }
 
@@ -79,7 +82,7 @@ echo "   ✓ ACDS listening on port $ACDS_PORT"
 
 # [6/9] Start ascii-chat server with ACDS
 echo "[6/9] Starting server with ACDS registration..."
-ssh -f $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 nohup ./build/bin/ascii-chat server --log-level debug --log-file /tmp/server_test.log --acds --acds-expose-ip --password \"$TEST_PASSWORD\" > /tmp/server_output.txt 2>&1"
+ssh -f $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 nohup ./build/bin/ascii-chat server 0.0.0.0 --log-level debug --log-file /tmp/server_test.log --acds --acds-server $REMOTE_HOST_IP --acds-expose-ip --no-upnp --password \"$TEST_PASSWORD\" > /tmp/server_output.txt 2>&1"
 
 # Verify server is listening
 if ! run_remote "lsof -i :$SERVER_PORT" > /dev/null 2>&1; then
