@@ -456,6 +456,24 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_bool(b, "webrtc-disable-turn", '\0', offsetof(options_t, webrtc_disable_turn), false,
                            "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL);
 
+  // WebRTC Server Configuration (for testing/debugging - production uses ACDS)
+  // Note: In production, ACDS provides these automatically via SESSION_JOINED response
+  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers), "",
+                             "Comma-separated STUN server URLs (debug/test only - ACDS provides in production)",
+                             "WEBRTC", false, "ASCII_CHAT_STUN_SERVERS", NULL);
+
+  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers), "",
+                             "Comma-separated TURN server URLs (debug/test only - ACDS provides in production)",
+                             "WEBRTC", false, "ASCII_CHAT_TURN_SERVERS", NULL);
+
+  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "",
+                             "TURN authentication username (debug/test only - ACDS provides in production)", "WEBRTC",
+                             false, "ASCII_CHAT_TURN_USERNAME", NULL);
+
+  options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential), "",
+                             "TURN authentication credential (debug/test only - ACDS provides in production)", "WEBRTC",
+                             false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
+
   // Security options (common with server, plus client-specific server-key)
   add_crypto_common_options(b);
 
