@@ -162,6 +162,10 @@ static void *ping_thread_func(void *arg) {
     fps_tracker_initialized = true;
   }
 
+  // Startup grace period: Allow connection initialization to complete before checking state
+  // Prevents race condition where thread spawns before transport is fully configured
+  platform_sleep_ms(100);
+
   while (!should_exit() && !server_connection_is_lost()) {
     // Check if connection is still active before sending
     if (!server_connection_is_active()) {

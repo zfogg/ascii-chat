@@ -302,6 +302,63 @@ static bool get_macos_file_offset(const void *addr, char *out_path, size_t path_
 
   return false;
 }
+#elif defined(__linux__)
+/**
+ * @brief Get ASLR offset and binary path for a given address (Linux only)
+ * @param addr Runtime address to look up
+ * @param out_path Buffer to store the binary path
+ * @param path_size Size of the path buffer
+ * @param out_file_offset Output for the file offset (addr - base)
+ * @return true if the address was found in /proc/self/maps, false otherwise
+ *
+ * On Linux, ASLR adds a random offset to addresses at runtime.
+ * llvm-symbolizer needs file offsets, not runtime addresses.
+ * This function reads /proc/self/maps to find the base address and calculates
+ * the file offset by subtracting the base from the runtime address.
+ */
+static bool get_linux_file_offset(const void *addr, char *out_path, size_t path_size, uintptr_t *out_file_offset) {
+  if (!addr || !out_path || !out_file_offset) {
+    return false;
+  }
+
+  uintptr_t target_addr = (uintptr_t)addr;
+
+  // Read /proc/self/maps to find the base address
+  FILE *maps = fopen("/proc/self/maps", "r");
+  if (!maps) {
+    return false;
+  }
+
+  char line[1024];
+  bool found = false;
+
+  while (fgets(line, sizeof(line), maps)) {
+    // Parse: 5599372f4000-559937519000 r-xp 00178000 00:1b 10003268 /path/to/binary
+    uintptr_t start_addr, end_addr;
+    char perms[5];
+    char path[512];
+
+    // Parse the line
+    int matched = sscanf(line, "%lx-%lx %4s %*x %*x:%*x %*d %511s", &start_addr, &end_addr, perms, path);
+
+    if (matched >= 4) {
+      // Check if this is an executable segment (r-xp) containing our address
+      if (perms[2] == 'x' && target_addr >= start_addr && target_addr < end_addr) {
+        // Check if this is the main executable (not a shared library)
+        if (strstr(path, "ascii-chat") != NULL && strstr(path, ".so") == NULL) {
+          // Found it! Calculate file offset
+          *out_file_offset = target_addr - start_addr;
+          SAFE_STRNCPY(out_path, path, path_size);
+          found = true;
+          break;
+        }
+      }
+    }
+  }
+
+  fclose(maps);
+  return found;
+}
 #endif
 
 static symbolizer_type_t detect_symbolizer(void) {
@@ -700,8 +757,103 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     pclose(fp);
   }
 
+#elif defined(__linux__)
+  // Linux: Use file offsets like macOS (ASLR handling)
+  // Group addresses by binary path and calculate file offsets
+  typedef struct {
+    char binary_path[PLATFORM_MAX_PATH_LENGTH];
+    uintptr_t file_offsets[64]; // Max addresses per binary
+    int original_indices[64];
+    int count;
+  } binary_group_t;
+
+  binary_group_t groups[8]; // Support up to 8 different binaries
+  int num_groups = 0;
+
+  for (int i = 0; i < size; i++) {
+    char binary_path[PLATFORM_MAX_PATH_LENGTH];
+    uintptr_t file_offset = 0;
+
+    if (!get_linux_file_offset(buffer[i], binary_path, sizeof(binary_path), &file_offset)) {
+      // Could not find binary - use raw address
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+      }
+      continue;
+    }
+
+    // Find or create group for this binary
+    int group_idx = -1;
+    for (int g = 0; g < num_groups; g++) {
+      if (strcmp(groups[g].binary_path, binary_path) == 0) {
+        group_idx = g;
+        break;
+      }
+    }
+
+    if (group_idx < 0 && num_groups < 8) {
+      group_idx = num_groups++;
+      SAFE_STRNCPY(groups[group_idx].binary_path, binary_path, sizeof(groups[group_idx].binary_path));
+      groups[group_idx].count = 0;
+    }
+
+    if (group_idx >= 0 && groups[group_idx].count < 64) {
+      int idx = groups[group_idx].count++;
+      groups[group_idx].file_offsets[idx] = file_offset;
+      groups[group_idx].original_indices[idx] = i;
+    }
+  }
+
+  // Second pass: batch symbolize each group
+  for (int g = 0; g < num_groups; g++) {
+    if (groups[g].count == 0) {
+      continue;
+    }
+
+    // Escape binary path for shell
+    char escaped_binary_path[PLATFORM_MAX_PATH_LENGTH * 2];
+    if (!escape_path_for_shell(groups[g].binary_path, escaped_binary_path, sizeof(escaped_binary_path))) {
+      continue;
+    }
+
+    // Build command with all addresses for this binary
+    char cmd[8192];
+    int offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ", symbolizer_cmd,
+                          escaped_binary_path);
+
+    for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
+      int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
+      if (n > 0) {
+        offset += n;
+      }
+    }
+
+    // Suppress stderr
+    strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
+
+    FILE *fp = popen(cmd, "r");
+    if (!fp) {
+      continue;
+    }
+
+    // Parse results in order
+    for (int j = 0; j < groups[g].count; j++) {
+      int orig_idx = groups[g].original_indices[j];
+      result[orig_idx] = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
+      if (!result[orig_idx]) {
+        result[orig_idx] = SAFE_MALLOC(32, char *);
+        if (result[orig_idx]) {
+          SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+        }
+      }
+    }
+
+    pclose(fp);
+  }
+
 #else
-  // Linux/Windows: Use runtime addresses directly with main executable
+  // Windows: Use runtime addresses directly (TODO: implement Windows ASLR handling)
   char exe_path[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
     SAFE_FREE(result);

@@ -33,6 +33,12 @@
 #include "platform/abstraction.h"
 
 /* ============================================================================
+ * Forward Declarations
+ * ============================================================================ */
+
+struct tcp_client; // Forward declaration for TCP client instance
+
+/* ============================================================================
  * Connection State Enumeration
  * ============================================================================ */
 
@@ -154,6 +160,8 @@ typedef struct {
   acip_transport_t *acds_transport;   ///< ACDS signaling transport (Stages 2/3) - may be NULL
   acip_transport_t *webrtc_transport; ///< WebRTC transport (Stages 2/3) - may be NULL
   acip_transport_t *active_transport; ///< Currently active transport (whichever succeeded)
+
+  struct tcp_client *tcp_client_instance; ///< TCP client instance (Direct TCP only) - owned by context
 
   // ─────────────────────────────────────────────────────────────
   // WebRTC Session Context

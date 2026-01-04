@@ -27,8 +27,11 @@
 #include "server.h"
 #include "protocol.h"
 #include "webrtc.h"
+#include "crypto.h"
 #include "common.h"
 #include "log/logging.h"
+#include "options/options.h"
+#include "options/rcu.h"
 #include "network/acip/client.h"
 #include "network/acip/acds.h"
 #include "network/acip/receive.h"
@@ -153,6 +156,13 @@ asciichat_error_t connection_context_init(connection_attempt_context_t *ctx, boo
 void connection_context_cleanup(connection_attempt_context_t *ctx) {
   if (!ctx)
     return;
+
+  // Destroy TCP client instance if created
+  if (ctx->tcp_client_instance) {
+    tcp_client_destroy(&ctx->tcp_client_instance);
+    ctx->tcp_client_instance = NULL;
+    log_debug("TCP client instance destroyed");
+  }
 
   // Close TCP transport if still open
   if (ctx->tcp_transport) {
@@ -285,13 +295,63 @@ static asciichat_error_t attempt_direct_tcp(connection_attempt_context_t *ctx, c
     return SET_ERRNO(ERROR_NETWORK, "TCP connection failed after %u attempts", ctx->reconnect_attempt);
   }
 
-  // Store TCP client in context for later use
-  // Note: tcp_client is owned by the context and will be cleaned up in connection_context_cleanup()
-  ctx->tcp_transport = (acip_transport_t *)tcp_client; // Store for now - will be properly wrapped later
+  // Extract socket from TCP client for crypto handshake
+  socket_t sockfd = tcp_client_get_socket(tcp_client);
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    log_error("Failed to get socket from TCP client");
+    tcp_client_destroy(&tcp_client);
+    return SET_ERRNO(ERROR_NETWORK, "Invalid socket after TCP connection");
+  }
+
+  // Extract and set server IP for crypto context initialization
+  // TCP client already resolved and connected to the server IP, stored in tcp_client->server_ip
+  if (tcp_client->server_ip[0] != '\0') {
+    server_connection_set_ip(tcp_client->server_ip);
+    log_debug("Server IP extracted from TCP client: %s", tcp_client->server_ip);
+  } else {
+    log_warn("TCP client did not populate server_ip field");
+  }
+
+  // Initialize crypto context if encryption is enabled
+  // This must happen AFTER setting server IP, as crypto init reads server IP/port
+  if (!GET_OPTION(no_encrypt)) {
+    log_debug("Initializing crypto context...");
+    if (client_crypto_init() != 0) {
+      log_error("Failed to initialize crypto context");
+      tcp_client_destroy(&tcp_client);
+      return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
+    }
+    log_debug("Crypto context initialized successfully");
+
+    // Perform crypto handshake with server
+    log_debug("Performing crypto handshake with server...");
+    if (client_crypto_handshake(sockfd) != 0) {
+      log_error("Crypto handshake failed");
+      tcp_client_destroy(&tcp_client);
+      return SET_ERRNO(ERROR_NETWORK, "Crypto handshake failed");
+    }
+    log_debug("Crypto handshake completed successfully");
+  }
+
+  // Get crypto context after handshake
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+  // Create ACIP transport for protocol-agnostic packet sending/receiving
+  ctx->tcp_transport = acip_tcp_transport_create(sockfd, (crypto_context_t *)crypto_ctx);
+  if (!ctx->tcp_transport) {
+    log_error("Failed to create ACIP transport for Direct TCP");
+    tcp_client_destroy(&tcp_client);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
+  }
 
   log_info("Direct TCP connection established to %s:%u", server_address, server_port);
   connection_state_transition(ctx, CONN_STATE_DIRECT_TCP_CONNECTED);
   ctx->active_transport = ctx->tcp_transport;
+
+  // Store tcp_client in context for proper lifecycle management
+  // It will be destroyed in connection_context_cleanup()
+  ctx->tcp_client_instance = tcp_client;
+  log_debug("TCP client instance stored in connection context");
 
   return ASCIICHAT_OK;
 }
