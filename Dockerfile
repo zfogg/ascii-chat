@@ -1,25 +1,13 @@
-# Dockerfile for running ascii-chat tests on ARM64 (Apple Silicon, etc.)
-# Uses Ubuntu for ARM64 compatibility with full Criterion support
+# Multi-stage Dockerfile for ascii-chat production builds
+# Supports multi-arch: linux/amd64, linux/arm64
 
-FROM ubuntu:24.04
+# ============================================================================
+# Stage 1: Builder
+# ============================================================================
+FROM ubuntu:24.04 AS builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Use Clang as the default compiler, Ninja as default generator
-ENV CC=clang \
-  CXX=clang++ \
-  CMAKE_GENERATOR=Ninja \
-  LANG=C.UTF-8 \
-  LC_ALL=C.UTF-8 \
-  TESTING=1 \
-  ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
-
-# Configure ccache for Docker volume caching
-ENV CCACHE_DIR=/ccache \
-  CCACHE_UMASK=002 \
-  CCACHE_HARDLINK=true \
-  CCACHE_NLEVELS=2
 
 # Install git and basic utilities first
 RUN apt-get update && apt-get install -y \
@@ -38,53 +26,94 @@ RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/nul
   && echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' \
   | tee /etc/apt/sources.list.d/kitware.list >/dev/null
 
-# Install all dependencies
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
   pkg-config make autoconf automake libtool \
   cmake ninja-build ccache \
   musl-tools musl-dev \
   libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev \
-  libcriterion-dev libffi-dev \
+  libffi-dev \
   libprotobuf-c-dev libprotobuf-c1 \
   libssl-dev \
-  doxygen \
   dpkg-dev rpm \
   && rm -rf /var/lib/apt/lists/*
 
 # Install LLVM/Clang (try versions from newest to oldest)
-# liblldb-XX-dev is required for the query tool to link against LLDB
 RUN apt-get update && \
-  ( apt-get install -y clang-21 clang-tools-21 clang-tidy-21 libclang-21-dev llvm-21 llvm-21-dev lld-21 lldb-21 liblldb-21-dev 2>/dev/null && LLVM_VERSION=21 || \
-    apt-get install -y clang-20 clang-tools-20 clang-tidy-20 libclang-20-dev llvm-20 llvm-20-dev lld-20 lldb-20 liblldb-20-dev 2>/dev/null && LLVM_VERSION=20 || \
-    apt-get install -y clang-19 clang-tools-19 clang-tidy-19 libclang-19-dev llvm-19 llvm-19-dev lld-19 lldb-19 liblldb-19-dev 2>/dev/null && LLVM_VERSION=19 || \
-    apt-get install -y clang-18 clang-tools-18 clang-tidy-18 libclang-18-dev llvm-18 llvm-18-dev lld-18 lldb-18 liblldb-18-dev 2>/dev/null && LLVM_VERSION=18 ) && \
+  ( apt-get install -y clang-21 clang-tools-21 llvm-21 llvm-21-dev lld-21 2>/dev/null && LLVM_VERSION=21 || \
+    apt-get install -y clang-20 clang-tools-20 llvm-20 llvm-20-dev lld-20 2>/dev/null && LLVM_VERSION=20 || \
+    apt-get install -y clang-19 clang-tools-19 llvm-19 llvm-19-dev lld-19 2>/dev/null && LLVM_VERSION=19 || \
+    apt-get install -y clang-18 clang-tools-18 llvm-18 llvm-18-dev lld-18 2>/dev/null && LLVM_VERSION=18 ) && \
   rm -rf /var/lib/apt/lists/*
 
-# Set up LLVM alternatives (find which version was installed)
+# Set up LLVM as default compiler
 RUN LLVM_VERSION=$(ls /usr/lib/llvm-* -d 2>/dev/null | sort -V | tail -1 | grep -oE '[0-9]+$') && \
   LLVM_BIN="/usr/lib/llvm-${LLVM_VERSION}/bin" && \
-  echo "Setting up LLVM ${LLVM_VERSION} alternatives from ${LLVM_BIN}" && \
   update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200 && \
-  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200 && \
-  update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 200 && \
-  update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 200 && \
-  update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 200 && \
-  update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200 && \
-  update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200 && \
-  update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200 && \
-  update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200 || true && \
-  update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200 || true && \
-  update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200 || true && \
-  update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200 || true && \
-  update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200 || true && \
-  update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200 || true && \
-  update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200 || true
+  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
 
-# Verify installation
-RUN clang --version && cmake --version
+# Set compiler environment variables
+ENV CC=clang \
+    CXX=clang++ \
+    CMAKE_GENERATOR=Ninja
 
-# Set working directory
-WORKDIR /app
+WORKDIR /build
 
-# Default command builds and runs tests with ctest
-CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel 0"]
+# Copy source code
+COPY . /build/
+
+# Initialize git submodules
+RUN git submodule init && git submodule update --recursive
+
+# Build ascii-chat in Release mode and install to /usr/local
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++ \
+    -GNinja && \
+    cmake --build build -j$(nproc) && \
+    cmake --install build
+
+# ============================================================================
+# Stage 2: Runtime
+# ============================================================================
+FROM ubuntu:24.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install only runtime dependencies (no development headers)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Runtime libraries
+    libzstd1 zlib1g libsodium23 \
+    libportaudio2 libopus0 \
+    libsqlite3-0 \
+    liburcu8 \
+    libprotobuf-c1 \
+    libssl3t64 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed files from builder
+COPY --from=builder /usr/local /usr/local
+
+# Create non-root user for running ascii-chat
+RUN useradd -m -u 1000 -s /bin/bash ascii && \
+    mkdir -p /home/ascii/.config /home/ascii/.local/share && \
+    chown -R ascii:ascii /home/ascii
+
+# Switch to non-root user
+USER ascii
+WORKDIR /home/ascii
+
+# Expose default ports
+# 27224: ascii-chat server
+# 27225: ACDS discovery service
+EXPOSE 27224 27225
+
+# Set ascii-chat as the entrypoint
+# This allows users to run: docker run ghcr.io/zfogg/ascii-chat:latest server --port 8080
+ENTRYPOINT ["/usr/local/bin/ascii-chat"]
+
+# Default command shows help
+CMD ["--help"]
