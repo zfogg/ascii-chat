@@ -500,7 +500,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Check pixel buffer size overflow
   size_t pixel_buffer_size = 0;
-  if (checked_size_mul(pixel_count_check, sizeof(rgb_t), &pixel_buffer_size) != ASCIICHAT_OK) {
+  if (checked_size_mul(pixel_count_check, sizeof(rgb_pixel_t), &pixel_buffer_size) != ASCIICHAT_OK) {
     log_error("webcam_read_context: pixel buffer overflow: %zu pixels", pixel_count_check);
     IMFMediaBuffer_Unlock(buffer);
     IMFMediaBuffer_Release(buffer);
@@ -513,7 +513,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   img->w = (int)(unsigned int)width;
   img->h = (int)(unsigned int)height;
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-  img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_t *);
+  img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_pixel_t *);
 
   // Copy RGB32 data (BGRA order in Media Foundation)
   // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline
@@ -524,7 +524,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   UINT32 pixel_count = width * height;
   BYTE *src = bufferData;
-  rgb_t *dst = img->pixels;
+  rgb_pixel_t *dst = img->pixels;
 
   // Optimized pixel copy - process 4 pixels at a time
   UINT32 i;

@@ -11,7 +11,7 @@ void __sanitizer_cov_trace_pc_guard(uint32_t *guard) {
     return;
   }
 
-  ascii_instr_log_pc((uintptr_t)__builtin_return_address(0));
+  asciichat_instr_log_pc((uintptr_t)__builtin_return_address(0));
 }
 
 void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {

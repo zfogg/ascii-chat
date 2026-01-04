@@ -327,7 +327,7 @@
  * // From src/client/capture.c
  *
  * // Capture RGB frame from webcam (640x480 in this example)
- * rgb_t *webcam_pixels = NULL;
+ * rgb_pixel_t *webcam_pixels = NULL;
  * int width = 640, height = 480;
  * if (webcam_capture_frame(&webcam_pixels, &width, &height) != 0) {
  *     log_error("Failed to capture webcam frame");
@@ -335,7 +335,7 @@
  * }
  *
  * // Package frame: [width:4][height:4][rgb_data:w*h*3]
- * size_t frame_size = sizeof(uint32_t) * 2 + (size_t)width * (size_t)height * sizeof(rgb_t);
+ * size_t frame_size = sizeof(uint32_t) * 2 + (size_t)width * (size_t)height * sizeof(rgb_pixel_t);
  * uint8_t *frame_data = SAFE_MALLOC(frame_size, uint8_t *);
  *
  * // Write dimensions in network byte order
@@ -344,7 +344,7 @@
  *
  * // Copy pixel data
  * memcpy(frame_data + sizeof(uint32_t) * 2, webcam_pixels,
- *        (size_t)width * (size_t)height * sizeof(rgb_t));
+ *        (size_t)width * (size_t)height * sizeof(rgb_pixel_t));
  *
  * // Send image frame to server (automatically encrypted after handshake)
  * threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, frame_data, frame_size, 0);
@@ -431,7 +431,7 @@
  *     // Parse image frame: [width:4][height:4][rgb_data:w*h*3]
  *     uint32_t img_width = ntohl(*(uint32_t *)envelope.data);
  *     uint32_t img_height = ntohl(*(uint32_t *)(envelope.data + sizeof(uint32_t)));
- *     rgb_t *pixels = (rgb_t *)(envelope.data + sizeof(uint32_t) * 2);
+ *     rgb_pixel_t *pixels = (rgb_pixel_t *)(envelope.data + sizeof(uint32_t) * 2);
  *
  *     log_debug("Client %u: Received %ux%u video frame", client_id, img_width, img_height);
  *

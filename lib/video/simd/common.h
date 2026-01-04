@@ -30,9 +30,6 @@
 #include "util/number.h" // For write_decimal, write_u8
 #include "../image.h"
 
-/** @brief RGB pixel type alias */
-typedef rgb_t rgb_pixel_t;
-
 /** @brief Ramp64 cache size (64 entries) */
 #define RAMP64_SIZE 64
 

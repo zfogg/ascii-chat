@@ -71,7 +71,7 @@ image_t *webcam_read(void) {
     // Generate a colorful test pattern with moving elements
     for (int y = 0; y < test_frame->h; y++) {
       for (int x = 0; x < test_frame->w; x++) {
-        rgb_t *pixel = &test_frame->pixels[y * test_frame->w + x];
+        rgb_pixel_t *pixel = &test_frame->pixels[y * test_frame->w + x];
 
         // Create a grid pattern with color bars and animated elements
         int grid_x = x / 160; // 8 vertical sections
@@ -153,7 +153,7 @@ image_t *webcam_read(void) {
     if (GET_OPTION(webcam_flip)) {
       for (int y = 0; y < test_frame->h; y++) {
         for (int x = 0; x < test_frame->w / 2; x++) {
-          rgb_t temp = test_frame->pixels[y * test_frame->w + x];
+          rgb_pixel_t temp = test_frame->pixels[y * test_frame->w + x];
           test_frame->pixels[y * test_frame->w + x] = test_frame->pixels[y * test_frame->w + (test_frame->w - 1 - x)];
           test_frame->pixels[y * test_frame->w + (test_frame->w - 1 - x)] = temp;
         }
@@ -178,16 +178,16 @@ image_t *webcam_read(void) {
   if (GET_OPTION(webcam_flip) && frame->w > 1) {
     // Flip the image horizontally - optimized for large images
     // Process entire rows to improve cache locality
-    rgb_t *left = frame->pixels;
-    rgb_t *right = frame->pixels + frame->w - 1;
+    rgb_pixel_t *left = frame->pixels;
+    rgb_pixel_t *right = frame->pixels + frame->w - 1;
 
     for (int y = 0; y < frame->h; y++) {
-      rgb_t *row_left = left;
-      rgb_t *row_right = right;
+      rgb_pixel_t *row_left = left;
+      rgb_pixel_t *row_right = right;
 
       // Swap pixels from both ends moving inward
       for (int x = 0; x < frame->w / 2; x++) {
-        rgb_t temp = *row_left;
+        rgb_pixel_t temp = *row_left;
         *row_left++ = *row_right;
         *row_right-- = temp;
       }

@@ -655,7 +655,7 @@ Test(ansi_fast, append_color_fg_for_mode_invalid) {
   char buffer[256];
   char *result;
 
-  result = append_color_fg_for_mode(buffer, 255, 128, 64, (color_mode_t)999);
+  result = append_color_fg_for_mode(buffer, 255, 128, 64, (terminal_color_mode_t)999);
 
   // Should return unchanged buffer (no color output)
   cr_assert_eq(result, buffer, "Invalid mode should return unchanged buffer");

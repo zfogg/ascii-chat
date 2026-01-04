@@ -71,7 +71,7 @@ static struct log_context_t {
 static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
 /* Internal color mode enum for indexing into 2D color array */
-/* NOTE: Uses LOG_CMODE_ prefix to avoid conflict with public color_mode_t in options.h */
+/* NOTE: Uses LOG_CMODE_ prefix to avoid conflict with public terminal_color_mode_t in options.h */
 typedef enum { LOG_CMODE_16 = 0, LOG_CMODE_256 = 1, LOG_CMODE_TRUECOLOR = 2, LOG_CMODE_COUNT = 3 } log_color_mode_t;
 
 #define LOG_COLOR_COUNT 7 /* DEV, DEBUG, INFO, WARN, ERROR, FATAL, RESET */

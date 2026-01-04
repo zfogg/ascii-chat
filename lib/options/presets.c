@@ -110,8 +110,8 @@ static void add_webcam_options(options_builder_t *b) {
  */
 static void add_display_options(options_builder_t *b) {
   options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
-                               &(terminal_color_level_t){TERM_COLOR_AUTO}, // Auto-detect by default
-                               sizeof(terminal_color_level_t), parse_color_mode,
+                               &(terminal_color_mode_t){TERM_COLOR_AUTO}, // Auto-detect by default
+                               sizeof(terminal_color_mode_t), parse_color_mode,
                                "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
 
   options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),

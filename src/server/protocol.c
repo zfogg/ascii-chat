@@ -635,7 +635,7 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
  * PACKET STRUCTURE EXPECTED:
  * - uint32_t width (network byte order)
  * - uint32_t height (network byte order)
- * - rgb_t pixels[width * height] (RGB888 format)
+ * - rgb_pixel_t pixels[width * height] (RGB888 format)
  *
  * PERFORMANCE CHARACTERISTICS:
  * - Called at 30fps per active client

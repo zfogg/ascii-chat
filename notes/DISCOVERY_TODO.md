@@ -29,7 +29,7 @@
   - Offer/answer generation and parsing
   - Opus audio codec negotiation (48kHz, mono, 24kbps)
   - Terminal capability negotiation via custom ACIP "codecs" (PT 96-99)
-  - Auto-detection using terminal_color_level_t enum
+  - Auto-detection using terminal_color_mode_t enum
 - ✅ Complete ICE module (lib/network/webrtc/ice.h/c):
   - Candidate parsing and formatting (RFC 5245)
   - Priority calculation

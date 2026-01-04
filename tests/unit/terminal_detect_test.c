@@ -60,7 +60,7 @@ Test(terminal_detect, detect_terminal_capabilities_basic) {
 // Parameterized test for COLORTERM variable detection
 typedef struct {
   char colorterm_value[32];
-  terminal_color_level_t expected_color_level;
+  terminal_color_mode_t expected_color_level;
   uint32_t expected_color_count;
   bool should_have_truecolor_cap;
   char description[64];
@@ -125,7 +125,7 @@ ParameterizedTest(colorterm_test_case_t *tc, terminal_detect, colorterm_variable
 // Parameterized test for TERM variable color detection
 typedef struct {
   char term_value[32];
-  terminal_color_level_t expected_color_level;
+  terminal_color_mode_t expected_color_level;
   uint32_t expected_color_count;
   uint32_t expected_capability_flag;
   char description[64];

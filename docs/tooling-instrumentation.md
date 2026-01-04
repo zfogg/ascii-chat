@@ -10,7 +10,7 @@
 
 ### Build Flow
 
-1. The panic instrumentation tool (`ascii-instr-panic`) rewrites each translation unit, inserting `ascii_instr_log_line()` before every executable statement.
+1. The panic instrumentation tool (`ascii-instr-panic`) rewrites each translation unit, inserting `asciichat_instr_log_line()` before every executable statement.
 2. `cmake/tooling/run_panic_instrumentation.sh` orchestrates the panic pass, refuses to reuse populated directories, and writes outputs only to `build/instrumented/`.
 3. A stamp file (`build/instrumented/.stamp`) records successful completion. Modifying sources or the tool invalidates the stamp and triggers regeneration.
 4. Library/executable targets acquire an explicit dependency on the generation step and link against `ascii-debug-runtime` when required.
@@ -80,8 +80,8 @@ Unset variables disable the corresponding filter. Checks happen before log forma
 
 ### Startup & Shutdown
 
-- `ascii_instr_runtime_get()` uses `pthread_once` to create TLS keys and picks up environment filters. Memory is allocated through the SAFE_ macros, ensuring leak tracking when `DEBUG_MEMORY` is enabled.
-- `ascii_instr_runtime_global_shutdown()` tears down TLS entries and halts logging—useful in unit tests that spawn threads.
+- `asciichat_instr_runtime_get()` uses `pthread_once` to create TLS keys and picks up environment filters. Memory is allocated through the SAFE_ macros, ensuring leak tracking when `DEBUG_MEMORY` is enabled.
+- `asciichat_instr_runtime_global_shutdown()` tears down TLS entries and halts logging—useful in unit tests that spawn threads.
 
 ### Sanitizer Coverage Mode
 

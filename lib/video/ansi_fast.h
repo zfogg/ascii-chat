@@ -269,9 +269,6 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
 // Terminal capability-aware color functions
 #include "options/options.h"
 
-/** @brief Alias for terminal color mode type */
-typedef terminal_color_mode_t color_mode_t;
-
 /**
  * @brief Append color foreground sequence for specified mode
  * @param dst Destination buffer pointer
@@ -285,7 +282,7 @@ typedef terminal_color_mode_t color_mode_t;
  *
  * @ingroup video
  */
-char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color_mode_t mode);
+char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, terminal_color_mode_t mode);
 
 // REMOVED: generate_ansi_frame_optimized function not implemented
 // Complete frame generation with optimized ANSI string generation

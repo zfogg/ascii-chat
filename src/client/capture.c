@@ -236,7 +236,7 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
       return NULL;
     }
     // Copy pixel data
-    memcpy(copy->pixels, original_image->pixels, (size_t)original_image->w * original_image->h * sizeof(rgb_t));
+    memcpy(copy->pixels, original_image->pixels, (size_t)original_image->w * original_image->h * sizeof(rgb_pixel_t));
     return copy;
   }
   // Create new image for resized frame

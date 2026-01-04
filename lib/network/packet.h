@@ -760,7 +760,7 @@ PACKED_ATTR /** @endcond */ ascii_frame_packet_t;
  * Used when client sends camera frames to server for ASCII conversion.
  *
  * @note Pixel data follows this header in the packet payload.
- * @note Format: rgb_t pixels[width * height] or compressed data
+ * @note Format: rgb_pixel_t pixels[width * height] or compressed data
  * @note Pixel formats are defined in common.h
  *
  * @ingroup packet
@@ -909,7 +909,7 @@ PACKED_ATTR /** @endcond */ crypto_parameters_packet_t;
 typedef struct {
   /** @brief Terminal capabilities bitmask (TERM_CAP_* flags) */
   uint32_t capabilities;
-  /** @brief Color level enum value (terminal_color_level_t) */
+  /** @brief Color level enum value (terminal_color_mode_t) */
   uint32_t color_level;
   /** @brief Actual color count (16, 256, or 16777216) */
   uint32_t color_count;

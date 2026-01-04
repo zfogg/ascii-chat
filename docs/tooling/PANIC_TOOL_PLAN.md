@@ -9,13 +9,13 @@
 ## Steps
 
 ### Runtime Logging Library (lib/tooling/)
-- [x] Create `lib/tooling/instrument_log.h` and `lib/tooling/instrument_log.c` implementing `ascii_instr_log_line()` using async-signal-safe `write()`; include PID/TID, timestamp, macro flag, snippet.
+- [x] Create `lib/tooling/instrument_log.h` and `lib/tooling/instrument_log.c` implementing `asciichat_instr_log_line()` using async-signal-safe `write()`; include PID/TID, timestamp, macro flag, snippet.
 - [x] Add env-configurable filters (e.g., `ASCII_PANIC_INCLUDE`, `ASCII_PANIC_THREAD`, `ASCII_PANIC_OUTPUT_DIR`) and per-thread file support.
 - [x] Expose initialization/teardown helpers for thread-local log files.
 - [x] Register the new source files in the existing library target definitions (via `cmake/tooling/Panic.cmake`).
 
 ### Panic Instrumentation Tool (`src/tooling/`)
-- [x] Implement `src/tooling/ascii_instr_tool.cpp` using Clang libTooling + AST visitors to insert `ascii_instr_log_line()` before each executable `Stmt`, capturing original source text via `SourceManager`.
+- [x] Implement `src/tooling/asciichat_instr_tool.cpp` using Clang libTooling + AST visitors to insert `asciichat_instr_log_line()` before each executable `Stmt`, capturing original source text via `SourceManager`.
 - [x] Enforce “write-new-only” safety: validate target output directories, refuse to overwrite existing files, and abort on any attempt to reuse an existing path.
 - [x] Handle macros by tagging expansion sites; log metadata distinguishing expansion use.
 - [x] Add command-line options for selecting files/functions and for skipping functions marked with `ASCII_PANIC_SIGNAL_HANDLER` (via annotate attribute) macro.
