@@ -2189,13 +2189,19 @@ static void acip_server_on_client_leave(void *client_ctx, void *app_ctx) {
 static void acip_server_on_stream_start(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
-  handle_stream_start_packet(client, &stream_types, sizeof(stream_types));
+  // ACIP layer provides stream_types in host byte order, but handle_stream_start_packet()
+  // expects network byte order (it does NET_TO_HOST_U32 internally)
+  uint32_t stream_types_net = HOST_TO_NET_U32(stream_types);
+  handle_stream_start_packet(client, &stream_types_net, sizeof(stream_types_net));
 }
 
 static void acip_server_on_stream_stop(uint32_t stream_types, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
   client_info_t *client = (client_info_t *)client_ctx;
-  handle_stream_stop_packet(client, &stream_types, sizeof(stream_types));
+  // ACIP layer provides stream_types in host byte order, but handle_stream_stop_packet()
+  // expects network byte order (it does NET_TO_HOST_U32 internally)
+  uint32_t stream_types_net = HOST_TO_NET_U32(stream_types);
+  handle_stream_stop_packet(client, &stream_types_net, sizeof(stream_types_net));
 }
 
 static void acip_server_on_capabilities(const void *cap_data, size_t data_len, void *client_ctx, void *app_ctx) {
