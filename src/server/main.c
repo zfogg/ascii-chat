@@ -1907,6 +1907,9 @@ skip_acds_session:
   // Clean up errno context (allocated strings, backtrace symbols)
   asciichat_errno_cleanup();
 
+  // Clean up RCU-based options state
+  options_state_shutdown();
+
   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
   // POSIX: minimal cleanup (symbol cache already handled above on Windows)
 #ifdef _WIN32
