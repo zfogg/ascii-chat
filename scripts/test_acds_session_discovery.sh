@@ -1,19 +1,21 @@
 #!/bin/bash
 #
-# ACDS session discovery test
-# Tests the RCU hash table fix for session creation and lookup
+# ACDS NAT Traversal Integration Test
+# Tests RCU hash table fix + full NAT traversal from client behind NAT to public server
 #
 
 set -e
 
 # Configuration
 REMOTE_HOST="sidechain"
+REMOTE_HOST_IP="135.181.27.224"  # Public IP
 REMOTE_REPO="/opt/ascii-chat"
 LOCAL_REPO="/home/zfogg/src/github.com/zfogg/ascii-chat"
 ACDS_PORT=27225
 SERVER_PORT=27224
-TEST_PASSWORD="discovery-test-$(date +%s)"
-DURATION=30
+TEST_PASSWORD="nat-traversal-$(date +%s)"
+CONNECTION_TEST_DURATION=15  # How long to keep client connected
+SNAPSHOT_DELAY=10  # Capture frames for this long
 
 # Cleanup function for Ctrl+C
 cleanup() {
@@ -27,11 +29,11 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 echo ""
-echo "ACDS Session Discovery Test"
-echo "============================"
-echo "Local:  $LOCAL_REPO"
-echo "Remote: $REMOTE_HOST:$REMOTE_REPO"
-echo "Duration: $DURATION seconds"
+echo "ACDS NAT Traversal Integration Test"
+echo "===================================="
+echo "Local:  $LOCAL_REPO (behind NAT)"
+echo "Remote: $REMOTE_HOST:$REMOTE_REPO ($REMOTE_HOST_IP - public IP)"
+echo "Test duration: $CONNECTION_TEST_DURATION seconds"
 echo ""
 
 # Helper functions
@@ -77,7 +79,7 @@ echo "   ✓ ACDS listening on port $ACDS_PORT"
 
 # [6/9] Start ascii-chat server with ACDS
 echo "[6/9] Starting server with ACDS registration..."
-run_bg_remote "WEBCAM_DISABLED=1 ./build/bin/ascii-chat server --log-level debug --log-file /tmp/server_test.log --acds --acds-expose-ip --password $TEST_PASSWORD > /tmp/server_output.txt 2>&1"
+ssh -f $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 nohup ./build/bin/ascii-chat server --log-level debug --log-file /tmp/server_test.log --acds --acds-expose-ip --password \"$TEST_PASSWORD\" > /tmp/server_output.txt 2>&1"
 
 # Verify server is listening
 if ! run_remote "lsof -i :$SERVER_PORT" > /dev/null 2>&1; then
@@ -99,29 +101,75 @@ if [ -z "$SESSION" ]; then
 fi
 echo "   Session: $SESSION"
 
-# [8/9] Test client discovery from local machine
-echo "[8/9] Testing client discovery from local (behind NAT)..."
-echo "   Running: ascii-chat $SESSION --password $TEST_PASSWORD --acds-server 135.181.27.224 --acds-insecure"
+# [8/9] Test NAT traversal - client behind NAT connects to public server
+echo "[8/9] Testing NAT traversal (client behind NAT → public server)..."
+echo "   Session: $SESSION"
+echo "   Server: $REMOTE_HOST_IP:$SERVER_PORT"
+echo "   Duration: ${SNAPSHOT_DELAY}s capture"
 
-# Start client with snapshot mode (exits after connection)
-timeout 10 ./build/bin/ascii-chat $SESSION \
+# Start client with snapshot mode to capture frames and verify connection
+echo "   Starting client with snapshot mode..."
+timeout $((SNAPSHOT_DELAY + 5)) ./build/bin/ascii-chat $SESSION \
   --password "$TEST_PASSWORD" \
-  --acds-server 135.181.27.224 \
+  --acds-server $REMOTE_HOST_IP \
   --acds-insecure \
   --snapshot \
-  --snapshot-delay 2 \
-  > /tmp/client_discovery_test.log 2>&1 || true
+  --snapshot-delay $SNAPSHOT_DELAY \
+  > /tmp/client_nat_test.log 2>&1 || true
 
-# Check if client connected successfully
-if grep -q "Connected to server" /tmp/client_discovery_test.log 2>/dev/null; then
-  echo "   ✅ Client connected successfully!"
-  CLIENT_CONNECTED=1
-elif grep -q "Session '$SESSION' not found" /tmp/client_discovery_test.log 2>/dev/null; then
-  echo "   ❌ Session lookup FAILED (not found)"
-  CLIENT_CONNECTED=0
+# Analyze connection results
+echo ""
+echo "   Analyzing connection results..."
+
+# Check for session discovery
+if grep -q "Session found: $SESSION" /tmp/client_nat_test.log 2>/dev/null; then
+  echo "   ✅ Session discovery succeeded"
+  SESSION_DISCOVERY_OK=1
+elif grep -q "Session '$SESSION' not found" /tmp/client_nat_test.log 2>/dev/null; then
+  echo "   ❌ Session discovery FAILED (not found)"
+  SESSION_DISCOVERY_OK=0
 else
-  echo "   ⚠️  Client connection status unknown"
+  echo "   ⚠️  Session discovery status unknown"
+  SESSION_DISCOVERY_OK=0
+fi
+
+# Check for successful connection (password auth + TCP connection)
+if grep -q "Session joined successfully" /tmp/client_nat_test.log 2>/dev/null; then
+  echo "   ✅ Session join succeeded"
+  SESSION_JOIN_OK=1
+else
+  echo "   ⚠️  Session join status unknown"
+  SESSION_JOIN_OK=0
+fi
+
+# Check for TCP connection establishment
+if grep -q "TCP handshake completed" /tmp/client_nat_test.log 2>/dev/null || \
+   grep -q "Connected to.*:$SERVER_PORT" /tmp/client_nat_test.log 2>/dev/null; then
+  echo "   ✅ TCP connection established"
+  CLIENT_CONNECTED=1
+else
+  echo "   ⚠️  TCP connection status unknown (check logs)"
   CLIENT_CONNECTED=0
+fi
+
+# Check for frame reception (indicates working video stream)
+FRAMES_RECEIVED=$(grep -c "Received ASCII frame" /tmp/client_nat_test.log 2>/dev/null || echo 0)
+if [ "$FRAMES_RECEIVED" -gt 0 ]; then
+  echo "   ✅ Received $FRAMES_RECEIVED video frames"
+  FRAMES_OK=1
+else
+  echo "   ⚠️  No video frames received"
+  FRAMES_OK=0
+fi
+
+# Check connection duration
+CONNECTION_DURATION=$(grep "Connection duration" /tmp/client_nat_test.log 2>/dev/null | awk '{print $NF}' | tr -d 's' || echo 0)
+if [ -n "$CONNECTION_DURATION" ] && [ "$CONNECTION_DURATION" -ge $SNAPSHOT_DELAY ]; then
+  echo "   ✅ Connection lasted ${CONNECTION_DURATION}s (stable)"
+  CONNECTION_STABLE=1
+else
+  echo "   ⚠️  Connection duration: ${CONNECTION_DURATION}s"
+  CONNECTION_STABLE=0
 fi
 
 # [9/9] Analyze ACDS logs
@@ -136,28 +184,56 @@ echo ""
 echo "========================================="
 echo "         TEST RESULTS"
 echo "========================================="
-echo "Session string: $SESSION"
-echo "Session created: $SESSION_CREATED times"
-echo "Total lookups: $SESSION_LOOKUPS"
-echo "  - Successful: $LOOKUP_SUCCESSES"
-echo "  - Failed: $LOOKUP_FAILURES"
+echo ""
+echo "ACDS Discovery Service:"
+echo "  Session string: $SESSION"
+echo "  Sessions created: $SESSION_CREATED"
+echo "  Lookups total: $SESSION_LOOKUPS"
+echo "  Lookups successful: $LOOKUP_SUCCESSES"
+echo "  Lookup failures: $LOOKUP_FAILURES"
+echo ""
+echo "NAT Traversal (Client behind NAT → Public Server):"
+echo "  Session discovery: $([ "$SESSION_DISCOVERY_OK" -eq 1 ] && echo "✅ Success" || echo "❌ Failed")"
+echo "  Connection established: $([ "$CLIENT_CONNECTED" -eq 1 ] && echo "✅ Yes" || echo "❌ No")"
+echo "  Video frames received: $FRAMES_RECEIVED frames $([ "$FRAMES_OK" -eq 1 ] && echo "✅" || echo "⚠️")"
+echo "  Connection stability: $([ "$CONNECTION_STABLE" -eq 1 ] && echo "✅ Stable (${CONNECTION_DURATION}s)" || echo "⚠️ ${CONNECTION_DURATION}s")"
 echo ""
 
-# Determine test result
+# Determine overall test result
+ACDS_OK=0
+NAT_OK=0
+
+# ACDS test passes if sessions created and lookups succeed
 if [ "$SESSION_CREATED" -ge 1 ] && [ "$LOOKUP_SUCCESSES" -ge 1 ] && [ "$LOOKUP_FAILURES" -eq 0 ]; then
-  echo "✅ TEST PASSED: RCU hash table fix working!"
-  echo "   - Sessions are created successfully"
-  echo "   - Lookups find the sessions"
-  echo "   - No lookup failures"
+  ACDS_OK=1
+fi
+
+# NAT traversal test passes if discovery + join + connection + frames all succeed
+if [ "$SESSION_DISCOVERY_OK" -eq 1 ] && [ "$SESSION_JOIN_OK" -eq 1 ] && \
+   [ "$CLIENT_CONNECTED" -eq 1 ] && [ "$FRAMES_OK" -eq 1 ]; then
+  NAT_OK=1
+fi
+
+# Overall result
+if [ "$ACDS_OK" -eq 1 ] && [ "$NAT_OK" -eq 1 ]; then
+  echo "✅ ALL TESTS PASSED!"
+  echo "   [✓] ACDS RCU hash table fix working"
+  echo "   [✓] Session discovery across NAT working"
+  echo "   [✓] Client connection from behind NAT working"
+  echo "   [✓] Video streaming working"
   RESULT=0
-elif [ "$SESSION_CREATED" -ge 1 ] && [ "$LOOKUP_FAILURES" -gt 0 ]; then
-  echo "❌ TEST FAILED: Lookup failures detected"
-  echo "   - Session was created but lookups are failing"
-  echo "   - This indicates the RCU match function bug"
+elif [ "$ACDS_OK" -eq 1 ] && [ "$NAT_OK" -eq 0 ]; then
+  echo "⚠️  PARTIAL SUCCESS"
+  echo "   [✓] ACDS session discovery working"
+  echo "   [✗] NAT traversal connection failed"
+  RESULT=1
+elif [ "$ACDS_OK" -eq 0 ]; then
+  echo "❌ TEST FAILED"
+  echo "   [✗] ACDS session discovery not working"
+  echo "   - Check RCU hash table implementation"
   RESULT=1
 else
   echo "⚠️  TEST INCONCLUSIVE"
-  echo "   - Check logs for details"
   RESULT=2
 fi
 
@@ -167,14 +243,29 @@ echo ""
 echo "Detailed logs available at:"
 echo "  Remote ACDS: $REMOTE_HOST:/tmp/acds_test.log"
 echo "  Remote Server: $REMOTE_HOST:/tmp/server_test.log"
-echo "  Local Client: /tmp/client_discovery_test.log"
+echo "  Local Client: /tmp/client_nat_test.log"
 echo ""
 
-# Show recent ACDS activity for debugging
+# Show debug logs if test failed
 if [ "$RESULT" -ne 0 ]; then
-  echo "=== Recent ACDS Activity (last 20 lines) ==="
-  run_remote "grep '$SESSION' /tmp/acds_test.log | tail -20" || echo "No activity found"
+  echo "=== Debug Information ==="
   echo ""
+
+  if [ "$ACDS_OK" -eq 0 ]; then
+    echo "ACDS Activity (last 20 lines):"
+    run_remote "grep '$SESSION' /tmp/acds_test.log | tail -20" || echo "No activity found"
+    echo ""
+  fi
+
+  if [ "$NAT_OK" -eq 0 ]; then
+    echo "Client Connection Logs (last 30 lines):"
+    tail -30 /tmp/client_nat_test.log 2>/dev/null || echo "No client log found"
+    echo ""
+
+    echo "Server Logs (client connection attempts):"
+    run_remote "grep -i 'client\|connection' /tmp/server_test.log | tail -20" 2>/dev/null || echo "No server logs found"
+    echo ""
+  fi
 fi
 
 # Cleanup
