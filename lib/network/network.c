@@ -602,5 +602,15 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
     return false;
   }
 
-  return error_code == 0;
+  if (error_code != 0) {
+    return false;
+  }
+
+  // Connection successful - restore blocking mode
+  if (socket_set_blocking(sockfd) != 0) {
+    log_warn("Failed to restore socket to blocking mode after connect");
+    // Continue anyway - non-blocking mode works but may cause issues with send/recv
+  }
+
+  return true;
 }
