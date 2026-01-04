@@ -76,22 +76,8 @@ int main(int argc, char **argv) {
     return result;
   }
 
-  // Initialize platform layer
-  result = platform_init();
-  if (result != ASCIICHAT_OK) {
-    fprintf(stderr, "Platform initialization failed\n");
-    return result;
-  }
-
-  // Register main thread with RCU library before any RCU operations
-  // This is required by liburcu to track the thread in the RCU synchronization scheme
-  rcu_register_thread();
-  log_debug("Main thread registered with RCU library");
-
-  // Initialize logging using parsed options
+  // Handle --help and --version early (before shared init)
   const options_t *opts = options_get();
-
-  // Handle --help and --version early
   if (opts && opts->help) {
     usage(stdout, MODE_ACDS);
     return 0;
@@ -103,9 +89,17 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "acds.log";
-  log_level_t log_level = GET_OPTION(log_level);
-  log_init(log_file, log_level, false, false);
+  // Initialize shared infrastructure (platform, logging, buffer pool, errno, etc.)
+  // This also registers atexit handlers for cleanup (options, buffer pool, known_hosts, errno)
+  result = asciichat_shared_init("acds.log", false /* is_client */);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  // Register main thread with RCU library before any RCU operations
+  // This is required by liburcu to track the thread in the RCU synchronization scheme
+  rcu_register_thread();
+  log_debug("Main thread registered with RCU library");
 
   log_info("ASCII-Chat Discovery Service (acds) starting...");
   log_info("Version: %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
@@ -153,6 +147,7 @@ int main(int argc, char **argv) {
   config.port = opt_acds_port;
   const char *address = opts && opts->address[0] != '\0' ? opts->address : "127.0.0.1";
   const char *address6 = opts && opts->address6[0] != '\0' ? opts->address6 : "::1";
+  const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "acds.log";
   SAFE_STRNCPY(config.address, address, sizeof(config.address));
   SAFE_STRNCPY(config.address6, address6, sizeof(config.address6));
   SAFE_STRNCPY(config.database_path, opt_acds_database_path, sizeof(config.database_path));
