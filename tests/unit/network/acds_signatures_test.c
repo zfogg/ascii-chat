@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sodium.h>
 
-#include "network/acip/client.h"
+#include "network/acip/acds_client.h"
 #include "network/acip/acds.h"
 
 // Test suite setup - initialize libsodium

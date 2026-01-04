@@ -88,7 +88,7 @@
 #include "video/palette.h"
 #include "network/network.h"
 #include "network/tcp/client.h"
-#include "network/acip/client.h"
+#include "network/acip/acds_client.h"
 #include "network/acip/acds.h"
 #include "network/acip/receive.h"
 #include "network/webrtc/peer_manager.h"

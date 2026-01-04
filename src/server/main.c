@@ -87,7 +87,7 @@
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "network/tcp/server.h"
-#include "network/acip/client.h"
+#include "network/acip/acds_client.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
