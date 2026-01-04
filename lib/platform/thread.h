@@ -27,11 +27,11 @@
 #include <stdint.h>
 
 // Type definitions MUST come before including common.h to avoid circular dependencies.
-// common.h → abstraction.h → debug/lock.h → thread.h, and lock.h needs asciithread_t.
+// common.h → abstraction.h → debug/lock.h → thread.h, and lock.h needs asciichat_thread_t.
 #ifdef _WIN32
 #include "windows_compat.h"
 /** @brief Thread handle type (Windows: HANDLE) */
-typedef HANDLE asciithread_t;
+typedef HANDLE asciichat_thread_t;
 /** @brief Thread ID type (Windows: DWORD) */
 typedef DWORD thread_id_t;
 /** @brief Thread-local storage key type (Windows: DWORD) */
@@ -39,7 +39,7 @@ typedef DWORD tls_key_t;
 #else
 #include <pthread.h>
 /** @brief Thread handle type (POSIX: pthread_t) */
-typedef pthread_t asciithread_t;
+typedef pthread_t asciichat_thread_t;
 /** @brief Thread ID type (POSIX: pthread_t) */
 typedef pthread_t thread_id_t;
 /** @brief Thread-local storage key type (POSIX: pthread_key_t) */
@@ -64,7 +64,7 @@ typedef pthread_key_t tls_key_t;
  *
  * @ingroup platform
  */
-int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg);
+int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), void *arg);
 
 /**
  * @brief Wait for a thread to complete (blocking)
@@ -76,7 +76,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  *
  * @ingroup platform
  */
-int ascii_thread_join(asciithread_t *thread, void **retval);
+int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
 
 /**
  * @brief Wait for a thread to complete with timeout
@@ -90,7 +90,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval);
  *
  * @ingroup platform
  */
-int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t timeout_ms);
+int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint32_t timeout_ms);
 
 /**
  * @brief Exit the current thread
@@ -101,7 +101,7 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
  *
  * @ingroup platform
  */
-void ascii_thread_exit(void *retval);
+void asciichat_thread_exit(void *retval);
 
 /**
  * @brief Get the current thread's ID
@@ -111,7 +111,7 @@ void ascii_thread_exit(void *retval);
  *
  * @ingroup platform
  */
-thread_id_t ascii_thread_self(void);
+thread_id_t asciichat_thread_self(void);
 
 /**
  * @brief Compare two thread IDs for equality
@@ -121,7 +121,7 @@ thread_id_t ascii_thread_self(void);
  *
  * @ingroup platform
  */
-int ascii_thread_equal(thread_id_t t1, thread_id_t t2);
+int asciichat_thread_equal(thread_id_t t1, thread_id_t t2);
 
 /**
  * @brief Get the current thread's unique numeric ID
@@ -132,7 +132,7 @@ int ascii_thread_equal(thread_id_t t1, thread_id_t t2);
  *
  * @ingroup platform
  */
-uint64_t ascii_thread_current_id(void);
+uint64_t asciichat_thread_current_id(void);
 
 /**
  * @brief Check if a thread handle has been initialized
@@ -141,7 +141,7 @@ uint64_t ascii_thread_current_id(void);
  *
  * @ingroup platform
  */
-bool ascii_thread_is_initialized(asciithread_t *thread);
+bool asciichat_thread_is_initialized(asciichat_thread_t *thread);
 
 /**
  * @brief Initialize a thread handle to an uninitialized state
@@ -152,7 +152,7 @@ bool ascii_thread_is_initialized(asciithread_t *thread);
  *
  * @ingroup platform
  */
-void ascii_thread_init(asciithread_t *thread);
+void asciichat_thread_init(asciichat_thread_t *thread);
 
 /**
  * @brief Set the current thread to real-time priority
@@ -172,7 +172,7 @@ void ascii_thread_init(asciithread_t *thread);
  *
  * @ingroup platform
  */
-asciichat_error_t ascii_thread_set_realtime_priority(void);
+asciichat_error_t asciichat_thread_set_realtime_priority(void);
 
 /**
  * @brief Create a thread with standardized error handling and logging
@@ -183,7 +183,7 @@ asciichat_error_t ascii_thread_set_realtime_priority(void);
  * @param client_id Client ID for error context in logs
  * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM or ERROR_PLATFORM_INIT on failure
  *
- * Wraps ascii_thread_create() with unified error handling and logging.
+ * Wraps asciichat_thread_create() with unified error handling and logging.
  * On success, logs at debug level. On failure, uses SET_ERRNO() to record
  * error context and returns:
  * - ERROR_INVALID_PARAM if parameters are invalid
@@ -194,7 +194,7 @@ asciichat_error_t ascii_thread_set_realtime_priority(void);
  *
  * @ingroup platform
  */
-asciichat_error_t thread_create_or_fail(asciithread_t *thread, void *(*func)(void *), void *arg,
+asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func)(void *), void *arg,
                                         const char *thread_name, uint32_t client_id);
 
 // ============================================================================

@@ -1197,7 +1197,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
  * - No forced thread termination (unsafe)
  *
  * DETERMINISTIC CLEANUP:
- * - ascii_thread_join() waits for complete thread exit
+ * - asciichat_thread_join() waits for complete thread exit
  * - All thread resources are properly released
  * - No zombie threads or resource leaks
  *
@@ -1241,7 +1241,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
  *
  * @warning Must be called before client structure deallocation
  * @see create_client_render_threads() For thread creation
- * @see ascii_thread_join() For platform-specific joining
+ * @see asciichat_thread_join() For platform-specific joining
  */
 void stop_client_render_threads(client_info_t *client) {
   if (!client) {
@@ -1259,22 +1259,22 @@ void stop_client_render_threads(client_info_t *client) {
   // During shutdown, don't wait forever for threads to join
   bool is_shutting_down = atomic_load(&g_server_should_exit);
 
-  if (ascii_thread_is_initialized(&client->video_render_thread)) {
+  if (asciichat_thread_is_initialized(&client->video_render_thread)) {
     log_debug("Joining video render thread for client %u", client->client_id);
     int result;
     if (is_shutting_down) {
       // During shutdown, don't timeout - wait for thread to exit
       // Timeouts mask the real problem: threads that are still running
       log_debug("Shutdown mode: joining video render thread for client %u (no timeout)", client->client_id);
-      result = ascii_thread_join(&client->video_render_thread, NULL);
+      result = asciichat_thread_join(&client->video_render_thread, NULL);
       if (result != 0) {
         log_warn("Video render thread for client %u failed to join during shutdown: %s", client->client_id,
                  SAFE_STRERROR(result));
       }
     } else {
-      log_debug("Calling ascii_thread_join for video thread of client %u", client->client_id);
-      result = ascii_thread_join(&client->video_render_thread, NULL);
-      log_debug("ascii_thread_join returned %d for video thread of client %u", result, client->client_id);
+      log_debug("Calling asciichat_thread_join for video thread of client %u", client->client_id);
+      result = asciichat_thread_join(&client->video_render_thread, NULL);
+      log_debug("asciichat_thread_join returned %d for video thread of client %u", result, client->client_id);
     }
 
     if (result == 0) {
@@ -1290,22 +1290,22 @@ void stop_client_render_threads(client_info_t *client) {
       }
     }
     // Clear thread handle safely using platform abstraction
-    ascii_thread_init(&client->video_render_thread);
+    asciichat_thread_init(&client->video_render_thread);
   }
 
-  if (ascii_thread_is_initialized(&client->audio_render_thread)) {
+  if (asciichat_thread_is_initialized(&client->audio_render_thread)) {
     int result;
     if (is_shutting_down) {
       // During shutdown, don't timeout - wait for thread to exit
       // Timeouts mask the real problem: threads that are still running
       log_debug("Shutdown mode: joining audio render thread for client %u (no timeout)", client->client_id);
-      result = ascii_thread_join(&client->audio_render_thread, NULL);
+      result = asciichat_thread_join(&client->audio_render_thread, NULL);
       if (result != 0) {
         log_warn("Audio render thread for client %u failed to join during shutdown: %s", client->client_id,
                  SAFE_STRERROR(result));
       }
     } else {
-      result = ascii_thread_join(&client->audio_render_thread, NULL);
+      result = asciichat_thread_join(&client->audio_render_thread, NULL);
     }
 
     if (result == 0) {
@@ -1321,7 +1321,7 @@ void stop_client_render_threads(client_info_t *client) {
       }
     }
     // Clear thread handle safely using platform abstraction
-    ascii_thread_init(&client->audio_render_thread);
+    asciichat_thread_init(&client->audio_render_thread);
   }
 
   // DO NOT destroy the mutex here - client.c will handle it

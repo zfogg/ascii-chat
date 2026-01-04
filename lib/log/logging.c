@@ -513,7 +513,7 @@ bool log_get_force_stderr(void) {
 
 bool log_lock_terminal(void) {
   bool previous_state = atomic_exchange(&g_log.terminal_locked, true);
-  atomic_store(&g_log.terminal_owner_thread, (uint64_t)ascii_thread_self());
+  atomic_store(&g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
   return previous_state;
 }
 
@@ -667,7 +667,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Check if terminal is locked by another thread
   if (atomic_load(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)ascii_thread_self()) {
+    if (owner != (uint64_t)asciichat_thread_self()) {
       return; // Terminal locked by another thread - skip
     }
   }
@@ -841,7 +841,7 @@ void log_plain_msg(const char *fmt, ...) {
   }
   if (atomic_load(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)ascii_thread_self()) {
+    if (owner != (uint64_t)asciichat_thread_self()) {
       return;
     }
   }
@@ -879,7 +879,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   }
   if (atomic_load(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
-    if (owner != (uint64_t)ascii_thread_self()) {
+    if (owner != (uint64_t)asciichat_thread_self()) {
       return;
     }
   }

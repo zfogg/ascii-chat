@@ -54,7 +54,7 @@ using std::atomic_uint_fast64_t;
 #include "platform/rwlock.h"
 
 // Forward declarations for functions used in inline functions below
-uint64_t ascii_thread_current_id(void);
+uint64_t asciichat_thread_current_id(void);
 
 #ifdef DEBUG_LOCKS
 // Lock debugging is enabled when DEBUG_LOCKS is defined
@@ -186,7 +186,7 @@ typedef struct lock_debug_manager {
   atomic_uint_fast32_t current_locks_held;   ///< Current number of held locks
 
   // Debug thread management
-  asciithread_t debug_thread;       ///< Debug thread handle
+  asciichat_thread_t debug_thread;  ///< Debug thread handle
   atomic_bool debug_thread_running; ///< Debug thread running flag
   atomic_bool debug_thread_created; ///< Track if thread was ever created (for proper cleanup)
   atomic_bool should_print_locks;   ///< Flag to trigger lock printing
@@ -226,7 +226,7 @@ static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type
     uintptr_t addr;
     lock_type_t lock_type;
     uint64_t thread_id;
-  } key_data = {.addr = (uintptr_t)lock_address, .lock_type = lock_type, .thread_id = ascii_thread_current_id()};
+  } key_data = {.addr = (uintptr_t)lock_address, .lock_type = lock_type, .thread_id = asciichat_thread_current_id()};
   return fnv1a_hash_bytes(&key_data, sizeof(key_data));
 }
 

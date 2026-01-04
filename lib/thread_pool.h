@@ -86,7 +86,7 @@ typedef struct thread_pool_entry thread_pool_entry_t;
  * sorted linked list by stop_id for ordered cleanup.
  */
 struct thread_pool_entry {
-  asciithread_t thread;           ///< Thread handle
+  asciichat_thread_t thread;      ///< Thread handle
   int stop_id;                    ///< Cleanup order (lower = stop first, -1 = unordered)
   void *(*thread_func)(void *);   ///< Thread function
   void *thread_arg;               ///< Thread argument

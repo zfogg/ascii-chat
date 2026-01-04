@@ -1374,7 +1374,7 @@ asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t 
 
 asciichat_error_t audio_set_realtime_priority(void) {
   // Delegate to platform abstraction layer
-  asciichat_error_t result = ascii_thread_set_realtime_priority();
+  asciichat_error_t result = asciichat_thread_set_realtime_priority();
   if (result == ASCIICHAT_OK) {
     log_info("✓ Audio thread real-time priority set successfully");
   }

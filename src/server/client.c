@@ -911,7 +911,7 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
 
   // Create receive thread for WebRTC client
   snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id_snapshot);
-  asciichat_error_t recv_result = ascii_thread_create(&client->receive_thread, client_receive_thread, client);
+  asciichat_error_t recv_result = asciichat_thread_create(&client->receive_thread, client_receive_thread, client);
   if (recv_result != ASCIICHAT_OK) {
     log_error("Failed to create receive thread for WebRTC client %u: %s", client_id_snapshot,
               asciichat_error_string(recv_result));
@@ -924,7 +924,7 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
 
   // Create send thread for this client
   snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
-  asciichat_error_t send_result = ascii_thread_create(&client->send_thread, client_send_thread_func, client);
+  asciichat_error_t send_result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
   if (send_result != ASCIICHAT_OK) {
     log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,
               asciichat_error_string(send_result));
@@ -1095,7 +1095,7 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
     if (target_client) {
       // Join receive thread
       void *recv_result = NULL;
-      asciichat_error_t recv_join_result = ascii_thread_join(&target_client->receive_thread, &recv_result);
+      asciichat_error_t recv_join_result = asciichat_thread_join(&target_client->receive_thread, &recv_result);
       if (recv_join_result != ASCIICHAT_OK) {
         log_warn("Failed to join receive thread for WebRTC client %u: error %d", client_id, recv_join_result);
       } else {
@@ -1103,7 +1103,7 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
       }
       // Join send thread
       void *send_result = NULL;
-      asciichat_error_t send_join_result = ascii_thread_join(&target_client->send_thread, &send_result);
+      asciichat_error_t send_join_result = asciichat_thread_join(&target_client->send_thread, &send_result);
       if (send_join_result != ASCIICHAT_OK) {
         log_warn("Failed to join send thread for WebRTC client %u: error %d", client_id, send_join_result);
       } else {
@@ -1170,10 +1170,10 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   // Use exponential backoff for thread termination verification
   int retry_count = 0;
   const int max_retries = 5;
-  while (retry_count < max_retries && (ascii_thread_is_initialized(&target_client->send_thread) ||
-                                       ascii_thread_is_initialized(&target_client->receive_thread) ||
-                                       ascii_thread_is_initialized(&target_client->video_render_thread) ||
-                                       ascii_thread_is_initialized(&target_client->audio_render_thread))) {
+  while (retry_count < max_retries && (asciichat_thread_is_initialized(&target_client->send_thread) ||
+                                       asciichat_thread_is_initialized(&target_client->receive_thread) ||
+                                       asciichat_thread_is_initialized(&target_client->video_render_thread) ||
+                                       asciichat_thread_is_initialized(&target_client->audio_render_thread))) {
     // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
     uint32_t delay_ms = 10 * (1 << retry_count);
     log_warn("Client %u: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,
@@ -1822,11 +1822,11 @@ void stop_client_threads(client_info_t *client) {
   atomic_store(&client->send_thread_running, false);
 
   // Wait for threads to finish
-  if (ascii_thread_is_initialized(&client->send_thread)) {
-    ascii_thread_join(&client->send_thread, NULL);
+  if (asciichat_thread_is_initialized(&client->send_thread)) {
+    asciichat_thread_join(&client->send_thread, NULL);
   }
-  if (ascii_thread_is_initialized(&client->receive_thread)) {
-    ascii_thread_join(&client->receive_thread, NULL);
+  if (asciichat_thread_is_initialized(&client->receive_thread)) {
+    asciichat_thread_join(&client->receive_thread, NULL);
   }
 }
 

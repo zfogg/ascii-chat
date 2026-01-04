@@ -85,7 +85,7 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
   record->key = lock_record_key(lock_address, lock_type);
   record->lock_address = lock_address;
   record->lock_type = lock_type;
-  record->thread_id = ascii_thread_current_id();
+  record->thread_id = asciichat_thread_current_id();
   record->file_name = file_name;
   record->line_number = line_number;
   record->function_name = function_name;
@@ -600,7 +600,7 @@ int lock_debug_start_thread(void) {
 
   atomic_store(&g_lock_debug_manager.debug_thread_running, true);
 
-  int thread_result = ascii_thread_create(&g_lock_debug_manager.debug_thread, debug_thread_func, NULL);
+  int thread_result = asciichat_thread_create(&g_lock_debug_manager.debug_thread, debug_thread_func, NULL);
 
   if (thread_result != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to create lock debug thread: %d", thread_result);
@@ -695,9 +695,9 @@ void lock_debug_cleanup_thread(void) {
 #ifdef _WIN32
   // On Windows, check if thread handle is valid before joining
   if (g_lock_debug_manager.debug_thread != NULL) {
-    int join_result = ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
+    int join_result = asciichat_thread_join(&g_lock_debug_manager.debug_thread, NULL);
     if (join_result == 0) {
-      // Thread handle is now NULL due to cleanup in ascii_thread_join
+      // Thread handle is now NULL due to cleanup in asciichat_thread_join
     } else {
       // Force cleanup if join failed
       g_lock_debug_manager.debug_thread = NULL;
@@ -707,7 +707,7 @@ void lock_debug_cleanup_thread(void) {
   // On POSIX, only attempt join if thread was actually created
   // Use the debug_thread_created flag to reliably track if the thread exists
   if (atomic_load(&g_lock_debug_manager.debug_thread_created)) {
-    ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
+    asciichat_thread_join(&g_lock_debug_manager.debug_thread, NULL);
     // Clear the flag after joining
     atomic_store(&g_lock_debug_manager.debug_thread_created, false);
   }
@@ -961,7 +961,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     } else if (strcmp(lock_type_str, "WRITE") == 0) {
       orphan_record->lock_type = LOCK_TYPE_RWLOCK_WRITE;
     }
-    orphan_record->thread_id = ascii_thread_current_id();
+    orphan_record->thread_id = asciichat_thread_current_id();
     orphan_record->file_name = file_name;
     orphan_record->line_number = line_number;
     orphan_record->function_name = function_name;

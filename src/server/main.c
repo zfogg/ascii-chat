@@ -263,7 +263,7 @@ static webrtc_peer_manager_t *g_webrtc_peer_manager = NULL;
  *
  * @ingroup server_main
  */
-static asciithread_t g_acds_receive_thread;
+static asciichat_thread_t g_acds_receive_thread;
 
 /**
  * @brief Flag indicating if ACDS receive thread was started
@@ -283,7 +283,7 @@ static bool g_acds_receive_thread_started = false;
  *
  * @ingroup server_main
  */
-static asciithread_t g_acds_ping_thread;
+static asciichat_thread_t g_acds_ping_thread;
 
 /**
  * @brief Flag indicating if ACDS ping thread was started
@@ -1597,7 +1597,7 @@ int server_main(void) {
           log_debug("ACDS transport wrapper created for signaling");
 
           // Start ACDS ping thread to keep connection alive (for ALL session types)
-          int ping_thread_result = ascii_thread_create(&g_acds_ping_thread, acds_ping_thread, NULL);
+          int ping_thread_result = asciichat_thread_create(&g_acds_ping_thread, acds_ping_thread, NULL);
           if (ping_thread_result != 0) {
             log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
           } else {
@@ -1643,7 +1643,7 @@ int server_main(void) {
             log_info("WebRTC peer_manager initialized successfully");
 
             // Start ACDS receive thread for WebRTC signaling relay
-            int thread_result = ascii_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
+            int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
             if (thread_result != 0) {
               log_error("Failed to create ACDS receive thread: %d", thread_result);
               // Cleanup peer_manager since signaling won't work
@@ -1850,14 +1850,14 @@ skip_acds_session:
   // NOTE: Must be done BEFORE destroying transport to ensure clean shutdown
   if (g_acds_ping_thread_started) {
     log_debug("Joining ACDS ping thread");
-    ascii_thread_join(&g_acds_ping_thread, NULL);
+    asciichat_thread_join(&g_acds_ping_thread, NULL);
     g_acds_ping_thread_started = false;
     log_debug("ACDS ping thread joined");
   }
 
   if (g_acds_receive_thread_started) {
     log_debug("Joining ACDS receive thread");
-    ascii_thread_join(&g_acds_receive_thread, NULL);
+    asciichat_thread_join(&g_acds_receive_thread, NULL);
     g_acds_receive_thread_started = false;
     log_debug("ACDS receive thread joined");
   }

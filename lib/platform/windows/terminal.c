@@ -32,7 +32,7 @@ typedef void (*terminal_resize_callback_t)(int cols, int rows);
 static terminal_resize_callback_t g_resize_callback = NULL;
 
 /** Thread handle for resize detection */
-static asciithread_t g_resize_thread = {0};
+static asciichat_thread_t g_resize_thread = {0};
 
 /** Flag to signal resize thread should exit */
 static atomic_bool g_resize_thread_should_exit = false;
@@ -158,7 +158,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback) {
   g_resize_callback = callback;
   atomic_store(&g_resize_thread_should_exit, false);
 
-  if (ascii_thread_create(&g_resize_thread, resize_detection_thread, NULL) != 0) {
+  if (asciichat_thread_create(&g_resize_thread, resize_detection_thread, NULL) != 0) {
     log_error("Failed to create resize detection thread");
     g_resize_callback = NULL;
     return -1;
@@ -181,7 +181,7 @@ void terminal_stop_resize_detection(void) {
 
   atomic_store(&g_resize_thread_should_exit, true);
   // Wait for thread to exit
-  ascii_thread_join(&g_resize_thread, NULL);
+  asciichat_thread_join(&g_resize_thread, NULL);
   atomic_store(&g_resize_detection_active, false);
   g_resize_callback = NULL;
 }

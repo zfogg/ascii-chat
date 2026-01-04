@@ -86,7 +86,7 @@
  *
  * @ingroup client_keepalive
  */
-__attribute__((unused)) static asciithread_t g_ping_thread;
+__attribute__((unused)) static asciichat_thread_t g_ping_thread;
 
 /**
  * @brief Flag indicating if ping thread was successfully created

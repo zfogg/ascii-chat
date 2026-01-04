@@ -93,7 +93,7 @@ asciichat_error_t thread_pool_spawn(thread_pool_t *pool, void *(*thread_func)(vo
   }
 
   // Create thread
-  if (ascii_thread_create(&entry->thread, thread_func, thread_arg) != 0) {
+  if (asciichat_thread_create(&entry->thread, thread_func, thread_arg) != 0) {
     SAFE_FREE(entry);
     return SET_ERRNO(ERROR_THREAD, "Failed to create thread '%s' in pool '%s'", entry->name, pool->name);
   }
@@ -145,7 +145,7 @@ asciichat_error_t thread_pool_stop_all(thread_pool_t *pool) {
     log_debug("Joining thread '%s' (stop_id=%d) in pool '%s'", entry->name, entry->stop_id, pool->name);
 
     // Join thread (wait for it to exit)
-    if (ascii_thread_join(&entry->thread, NULL) != 0) {
+    if (asciichat_thread_join(&entry->thread, NULL) != 0) {
       log_warn("Failed to join thread '%s' in pool '%s'", entry->name, pool->name);
     }
 

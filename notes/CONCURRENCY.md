@@ -419,7 +419,7 @@ Replace per-client threading with worker thread pools:
 
 ```c
 typedef struct {
-  asciithread_t *workers;
+  asciichat_thread_t *workers;
   int num_workers;
   lockfree_ring_buffer_t *work_queue;
   atomic_bool should_exit;
@@ -832,7 +832,7 @@ packet_queue_shutdown(client->audio_queue);  // Wakes up blocked threads
 static_cond_broadcast(&g_shutdown_cond);
 
 // 4. Join all threads
-ascii_thread_join(&thread, NULL);
+asciichat_thread_join(&thread, NULL);
 ```
 
 **Why This Works**:

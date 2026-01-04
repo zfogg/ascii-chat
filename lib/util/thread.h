@@ -19,7 +19,7 @@
  * @code
  * // In module header
  * typedef struct {
- *     ascii_thread_t thread_handle;
+ *     asciichat_thread_t thread_handle;
  *     bool created;
  * } my_worker_t;
  *
@@ -65,20 +65,20 @@
  * Safely create a thread with error handling and logging.
  * Does NOT set the created flag - caller must do that.
  *
- * @param thread_var Thread handle (ascii_thread_t)
+ * @param thread_var Thread handle (asciichat_thread_t)
  * @param func Thread function pointer (void *(*)(void *))
  * @param arg Thread argument (void *)
- * @return Return value from ascii_thread_create (0 on success)
+ * @return Return value from asciichat_thread_create (0 on success)
  *
- * This is a direct call to ascii_thread_create with no error handling.
+ * This is a direct call to asciichat_thread_create with no error handling.
  * Caller should check return value and log if needed.
  */
-#define THREAD_CREATE_SAFE(thread_var, func, arg) ascii_thread_create(&(thread_var), (func), (arg))
+#define THREAD_CREATE_SAFE(thread_var, func, arg) asciichat_thread_create(&(thread_var), (func), (arg))
 
 /**
  * Create a thread with automatic error handling and logging (void return version).
  *
- * @param thread_var Thread handle (ascii_thread_t)
+ * @param thread_var Thread handle (asciichat_thread_t)
  * @param func Thread function pointer
  * @param arg Thread argument
  * @param error_msg Message to log on failure
@@ -96,7 +96,7 @@
  */
 #define THREAD_CREATE_OR_RETURN_VOID(thread_var, func, arg, error_msg)                                                 \
   do {                                                                                                                 \
-    if (ascii_thread_create(&(thread_var), (func), (arg)) != 0) {                                                      \
+    if (asciichat_thread_create(&(thread_var), (func), (arg)) != 0) {                                                  \
       log_error("%s", (error_msg));                                                                                    \
       return;                                                                                                          \
     }                                                                                                                  \
@@ -106,7 +106,7 @@
  * Join a thread and wait for it to complete.
  * Returns the thread's exit code in the output parameter.
  *
- * @param thread_var Thread handle (ascii_thread_t)
+ * @param thread_var Thread handle (asciichat_thread_t)
  * @param exit_code Pointer to store thread exit code (void **), or NULL to ignore
  *
  * Usage:
@@ -116,30 +116,30 @@
  * log_debug("Worker thread exited with code %p", exit_code);
  * @endcode
  */
-#define THREAD_JOIN_SAFE(thread_var, exit_code) ascii_thread_join(&(thread_var), (exit_code))
+#define THREAD_JOIN_SAFE(thread_var, exit_code) asciichat_thread_join(&(thread_var), (exit_code))
 
 /**
  * Join a thread without capturing its exit code.
  * Simpler version when exit code is not needed.
  *
- * @param thread_var Thread handle (ascii_thread_t)
+ * @param thread_var Thread handle (asciichat_thread_t)
  *
  * Usage:
  * @code
  * THREAD_JOIN(g_worker_thread);
  * @endcode
  */
-#define THREAD_JOIN(thread_var) ascii_thread_join(&(thread_var), NULL)
+#define THREAD_JOIN(thread_var) asciichat_thread_join(&(thread_var), NULL)
 
 /**
  * Initialize a thread handle to an invalid/uninitialized state.
  * Call this before creating the thread to ensure clean state.
  *
- * @param thread_var Thread handle (ascii_thread_t)
+ * @param thread_var Thread handle (asciichat_thread_t)
  *
  * Usage:
  * @code
- * static ascii_thread_t g_worker = THREAD_INVALID;
+ * static asciichat_thread_t g_worker = THREAD_INVALID;
  * @endcode
  */
 #define THREAD_CLEAR_HANDLE(thread_var) memset(&(thread_var), 0, sizeof(thread_var))
