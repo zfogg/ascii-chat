@@ -432,7 +432,7 @@ typedef enum {
   TERM_COLOR_256 = 2,
   /** @brief 24-bit truecolor support (RGB colors) */
   TERM_COLOR_TRUECOLOR = 3
-} terminal_color_level_t;
+} terminal_color_mode_t;
 
 /**
  * @brief Terminal capability flags (bitmask)
@@ -483,8 +483,8 @@ typedef enum {
  * @ingroup platform
  */
 typedef struct {
-  /** @brief Detected color support level (terminal_color_level_t) */
-  terminal_color_level_t color_level;
+  /** @brief Detected color support level (terminal_color_mode_t) */
+  terminal_color_mode_t color_level;
   /** @brief Capability flags bitmask (terminal_capability_flags_t) */
   uint32_t capabilities;
   /** @brief Maximum number of colors (16, 256, or 16777216) */
@@ -609,7 +609,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
 
 /**
  * @brief Get name of color level
- * @param level Color level enum value (terminal_color_level_t)
+ * @param level Color level enum value (terminal_color_mode_t)
  * @return Human-readable color level name (e.g., "16-color", "truecolor")
  *
  * Converts a terminal color level enum value to a human-readable string
@@ -620,7 +620,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
  *
  * @ingroup platform
  */
-const char *terminal_color_level_name(terminal_color_level_t level);
+const char *terminal_color_level_name(terminal_color_mode_t level);
 
 /**
  * @brief Get summary string of terminal capabilities
