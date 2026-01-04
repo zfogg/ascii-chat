@@ -42,10 +42,11 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
   while (remaining > 0) {
     ssize_t sent = socket_send(sockfd, ptr, remaining, 0);
     if (sent < 0) {
-      return SET_ERRNO(ERROR_NETWORK, "Socket send failed");
+      return SET_ERRNO_SYS(ERROR_NETWORK, "Socket send failed (tried to send %zu bytes, %zu remaining)", len,
+                           remaining);
     }
     if (sent == 0) {
-      return SET_ERRNO(ERROR_NETWORK, "Socket closed");
+      return SET_ERRNO(ERROR_NETWORK, "Socket closed (tried to send %zu bytes, %zu remaining)", len, remaining);
     }
     ptr += sent;
     remaining -= (size_t)sent;
