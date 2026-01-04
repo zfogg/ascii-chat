@@ -108,6 +108,9 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   // Register errno cleanup
   (void)atexit(asciichat_errno_cleanup);
 
+  // Register options state cleanup
+  (void)atexit(options_state_shutdown);
+
   // Register known_hosts cleanup
   (void)atexit(known_hosts_cleanup);
 
