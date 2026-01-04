@@ -264,10 +264,11 @@ set(NETWORK_SRCS
     lib/network/webrtc/sdp.c
     lib/network/webrtc/ice.c
     # ACIP protocol library (transport-agnostic)
+    lib/network/acip/client.c
+    lib/network/acip/server.c
     lib/network/acip/acds_client.c
     lib/network/acip/acds_server.c
     lib/network/acip/send.c
-    lib/network/acip/receive.c
     lib/network/acip/handlers.c
     lib/network/acip/acds_handlers.c
     # NAT traversal (UPnP/NAT-PMP for direct TCP without WebRTC)

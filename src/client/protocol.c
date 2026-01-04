@@ -89,7 +89,7 @@
 #include "network/packet_parsing.h"
 #include "network/acip/handlers.h"
 #include "network/acip/transport.h"
-#include "network/acip/receive.h"
+#include "network/acip/client.h"
 #include "network/acip/acds.h"
 #include "network/webrtc/peer_manager.h"
 #include "buffer_pool.h"
@@ -992,7 +992,7 @@ static void *data_reception_thread_func(void *arg) {
       break;
     }
 
-    asciichat_error_t acip_result = acip_transport_receive_and_dispatch_client(transport, &g_acip_client_callbacks);
+    asciichat_error_t acip_result = acip_client_receive_and_dispatch(transport, &g_acip_client_callbacks);
 
     // Handle receive/dispatch errors
     if (acip_result != ASCIICHAT_OK) {

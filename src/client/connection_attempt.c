@@ -34,7 +34,7 @@
 #include "options/rcu.h"
 #include "network/acip/acds_client.h"
 #include "network/acip/acds.h"
-#include "network/acip/receive.h"
+#include "network/acip/client.h"
 #include "network/tcp/client.h"
 #include "network/webrtc/peer_manager.h"
 #include "platform/abstraction.h"
@@ -560,7 +560,7 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
     // Receive one ACDS packet (SDP answer, ICE candidate, etc.)
     // This dispatches to on_webrtc_sdp/on_webrtc_ice in client/protocol.c
     // which forward to the peer_manager for processing
-    asciichat_error_t recv_result = acip_transport_receive_and_dispatch_client(ctx->acds_transport, callbacks);
+    asciichat_error_t recv_result = acip_client_receive_and_dispatch(ctx->acds_transport, callbacks);
 
     if (recv_result != ASCIICHAT_OK) {
       if (recv_result == ERROR_NETWORK) {
@@ -783,7 +783,7 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
 
     // Receive one ACDS packet (SDP answer, ICE candidate, etc.)
     // This dispatches to on_webrtc_sdp/on_webrtc_ice in client/protocol.c
-    asciichat_error_t recv_result = acip_transport_receive_and_dispatch_client(ctx->acds_transport, callbacks);
+    asciichat_error_t recv_result = acip_client_receive_and_dispatch(ctx->acds_transport, callbacks);
 
     if (recv_result != ASCIICHAT_OK) {
       if (recv_result == ERROR_NETWORK) {
