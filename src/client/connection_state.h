@@ -89,6 +89,7 @@ typedef enum {
  * Identifies the client's session and participant within that session.
  */
 typedef struct {
+  char session_string[128];   ///< Session string (e.g., "mystic-stone-obelisk")
   uint8_t session_id[16];     ///< Session UUID (binary)
   uint8_t participant_id[16]; ///< Client's participant UUID (binary)
   uint16_t server_port;       ///< Server port for connection

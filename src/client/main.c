@@ -705,15 +705,26 @@ int client_main(void) {
              discovery_result.server_port);
 
     // Set discovered address/port for connection
-    discovered_address = discovery_result.server_address;
-
-    // Convert port to string for compatibility with connection code
+    // Copy to static buffers since discovery_result goes out of scope after this block
+    static char address_buffer[256];
     static char port_buffer[8];
+    SAFE_STRNCPY(address_buffer, discovery_result.server_address, sizeof(address_buffer));
     snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
+    discovered_address = address_buffer;
     discovered_port = port_buffer;
 
-    // TODO: For ACDS results, handle WebRTC vs Direct TCP sessions
-    // For now, all sessions use Direct TCP connection
+    // Populate session context for WebRTC fallback (if discovery came from ACDS)
+    if (discovery_result.source == DISCOVERY_SOURCE_ACDS) {
+      SAFE_STRNCPY(connection_ctx.session_ctx.session_string, session_string,
+                   sizeof(connection_ctx.session_ctx.session_string));
+      memcpy(connection_ctx.session_ctx.session_id, discovery_result.session_id, 16);
+      memcpy(connection_ctx.session_ctx.participant_id, discovery_result.participant_id, 16);
+      SAFE_STRNCPY(connection_ctx.session_ctx.server_address, discovery_result.server_address,
+                   sizeof(connection_ctx.session_ctx.server_address));
+      connection_ctx.session_ctx.server_port = discovery_result.server_port;
+      log_debug("Populated session context for WebRTC fallback (session='%s')", session_string);
+    }
+
     log_info("Connecting to server: %s:%d", discovered_address, discovery_result.server_port);
   }
 

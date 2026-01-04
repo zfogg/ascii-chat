@@ -383,22 +383,18 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Step 2: Join ACDS session
+  // Step 2: Join ACDS session (use session context from discovery)
   // ─────────────────────────────────────────────────────────────
 
-  // Note: Session string will be obtained from context or generated
-  // For now, we'll use a placeholder - in real implementation,
-  // the session string should come from the server discovery process
+  // Check if we have session information from prior ACDS discovery
+  if (ctx->session_ctx.session_string[0] == '\0') {
+    log_warn("No session context available - ACDS discovery may have failed or not been performed");
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK, "Session context not available (discovery required before WebRTC)");
+  }
 
   acds_session_join_params_t join_params = {0};
-  join_params.session_string = NULL; // Will be set in real implementation
-  // TODO: Set session string from discovery result
-
-  if (!join_params.session_string) {
-    log_warn("No session string available for ACDS join");
-    acds_client_disconnect(&acds_client);
-    return SET_ERRNO(ERROR_NETWORK, "Session string not available");
-  }
+  join_params.session_string = ctx->session_ctx.session_string;
 
   acds_session_join_result_t join_result = {0};
   result = acds_session_join(&acds_client, &join_params, &join_result);
@@ -596,9 +592,9 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // Step 2: Join ACDS session to get TURN credentials
   // ─────────────────────────────────────────────────────────────
 
-  // Use same session string from context if already joined, otherwise error
-  if (ctx->session_ctx.server_port == 0 || ctx->session_ctx.session_id[0] == 0) {
-    log_warn("No session context available for TURN stage (should have been set in STUN stage)");
+  // Check if we have session information from prior ACDS discovery
+  if (ctx->session_ctx.session_string[0] == '\0') {
+    log_warn("No session context available for TURN stage (ACDS discovery required before WebRTC)");
     acds_client_disconnect(&acds_client);
     return SET_ERRNO(ERROR_NETWORK, "Session context not available");
   }
@@ -607,14 +603,7 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // In production, ACDS would return TURN credentials on first join;
   // we're re-joining here to ensure we have them
   acds_session_join_params_t join_params = {0};
-  join_params.session_string = NULL; // TODO: Get from discovery or context
-  // The session string should have been discovered before reaching this point
-
-  if (!join_params.session_string) {
-    log_warn("No session string available for TURN stage ACDS join");
-    acds_client_disconnect(&acds_client);
-    return SET_ERRNO(ERROR_NETWORK, "Session string not available");
-  }
+  join_params.session_string = ctx->session_ctx.session_string;
 
   acds_session_join_result_t join_result = {0};
   result = acds_session_join(&acds_client, &join_params, &join_result);
