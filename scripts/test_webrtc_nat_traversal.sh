@@ -104,7 +104,7 @@ WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat client $REMOTE_HO
 
 # Safer parsing - default to 0 if file doesn't exist or grep fails
 if [ -f /tmp/client_tcp.log ]; then
-  FRAMES=$(grep -c "Received.*frame" /tmp/client_tcp.log 2>/dev/null || echo "0")
+  FRAMES=$(grep -c "frame received\|Snapshot captured" /tmp/client_tcp.log 2>/dev/null || echo "0")
   TIME=$(grep "Connection.*in" /tmp/client_tcp.log 2>/dev/null | grep -oP '\d+\.\d+' | head -1 || echo "N/A")
 else
   FRAMES=0
@@ -127,7 +127,7 @@ WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat client $REMOTE_HO
   --log-file /tmp/client_stun.log > /dev/null 2>&1 || true
 
 if [ -f /tmp/client_stun.log ]; then
-  FRAMES=$(grep -c "Received.*frame" /tmp/client_stun.log 2>/dev/null || echo "0")
+  FRAMES=$(grep -c "frame received\|Snapshot captured" /tmp/client_stun.log 2>/dev/null || echo "0")
   TIME=$(grep "Connection.*in" /tmp/client_stun.log 2>/dev/null | grep -oP '\d+\.\d+' | head -1 || echo "N/A")
   STUN_STATE=$(grep -o "WEBRTC_STUN_CONNECTED" /tmp/client_stun.log 2>/dev/null | head -1 || echo "")
 else
@@ -156,7 +156,7 @@ WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat client $REMOTE_HO
   --log-file /tmp/client_turn.log > /dev/null 2>&1 || true
 
 if [ -f /tmp/client_turn.log ]; then
-  FRAMES=$(grep -c "Received.*frame" /tmp/client_turn.log 2>/dev/null || echo "0")
+  FRAMES=$(grep -c "frame received\|Snapshot captured" /tmp/client_turn.log 2>/dev/null || echo "0")
   TIME=$(grep "Connection.*in" /tmp/client_turn.log 2>/dev/null | grep -oP '\d+\.\d+' | head -1 || echo "N/A")
   TURN_STATE=$(grep -o "WEBRTC_TURN_CONNECTED" /tmp/client_turn.log 2>/dev/null | head -1 || echo "")
 else
