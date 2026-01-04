@@ -338,7 +338,7 @@ install(CODE "
     endif()
 
     message(STATUS \"Finished removing mimalloc files from installation\")
-")
+" COMPONENT Development)
 
 # =============================================================================
 # Install dependency DLLs on Windows (for dynamic builds only)
