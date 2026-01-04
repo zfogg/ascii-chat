@@ -29,7 +29,7 @@ static void fill_gradient_image(image_t *image, const int width, const int heigh
     for (int x = 0; x < width; x++) {
       const int index = y * width + x;
       const uint8_t value = (uint8_t)((index * 255) / total_pixels);
-      image->pixels[index] = (rgb_t){value, (uint8_t)(value / 2), (uint8_t)(255 - value)};
+      image->pixels[index] = (rgb_pixel_t){value, (uint8_t)(value / 2), (uint8_t)(255 - value)};
     }
   }
 }

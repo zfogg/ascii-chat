@@ -75,7 +75,7 @@ static void print_pixel_analysis(const image_t *image, const char *palette, int 
   int pixels_to_analyze = (max_pixels < image->w * image->h) ? max_pixels : image->w * image->h;
 
   for (int i = 0; i < pixels_to_analyze; i++) {
-    rgb_t pixel = image->pixels[i];
+    rgb_pixel_t pixel = image->pixels[i];
 
     // Use same luminance calculation as both implementations
     int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;

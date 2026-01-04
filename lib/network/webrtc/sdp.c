@@ -570,7 +570,7 @@ asciichat_error_t sdp_detect_terminal_capabilities(terminal_capability_t *capabi
   // Detect terminal color level using platform terminal module
   const char *colorterm = SAFE_GETENV("COLORTERM");
   const char *term = SAFE_GETENV("TERM");
-  terminal_color_level_t color_level = TERM_COLOR_NONE;
+  terminal_color_mode_t color_level = TERM_COLOR_NONE;
 
   if (colorterm && (strcmp(colorterm, "truecolor") == 0 || strcmp(colorterm, "24bit") == 0)) {
     color_level = TERM_COLOR_TRUECOLOR;

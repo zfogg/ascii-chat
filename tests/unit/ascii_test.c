@@ -49,7 +49,7 @@ Theory((int width, int height), ascii, image_size_property) {
   // Fill with gradient pattern
   for (int i = 0; i < width * height; i++) {
     uint8_t val = (uint8_t)((i * 255) / (width * height));
-    img->pixels[i] = (rgb_t){val, val, val};
+    img->pixels[i] = (rgb_pixel_t){val, val, val};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -73,7 +73,7 @@ Test(ascii, ascii_convert_basic) {
 
   // Fill with a simple pattern
   for (int i = 0; i < 16; i++) {
-    img->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
+    img->pixels[i] = (rgb_pixel_t){i * 16, i * 16, i * 16};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -96,10 +96,10 @@ Test(ascii, ascii_convert_color) {
   cr_assert_not_null(img);
 
   // Fill with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
-  img->pixels[3] = (rgb_t){255, 255, 255}; // White
+  img->pixels[0] = (rgb_pixel_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_pixel_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_pixel_t){0, 0, 255};     // Blue
+  img->pixels[3] = (rgb_pixel_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
   char luminance_palette[257]; // Extra byte for null terminator
@@ -186,7 +186,7 @@ Test(ascii, ascii_convert_different_sizes) {
 
   // Fill with pattern
   for (int i = 0; i < 64; i++) {
-    img->pixels[i] = (rgb_t){i * 4, i * 4, i * 4};
+    img->pixels[i] = (rgb_pixel_t){i * 4, i * 4, i * 4};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -218,7 +218,7 @@ Test(ascii, ascii_convert_with_aspect_ratio) {
 
   // Fill with pattern
   for (int i = 0; i < 32; i++) {
-    img->pixels[i] = (rgb_t){i * 8, i * 8, i * 8};
+    img->pixels[i] = (rgb_pixel_t){i * 8, i * 8, i * 8};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -242,7 +242,7 @@ Test(ascii, ascii_convert_with_stretch) {
 
   // Fill with pattern
   for (int i = 0; i < 32; i++) {
-    img->pixels[i] = (rgb_t){i * 8, i * 8, i * 8};
+    img->pixels[i] = (rgb_pixel_t){i * 8, i * 8, i * 8};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -270,7 +270,7 @@ Test(ascii, ascii_convert_with_capabilities_basic) {
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
-    img->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
+    img->pixels[i] = (rgb_pixel_t){i * 16, i * 16, i * 16};
   }
 
   terminal_capabilities_t caps = {.capabilities = TERM_CAP_COLOR_256 | TERM_CAP_UTF8,
@@ -345,7 +345,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
-    img->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
+    img->pixels[i] = (rgb_pixel_t){i * 16, i * 16, i * 16};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -818,7 +818,7 @@ ParameterizedTest(ascii_palette_test_case_t *tc, ascii, palette_tests) {
 
   // Fill with test pattern
   for (int i = 0; i < 16; i++) {
-    img->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
+    img->pixels[i] = (rgb_pixel_t){i * 16, i * 16, i * 16};
   }
 
   char luminance_palette[257];
@@ -872,7 +872,7 @@ ParameterizedTest(ascii_size_test_case_t *tc, ascii, size_tests) {
       int index = y * tc->width + x;
       int denominator = tc->width + tc->height - 2;
       int intensity = denominator > 0 ? (x + y) * 255 / denominator : 128;
-      img->pixels[index] = (rgb_t){intensity, intensity, intensity};
+      img->pixels[index] = (rgb_pixel_t){intensity, intensity, intensity};
     }
   }
 
@@ -933,7 +933,7 @@ ParameterizedTest(ascii_option_test_case_t *tc, ascii, option_tests) {
 
   // Fill with colorful pattern
   for (int i = 0; i < 16; i++) {
-    img->pixels[i] = (rgb_t){i * 16, (i * 8) % 256, (i * 4) % 256};
+    img->pixels[i] = (rgb_pixel_t){i * 16, (i * 8) % 256, (i * 4) % 256};
   }
 
   const char *palette = "@#$%&*+=-:. ";
@@ -979,7 +979,7 @@ ParameterizedTest(ascii_stress_test_case_t *tc, ascii, stress_tests) {
 
     // Fill with random pattern
     for (int j = 0; j < 64; j++) {
-      img->pixels[j] = (rgb_t){rand() % 256, rand() % 256, rand() % 256};
+      img->pixels[j] = (rgb_pixel_t){rand() % 256, rand() % 256, rand() % 256};
     }
 
     char *result = ascii_convert(img, 8, 8, false, false, false, palette, luminance_palette);

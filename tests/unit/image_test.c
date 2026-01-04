@@ -115,7 +115,7 @@ Test(image, image_clear_basic) {
   cr_assert_not_null(img);
 
   // Fill with some data
-  memset(img->pixels, 0xFF, img->w * img->h * sizeof(rgb_t));
+  memset(img->pixels, 0xFF, img->w * img->h * sizeof(rgb_pixel_t));
 
   // Clear the image
   image_clear(img);
@@ -159,10 +159,10 @@ Test(image, image_print_basic) {
   cr_assert_not_null(img);
 
   // Set up a simple 2x2 image with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
-  img->pixels[3] = (rgb_t){255, 255, 255}; // White
+  img->pixels[0] = (rgb_pixel_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_pixel_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_pixel_t){0, 0, 255};     // Blue
+  img->pixels[3] = (rgb_pixel_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print(img, palette);
@@ -179,10 +179,10 @@ Test(image, image_print_color_basic) {
   cr_assert_not_null(img);
 
   // Set up a simple 2x2 image with different colors
-  img->pixels[0] = (rgb_t){255, 0, 0};     // Red
-  img->pixels[1] = (rgb_t){0, 255, 0};     // Green
-  img->pixels[2] = (rgb_t){0, 0, 255};     // Blue
-  img->pixels[3] = (rgb_t){255, 255, 255}; // White
+  img->pixels[0] = (rgb_pixel_t){255, 0, 0};     // Red
+  img->pixels[1] = (rgb_pixel_t){0, 255, 0};     // Green
+  img->pixels[2] = (rgb_pixel_t){0, 0, 255};     // Blue
+  img->pixels[3] = (rgb_pixel_t){255, 255, 255}; // White
 
   const char *palette = "@#$%&*+=-:. ";
   char *result = image_print_color(img, palette);
@@ -251,7 +251,7 @@ Test(image, image_resize_basic) {
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
-    source->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
+    source->pixels[i] = (rgb_pixel_t){i * 16, i * 16, i * 16};
   }
 
   image_t *dest = image_new(2, 2);
@@ -294,10 +294,10 @@ Test(image, image_resize_same_size) {
   cr_assert_not_null(dest);
 
   // Fill source with pattern
-  source->pixels[0] = (rgb_t){255, 0, 0};
-  source->pixels[1] = (rgb_t){0, 255, 0};
-  source->pixels[2] = (rgb_t){0, 0, 255};
-  source->pixels[3] = (rgb_t){255, 255, 255};
+  source->pixels[0] = (rgb_pixel_t){255, 0, 0};
+  source->pixels[1] = (rgb_pixel_t){0, 255, 0};
+  source->pixels[2] = (rgb_pixel_t){0, 0, 255};
+  source->pixels[3] = (rgb_pixel_t){255, 255, 255};
 
   image_resize(source, dest);
 
@@ -315,7 +315,7 @@ Test(image, image_resize_interpolation_basic) {
 
   // Fill with pattern
   for (int i = 0; i < 16; i++) {
-    source->pixels[i] = (rgb_t){i * 16, i * 16, i * 16};
+    source->pixels[i] = (rgb_pixel_t){i * 16, i * 16, i * 16};
   }
 
   image_t *dest = image_new(2, 2);

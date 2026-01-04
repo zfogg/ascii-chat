@@ -77,11 +77,11 @@
  *
  * @ingroup video
  */
-typedef struct rgb_t {
+typedef struct {
   uint8_t r; ///< Red color component (0-255)
   uint8_t g; ///< Green color component (0-255)
   uint8_t b; ///< Blue color component (0-255)
-} PACKED_ATTR rgb_t;
+} PACKED_ATTR rgb_pixel_t;
 
 /**
  * @brief SIMD-aligned RGB pixel structure for optimal NEON/AVX performance
@@ -97,7 +97,7 @@ typedef struct rgb_t {
  *
  * @ingroup video
  */
-typedef struct rgb_pixel_simd_t {
+typedef struct {
   uint8_t r;       ///< Red color component (0-255)
   uint8_t g;       ///< Green color component (0-255)
   uint8_t b;       ///< Blue color component (0-255)
@@ -127,7 +127,7 @@ typedef enum {
  *
  * MEMORY LAYOUT:
  * - pixels array is allocated separately from image structure (except for pool alloc)
- * - pixels array size: width * height * sizeof(rgb_t)
+ * - pixels array size: width * height * sizeof(rgb_pixel_t)
  * - Pixel access: pixels[row * width + col]
  * - Row-major order (first row, then second row, etc.)
  *
@@ -138,10 +138,10 @@ typedef enum {
  *
  * @ingroup video
  */
-typedef struct image_t {
+typedef struct {
   int w;                ///< Image width in pixels (must be > 0)
   int h;                ///< Image height in pixels (must be > 0)
-  rgb_t *pixels;        ///< Pixel data array (width * height RGB pixels, row-major order)
+  rgb_pixel_t *pixels;  ///< Pixel data array (width * height RGB pixels, row-major order)
   uint8_t alloc_method; ///< Allocation method (image_alloc_method_t) for correct deallocation
 } image_t;
 
@@ -180,7 +180,7 @@ typedef struct image_t {
  * @brief Maximum pixel data size in bytes
  *
  * Maximum size in bytes for pixel data array. Calculated as:
- * IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t)
+ * IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_pixel_t)
  * Used for buffer allocation and validation.
  *
  * @note This is approximately 24.88 MB for 4K RGB images.
@@ -188,7 +188,7 @@ typedef struct image_t {
  *
  * @ingroup video
  */
-#define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
+#define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_pixel_t))
 
 /* ============================================================================
  * Image Allocation and Management Functions

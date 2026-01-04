@@ -25,10 +25,6 @@ typedef enum remote_log_direction {
 
 #include "log/logging.h"
 
-// Forward declarations to avoid circular includes with crypto/handshake.h
-struct crypto_handshake_context_t;
-const struct crypto_context_t *crypto_handshake_get_context(const struct crypto_handshake_context_t *ctx);
-
 /* ============================================================================
  * Network Logging Macros
  * ============================================================================

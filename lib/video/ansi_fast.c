@@ -423,7 +423,7 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
 }
 
 // Terminal capability-aware color function
-char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color_mode_t mode) {
+char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, terminal_color_mode_t mode) {
   switch (mode) {
   case COLOR_MODE_TRUECOLOR:
     return append_truecolor_fg(dst, r, g, b);

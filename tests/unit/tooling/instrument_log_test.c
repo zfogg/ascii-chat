@@ -248,8 +248,8 @@ static void set_env_variable(const char *key, const char *value) {
 }
 
 static void write_sample_record(const char *file_path) {
-  ascii_instr_log_line(file_path, 42, "test_function", "value = 42;", 0);
-  ascii_instr_runtime_global_shutdown();
+  asciichat_instr_log_line(file_path, 42, "test_function", "value = 42;", 0);
+  asciichat_instr_runtime_global_shutdown();
 }
 
 Test(instrument_log, writes_log_with_defaults) {

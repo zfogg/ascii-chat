@@ -80,7 +80,7 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 
-  terminal_color_level_t *color_mode = (terminal_color_level_t *)dest;
+  terminal_color_mode_t *color_mode = (terminal_color_mode_t *)dest;
   char lower[32];
   to_lower(arg, lower, sizeof(lower));
 

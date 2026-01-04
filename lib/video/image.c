@@ -55,7 +55,7 @@ image_t *image_new(size_t width, size_t height) {
 
   // Calculate total pixel buffer size with overflow checking
   size_t pixels_size;
-  if (checked_size_mul(total_pixels, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
+  if (checked_size_mul(total_pixels, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel buffer size would cause overflow");
     SAFE_FREE(p);
     return NULL;
@@ -69,7 +69,7 @@ image_t *image_new(size_t width, size_t height) {
   }
 
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-  p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_t *);
+  p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_pixel_t *);
   if (!p->pixels) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate image pixels: %zu bytes", pixels_size);
     SAFE_FREE(p);
@@ -101,7 +101,7 @@ void image_destroy(image_t *p) {
     size_t w = (size_t)p->w;
     size_t h = (size_t)p->h;
     size_t pixels_size;
-    if (checked_size_mul3(w, h, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
+    if (checked_size_mul3(w, h, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_INVALID_STATE, "image_destroy: dimensions would overflow: %dx%d", p->w, p->h);
       return;
     }
@@ -138,7 +138,7 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   // Calculate total allocation size (structure + pixel data in single buffer)
   // Check for integer overflow before multiplication
   size_t pixels_size;
-  if (checked_size_mul3(width, height, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
+  if (checked_size_mul3(width, height, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions would overflow: %zux%zu", width, height);
     return NULL;
   }
@@ -162,7 +162,7 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   image->w = (int)width;
   image->h = (int)height;
   // Pixel data immediately follows the image structure
-  image->pixels = (rgb_t *)((uint8_t *)buffer + sizeof(image_t));
+  image->pixels = (rgb_pixel_t *)((uint8_t *)buffer + sizeof(image_t));
   image->alloc_method = IMAGE_ALLOC_POOL; // Track allocation method for correct deallocation
 
   return image;
@@ -185,7 +185,7 @@ void image_destroy_to_pool(image_t *image) {
   size_t w = (size_t)image->w;
   size_t h = (size_t)image->h;
   size_t pixels_size;
-  if (checked_size_mul3(w, h, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
+  if (checked_size_mul3(w, h, sizeof(rgb_pixel_t), &pixels_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INVALID_STATE, "image_destroy_to_pool: dimensions would overflow: %dx%d", image->w, image->h);
     return;
   }
@@ -213,15 +213,15 @@ void image_clear(image_t *p) {
     return;
   }
   unsigned long pixel_count = w_ul * h_ul;
-  if (pixel_count > ULONG_MAX / sizeof(rgb_t)) {
+  if (pixel_count > ULONG_MAX / sizeof(rgb_pixel_t)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: buffer size overflow");
     return;
   }
-  size_t clear_size = pixel_count * sizeof(rgb_t);
+  size_t clear_size = pixel_count * sizeof(rgb_pixel_t);
   SAFE_MEMSET(p->pixels, clear_size, 0, clear_size);
 }
 
-inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
+inline rgb_pixel_t *image_pixel(image_t *p, const int x, const int y) {
   // Add bounds checking to prevent buffer overflow on invalid coordinates
   if (!p || !p->pixels || x < 0 || x >= p->w || y < 0 || y >= p->h) {
     return NULL;
@@ -261,15 +261,15 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
   const uint32_t x_ratio = (((uint32_t)(unsigned int)src_w << 16) / (uint32_t)(unsigned int)dst_w) + 1;
   const uint32_t y_ratio = (((uint32_t)(unsigned int)src_h << 16) / (uint32_t)(unsigned int)dst_h) + 1;
 
-  const rgb_t *src_pixels = source->pixels;
-  rgb_t *dst_pixels = dest->pixels;
+  const rgb_pixel_t *src_pixels = source->pixels;
+  rgb_pixel_t *dst_pixels = dest->pixels;
 
   for (int y = 0; y < dst_h; y++) {
     const uint32_t src_y = ((uint32_t)(unsigned int)y * y_ratio) >> 16;
     const uint32_t safe_src_y = (src_y >= (uint32_t)(unsigned int)src_h) ? (uint32_t)(src_h - 1) : src_y;
-    const rgb_t *src_row = src_pixels + (safe_src_y * (size_t)src_w);
+    const rgb_pixel_t *src_row = src_pixels + (safe_src_y * (size_t)src_w);
 
-    rgb_t *dst_row = dst_pixels + ((size_t)y * (size_t)dst_w);
+    rgb_pixel_t *dst_row = dst_pixels + ((size_t)y * (size_t)dst_w);
 
     for (int x = 0; x < dst_w; x++) {
       const uint32_t src_x = ((uint32_t)(unsigned int)x * x_ratio) >> 16;
@@ -376,7 +376,7 @@ char *image_print(const image_t *p, const char *palette) {
   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
   const size_t max_char_bytes = 4; // Max UTF-8 character size
 
-  const rgb_t *pix = p->pixels;
+  const rgb_pixel_t *pix = p->pixels;
 
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
@@ -410,7 +410,7 @@ char *image_print(const image_t *p, const char *palette) {
     const int row_offset = y * w;
 
     for (int x = 0; x < w;) {
-      const rgb_t pixel = pix[row_offset + x];
+      const rgb_pixel_t pixel = pix[row_offset + x];
       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
       const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
 
@@ -425,7 +425,7 @@ char *image_print(const image_t *p, const char *palette) {
       // Find run length for same character (RLE optimization)
       int j = x + 1;
       while (j < w) {
-        const rgb_t next_pixel = pix[row_offset + j];
+        const rgb_pixel_t next_pixel = pix[row_offset + j];
         const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) >> 8;
         uint8_t next_safe_luminance = clamp_rgb(next_luminance);
         uint8_t next_luma_idx = (uint8_t)(next_safe_luminance >> 2);        // 0-63 index (same as SIMD)
@@ -571,7 +571,7 @@ char *image_print_color(const image_t *p, const char *palette) {
   char *lines;
   lines = SAFE_MALLOC(lines_size, char *);
 
-  const rgb_t *pix = p->pixels;
+  const rgb_pixel_t *pix = p->pixels;
   // char *current_pos = lines;
   // const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
 
@@ -586,7 +586,7 @@ char *image_print_color(const image_t *p, const char *palette) {
     const int row_offset = y * w;
 
     for (int x = 0; x < w; x++) {
-      const rgb_t pixel = pix[row_offset + x];
+      const rgb_pixel_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
       // Standard ITU-R BT.601 luminance calculation
       const int luminance = (77 * r + 150 * g + 29 * b + 128) >> 8;
@@ -779,7 +779,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      rgb_t pixel = image->pixels[y * w + x];
+      rgb_pixel_t pixel = image->pixels[y * w + x];
 
       // Convert RGB to 16-color index and generate ANSI sequence
       uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
@@ -881,7 +881,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      rgb_t pixel = image->pixels[y * w + x];
+      rgb_pixel_t pixel = image->pixels[y * w + x];
 
       // Convert RGB to 16-color index using dithering
       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
@@ -966,7 +966,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
 
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
-      rgb_t pixel = image->pixels[y * w + x];
+      rgb_pixel_t pixel = image->pixels[y * w + x];
 
       // Convert RGB to 16-color index using dithering
       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);

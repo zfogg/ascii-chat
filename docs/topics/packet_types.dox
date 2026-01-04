@@ -293,7 +293,7 @@ to make the source of the message obvious.
  *
  * **Payload structure**:
  * - Header: `image_frame_packet_t` (24 bytes)
- * - Data: `rgb_t pixels[width * height]` or compressed data
+ * - Data: `rgb_pixel_t pixels[width * height]` or compressed data
  *
  * **Usage** (client → server):
  * @code{.c}
@@ -382,7 +382,7 @@ to make the source of the message obvious.
  * @code{.c}
  * typedef struct {
  *     uint32_t capabilities;      // Bitmask: TERM_CAP_* flags
- *     uint32_t color_level;       // terminal_color_level_t enum
+ *     uint32_t color_level;       // terminal_color_mode_t enum
  *     uint32_t color_count;       // Actual color count (16, 256, 16777216)
  *     uint32_t render_mode;        // render_mode_t enum (foreground/background/half-block)
  *     uint16_t width, height;      // Terminal dimensions

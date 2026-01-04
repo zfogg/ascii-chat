@@ -81,15 +81,8 @@
  */
 extern char ascii_palette[];
 
-/**
- * @brief Forward declaration of image structure
- *
- * Forward declaration for image_t structure used in conversion functions.
- * Full definition is in image.h.
- *
- * @ingroup video
- */
-typedef struct image_t image_t;
+// Include image.h for image_t type definition
+#include "image.h"
 
 /* ============================================================================
  * Subsystem Initialization Functions

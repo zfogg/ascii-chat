@@ -21,7 +21,7 @@
 /**
  * @brief Parse terminal color level option
  * @param arg String argument (e.g., "auto", "none", "16", "256", "truecolor")
- * @param dest Destination pointer (terminal_color_level_t*)
+ * @param dest Destination pointer (terminal_color_mode_t*)
  * @param error_msg Optional error message output (set on failure)
  * @return true on success, false on error
  *

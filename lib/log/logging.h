@@ -48,7 +48,6 @@ using std::memory_order_relaxed;
 #include <time.h>
 #include "platform/socket.h"
 #include "platform/system.h"
-struct crypto_context_t;
 
 /**
  * @brief Logging levels enumeration
@@ -377,6 +376,8 @@ char *format_message(const char *format, va_list args);
  * @ingroup logging
  */
 size_t get_current_time_formatted(char *time_buf);
+
+#include "crypto/crypto.h"
 
 /**
  * @brief Send a formatted log message over the network.

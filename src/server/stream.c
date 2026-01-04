@@ -395,11 +395,11 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       }
 
       // Extract pixel data
-      rgb_t *pixels = (rgb_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
+      rgb_pixel_t *pixels = (rgb_pixel_t *)(frame_to_use->data + (sizeof(uint32_t) * 2));
 
       // Create image from buffer pool for consistent video pipeline management
       image_t *img = image_new_from_pool(img_width, img_height);
-      memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
+      memcpy(img->pixels, pixels, (size_t)img_width * (size_t)img_height * sizeof(rgb_pixel_t));
       sources[source_count].image = img;
       sources[source_count].has_video = true;
     }

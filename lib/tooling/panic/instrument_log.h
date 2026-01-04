@@ -8,7 +8,7 @@
  *
  * This module provides the runtime logging infrastructure for the source-print
  * instrumentation system. When code is instrumented with ascii-instr-panic,
- * calls to ascii_instr_log_line() are inserted at each statement to trace
+ * calls to asciichat_instr_log_line() are inserted at each statement to trace
  * execution flow.
  *
  * ## Features
@@ -53,7 +53,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Macro expansion indicator values for ascii_instr_log_line()
+ * @brief Macro expansion indicator values for asciichat_instr_log_line()
  *
  * These values indicate whether a logged line originates from a macro
  * expansion, the macro invocation site, or regular code.
@@ -85,7 +85,7 @@ enum {
  * - Filter configuration (compiled regexes, substring patterns)
  * - Rate limiting state
  */
-typedef struct ascii_instr_runtime ascii_instr_runtime_t;
+typedef struct asciichat_instr_runtime asciichat_instr_runtime_t;
 
 /**
  * @brief Get or create the thread-local runtime context
@@ -99,7 +99,7 @@ typedef struct ascii_instr_runtime ascii_instr_runtime_t;
  * @note Thread-safe: each thread gets its own context
  * @note Returns NULL if ASCII_INSTR_SOURCE_PRINT_ENABLE=0
  */
-ascii_instr_runtime_t *ascii_instr_runtime_get(void);
+asciichat_instr_runtime_t *asciichat_instr_runtime_get(void);
 
 /**
  * @brief Destroy a runtime context and release resources
@@ -109,7 +109,7 @@ ascii_instr_runtime_t *ascii_instr_runtime_get(void);
  *
  * @param runtime Context to destroy (safe to pass NULL)
  */
-void ascii_instr_runtime_destroy(ascii_instr_runtime_t *runtime);
+void asciichat_instr_runtime_destroy(asciichat_instr_runtime_t *runtime);
 
 /**
  * @brief Global shutdown of the instrumentation system
@@ -120,7 +120,7 @@ void ascii_instr_runtime_destroy(ascii_instr_runtime_t *runtime);
  * @note After calling this, logging can be re-enabled by resetting env vars
  * @note Thread-safe: acquires global mutex during shutdown
  */
-void ascii_instr_runtime_global_shutdown(void);
+void asciichat_instr_runtime_global_shutdown(void);
 
 /**
  * @brief Log a source line execution event
@@ -139,8 +139,8 @@ void ascii_instr_runtime_global_shutdown(void);
  * @note Thread-safe: uses per-thread runtime context
  * @note Reentrant-safe: nested calls are detected and skipped
  */
-void ascii_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name, const char *snippet,
-                          uint8_t is_macro_expansion);
+void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name,
+                              const char *snippet, uint8_t is_macro_expansion);
 
 /**
  * @brief Check if coverage logging is enabled
@@ -150,7 +150,7 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
  *
  * @return true if ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE is set
  */
-bool ascii_instr_coverage_enabled(void);
+bool asciichat_instr_coverage_enabled(void);
 
 /**
  * @brief Log a program counter for coverage analysis
@@ -162,7 +162,7 @@ bool ascii_instr_coverage_enabled(void);
  *
  * @note Only logs if coverage mode is enabled
  */
-void ascii_instr_log_pc(uintptr_t program_counter);
+void asciichat_instr_log_pc(uintptr_t program_counter);
 
 /** @} */
 

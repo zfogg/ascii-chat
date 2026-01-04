@@ -215,9 +215,6 @@ typedef struct {
   int seeded;        /**< Whether state is initialized */
 } RLEState;
 
-/** @brief RGB pixel type alias */
-typedef rgb_t rgb_pixel_t;
-
 /**
  * @brief ImageRGB structure for NEON renderers
  *
