@@ -148,7 +148,7 @@ static wav_writer_t *g_wav_playback_received = NULL;
  *
  * @ingroup client_audio
  */
-static asciithread_t g_audio_capture_thread;
+static asciichat_thread_t g_audio_capture_thread;
 
 /**
  * @brief Flag indicating if audio capture thread was successfully created
@@ -197,7 +197,7 @@ static cond_t g_audio_send_queue_cond;
 static bool g_audio_send_queue_initialized = false;
 
 /** Audio sender thread */
-__attribute__((unused)) static asciithread_t g_audio_sender_thread;
+__attribute__((unused)) static asciichat_thread_t g_audio_sender_thread;
 static bool g_audio_sender_thread_created = false;
 static atomic_bool g_audio_sender_should_exit = false;
 
@@ -814,7 +814,7 @@ int audio_start_thread() {
   if (g_audio_capture_thread_created && atomic_load(&g_audio_capture_thread_exited)) {
     log_info("Previous audio capture thread exited, recreating");
     // Use timeout to prevent indefinite blocking
-    int join_result = ascii_thread_join_timeout(&g_audio_capture_thread, NULL, 5000);
+    int join_result = asciichat_thread_join_timeout(&g_audio_capture_thread, NULL, 5000);
     if (join_result != 0) {
       log_warn("Audio capture thread join timed out after 5s - thread may be deadlocked, "
                "forcing thread handle reset (stuck thread resources will not be cleaned up)");

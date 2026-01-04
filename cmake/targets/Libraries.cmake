@@ -835,8 +835,8 @@ endif()
 # Note: log_debug/log_info/log_error are macros that call log_msg
 set(ASCIICHAT_REQUIRED_SYMBOLS
     "log_msg"
-    "ascii_thread_create"
-    "ascii_thread_join"
+    "asciichat_thread_create"
+    "asciichat_thread_join"
     "mutex_init"
     "mutex_lock"
     "mutex_unlock"

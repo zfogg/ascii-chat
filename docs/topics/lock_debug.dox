@@ -146,7 +146,7 @@
  *   Backtrace from lock acquisition:
  *     #0: debug_mutex_lock at lib/debug/lock.c:1043
  *     #1: render_video_thread at src/server/render.c:123
- *     #2: ascii_thread_wrapper at lib/platform/posix/thread.c:45
+ *     #2: asciichat_thread_wrapper at lib/platform/posix/thread.c:45
  * ```
  *
  * @subsection lock_debug_interactive Interactive Debug Thread
@@ -240,7 +240,7 @@
  *     } key_data = {
  *         .addr = (uintptr_t)lock_address,
  *         .lock_type = lock_type,
- *         .thread_id = ascii_thread_current_id()
+ *         .thread_id = asciichat_thread_current_id()
  *     };
  *     return fnv1a_hash_bytes(&key_data, sizeof(key_data));
  * }

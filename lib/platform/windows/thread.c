@@ -564,12 +564,12 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
  * @param arg Argument to pass to thread function
  * @return 0 on success, -1 on failure
  */
-int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg) {
+int asciichat_thread_create(asciichat_thread_t *thread, void *(*func)(void *), void *arg) {
   // Initialize symbol handler on first thread creation
   initialize_symbol_handler();
 
 #ifdef DEBUG_THREADS
-  log_debug("ENTER ascii_thread_create: thread=%p, func=%p, arg=%p", thread, func, arg);
+  log_debug("ENTER asciichat_thread_create: thread=%p, func=%p, arg=%p", thread, func, arg);
   log_debug("About to malloc wrapper (size=%zu)", sizeof(thread_wrapper_t));
 #endif
 
@@ -636,7 +636,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @param retval Pointer to store thread return value (can be NULL)
  * @return 0 on success, -1 on failure
  */
-int ascii_thread_join(asciithread_t *thread, void **retval) {
+int asciichat_thread_join(asciichat_thread_t *thread, void **retval) {
   if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
     SET_ERRNO(ERROR_THREAD, "Invalid thread handle for join operation");
     return -1;
@@ -671,7 +671,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
  * @param timeout_ms Timeout in milliseconds
  * @return 0 on success, -1 on timeout/error
  */
-int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t timeout_ms) {
+int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uint32_t timeout_ms) {
   if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
     return -1;
   }
@@ -690,7 +690,7 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
   }
 
   // On timeout, do NOT clear the handle - the thread might still be running or starting
-  // The caller needs to be able to check if the thread is still alive using ascii_thread_is_initialized()
+  // The caller needs to be able to check if the thread is still alive using asciichat_thread_is_initialized()
   // Only clear the handle when we successfully join (thread has exited)
   if (result == WAIT_TIMEOUT) {
     return -2; // Return timeout error code - thread handle remains valid
@@ -711,7 +711,7 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
  * Automatically cleans up thread-local error context before exiting.
  * This prevents memory leaks from error messages allocated in thread-local storage.
  */
-void ascii_thread_exit(void *retval) {
+void asciichat_thread_exit(void *retval) {
   // Clean up thread-local error context to prevent leaks
   asciichat_clear_errno();
 
@@ -723,7 +723,7 @@ void ascii_thread_exit(void *retval) {
  * @param thread Pointer to thread to detach
  * @return 0 on success, -1 on failure
  */
-int ascii_thread_detach(asciithread_t *thread) {
+int asciichat_thread_detach(asciichat_thread_t *thread) {
   if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
     SET_ERRNO(ERROR_THREAD, "Invalid thread handle for detach operation");
     return -1;
@@ -737,7 +737,7 @@ int ascii_thread_detach(asciithread_t *thread) {
  * @brief Get the current thread's ID
  * @return Thread ID structure for current thread
  */
-thread_id_t ascii_thread_self(void) {
+thread_id_t asciichat_thread_self(void) {
   thread_id_t id;
   id = GetCurrentThreadId();
   return id;
@@ -749,7 +749,7 @@ thread_id_t ascii_thread_self(void) {
  * @param t2 Second thread ID
  * @return Non-zero if equal, 0 if different
  */
-int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
+int asciichat_thread_equal(thread_id_t t1, thread_id_t t2) {
   return t1 == t2;
 }
 
@@ -757,18 +757,18 @@ int ascii_thread_equal(thread_id_t t1, thread_id_t t2) {
  * @brief Get current thread ID as a 64-bit integer
  * @return Current thread ID as uint64_t
  */
-uint64_t ascii_thread_current_id(void) {
+uint64_t asciichat_thread_current_id(void) {
   return (uint64_t)GetCurrentThreadId();
 }
 
-bool ascii_thread_is_initialized(asciithread_t *thread) {
+bool asciichat_thread_is_initialized(asciichat_thread_t *thread) {
   if (!thread)
     return false;
   // On Windows, check if thread handle is valid (not NULL and not INVALID_HANDLE_VALUE)
   return (*thread != NULL && *thread != INVALID_HANDLE_VALUE);
 }
 
-void ascii_thread_init(asciithread_t *thread) {
+void asciichat_thread_init(asciichat_thread_t *thread) {
   if (thread) {
     *thread = NULL; // On Windows, NULL is the uninitialized state
   }
@@ -844,7 +844,7 @@ int ascii_tls_set(tls_key_t key, void *value) {
  * Uses SetThreadPriority with THREAD_PRIORITY_TIME_CRITICAL priority class.
  * Does not require elevated privileges on Windows.
  */
-asciichat_error_t ascii_thread_set_realtime_priority(void) {
+asciichat_error_t asciichat_thread_set_realtime_priority(void) {
   HANDLE current_thread = GetCurrentThread();
   if (!SetThreadPriority(current_thread, THREAD_PRIORITY_TIME_CRITICAL)) {
     return SET_ERRNO_SYS(ERROR_THREAD, "Failed to set audio thread priority on Windows");

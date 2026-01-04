@@ -91,10 +91,10 @@
  *   atomic_store(&client->audio_render_thread_running, false);
  *
  *   // 3. Join threads in reverse creation order
- *   ascii_thread_join(&client->send_thread, NULL);
- *   ascii_thread_join(&client->receive_thread, NULL);
- *   ascii_thread_join(&client->video_render_thread, NULL);
- *   ascii_thread_join(&client->audio_render_thread, NULL);
+ *   asciichat_thread_join(&client->send_thread, NULL);
+ *   asciichat_thread_join(&client->receive_thread, NULL);
+ *   asciichat_thread_join(&client->video_render_thread, NULL);
+ *   asciichat_thread_join(&client->audio_render_thread, NULL);
  *
  *   // 4. Cleanup resources
  *   crypto_handshake_cleanup(&client->crypto_ctx);
@@ -231,10 +231,10 @@
  *   _Atomic bool active;
  *
  *   // Threading
- *   asciithread_t receive_thread;
- *   asciithread_t send_thread;
- *   asciithread_t video_render_thread;
- *   asciithread_t audio_render_thread;
+ *   asciichat_thread_t receive_thread;
+ *   asciichat_thread_t send_thread;
+ *   asciichat_thread_t video_render_thread;
+ *   asciichat_thread_t audio_render_thread;
  *   _Atomic bool video_render_thread_running;
  *   _Atomic bool audio_render_thread_running;
  *

@@ -159,10 +159,10 @@ typedef struct tcp_client {
   atomic_bool audio_sender_should_exit;
 
   /** Audio capture thread handle */
-  asciithread_t audio_capture_thread;
+  asciichat_thread_t audio_capture_thread;
 
   /** Audio sender thread handle */
-  asciithread_t audio_sender_thread;
+  asciichat_thread_t audio_sender_thread;
 
   /** Audio capture thread was successfully created */
   bool audio_capture_thread_created;
@@ -178,7 +178,7 @@ typedef struct tcp_client {
    * ======================================================================== */
 
   /** Data reception thread handle */
-  asciithread_t data_reception_thread;
+  asciichat_thread_t data_reception_thread;
 
   /** Data reception thread was successfully created */
   bool data_thread_created;
@@ -200,7 +200,7 @@ typedef struct tcp_client {
    * ======================================================================== */
 
   /** Webcam capture thread handle */
-  asciithread_t capture_thread;
+  asciichat_thread_t capture_thread;
 
   /** Capture thread was successfully created */
   bool capture_thread_created;
@@ -213,7 +213,7 @@ typedef struct tcp_client {
    * ======================================================================== */
 
   /** Ping/keepalive thread handle */
-  asciithread_t ping_thread;
+  asciichat_thread_t ping_thread;
 
   /** Ping thread was successfully created */
   bool ping_thread_created;

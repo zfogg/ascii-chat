@@ -140,7 +140,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  *
  * @ingroup client_protocol
  */
-__attribute__((unused)) static asciithread_t g_data_thread;
+__attribute__((unused)) static asciichat_thread_t g_data_thread;
 
 /**
  * @brief Flag indicating if data thread was successfully created

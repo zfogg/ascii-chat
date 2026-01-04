@@ -121,7 +121,7 @@
  *
  * @ingroup client_capture
  */
-__attribute__((unused)) static asciithread_t g_capture_thread;
+__attribute__((unused)) static asciichat_thread_t g_capture_thread;
 
 /**
  * @brief Flag indicating if capture thread was successfully created

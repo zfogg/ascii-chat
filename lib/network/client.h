@@ -76,9 +76,9 @@ using std::atomic_uint;
  */
 typedef struct client_info {
   socket_t socket;
-  acip_transport_t *transport;  // ACIP transport for protocol-agnostic packet sending
-  asciithread_t receive_thread; // Thread for receiving client data
-  atomic_uint client_id;        // Thread-safe client ID
+  acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
+  asciichat_thread_t receive_thread; // Thread for receiving client data
+  atomic_uint client_id;             // Thread-safe client ID
   char display_name[MAX_DISPLAY_NAME_LEN];
   char client_ip[INET_ADDRSTRLEN];
   int port;
@@ -127,7 +127,7 @@ typedef struct client_info {
   packet_queue_t *audio_queue; // Queue for audio packets to send to this client
 
   // Dedicated send thread for this client
-  asciithread_t send_thread;
+  asciichat_thread_t send_thread;
   atomic_bool send_thread_running;
 
   // Per-client grid tracking for CLEAR_CONSOLE logic
@@ -143,8 +143,8 @@ typedef struct client_info {
   size_t crypto_ciphertext_size;
 
   // Per-client rendering threads
-  asciithread_t video_render_thread;
-  asciithread_t audio_render_thread;
+  asciichat_thread_t video_render_thread;
+  asciichat_thread_t audio_render_thread;
   atomic_bool video_render_thread_running;
   atomic_bool audio_render_thread_running;
 

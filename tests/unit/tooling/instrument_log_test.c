@@ -50,7 +50,7 @@ static const char *default_temp_base(void) {
 static void make_unique_directory(char *buffer, size_t buffer_size) {
   const char *base = default_temp_base();
   const int pid = platform_get_pid();
-  const uint64_t tid = ascii_thread_current_id();
+  const uint64_t tid = asciichat_thread_current_id();
 
   for (int attempt = 0; attempt < 64; ++attempt) {
     int written = snprintf(buffer, buffer_size, "%s/ascii-instr-test-%d-%" PRIu64 "-%d", base, pid, tid, attempt);
@@ -302,7 +302,7 @@ Test(instrument_log, thread_filter_blocks_unlisted_thread) {
   clear_filter_environment();
   set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", temp_dir);
 
-  uint64_t tid = ascii_thread_current_id();
+  uint64_t tid = asciichat_thread_current_id();
   char tid_buffer[64];
   snprintf(tid_buffer, sizeof(tid_buffer), "%" PRIu64, tid + 1);
   set_env_variable("ASCII_INSTR_SOURCE_PRINT_THREAD", tid_buffer);
@@ -323,7 +323,7 @@ Test(instrument_log, thread_filter_allows_matching_thread) {
   clear_filter_environment();
   set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", temp_dir);
 
-  uint64_t tid = ascii_thread_current_id();
+  uint64_t tid = asciichat_thread_current_id();
   char tid_buffer[64];
   snprintf(tid_buffer, sizeof(tid_buffer), "%" PRIu64, tid);
   set_env_variable("ASCII_INSTR_SOURCE_PRINT_THREAD", tid_buffer);

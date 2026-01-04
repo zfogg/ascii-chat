@@ -186,10 +186,10 @@ Test(crypto_handshake, client_key_exchange, .init = setup_real_sockets, .fini = 
 
   // Setup client thread
   client_thread_data_t client_data = {.ctx = &client_ctx, .sock = g_client_socket, .result = ERROR_CRYPTO};
-  asciithread_t client_thread;
+  asciichat_thread_t client_thread;
 
   // Start client thread first (it will wait for server)
-  ascii_thread_create(&client_thread, client_handshake_thread, &client_data);
+  asciichat_thread_create(&client_thread, client_handshake_thread, &client_data);
   usleep(10000); // Give client time to start
 
   // Server sends KEY_EXCHANGE_INIT
@@ -197,7 +197,7 @@ Test(crypto_handshake, client_key_exchange, .init = setup_real_sockets, .fini = 
   cr_assert_eq(server_result, ASCIICHAT_OK, "Server start should succeed");
 
   // Wait for client to complete
-  ascii_thread_join(&client_thread, NULL);
+  asciichat_thread_join(&client_thread, NULL);
   cr_assert_eq(client_data.result, ASCIICHAT_OK, "Client key exchange should succeed");
   cr_assert_eq(client_ctx.state, CRYPTO_HANDSHAKE_KEY_EXCHANGE, "State should be KEY_EXCHANGE");
 
@@ -247,10 +247,10 @@ Test(crypto_handshake, complete_handshake_flow, .init = setup_real_sockets, .fin
   // Setup client thread
   client_thread_data_t client_data = {.ctx = &client_ctx, .sock = g_client_socket, .result = ERROR_CRYPTO};
 
-  asciithread_t client_thread;
+  asciichat_thread_t client_thread;
 
   // Start client thread (it will block waiting for server's KEY_EXCHANGE_INIT)
-  ascii_thread_create(&client_thread, client_handshake_thread, &client_data);
+  asciichat_thread_create(&client_thread, client_handshake_thread, &client_data);
 
   // Give client thread time to start and enter receive state
   usleep(10000); // 10ms
@@ -260,7 +260,7 @@ Test(crypto_handshake, complete_handshake_flow, .init = setup_real_sockets, .fin
   cr_assert_eq(server_result, ASCIICHAT_OK, "Server start should succeed");
 
   // Wait for client to complete
-  ascii_thread_join(&client_thread, NULL);
+  asciichat_thread_join(&client_thread, NULL);
   cr_assert_eq(client_data.result, ASCIICHAT_OK, "Client key exchange should succeed");
 
   // Note: The remaining handshake steps (auth challenge, auth response, server complete)

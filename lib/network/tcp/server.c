@@ -254,8 +254,8 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     // 4. Processing client requests
     // 5. Calling tcp_server_remove_client() on disconnect
     // 6. Closing socket and freeing ctx
-    asciithread_t thread;
-    if (ascii_thread_create(&thread, server->config.client_handler, ctx) != 0) {
+    asciichat_thread_t thread;
+    if (asciichat_thread_create(&thread, server->config.client_handler, ctx) != 0) {
       log_error("Failed to create client handler thread for %s", client_ip);
       SAFE_FREE(ctx);
       socket_close(client_socket);

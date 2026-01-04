@@ -30,8 +30,8 @@
  *
  * // Use unified API - works identically on all platforms
  * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
- * asciithread_t thread;
- * ascii_thread_create(&thread, worker_func, arg);
+ * asciichat_thread_t thread;
+ * asciichat_thread_create(&thread, worker_func, arg);
  * @endcode
  *
  * **Organization**:
@@ -95,8 +95,8 @@
  *
  *     // Use platform functions - no #ifdefs needed!
  *     socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
- *     asciithread_t thread;
- *     ascii_thread_create(&thread, worker, NULL);
+ *     asciichat_thread_t thread;
+ *     asciichat_thread_create(&thread, worker, NULL);
  *
  *     // Cleanup
  *     platform_cleanup();

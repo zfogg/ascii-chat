@@ -730,9 +730,9 @@ The platform abstraction layer enables cross-platform support for Windows, Linux
 
 ```c
 // Threads use ascii_ prefix to avoid conflicts
-ascii_thread_t thread;
-ascii_thread_create(&thread, thread_func, arg);
-ascii_thread_join(thread, NULL);
+asciichat_thread_t thread;
+asciichat_thread_create(&thread, thread_func, arg);
+asciichat_thread_join(thread, NULL);
 
 // Mutexes
 mutex_t mutex;
