@@ -60,6 +60,8 @@ scp lib/acds/session.c $REMOTE_HOST:$REMOTE_REPO/lib/acds/session.c
 scp src/acds/server.c $REMOTE_HOST:$REMOTE_REPO/src/acds/server.c
 scp src/server/main.c $REMOTE_HOST:$REMOTE_REPO/src/server/main.c
 scp src/client/main.c $REMOTE_HOST:$REMOTE_REPO/src/client/main.c
+scp src/client/connection_state.h $REMOTE_HOST:$REMOTE_REPO/src/client/connection_state.h
+scp src/client/connection_attempt.c $REMOTE_HOST:$REMOTE_REPO/src/client/connection_attempt.c
 
 # [4/9] Rebuild binaries on remote
 echo "[4/9] Rebuilding binaries on remote..."
