@@ -308,6 +308,13 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
   // Reachability verification for Direct TCP sessions
   // WebRTC sessions don't need this since they use P2P mesh with STUN/TURN
   if (req->session_type == SESSION_TYPE_DIRECT_TCP) {
+    // Auto-detect public IP if server_address is empty
+    if (req->server_address[0] == '\0') {
+      // Server bound to 0.0.0.0 and wants ACDS to auto-detect public IP
+      SAFE_STRNCPY(req->server_address, client_ip, sizeof(req->server_address));
+      log_info("SESSION_CREATE from %s: auto-detected server address (bind was 0.0.0.0)", client_ip);
+    }
+
     // Verify that the server is actually reachable at the IP it claims
     // Compare the claimed server address with the actual connection source
     if (strcmp(req->server_address, client_ip) != 0) {

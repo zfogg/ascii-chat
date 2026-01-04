@@ -1543,18 +1543,36 @@ int server_main(void) {
 
       // Set session type (Direct TCP or WebRTC)
       // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
-      // This ensures clients can connect even when server is behind NAT without UPnP
-      if (!upnp_succeeded || GET_OPTION(webrtc)) {
+      // Exception: If bind address is 0.0.0.0, server is on public IP - use Direct TCP
+      const char *bind_addr = GET_OPTION(address);
+      bool bind_all_interfaces = (strcmp(bind_addr, "0.0.0.0") == 0);
+
+      if (GET_OPTION(webrtc)) {
+        // Explicit WebRTC request
         create_params.session_type = SESSION_TYPE_WEBRTC;
-        log_info("ACDS session type: WebRTC (UPnP %s, --webrtc %s)", upnp_succeeded ? "succeeded" : "failed",
-                 GET_OPTION(webrtc) ? "enabled" : "disabled");
-      } else {
+        log_info("ACDS session type: WebRTC (explicitly requested via --webrtc)");
+      } else if (bind_all_interfaces) {
+        // Bind to 0.0.0.0 means server is publicly accessible
+        create_params.session_type = SESSION_TYPE_DIRECT_TCP;
+        log_info("ACDS session type: Direct TCP (bind address 0.0.0.0, server is publicly accessible)");
+      } else if (upnp_succeeded) {
+        // UPnP port mapping worked
         create_params.session_type = SESSION_TYPE_DIRECT_TCP;
         log_info("ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)");
+      } else {
+        // UPnP failed and not on public IP - use WebRTC
+        create_params.session_type = SESSION_TYPE_WEBRTC;
+        log_info("ACDS session type: WebRTC (UPnP failed, server behind NAT)");
       }
 
       // Server connection information (where clients should connect)
-      SAFE_STRNCPY(create_params.server_address, GET_OPTION(address), sizeof(create_params.server_address));
+      // If bind address is 0.0.0.0, leave server_address empty for ACDS to auto-detect public IP
+      if (bind_all_interfaces) {
+        create_params.server_address[0] = '\0'; // Empty - ACDS will use connection source IP
+        log_debug("Bind address is 0.0.0.0, ACDS will auto-detect public IP from connection");
+      } else {
+        SAFE_STRNCPY(create_params.server_address, bind_addr, sizeof(create_params.server_address));
+      }
       create_params.server_port = port;
 
       // Create session

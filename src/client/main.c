@@ -677,6 +677,12 @@ int client_main(void) {
       discovery_cfg.acds_port = (uint16_t)opts_discovery->acds_port;
     }
 
+    // Set password for session join (use pointer since it persists through discovery)
+    if (opts_discovery && opts_discovery->password[0] != '\0') {
+      discovery_cfg.password = opts_discovery->password; // Safe: opts_discovery from options_get() persists
+      log_debug("Password configured for session join");
+    }
+
     // Perform parallel discovery
     discovery_result_t discovery_result;
     memset(&discovery_result, 0, sizeof(discovery_result));
