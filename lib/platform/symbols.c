@@ -334,22 +334,26 @@ static bool get_linux_file_offset(const void *addr, char *out_path, size_t path_
 
   while (fgets(line, sizeof(line), maps)) {
     // Parse: 5599372f4000-559937519000 r-xp 00178000 00:1b 10003268 /path/to/binary
-    uintptr_t start_addr, end_addr;
+    uintptr_t start_addr, end_addr, file_offset;
     char perms[5];
     char path[512];
 
-    // Parse the line
-    int matched = sscanf(line, "%lx-%lx %4s %*x %*x:%*x %*d %511s", &start_addr, &end_addr, perms, path);
+    // Parse the line (now capturing file_offset from 4th column)
+    int matched = sscanf(line, "%lx-%lx %4s %lx %*x:%*x %*d %511s", &start_addr, &end_addr, perms, &file_offset, path);
 
-    if (matched >= 4) {
+    if (matched >= 5) {
       // Check if this is an executable segment (r-xp) containing our address
       if (perms[2] == 'x' && target_addr >= start_addr && target_addr < end_addr) {
         // Check if this is the main executable (not a shared library)
         if (strstr(path, "ascii-chat") != NULL && strstr(path, ".so") == NULL) {
-          // Found it! Calculate file offset
-          *out_file_offset = target_addr - start_addr;
+          // Found it! Calculate file offset: (addr - segment_base) + segment_file_offset
+          *out_file_offset = (target_addr - start_addr) + file_offset;
           SAFE_STRNCPY(out_path, path, path_size);
           found = true;
+#ifndef NDEBUG
+          log_debug("ASLR: addr=%p -> file_offset=0x%lx (segment_base=0x%lx, segment_file_offset=0x%lx, path=%s)", addr,
+                    *out_file_offset, start_addr, file_offset, path);
+#endif
           break;
         }
       }
