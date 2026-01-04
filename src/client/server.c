@@ -680,22 +680,33 @@ acip_transport_t *server_connection_get_transport(void) {
  * @ingroup client_connection
  */
 void server_connection_set_transport(acip_transport_t *transport) {
+  log_debug("server_connection_set_transport() called with transport=%p", (void *)transport);
+
   // Clean up any existing transport
   if (g_client_transport) {
     log_warn("Replacing existing transport with new fallback transport");
     acip_transport_destroy(g_client_transport);
   }
 
+  log_debug("Setting g_client_transport to %p", (void *)transport);
   g_client_transport = transport;
 
   // Mark connection as active when transport is set
   if (transport) {
+    log_debug("Transport is non-NULL, extracting socket...");
+    // Extract socket from transport for backward compatibility with socket-based checks
+    g_sockfd = acip_transport_get_socket(transport);
+    log_debug("Socket extracted: %d", (int)g_sockfd);
+
     atomic_store(&g_connection_active, true);
-    log_debug("Server connection transport set and marked active");
+    log_debug("Server connection transport set and marked active (sockfd=%d)", (int)g_sockfd);
   } else {
+    g_sockfd = INVALID_SOCKET_VALUE;
     atomic_store(&g_connection_active, false);
     log_debug("Server connection transport cleared and marked inactive");
   }
+
+  log_debug("server_connection_set_transport() completed");
 }
 
 /**
@@ -721,6 +732,26 @@ uint32_t server_connection_get_client_id() {
  */
 const char *server_connection_get_ip() {
   return g_server_ip;
+}
+
+/**
+ * @brief Set the server IP address
+ *
+ * Updates the global server IP address. Used by new connection code paths
+ * that don't use the legacy server_connect() function.
+ *
+ * @param ip Server IP address string
+ *
+ * @ingroup client_connection
+ */
+void server_connection_set_ip(const char *ip) {
+  if (ip) {
+    SAFE_STRNCPY(g_server_ip, ip, sizeof(g_server_ip));
+    log_debug("Server IP set to: %s", g_server_ip);
+  } else {
+    g_server_ip[0] = '\0';
+    log_debug("Server IP cleared");
+  }
 }
 
 /**

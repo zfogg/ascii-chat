@@ -108,6 +108,14 @@ uint32_t server_connection_get_client_id();
 const char *server_connection_get_ip();
 
 /**
+ * @brief Set the server IP address
+ * @param ip Server IP address string
+ *
+ * @ingroup client_connection
+ */
+void server_connection_set_ip(const char *ip);
+
+/**
  * @brief Close server connection gracefully
  *
  * @ingroup client_connection

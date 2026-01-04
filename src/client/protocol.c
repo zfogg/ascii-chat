@@ -1052,6 +1052,29 @@ int protocol_start_connection() {
   // Reset display state for new connection
   display_reset_for_new_connection();
 
+  // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
+  // Server expects this as the first packet after crypto handshake
+  log_info("Sending client capabilities to server...");
+  if (threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height)) < 0) {
+    log_error("Failed to send client capabilities to server");
+    return -1;
+  }
+  log_info("Client capabilities sent successfully");
+
+  // Send STREAM_START packet with combined stream types BEFORE starting worker threads
+  // This tells the server what streams to expect before any data arrives
+  uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
+  if (GET_OPTION(audio_enabled)) {
+    stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
+  }
+  log_info("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
+           (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
+  if (threaded_send_stream_start_packet(stream_types) < 0) {
+    log_error("Failed to send STREAM_START packet");
+    return -1;
+  }
+  log_info("STREAM_START packet sent successfully");
+
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
