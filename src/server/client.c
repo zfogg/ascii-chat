@@ -1382,8 +1382,12 @@ void *client_send_thread_func(void *arg) {
   // High-frequency audio loop - separate from video frame loop
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
+  int loop_iteration_count = 0;
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
+    loop_iteration_count++;
+    log_debug_every(LOG_RATE_FAST, "Send thread loop iteration %d for client %u", loop_iteration_count,
+                    client->client_id);
     bool sent_something = false;
 
     // PRIORITY: Drain all queued audio packets before video
@@ -1570,6 +1574,7 @@ void *client_send_thread_func(void *arg) {
     // Get latest frame from double buffer (lock-free operation)
     // This marks the frame as consumed even if we don't send it yet
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
+    log_debug("Send thread: video_frame_get_latest returned %p for client %u", (void *)frame, client->client_id);
 
     // Check if get_latest failed (buffer might have been destroyed)
     if (!frame) {
@@ -1583,6 +1588,10 @@ void *client_send_thread_func(void *arg) {
     struct timespec now_ts, frame_start, frame_end, step1, step2, step3, step4, step5;
     (void)clock_gettime(CLOCK_MONOTONIC, &now_ts);
     uint64_t current_time = (uint64_t)now_ts.tv_sec * 1000000 + (uint64_t)now_ts.tv_nsec / 1000;
+    uint64_t time_since_last_send = current_time - last_video_send_time;
+    log_debug("Send thread timing check: time_since_last=%lu us, interval=%lu us, should_send=%d", time_since_last_send,
+              video_send_interval_us, (time_since_last_send >= video_send_interval_us));
+
     if (current_time - last_video_send_time >= video_send_interval_us) {
       (void)clock_gettime(CLOCK_MONOTONIC, &frame_start);
 
@@ -1603,15 +1612,20 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
+      log_debug("Send thread: frame validation - frame=%p, frame->data=%p, frame->size=%zu", (void *)frame,
+                (void *)frame->data, frame->size);
+
       if (!frame->data) {
         SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame data: frame=%p, data=%p", client->client_id, frame,
                   frame->data);
+        log_debug("Send thread: Skipping frame send due to NULL frame->data");
         continue;
       }
 
       if (frame->data && frame->size == 0) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
+        log_debug("Send thread: Skipping frame send due to frame->size == 0");
         log_warn_every(LOG_RATE_FAST, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
         platform_sleep_usec(1000); // 1ms sleep
         continue;
@@ -1628,6 +1642,8 @@ void *client_send_thread_func(void *arg) {
 
       // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
       // ACIP transport handles header building, CRC32, encryption internally
+      log_debug("Send thread: About to send frame to client %u (width=%u, height=%u, data=%p)", client->client_id,
+                width, height, (void *)frame_data);
       mutex_lock(&client->send_mutex);
       asciichat_error_t send_result = acip_send_ascii_frame(client->transport, frame_data, width, height);
       mutex_unlock(&client->send_mutex);
@@ -1638,9 +1654,11 @@ void *client_send_thread_func(void *arg) {
           SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u: %s", client->client_id,
                     asciichat_error_string(send_result));
         }
+        log_debug("Send thread: Frame send FAILED for client %u: result=%d", client->client_id, send_result);
         break;
       }
 
+      log_debug("Send thread: Frame sent SUCCESSFULLY to client %u", client->client_id);
       sent_something = true;
       last_video_send_time = current_time;
 

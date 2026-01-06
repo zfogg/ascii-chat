@@ -456,6 +456,13 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   acds_session_join_params_t join_params = {0};
   join_params.session_string = ctx->session_ctx.session_string;
 
+  // Add password if configured (required for password-protected sessions)
+  const options_t *opts = options_get();
+  if (opts && opts->password[0] != '\0') {
+    join_params.has_password = true;
+    SAFE_STRNCPY(join_params.password, opts->password, sizeof(join_params.password));
+  }
+
   acds_session_join_result_t join_result = {0};
   result = acds_session_join(&acds_client, &join_params, &join_result);
   if (result != ASCIICHAT_OK || !join_result.success) {
@@ -527,7 +534,19 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Step 4-7: Exchange SDP/ICE and wait for connection
+  // Step 4: Initiate WebRTC connection (send SDP offer)
+  // ─────────────────────────────────────────────────────────────
+
+  // Initiate peer connection as JOINER - this creates peer, data channel, and sends SDP offer
+  result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
+  if (result != ASCIICHAT_OK) {
+    log_warn("Failed to initiate WebRTC connection: %d", result);
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK, "WebRTC connection initiation failed");
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Step 5-7: Exchange SDP/ICE and wait for connection
   // ─────────────────────────────────────────────────────────────
 
   connection_state_transition(ctx, CONN_STATE_WEBRTC_STUN_SIGNALING);
@@ -665,6 +684,13 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   acds_session_join_params_t join_params = {0};
   join_params.session_string = ctx->session_ctx.session_string;
 
+  // Add password if configured (required for password-protected sessions)
+  const options_t *opts_turn = options_get();
+  if (opts_turn && opts_turn->password[0] != '\0') {
+    join_params.has_password = true;
+    SAFE_STRNCPY(join_params.password, opts_turn->password, sizeof(join_params.password));
+  }
+
   acds_session_join_result_t join_result = {0};
   result = acds_session_join(&acds_client, &join_params, &join_result);
   if (result != ASCIICHAT_OK || !join_result.success) {
@@ -749,6 +775,14 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
     log_warn("Failed to create WebRTC peer manager for TURN: %d", result);
     acds_client_disconnect(&acds_client);
     return SET_ERRNO(ERROR_NETWORK, "WebRTC peer manager creation failed");
+  }
+
+  // Initiate WebRTC connection with TURN
+  result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
+  if (result != ASCIICHAT_OK) {
+    log_warn("Failed to initiate WebRTC+TURN connection: %d", result);
+    acds_client_disconnect(&acds_client);
+    return SET_ERRNO(ERROR_NETWORK, "WebRTC+TURN connection initiation failed");
   }
 
   // ─────────────────────────────────────────────────────────────

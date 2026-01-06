@@ -99,21 +99,42 @@ if (-not $env:VCPKG_ROOT) {
 }
 
 $VcpkgRoot = $env:VCPKG_ROOT
-$VcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
+
+# Detect platform and set vcpkg executable name
+# PowerShell Core provides $IsWindows, $IsLinux, $IsMacOS automatically
+if ($IsWindows) {
+    $VcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
+    $BootstrapCmd = ".\bootstrap-vcpkg.bat"
+    $Platform = "windows"
+} elseif ($IsMacOS) {
+    $VcpkgExe = Join-Path $VcpkgRoot "vcpkg"
+    $BootstrapCmd = "./bootstrap-vcpkg.sh"
+    $Platform = "osx"
+} elseif ($IsLinux) {
+    $VcpkgExe = Join-Path $VcpkgRoot "vcpkg"
+    $BootstrapCmd = "./bootstrap-vcpkg.sh"
+    $Platform = "linux"
+} else {
+    Write-Host "ERROR: Unknown platform" -ForegroundColor Red
+    exit 1
+}
 
 if (-not (Test-Path $VcpkgExe)) {
-    Write-Host "ERROR: vcpkg.exe not found at: $VcpkgExe" -ForegroundColor Red
+    Write-Host "ERROR: vcpkg not found at: $VcpkgExe" -ForegroundColor Red
     Write-Host "Please bootstrap vcpkg first by running:" -ForegroundColor Yellow
-    Write-Host "  cd `"$VcpkgRoot`" && .\bootstrap-vcpkg.bat" -ForegroundColor Yellow
+    Write-Host "  cd `"$VcpkgRoot`" && $BootstrapCmd" -ForegroundColor Yellow
     exit 1
 }
 
 Write-Host "Found vcpkg at: $VcpkgRoot" -ForegroundColor Green
+Write-Host "Detected platform: $Platform" -ForegroundColor Green
 
-# Determine triplet based on config and architecture
+# Determine triplet based on platform, config, and architecture
 if (-not $Triplet) {
-    $BaseTriplet = "$Architecture-windows"
-    if ($Config -eq "Release") {
+    $BaseTriplet = "$Architecture-$Platform"
+    # Only Windows uses -static suffix for Release builds
+    # Linux/macOS use regular triplets (vcpkg defaults to static linking on Unix)
+    if ($IsWindows -and $Config -eq "Release") {
         $Triplet = "$BaseTriplet-static"
     } else {
         $Triplet = $BaseTriplet
@@ -125,23 +146,28 @@ Write-Host "Using triplet: $Triplet" -ForegroundColor Green
 Write-Host "Build configuration: $Config" -ForegroundColor Green
 
 # Show what type of libraries will be installed
-if ($Triplet -like "*-static") {
-    Write-Host "Installing STATIC libraries (no DLLs required)" -ForegroundColor Cyan
+if ($IsWindows) {
+    if ($Triplet -like "*-static") {
+        Write-Host "Installing STATIC libraries (no DLLs required)" -ForegroundColor Cyan
+    } else {
+        Write-Host "Installing DYNAMIC libraries (DLLs required)" -ForegroundColor Cyan
+    }
 } else {
-    Write-Host "Installing DYNAMIC libraries (DLLs required)" -ForegroundColor Cyan
+    Write-Host "Installing packages from vcpkg" -ForegroundColor Cyan
 }
 
 # Define required packages
 # These match what CMakeLists.txt looks for
 # Note: For Release builds with x64-windows-static triplet, these will be static libraries
 $RequiredPackages = @(
-    "mimalloc",    # Memory allocator (high-performance replacement for malloc)
-    "zstd",        # Compression library for frame data
-    "libsodium",   # Cryptography library for encryption
-    "portaudio",   # Audio I/O library for capture/playback
-    "opus",        # Audio codec library for real-time compression
-    "sqlite3",     # Database library for discovery service
-    "liburcu"      # Userspace RCU for lock-free concurrent data structures
+    "mimalloc",        # Memory allocator (high-performance replacement for malloc)
+    "zstd",            # Compression library for frame data
+    "libsodium",       # Cryptography library for encryption
+    "portaudio",       # Audio I/O library for capture/playback
+    "opus",            # Audio codec library for real-time compression
+    "sqlite3",         # Database library for discovery service
+    "liburcu",         # Userspace RCU for lock-free concurrent data structures
+    "libdatachannel"   # WebRTC DataChannels for P2P connections
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan

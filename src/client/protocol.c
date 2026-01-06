@@ -397,9 +397,19 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Handle snapshot mode timing
   bool take_snapshot = false;
   if (GET_OPTION(snapshot_mode)) {
-    static time_t first_frame_time = 0;
-    if (first_frame_time == 0) {
-      first_frame_time = time(NULL);
+    // Use high-resolution monotonic clock instead of time(NULL) to avoid 1-second precision issues
+    static struct timespec first_frame_time = {0};
+    static bool first_frame_recorded = false;
+    static int snapshot_frame_count = 0;
+
+    snapshot_frame_count++;
+    // DEBUG: Log every frame received (even when terminal output is disabled)
+    log_debug("Snapshot frame %d received", snapshot_frame_count);
+
+    if (!first_frame_recorded) {
+      (void)clock_gettime(CLOCK_MONOTONIC, &first_frame_time);
+      first_frame_recorded = true;
+
       // If delay is 0, take snapshot immediately on first frame
       if (GET_OPTION(snapshot_delay) == 0) {
         log_info("Snapshot captured immediately (delay=0)!");
@@ -410,9 +420,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
                  GET_OPTION(snapshot_delay));
       }
     } else {
-      time_t snapshot_time = time(NULL);
-      double elapsed = difftime(snapshot_time, first_frame_time);
-      if (elapsed >= (double)GET_OPTION(snapshot_delay)) {
+      struct timespec current_time;
+      (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+      // Calculate elapsed time in seconds with microsecond precision
+      double elapsed = (double)(current_time.tv_sec - first_frame_time.tv_sec) +
+                       (double)(current_time.tv_nsec - first_frame_time.tv_nsec) / 1000000000.0;
+
+      if (elapsed >= GET_OPTION(snapshot_delay)) {
         char duration_str[32];
         format_duration_s(elapsed, duration_str, sizeof(duration_str));
         log_info("Snapshot captured after %s!", duration_str);

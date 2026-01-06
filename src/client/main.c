@@ -389,6 +389,16 @@ static int initialize_client_systems(bool shared_init_completed) {
     (void)atexit(buffer_pool_cleanup_global);
   }
 
+  // Initialize WebRTC library (required for P2P DataChannel connections)
+  // Must be called regardless of shared_init_completed status
+  asciichat_error_t webrtc_result = webrtc_init();
+  if (webrtc_result != ASCIICHAT_OK) {
+    log_fatal("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_result));
+    return ERROR_NETWORK;
+  }
+  (void)atexit(webrtc_cleanup);
+  log_debug("WebRTC library initialized successfully");
+
   // Initialize client worker thread pool (always needed, even if shared init done)
   if (!g_client_worker_pool) {
     g_client_worker_pool = thread_pool_create("client_workers");
