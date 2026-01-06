@@ -14,12 +14,116 @@
 #   - C API with C++ internals
 #
 # Build Strategy:
-#   1. CMake fetches libdatachannel repository at configure time
-#   2. Initialize submodules (libsrtp, libjuice, usrsctp)
-#   3. Build completely in deps cache (NOT in build/)
-#   4. Import pre-built libraries as INTERFACE library
-#   5. This prevents cluttering the main project with submodule targets
+#   1. Try vcpkg first if USE_VCPKG=ON
+#   2. If not found in vcpkg, fetch from repository at configure time
+#   3. Initialize submodules (libsrtp, libjuice, usrsctp)
+#   4. Build completely in deps cache (NOT in build/)
+#   5. Import pre-built libraries as INTERFACE library
+#   6. This prevents cluttering the main project with submodule targets
 # =============================================================================
+
+# =============================================================================
+# Try vcpkg first if enabled
+# =============================================================================
+set(LIBDATACHANNEL_FOUND FALSE)
+
+if(USE_VCPKG AND VCPKG_ROOT)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking vcpkg...")
+
+    find_library(LIBDATACHANNEL_LIBRARY_RELEASE
+        NAMES datachannel libdatachannel
+        PATHS "${VCPKG_LIB_PATH}"
+        NO_DEFAULT_PATH
+    )
+    find_library(LIBDATACHANNEL_LIBRARY_DEBUG
+        NAMES datachannel libdatachannel
+        PATHS "${VCPKG_DEBUG_LIB_PATH}"
+        NO_DEFAULT_PATH
+    )
+    find_path(LIBDATACHANNEL_INCLUDE_DIR
+        NAMES rtc/rtc.h rtc/rtc.hpp
+        PATHS "${VCPKG_INCLUDE_PATH}"
+        NO_DEFAULT_PATH
+    )
+
+    if(LIBDATACHANNEL_LIBRARY_RELEASE OR LIBDATACHANNEL_LIBRARY_DEBUG)
+        set(LIBDATACHANNEL_FOUND TRUE)
+
+        # Create INTERFACE library for vcpkg-provided libdatachannel
+        add_library(libdatachannel INTERFACE)
+
+        # Find libdatachannel dependencies from vcpkg
+        find_library(LIBJUICE_LIBRARY_RELEASE NAMES juice libjuice PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+        find_library(LIBJUICE_LIBRARY_DEBUG NAMES juice libjuice PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+        find_library(LIBUSRSCTP_LIBRARY_RELEASE NAMES usrsctp libusrsctp PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+        find_library(LIBUSRSCTP_LIBRARY_DEBUG NAMES usrsctp libusrsctp PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+
+        # Link libdatachannel and its dependencies
+        if(LIBDATACHANNEL_LIBRARY_RELEASE AND LIBDATACHANNEL_LIBRARY_DEBUG)
+            target_link_libraries(libdatachannel INTERFACE
+                optimized ${LIBDATACHANNEL_LIBRARY_RELEASE}
+                debug ${LIBDATACHANNEL_LIBRARY_DEBUG}
+            )
+        elseif(LIBDATACHANNEL_LIBRARY_RELEASE)
+            target_link_libraries(libdatachannel INTERFACE ${LIBDATACHANNEL_LIBRARY_RELEASE})
+        else()
+            target_link_libraries(libdatachannel INTERFACE ${LIBDATACHANNEL_LIBRARY_DEBUG})
+        endif()
+
+        # Link dependencies
+        if(LIBJUICE_LIBRARY_RELEASE AND LIBJUICE_LIBRARY_DEBUG)
+            target_link_libraries(libdatachannel INTERFACE optimized ${LIBJUICE_LIBRARY_RELEASE} debug ${LIBJUICE_LIBRARY_DEBUG})
+        elseif(LIBJUICE_LIBRARY_RELEASE)
+            target_link_libraries(libdatachannel INTERFACE ${LIBJUICE_LIBRARY_RELEASE})
+        elseif(LIBJUICE_LIBRARY_DEBUG)
+            target_link_libraries(libdatachannel INTERFACE ${LIBJUICE_LIBRARY_DEBUG})
+        endif()
+
+        if(LIBUSRSCTP_LIBRARY_RELEASE AND LIBUSRSCTP_LIBRARY_DEBUG)
+            target_link_libraries(libdatachannel INTERFACE optimized ${LIBUSRSCTP_LIBRARY_RELEASE} debug ${LIBUSRSCTP_LIBRARY_DEBUG})
+        elseif(LIBUSRSCTP_LIBRARY_RELEASE)
+            target_link_libraries(libdatachannel INTERFACE ${LIBUSRSCTP_LIBRARY_RELEASE})
+        elseif(LIBUSRSCTP_LIBRARY_DEBUG)
+            target_link_libraries(libdatachannel INTERFACE ${LIBUSRSCTP_LIBRARY_DEBUG})
+        endif()
+
+        # Platform-specific system libraries
+        if(APPLE)
+            target_link_libraries(libdatachannel INTERFACE
+                "-framework Foundation"
+                "-framework Security"
+                c++
+            )
+        elseif(WIN32)
+            target_link_libraries(libdatachannel INTERFACE
+                ws2_32
+                iphlpapi
+                bcrypt
+            )
+        else()
+            # Linux: link with pthread and OpenSSL
+            find_package(OpenSSL REQUIRED)
+            target_link_libraries(libdatachannel INTERFACE
+                OpenSSL::SSL
+                OpenSSL::Crypto
+                $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
+                pthread
+            )
+        endif()
+
+        target_include_directories(libdatachannel INTERFACE ${LIBDATACHANNEL_INCLUDE_DIR})
+
+        message(STATUS "${BoldGreen}libdatachannel${ColorReset} found via vcpkg: ${LIBDATACHANNEL_LIBRARY_RELEASE}")
+    else()
+        message(STATUS "${BoldYellow}libdatachannel${ColorReset} not found in vcpkg, will build from source")
+    endif()
+endif()
+
+# =============================================================================
+# Build from source if not found in vcpkg
+# =============================================================================
+if(NOT LIBDATACHANNEL_FOUND)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Building from source...")
 
 include(FetchContent)
 
@@ -201,59 +305,61 @@ if(NOT libdatachannel_POPULATED)
 
 endif()
 
-# Import pre-built library as INTERFACE library
-set(LIBDATACHANNEL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
+    # Import pre-built library as INTERFACE library (source-built version)
+    set(LIBDATACHANNEL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
 
-# libdatachannel builds as libdatachannel.a when BUILD_SHARED_LIBS=OFF
-set(LIBDATACHANNEL_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    # libdatachannel builds as libdatachannel.a when BUILD_SHARED_LIBS=OFF
+    set(LIBDATACHANNEL_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
-# libdatachannel dependencies (built as part of libdatachannel)
-set(LIBJUICE_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}juice${CMAKE_STATIC_LIBRARY_SUFFIX}")
-set(LIBUSRSCTP_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}usrsctp${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    # libdatachannel dependencies (built as part of libdatachannel)
+    set(LIBJUICE_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}juice${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(LIBUSRSCTP_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}usrsctp${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
-add_library(libdatachannel INTERFACE)
+    add_library(libdatachannel INTERFACE)
 
-if(APPLE)
-    # macOS: link with necessary frameworks
-    target_link_libraries(libdatachannel INTERFACE
-        "${LIBDATACHANNEL_STATIC_LIB}"
-        "${LIBJUICE_STATIC_LIB}"
-        "${LIBUSRSCTP_STATIC_LIB}"
-        "-framework Foundation"
-        "-framework Security"
-        c++
+    if(APPLE)
+        # macOS: link with necessary frameworks
+        target_link_libraries(libdatachannel INTERFACE
+            "${LIBDATACHANNEL_STATIC_LIB}"
+            "${LIBJUICE_STATIC_LIB}"
+            "${LIBUSRSCTP_STATIC_LIB}"
+            "-framework Foundation"
+            "-framework Security"
+            c++
+        )
+    elseif(WIN32)
+        # Windows: link with Winsock and other system libraries
+        target_link_libraries(libdatachannel INTERFACE
+            "${LIBDATACHANNEL_STATIC_LIB}"
+            "${LIBJUICE_STATIC_LIB}"
+            "${LIBUSRSCTP_STATIC_LIB}"
+            ws2_32
+            iphlpapi
+            bcrypt
+        )
+    else()
+        # Linux/Unix: link with pthread and OpenSSL
+        find_package(OpenSSL REQUIRED)
+        target_link_libraries(libdatachannel INTERFACE
+            "${LIBDATACHANNEL_STATIC_LIB}"
+            "${LIBJUICE_STATIC_LIB}"
+            "${LIBUSRSCTP_STATIC_LIB}"
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
+            pthread
+        )
+    endif()
+
+    # Add include path for libdatachannel headers
+    target_include_directories(libdatachannel
+        INTERFACE
+        "${libdatachannel_SOURCE_DIR}/include"
     )
-elseif(WIN32)
-    # Windows: link with Winsock and other system libraries
-    target_link_libraries(libdatachannel INTERFACE
-        "${LIBDATACHANNEL_STATIC_LIB}"
-        "${LIBJUICE_STATIC_LIB}"
-        "${LIBUSRSCTP_STATIC_LIB}"
-        ws2_32
-        iphlpapi
-        bcrypt
-    )
-else()
-    # Linux/Unix: link with pthread and OpenSSL
-    find_package(OpenSSL REQUIRED)
-    target_link_libraries(libdatachannel INTERFACE
-        "${LIBDATACHANNEL_STATIC_LIB}"
-        "${LIBJUICE_STATIC_LIB}"
-        "${LIBUSRSCTP_STATIC_LIB}"
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
-        pthread
-    )
-endif()
 
-# Add include path for libdatachannel headers
-target_include_directories(libdatachannel
-    INTERFACE
-    "${libdatachannel_SOURCE_DIR}/include"
-)
+    message(STATUS "  ${BoldGreen}✓ libdatachannel configured successfully${ColorReset}")
+    message(STATUS "  Source dir: ${libdatachannel_SOURCE_DIR}")
+    message(STATUS "  Library: ${LIBDATACHANNEL_STATIC_LIB}")
+endif()  # NOT LIBDATACHANNEL_FOUND
 
-message(STATUS "  ${BoldGreen}✓ libdatachannel configured successfully${ColorReset}")
-message(STATUS "  Source dir: ${libdatachannel_SOURCE_DIR}")
-message(STATUS "  Library: ${LIBDATACHANNEL_STATIC_LIB}")
 message(STATUS "${BoldGreen}libdatachannel WebRTC ready${ColorReset}")

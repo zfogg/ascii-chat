@@ -1587,6 +1587,33 @@ int server_main(void) {
         log_plain("🔗 Share this with others to join:");
         log_plain("   ascii-chat %s", session_string);
 
+        // Server must join its own session so ACDS can route signaling messages
+        log_debug("Server joining session as first participant for WebRTC signaling...");
+        acds_session_join_params_t join_params = {0};
+        join_params.session_string = session_string;
+
+        // Use same identity key as session creation
+        memcpy(join_params.identity_pubkey, create_params.identity_pubkey, 32);
+
+        // Include password if session is password-protected
+        if (has_password) {
+          join_params.has_password = true;
+          SAFE_STRNCPY(join_params.password, password, sizeof(join_params.password));
+        }
+
+        acds_session_join_result_t join_result = {0};
+        asciichat_error_t join_err = acds_session_join(g_acds_client, &join_params, &join_result);
+        if (join_err != ASCIICHAT_OK || !join_result.success) {
+          log_error("Failed to join own session: %s (error: %s)", asciichat_error_string(join_err),
+                    join_result.error_message[0] ? join_result.error_message : "unknown");
+          // Continue anyway - this is not fatal for Direct TCP sessions
+        } else {
+          log_info("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
+                   join_result.participant_id[1]);
+          // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
+          memcpy(create_result.session_id, join_result.session_id, 16);
+        }
+
         // Keep ACDS connection alive for WebRTC signaling relay
         log_debug("Server staying connected to ACDS for signaling relay");
 

@@ -59,6 +59,41 @@ if(USE_MUSL)
     # in configure_sanitizers() - no need to change build type
 endif()
 
+# =============================================================================
+# vcpkg Package Manager
+# =============================================================================
+# vcpkg provides consistent cross-platform package management
+#
+# Default behavior by platform:
+#   Windows: ON (vcpkg is the standard package manager)
+#   Unix/macOS: OFF (use pkg-config/Homebrew by default)
+#   musl: OFF (dependencies built from source)
+#
+# When enabled, vcpkg is tried first for all dependencies before falling back
+# to pkg-config (Linux/macOS) or Homebrew (macOS). Dependencies in deps/
+# (like bearssl) are always built from source regardless of this setting.
+#
+if(USE_MUSL)
+    # musl builds always use source dependencies
+    option(USE_VCPKG "Use vcpkg for dependency management (disabled for musl)" OFF)
+elseif(WIN32)
+    # Windows defaults to vcpkg
+    option(USE_VCPKG "Use vcpkg for dependency management" ON)
+else()
+    # Unix/macOS defaults to pkg-config/Homebrew
+    option(USE_VCPKG "Use vcpkg for dependency management" OFF)
+endif()
+
+if(USE_VCPKG)
+    message(STATUS "${BoldGreen}vcpkg${ColorReset} package manager enabled")
+else()
+    if(WIN32)
+        message(STATUS "${BoldYellow}vcpkg${ColorReset} disabled - dependency resolution may fail on Windows")
+    else()
+        message(STATUS "${BoldBlue}vcpkg${ColorReset} disabled - using pkg-config/Homebrew for dependencies")
+    endif()
+endif()
+
 # Release tuning controls
 set(ASCIICHAT_RELEASE_CPU_TUNE "portable" CACHE STRING "CPU tuning profile for Release builds (portable, native, x86-64-v2, x86-64-v3, custom)")
 set_property(CACHE ASCIICHAT_RELEASE_CPU_TUNE PROPERTY STRINGS "portable;x86-64-v2;x86-64-v3;native;custom")

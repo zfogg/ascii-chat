@@ -398,8 +398,11 @@ void *client_video_render_thread(void *arg) {
   fps_t video_fps_tracker = {0};
   fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
 
+  log_info("Video render loop STARTING for client %u", thread_client_id);
+
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+    log_debug_every(LOG_RATE_FAST, "Video render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -475,22 +478,28 @@ void *client_video_render_thread(void *arg) {
 
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
+    log_debug("Video render iteration for client %u: has_video_sources=%d", thread_client_id, has_video_sources);
 
     if (!has_video_sources) {
       // No video sources - skip frame generation but DON'T update last_render_time
       // This ensures the next iteration still maintains proper frame timing
       // DON'T continue here - let the loop update last_render_time at the bottom
       // Fall through to update last_render_time at bottom of loop
+      log_debug("Skipping frame generation for client %u (no video sources)", thread_client_id);
       goto skip_frame_generation;
     }
 
     int sources_count = 0; // Track number of video sources in this frame
 
+    log_debug("About to call create_mixed_ascii_frame_for_client for client %u", thread_client_id);
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
+    log_debug("create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
+              (void *)ascii_frame, frame_size, sources_count);
 
     // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
     if (ascii_frame && frame_size > 0) {
+      log_debug("Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
       // Send thread will compare this with last sent count to detect grid changes
       atomic_store(&client->last_rendered_grid_sources, sources_count);
