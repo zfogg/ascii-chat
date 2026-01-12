@@ -1602,6 +1602,25 @@ int platform_access(const char *path, int mode) {
   return _access(path, mode);
 }
 
+// ============================================================================
+// Stream Redirection (Windows stubs - no-op on Windows)
+// ============================================================================
+
+platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void) {
+  // Windows: No-op - return invalid handle
+  platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
+  return handle;
+}
+
+void platform_stderr_restore(platform_stderr_redirect_handle_t handle) {
+  // Windows: No-op
+  (void)handle;
+}
+
+void platform_stdio_redirect_to_null_permanent(void) {
+  // Windows: No-op
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 // Note: Uses uthash for binary PATH cache (included via system.c)
 #include "../system.c"

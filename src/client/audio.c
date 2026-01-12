@@ -713,6 +713,7 @@ int audio_client_init() {
   }
 
   // Initialize PortAudio context using library function
+  log_info("DEBUG: About to call audio_init()...");
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     // Clean up WAV writer if it was opened
@@ -722,6 +723,7 @@ int audio_client_init() {
     }
     return -1;
   }
+  log_info("DEBUG: audio_init() completed successfully");
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
@@ -746,7 +748,9 @@ int audio_client_init() {
   // We don't tune this; let the system adapt to its actual conditions
   pipeline_config.jitter_margin_ms = 100;
 
+  log_info("DEBUG: About to create audio pipeline...");
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
+  log_info("DEBUG: client_audio_pipeline_create() returned");
   if (!g_audio_pipeline) {
     log_error("Failed to create audio pipeline");
     audio_destroy(&g_audio_context);

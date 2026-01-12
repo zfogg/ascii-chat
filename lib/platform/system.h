@@ -275,6 +275,72 @@ const char *platform_ttyname(int fd);
  */
 int platform_fsync(int fd);
 
+// ============================================================================
+// Stream Redirection
+// ============================================================================
+
+/**
+ * @brief Handle for temporary stderr redirection
+ *
+ * Opaque handle returned by platform_stderr_redirect_to_null() that can be used
+ * to restore stderr to its original destination.
+ *
+ * @ingroup platform
+ */
+typedef struct {
+  int original_fd; /**< Original stderr file descriptor (-1 if not redirected) */
+  int devnull_fd;  /**< /dev/null file descriptor (-1 if not opened) */
+} platform_stderr_redirect_handle_t;
+
+/**
+ * @brief Redirect stderr to /dev/null temporarily
+ *
+ * This is useful for suppressing noisy warnings from third-party libraries
+ * (e.g., PortAudio backend probes) that are harmless but clutter output.
+ *
+ * @return Handle for restoring stderr, or {-1, -1} on failure
+ *
+ * @note On Windows, this function returns {-1, -1} and has no effect
+ * @note You must call platform_stderr_restore() with the returned handle to restore stderr
+ *
+ * Example:
+ * @code
+ * platform_stderr_redirect_handle_t handle = platform_stderr_redirect_to_null();
+ * noisy_third_party_function(); // stderr output suppressed
+ * platform_stderr_restore(handle);        // stderr restored
+ * @endcode
+ *
+ * @ingroup platform
+ */
+platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void);
+
+/**
+ * @brief Restore stderr from a redirect handle
+ *
+ * Restores stderr to its original destination and closes the /dev/null file descriptor.
+ *
+ * @param handle Handle returned by platform_stderr_redirect_to_null()
+ *
+ * @note Safe to call with invalid handle (e.g., {-1, -1}) - will do nothing
+ * @note After calling this, the handle is invalidated and should not be reused
+ *
+ * @ingroup platform
+ */
+void platform_stderr_restore(platform_stderr_redirect_handle_t handle);
+
+/**
+ * @brief Permanently redirect stderr and stdout to /dev/null
+ *
+ * This is used before exit() to prevent cleanup handlers from writing to the console
+ * after we've already displayed final messages to the user.
+ *
+ * @note On Windows, this function has no effect
+ * @note This is a one-way operation - streams cannot be restored
+ *
+ * @ingroup platform
+ */
+void platform_stdio_redirect_to_null_permanent(void);
+
 /**
  * @brief Get a backtrace of the current call stack
  * @param buffer Array of pointers to store return addresses

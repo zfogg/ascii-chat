@@ -724,8 +724,14 @@ else()
         # Non-musl builds use normal dependencies
         # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
         get_core_deps_libraries(CORE_LIBS)
+
+        # Check for JACK (required if PortAudio was built with JACK support)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(JACK jack)
+
         target_link_libraries(ascii-chat-shared PRIVATE
             ${CORE_LIBS} m sqlite3 liburcu
+            ${JACK_LIBRARIES}
         )
         # Link miniupnpc if available (UPnP/NAT-PMP support)
         if(MINIUPNPC_FOUND)

@@ -786,33 +786,16 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   if (g_pa_init_refcount == 0) {
     // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
     // These are harmless - PortAudio tries multiple backends until one works
-    int stderr_fd_backup = -1;
-    int devnull_fd = -1;
-#ifndef _WIN32
-    stderr_fd_backup = dup(STDERR_FILENO);
-    devnull_fd = platform_open("/dev/null", O_WRONLY, 0);
-    if (stderr_fd_backup >= 0 && devnull_fd >= 0) {
-      dup2(devnull_fd, STDERR_FILENO);
-    }
-#endif
+    platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
     PaError err = Pa_Initialize();
 
-    // Restore stderr IMMEDIATELY so real errors are visible
-#ifndef _WIN32
-    if (stderr_fd_backup >= 0) {
-      dup2(stderr_fd_backup, STDERR_FILENO);
-      close(stderr_fd_backup);
-    }
-    if (devnull_fd >= 0) {
-      close(devnull_fd);
-    }
-#endif
+    // Restore stderr before checking errors
+    platform_stderr_restore(stderr_handle);
 
     if (err != paNoError) {
       static_mutex_unlock(&g_pa_refcount_mutex);
       mutex_destroy(&ctx->state_mutex);
-      // stderr is restored, so this error will be visible
       return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
     }
 
@@ -1198,28 +1181,12 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   if (!pa_was_initialized) {
     // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
     // These are harmless - PortAudio tries multiple backends until one works
-    int stderr_fd_backup = -1;
-    int devnull_fd = -1;
-#ifndef _WIN32
-    stderr_fd_backup = dup(STDERR_FILENO);
-    devnull_fd = platform_open("/dev/null", O_WRONLY, 0);
-    if (stderr_fd_backup >= 0 && devnull_fd >= 0) {
-      dup2(devnull_fd, STDERR_FILENO);
-    }
-#endif
+    platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
     PaError err = Pa_Initialize();
 
-    // Restore stderr
-#ifndef _WIN32
-    if (stderr_fd_backup >= 0) {
-      dup2(stderr_fd_backup, STDERR_FILENO);
-      close(stderr_fd_backup);
-    }
-    if (devnull_fd >= 0) {
-      close(devnull_fd);
-    }
-#endif
+    // Restore stderr before checking errors
+    platform_stderr_restore(stderr_handle);
 
     if (err != paNoError) {
       static_mutex_unlock(&g_pa_refcount_mutex);

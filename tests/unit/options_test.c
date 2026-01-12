@@ -18,6 +18,7 @@
 #include "options/mirror.h"
 #include "tests/common.h"
 #include "platform/terminal.h"
+#include "platform/system.h"
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels
@@ -95,12 +96,7 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   pid_t pid = fork();
   if (pid == 0) {
     // Child process - redirect all output to /dev/null
-    int devnull = open("/dev/null", O_WRONLY);
-    if (devnull >= 0) {
-      dup2(devnull, STDOUT_FILENO);
-      dup2(devnull, STDERR_FILENO);
-      close(devnull);
-    }
+    platform_stdio_redirect_to_null_permanent();
 
     // Also suppress logging
     log_set_level(LOG_FATAL);

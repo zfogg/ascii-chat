@@ -1062,6 +1062,61 @@ int platform_access(const char *path, int mode) {
   return access(path, posix_mode);
 }
 
+// ============================================================================
+// Stream Redirection
+// ============================================================================
+
+platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void) {
+  platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
+
+  // Save current stderr file descriptor
+  handle.original_fd = dup(STDERR_FILENO);
+  if (handle.original_fd < 0) {
+    return handle; // Failed to dup stderr
+  }
+
+  // Open /dev/null
+  handle.devnull_fd = platform_open("/dev/null", O_WRONLY, 0);
+  if (handle.devnull_fd < 0) {
+    close(handle.original_fd);
+    handle.original_fd = -1;
+    return handle; // Failed to open /dev/null
+  }
+
+  // Redirect stderr to /dev/null
+  if (dup2(handle.devnull_fd, STDERR_FILENO) < 0) {
+    close(handle.original_fd);
+    close(handle.devnull_fd);
+    handle.original_fd = -1;
+    handle.devnull_fd = -1;
+    return handle; // Failed to redirect
+  }
+
+  return handle;
+}
+
+void platform_stderr_restore(platform_stderr_redirect_handle_t handle) {
+  // Restore original stderr
+  if (handle.original_fd >= 0) {
+    dup2(handle.original_fd, STDERR_FILENO);
+    close(handle.original_fd);
+  }
+
+  // Close /dev/null
+  if (handle.devnull_fd >= 0) {
+    close(handle.devnull_fd);
+  }
+}
+
+void platform_stdio_redirect_to_null_permanent(void) {
+  int dev_null = platform_open("/dev/null", O_WRONLY, 0);
+  if (dev_null >= 0) {
+    dup2(dev_null, STDERR_FILENO);
+    dup2(dev_null, STDOUT_FILENO);
+    close(dev_null);
+  }
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 #include "../system.c"
 

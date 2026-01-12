@@ -561,12 +561,7 @@ int client_main(void) {
 
         // Redirect stderr and stdout to /dev/null so cleanup handlers can't write to console
         // This is safe because we've already printed our final message
-        int dev_null = open("/dev/null", O_WRONLY);
-        if (dev_null >= 0) {
-          dup2(dev_null, STDERR_FILENO);
-          dup2(dev_null, STDOUT_FILENO);
-          close(dev_null);
-        }
+        platform_stdio_redirect_to_null_permanent();
 
         // Exit - cleanup handlers will try to write to /dev/null instead of console
         exit(1);
@@ -835,6 +830,12 @@ int client_main(void) {
     if (connection_ctx.active_transport) {
       server_connection_set_transport(connection_ctx.active_transport);
       log_debug("Active transport integrated into server connection layer");
+
+      // CRITICAL: Transfer ownership - NULL out context's pointers to prevent double-free
+      // server_connection_set_transport() now owns the transport, so context must not destroy it
+      connection_ctx.tcp_transport = NULL;
+      connection_ctx.webrtc_transport = NULL;
+      connection_ctx.active_transport = NULL;
     } else {
       log_error("Connection succeeded but no active transport - this should never happen");
       continue; // Retry connection
