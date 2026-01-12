@@ -38,6 +38,7 @@
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
 #include "video/palette.h"
+#include "util/time.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -258,9 +259,16 @@ int mirror_main(void) {
     return ERROR_INVALID_STATE;
   }
 
-  // Frame rate limiting
-  const long frame_interval_ms = 1000 / 60; // 60 FPS target
-  struct timespec last_frame_time = {0, 0};
+  // Adaptive sleep for frame rate limiting at 60 FPS
+  adaptive_sleep_state_t sleep_state = {0};
+  adaptive_sleep_config_t config = {
+      .baseline_sleep_ns = 16666667, // 60 FPS (16.67ms)
+      .min_speed_multiplier = 1.0,   // Constant rate (no slowdown)
+      .max_speed_multiplier = 1.0,   // Constant rate (no speedup)
+      .speedup_rate = 0.0,           // No adaptive behavior (constant FPS)
+      .slowdown_rate = 0.0           // No adaptive behavior (constant FPS)
+  };
+  adaptive_sleep_init(&sleep_state, &config);
 
   // Snapshot mode timing
   struct timespec snapshot_start_time = {0, 0};
@@ -278,17 +286,13 @@ int mirror_main(void) {
   log_set_terminal_output(false);
 
   while (!mirror_should_exit()) {
-    // Frame rate limiting
+    // Frame rate limiting using adaptive sleep system
+    // Use queue_depth=0 and target_depth=0 for constant 60 FPS display
+    adaptive_sleep_do(&sleep_state, 0, 0);
+
+    // Capture timestamp for snapshot mode timing
     struct timespec current_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-    long elapsed_ms = (current_time.tv_sec - last_frame_time.tv_sec) * 1000 +
-                      (current_time.tv_nsec - last_frame_time.tv_nsec) / 1000000;
-
-    if (elapsed_ms < frame_interval_ms) {
-      platform_sleep_usec((frame_interval_ms - elapsed_ms) * 1000);
-      continue;
-    }
 
     // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
     if (GET_OPTION(snapshot_mode) && !snapshot_done) {
@@ -339,7 +343,6 @@ int mirror_main(void) {
     }
 
     image_destroy(image);
-    last_frame_time = current_time;
 
     // FPS reporting every 5 seconds
     uint64_t fps_elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -

@@ -391,12 +391,21 @@ void *client_video_render_thread(void *arg) {
 
   int base_frame_interval_ms = 1000 / client_fps;
   log_debug("Client %u render interval: %dms (%d FPS)", thread_client_id, base_frame_interval_ms, client_fps);
-  struct timespec last_render_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
   // FPS tracking for video render thread
   fps_t video_fps_tracker = {0};
   fps_init(&video_fps_tracker, client_fps, "SERVER VIDEO");
+
+  // Adaptive sleep for frame rate limiting
+  adaptive_sleep_state_t sleep_state = {0};
+  adaptive_sleep_config_t config = {
+      .baseline_sleep_ns = (uint64_t)(1000000000 / client_fps), // Dynamic FPS (typically 16.67ms for 60 FPS)
+      .min_speed_multiplier = 1.0,                              // Constant rate (no slowdown)
+      .max_speed_multiplier = 1.0,                              // Constant rate (no speedup)
+      .speedup_rate = 0.0,                                      // No adaptive behavior (constant FPS)
+      .slowdown_rate = 0.0                                      // No adaptive behavior (constant FPS)
+  };
+  adaptive_sleep_init(&sleep_state, &config);
 
   log_info("Video render loop STARTING for client %u", thread_client_id);
 
@@ -423,34 +432,13 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    // Rate limiting with better shutdown responsiveness
+    // Frame rate limiting using adaptive sleep system
+    // Use queue_depth=0 and target_depth=0 for constant-rate renderer (no backlog management)
+    adaptive_sleep_do(&sleep_state, 0, 0);
+
+    // Capture timestamp for FPS tracking and frame timestamps
     struct timespec current_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-    // Use microseconds for precision - avoid integer division precision loss
-    int64_t elapsed_us = ((int64_t)(current_time.tv_sec - last_render_time.tv_sec) * 1000000LL) +
-                         ((int64_t)(current_time.tv_nsec - last_render_time.tv_nsec) / 1000);
-    int64_t base_frame_interval_us = (int64_t)base_frame_interval_ms * 1000;
-
-    if (elapsed_us < base_frame_interval_us) {
-      long sleep_us = (long)(base_frame_interval_us - elapsed_us);
-      // Sleep in small chunks for reasonable shutdown response (balance performance vs responsiveness)
-      const long max_sleep_chunk = 5000; // 5ms chunks for good shutdown response without destroying performance
-      while (sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
-        long chunk = sleep_us > max_sleep_chunk ? max_sleep_chunk : sleep_us;
-        platform_sleep_usec(chunk);
-        sleep_us -= chunk;
-
-        // Check all shutdown conditions after each tiny sleep
-        if (atomic_load(&g_server_should_exit))
-          break;
-
-        bool still_running = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
-        if (!still_running)
-          break;
-      }
-      // Fall through to render frame after sleeping
-    }
 
     // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
     should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
@@ -542,11 +530,9 @@ void *client_video_render_thread(void *arg) {
     }
 
   skip_frame_generation:
-    // Update last_render_time to maintain consistent frame timing
-    // CRITICAL: Use the current_time captured at the START of this iteration for rate limiting.
-    // This ensures we maintain the target frame rate based on when we STARTED processing,
-    // not when we FINISHED. This prevents timing drift from frame generation overhead.
-    last_render_time = current_time;
+    // Adaptive sleep system handles frame timing automatically
+    // No manual timestamp tracking needed - sleep state manages timing internally
+    (void)current_time; // Suppress unused variable warning
   }
 
 #ifdef DEBUG_THREADS
@@ -716,6 +702,17 @@ void *client_audio_render_thread(void *arg) {
   fps_init(&audio_fps_tracker, AUDIO_RENDER_FPS, "SERVER AUDIO");
   struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
   (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
+
+  // Adaptive sleep for audio rate limiting at 100 FPS (10ms intervals, 480 samples @ 48kHz)
+  adaptive_sleep_state_t audio_sleep_state = {0};
+  adaptive_sleep_config_t audio_config = {
+      .baseline_sleep_ns = 10000000, // 10ms = 100 FPS (480 samples @ 48kHz)
+      .min_speed_multiplier = 1.0,   // Constant rate (no slowdown)
+      .max_speed_multiplier = 1.0,   // Constant rate (no speedup)
+      .speedup_rate = 0.0,           // No adaptive behavior (constant rate)
+      .slowdown_rate = 0.0           // No adaptive behavior (constant rate)
+  };
+  adaptive_sleep_init(&audio_sleep_state, &audio_config);
 
   // Per-thread counters (NOT static - each thread instance gets its own)
   int mixer_debug_count = 0;
@@ -998,34 +995,10 @@ void *client_audio_render_thread(void *arg) {
       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
     }
 
-    // Audio mixing rate - 10ms to match 48kHz sample rate (480 samples per iteration)
-    // Use ABSOLUTE timing to prevent drift from chunked sleep overhead
-    // Previous approach slept in 1ms chunks causing ~20% timing drift (12ms instead of 10ms)
-    // which drained client buffers faster than they were filled.
-    struct timespec loop_end_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &loop_end_time);
-
-    uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
-                               ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
-
-    // Target loop time: 10ms to match the audio sample rate
-    // We read 480 samples per iteration at 48kHz: 480 / 48000 = 0.01s = 10ms
-    const uint64_t target_loop_us = 10000; // 10ms for exactly 48kHz rate
-
-    if (loop_elapsed_us >= target_loop_us) {
-      // Processing took longer than target - skip sleep but warn
-      log_warn_every(LOG_RATE_FAST,
-                     "Audio processing took %lluus (%.1fms) - exceeds target %lluus (%.1fms) for client %u",
-                     loop_elapsed_us, (float)loop_elapsed_us / 1000.0f, target_loop_us, (float)target_loop_us / 1000.0f,
-                     thread_client_id);
-    } else {
-      // Sleep for remaining time in ONE call to avoid chunked sleep overhead
-      // Check shutdown first, then do one accurate sleep
-      if (!atomic_load(&g_server_should_exit) && atomic_load(&client->audio_render_thread_running)) {
-        long remaining_sleep_us = (long)(target_loop_us - loop_elapsed_us);
-        platform_sleep_usec(remaining_sleep_us);
-      }
-    }
+    // Audio mixing rate limiting using adaptive sleep system
+    // Target: 10ms intervals (100 FPS) for 480 samples @ 48kHz
+    // Use queue_depth=0 and target_depth=0 for constant-rate audio processing
+    adaptive_sleep_do(&audio_sleep_state, 0, 0);
   }
 
 #ifdef DEBUG_THREADS
