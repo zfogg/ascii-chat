@@ -35,6 +35,7 @@ FetchContent_Declare(
     webrtc_aec3
     GIT_REPOSITORY ${WEBRTC_AEC3_REPO}
     GIT_TAG ${WEBRTC_AEC3_TAG}
+    UPDATE_DISCONNECTED TRUE  # Don't update if already populated (avoids SSH auth issues)
 )
 
 cmake_policy(SET CMP0169 OLD)

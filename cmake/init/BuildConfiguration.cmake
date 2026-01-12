@@ -19,8 +19,16 @@
 # Uses modern CMake compiler feature detection instead of manual flag checking
 # Only set C23 for GNU/Clang compilers
 if(NOT CMAKE_C_STANDARD)
-    # Only configure C23 for Clang and GCC compilers
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+    # macOS: Use C17 due to system header incompatibilities with C23
+    # macOS SDK headers (OSByteOrder.h, mach headers) contain inline functions
+    # that violate C23's stricter inline function rules
+    if(APPLE)
+        set(CMAKE_C_STANDARD 17)
+        set(CMAKE_C_STANDARD_REQUIRED ON)
+        set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions (typeof, statement expressions)
+        message(STATUS "Using ${BoldCyan}C17${ColorReset} standard for macOS (C23 incompatible with SDK headers)")
+    # Only configure C23 for Clang and GCC compilers on non-macOS platforms
+    elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         # Set C23 standard - CMake will automatically handle fallback to C2X if needed
         # CMAKE_C_STANDARD_REQUIRED OFF allows CMake to gracefully fall back
         set(CMAKE_C_STANDARD 23)
