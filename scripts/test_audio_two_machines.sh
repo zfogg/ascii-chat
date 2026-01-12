@@ -29,7 +29,7 @@ STASHED_REMOTE=0
 
 PORT=27228
 HOST_ONE="workbook-pro"
-HOST_ONE_IP="192.168.1.190"  # Local network IP (more reliable than Tailscale)
+HOST_ONE_IP="workbook-pro"  # Use hostname for SSH agent forwarding
 HOST_TWO="manjaro-twopal"
 HOST_TWO_IP="100.89.125.127"  # Tailscale IP for HOST_TWO (local IP not needed)
 DURATION=30
