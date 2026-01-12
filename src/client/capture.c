@@ -288,7 +288,6 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
  */
 static void *webcam_capture_thread_func(void *arg) {
   (void)arg;
-  struct timespec last_capture_time = {0, 0};
 
   // FPS tracking for webcam capture thread
   static fps_t fps_tracker = {0};
@@ -301,6 +300,21 @@ static void *webcam_capture_thread_func(void *arg) {
     fps_tracker_initialized = true;
   }
 
+  // Adaptive sleep for frame rate limiting at 144 FPS
+  static adaptive_sleep_state_t sleep_state = {0};
+  static bool sleep_state_initialized = false;
+  if (!sleep_state_initialized) {
+    adaptive_sleep_config_t config = {
+        .baseline_sleep_ns = 6944444, // ~144 FPS (6.944ms)
+        .min_speed_multiplier = 1.0,  // Constant rate (no slowdown)
+        .max_speed_multiplier = 1.0,  // Constant rate (no speedup)
+        .speedup_rate = 0.0,          // No adaptive behavior (constant FPS)
+        .slowdown_rate = 0.0          // No adaptive behavior (constant FPS)
+    };
+    adaptive_sleep_init(&sleep_state, &config);
+    sleep_state_initialized = true;
+  }
+
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
     if (!server_connection_is_active()) {
@@ -308,17 +322,10 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Frame rate limiting using monotonic clock
+    // Frame rate limiting using adaptive sleep system
     // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
-    const long CAPTURE_INTERVAL_MS = 1000 / 144; // ~6.94ms for 144fps
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-    long elapsed_ms = (current_time.tv_sec - last_capture_time.tv_sec) * 1000 +
-                      (current_time.tv_nsec - last_capture_time.tv_nsec) / 1000000;
-    if (elapsed_ms < CAPTURE_INTERVAL_MS) {
-      platform_sleep_usec((CAPTURE_INTERVAL_MS - elapsed_ms) * 1000);
-      continue;
-    }
+    // Use queue_depth=0 and target_depth=0 for constant-rate producer (no backlog management)
+    adaptive_sleep_do(&sleep_state, 0, 0);
 
     image_t *image = webcam_read();
 
@@ -328,9 +335,10 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Track frame for FPS reporting
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-    fps_frame(&fps_tracker, &current_time, "webcam frame captured");
+    // Track frame for FPS reporting (use separate timestamp for FPS tracking)
+    struct timespec frame_capture_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &frame_capture_time);
+    fps_frame(&fps_tracker, &frame_capture_time, "webcam frame captured");
 
     // Process frame for network transmission
     // process_frame_for_transmission() always returns a new image that we own
@@ -377,9 +385,9 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Calculate time since last frame
     uint64_t frame_interval_us =
-        ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+        ((uint64_t)frame_capture_time.tv_sec * 1000000 + (uint64_t)frame_capture_time.tv_nsec / 1000) -
         ((uint64_t)last_capture_frame_time.tv_sec * 1000000 + (uint64_t)last_capture_frame_time.tv_nsec / 1000);
-    last_capture_frame_time = current_time;
+    last_capture_frame_time = frame_capture_time;
 
     // Expected frame interval in microseconds (6944us for 144fps)
     uint64_t expected_interval_us = 1000000 / expected_capture_fps;
@@ -393,12 +401,15 @@ static void *webcam_capture_thread_func(void *arg) {
                      (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
     }
 
-    // Update capture timing
-    last_capture_time = current_time;
-
     // Clean up resources
     image_destroy(processed_image);
     processed_image = NULL;
+
+    // Yield to reduce CPU usage - even with frame rate limiting at 144 FPS,
+    // processing each frame (resize + compress + encrypt + send) without any
+    // sleep causes the thread to spin at 90%+ CPU constantly
+    // A 1ms yield reduces CPU from 90% to ~20% with minimal latency impact
+    platform_sleep_usec(1000); // 1ms
   }
 
 #ifdef DEBUG_THREADS
