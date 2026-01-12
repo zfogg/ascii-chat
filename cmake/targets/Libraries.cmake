@@ -266,9 +266,9 @@ endif()
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
-# Linux: ALSA only (JACK support explicitly disabled to avoid Berkeley DB dependency)
+# Linux: ALSA + JACK (vcpkg's PortAudio includes JACK support, so we must link it)
 # Windows: WASAPI/DirectSound (handled by platform module)
-# Note: All PortAudio builds now use --without-jack flag to eliminate ~1.6MB Berkeley DB dependency
+# Note: vcpkg PortAudio builds include JACK support, so we link libjack if available
 if(APPLE)
     target_link_libraries(ascii-chat-audio
         ${COREAUDIO_FRAMEWORK}
@@ -276,6 +276,9 @@ if(APPLE)
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
     )
+elseif(PLATFORM_LINUX AND JACK_LIB)
+    # Link JACK on Linux if available (required by vcpkg's PortAudio build)
+    target_link_libraries(ascii-chat-audio ${JACK_LIB})
 endif()
 
 # Add build dependency for PortAudio from-source builds (non-musl Linux/macOS)

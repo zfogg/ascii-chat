@@ -28,12 +28,15 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-find_dependency_library(
-    NAME PORTAUDIO
-    VCPKG_NAMES portaudio
-    HEADER portaudio.h
-    PKG_CONFIG portaudio-2.0
-    HOMEBREW_PKG portaudio
-    STATIC_LIB_NAME libportaudio.a
-    REQUIRED
-)
+# TEMPORARY FIX: vcpkg's PortAudio doesn't detect audio devices
+# Force use of system PortAudio via pkg-config instead
+message(STATUS "PortAudio: Preferring system library (vcpkg build has device detection issues)")
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+
+set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
+set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
+set(PORTAUDIO_FOUND TRUE)
+
+message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")

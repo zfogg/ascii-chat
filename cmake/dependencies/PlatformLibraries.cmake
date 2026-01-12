@@ -68,6 +68,12 @@ else()
         # =============================================================================
         find_package(Threads REQUIRED)
 
+        # Audio libraries (required for static portaudio with JACK support)
+        find_library(JACK_LIB jack)
+        if(NOT JACK_LIB)
+            message(WARNING "libjack not found - PortAudio JACK support will be unavailable")
+        endif()
+
         # Linux library search paths (Debian/Ubuntu multiarch and Arch/Fedora standard paths)
         link_directories(/usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib /lib)
     endif()
