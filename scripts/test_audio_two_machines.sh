@@ -224,9 +224,9 @@ fi
 # Start client 2 on HOST_TWO
 echo "[8/8] Starting client 2 on $HOST_TWO..."
 if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client $HOST_ONE_IP:$PORT --test-pattern --microphone-index 9 --audio --audio-analysis --snapshot --snapshot-delay $DURATION"
+  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client $HOST_ONE_IP:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION"
 else
-  ssh -o ConnectTimeout=5 $HOST_TWO "cd $REPO_TWO && screen -dmS ascii-client2 bash -c 'ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client $HOST_ONE_IP:$PORT --test-pattern --microphone-index 9 --audio --audio-analysis --snapshot --snapshot-delay $DURATION'"
+  ssh -o ConnectTimeout=5 $HOST_TWO "cd $REPO_TWO && screen -dmS ascii-client2 bash -c 'ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client $HOST_ONE_IP:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION'"
 fi
 
 echo ""
