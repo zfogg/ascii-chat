@@ -16,6 +16,11 @@
 #include <string.h>
 #include <sched.h>
 
+#ifdef __APPLE__
+#include <mach/mach.h>
+#include <mach/thread_policy.h>
+#endif
+
 /**
  * @brief Create a new thread
  * @param thread Pointer to thread structure to initialize
@@ -207,10 +212,7 @@ int ascii_tls_set(tls_key_t key, void *value) {
  */
 asciichat_error_t asciichat_thread_set_realtime_priority(void) {
 #ifdef __APPLE__
-// macOS: Use thread_policy_set for real-time scheduling
-#include <mach/mach.h>
-#include <mach/thread_policy.h>
-
+  // macOS: Use thread_policy_set for real-time scheduling
   thread_time_constraint_policy_data_t policy;
   policy.period = 0;
   policy.computation = 5000; // 5ms computation time

@@ -181,7 +181,7 @@ static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, const char 
   return ERROR_NETWORK;
 #else
   natpmp_t natpmp;
-  natpmp_response_t response;
+  natpmpresp_t response;
   int result;
   char external_ip_str[16];
 
@@ -204,9 +204,9 @@ static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, const char 
 
   // Wait for response
   memset(&response, 0, sizeof(response));
-  result = getnatpmpresponseorretry(&natpmp, &response);
+  result = readnatpmpresponseorretry(&natpmp, &response);
   if (result != NATPMP_TRYAGAIN && response.type == NATPMP_RESPTYPE_PUBLICADDRESS) {
-    unsigned char *ipv4 = (unsigned char *)&response.pnu.publicaddress.publicaddress;
+    unsigned char *ipv4 = (unsigned char *)&response.pnu.publicaddress.addr;
     snprintf(external_ip_str, sizeof(external_ip_str), "%u.%u.%u.%u", ipv4[0], ipv4[1], ipv4[2], ipv4[3]);
     SAFE_STRNCPY(ctx->external_ip, external_ip_str, sizeof(ctx->external_ip));
     log_info("NAT-PMP: External IP detected: %s", ctx->external_ip);
@@ -223,11 +223,11 @@ static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, const char 
 
   // Wait for mapping response
   memset(&response, 0, sizeof(response));
-  result = getnatpmpresponseorretry(&natpmp, &response);
+  result = readnatpmpresponseorretry(&natpmp, &response);
   if (result != NATPMP_TRYAGAIN && response.type == NATPMP_RESPTYPE_TCPPORTMAPPING) {
     log_info("NAT-PMP: ✓ Port %u successfully mapped", internal_port);
     ctx->internal_port = internal_port;
-    ctx->mapped_port = response.pnu.newportmapping.mappedexternalport;
+    ctx->mapped_port = response.pnu.newportmapping.mappedpublicport;
     ctx->is_natpmp = true;
     ctx->is_mapped = true;
     SAFE_STRNCPY(ctx->device_description, "Time Capsule/Apple AirPort", sizeof(ctx->device_description));

@@ -89,9 +89,13 @@ if(USE_VCPKG AND VCPKG_ROOT)
 
         # Platform-specific system libraries
         if(APPLE)
+            # macOS: use Security framework for TLS, but also need OpenSSL for TURN credentials
+            find_package(OpenSSL REQUIRED)
             target_link_libraries(libdatachannel INTERFACE
                 "-framework Foundation"
                 "-framework Security"
+                OpenSSL::SSL
+                OpenSSL::Crypto
                 c++
             )
         elseif(WIN32)
@@ -318,13 +322,16 @@ endif()
     add_library(libdatachannel INTERFACE)
 
     if(APPLE)
-        # macOS: link with necessary frameworks
+        # macOS: link with necessary frameworks and OpenSSL for TURN credentials
+        find_package(OpenSSL REQUIRED)
         target_link_libraries(libdatachannel INTERFACE
             "${LIBDATACHANNEL_STATIC_LIB}"
             "${LIBJUICE_STATIC_LIB}"
             "${LIBUSRSCTP_STATIC_LIB}"
             "-framework Foundation"
             "-framework Security"
+            OpenSSL::SSL
+            OpenSSL::Crypto
             c++
         )
     elseif(WIN32)
