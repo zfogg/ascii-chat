@@ -93,6 +93,14 @@ set_source_files_properties(
     SKIP_LINTING ON
 )
 
+# Suppress warnings for third-party mdns library (we don't control this code)
+set_source_files_properties(
+    deps/mdns/mdns.c
+    PROPERTIES
+    COMPILE_FLAGS "-w"
+    SKIP_LINTING ON
+)
+
 # =============================================================================
 # Module 3: Platform Abstraction (stable - changes monthly)
 # =============================================================================
