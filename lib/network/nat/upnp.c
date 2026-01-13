@@ -173,13 +173,17 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
  * @return ASCIICHAT_OK on success, ERROR_NETWORK_* on failure
  */
 static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, const char *description, nat_upnp_context_t *ctx) {
-#ifndef __APPLE__
+#if !defined(__APPLE__) || !defined(HAVE_MINIUPNPC)
   (void)internal_port;
   (void)description;
   (void)ctx;
+#ifndef __APPLE__
   SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Not available on this platform (Apple only)");
-  return ERROR_NETWORK;
 #else
+  SET_ERRNO(ERROR_NETWORK, "NAT-PMP: libnatpmp not available (install miniupnpc)");
+#endif
+  return ERROR_NETWORK;
+#else  // __APPLE__ && HAVE_MINIUPNPC
   natpmp_t natpmp;
   natpmpresp_t response;
   int result;
@@ -239,7 +243,7 @@ static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, const char 
 
   closenatpmp(&natpmp);
   return ASCIICHAT_OK;
-#endif
+#endif // __APPLE__ && HAVE_MINIUPNPC
 }
 
 // ============================================================================

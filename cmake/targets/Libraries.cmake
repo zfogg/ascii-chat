@@ -1077,6 +1077,12 @@ else()
     )
 endif()
 
+# Link libdatachannel for WebRTC P2P connections (static library)
+# The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
+if(TARGET libdatachannel)
+    target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
+endif()
+
 # =============================================================================
 # Symbol Validation for Combined Static Library
 # =============================================================================

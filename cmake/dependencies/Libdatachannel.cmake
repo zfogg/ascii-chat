@@ -302,7 +302,7 @@ if(NOT libdatachannel_POPULATED)
             message(STATUS "libdatachannel macOS build: libc++ include=${LIBCXX_INCLUDE_DIR}")
         endif()
 
-        # On Windows, force Ninja generator
+        # On Windows, force Ninja generator and pass vcpkg OpenSSL paths
         if(WIN32)
             list(PREPEND LIBDATACHANNEL_CMAKE_ARGS -G Ninja)
             # Add WIN32_LEAN_AND_MEAN to prevent winsock conflicts
@@ -310,6 +310,26 @@ if(NOT libdatachannel_POPULATED)
             set(_libdc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_win_c_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_win_cxx_flags}")
+
+            # Pass vcpkg toolchain and OpenSSL paths so libdatachannel can find OpenSSL
+            if(CMAKE_TOOLCHAIN_FILE)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+            endif()
+            if(VCPKG_TARGET_TRIPLET)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}")
+            endif()
+            # Also pass explicit OpenSSL paths if available from vcpkg
+            if(OPENSSL_ROOT_DIR)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+            elseif(VCPKG_ROOT AND VCPKG_TARGET_TRIPLET)
+                # Try to find OpenSSL in vcpkg installed directory
+                set(_vcpkg_openssl_root "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
+                if(EXISTS "${_vcpkg_openssl_root}/include/openssl/ssl.h")
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${_vcpkg_openssl_root}")
+                    message(STATUS "libdatachannel using vcpkg OpenSSL from ${_vcpkg_openssl_root}")
+                endif()
+            endif()
+
             message(STATUS "libdatachannel Windows build: forcing Ninja generator")
         endif()
 
