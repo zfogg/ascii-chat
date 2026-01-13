@@ -131,20 +131,23 @@ set(URCU_FLAVOR "urcu-mb")  # memory barrier (simplest, good enough for most use
 # For aarch64, optionally use urcu-qsbr (quiescent state based RCU) but urcu-mb is fine
 # For x86_64, urcu-mb is the recommended flavor
 
+# Create directories upfront so CMake doesn't complain about non-existent paths
+# at configure time (ExternalProject builds at build time, not configure time)
+file(MAKE_DIRECTORY "${LIBURCU_CACHE_DIR}/include")
+file(MAKE_DIRECTORY "${LIBURCU_CACHE_DIR}/lib")
+
 ExternalProject_Add(liburcu_external
     GIT_REPOSITORY https://github.com/urcu/userspace-rcu.git
     GIT_TAG v0.14.0
     PREFIX "${LIBURCU_CACHE_DIR}"
     SOURCE_DIR "${LIBURCU_SOURCE_DIR}"
     BINARY_DIR "${LIBURCU_BUILD_DIR}"
+    # Autotools projects cloned from git need bootstrap to generate configure script
     CONFIGURE_COMMAND
-        ${LIBURCU_SOURCE_DIR}/configure
-            --prefix=${LIBURCU_CACHE_DIR}
-            --enable-shared=no
-            --enable-static=yes
-            --disable-debug-rcu
+        sh -c "cd ${LIBURCU_SOURCE_DIR} && ./bootstrap && ./configure --prefix=${LIBURCU_CACHE_DIR} --enable-shared=no --enable-static=yes --disable-debug-rcu"
     BUILD_COMMAND make -j${NPROC}
     INSTALL_COMMAND make install
+    BUILD_IN_SOURCE TRUE
 )
 
 # Create imported target that depends on the external project
