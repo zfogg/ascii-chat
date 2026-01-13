@@ -283,6 +283,10 @@ if(NOT libdatachannel_POPULATED)
         endif()
 
         # On macOS with Homebrew LLVM, set explicit flags
+        # NOTE: Do NOT use --no-default-config flag - it causes libc++ ABI mismatch
+        # between Homebrew LLVM's libc++ and system libc++, resulting in undefined symbols
+        # like std::__1::__hash_memory. Instead, just set -stdlib=libc++ and let the
+        # compiler use its default configuration.
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
             get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
@@ -295,16 +299,44 @@ if(NOT libdatachannel_POPULATED)
                 set(_libcxx_include_flag "")
             endif()
 
-            set(_libdc_c_flags "--no-default-config -w")
-            set(_libdc_cxx_flags "--no-default-config -stdlib=libc++ ${_libcxx_include_flag} -w")
+            # Use -w to suppress warnings, -stdlib=libc++ for consistent stdlib
+            set(_libdc_c_flags "-w")
+            set(_libdc_cxx_flags "-stdlib=libc++ ${_libcxx_include_flag} -w")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
             message(STATUS "libdatachannel macOS build: libc++ include=${LIBCXX_INCLUDE_DIR}")
         endif()
 
-        # On Windows, force Ninja generator and pass vcpkg OpenSSL paths
+        # On Windows, force Ninja generator and use clang-cl for MSVC-style flag compatibility
+        # CRITICAL: usrsctp and other dependencies check WIN32 (not MSVC) and add MSVC-style
+        # flags like /W4, /wd4100. Raw Clang doesn't understand these (interprets as file paths).
+        # Solution: Use clang-cl which understands both MSVC and Clang flags.
         if(WIN32)
             list(PREPEND LIBDATACHANNEL_CMAKE_ARGS -G Ninja)
+
+            # Find clang-cl in the same directory as clang
+            get_filename_component(_clang_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+            find_program(CLANG_CL_EXECUTABLE
+                NAMES clang-cl
+                HINTS "${_clang_dir}"
+                NO_DEFAULT_PATH
+            )
+            if(NOT CLANG_CL_EXECUTABLE)
+                find_program(CLANG_CL_EXECUTABLE NAMES clang-cl)
+            endif()
+
+            if(CLANG_CL_EXECUTABLE)
+                # Use clang-cl for libdatachannel build (understands MSVC flags)
+                message(STATUS "libdatachannel Windows build: using clang-cl at ${CLANG_CL_EXECUTABLE}")
+                # Override the compiler settings for libdatachannel only
+                # Filter out existing compiler args and replace with clang-cl
+                list(FILTER LIBDATACHANNEL_CMAKE_ARGS EXCLUDE REGEX "CMAKE_C_COMPILER|CMAKE_CXX_COMPILER")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_COMPILER=${CLANG_CL_EXECUTABLE}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${CLANG_CL_EXECUTABLE}")
+            else()
+                message(WARNING "clang-cl not found, libdatachannel build may fail with MSVC-style flags")
+            endif()
+
             # Add WIN32_LEAN_AND_MEAN to prevent winsock conflicts
             set(_libdc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_libdc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
