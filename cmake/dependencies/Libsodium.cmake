@@ -20,6 +20,11 @@
 #   - LIBSODIUM_FOUND: Whether libsodium was found
 # =============================================================================
 
+# Skip for musl builds - libsodium is configured in MuslDependencies.cmake
+if(USE_MUSL)
+    return()
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
 find_dependency_library(

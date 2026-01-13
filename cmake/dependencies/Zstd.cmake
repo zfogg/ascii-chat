@@ -20,6 +20,11 @@
 #   - ZSTD_FOUND: Whether zstd was found
 # =============================================================================
 
+# Skip for musl builds - zstd is configured in MuslDependencies.cmake
+if(USE_MUSL)
+    return()
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
 # On macOS, prefer Homebrew zstd over system zstd for consistency
