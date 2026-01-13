@@ -282,21 +282,38 @@ if(NOT libdatachannel_POPULATED)
             message(STATUS "libdatachannel will be built for musl target: ${LIBDATACHANNEL_MUSL_TARGET}")
         endif()
 
-        # On macOS with Homebrew LLVM, inherit system settings but don't override compiler flags
-        # CRITICAL: Do NOT set CMAKE_CXX_FLAGS on macOS! Any flags we add can break
-        # the compiler's default include path resolution, especially for libc++.
-        # However, we MUST pass CMAKE_OSX_SYSROOT so libc++ can find C wrapper headers.
+        # On macOS with Homebrew LLVM, use Apple's system clang for libdatachannel build
+        # PROBLEM: Homebrew LLVM 21.x's libc++ has strict header search path requirements.
+        # Its <cctype>, <cmath>, etc. expect to find libc++ C wrapper headers in a specific
+        # location relative to the main libc++ include directory. When CMAKE_OSX_SYSROOT
+        # is set, the compiler finds SDK headers before libc++ wrappers, causing errors like:
+        #   "<cctype> tried including <ctype.h> but didn't find libc++'s <ctype.h> header"
+        # SOLUTION: Use Apple's system clang (/usr/bin/clang++) for libdatachannel build.
+        # Apple's clang properly handles SDK include paths and has compatible libc++.
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
+            # Check if we're using Homebrew clang (path contains "homebrew" or "Cellar")
+            if(CMAKE_CXX_COMPILER MATCHES "(homebrew|Cellar)")
+                # Use Apple's system clang for libdatachannel build
+                if(EXISTS "/usr/bin/clang" AND EXISTS "/usr/bin/clang++")
+                    list(FILTER LIBDATACHANNEL_CMAKE_ARGS EXCLUDE REGEX "CMAKE_C_COMPILER|CMAKE_CXX_COMPILER")
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_COMPILER=/usr/bin/clang")
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_COMPILER=/usr/bin/clang++")
+                    message(STATUS "libdatachannel macOS build: using Apple clang (Homebrew LLVM detected)")
+                else()
+                    message(WARNING "libdatachannel macOS build: Apple clang not found, using Homebrew clang (may fail)")
+                endif()
+            else()
+                message(STATUS "libdatachannel macOS build: using system clang")
+            endif()
+
             # Only add -w to suppress warnings in C code (this is safe)
             set(_libdc_c_flags "-w")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
 
-            # Pass the macOS SDK sysroot - required for libc++ to find C wrapper headers
-            # Without this, Homebrew LLVM's libc++ can't find <ctype.h>, <stddef.h>, etc.
+            # Pass the macOS SDK sysroot for proper SDK header resolution
             if(CMAKE_OSX_SYSROOT)
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
             else()
-                # Find the SDK path if not already set
                 execute_process(
                     COMMAND xcrun --show-sdk-path
                     OUTPUT_VARIABLE _macos_sdk_path
@@ -305,11 +322,8 @@ if(NOT libdatachannel_POPULATED)
                 )
                 if(_macos_sdk_path)
                     list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${_macos_sdk_path}")
-                    message(STATUS "libdatachannel macOS build: SDK=${_macos_sdk_path}")
                 endif()
             endif()
-
-            message(STATUS "libdatachannel macOS build: using compiler defaults (no CXX flags override)")
         endif()
 
         # On Windows, force Ninja generator and use clang-cl for MSVC-style flag compatibility

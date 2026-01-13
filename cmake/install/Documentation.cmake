@@ -49,7 +49,8 @@ add_custom_command(
     VERBATIM
 )
 
-add_custom_target(man1
+# Build man pages by default for release/packaging - they're needed by CPack install
+add_custom_target(man1 ALL
     DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1" "${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
     COMMENT "Man pages build complete"
 )
