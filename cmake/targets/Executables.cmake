@@ -170,6 +170,25 @@ if(USE_MUSL)
         -lm -lpthread
     )
 
+    # libdatachannel and its dependencies (must be linked explicitly for static builds)
+    # The libdatachannel INTERFACE target's dependencies don't propagate through
+    # the combined static library, so we link them directly here
+    if(TARGET libdatachannel)
+        set(LIBDATACHANNEL_MUSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libdatachannel-build")
+        target_link_libraries(ascii-chat PRIVATE
+            "${LIBDATACHANNEL_MUSL_BUILD_DIR}/lib/libdatachannel.a"
+            "${LIBDATACHANNEL_MUSL_BUILD_DIR}/lib/libjuice.a"
+            "${LIBDATACHANNEL_MUSL_BUILD_DIR}/lib/libusrsctp.a"
+        )
+        # OpenSSL for libdatachannel TURN credentials (musl-built)
+        if(OPENSSL_SSL_LIBRARY AND OPENSSL_CRYPTO_LIBRARY)
+            target_link_libraries(ascii-chat PRIVATE
+                ${OPENSSL_SSL_LIBRARY}
+                ${OPENSSL_CRYPTO_LIBRARY}
+            )
+        endif()
+    endif()
+
     # Link Alpine libc++ for static executable (no -fPIC needed for static)
     # Function defined in Musl.cmake, contains musl-compatible libc++
     link_alpine_libcxx(ascii-chat)

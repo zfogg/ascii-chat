@@ -7,6 +7,7 @@
 # Dependencies built from source:
 #   - zstd (compression)
 #   - libsodium (crypto)
+#   - OpenSSL (TLS/SSL for libdatachannel TURN credentials)
 #   - PortAudio (audio I/O)
 #   - Opus (audio codec)
 #   - BearSSL (TLS for SSH key fetching)
@@ -217,6 +218,91 @@ endif()
 set(LIBSODIUM_FOUND TRUE)
 set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
 set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
+
+# =============================================================================
+# OpenSSL - TLS/SSL library (needed for libdatachannel TURN credentials)
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source...")
+
+set(OPENSSL_PREFIX "${MUSL_DEPS_DIR_STATIC}/openssl")
+set(OPENSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/openssl-build")
+
+# Only add external project if libraries don't exist
+# Note: OpenSSL 3.x installs to lib64/ by default on x86_64
+if(NOT EXISTS "${OPENSSL_PREFIX}/lib64/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/lib64/libcrypto.a")
+    message(STATUS "  OpenSSL library not found in cache, will build from source")
+
+    # Detect target architecture for OpenSSL Configure
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(OPENSSL_TARGET "linux-aarch64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+        set(OPENSSL_TARGET "linux-x86_64")
+    else()
+        set(OPENSSL_TARGET "linux-generic64")
+    endif()
+
+    ExternalProject_Add(openssl-musl
+        URL https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz
+        URL_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${OPENSSL_BUILD_DIR}
+        STAMP_DIR ${OPENSSL_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS}
+            <SOURCE_DIR>/Configure ${OPENSSL_TARGET}
+            --prefix=${OPENSSL_PREFIX}
+            no-shared
+            no-tests
+            no-ui-console
+            -fPIC
+        BUILD_COMMAND env REALGCC=${REAL_GCC} make -j1
+        INSTALL_COMMAND make install_sw
+        DEPENDS libsodium-musl
+        BUILD_BYPRODUCTS ${OPENSSL_PREFIX}/lib64/libssl.a ${OPENSSL_PREFIX}/lib64/libcrypto.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} library found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/lib64/libssl.a${ColorReset}")
+    # Create a dummy target so dependencies can reference it
+    add_custom_target(openssl-musl DEPENDS libsodium-musl)
+endif()
+
+# Set OpenSSL variables for CMake find_package to use
+# Note: OpenSSL 3.x installs to lib64/ by default on x86_64
+set(OPENSSL_FOUND TRUE)
+set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}")
+set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include")
+set(OPENSSL_SSL_LIBRARY "${OPENSSL_PREFIX}/lib64/libssl.a")
+set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_PREFIX}/lib64/libcrypto.a")
+
+# Create imported targets that match what find_package(OpenSSL) would create
+if(NOT TARGET OpenSSL::Crypto)
+    add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::Crypto PROPERTIES
+        IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libcrypto.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
+    )
+    if(TARGET openssl-musl)
+        add_dependencies(OpenSSL::Crypto openssl-musl)
+    endif()
+endif()
+
+if(NOT TARGET OpenSSL::SSL)
+    add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::SSL PROPERTIES
+        IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libssl.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
+        INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
+    )
+    if(TARGET openssl-musl)
+        add_dependencies(OpenSSL::SSL openssl-musl)
+    endif()
+endif()
 
 # =============================================================================
 # ALSA - Advanced Linux Sound Architecture

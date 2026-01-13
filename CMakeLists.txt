@@ -169,6 +169,11 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
 # =============================================================================
 # Dependencies
 # =============================================================================
+# When USE_MUSL=ON, build all dependencies from source FIRST
+# This must run before Dependencies.cmake so musl-built libraries (like OpenSSL)
+# are available when dependency files (like Libdatachannel.cmake) try to find them
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Dependencies.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Tomlc17.cmake)
@@ -185,9 +190,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mimalloc.cmake)
 
 configure_include_directories()
-
-# When USE_MUSL=ON, build all dependencies from source and cache them
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
 
 if(USE_MUSL)
     set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})

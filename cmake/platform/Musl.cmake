@@ -282,6 +282,24 @@ function(configure_musl_post_project)
             message(FATAL_ERROR "Failed to download Alpine libunwind: ${ERROR_MSG}")
         endif()
 
+        # Download libc++-dev package from Alpine (contains headers for C++ compilation)
+        # This is CRITICAL: C++ code must be compiled with matching headers and libraries
+        # to avoid ABI mismatches (e.g., pthread_cond_clockwait, __hash_memory)
+        set(LIBCXX_DEV_PKG "libc++-dev-19.1.4-r1.apk")
+        set(LIBCXX_DEV_URL "${ALPINE_MIRROR}/v${ALPINE_VERSION}/main/${ALPINE_ARCH}/${LIBCXX_DEV_PKG}")
+
+        message(STATUS "  Downloading ${LIBCXX_DEV_URL}")
+        file(DOWNLOAD "${LIBCXX_DEV_URL}"
+             "${ALPINE_LIBCXX_DIR}/${LIBCXX_DEV_PKG}"
+             STATUS DOWNLOAD_STATUS
+             SHOW_PROGRESS)
+
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+            message(FATAL_ERROR "Failed to download Alpine libc++-dev: ${ERROR_MSG}")
+        endif()
+
         # Extract .apk files (they're tar.gz archives)
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E tar xzf "${LIBCXX_STATIC_PKG}"
@@ -301,7 +319,16 @@ function(configure_musl_post_project)
             message(FATAL_ERROR "Failed to extract Alpine libunwind package")
         endif()
 
-        message(STATUS "  Extracted Alpine libc++ and libunwind to ${ALPINE_LIBCXX_DIR}")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${LIBCXX_DEV_PKG}"
+            WORKING_DIRECTORY "${ALPINE_LIBCXX_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract Alpine libc++-dev package")
+        endif()
+
+        message(STATUS "  Extracted Alpine libc++, libunwind, and headers to ${ALPINE_LIBCXX_DIR}")
     endif()
 
     # Check if Alpine libs were successfully extracted
@@ -311,6 +338,11 @@ function(configure_musl_post_project)
         set(LIBCXXABI_PATH "${ALPINE_LIBCXX_DIR}/usr/lib/libc++abi.a")
         if(EXISTS "${ALPINE_LIBCXX_DIR}/usr/lib/libunwind.a")
             set(LIBUNWIND_PATH "${ALPINE_LIBCXX_DIR}/usr/lib/libunwind.a")
+        endif()
+        # Set include path for libc++ headers (from libc++-dev package)
+        if(EXISTS "${ALPINE_LIBCXX_DIR}/usr/include/c++/v1")
+            set(ALPINE_LIBCXX_INCLUDE_DIR "${ALPINE_LIBCXX_DIR}/usr/include/c++/v1" CACHE PATH "Alpine libc++ headers")
+            message(STATUS "  Alpine libc++ headers: ${ALPINE_LIBCXX_INCLUDE_DIR}")
         endif()
         set(LLVM_RUNTIME_SOURCE "Alpine Linux (musl-native)")
         set(LIBCXX_FOUND TRUE)

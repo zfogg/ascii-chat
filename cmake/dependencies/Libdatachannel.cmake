@@ -90,7 +90,9 @@ if(USE_VCPKG AND VCPKG_ROOT)
         # Platform-specific system libraries
         if(APPLE)
             # macOS: use Security framework for TLS, but also need OpenSSL for TURN credentials
-            find_package(OpenSSL REQUIRED)
+            if(NOT TARGET OpenSSL::Crypto)
+                find_package(OpenSSL REQUIRED)
+            endif()
             target_link_libraries(libdatachannel INTERFACE
                 "-framework Foundation"
                 "-framework Security"
@@ -106,7 +108,10 @@ if(USE_VCPKG AND VCPKG_ROOT)
             )
         else()
             # Linux: link with pthread and OpenSSL
-            find_package(OpenSSL REQUIRED)
+            # Skip find_package if OpenSSL targets already exist (e.g., from MuslDependencies.cmake)
+            if(NOT TARGET OpenSSL::Crypto)
+                find_package(OpenSSL REQUIRED)
+            endif()
             target_link_libraries(libdatachannel INTERFACE
                 OpenSSL::SSL
                 OpenSSL::Crypto
@@ -188,7 +193,12 @@ if(NOT libdatachannel_POPULATED)
     endif()
 
     # Set up build directory in deps cache
-    set(LIBDATACHANNEL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
+    # For musl builds, use musl-specific cache directory to avoid conflicts
+    if(USE_MUSL AND MUSL_DEPS_DIR_STATIC)
+        set(LIBDATACHANNEL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libdatachannel-build")
+    else()
+        set(LIBDATACHANNEL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
+    endif()
     file(MAKE_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}")
 
     # Check if cached build exists
@@ -227,7 +237,7 @@ if(NOT libdatachannel_POPULATED)
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON  # Required for linking into shared library
         )
 
-        # For musl builds, add target triple
+        # For musl builds, add target triple and OpenSSL paths
         if(USE_MUSL)
             # Determine musl target architecture
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -240,10 +250,35 @@ if(NOT libdatachannel_POPULATED)
             set(LIBDATACHANNEL_MUSL_TARGET "${MUSL_ARCH}-linux-musl")
 
             # Set compiler flags for musl
+            # Use Alpine's musl-native libc++ headers to ensure ABI compatibility
+            # -nostdinc++ removes system C++ headers, -isystem adds Alpine's headers
+            # Also need musl C library headers for bits/alltypes.h etc.
+            # This prevents glibc-specific symbols like pthread_cond_clockwait
+            set(MUSL_INCLUDE_DIR "/usr/lib/musl/include")
             set(_libdc_c_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET}")
-            set(_libdc_cxx_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET} -stdlib=libc++")
+            if(ALPINE_LIBCXX_INCLUDE_DIR AND EXISTS "${ALPINE_LIBCXX_INCLUDE_DIR}" AND EXISTS "${MUSL_INCLUDE_DIR}")
+                # Order matters: C++ headers first, then musl C headers
+                set(_libdc_cxx_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET} -stdlib=libc++ -nostdinc++ -isystem ${ALPINE_LIBCXX_INCLUDE_DIR} -isystem ${MUSL_INCLUDE_DIR}")
+                message(STATUS "libdatachannel using Alpine libc++ headers: ${ALPINE_LIBCXX_INCLUDE_DIR}")
+                message(STATUS "libdatachannel using musl C headers: ${MUSL_INCLUDE_DIR}")
+            else()
+                # Fallback: try to suppress glibc-specific code generation
+                set(_libdc_cxx_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET} -stdlib=libc++ -U__GLIBC__")
+                message(WARNING "Alpine libc++ or musl headers not found, using system headers with -U__GLIBC__")
+            endif()
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
+
+            # Pass musl-built OpenSSL paths to libdatachannel
+            # OPENSSL_ROOT_DIR, OPENSSL_INCLUDE_DIR, etc. are set by MuslDependencies.cmake
+            if(OPENSSL_ROOT_DIR)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
+                message(STATUS "libdatachannel will use musl-built OpenSSL from ${OPENSSL_ROOT_DIR}")
+            endif()
+
             message(STATUS "libdatachannel will be built for musl target: ${LIBDATACHANNEL_MUSL_TARGET}")
         endif()
 
@@ -310,7 +345,12 @@ if(NOT libdatachannel_POPULATED)
 endif()
 
     # Import pre-built library as INTERFACE library (source-built version)
-    set(LIBDATACHANNEL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
+    # For musl builds, use musl-specific cache directory to avoid conflicts
+    if(USE_MUSL AND MUSL_DEPS_DIR_STATIC)
+        set(LIBDATACHANNEL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libdatachannel-build")
+    else()
+        set(LIBDATACHANNEL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libdatachannel-build")
+    endif()
 
     # libdatachannel builds as libdatachannel.a when BUILD_SHARED_LIBS=OFF
     set(LIBDATACHANNEL_STATIC_LIB "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}")
@@ -323,7 +363,9 @@ endif()
 
     if(APPLE)
         # macOS: link with necessary frameworks and OpenSSL for TURN credentials
-        find_package(OpenSSL REQUIRED)
+        if(NOT TARGET OpenSSL::Crypto)
+            find_package(OpenSSL REQUIRED)
+        endif()
         target_link_libraries(libdatachannel INTERFACE
             "${LIBDATACHANNEL_STATIC_LIB}"
             "${LIBJUICE_STATIC_LIB}"
@@ -346,7 +388,10 @@ endif()
         )
     else()
         # Linux/Unix: link with pthread and OpenSSL
-        find_package(OpenSSL REQUIRED)
+        # Skip find_package if OpenSSL targets already exist (e.g., from MuslDependencies.cmake)
+        if(NOT TARGET OpenSSL::Crypto)
+            find_package(OpenSSL REQUIRED)
+        endif()
         target_link_libraries(libdatachannel INTERFACE
             "${LIBDATACHANNEL_STATIC_LIB}"
             "${LIBJUICE_STATIC_LIB}"
