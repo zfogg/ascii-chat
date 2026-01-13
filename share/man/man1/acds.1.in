@@ -98,6 +98,13 @@ ssh - Use SSH agent
 .IP
 Implies --encrypt. Default: [unset]
 .TP
+.BR \-\-upnp
+Enable UPnP/NAT-PMP for automatic router port mapping.
+When enabled, ACDS attempts to configure your router to forward the
+listening port, allowing direct TCP connections from the internet.
+This works for approximately 70% of home routers.
+Default: \fBdisabled\fR (opt-in for security)
+.TP
 .BR \-L ", " \-\-log\-file =\fIPATH\fR
 Write log output to the specified file. Default is stderr.
 .TP

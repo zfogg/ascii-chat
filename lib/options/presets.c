@@ -340,13 +340,9 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   // ACDS Discovery options (shared with client)
   add_acds_discovery_options(b);
 
-  options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), true,
-                           "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
+  options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), false,
+                           "Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)",
                            "DISCOVERY", false, "ASCII_CHAT_UPNP");
-
-  options_builder_add_bool(b, "no-upnp", '\0', offsetof(options_t, no_upnp), false,
-                           "Disable UPnP/NAT-PMP port mapping (requires manual port forwarding)", "DISCOVERY", false,
-                           NULL);
 
   options_builder_add_bool(b, "no-mdns-advertise", '\0', offsetof(options_t, no_mdns_advertise), false,
                            "Disable mDNS service advertisement on local network (LAN discovery won't find this server)",
@@ -657,13 +653,9 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                              "Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "WEBRTC", false,
                              "ASCII_CHAT_TURN_SECRET", NULL);
 
-  options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), true,
-                           "Enable UPnP/NAT-PMP for automatic port mapping (enables direct TCP for most home users)",
+  options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), false,
+                           "Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)",
                            "WEBRTC", false, "ASCII_CHAT_UPNP");
-
-  options_builder_add_bool(b, "no-upnp", '\0', offsetof(options_t, no_upnp), false,
-                           "Disable UPnP/NAT-PMP port mapping (requires manual port forwarding)", "WEBRTC", false,
-                           NULL);
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");

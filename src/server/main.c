@@ -1327,7 +1327,7 @@ int server_main(void) {
   //   1. UPnP (works on ~90% of home routers)
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
-  if (GET_OPTION(enable_upnp) && !GET_OPTION(no_upnp)) {
+  if (GET_OPTION(enable_upnp)) {
     asciichat_error_t upnp_result = nat_upnp_open(port, "ASCII-Chat Server", &g_upnp_ctx);
 
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
@@ -1342,12 +1342,7 @@ int server_main(void) {
       printf("📡 Clients behind strict NATs will use WebRTC fallback\\n");
     }
   } else {
-    if (GET_OPTION(no_upnp)) {
-      log_info("UPnP: Disabled via --no-upnp option");
-    } else {
-      log_info("UPnP: Disabled via environment variable or configuration");
-    }
-    printf("📡 WebRTC will be used for all clients\\n");
+    log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
   }
 
   struct timespec last_stats_time;
@@ -1360,10 +1355,11 @@ int server_main(void) {
 
   // Lock debug system already initialized earlier in main()
 
-  // Check if SIGINT was received during initialization
-  // If so, tcp_server_run() will detect it and exit immediately
+  // Check if SIGINT/SIGTERM was received during initialization
+  // If so, skip the accept loop entirely and go to cleanup
   if (atomic_load(&g_server_should_exit)) {
     log_info("Shutdown signal received during initialization, skipping server startup");
+    goto cleanup;
   }
 
   // Lock debug thread already started earlier in main()
@@ -1754,6 +1750,7 @@ skip_acds_session:
 
   log_info("Server accept loop exited");
 
+cleanup:
   // Cleanup
   log_info("Server shutting down...");
   atomic_store(&g_server_should_exit, true);

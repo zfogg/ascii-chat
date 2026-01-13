@@ -55,6 +55,7 @@ _ascii-chat-server() {
         '--encode-audio[force enable Opus audio encoding]' \
         '--no-encode-audio[disable Opus audio encoding]' \
         '--no-audio-mixer[disable audio mixer, send silence instead (debug only)]' \
+        '--upnp[enable UPnP/NAT-PMP for automatic router port mapping]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
         '(-K --key)'{-K,--key}'[SSH/GPG key for authentication]:file:_files' \
         '(-F --keyfile)'{-F,--keyfile}'[read encryption key from file]:file:_files' \

@@ -89,6 +89,7 @@ complete -c ascii-chat -n '__fish_ascii_chat_mode_is server' -l no-compress -d '
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is server' -l encode-audio -d 'force enable Opus audio encoding'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is server' -l no-encode-audio -d 'disable Opus audio encoding'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is server' -l no-audio-mixer -d 'disable audio mixer, send silence instead (debug only)'
+complete -c ascii-chat -n '__fish_ascii_chat_mode_is server' -l upnp -d 'enable UPnP/NAT-PMP for automatic router port mapping'
 
 # Mirror-only options
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is mirror' -s x -l width -x -d 'render width'

@@ -423,6 +423,13 @@ if(UNIX)
         )
         message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat${ColorReset} → ${BoldYellow}share/bash-completion/completions/${ColorReset}")
     endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/bash-completion/completions/acds")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/bash-completion/completions/acds"
+            DESTINATION share/bash-completion/completions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}acds${ColorReset} → ${BoldYellow}share/bash-completion/completions/${ColorReset}")
+    endif()
 
     # Zsh completions
     # Standard location: /usr/share/zsh/site-functions/
@@ -433,6 +440,13 @@ if(UNIX)
             COMPONENT Runtime
         )
         message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii-chat${ColorReset} → ${BoldYellow}share/zsh/site-functions/${ColorReset}")
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/zsh/site-functions/_acds")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/zsh/site-functions/_acds"
+            DESTINATION share/zsh/site-functions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_acds${ColorReset} → ${BoldYellow}share/zsh/site-functions/${ColorReset}")
     endif()
 
     # Fish completions
@@ -445,6 +459,13 @@ if(UNIX)
         )
         message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} → ${BoldYellow}share/fish/vendor_completions.d/${ColorReset}")
     endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/fish/vendor_completions.d/acds.fish")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/fish/vendor_completions.d/acds.fish"
+            DESTINATION share/fish/vendor_completions.d
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}acds.fish${ColorReset} → ${BoldYellow}share/fish/vendor_completions.d/${ColorReset}")
+    endif()
 
     # PowerShell completions (cross-platform)
     # Standard location: /usr/local/share/powershell/Completions/
@@ -455,6 +476,13 @@ if(UNIX)
             COMPONENT Runtime
         )
         message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} → ${BoldYellow}share/powershell/Completions/${ColorReset}")
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/acds.ps1")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/acds.ps1"
+            DESTINATION share/powershell/Completions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}acds.ps1${ColorReset} → ${BoldYellow}share/powershell/Completions/${ColorReset}")
     endif()
 endif()
 
@@ -472,6 +500,13 @@ if(WIN32)
             COMPONENT Runtime
         )
         message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} → ${BoldYellow}doc/completions/${ColorReset}")
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/acds.ps1")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/acds.ps1"
+            DESTINATION doc/completions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}acds.ps1${ColorReset} → ${BoldYellow}doc/completions/${ColorReset}")
     endif()
 endif()
 

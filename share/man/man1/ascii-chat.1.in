@@ -155,6 +155,21 @@ ascii-chat server --port 8080      # Dual-stack on port 8080
 .RE
 .SS "Network Options (Server Only)"
 .TP
+.BR \-\-upnp
+Enable UPnP/NAT-PMP for automatic router port mapping.
+When enabled, the server attempts to configure your router to forward the
+listening port, allowing direct TCP connections from the internet.
+This works for approximately 70% of home routers.
+.RS
+.IP \(bu 2
+\fBUPnP\fR: Universal Plug and Play (most consumer routers)
+.IP \(bu 2
+\fBNAT-PMP\fR: NAT Port Mapping Protocol (Apple routers, Time Capsule)
+.RE
+.IP
+If port mapping fails, clients can still connect via WebRTC fallback.
+Default: \fBdisabled\fR (opt-in for security)
+.TP
 .BR \-\-max\-clients =\fIN\fR
 Maximum number of concurrent client connections allowed.
 Valid range: 1-32.

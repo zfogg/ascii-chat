@@ -113,6 +113,7 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--encode-audio'; Description = 'force enable Opus audio encoding' }
         @{ Name = '--no-encode-audio'; Description = 'disable Opus audio encoding' }
         @{ Name = '--no-audio-mixer'; Description = 'disable audio mixer, send silence instead (debug only)' }
+        @{ Name = '--upnp'; Description = 'enable UPnP/NAT-PMP for automatic router port mapping' }
     )
 
     # Mirror-only options
