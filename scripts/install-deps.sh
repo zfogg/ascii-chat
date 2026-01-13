@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl miniupnpc
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl miniupnpc libnatpmp
 
   echo ""
   echo "Dependencies installed successfully!"
