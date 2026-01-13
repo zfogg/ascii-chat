@@ -17,19 +17,6 @@ typedef struct {
   sqlite3 *db; ///< SQLite database handle
 } sqlite_backend_t;
 
-// Event type strings for database storage
-static const char *event_type_strings[RATE_EVENT_MAX] = {
-    [RATE_EVENT_SESSION_CREATE] = "session_create",
-    [RATE_EVENT_SESSION_LOOKUP] = "session_lookup",
-    [RATE_EVENT_SESSION_JOIN] = "session_join",
-    [RATE_EVENT_CONNECTION] = "connection",
-    [RATE_EVENT_IMAGE_FRAME] = "image_frame",
-    [RATE_EVENT_AUDIO] = "audio",
-    [RATE_EVENT_PING] = "ping",
-    [RATE_EVENT_CLIENT_JOIN] = "client_join",
-    [RATE_EVENT_CONTROL] = "control",
-};
-
 static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address, rate_event_type_t event_type,
                                       const rate_limit_config_t *config, bool *allowed) {
   sqlite_backend_t *backend = (sqlite_backend_t *)backend_data;
@@ -52,7 +39,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
   }
 
   sqlite3_bind_text(stmt, 1, ip_address, -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, event_type_strings[event_type], -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC);
   sqlite3_bind_int64(stmt, 3, (sqlite3_int64)window_start_ms);
 
   rc = sqlite3_step(stmt);
@@ -91,7 +78,7 @@ static asciichat_error_t sqlite_record(void *backend_data, const char *ip_addres
   }
 
   sqlite3_bind_text(stmt, 1, ip_address, -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, event_type_strings[event_type], -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, rate_limiter_event_type_string(event_type), -1, SQLITE_STATIC);
   sqlite3_bind_int64(stmt, 3, (sqlite3_int64)now_ms);
 
   rc = sqlite3_step(stmt);

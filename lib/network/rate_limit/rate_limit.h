@@ -182,3 +182,15 @@ asciichat_error_t rate_limiter_record(rate_limiter_t *limiter, const char *ip_ad
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t rate_limiter_cleanup(rate_limiter_t *limiter, uint32_t max_age_secs);
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * @brief Get event type string for logging/database storage
+ *
+ * @param event_type Event type enum value
+ * @return Event type name string (e.g., "session_create", "connection")
+ */
+const char *rate_limiter_event_type_string(rate_event_type_t event_type);
