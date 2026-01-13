@@ -168,7 +168,8 @@ $RequiredPackages = @(
     "sqlite3",         # Database library for discovery service
     "liburcu",         # Userspace RCU for lock-free concurrent data structures
     "openssl",         # SSL/TLS library (required by libdatachannel for TURN credentials)
-    "libdatachannel"   # WebRTC DataChannels for P2P connections
+    "libdatachannel",  # WebRTC DataChannels for P2P connections
+    "miniupnpc"        # UPnP client library for automatic router port forwarding
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan

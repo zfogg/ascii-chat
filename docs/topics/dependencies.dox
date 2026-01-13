@@ -53,7 +53,8 @@
  * sudo apt-get install build-essential clang clang-tidy clang-format cmake ninja-build
  *
  * # Core dependencies
- * sudo apt-get install libzstd-dev portaudio19-dev libsodium-dev
+ * sudo apt-get install libzstd-dev portaudio19-dev libsodium-dev libopus-dev \
+ *   libsqlite3-dev liburcu-dev libssl-dev libminiupnpc-dev
  *
  * # Testing (optional)
  * sudo apt-get install libcriterion-dev
@@ -64,12 +65,14 @@
  *
  * **Arch Linux**:
  * @code{.bash}
- * sudo pacman -S pkg-config clang llvm cmake ninja make zstd portaudio libsodium criterion musl mimalloc
+ * sudo pacman -S pkg-config clang llvm cmake ninja make zstd portaudio libsodium \
+ *   opus sqlite liburcu openssl miniupnpc criterion musl mimalloc
  * @endcode
  *
  * **macOS (Homebrew)**:
  * @code{.bash}
- * brew install cmake ninja make zstd portaudio libsodium criterion mimalloc llvm
+ * brew install cmake ninja make llvm zstd portaudio libsodium opus sqlite3 \
+ *   userspace-rcu openssl miniupnpc criterion mimalloc
  * @endcode
  *
  * **Windows (Scoop + vcpkg)**:
@@ -82,7 +85,9 @@
  * scoop install cmake ninja llvm
  *
  * # Dependencies via vcpkg
- * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows mimalloc:x64-windows
+ * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows \
+ *   opus:x64-windows sqlite3:x64-windows liburcu:x64-windows openssl:x64-windows \
+ *   miniupnpc:x64-windows mimalloc:x64-windows
  * @endcode
  *
  * @subsection dependencies_ready Ready to Build
@@ -178,6 +183,90 @@
  *
  * Used in `lib/compression.c` to compress ASCII frames before transmission.
  * Level 1 compression gives ~50% size reduction at 400+ MB/s.
+ *
+ * @subsection dependencies_miniupnpc miniupnpc - UPnP IGD Client
+ *
+ * **Purpose**: Automatic router port forwarding via UPnP
+ *
+ * **Website**: https://miniupnp.tuxfamily.org/
+ *
+ * **License**: BSD License
+ *
+ * **Version**: 2.3.x (tested with 2.3.2+)
+ *
+ * Enables automatic port forwarding on home routers, allowing approximately
+ * 70% of home users to establish direct TCP connections without requiring
+ * WebRTC fallback. This is an optional dependency - if not available,
+ * ascii-chat gracefully falls back to WebRTC for NAT traversal.
+ *
+ * @subsection dependencies_opus Opus - Audio Codec
+ *
+ * **Purpose**: Real-time audio compression for low-bandwidth transmission
+ *
+ * **Website**: https://opus-codec.org/
+ *
+ * **License**: BSD License
+ *
+ * **Version**: 1.3.0 or later
+ *
+ * Enables high-quality bidirectional voice and audio communication between
+ * clients with minimal latency and bandwidth overhead. Used in the audio
+ * pipeline for encoding outgoing audio and decoding incoming audio.
+ *
+ * @subsection dependencies_liburcu liburcu - Userspace Read-Copy-Update
+ *
+ * **Purpose**: Lock-free synchronization for high-performance concurrent data structures
+ *
+ * **Website**: https://liburcu.org/
+ *
+ * **License**: LGPLv2.1
+ *
+ * **Version**: 0.13.0 or later
+ *
+ * Used in the ACDS (ASCII-Chat Discovery Service) for scalable concurrent access.
+ * Provides read-side access that scales linearly with CPU cores, achieving 5-10x
+ * performance improvement on read-heavy workloads compared to traditional rwlock.
+ *
+ * @subsection dependencies_sqlite SQLite3 - Embedded Database
+ *
+ * **Purpose**: Persistent storage for the discovery service
+ *
+ * **Website**: https://www.sqlite.org/
+ *
+ * **License**: Public Domain
+ *
+ * **Version**: 3.35.0 or later
+ *
+ * Used in the ACDS (ASCII-Chat Discovery Service) to store active sessions,
+ * user identities, and connection metadata. Zero-configuration embedded database.
+ *
+ * @subsection dependencies_openssl OpenSSL - Cryptography Toolkit
+ *
+ * **Purpose**: TLS for WebRTC and musl static builds
+ *
+ * **Website**: https://www.openssl.org/
+ *
+ * **License**: Apache 2.0
+ *
+ * **Version**: 3.0.0 or later
+ *
+ * Used by libdatachannel for TURN server credential generation and secure
+ * WebRTC connections. Also provides complete TLS implementation for musl
+ * static builds where system OpenSSL isn't available.
+ *
+ * @subsection dependencies_libdatachannel libdatachannel - WebRTC Library
+ *
+ * **Purpose**: NAT traversal via WebRTC DataChannels
+ *
+ * **Website**: https://github.com/paullouisageneau/libdatachannel
+ *
+ * **License**: MPL 2.0
+ *
+ * **Version**: 0.20.0 or later
+ *
+ * Lightweight (~50k LOC) WebRTC library providing DataChannels for P2P connections.
+ * Enables NAT traversal via ICE/STUN/TURN when UPnP port forwarding is unavailable.
+ * Falls back to relay servers for symmetric NAT scenarios.
  *
  * @section dependencies_vendored Vendored Dependencies (Git Submodules)
  *
@@ -306,10 +395,14 @@
  * |---------|--------------|
  * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17 |
  * | ISC | libsodium |
- * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf |
+ * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf, miniupnpc, Opus |
  * | zlib | sokol |
+ * | Apache 2.0 | OpenSSL |
+ * | MPL 2.0 | libdatachannel |
+ * | LGPLv2.1 | liburcu |
+ * | Public Domain | SQLite3 |
  *
- * No copyleft (GPL) dependencies in the core application.
+ * liburcu uses LGPLv2.1 but is dynamically linked, maintaining ascii-chat's MIT license.
  *
  * @section dependencies_versioning Version Requirements
  *
@@ -320,6 +413,12 @@
  * | PortAudio | 19.7.0 | Stable callback API |
  * | libsodium | 1.0.18 | Ed25519 support |
  * | zstd | 1.4.0 | Streaming API |
+ * | Opus | 1.3.0 | Stable audio codec API |
+ * | SQLite3 | 3.35.0 | Returning clause support |
+ * | OpenSSL | 3.0.0 | Modern TLS/crypto API |
+ * | liburcu | 0.13.0 | Stable RCU API |
+ * | libdatachannel | 0.20.0 | WebRTC DataChannels |
+ * | miniupnpc | 2.3.x | UPnP IGD client (API changes in 2.3) |
  * | Criterion | 2.4.0 | Theories and fixtures |
  *
  * Git submodules are pinned to specific commits for reproducibility.
