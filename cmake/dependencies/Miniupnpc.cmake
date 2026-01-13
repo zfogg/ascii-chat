@@ -52,6 +52,32 @@ if(MINIUPNPC_FOUND)
     message(STATUS "  UPnP/NAT-PMP support: ENABLED")
     add_compile_definitions(HAVE_MINIUPNPC=1)
 
+    # Detect the UPNP_GetValidIGD function signature (changed in API version 14)
+    # Some distributions have mismatched header API version vs actual function signature,
+    # so we must test at configure time rather than relying on MINIUPNPC_API_VERSION
+    include(CheckCSourceCompiles)
+    set(CMAKE_REQUIRED_INCLUDES ${MINIUPNPC_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
+    check_c_source_compiles("
+        #include <miniupnpc/miniupnpc.h>
+        #include <miniupnpc/upnpcommands.h>
+        int main(void) {
+            struct UPNPUrls urls;
+            struct IGDdatas data;
+            char addr[40];
+            // Try the 7-argument version (API >= 14)
+            int r = UPNP_GetValidIGD(0, &urls, &data, addr, sizeof(addr), 0, 0);
+            return r;
+        }
+    " MINIUPNPC_HAS_7ARG_GETVALIDIGD)
+
+    if(MINIUPNPC_HAS_7ARG_GETVALIDIGD)
+        message(STATUS "  UPNP_GetValidIGD: 7-argument version (API >= 14)")
+        add_compile_definitions(MINIUPNPC_GETVALIDIGD_7ARG=1)
+    else()
+        message(STATUS "  UPNP_GetValidIGD: 5-argument version (API < 14)")
+    endif()
+
     # On macOS, also add libnatpmp include path and library (used alongside miniupnpc)
     if(APPLE)
         if(EXISTS "/usr/local/opt/libnatpmp/include" AND EXISTS "/usr/local/opt/libnatpmp/lib/libnatpmp.a")

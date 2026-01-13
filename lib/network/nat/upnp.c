@@ -95,7 +95,8 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
   // Note: UPNP_GetValidIGD signature changed in miniupnpc API version 14
   // API < 14:  UPNP_GetValidIGD(devlist, urls, data, external_addr, len) - 5 args
   // API >= 14: UPNP_GetValidIGD(devlist, urls, data, external_addr, len, lanaddr, lanaddr_len) - 7 args
-#if defined(MINIUPNPC_API_VERSION) && MINIUPNPC_API_VERSION >= 14
+  // MINIUPNPC_GETVALIDIGD_7ARG is set by CMake's check_c_source_compiles to detect the actual signature
+#ifdef MINIUPNPC_GETVALIDIGD_7ARG
   upnp_result = UPNP_GetValidIGD(device_list, &urls, &data, external_addr, sizeof(external_addr), NULL, 0);
 #else
   upnp_result = UPNP_GetValidIGD(device_list, &urls, &data, external_addr, sizeof(external_addr));

@@ -283,18 +283,16 @@ if(NOT libdatachannel_POPULATED)
         endif()
 
         # On macOS with Homebrew LLVM, let the compiler use its default configuration
-        # NOTE: Do NOT use --no-default-config or manual -isystem flags for libc++
-        # - --no-default-config causes libc++ ABI mismatch (undefined symbols)
-        # - Manual -isystem breaks header search order (libc++ needs its C wrapper headers)
-        # Just use -stdlib=libc++ and let Clang figure out the correct paths.
+        # CRITICAL: Do NOT set CMAKE_CXX_FLAGS on macOS! Any flags we add can break
+        # the compiler's default include path resolution, especially for libc++.
+        # Even just "-stdlib=libc++" can break header search when using Homebrew LLVM.
+        # The Homebrew Clang binary knows where its own libc++ headers are.
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
-            # Use -w to suppress warnings, -stdlib=libc++ for consistent stdlib
-            # Do NOT add -isystem flags - they break libc++'s C header wrappers
+            # Only add -w to suppress warnings in C code (this is safe)
             set(_libdc_c_flags "-w")
-            set(_libdc_cxx_flags "-stdlib=libc++ -w")
-            list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
-            message(STATUS "libdatachannel macOS build: using compiler default libc++ paths")
+            # Do NOT set CMAKE_CXX_FLAGS - let the compiler use its complete defaults
+            message(STATUS "libdatachannel macOS build: using compiler defaults (no CXX flags override)")
         endif()
 
         # On Windows, force Ninja generator and use clang-cl for MSVC-style flag compatibility
