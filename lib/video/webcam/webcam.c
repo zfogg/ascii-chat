@@ -19,7 +19,7 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
   // Check if test pattern mode is enabled
   if (GET_OPTION(test_pattern)) {
     log_info("Test pattern mode enabled - not opening real webcam");
-    log_info("Test pattern resolution: 1280x720");
+    log_info("Test pattern resolution: 320x240");
     return ASCIICHAT_OK;
   }
 
@@ -64,7 +64,7 @@ image_t *webcam_read(void) {
 
     if (!cached_pattern) {
       // Generate a colorful test pattern ONCE on first call
-      cached_pattern = image_new(1280, 720);
+      cached_pattern = image_new(320, 240);
       if (!cached_pattern) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
         return NULL;
