@@ -282,29 +282,19 @@ if(NOT libdatachannel_POPULATED)
             message(STATUS "libdatachannel will be built for musl target: ${LIBDATACHANNEL_MUSL_TARGET}")
         endif()
 
-        # On macOS with Homebrew LLVM, set explicit flags
-        # NOTE: Do NOT use --no-default-config flag - it causes libc++ ABI mismatch
-        # between Homebrew LLVM's libc++ and system libc++, resulting in undefined symbols
-        # like std::__1::__hash_memory. Instead, just set -stdlib=libc++ and let the
-        # compiler use its default configuration.
+        # On macOS with Homebrew LLVM, let the compiler use its default configuration
+        # NOTE: Do NOT use --no-default-config or manual -isystem flags for libc++
+        # - --no-default-config causes libc++ ABI mismatch (undefined symbols)
+        # - Manual -isystem breaks header search order (libc++ needs its C wrapper headers)
+        # Just use -stdlib=libc++ and let Clang figure out the correct paths.
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
-            get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-            get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
-
-            # Check for libc++ include path
-            set(LIBCXX_INCLUDE_DIR "${LLVM_ROOT}/include/c++/v1")
-            if(EXISTS "${LIBCXX_INCLUDE_DIR}")
-                set(_libcxx_include_flag "-isystem ${LIBCXX_INCLUDE_DIR}")
-            else()
-                set(_libcxx_include_flag "")
-            endif()
-
             # Use -w to suppress warnings, -stdlib=libc++ for consistent stdlib
+            # Do NOT add -isystem flags - they break libc++'s C header wrappers
             set(_libdc_c_flags "-w")
-            set(_libdc_cxx_flags "-stdlib=libc++ ${_libcxx_include_flag} -w")
+            set(_libdc_cxx_flags "-stdlib=libc++ -w")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
-            message(STATUS "libdatachannel macOS build: libc++ include=${LIBCXX_INCLUDE_DIR}")
+            message(STATUS "libdatachannel macOS build: using compiler default libc++ paths")
         endif()
 
         # On Windows, force Ninja generator and use clang-cl for MSVC-style flag compatibility
@@ -338,8 +328,10 @@ if(NOT libdatachannel_POPULATED)
             endif()
 
             # Add WIN32_LEAN_AND_MEAN to prevent winsock conflicts
+            # CRITICAL: Add /EHsc to enable C++ exception handling (throw/try)
+            # clang-cl disables exceptions by default, but libdatachannel uses them
             set(_libdc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
-            set(_libdc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
+            set(_libdc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN /EHsc")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_win_c_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_win_cxx_flags}")
 
