@@ -254,9 +254,9 @@ if(NOT libdatachannel_POPULATED)
             # -nostdinc++ removes system C++ headers, -isystem adds Alpine's headers
             # Also need musl C library headers for bits/alltypes.h etc.
             # This prevents glibc-specific symbols like pthread_cond_clockwait
-            set(MUSL_INCLUDE_DIR "/usr/lib/musl/include")
+            # MUSL_INCLUDE_DIR is set and cached by Musl.cmake (distro-specific path)
             set(_libdc_c_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET}")
-            if(ALPINE_LIBCXX_INCLUDE_DIR AND EXISTS "${ALPINE_LIBCXX_INCLUDE_DIR}" AND EXISTS "${MUSL_INCLUDE_DIR}")
+            if(ALPINE_LIBCXX_INCLUDE_DIR AND EXISTS "${ALPINE_LIBCXX_INCLUDE_DIR}" AND MUSL_INCLUDE_DIR AND EXISTS "${MUSL_INCLUDE_DIR}")
                 # Order matters: C++ headers first, then musl C headers
                 set(_libdc_cxx_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET} -stdlib=libc++ -nostdinc++ -isystem ${ALPINE_LIBCXX_INCLUDE_DIR} -isystem ${MUSL_INCLUDE_DIR}")
                 message(STATUS "libdatachannel using Alpine libc++ headers: ${ALPINE_LIBCXX_INCLUDE_DIR}")
@@ -264,7 +264,7 @@ if(NOT libdatachannel_POPULATED)
             else()
                 # Fallback: try to suppress glibc-specific code generation
                 set(_libdc_cxx_flags "-O3 -target ${LIBDATACHANNEL_MUSL_TARGET} -stdlib=libc++ -U__GLIBC__")
-                message(WARNING "Alpine libc++ or musl headers not found, using system headers with -U__GLIBC__")
+                message(WARNING "Alpine libc++ or musl headers not found (ALPINE_LIBCXX_INCLUDE_DIR='${ALPINE_LIBCXX_INCLUDE_DIR}', MUSL_INCLUDE_DIR='${MUSL_INCLUDE_DIR}'), using system headers with -U__GLIBC__")
             endif()
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")

@@ -148,6 +148,12 @@ ExternalProject_Add(liburcu_external
         sh -c "cd ${LIBURCU_SOURCE_DIR} && ./bootstrap && ./configure --prefix=${LIBURCU_CACHE_DIR} --enable-shared=no --enable-static=yes --disable-debug-rcu"
     BUILD_COMMAND make -j${NPROC}
     INSTALL_COMMAND make install
+    # Tell Ninja that this project produces these files (required for proper dependency tracking)
+    BUILD_BYPRODUCTS
+        "${LIBURCU_CACHE_DIR}/lib/liburcu.a"
+        "${LIBURCU_CACHE_DIR}/lib/liburcu-common.a"
+        "${LIBURCU_CACHE_DIR}/lib/liburcu-mb.a"
+        "${LIBURCU_CACHE_DIR}/lib/liburcu-cds.a"
 )
 
 # Create imported target that depends on the external project

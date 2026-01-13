@@ -180,18 +180,31 @@ function(configure_musl_post_project)
     if(EXISTS "/usr/lib/musl/lib")
         # Arch Linux location (all architectures)
         set(MUSL_LIBDIR "/usr/lib/musl/lib")
+        set(MUSL_INCLUDE_DIR "/usr/lib/musl/include")
     elseif(EXISTS "/usr/${MUSL_ARCH}-linux-musl/lib64")
         # Fedora location
         set(MUSL_LIBDIR "/usr/${MUSL_ARCH}-linux-musl/lib64")
+        set(MUSL_INCLUDE_DIR "/usr/${MUSL_ARCH}-linux-musl/include")
     elseif(EXISTS "/usr/lib/${MUSL_ARCH}-linux-musl")
-        # Debian/Ubuntu location
+        # Debian/Ubuntu location - libs in /usr/lib, includes in /usr/include
         set(MUSL_LIBDIR "/usr/lib/${MUSL_ARCH}-linux-musl")
+        # Ubuntu puts musl headers in /usr/include/{arch}-linux-musl/ (not /usr/lib/)
+        if(EXISTS "/usr/include/${MUSL_ARCH}-linux-musl")
+            set(MUSL_INCLUDE_DIR "/usr/include/${MUSL_ARCH}-linux-musl")
+        else()
+            # Fallback: some systems put it in lib path
+            set(MUSL_INCLUDE_DIR "/usr/lib/${MUSL_ARCH}-linux-musl/include")
+        endif()
     else()
         message(FATAL_ERROR "musl library directory not found for ${MUSL_ARCH}. Install musl-dev:\n"
                             "  Arch Linux: sudo pacman -S musl\n"
                             "  Ubuntu/Debian: sudo apt install musl-tools musl-dev\n"
                             "  Fedora: sudo dnf install musl-devel")
     endif()
+
+    # Cache MUSL_INCLUDE_DIR for use by other modules (like Libdatachannel.cmake)
+    set(MUSL_INCLUDE_DIR "${MUSL_INCLUDE_DIR}" CACHE PATH "musl libc include directory" FORCE)
+    message(STATUS "musl include directory: ${BoldCyan}${MUSL_INCLUDE_DIR}${ColorReset}")
 
     # Configure clang to use musl with static-PIE
     # Based on: https://wiki.debian.org/musl
