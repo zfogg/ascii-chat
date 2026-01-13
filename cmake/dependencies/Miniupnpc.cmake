@@ -59,6 +59,7 @@ if(MINIUPNPC_FOUND)
     set(CMAKE_REQUIRED_INCLUDES ${MINIUPNPC_INCLUDE_DIRS})
     set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
     check_c_source_compiles("
+        #include <stddef.h>  // For size_t - miniupnpc headers need it but don't include it
         #include <miniupnpc/miniupnpc.h>
         #include <miniupnpc/upnpcommands.h>
         int main(void) {
