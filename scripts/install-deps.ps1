@@ -167,6 +167,7 @@ $RequiredPackages = @(
     "opus",            # Audio codec library for real-time compression
     "sqlite3",         # Database library for discovery service
     "liburcu",         # Userspace RCU for lock-free concurrent data structures
+    "openssl",         # SSL/TLS library (required by libdatachannel for TURN credentials)
     "libdatachannel"   # WebRTC DataChannels for P2P connections
 )
 

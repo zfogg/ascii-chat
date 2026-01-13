@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -122,6 +122,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev \
       libcriterion-dev libffi-dev libsqlite3-dev \
       liburcu-dev \
+      libssl-dev \
       libprotobuf-c-dev \
       doxygen \
       dpkg-dev rpm
@@ -273,6 +274,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       jack-audio-connection-kit-devel \
       criterion-devel libffi-devel sqlite-devel \
       userspace-rcu-devel \
+      openssl-devel \
       protobuf-c-devel \
       doxygen \
       rpm-build
@@ -290,6 +292,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       zstd zlib libsodium portaudio opus sqlite \
       criterion \
       liburcu \
+      openssl \
       protobuf-c \
       doxygen \
       dpkg rpm-tools
