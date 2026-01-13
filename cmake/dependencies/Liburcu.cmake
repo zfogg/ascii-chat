@@ -141,13 +141,13 @@ ExternalProject_Add(liburcu_external
     GIT_TAG v0.14.0
     PREFIX "${LIBURCU_CACHE_DIR}"
     SOURCE_DIR "${LIBURCU_SOURCE_DIR}"
-    BINARY_DIR "${LIBURCU_BUILD_DIR}"
+    # Autotools builds in-source, don't set BINARY_DIR with BUILD_IN_SOURCE
+    BUILD_IN_SOURCE TRUE
     # Autotools projects cloned from git need bootstrap to generate configure script
     CONFIGURE_COMMAND
         sh -c "cd ${LIBURCU_SOURCE_DIR} && ./bootstrap && ./configure --prefix=${LIBURCU_CACHE_DIR} --enable-shared=no --enable-static=yes --disable-debug-rcu"
     BUILD_COMMAND make -j${NPROC}
     INSTALL_COMMAND make install
-    BUILD_IN_SOURCE TRUE
 )
 
 # Create imported target that depends on the external project
