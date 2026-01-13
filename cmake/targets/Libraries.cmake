@@ -363,6 +363,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     )
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
+        target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
@@ -373,6 +374,7 @@ else()
     # For OBJECT libs, link external deps only
     target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} sqlite3 libdatachannel)
     if(MINIUPNPC_FOUND)
+        target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
         # Also link libnatpmp on macOS
         if(NATPMP_LIBRARY)
