@@ -282,16 +282,33 @@ if(NOT libdatachannel_POPULATED)
             message(STATUS "libdatachannel will be built for musl target: ${LIBDATACHANNEL_MUSL_TARGET}")
         endif()
 
-        # On macOS with Homebrew LLVM, let the compiler use its default configuration
+        # On macOS with Homebrew LLVM, inherit system settings but don't override compiler flags
         # CRITICAL: Do NOT set CMAKE_CXX_FLAGS on macOS! Any flags we add can break
         # the compiler's default include path resolution, especially for libc++.
-        # Even just "-stdlib=libc++" can break header search when using Homebrew LLVM.
-        # The Homebrew Clang binary knows where its own libc++ headers are.
+        # However, we MUST pass CMAKE_OSX_SYSROOT so libc++ can find C wrapper headers.
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
             # Only add -w to suppress warnings in C code (this is safe)
             set(_libdc_c_flags "-w")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
-            # Do NOT set CMAKE_CXX_FLAGS - let the compiler use its complete defaults
+
+            # Pass the macOS SDK sysroot - required for libc++ to find C wrapper headers
+            # Without this, Homebrew LLVM's libc++ can't find <ctype.h>, <stddef.h>, etc.
+            if(CMAKE_OSX_SYSROOT)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
+            else()
+                # Find the SDK path if not already set
+                execute_process(
+                    COMMAND xcrun --show-sdk-path
+                    OUTPUT_VARIABLE _macos_sdk_path
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(_macos_sdk_path)
+                    list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_OSX_SYSROOT=${_macos_sdk_path}")
+                    message(STATUS "libdatachannel macOS build: SDK=${_macos_sdk_path}")
+                endif()
+            endif()
+
             message(STATUS "libdatachannel macOS build: using compiler defaults (no CXX flags override)")
         endif()
 

@@ -1083,6 +1083,17 @@ if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
 endif()
 
+# Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
+# This is linked to ascii-chat-network module, but must also be exposed via the
+# INTERFACE library for final executables since libasciichat.a includes upnp.c
+if(MINIUPNPC_FOUND)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${MINIUPNPC_LIBRARIES})
+    # Also link libnatpmp on macOS (separate library for NAT-PMP protocol)
+    if(NATPMP_LIBRARY)
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${NATPMP_LIBRARY})
+    endif()
+endif()
+
 # =============================================================================
 # Symbol Validation for Combined Static Library
 # =============================================================================
