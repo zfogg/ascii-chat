@@ -145,9 +145,10 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
+          # Use windows-release preset which inherits vcpkg toolchain
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
           # Disable tests - Criterion doesn't work well on Windows
-          $cmakeArgs = @("--preset", "release", "-DASCIICHAT_ENABLE_ANALYZERS=OFF", "-DASCIICHAT_ENABLE_TESTS=OFF")
+          $cmakeArgs = @("--preset", "windows-release", "-DASCIICHAT_ENABLE_ANALYZERS=OFF", "-DASCIICHAT_ENABLE_TESTS=OFF")
           if ($deferTool -and (Test-Path $deferTool)) {
             Write-Host "Using pre-built defer tool: $deferTool"
             $cmakeArgs += "-DASCIICHAT_DEFER_TOOL=$deferTool"

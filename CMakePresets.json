@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 6,
   "configurePresets": [
     {
       "name": "base",
@@ -9,6 +9,20 @@
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_CXX_STANDARD": "26"
+      }
+    },
+    {
+      "name": "base-vcpkg",
+      "hidden": true,
+      "description": "Base configuration for vcpkg-enabled builds",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "USE_VCPKG": "ON"
+      },
+      "condition": {
+        "type": "notEquals",
+        "lhs": "$env{VCPKG_ROOT}",
+        "rhs": ""
       }
     },
     {
@@ -160,6 +174,31 @@
       }
     },
     {
+      "name": "windows-debug",
+      "displayName": "Windows Debug (vcpkg)",
+      "description": "Windows Debug build using vcpkg for dependencies",
+      "inherits": ["base-debug", "base-vcpkg"],
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-release",
+      "displayName": "Windows Release (vcpkg)",
+      "description": "Windows Release build using vcpkg with static linking",
+      "inherits": ["base-release", "base-vcpkg"],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "vs26",
       "inherits": "base",
       "generator": "Visual Studio 18 2026",
@@ -199,6 +238,14 @@
     {
       "name": "release-musl",
       "configurePreset": "release-musl"
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-debug"
+    },
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-release"
     },
     {
       "name": "relwithdebinfo",

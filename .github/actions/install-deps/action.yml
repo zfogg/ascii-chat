@@ -338,15 +338,8 @@ runs:
           sudo apt-get install -y --no-install-recommends $extra
         fi
 
-    - name: Restore vcpkg packages (Windows)
-      if: inputs.os == 'windows' && env.VCPKG_ROOT != ''
-      id: vcpkg-cache
-      uses: actions/cache/restore@v4
-      with:
-        path: ${{ env.VCPKG_ROOT }}
-        key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-v1-
+    # NOTE: vcpkg global cache removed - manifest mode installs packages to
+    # ${CMAKE_BINARY_DIR}/vcpkg_installed/ which is included in build directory cache
 
     - name: Set CSTD env var (POSIX)
       if: inputs.os != 'windows'
@@ -753,53 +746,37 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
 
-    - name: Setup vcpkg (Windows)
+    - name: Set vcpkg triplet for Windows (AMD64)
+      if: inputs.os == 'windows' && runner.arch == 'X64'
+      shell: pwsh
+      run: |
+        # Release builds use static libraries - must be set BEFORE vcpkg install
+        # VCPKG_DEFAULT_TRIPLET: Used by vcpkg command line
+        # VCPKG_TARGET_TRIPLET: Used by CMake toolchain
+        Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_DEFAULT_TRIPLET=x64-windows-static"
+        Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_TARGET_TRIPLET=x64-windows-static"
+        Write-Host "Set vcpkg triplet to x64-windows-static for Windows AMD64"
+
+    - name: Set vcpkg triplet for Windows (ARM64)
+      if: inputs.os == 'windows' && runner.arch == 'ARM64'
+      shell: pwsh
+      run: |
+        # Release builds use static libraries - must be set BEFORE vcpkg install
+        # VCPKG_DEFAULT_TRIPLET: Used by vcpkg command line
+        # VCPKG_TARGET_TRIPLET: Used by CMake toolchain
+        Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_DEFAULT_TRIPLET=arm64-windows-static"
+        Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_TARGET_TRIPLET=arm64-windows-static"
+        Write-Host "Set vcpkg triplet to arm64-windows-static for Windows ARM64"
+
+    - name: Setup vcpkg and install packages (Windows)
       if: inputs.os == 'windows'
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgGitCommitId: "80d025e8299d442c13b29751fc9451711b7c6c8e"
-
-    - name: Install vcpkg packages (Windows)
-      if: inputs.os == 'windows'
-      shell: pwsh
-      run: |
-        if (-not $env:VCPKG_ROOT) {
-          Write-Host "VCPKG_ROOT is not set. Please run lukka/run-vcpkg before install-deps." -ForegroundColor Red
-          exit 1
-        }
-
-        function Install-VcpkgPackages {
-          param(
-            [string]$PackageList,
-            [string]$Triplet
-          )
-
-          if ([string]::IsNullOrWhiteSpace($PackageList)) {
-            return
-          }
-
-          $packages = $PackageList.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
-          foreach ($pkg in $packages) {
-            Write-Host "Installing vcpkg package: ${pkg}:${Triplet}"
-            vcpkg install "${pkg}:${Triplet}"
-          }
-        }
-
-        $libsMode = '${{ inputs.windows-libs-mode }}'
-        Write-Host "Windows libs mode: $libsMode"
-
-        # Install packages based on windows-libs-mode
-        # - "dynamic": Only install dynamic (non-static) packages
-        # - "static": Only install static packages
-        # - "both": Install both dynamic and static packages
-        if ($libsMode -eq 'dynamic' -or $libsMode -eq 'both') {
-          Write-Host "Installing dynamic vcpkg packages..."
-          Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-packages }}' -Triplet '${{ inputs.vcpkg-triplet }}'
-        }
-        if ($libsMode -eq 'static' -or $libsMode -eq 'both') {
-          Write-Host "Installing static vcpkg packages..."
-          Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-static-packages }}' -Triplet '${{ inputs.vcpkg-static-triplet }}'
-        }
+        # Keep in sync with vcpkg.json builtin-baseline and vcpkg-configuration.json baseline
+        vcpkgGitCommitId: "530d2d2f0864684f20b32a0596459646906d35fe"
+        # Run vcpkg install from manifest (vcpkg.json) before cmake configure
+        # This pre-installs packages to speed up cmake configure and enable caching
+        runVcpkgInstall: true
 
 
     # =========================================================================
@@ -889,12 +866,7 @@ runs:
           ~/Library/Caches/Homebrew
         key: ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
 
-    - name: Save vcpkg packages (Windows)
-      if: always() && inputs.os == 'windows' && env.VCPKG_ROOT != '' && steps.vcpkg-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ env.VCPKG_ROOT }}
-        key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
+    # NOTE: vcpkg cache save removed - manifest mode uses build directory cache
 
     - name: Prepare APT cache for saving (Ubuntu)
       if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'

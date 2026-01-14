@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "ascii-chat",
+  "version-semver": "0.6.6",
+  "description": "Terminal-based video chat with ASCII art rendering",
+  "homepage": "https://github.com/zfogg/ascii-chat",
+  "license": "MIT",
+  "supports": "!uwp",
+  "dependencies": [
+    "zstd",
+    "libsodium",
+    "opus",
+    "portaudio",
+    "miniupnpc",
+    "openssl",
+    {
+      "name": "mimalloc",
+      "platform": "windows | (linux & !static) | osx"
+    },
+    "libdatachannel"
+  ],
+  "overrides": []
+}

@@ -49,6 +49,47 @@ else {
   Write-Host ""
 }
 
+# =============================================================================
+# vcpkg Detection (Windows primary package manager)
+# =============================================================================
+# vcpkg provides consistent dependency management on Windows.
+# The script auto-detects common installation locations.
+#
+# Priority order:
+#   1. VCPKG_ROOT environment variable (user-configured)
+#   2. C:\vcpkg (common system-wide location)
+#   3. $env:USERPROFILE\vcpkg (user installation)
+#   4. $env:LOCALAPPDATA\vcpkg (Visual Studio installer location)
+# =============================================================================
+
+if (-not $env:VCPKG_ROOT) {
+  $vcpkgLocations = @(
+    "C:\vcpkg",
+    "$env:USERPROFILE\vcpkg",
+    "$env:LOCALAPPDATA\vcpkg"
+  )
+
+  foreach ($loc in $vcpkgLocations) {
+    if ($loc -and (Test-Path "$loc\vcpkg.exe")) {
+      $env:VCPKG_ROOT = $loc
+      Write-Host "Found vcpkg at: $loc" -ForegroundColor Green
+      break
+    }
+  }
+
+  if (-not $env:VCPKG_ROOT) {
+    Write-Host "WARNING: vcpkg not found!" -ForegroundColor Yellow
+    Write-Host "  vcpkg is recommended for Windows builds to manage dependencies." -ForegroundColor Yellow
+    Write-Host "  Install from: https://github.com/microsoft/vcpkg" -ForegroundColor Yellow
+    Write-Host "  Or set VCPKG_ROOT environment variable to your vcpkg installation." -ForegroundColor Yellow
+    Write-Host ""
+  }
+}
+else {
+  Write-Host "Using vcpkg from VCPKG_ROOT: $env:VCPKG_ROOT" -ForegroundColor Green
+  Write-Host ""
+}
+
 # Clean build directory if requested
 if ($Clean) {
   Write-Host "Cleaning build directory: $BuildDir" -ForegroundColor Yellow
@@ -65,13 +106,20 @@ if ($needsConfigure) {
   Write-Host "Configuring project ($Config build) in $BuildDir..." -ForegroundColor Cyan
 
   # Map Config parameter to preset name
+  # On Windows with vcpkg available, use Windows-specific presets for Debug/Release
   $presetName = switch ($Config.ToLower()) {
-    "debug" { "debug" }
-    "release" { "release" }
+    "debug" {
+      if ($env:VCPKG_ROOT) { "windows-debug" } else { "debug" }
+    }
+    "release" {
+      if ($env:VCPKG_ROOT) { "windows-release" } else { "release" }
+    }
     "dev" { "dev" }
     "coverage" { "coverage" }
     "relwithdebinfo" { "relwithdebinfo" }
-    default { "default" }
+    default {
+      if ($env:VCPKG_ROOT) { "windows-debug" } else { "default" }
+    }
   }
     
   # Check if using special modes that require custom configuration

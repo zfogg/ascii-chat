@@ -582,8 +582,9 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
+          # Use windows-release preset which inherits vcpkg toolchain
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
-          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
+          cmake --preset windows-release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'

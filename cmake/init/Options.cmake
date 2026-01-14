@@ -64,18 +64,35 @@ endif()
 # =============================================================================
 # vcpkg provides consistent cross-platform package management
 #
+# Supports two modes:
+#   1. Manifest mode: vcpkg.json in project root (recommended)
+#   2. Classic mode: Global vcpkg installation with VCPKG_ROOT env var
+#
 # Default behavior by platform:
 #   Windows: ON (vcpkg is the standard package manager)
 #   Unix/macOS: OFF (use pkg-config/Homebrew by default)
 #   musl: OFF (dependencies built from source)
 #
+# Auto-enabled when vcpkg toolchain is detected (CMAKE_TOOLCHAIN_FILE).
+#
 # When enabled, vcpkg is tried first for all dependencies before falling back
 # to pkg-config (Linux/macOS) or Homebrew (macOS). Dependencies in deps/
 # (like bearssl) are always built from source regardless of this setting.
 #
+
+# Auto-detect vcpkg toolchain (loaded via preset or command line)
+if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
+    set(_vcpkg_toolchain_detected TRUE)
+else()
+    set(_vcpkg_toolchain_detected FALSE)
+endif()
+
 if(USE_MUSL)
     # musl builds always use source dependencies
     option(USE_VCPKG "Use vcpkg for dependency management (disabled for musl)" OFF)
+elseif(_vcpkg_toolchain_detected)
+    # vcpkg toolchain detected - auto-enable
+    option(USE_VCPKG "Use vcpkg for dependency management" ON)
 elseif(WIN32)
     # Windows defaults to vcpkg
     option(USE_VCPKG "Use vcpkg for dependency management" ON)
