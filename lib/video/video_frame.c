@@ -144,10 +144,15 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
     }
   }
 
-  // Atomic pointer swap - NO MUTEX NEEDED since video_frame_commit() is only called by one thread (the receive thread)
+  // Pointer swap using mutex for thread safety
+  // The send thread reads front_buffer while render thread swaps
+  // Without this mutex, the send thread could read a stale front_buffer pointer
+  // mid-swap, causing it to see size=0 on newly-initialized frames
+  mutex_lock(&vfb->swap_mutex);
   video_frame_t *temp = vfb->front_buffer;
   vfb->front_buffer = vfb->back_buffer;
   vfb->back_buffer = temp;
+  mutex_unlock(&vfb->swap_mutex);
 
   // Signal reader that new frame is available
   atomic_store(&vfb->new_frame_available, true);
@@ -167,10 +172,14 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
   // Mark that we've consumed any new frame
   atomic_exchange(&vfb->new_frame_available, false);
 
-  // Always return the front buffer (last valid frame)
-  // This prevents flickering - we keep showing the last frame
-  // until a new one arrives
-  return vfb->front_buffer;
+  // Use mutex to safely read front_buffer pointer
+  // (in case render thread is swapping)
+  // This ensures we get a consistent pointer and don't read mid-swap
+  mutex_lock(&vfb->swap_mutex);
+  const video_frame_t *result = vfb->front_buffer;
+  mutex_unlock(&vfb->swap_mutex);
+
+  return result;
 }
 
 void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats) {

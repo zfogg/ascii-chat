@@ -865,6 +865,18 @@ int audio_start_thread() {
  * @ingroup client_audio
  */
 void audio_stop_thread() {
+  // CRITICAL: Signal audio sender thread to exit FIRST
+  // This must happen BEFORE thread_pool_stop_all() is called, otherwise the sender
+  // thread will be stuck in cond_wait() and thread_pool_stop_all() will hang forever.
+  // The sender thread uses a condition variable to wait for packets - we must wake it up.
+  if (g_audio_send_queue_initialized) {
+    log_debug("Signaling audio sender thread to exit");
+    atomic_store(&g_audio_sender_should_exit, true);
+    mutex_lock(&g_audio_send_queue_mutex);
+    cond_signal(&g_audio_send_queue_cond);
+    mutex_unlock(&g_audio_send_queue_mutex);
+  }
+
   if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
     return;
   }

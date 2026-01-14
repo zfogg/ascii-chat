@@ -44,7 +44,6 @@
       "Bash(timeout:*)",
       "Bash(grep:*)",
       "Bash(sed:*)",
-      "Bash(awk:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(gh run:*)",
@@ -89,9 +88,7 @@
       "Bash(brew upgrade ascii-chat:*)",
       "Bash(brew reinstall ascii-chat:*)"
     ],
-    "deny": [
-      "Bash(pkill:*)"
-    ],
+    "deny": [],
     "ask": [
       "Bash(git push:*)",
       "Bash(git checkout:*)",

@@ -434,6 +434,75 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
 }
 
 /**
+ * Calculate the visual width of a string, excluding ANSI escape sequences.
+ * ANSI escape sequences are invisible control codes that don't consume terminal columns.
+ *
+ * @param data     The string to measure
+ * @param data_len Length of the string in bytes
+ * @return         Number of visible characters (terminal columns)
+ */
+static int ansi_visual_width(const char *data, int data_len) {
+  int visual_width = 0;
+  int i = 0;
+
+  while (i < data_len) {
+    if (data[i] == '\033' && i + 1 < data_len && data[i + 1] == '[') {
+      // Skip ANSI CSI sequence: ESC [ <params> <terminator>
+      i += 2; // Skip ESC [
+      while (i < data_len) {
+        char c = data[i];
+        i++;
+        // ANSI CSI sequences end with a byte in the range 0x40-0x7E (@ through ~)
+        if (c >= '@' && c <= '~') {
+          break;
+        }
+      }
+    } else {
+      // Visible character
+      visual_width++;
+      i++;
+    }
+  }
+
+  return visual_width;
+}
+
+/**
+ * Truncate a string to a target visual width while preserving complete ANSI sequences.
+ * Returns the byte position where truncation should occur.
+ *
+ * @param data         The string to truncate
+ * @param data_len     Length of the string in bytes
+ * @param target_width Target visual width (number of visible characters)
+ * @return             Byte position to truncate at (includes all complete ANSI sequences)
+ */
+static int ansi_truncate_to_visual_width(const char *data, int data_len, int target_width) {
+  int visual_width = 0;
+  int i = 0;
+
+  while (i < data_len && visual_width < target_width) {
+    if (data[i] == '\033' && i + 1 < data_len && data[i + 1] == '[') {
+      // Skip ANSI CSI sequence: ESC [ <params> <terminator>
+      i += 2; // Skip ESC [
+      while (i < data_len) {
+        char c = data[i];
+        i++;
+        // ANSI CSI sequences end with a byte in the range 0x40-0x7E (@ through ~)
+        if (c >= '@' && c <= '~') {
+          break;
+        }
+      }
+    } else {
+      // Visible character - count it and advance
+      visual_width++;
+      i++;
+    }
+  }
+
+  return i;
+}
+
+/**
  * Creates a grid layout from multiple ASCII frame sources with | and _ separators.
  *
  * Parameters:
@@ -522,8 +591,11 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
         src_pos++;
       }
 
-      // Calculate horizontal padding to center the line
-      int h_padding = (width - line_len) / 2;
+      // Calculate visual width of the line (excluding ANSI escape sequences)
+      int visual_line_width = ansi_visual_width(&src_data[line_start], line_len);
+
+      // Calculate horizontal padding to center the line based on visual width
+      int h_padding = (width - visual_line_width) / 2;
       if (h_padding < 0)
         h_padding = 0;
 
@@ -531,7 +603,9 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       // Use size_t for position calculation to prevent integer underflow
       size_t row_offset = (size_t)dst_row * (size_t)(width + 1);
       size_t dst_pos = row_offset + (size_t)h_padding;
-      int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
+      int max_visual_width = width - h_padding;
+      // Truncate to visual width while preserving complete ANSI sequences
+      int copy_len = ansi_truncate_to_visual_width(&src_data[line_start], line_len, max_visual_width);
 
       if (copy_len > 0 && dst_pos + (size_t)copy_len < target_size) {
         SAFE_MEMCPY(&result[dst_pos], target_size - dst_pos, &src_data[line_start], (size_t)copy_len);
@@ -678,8 +752,11 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int line_len = src_pos - line_start;
 
       // Copy line to mixed frame (truncate if too long)
-      int copy_len = (line_len < cell_width) ? line_len : cell_width;
-      if (copy_len > 0 && start_col + copy_len <= width) {
+      // Truncate to visual cell width while preserving complete ANSI sequences
+      int copy_len = ansi_truncate_to_visual_width(src_data + line_start, line_len, cell_width);
+      // Check that visual width of truncated line fits
+      int truncated_visual_width = ansi_visual_width(src_data + line_start, copy_len);
+      if (copy_len > 0 && start_col + truncated_visual_width <= width) {
         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
         SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - (size_t)mixed_pos, src_data + line_start, (size_t)copy_len);
       }

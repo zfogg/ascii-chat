@@ -24,6 +24,7 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "network/packet.h"
+#include "video/ansi.h"
 
 /* ============================================================================
  * Logging System Internal State
@@ -542,6 +543,7 @@ void log_truncate_if_large(void) {
 
 /* Helper: Write formatted log entry to file using atomic write() syscall
  * POSIX guarantees write() is atomic for sizes <= PIPE_BUF (typically 4096 bytes)
+ * Strips ANSI escape codes from the buffer before writing to ensure clean log files.
  */
 static void write_to_log_file_atomic(const char *buffer, int length) {
   if (length <= 0 || buffer == NULL) {
@@ -557,11 +559,20 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
     return;
   }
 
+  // Strip ANSI escape codes from the buffer before writing to file
+  char *stripped = ansi_strip_escapes(buffer, (size_t)length);
+  const char *write_buf = stripped ? stripped : buffer;
+  size_t write_len = stripped ? strlen(stripped) : (size_t)length;
+
   // Single atomic write() call - no locking needed
-  ssize_t written = platform_write(file, buffer, (size_t)length);
+  ssize_t written = platform_write(file, write_buf, write_len);
   if (written > 0) {
     atomic_fetch_add(&g_log.current_size, (size_t)written);
     maybe_rotate_log();
+  }
+
+  if (stripped) {
+    SAFE_FREE(stripped);
   }
 }
 

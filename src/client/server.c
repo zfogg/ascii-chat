@@ -883,18 +883,21 @@ void server_connection_cleanup() {
  * @ingroup client_connection
  */
 asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, size_t len) {
+  // Get transport reference while holding mutex (brief lock)
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status and transport INSIDE the mutex to prevent TOCTOU race
+  // Check connection status and get transport reference
   if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
-  // Use ACIP transport which handles encryption and compression automatically
-  asciichat_error_t result = packet_send_via_transport(g_client_transport, type, data, len);
-
+  // Get transport reference - transport has its own internal synchronization
+  acip_transport_t *transport = g_client_transport;
   mutex_unlock(&g_send_mutex);
+
+  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  asciichat_error_t result = packet_send_via_transport(transport, type, data, len);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -920,9 +923,10 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  * @ingroup client_connection
  */
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
+  // Get socket and crypto context while holding mutex (brief lock)
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
+  // Check connection status and get socket reference
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
     mutex_unlock(&g_send_mutex);
@@ -931,9 +935,10 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
 
   // Get crypto context if encryption is enabled
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
-  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
-
   mutex_unlock(&g_send_mutex);
+
+  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
 
   // If send failed due to network error, signal connection loss
   if (result < 0) {
@@ -959,20 +964,24 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
  */
 asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate,
                                            int frame_duration) {
+  // Get transport reference while holding mutex (brief lock)
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status and transport INSIDE the mutex to prevent TOCTOU race
+  // Check connection status and get transport reference
   if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
-  // Build Opus packet with header
+  // Get transport reference - transport has its own internal synchronization
+  acip_transport_t *transport = g_client_transport;
+  mutex_unlock(&g_send_mutex);
+
+  // Build Opus packet with header (outside mutex - no blocking I/O yet)
   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
   size_t total_size = header_size + opus_size;
   void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
-    mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
   }
 
@@ -987,13 +996,11 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
   // Copy Opus data
   memcpy(buf + header_size, opus_data, opus_size);
 
-  // Send packet via ACIP transport (handles encryption automatically)
-  asciichat_error_t result =
-      packet_send_via_transport(g_client_transport, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
+  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
 
   // Clean up
   buffer_pool_free(NULL, packet_data, total_size);
-  mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {
@@ -1020,19 +1027,23 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
  */
 asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size,
                                                  const uint16_t *frame_sizes, int frame_count) {
+  // Get transport reference while holding mutex (brief lock)
   mutex_lock(&g_send_mutex);
 
-  // Recheck connection status and transport INSIDE the mutex to prevent TOCTOU race
+  // Check connection status and get transport reference
   if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
 
+  // Get transport reference - transport has its own internal synchronization
+  acip_transport_t *transport = g_client_transport;
+  mutex_unlock(&g_send_mutex);
+
+  // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
   asciichat_error_t result =
-      acip_send_audio_opus_batch(g_client_transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
-
-  mutex_unlock(&g_send_mutex);
+      acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
 
   // If send failed due to network error, signal connection loss
   if (result != ASCIICHAT_OK) {

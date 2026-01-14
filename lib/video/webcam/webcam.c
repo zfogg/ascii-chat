@@ -19,7 +19,7 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
   // Check if test pattern mode is enabled
   if (GET_OPTION(test_pattern)) {
     log_info("Test pattern mode enabled - not opening real webcam");
-    log_info("Test pattern resolution: 320x240");
+    log_info("Test pattern resolution: 80x60 (small for localhost testing)");
     return ASCIICHAT_OK;
   }
 
@@ -64,7 +64,8 @@ image_t *webcam_read(void) {
 
     if (!cached_pattern) {
       // Generate a colorful test pattern ONCE on first call
-      cached_pattern = image_new(320, 240);
+      // 80x60 = 14,400 bytes per frame - small enough for localhost multi-client
+      cached_pattern = image_new(80, 60);
       if (!cached_pattern) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
         return NULL;
@@ -75,8 +76,8 @@ image_t *webcam_read(void) {
         for (int x = 0; x < cached_pattern->w; x++) {
           rgb_pixel_t *pixel = &cached_pattern->pixels[y * cached_pattern->w + x];
 
-          // Simple color bars (8 vertical sections)
-          int grid_x = x / 160;
+          // Simple color bars (2 vertical sections for 80px width)
+          int grid_x = x / 40;
 
           // Base pattern: color bars (no floating-point math)
           switch (grid_x) {
@@ -86,47 +87,15 @@ image_t *webcam_read(void) {
             pixel->b = 0;
             break;
           case 1: // Green
+          default:
             pixel->r = 0;
             pixel->g = 255;
             pixel->b = 0;
             break;
-          case 2: // Blue
-            pixel->r = 0;
-            pixel->g = 0;
-            pixel->b = 255;
-            break;
-          case 3: // Yellow
-            pixel->r = 255;
-            pixel->g = 255;
-            pixel->b = 0;
-            break;
-          case 4: // Cyan
-            pixel->r = 0;
-            pixel->g = 255;
-            pixel->b = 255;
-            break;
-          case 5: // Magenta
-            pixel->r = 255;
-            pixel->g = 0;
-            pixel->b = 255;
-            break;
-          case 6: // White
-            pixel->r = 255;
-            pixel->g = 255;
-            pixel->b = 255;
-            break;
-          case 7: // Gray gradient
-          default: {
-            uint8_t gray = (uint8_t)((y * 255) / cached_pattern->h);
-            pixel->r = gray;
-            pixel->g = gray;
-            pixel->b = gray;
-            break;
-          }
           }
 
           // Add grid lines for visual separation
-          if (x % 160 == 0 || y % 120 == 0) {
+          if (x % 40 == 0 || y % 30 == 0) {
             pixel->r = 0;
             pixel->g = 0;
             pixel->b = 0;

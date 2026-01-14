@@ -398,6 +398,7 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   memset(client, 0, sizeof(client_info_t));
 
   client->socket = socket;
+  client->is_tcp_client = true; // TCP client - threads managed by tcp_server thread pool
   uint32_t new_client_id = atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1;
   atomic_store(&client->client_id, new_client_id);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
@@ -729,6 +730,7 @@ error_cleanup:
   // Clean up all partially allocated resources
   // NOTE: This label is reached when allocation or initialization fails
   // Resources are cleaned up in reverse order of allocation
+  return -1;
 }
 
 /**
@@ -802,6 +804,7 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
 
   // Set up WebRTC-specific fields
   client->socket = INVALID_SOCKET_VALUE; // WebRTC has no traditional socket
+  client->is_tcp_client = false;         // WebRTC client - threads managed directly
   client->transport = transport;         // Use provided transport
   uint32_t new_client_id = atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1;
   atomic_store(&client->client_id, new_client_id);
@@ -1033,6 +1036,13 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
     client_info_t *client = &g_client_manager.clients[i];
     uint32_t cid = atomic_load(&client->client_id);
     if (cid == client_id && cid != 0) {
+      // Check if already being removed by another thread
+      // This prevents double-free and use-after-free crashes during concurrent cleanup
+      if (atomic_load(&client->shutting_down)) {
+        rwlock_wrunlock(&g_client_manager_rwlock);
+        log_debug("Client %u already being removed by another thread, skipping", client_id);
+        return 0; // Return success - removal is in progress
+      }
       // Mark as shutting down and inactive immediately to stop new operations
       log_info("Removing client %d (socket=%d) - marking inactive and clearing video flags", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
@@ -1079,36 +1089,42 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   // Phase 2: Stop all client threads
   // For TCP clients: use tcp_server thread pool management
   // For WebRTC clients: manually join threads (no socket-based thread pool)
-  log_debug("Stopping all threads for client %u (socket %d)", client_id, client_socket);
+  // CRITICAL: Use is_tcp_client flag, NOT socket value - socket may already be INVALID_SOCKET_VALUE
+  // even for TCP clients if it was closed earlier during cleanup
+  log_debug("Stopping all threads for client %u (socket %d, is_tcp=%d)", client_id, client_socket,
+            target_client ? target_client->is_tcp_client : -1);
 
-  if (client_socket != INVALID_SOCKET_VALUE) {
+  if (target_client && target_client->is_tcp_client) {
     // TCP client: use tcp_server thread pool
     // This joins threads in stop_id order: receive(1), render(2), send(3)
-    asciichat_error_t stop_result = tcp_server_stop_client_threads(server_ctx->tcp_server, client_socket);
-    if (stop_result != ASCIICHAT_OK) {
-      log_warn("Failed to stop threads for TCP client %u: error %d", client_id, stop_result);
-      // Continue with cleanup even if thread stopping failed
+    // Use saved client_socket for lookup (tcp_server needs original socket as key)
+    if (client_socket != INVALID_SOCKET_VALUE) {
+      asciichat_error_t stop_result = tcp_server_stop_client_threads(server_ctx->tcp_server, client_socket);
+      if (stop_result != ASCIICHAT_OK) {
+        log_warn("Failed to stop threads for TCP client %u: error %d", client_id, stop_result);
+        // Continue with cleanup even if thread stopping failed
+      }
+    } else {
+      log_debug("TCP client %u socket already closed, threads should have already exited", client_id);
     }
-  } else {
+  } else if (target_client) {
     // WebRTC client: manually join threads
     log_debug("Stopping WebRTC client %u threads (receive and send)", client_id);
-    if (target_client) {
-      // Join receive thread
-      void *recv_result = NULL;
-      asciichat_error_t recv_join_result = asciichat_thread_join(&target_client->receive_thread, &recv_result);
-      if (recv_join_result != ASCIICHAT_OK) {
-        log_warn("Failed to join receive thread for WebRTC client %u: error %d", client_id, recv_join_result);
-      } else {
-        log_debug("Joined receive thread for WebRTC client %u", client_id);
-      }
-      // Join send thread
-      void *send_result = NULL;
-      asciichat_error_t send_join_result = asciichat_thread_join(&target_client->send_thread, &send_result);
-      if (send_join_result != ASCIICHAT_OK) {
-        log_warn("Failed to join send thread for WebRTC client %u: error %d", client_id, send_join_result);
-      } else {
-        log_debug("Joined send thread for WebRTC client %u", client_id);
-      }
+    // Join receive thread
+    void *recv_result = NULL;
+    asciichat_error_t recv_join_result = asciichat_thread_join(&target_client->receive_thread, &recv_result);
+    if (recv_join_result != ASCIICHAT_OK) {
+      log_warn("Failed to join receive thread for WebRTC client %u: error %d", client_id, recv_join_result);
+    } else {
+      log_debug("Joined receive thread for WebRTC client %u", client_id);
+    }
+    // Join send thread
+    void *send_result = NULL;
+    asciichat_error_t send_join_result = asciichat_thread_join(&target_client->send_thread, &send_result);
+    if (send_join_result != ASCIICHAT_OK) {
+      log_warn("Failed to join send thread for WebRTC client %u: error %d", client_id, send_join_result);
+    } else {
+      log_debug("Joined send thread for WebRTC client %u", client_id);
     }
     // Note: Render threads still need to be stopped - they're created the same way for both TCP and WebRTC
     // For now, render threads are expected to exit when they check g_server_should_exit and client->active
@@ -1405,6 +1421,8 @@ void *client_send_thread_func(void *arg) {
           break; // No more packets available
         }
       }
+    } else {
+      log_warn_every(1000000, "Send thread: audio_queue is NULL for client %u", client->client_id);
     }
 
     // Send batched audio if we have packets
@@ -1426,15 +1444,24 @@ void *client_send_thread_func(void *arg) {
         // Single packet - send directly for low latency using ACIP transport
         packet_type_t pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
 
+        // Get transport reference while holding mutex briefly (prevents deadlock on TCP buffer full)
         mutex_lock(&client->send_mutex);
+        if (atomic_load(&client->shutting_down) || !client->transport) {
+          mutex_unlock(&client->send_mutex);
+          break; // Client is shutting down, exit thread
+        }
+        acip_transport_t *transport = client->transport;
+        mutex_unlock(&client->send_mutex);
+
+        // Network I/O happens OUTSIDE the mutex
         if (pkt_type == PACKET_TYPE_AUDIO_OPUS) {
-          result = acip_send_audio_opus(client->transport, audio_packets[0]->data, audio_packets[0]->data_len);
+          result = acip_send_audio_opus(transport, audio_packets[0]->data, audio_packets[0]->data_len);
+          log_debug_every(500000, "Sent single Opus packet: client=%u, len=%zu, result=%d", client->client_id,
+                          audio_packets[0]->data_len, result);
         } else {
           // Raw float audio - use generic packet sender
-          result = packet_send_via_transport(client->transport, pkt_type, audio_packets[0]->data,
-                                             audio_packets[0]->data_len);
+          result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len);
         }
-        mutex_unlock(&client->send_mutex);
       } else {
         // Multiple packets - batch them together
         // Check if these are Opus-encoded packets or raw float audio
@@ -1461,12 +1488,21 @@ void *client_send_thread_func(void *arg) {
               offset += audio_packets[i]->data_len;
             }
 
-            // Send batched Opus packet
+            // Send batched Opus packet - get socket reference briefly to avoid deadlock on TCP buffer full
             mutex_lock(&client->send_mutex);
-            result =
-                av_send_audio_opus_batch(client->socket, batched_opus, total_opus_size, frame_sizes, AUDIO_SAMPLE_RATE,
-                                         20, audio_packet_count, (crypto_context_t *)crypto_ctx);
+            if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+              mutex_unlock(&client->send_mutex);
+              SAFE_FREE(batched_opus);
+              SAFE_FREE(frame_sizes);
+              break; // Client is shutting down, exit thread
+            }
+            socket_t send_socket = client->socket;
             mutex_unlock(&client->send_mutex);
+
+            // Network I/O happens OUTSIDE the mutex
+            result =
+                av_send_audio_opus_batch(send_socket, batched_opus, total_opus_size, frame_sizes, AUDIO_SAMPLE_RATE, 20,
+                                         audio_packet_count, (crypto_context_t *)crypto_ctx);
 
             log_debug_every(LOG_RATE_FAST, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
                             total_opus_size, client->client_id);
@@ -1497,11 +1533,19 @@ void *client_send_thread_func(void *arg) {
               offset += packet_samples;
             }
 
-            // Send batched audio packet
+            // Send batched audio packet - get socket reference briefly to avoid deadlock on TCP buffer full
             mutex_lock(&client->send_mutex);
-            result = send_audio_batch_packet(client->socket, batched_audio, (int)total_samples, audio_packet_count,
-                                             (crypto_context_t *)crypto_ctx);
+            if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+              mutex_unlock(&client->send_mutex);
+              SAFE_FREE(batched_audio);
+              break; // Client is shutting down, exit thread
+            }
+            socket_t send_socket = client->socket;
             mutex_unlock(&client->send_mutex);
+
+            // Network I/O happens OUTSIDE the mutex
+            result = send_audio_batch_packet(send_socket, batched_audio, (int)total_samples, audio_packet_count,
+                                             (crypto_context_t *)crypto_ctx);
 
             SAFE_FREE(batched_audio);
 
@@ -1546,10 +1590,18 @@ void *client_send_thread_func(void *arg) {
       if (should_rekey) {
         log_debug("Rekey threshold reached for client %u, initiating session rekey", client->client_id);
         mutex_lock(&client->client_state_mutex);
-        // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+        // Get socket reference briefly to avoid deadlock on TCP buffer full
         mutex_lock(&client->send_mutex);
-        asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
+        if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+          mutex_unlock(&client->send_mutex);
+          mutex_unlock(&client->client_state_mutex);
+          break; // Client is shutting down, exit thread
+        }
+        socket_t rekey_socket = client->socket;
         mutex_unlock(&client->send_mutex);
+
+        // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
+        asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, rekey_socket);
         mutex_unlock(&client->client_state_mutex);
 
         if (result != ASCIICHAT_OK) {
@@ -1602,10 +1654,17 @@ void *client_send_thread_func(void *arg) {
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame using ACIP transport
-        // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+        // Get transport reference briefly to avoid deadlock on TCP buffer full
         mutex_lock(&client->send_mutex);
-        acip_send_clear_console(client->transport);
+        if (atomic_load(&client->shutting_down) || !client->transport) {
+          mutex_unlock(&client->send_mutex);
+          break; // Client is shutting down, exit thread
+        }
+        acip_transport_t *clear_transport = client->transport;
         mutex_unlock(&client->send_mutex);
+
+        // Network I/O happens OUTSIDE the mutex
+        acip_send_clear_console(clear_transport);
         log_debug_every(LOG_RATE_FAST, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)",
                         client->client_id, sent_sources, rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
@@ -1640,13 +1699,20 @@ void *client_send_thread_func(void *arg) {
       (void)clock_gettime(CLOCK_MONOTONIC, &step3);
       (void)clock_gettime(CLOCK_MONOTONIC, &step4);
 
-      // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+      // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
       log_debug("Send thread: About to send frame to client %u (width=%u, height=%u, data=%p)", client->client_id,
                 width, height, (void *)frame_data);
       mutex_lock(&client->send_mutex);
-      asciichat_error_t send_result = acip_send_ascii_frame(client->transport, frame_data, width, height);
+      if (atomic_load(&client->shutting_down) || !client->transport) {
+        mutex_unlock(&client->send_mutex);
+        break; // Client is shutting down, exit thread
+      }
+      acip_transport_t *frame_transport = client->transport;
       mutex_unlock(&client->send_mutex);
+
+      // Network I/O happens OUTSIDE the mutex
+      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, width, height);
       (void)clock_gettime(CLOCK_MONOTONIC, &step5);
 
       if (send_result != ASCIICHAT_OK) {
@@ -2233,10 +2299,17 @@ static void acip_server_on_ping(void *client_ctx, void *app_ctx) {
   client_info_t *client = (client_info_t *)client_ctx;
 
   // Respond with PONG using ACIP transport
-  // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+  // Get transport reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  asciichat_error_t pong_result = acip_send_pong(client->transport);
+  if (atomic_load(&client->shutting_down) || !client->transport) {
+    mutex_unlock(&client->send_mutex);
+    return; // Client is shutting down, skip pong
+  }
+  acip_transport_t *pong_transport = client->transport;
   mutex_unlock(&client->send_mutex);
+
+  // Network I/O happens OUTSIDE the mutex
+  asciichat_error_t pong_result = acip_send_pong(pong_transport);
 
   if (pong_result != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
@@ -2311,10 +2384,18 @@ static void acip_server_on_crypto_rekey_request(const void *payload, size_t payl
 
   // Send REKEY_RESPONSE
   mutex_lock(&client->client_state_mutex);
-  // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
+  // Get socket reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
+  if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&client->send_mutex);
+    mutex_unlock(&client->client_state_mutex);
+    return; // Client is shutting down
+  }
+  socket_t rekey_socket = client->socket;
   mutex_unlock(&client->send_mutex);
+
+  // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
+  crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, rekey_socket);
   mutex_unlock(&client->client_state_mutex);
 
   if (crypto_result != ASCIICHAT_OK) {
@@ -2344,10 +2425,18 @@ static void acip_server_on_crypto_rekey_response(const void *payload, size_t pay
 
   // Send REKEY_COMPLETE to confirm and activate new key
   mutex_lock(&client->client_state_mutex);
-  // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
+  // Get socket reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
+  if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&client->send_mutex);
+    mutex_unlock(&client->client_state_mutex);
+    return; // Client is shutting down
+  }
+  socket_t complete_socket = client->socket;
   mutex_unlock(&client->send_mutex);
+
+  // Network I/O happens OUTSIDE the send_mutex (client_state_mutex still held for crypto state)
+  crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, complete_socket);
   mutex_unlock(&client->client_state_mutex);
 
   if (crypto_result != ASCIICHAT_OK) {
@@ -2481,10 +2570,17 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_PING: {
     // Respond with PONG using ACIP transport
-    // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+    // Get transport reference briefly to avoid deadlock on TCP buffer full
     mutex_lock(&client->send_mutex);
-    asciichat_error_t pong_result = acip_send_pong(client->transport);
+    if (atomic_load(&client->shutting_down) || !client->transport) {
+      mutex_unlock(&client->send_mutex);
+      break; // Client is shutting down, skip pong
+    }
+    acip_transport_t *pong_transport = client->transport;
     mutex_unlock(&client->send_mutex);
+
+    // Network I/O happens OUTSIDE the mutex
+    asciichat_error_t pong_result = acip_send_pong(pong_transport);
     if (pong_result != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
                 asciichat_error_string(pong_result));

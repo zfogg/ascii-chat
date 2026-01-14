@@ -428,4 +428,40 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data);
 
 #endif // DEBUG_LOCKS
 
+// ============================================================================
+// Public API Functions (always available, stub implementations when !DEBUG_LOCKS)
+// ============================================================================
+
+#ifndef DEBUG_LOCKS
+// Declarations for stub implementations when lock debugging is disabled
+#include "platform/mutex.h"
+#include "platform/rwlock.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int lock_debug_init(void);
+int lock_debug_start_thread(void);
+void lock_debug_cleanup(void);
+void lock_debug_cleanup_thread(void);
+void lock_debug_trigger_print(void);
+void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held);
+bool lock_debug_is_initialized(void);
+void lock_debug_print_state(void);
+
+// Stub declarations for debug_* functions (pass through to _impl versions)
+int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+
+#ifdef __cplusplus
+}
+#endif
+#endif // !DEBUG_LOCKS
+
 /** @} */

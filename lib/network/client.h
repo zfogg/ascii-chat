@@ -76,6 +76,7 @@ using std::atomic_uint;
  */
 typedef struct client_info {
   socket_t socket;
+  bool is_tcp_client;                // True for TCP clients, false for WebRTC (for cleanup logic)
   acip_transport_t *transport;       // ACIP transport for protocol-agnostic packet sending
   asciichat_thread_t receive_thread; // Thread for receiving client data
   atomic_uint client_id;             // Thread-safe client ID

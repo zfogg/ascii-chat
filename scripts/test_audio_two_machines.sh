@@ -29,9 +29,9 @@ STASHED_REMOTE=0
 
 PORT=27228
 HOST_ONE="workbook-pro"
-HOST_ONE_IP="workbook-pro"  # Use hostname for SSH agent forwarding
+HOST_ONE_IP="192.168.1.190"  # Local LAN IP (Tailscale port forwarding has issues)
 HOST_TWO="manjaro-twopal"
-HOST_TWO_IP="100.89.125.127"  # Tailscale IP for HOST_TWO (local IP not needed)
+HOST_TWO_IP="100.89.125.127"  # Tailscale IP for HOST_TWO
 DURATION=30
 
 # Paths are CONSTANT regardless of which host we run from
@@ -192,42 +192,97 @@ run_on_two "cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --targe
 # Start server on HOST_ONE
 echo "[6/8] Starting server on $HOST_ONE:$PORT..."
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-  run_bg_local "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 10)) $BIN_ONE --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT"
+  run_bg_local "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 10)) $BIN_ONE --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT --no-upnp"
 else
-  # Create temp script on remote host and run in background with nohup
-  ssh -o ConnectTimeout=5 $HOST_ONE "cat > /tmp/start_server.sh << 'HEREDOC'
-#!/bin/bash
-export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
-timeout $((DURATION + 10)) $BIN_ONE --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT
-HEREDOC
-chmod +x /tmp/start_server.sh && nohup bash /tmp/start_server.sh > /dev/null 2>&1 < /dev/null &"
+  # Use tmux for reliable background execution (more robust than nohup over SSH)
+  # Expand variables locally before passing to remote
+  SERVER_TIMEOUT=$((DURATION + 20))
+  # Kill any existing session first
+  ssh $HOST_ONE "tmux kill-session -t ascii-server 2>/dev/null || true"
+  # Start server in new tmux session with properly expanded variables
+  # --no-upnp skips slow UPnP discovery which can block for 45+ seconds
+  ssh $HOST_ONE "tmux new-session -d -s ascii-server \"ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout ${SERVER_TIMEOUT} ${BIN_ONE} --log-file /tmp/server_debug.log server 0.0.0.0 --port ${PORT} --no-upnp\""
 fi
-sleep 2  # Wait for server to start
+
+# Give server time to start (tmux session init + server startup)
+sleep 2
+
+# Wait for server to be listening (fast netcat check)
+echo "Waiting for server to be listening on $HOST_ONE_IP:$PORT..."
+MAX_WAIT=60
+DEBUG_AFTER=5  # Start debugging after this many failures
+for i in $(seq 1 $MAX_WAIT); do
+  # Use netcat for fast TCP connection test (works locally or remotely)
+  if [[ $LOCAL_IS_ONE -eq 1 ]]; then
+    if nc -z localhost $PORT 2>/dev/null; then
+      echo "Server is listening! (took ${i}s)"
+      break
+    fi
+  else
+    # From remote, check if we can connect to the server's IP
+    if nc -z -w1 $HOST_ONE_IP $PORT 2>/dev/null; then
+      echo "Server is listening! (took ${i}s)"
+      break
+    fi
+    echo "  nc to $HOST_ONE_IP:$PORT failed (try $i/$MAX_WAIT)"
+  fi
+
+  # Start debugging after DEBUG_AFTER failures
+  if [ $i -eq $DEBUG_AFTER ]; then
+    echo ""
+    echo "=== DEBUG: Server not listening after ${DEBUG_AFTER}s ==="
+    echo "Checking server process on $HOST_ONE..."
+    if [[ $LOCAL_IS_ONE -eq 1 ]]; then
+      pgrep -x ascii-chat && echo "Process is running" || echo "Process NOT running"
+      lsof -i :$PORT 2>/dev/null | head -5 || echo "Nothing listening on port $PORT"
+      echo "Last 30 lines of server log:"
+      tail -30 /tmp/server_debug.log 2>/dev/null || echo "No log file"
+    else
+      ssh -o ConnectTimeout=5 $HOST_ONE "pgrep -x ascii-chat && echo 'Process is running' || echo 'Process NOT running'" 2>&1
+      ssh -o ConnectTimeout=5 $HOST_ONE "lsof -i :$PORT 2>/dev/null | head -5 || echo 'Nothing listening on port $PORT'" 2>&1
+      echo "Last 30 lines of server log:"
+      ssh -o ConnectTimeout=5 $HOST_ONE "tail -30 /tmp/server_debug.log" 2>/dev/null || echo "No log file"
+    fi
+    echo "=== END DEBUG ==="
+    echo ""
+    echo "Exiting due to server startup failure"
+    exit 1
+  fi
+
+  sleep 1
+done
+
+# Verify process is still running
+if [[ $LOCAL_IS_ONE -eq 1 ]]; then
+  pgrep -x ascii-chat > /dev/null || { echo "ERROR: Server process not found"; exit 1; }
+else
+  ssh -o ConnectTimeout=5 $HOST_ONE "pgrep -x ascii-chat" > /dev/null || { echo "ERROR: Server process not found"; exit 1; }
+fi
+echo "Server verified running on $HOST_ONE"
 
 # Start client 1 on HOST_ONE
 echo "[7/8] Starting client 1 on $HOST_ONE with audio analysis..."
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
   run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION"
 else
-  # Create temp script on remote host and run in background with nohup
-  ssh -o ConnectTimeout=5 $HOST_ONE "cat > /tmp/start_client1.sh << 'HEREDOC'
-#!/bin/bash
-export ASCIICHAT_DUMP_AUDIO=1
-export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
-export COLUMNS=40
-export LINES=12
-timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION
-HEREDOC
-chmod +x /tmp/start_client1.sh && nohup bash /tmp/start_client1.sh > /dev/null 2>&1 < /dev/null &"
+  # Use tmux for reliable background execution with expanded variables
+  CLIENT1_TIMEOUT=$((DURATION + 5))
+  ssh -o ConnectTimeout=5 $HOST_ONE "tmux kill-session -t ascii-client1 2>/dev/null || true"
+  ssh -o ConnectTimeout=5 $HOST_ONE "tmux new-session -d -s ascii-client1 \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client localhost:${PORT} --test-pattern --audio --audio-analysis --snapshot --snapshot-delay ${DURATION}\""
 fi
+sleep 2  # Give client time to connect
 
 # Start client 2 on HOST_TWO
 echo "[8/8] Starting client 2 on $HOST_TWO..."
 if [[ $LOCAL_IS_ONE -eq 0 ]]; then
   run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client $HOST_ONE_IP:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION"
 else
-  ssh -o ConnectTimeout=5 $HOST_TWO "cd $REPO_TWO && screen -dmS ascii-client2 bash -c 'ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client $HOST_ONE_IP:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION'"
+  # Use tmux for consistency with expanded variables
+  CLIENT2_TIMEOUT=$((DURATION + 5))
+  ssh -o ConnectTimeout=5 $HOST_TWO "tmux kill-session -t ascii-client2 2>/dev/null || true"
+  ssh -o ConnectTimeout=5 $HOST_TWO "tmux new-session -d -s ascii-client2 \"cd ${REPO_TWO} && ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client ${HOST_ONE_IP}:${PORT} --test-pattern --audio --audio-analysis --snapshot --snapshot-delay ${DURATION}\""
 fi
+sleep 2  # Give client time to connect
 
 echo ""
 echo "Running test for $DURATION seconds..."

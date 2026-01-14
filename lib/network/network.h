@@ -108,14 +108,16 @@
 #define SEND_TIMEOUT 5
 
 /**
- * @brief Receive timeout in seconds (15 seconds)
+ * @brief Receive timeout in seconds (2 seconds)
  *
- * Maximum time to wait for incoming data. If no data is received within
- * this time, connection is considered dead.
+ * Maximum time to wait for incoming data. Kept short (2 seconds) to allow
+ * threads to check shutdown flags frequently during graceful shutdown.
+ * If no data is received within this time, receive operation returns
+ * allowing the caller to check g_server_should_exit.
  *
  * @ingroup network
  */
-#define RECV_TIMEOUT 15
+#define RECV_TIMEOUT 2
 
 /**
  * @brief Accept timeout in seconds (3 seconds)

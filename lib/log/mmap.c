@@ -11,6 +11,7 @@
 #include "log/logging.h"
 #include "platform/mmap.h"
 #include "platform/system.h"
+#include "video/ansi.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -350,21 +351,33 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
   total_len++;
   line_buf[total_len] = '\0';
 
+  /* Strip ANSI escape codes from the log message before writing to file */
+  char *stripped = ansi_strip_escapes(line_buf, total_len);
+  const char *write_buf = stripped ? stripped : line_buf;
+  size_t write_len = stripped ? strlen(stripped) : total_len;
+
   /* Atomically claim space in the mmap'd region */
-  uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, total_len);
+  uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, write_len);
 
   /* Check if we exceeded capacity - drop this message if so */
   /* Rotation is handled by maybe_rotate_log() called from logging.c */
-  if (pos + total_len > g_mmap_log.text_capacity) {
+  if (pos + write_len > g_mmap_log.text_capacity) {
     /* Undo our claim - we can't fit */
-    atomic_fetch_sub(&g_mmap_log.write_pos, total_len);
+    atomic_fetch_sub(&g_mmap_log.write_pos, write_len);
+    if (stripped) {
+      SAFE_FREE(stripped);
+    }
     return;
   }
 
   /* Copy formatted text to mmap'd region */
-  memcpy(g_mmap_log.text_region + pos, line_buf, total_len);
+  memcpy(g_mmap_log.text_region + pos, write_buf, write_len);
 
-  atomic_fetch_add(&g_mmap_log.bytes_written, total_len);
+  atomic_fetch_add(&g_mmap_log.bytes_written, write_len);
+
+  if (stripped) {
+    SAFE_FREE(stripped);
+  }
 
   /* Sync for ERROR/FATAL to ensure visibility on crash */
   if (level >= 4 /* LOG_ERROR */) {
