@@ -575,11 +575,6 @@ ascii-chat is built on operating system code and several libraries.
   - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
   - **License**: zlib/libpng
 
-- [liburcu](https://liburcu.org/) - Userspace RCU (Read-Copy-Update) Library
-
-  - **Purpose**: Lock-free synchronization for high-performance concurrent data structures in the ACDS (ASCII-Chat Discovery Service). Provides read-side access that scales linearly with CPU cores, achieving 5-10x performance improvement on read-heavy workloads compared to traditional rwlock approaches.
-  - **License**: LGPLv2.1
-
 - [SQLite3](https://www.sqlite.org/) - Embedded SQL Database Engine
 
   - **Purpose**: Persistent storage for the ACDS (ASCII-Chat Discovery Service) session database. Stores active sessions, user identities, and connection metadata for the discovery service.
@@ -621,7 +616,7 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 **macOS**:
 
 ```bash
-brew install make cmake ninja llvm zstd portaudio opus libsodium criterion userspace-rcu sqlite3 openssl miniupnpc
+brew install make cmake ninja llvm zstd portaudio opus libsodium criterion sqlite3 openssl miniupnpc
 ```
 
 #### Install Dependencies on Windows
@@ -644,22 +639,57 @@ brew install make cmake ninja llvm zstd portaudio opus libsodium criterion users
    - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
    - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
 
-4. **Install dependencies via vcpkg**:
+4. **Install vcpkg and dependencies**:
 
    ```powershell
    # Install vcpkg (if not already installed)
-   git clone https://github.com/Microsoft/vcpkg.git
-   cd vcpkg
-   .\bootstrap-vcpkg.bat
+   git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+   C:\vcpkg\bootstrap-vcpkg.bat
 
+   # Set VCPKG_ROOT environment variable
+   [Environment]::SetEnvironmentVariable("VCPKG_ROOT", "C:\vcpkg", "User")
+   $env:VCPKG_ROOT = "C:\vcpkg"
+   ```
+
+   **Option A: Manifest mode (recommended)** — Dependencies install automatically during CMake configure:
+
+   ```powershell
+   # Just build - vcpkg.json handles dependencies automatically
+   cmake --preset windows-release
+   cmake --build build_release
+   ```
+
+   **Option B: Classic mode** — Install packages manually:
+
+   ```powershell
    # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows liburcu:x64-windows sqlite3:x64-windows openssl:x64-windows miniupnpc:x64-windows
+   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows sqlite3:x64-windows openssl:x64-windows miniupnpc:x64-windows
 
-   # If you want to do a release build
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static liburcu:x64-windows-static sqlite3:x64-windows-static openssl:x64-windows-static mimalloc:x64-windows-static miniupnpc:x64-windows-static
+   # For release builds (static linking)
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static sqlite3:x64-windows-static openssl:x64-windows-static mimalloc:x64-windows-static miniupnpc:x64-windows-static
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
+
+#### Using vcpkg on Unix (Optional)
+
+On Linux and macOS, the default is to use system package managers (apt/brew). However, you can optionally use vcpkg for consistent cross-platform builds:
+
+```bash
+# Install vcpkg
+git clone https://github.com/Microsoft/vcpkg.git ~/.local/share/vcpkg
+~/.local/share/vcpkg/bootstrap-vcpkg.sh
+export VCPKG_ROOT=~/.local/share/vcpkg
+
+# Option A: Manifest mode - dependencies install automatically
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+cmake --build build
+
+# Option B: Classic mode - install packages manually, then build with USE_VCPKG
+vcpkg install zstd libsodium opus portaudio miniupnpc openssl sqlite3 libdatachannel
+cmake -B build -DUSE_VCPKG=ON
+cmake --build build
+```
 
 ### Build from source
 
