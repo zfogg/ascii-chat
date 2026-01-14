@@ -23,6 +23,22 @@
 #include <stdatomic.h>
 #include <string.h>
 
+// Enable lock debug tracing to stderr (bypasses logging system)
+// Set to 1 to trace all lock operations for debugging deadlocks
+#define TRACE_LOCK_DEBUG 0
+
+#if TRACE_LOCK_DEBUG
+#include <stdio.h>
+// Simple trace for internal lock debug operations
+#define LOCK_TRACE(fmt, ...) fprintf(stderr, "[LOCK_TRACE] %s:%d " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
+// Trace every lock/unlock with caller info
+#define LOCK_OP_TRACE(op, lock_type, file, line, func)                                                                 \
+  fprintf(stderr, "[LOCK_OP] %s %s @ %s:%d in %s()\n", op, lock_type, file, line, func)
+#else
+#define LOCK_TRACE(fmt, ...) ((void)0)
+#define LOCK_OP_TRACE(op, lock_type, file, line, func) ((void)0)
+#endif
+
 #ifdef _WIN32
 #include <io.h>
 #include <conio.h>
@@ -360,10 +376,33 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
  *
  * Called periodically from the debug thread to monitor lock hold times.
  */
+// Structure to hold info about a long-held lock (for deferred logging)
+typedef struct {
+  char duration_str[32];
+  const char *lock_type_str;
+  void *lock_address;
+  char file_name[256];
+  int line_number;
+  char function_name[128];
+  uint64_t thread_id;
+} long_held_lock_info_t;
+
+#define MAX_LONG_HELD_LOCKS 32
+
 static void check_long_held_locks(void) {
   if (!atomic_load(&g_lock_debug_manager.initialized)) {
     return;
   }
+  LOCK_TRACE("acquiring lock_records_lock (read)");
+
+  // Collect long-held lock info while holding the read lock
+  // We MUST NOT call log functions while holding lock_records_lock because:
+  // - log functions may call mutex_lock() for rotation
+  // - mutex_lock() macro calls debug_process_tracked_lock()
+  // - debug_process_tracked_lock() tries to acquire lock_records_lock as WRITE
+  // - DEADLOCK: we already hold it as READ, can't upgrade to WRITE
+  long_held_lock_info_t long_held_locks[MAX_LONG_HELD_LOCKS];
+  int num_long_held = 0;
 
   // Acquire read lock for lock_records
   rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
@@ -374,10 +413,13 @@ static void check_long_held_locks(void) {
     return;
   }
 
-  // Iterate through all currently held locks
-  bool found_long_held_lock = false;
+  // Iterate through all currently held locks and collect info
   lock_record_t *entry, *tmp;
   HASH_ITER(hash_handle, g_lock_debug_manager.lock_records, entry, tmp) {
+    if (num_long_held >= MAX_LONG_HELD_LOCKS) {
+      break; // Limit how many we report
+    }
+
     // Calculate how long the lock has been held in nanoseconds
     long long held_sec = current_time.tv_sec - entry->acquisition_time.tv_sec;
     long held_nsec = current_time.tv_nsec - entry->acquisition_time.tv_nsec;
@@ -391,46 +433,58 @@ static void check_long_held_locks(void) {
     // Convert to nanoseconds (double for format_duration_ns)
     double held_ns = (held_sec * 1000000000.0) + held_nsec;
 
-    // Only log if held longer than 100ms (100000000 nanoseconds)
+    // Only collect if held longer than 100ms (100000000 nanoseconds)
     const double WARNING_THRESHOLD_NS = 100000000.0; // 100ms in nanoseconds
     if (held_ns > WARNING_THRESHOLD_NS) {
-      found_long_held_lock = true;
+      long_held_lock_info_t *info = &long_held_locks[num_long_held];
 
       // Get lock type string
-      const char *lock_type_str;
       switch (entry->lock_type) {
       case LOCK_TYPE_MUTEX:
-        lock_type_str = "MUTEX";
+        info->lock_type_str = "MUTEX";
         break;
       case LOCK_TYPE_RWLOCK_READ:
-        lock_type_str = "RWLOCK_READ";
+        info->lock_type_str = "RWLOCK_READ";
         break;
       case LOCK_TYPE_RWLOCK_WRITE:
-        lock_type_str = "RWLOCK_WRITE";
+        info->lock_type_str = "RWLOCK_WRITE";
         break;
       default:
-        lock_type_str = "UNKNOWN";
+        info->lock_type_str = "UNKNOWN";
         break;
       }
 
-      // Format duration like STOP_TIMER_AND_LOG does
-      char duration_str[32];
-      format_duration_ns(held_ns, duration_str, sizeof(duration_str));
+      // Copy all info we need for logging later
+      format_duration_ns(held_ns, info->duration_str, sizeof(info->duration_str));
+      info->lock_address = entry->lock_address;
+      strncpy(info->file_name, entry->file_name, sizeof(info->file_name) - 1);
+      info->file_name[sizeof(info->file_name) - 1] = '\0';
+      info->line_number = entry->line_number;
+      strncpy(info->function_name, entry->function_name, sizeof(info->function_name) - 1);
+      info->function_name[sizeof(info->function_name) - 1] = '\0';
+      info->thread_id = entry->thread_id;
 
-      // Log warning with formatted duration
-      log_warn_every(LOG_RATE_FAST,
-                     "Lock held for %s (threshold: 100ms) - %s at %p\n"
-                     "  Acquired: %s:%d in %s()\n"
-                     "  Thread ID: %llu",
-                     duration_str, lock_type_str, entry->lock_address, entry->file_name, entry->line_number,
-                     entry->function_name, (unsigned long long)entry->thread_id);
+      num_long_held++;
     }
   }
 
+  // Release the lock BEFORE logging to prevent deadlock
   rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
+  LOCK_TRACE("released lock_records_lock (read), found %d long-held locks", num_long_held);
+
+  // Now safe to log - we no longer hold lock_records_lock
+  for (int i = 0; i < num_long_held; i++) {
+    long_held_lock_info_t *info = &long_held_locks[i];
+    log_warn_every(LOG_RATE_FAST,
+                   "Lock held for %s (threshold: 100ms) - %s at %p\n"
+                   "  Acquired: %s:%d in %s()\n"
+                   "  Thread ID: %llu",
+                   info->duration_str, info->lock_type_str, info->lock_address, info->file_name, info->line_number,
+                   info->function_name, (unsigned long long)info->thread_id);
+  }
 
   // Print backtrace only once if any long-held locks were found
-  if (found_long_held_lock) {
+  if (num_long_held > 0) {
     platform_print_backtrace(1);
   }
 }
@@ -443,25 +497,47 @@ static void check_long_held_locks(void) {
 static void *debug_thread_func(void *arg) {
   UNUSED(arg);
 
+  // Check if stdin is a terminal (used for keyboard input detection)
+  // This prevents blocking in tmux/SSH sessions without proper TTY
+  bool stdin_is_tty = false;
 #ifndef _WIN32
-  // Set terminal to raw mode for immediate key detection
-  struct termios raw;
-  if (tcgetattr(STDIN_FILENO, &g_original_termios) == 0) {
-    g_termios_saved = true;
-    raw = g_original_termios;
-    raw.c_lflag &= ~((tcflag_t)(ICANON | ECHO)); // Disable canonical mode and echo
-    raw.c_cc[VMIN] = 0;                          // Non-blocking read
-    raw.c_cc[VTIME] = 0;                         // No timeout
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
-      log_warn("Failed to set terminal to raw mode for lock debug");
-      g_termios_saved = false;
+  stdin_is_tty = isatty(STDIN_FILENO);
+  // Also check if we're the foreground process group - if not, terminal ops may block
+  // This handles detached tmux sessions where isatty() returns true but we can't interact
+  if (stdin_is_tty) {
+    pid_t fg_pgrp = tcgetpgrp(STDIN_FILENO);
+    pid_t our_pgrp = getpgrp();
+    if (fg_pgrp != our_pgrp && fg_pgrp != -1) {
+      log_debug("Lock debug: not foreground process (fg=%d, us=%d), skipping TTY input", fg_pgrp, our_pgrp);
+      stdin_is_tty = false;
+    }
+  }
+  if (stdin_is_tty) {
+    // Set terminal to raw mode for immediate key detection
+    struct termios raw;
+    if (tcgetattr(STDIN_FILENO, &g_original_termios) == 0) {
+      g_termios_saved = true;
+      raw = g_original_termios;
+      raw.c_lflag &= ~((tcflag_t)(ICANON | ECHO)); // Disable canonical mode and echo
+      raw.c_cc[VMIN] = 0;                          // Non-blocking read
+      raw.c_cc[VTIME] = 0;                         // No timeout
+      if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
+        log_warn("Failed to set terminal to raw mode for lock debug");
+        g_termios_saved = false;
+      }
+    } else {
+      log_warn("Failed to get terminal attributes for lock debug");
     }
   } else {
-    log_warn("Failed to get terminal attributes for lock debug");
+    log_debug("Lock debug: stdin is not a TTY, skipping raw mode setup");
   }
+#else
+  // On Windows, assume we have a console
+  stdin_is_tty = true;
 #endif
 
-  log_debug("Lock debug thread started - press '?' to print lock state");
+  log_debug("Lock debug thread started%s", stdin_is_tty ? " - press '?' to print lock state" : " (no TTY input)");
+  LOCK_TRACE("debug thread loop starting");
 
   while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
     // Check for locks held > 100ms and log warnings
@@ -472,9 +548,9 @@ static void *debug_thread_func(void *arg) {
       lock_debug_print_state();
     }
 
-    // Check for keyboard input first
+    // Check for keyboard input only if stdin is a TTY
 #ifdef _WIN32
-    if (_kbhit()) {
+    if (stdin_is_tty && _kbhit()) {
       int ch = _getch();
       if (ch == '?') {
         lock_debug_print_state();
@@ -484,23 +560,28 @@ static void *debug_thread_func(void *arg) {
     // Small sleep to prevent CPU spinning
     platform_sleep_ms(10);
 #else
-    // POSIX: use select() for non-blocking input (now in raw mode)
-    fd_set readfds;
-    struct timeval timeout;
+    if (stdin_is_tty) {
+      // POSIX: use select() for non-blocking input (now in raw mode)
+      fd_set readfds;
+      struct timeval timeout;
 
-    FD_ZERO(&readfds);
-    FD_SET(STDIN_FILENO, &readfds);
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 100000; // 100ms timeout
+      FD_ZERO(&readfds);
+      FD_SET(STDIN_FILENO, &readfds);
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 100000; // 100ms timeout
 
-    int result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
-    if (result > 0 && FD_ISSET(STDIN_FILENO, &readfds)) {
-      char input[2];
-      if (read(STDIN_FILENO, input, 1) == 1) {
-        if (input[0] == '?') {
-          lock_debug_print_state();
+      int result = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
+      if (result > 0 && FD_ISSET(STDIN_FILENO, &readfds)) {
+        char input[2];
+        if (read(STDIN_FILENO, input, 1) == 1) {
+          if (input[0] == '?') {
+            lock_debug_print_state();
+          }
         }
       }
+    } else {
+      // No TTY - just sleep instead of trying to read stdin
+      platform_sleep_ms(100);
     }
 #endif
 
@@ -745,13 +826,15 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
   }
 
   // Filter out ALL functions that our lock debug system uses internally
-  // to prevent infinite recursion
+  // to prevent infinite recursion and deadlock
   // Note: uthash uses macros (HASH_FIND_INT, etc.) so there are no function names to filter
   if (strstr(function_name, "log_") != NULL || strstr(function_name, "platform_") != NULL ||
       strstr(function_name, "create_lock_record") != NULL || strstr(function_name, "update_usage_stats") != NULL ||
       strstr(function_name, "print_") != NULL || strstr(function_name, "debug_") != NULL ||
       strstr(function_name, "lock_debug") != NULL || strstr(file_name, "symbols.c") != NULL ||
-      strstr(function_name, "ascii_thread") != NULL) {
+      strstr(function_name, "ascii_thread") != NULL ||
+      strstr(function_name, "maybe_rotate_log") != NULL || // Logging mutex - prevent deadlock during backtrace
+      strstr(function_name, "rotate_log") != NULL) {       // Also filter other rotation functions
     return true;
   }
 
@@ -799,7 +882,9 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
   lock_record_t *record = create_lock_record(lock_address, lock_type, file_name, line_number, function_name);
   if (record) {
     // Acquire write lock to make the entire operation atomic
+    LOCK_TRACE("acquiring lock_records_lock (write) for %s:%d %s", file_name, line_number, function_name);
     rwlock_wrlock_impl(&g_lock_debug_manager.lock_records_lock);
+    LOCK_TRACE("acquired lock_records_lock (write)");
 
     // Double-check cache is still initialized after acquiring lock
     if (!atomic_load(&g_lock_debug_manager.initialized)) {
@@ -824,12 +909,14 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
 
     // Release lock
     rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+    LOCK_TRACE("released lock_records_lock (write) - record added");
 
     atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
     atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
     return true;
   }
   // Record allocation failed
+  LOCK_TRACE("record allocation failed");
   return false;
 }
 
@@ -853,8 +940,26 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   UNUSED(function_name);
 #endif
 
+  // Variables to hold info for deferred logging (MUST log AFTER releasing lock_records_lock)
+  // Logging while holding lock_records_lock causes deadlock:
+  // - log_warn() may call mutex_lock() for rotation
+  // - mutex_lock macro calls debug_process_tracked_lock()
+  // - debug_process_tracked_lock() tries to acquire lock_records_lock (write)
+  // - DEADLOCK: we already hold it, rwlocks don't support recursive write locking
+  bool should_log_warning = false;
+  char deferred_duration_str[32] = {0};
+  char deferred_file_name[256] = {0};
+  int deferred_line_number = 0;
+  char deferred_function_name[128] = {0};
+  void *deferred_lock_ptr = NULL;
+  const char *deferred_lock_type_str = NULL;
+  char **deferred_backtrace_symbols = NULL;
+  int deferred_backtrace_size = 0;
+
   // Acquire write lock for removal
+  LOCK_TRACE("acquiring lock_records_lock (write) for unlock %s %s:%d", lock_type_str, file_name, line_number);
   rwlock_wrlock_impl(&g_lock_debug_manager.lock_records_lock);
+  LOCK_TRACE("acquired lock_records_lock (write) for unlock");
 
   lock_record_t *record = NULL;
   HASH_FIND(hash_handle, g_lock_debug_manager.lock_records, &key, sizeof(key), record);
@@ -874,37 +979,57 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
 
       held_ms = (held_sec * 1000) + (held_nsec / 1000000);
 
-      // Check if lock was held too long
+      // Check if lock was held too long - collect info for deferred logging
       if (held_ms > LOCK_HOLD_TIME_WARNING_MS) {
-        char duration_str[32];
-        format_duration_ms((double)held_ms, duration_str, sizeof(duration_str));
-        log_warn("Lock held for %s (threshold: %d ms) at %s:%d in %s()\n"
-                 "  Lock type: %s, address: %p",
-                 duration_str, LOCK_HOLD_TIME_WARNING_MS, file_name, line_number, function_name, lock_type_str,
-                 lock_ptr);
+        should_log_warning = true;
+        format_duration_ms((double)held_ms, deferred_duration_str, sizeof(deferred_duration_str));
+        strncpy(deferred_file_name, file_name, sizeof(deferred_file_name) - 1);
+        deferred_line_number = line_number;
+        strncpy(deferred_function_name, function_name, sizeof(deferred_function_name) - 1);
+        deferred_lock_ptr = lock_ptr;
+        deferred_lock_type_str = lock_type_str;
 
-        // Print backtrace from when lock was acquired
+        // Copy backtrace symbols if available (we need to copy, not just reference)
         if (record->backtrace_size > 0 && record->backtrace_symbols) {
-          platform_print_backtrace_symbols("Backtrace from lock acquisition", record->backtrace_symbols,
-                                           record->backtrace_size, 0, 10, NULL);
-        } else {
-          // No backtrace available, print current backtrace
-          log_warn("No backtrace available. Current backtrace:");
-          platform_print_backtrace(2); // Skip 2 frames (this function and debug_process_tracked_unlock)
+          deferred_backtrace_size = record->backtrace_size;
+          deferred_backtrace_symbols = record->backtrace_symbols;
+          record->backtrace_symbols = NULL; // Transfer ownership to avoid double-free
         }
       }
     }
 
     HASH_DELETE(hash_handle, g_lock_debug_manager.lock_records, record);
     rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+    LOCK_TRACE("released lock_records_lock (write) - record removed");
 
     free_lock_record(record);
     atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
     debug_decrement_lock_counter();
+
+    // NOW safe to log - we no longer hold lock_records_lock
+    if (should_log_warning) {
+      log_warn("Lock held for %s (threshold: %d ms) at %s:%d in %s()\n"
+               "  Lock type: %s, address: %p",
+               deferred_duration_str, LOCK_HOLD_TIME_WARNING_MS, deferred_file_name, deferred_line_number,
+               deferred_function_name, deferred_lock_type_str, deferred_lock_ptr);
+
+      // Print backtrace from when lock was acquired
+      if (deferred_backtrace_size > 0 && deferred_backtrace_symbols) {
+        platform_print_backtrace_symbols("Backtrace from lock acquisition", deferred_backtrace_symbols,
+                                         deferred_backtrace_size, 0, 10, NULL);
+        free(deferred_backtrace_symbols); // Free the transferred ownership
+      } else {
+        // No backtrace available, print current backtrace
+        log_warn("No backtrace available. Current backtrace:");
+        platform_print_backtrace(2); // Skip 2 frames (this function and debug_process_tracked_unlock)
+      }
+    }
+
     return true;
   }
 
   rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+  LOCK_TRACE("released lock_records_lock (write) - no record found for %s", lock_type_str);
   return false;
 }
 
@@ -992,6 +1117,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
 // ============================================================================
 
 int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("LOCK", "MUTEX", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
     return mutex_lock_impl(mutex);
   }
@@ -1009,6 +1135,7 @@ int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, con
 }
 
 int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("TRYLOCK", "MUTEX", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
     return mutex_trylock_impl(mutex);
   }
@@ -1027,6 +1154,7 @@ int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, 
 }
 
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("UNLOCK", "MUTEX", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
     return mutex_unlock_impl(mutex);
   }
@@ -1050,6 +1178,7 @@ int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, c
 }
 
 int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("LOCK", "RWLOCK_RD", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
     return rwlock_rdlock_impl(rwlock);
   }
@@ -1067,6 +1196,7 @@ int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number
 }
 
 int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("LOCK", "RWLOCK_WR", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
     return rwlock_wrlock_impl(rwlock);
   }
@@ -1084,6 +1214,7 @@ int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number
 }
 
 int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("UNLOCK", "RWLOCK_RD", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
     return rwlock_rdunlock_impl(rwlock);
   }
@@ -1099,6 +1230,7 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
 }
 
 int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  LOCK_OP_TRACE("UNLOCK", "RWLOCK_WR", file_name, line_number, function_name);
   if (debug_should_skip_lock_tracking(rwlock, file_name, function_name)) {
     return rwlock_wrunlock_impl(rwlock);
   }
@@ -1334,4 +1466,86 @@ void lock_debug_print_state(void) {
   log_info("%s", log_buffer);
 }
 
-#endif // DEBUG_LOCKS - Without DEBUG_LOCKS: no implementation, header provides inline stubs
+#else // !DEBUG_LOCKS - Provide stub implementations when lock debugging is disabled
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "platform/mutex.h"
+#include "platform/rwlock.h"
+
+// Stub implementations - no-ops when DEBUG_LOCKS is not defined
+int lock_debug_init(void) {
+  return 0;
+}
+int lock_debug_start_thread(void) {
+  return 0;
+}
+void lock_debug_cleanup(void) {}
+void lock_debug_cleanup_thread(void) {}
+void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held) {
+  if (total_acquired)
+    *total_acquired = 0;
+  if (total_released)
+    *total_released = 0;
+  if (currently_held)
+    *currently_held = 0;
+}
+bool lock_debug_is_initialized(void) {
+  return false;
+}
+void lock_debug_print_state(void) {}
+void lock_debug_trigger_print(void) {}
+
+// Stub implementations for debug_* functions - just pass through to _impl versions
+// These are needed because the macros in mutex.h/rwlock.h reference them even when
+// lock_debug_is_initialized() returns false (linker still needs symbols to exist)
+int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return mutex_lock_impl(mutex);
+}
+
+int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return mutex_trylock_impl(mutex);
+}
+
+int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return mutex_unlock_impl(mutex);
+}
+
+int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_rdlock_impl(rwlock);
+}
+
+int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_wrlock_impl(rwlock);
+}
+
+int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_rdunlock_impl(rwlock);
+}
+
+int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name) {
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
+  return rwlock_wrunlock_impl(rwlock);
+}
+
+#endif // DEBUG_LOCKS
