@@ -13,6 +13,7 @@
     "portaudio",
     "miniupnpc",
     "openssl",
+    "sqlite3",
     {
       "name": "mimalloc",
       "platform": "windows | (linux & !static) | osx"
@@ -26,6 +27,7 @@
     { "name": "portaudio", "version": "19.7" },
     { "name": "miniupnpc", "version": "2.3.2" },
     { "name": "openssl", "version": "3.6.0" },
+    { "name": "sqlite3", "version": "3.51.1" },
     { "name": "mimalloc", "version": "2.2.4" },
     { "name": "libdatachannel", "version": "0.24.0" }
   ]
