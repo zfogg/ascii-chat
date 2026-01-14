@@ -180,10 +180,24 @@ void terminal_enable_ansi(void) {
  * @brief Flush terminal output buffer
  * @param fd File descriptor for TTY output
  * @return 0 on success, -1 on failure
+ *
+ * Note: For TTY file descriptors, fsync() returns EINVAL because TTYs are
+ * character devices without persistent storage. We use tcdrain() for TTYs
+ * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  if (fsync(fd) < 0) {
-    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+  if (isatty(fd)) {
+    // For TTYs, use tcdrain() which waits for output to be transmitted
+    if (tcdrain(fd) < 0) {
+      // tcdrain can fail with EBADF if fd is closed, or ENOTTY if not a TTY
+      // (the latter shouldn't happen since we checked isatty)
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+    }
+  } else {
+    // For regular files (e.g., when redirecting output), use fsync()
+    if (fsync(fd) < 0) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+    }
   }
   return ASCIICHAT_OK;
 }
@@ -204,10 +218,7 @@ asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to show cursor");
     }
   }
-  if (fsync(fd) < 0) {
-    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to sync cursor state");
-  }
-  return ASCIICHAT_OK;
+  return terminal_flush(fd);
 }
 
 /**
@@ -219,10 +230,7 @@ asciichat_error_t terminal_cursor_home(int fd) {
   if (dprintf(fd, "\033[H") < 0) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor to home");
   }
-  if (fsync(fd) < 0) {
-    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to sync cursor position");
-  }
-  return ASCIICHAT_OK;
+  return terminal_flush(fd);
 }
 
 /**
@@ -234,10 +242,7 @@ asciichat_error_t terminal_clear_scrollback(int fd) {
   if (dprintf(fd, "\033[3J") < 0) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to clear scrollback buffer");
   }
-  if (fsync(fd) < 0) {
-    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to sync scrollback clear");
-  }
-  return ASCIICHAT_OK;
+  return terminal_flush(fd);
 }
 
 /**
