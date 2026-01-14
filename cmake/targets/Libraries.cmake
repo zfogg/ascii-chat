@@ -295,7 +295,6 @@ if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-core
         ascii-chat-util
         ascii-chat-platform
-        liburcu
         sqlite3
     )
 endif()
@@ -703,7 +702,7 @@ else()
 
         target_link_libraries(ascii-chat-shared PRIVATE
             ${CORE_SYS_LIBS}
-            m liburcu
+            m
             ${CMAKE_THREAD_LIBS_INIT}
         )
         target_include_directories(ascii-chat-shared PRIVATE
@@ -751,7 +750,7 @@ else()
         pkg_check_modules(JACK jack)
 
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${CORE_LIBS} m sqlite3 liburcu
+            ${CORE_LIBS} m sqlite3
             ${JACK_LIBRARIES}
         )
         # Link miniupnpc if available (UPnP/NAT-PMP support)

@@ -34,18 +34,11 @@
 #include <string.h>
 #include <time.h>
 
-/* RCU library includes for lock-free session registry access in worker threads */
-#include <urcu.h>
-#include <urcu/rculfhash.h>
-
 /**
  * @brief Background thread for periodic rate limit cleanup
  *
  * Wakes up every 5 minutes to remove old rate limit events from the database.
  * This prevents the rate_events table from growing unbounded.
- *
- * Thread is RCU-aware: registered with liburcu to safely access the lock-free
- * session registry if needed during cleanup operations.
  */
 static void *cleanup_thread_func(void *arg) {
   acds_server_t *server = (acds_server_t *)arg;
@@ -53,10 +46,7 @@ static void *cleanup_thread_func(void *arg) {
     return NULL;
   }
 
-  /* Register this worker thread with RCU library before any RCU operations.
-     This ensures the thread is tracked in the RCU synchronization scheme. */
-  rcu_register_thread();
-  log_info("Rate limit cleanup thread started (RCU registered)");
+  log_info("Rate limit cleanup thread started");
 
   while (!atomic_load(&server->shutdown)) {
     // Sleep for 5 minutes (or until shutdown)
@@ -76,10 +66,7 @@ static void *cleanup_thread_func(void *arg) {
     }
   }
 
-  /* Unregister from RCU library before exiting thread.
-     This finalizes any pending RCU grace periods for this thread. */
-  rcu_unregister_thread();
-  log_info("Rate limit cleanup thread exiting (RCU unregistered)");
+  log_info("Rate limit cleanup thread exiting");
   return NULL;
 }
 
@@ -365,30 +352,11 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
     log_info("Session created: %.*s (UUID: %02x%02x..., %d STUN, %d TURN servers)", resp.session_string_len,
              resp.session_string, resp.session_id[0], resp.session_id[1], resp.stun_count, resp.turn_count);
 
-    /* Save to database - look up session entry first using RCU lock-free access */
-    rcu_read_lock();
-
-    session_entry_t *session = NULL;
-    struct cds_lfht_iter iter_ctx;
-
-    /* Find session by session_string (primary key in hash table) */
-    unsigned long hash = 5381; // DJB2 hash
-    const char *str = resp.session_string;
-    int c;
-    while ((c = (unsigned char)*str++)) {
-      hash = ((hash << 5) + hash) + c;
+    /* Save to database - look up session entry using sharded rwlock lookup */
+    session_entry_t *session = session_find_by_string(server->sessions, resp.session_string);
+    if (session) {
+      database_save_session(server->db, session);
     }
-
-    cds_lfht_lookup(server->sessions->sessions, hash, NULL, resp.session_string, &iter_ctx);
-    struct cds_lfht_node *node = cds_lfht_iter_get_node(&iter_ctx);
-    if (node) {
-      session = caa_container_of(node, session_entry_t, hash_node);
-      if (session) {
-        database_save_session(server->db, session);
-      }
-    }
-
-    rcu_read_unlock();
   } else {
     // Error - send error response using proper error code
     acip_send_error(transport, create_result, "Failed to create session");
@@ -500,26 +468,11 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
              resp.participant_id[1]);
 
-    // Save to database - look up session entry first (RCU lock-free iteration)
-    rcu_read_lock();
-
-    session_entry_t *session_iter;
-    session_entry_t *joined_session = NULL;
-    struct cds_lfht_iter iter_ctx;
-
-    /* Iterate through hash table using RCU-safe iterator */
-    cds_lfht_for_each_entry(server->sessions->sessions, &iter_ctx, session_iter, hash_node) {
-      if (memcmp(session_iter->session_id, resp.session_id, 16) == 0) {
-        joined_session = session_iter;
-        break;
-      }
-    }
-
+    // Save to database - look up session entry using sharded rwlock lookup
+    session_entry_t *joined_session = session_find_by_id(server->sessions, resp.session_id);
     if (joined_session) {
       database_save_session(server->db, joined_session);
     }
-
-    rcu_read_unlock();
   } else {
     acip_send_session_joined(transport, &resp);
     log_warn("Session join failed for %s: %s", client_ip, resp.error_message);
@@ -546,26 +499,11 @@ static void acds_on_session_leave(const acip_session_leave_t *req, int client_so
       client_data->joined_session = false;
     }
 
-    // Save updated session to database - look up session entry first (RCU lock-free iteration)
-    rcu_read_lock();
-
-    session_entry_t *session_iter;
-    session_entry_t *left_session = NULL;
-    struct cds_lfht_iter iter_ctx;
-
-    /* Iterate through hash table using RCU-safe iterator */
-    cds_lfht_for_each_entry(server->sessions->sessions, &iter_ctx, session_iter, hash_node) {
-      if (memcmp(session_iter->session_id, req->session_id, 16) == 0) {
-        left_session = session_iter;
-        break;
-      }
-    }
-
+    // Save updated session to database - look up session entry using sharded rwlock lookup
+    session_entry_t *left_session = session_find_by_id(server->sessions, req->session_id);
     if (left_session) {
       database_save_session(server->db, left_session);
     }
-
-    rcu_read_unlock();
   } else {
     acip_send_error(transport, leave_result, asciichat_error_string(leave_result));
     log_warn("Session leave failed for %s: %s", client_ip, asciichat_error_string(leave_result));
@@ -650,18 +588,13 @@ void *acds_client_handler(void *arg) {
   char client_ip[INET6_ADDRSTRLEN] = {0};
   tcp_client_context_get_ip(ctx, client_ip, sizeof(client_ip));
 
-  /* Register this client handler thread with RCU library before any RCU operations.
-     This ensures the thread is tracked in the RCU synchronization scheme for
-     lock-free hash table access. */
-  rcu_register_thread();
-  log_info("Client handler started for %s (RCU registered)", client_ip);
+  log_info("Client handler started for %s", client_ip);
 
   // Register client in TCP server registry with allocated client data
   acds_client_data_t *client_data = SAFE_MALLOC(sizeof(acds_client_data_t), acds_client_data_t *);
   if (!client_data) {
     tcp_server_reject_client(client_socket, "Failed to allocate client data");
     SAFE_FREE(ctx);
-    rcu_unregister_thread();
     return NULL;
   }
   memset(client_data, 0, sizeof(*client_data));
@@ -671,7 +604,6 @@ void *acds_client_handler(void *arg) {
     SAFE_FREE(client_data);
     tcp_server_reject_client(client_socket, "Failed to register client in registry");
     SAFE_FREE(ctx);
-    rcu_unregister_thread();
     return NULL;
   }
 
@@ -726,7 +658,6 @@ void *acds_client_handler(void *arg) {
   socket_close(client_socket);
   SAFE_FREE(ctx);
 
-  rcu_unregister_thread();
-  log_info("Client handler finished for %s (RCU unregistered)", client_ip);
+  log_info("Client handler finished for %s", client_ip);
   return NULL;
 }

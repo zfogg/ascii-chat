@@ -28,9 +28,6 @@
 #include "network/nat/upnp.h"
 #include "network/mdns/mdns.h"
 
-/* RCU library includes for lock-free session registry */
-#include <urcu.h>
-
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
 
@@ -95,11 +92,6 @@ int main(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     return result;
   }
-
-  // Register main thread with RCU library before any RCU operations
-  // This is required by liburcu to track the thread in the RCU synchronization scheme
-  rcu_register_thread();
-  log_debug("Main thread registered with RCU library");
 
   log_info("ASCII-Chat Discovery Service (acds) starting...");
   log_info("Version: %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
@@ -370,11 +362,6 @@ int main(int argc, char **argv) {
     g_mdns_ctx = NULL;
     log_debug("mDNS context shut down");
   }
-
-  // Unregister main thread from RCU library
-  // This ensures all RCU grace periods are properly finalized before exit
-  log_debug("Unregistering main thread from RCU library");
-  rcu_unregister_thread();
 
   log_info("Discovery server stopped");
   return result;

@@ -2,21 +2,17 @@
 
 /**
  * @file acds/session.h
- * @brief 🎯 Session registry for discovery service (lock-free RCU implementation)
+ * @brief 🎯 Session registry for discovery service (sharded rwlock implementation)
  *
- * In-memory hash table of active sessions with lock-free concurrent access.
- * Uses liburcu for:
- *   - Lock-free hash table (cds_lfht) replacing uthash + rwlock
- *   - RCU synchronization for safe concurrent reads/writes
- *   - Deferred memory freeing via call_rcu()
+ * In-memory hash table of active sessions with high concurrency via sharding.
+ * Uses sharded rwlocks for:
+ *   - Reduced lock contention by distributing sessions across 16 shards
+ *   - uthash for per-shard hash tables (header-only, no external dependency)
+ *   - Simple, portable implementation using platform abstraction layer
  *
  * Sessions expire after 24 hours and are cleaned up by background thread.
  * Fine-grained per-entry locking protects participant lists.
  */
-
-/* CRITICAL: RCU macros MUST be defined before urcu headers are included.
- * These are defined globally via cmake (cmake/targets/SourceFiles.cmake)
- * and passed via -D compiler flags, so we don't redefine them here. */
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -24,16 +20,21 @@
 #include "platform/abstraction.h"
 #include "network/acip/acds.h"
 #include "acds/main.h"
-
-/* RCU library includes - include <urcu.h> (not urcu/urcu-mb.h) to enable URCU_API_MAP
- * which provides inline API functions like cds_lfht_new(), rcu_read_lock(), call_rcu(), etc. */
-#include <urcu.h>
-#include <urcu/rculfhash.h>
+#include "uthash.h"
 
 /**
  * @brief Maximum participants per session
  */
 #define MAX_PARTICIPANTS 8
+
+/**
+ * @brief Number of shards for the session registry
+ *
+ * Using 16 shards provides good lock contention reduction while keeping
+ * memory overhead reasonable. Sessions are distributed across shards
+ * using FNV-1a hash of the session_string.
+ */
+#define SESSION_REGISTRY_NUM_SHARDS 16
 
 /**
  * @brief Participant in a session
@@ -45,12 +46,12 @@ typedef struct {
 } participant_t;
 
 /**
- * @brief Session entry (RCU hash table node)
+ * @brief Session entry (uthash node)
  *
- * Layout optimized for RCU:
- *   - Hash table node at end to improve cache locality
+ * Layout optimized for uthash:
+ *   - session_string is the lookup key
  *   - Participant list protected by fine-grained mutex
- *   - RCU head for deferred freeing
+ *   - UT_hash_handle at end for cache locality
  */
 typedef struct session_entry {
   char session_string[48]; ///< e.g., "swift-river-mountain" (lookup key)
@@ -76,22 +77,32 @@ typedef struct session_entry {
   participant_t *participants[MAX_PARTICIPANTS]; ///< Participant array
   mutex_t participant_mutex;                     ///< Fine-grained lock for participant list
 
-  /* RCU integration */
-  struct cds_lfht_node hash_node; ///< RCU lock-free hash table node (keyed by session_string)
-  struct rcu_head rcu_head;       ///< For deferred freeing via call_rcu()
+  /* uthash handle - must be named 'hh' for uthash macros */
+  UT_hash_handle hh;
 } session_entry_t;
 
 /**
- * @brief Session registry (lock-free RCU)
+ * @brief Single shard of the session registry
  *
- * Replaced uthash + rwlock with RCU lock-free hash table:
- *   - No global lock on lookups (5-10x performance improvement)
- *   - Fine-grained per-entry locking for participant modifications
- *   - Automatic memory management via RCU grace periods
+ * Each shard has its own rwlock and hash table, allowing concurrent
+ * access to different shards without contention.
  */
 typedef struct {
-  struct cds_lfht *sessions; ///< RCU lock-free hash table
-  /* NO rwlock_t - RCU provides read-side synchronization! */
+  rwlock_t lock;             ///< Per-shard read-write lock
+  session_entry_t *sessions; ///< uthash hash table head (NULL when empty)
+} session_shard_t;
+
+/**
+ * @brief Session registry (sharded rwlock)
+ *
+ * Uses sharded rwlock + uthash for high concurrency:
+ *   - 16 shards reduce lock contention under high concurrency
+ *   - uthash provides O(1) lookups within each shard
+ *   - Fine-grained per-entry locking for participant modifications
+ *   - Uses platform abstraction layer for portable rwlocks
+ */
+typedef struct {
+  session_shard_t shards[SESSION_REGISTRY_NUM_SHARDS];
 } session_registry_t;
 
 /**
@@ -164,3 +175,54 @@ void session_cleanup_expired(session_registry_t *registry);
  * @param registry Registry to destroy
  */
 void session_registry_destroy(session_registry_t *registry);
+
+/**
+ * @brief Find session by session_id
+ *
+ * Thread-safe lookup that acquires/releases the appropriate shard lock.
+ * Note: The returned pointer is only valid for read access immediately after
+ * the call. For modifications, use the specialized session_* functions.
+ *
+ * @param registry Session registry
+ * @param session_id Session UUID to find
+ * @return Pointer to session entry, or NULL if not found
+ */
+session_entry_t *session_find_by_id(session_registry_t *registry, const uint8_t session_id[16]);
+
+/**
+ * @brief Find session by session_string
+ *
+ * Thread-safe lookup that acquires/releases the appropriate shard lock.
+ * Note: The returned pointer is only valid for read access immediately after
+ * the call. For modifications, use the specialized session_* functions.
+ *
+ * @param registry Session registry
+ * @param session_string Session string to find
+ * @return Pointer to session entry, or NULL if not found
+ */
+session_entry_t *session_find_by_string(session_registry_t *registry, const char *session_string);
+
+/**
+ * @brief Iterate over all sessions (for database operations)
+ *
+ * Calls the callback for each session while holding the appropriate shard lock.
+ * The callback should NOT store the session pointer - it's only valid during the callback.
+ *
+ * @param registry Session registry
+ * @param callback Function to call for each session
+ * @param user_data User data passed to callback
+ */
+void session_foreach(session_registry_t *registry, void (*callback)(session_entry_t *session, void *user_data),
+                     void *user_data);
+
+/**
+ * @brief Add a session entry directly to the registry (for database loading)
+ *
+ * This bypasses the normal creation flow and adds a pre-populated entry.
+ * Used by database_load_sessions() to restore sessions from disk.
+ *
+ * @param registry Session registry
+ * @param session Pre-allocated and populated session entry (ownership transferred)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t session_add_entry(session_registry_t *registry, session_entry_t *session);

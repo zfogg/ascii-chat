@@ -67,9 +67,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
 configure_mdns()
 
-# liburcu - Lock-free RCU for high-performance session registry
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Liburcu.cmake)
-
 # =============================================================================
 # Test Dependencies
 # =============================================================================

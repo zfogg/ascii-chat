@@ -5,9 +5,7 @@
  * Provides SQLite persistence for sessions, participants, and rate limiting.
  * Sessions are saved on creation and loaded on startup for crash recovery.
  *
- * RCU Integration:
- * - Session loading uses RCU lock-free hash table (cds_lfht)
- * - No global locks needed - RCU read-side provides synchronization
+ * Sessions are loaded into the sharded rwlock registry using session_add_entry().
  */
 
 #include "acds/database.h"
@@ -15,8 +13,6 @@
 #include "acds/session.h"
 #include <string.h>
 #include <time.h>
-#include <urcu.h>
-#include <urcu/rculfhash.h>
 
 // SQL schema for creating tables
 static const char *schema_sql =
@@ -185,28 +181,19 @@ asciichat_error_t database_load_sessions(sqlite3 *db, session_registry_t *regist
       sqlite3_finalize(part_stmt);
     }
 
-    /* Add to RCU hash table (no lock needed)
-       RCU provides automatic synchronization for concurrent readers */
-    unsigned long hash = 5381; // DJB2 hash
-    const char *str = session->session_string;
-    int c;
-    while ((c = (unsigned char)*str++)) {
-      hash = ((hash << 5) + hash) + c;
-    }
+    /* Initialize participant mutex for this loaded session */
+    mutex_init(&session->participant_mutex);
 
-    cds_lfht_node_init(&session->hash_node);
-    struct cds_lfht_node *ret_node = cds_lfht_add_unique(registry->sessions, hash,
-                                                         /* match callback */
-                                                         NULL, // Using NULL match for now (will use default equality)
-                                                         session->session_string, &session->hash_node);
-
-    if (ret_node != &session->hash_node) {
-      /* Session already exists - free this duplicate */
+    /* Add to sharded rwlock registry */
+    asciichat_error_t add_err = session_add_entry(registry, session);
+    if (add_err != ASCIICHAT_OK) {
+      /* Session already exists or error - free this duplicate */
+      mutex_destroy(&session->participant_mutex);
       for (size_t i = 0; i < MAX_PARTICIPANTS; i++) {
         SAFE_FREE(session->participants[i]);
       }
       SAFE_FREE(session);
-      log_warn("Duplicate session in database: %s (skipping)", session_string);
+      log_warn("Failed to add session from database: %s (skipping)", session_string);
       continue;
     }
 

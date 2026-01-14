@@ -20,10 +20,6 @@
 #   - DATA_STRUCTURES_SRCS
 # =============================================================================
 
-# liburcu requires _LGPL_SOURCE and RCU_MB defines for inline RCU implementations
-# Add globally so all targets that use liburcu have proper macro mappings
-add_compile_definitions(_LGPL_SOURCE RCU_MB)
-
 # =============================================================================
 # Module 1: Utilities (ultra-stable - changes rarely)
 # =============================================================================

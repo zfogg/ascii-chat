@@ -1,15 +1,14 @@
 /**
  * @file acds/session.c
- * @brief 🎯 Session registry implementation (lock-free RCU)
+ * @brief 🎯 Session registry implementation (sharded rwlock)
  *
- * High-performance session management using liburcu (Read-Copy-Update):
- *   - Lock-free read-side operations (no locks acquired on lookups)
- *   - RCU hash table (cds_lfht) replacing uthash + rwlock
+ * High-performance session management using sharded rwlocks + uthash:
+ *   - 16 shards reduce lock contention under high concurrency
+ *   - uthash provides O(1) lookups within each shard
  *   - Fine-grained per-entry locking for participant modifications
- *   - Deferred memory freeing via call_rcu() for thread safety
+ *   - No external dependency (uses platform abstraction layer)
  *
  * Sessions are ephemeral (24-hour expiration) and stored in memory.
- * Expected 5-10x performance improvement under high concurrency.
  */
 
 #include "acds/session.h"
@@ -17,6 +16,7 @@
 #include "acds/strings.h"
 #include "log/logging.h"
 #include "network/webrtc/turn_credentials.h"
+#include "platform/rwlock.h"
 #include "util/fnv1a.h"
 #include <string.h>
 #include <time.h>
@@ -61,73 +61,43 @@ static bool verify_password(const char *password, const char *hash) {
 }
 
 // ============================================================================
-// RCU Hash Table Helpers
+// Sharded Hash Table Helpers
 // ============================================================================
 
 /**
- * @brief Hash function for session string lookup
+ * @brief Get shard index for a session string
  *
- * Uses FNV-1a hash from lib/util/fnv1a.h which is UBSan-safe.
- * FNV-1a provides good distribution for hash table keys.
+ * Uses FNV-1a hash to distribute sessions across shards evenly.
  *
  * @param session_string Session string (null-terminated)
- * @return Hash value for RCU hash table (cast to unsigned long)
+ * @return Shard index (0 to SESSION_REGISTRY_NUM_SHARDS-1)
  */
-static unsigned long session_string_hash(const char *session_string) {
-  // Use FNV-1a hash (sanitizer-safe implementation)
-  return (unsigned long)fnv1a_hash_string(session_string);
+static inline uint32_t get_shard_index(const char *session_string) {
+  return fnv1a_hash_string(session_string) % SESSION_REGISTRY_NUM_SHARDS;
 }
 
 /**
- * @brief Match function for RCU hash table lookups
- * @param node Hash table node (session_entry_t)
- * @param key Session string from lookup request
- * @return Non-zero if match, 0 otherwise (liburcu convention)
- */
-static int session_string_match(struct cds_lfht_node *node, const void *key) {
-  const session_entry_t *entry = caa_container_of(node, session_entry_t, hash_node);
-  const char *session_string = (const char *)key;
-  return strcmp(entry->session_string, session_string) == 0;
-}
-
-/**
- * @brief RCU callback for deferred session freeing
- * Called after RCU grace period expires (no more readers)
- * @param head RCU head pointer from call_rcu()
- */
-static void session_free_rcu(struct rcu_head *head) {
-  session_entry_t *entry = caa_container_of(head, session_entry_t, rcu_head);
-
-  // Free all participants
-  for (size_t i = 0; i < MAX_PARTICIPANTS; i++) {
-    if (entry->participants[i]) {
-      SAFE_FREE(entry->participants[i]);
-    }
-  }
-
-  // Destroy per-entry mutex
-  mutex_destroy(&entry->participant_mutex);
-
-  // Free the entry itself
-  SAFE_FREE(entry);
-}
-
-/**
- * @brief Find session by session_id (RCU read-side)
- * Caller must be in RCU read-side critical section via rcu_read_lock()
+ * @brief Find session by session_id (must hold appropriate shard locks)
+ *
+ * This iterates through all shards - caller must coordinate locking.
+ * Used for operations that lookup by session_id rather than session_string.
  *
  * @param registry Session registry
  * @param session_id Session UUID
+ * @param out_shard_idx Output: shard index where session was found (optional)
  * @return Session entry or NULL if not found
  */
-static session_entry_t *find_session_by_id_rcu(session_registry_t *registry, const uint8_t session_id[16]) {
-  session_entry_t *entry;
-  struct cds_lfht_iter iter;
-
-  /* Iterate through all entries in RCU hash table */
-  cds_lfht_for_each_entry(registry->sessions, &iter, entry, hash_node) {
-    if (memcmp(entry->session_id, session_id, 16) == 0) {
-      return entry;
+static session_entry_t *find_session_by_id_unlocked(session_registry_t *registry, const uint8_t session_id[16],
+                                                    uint32_t *out_shard_idx) {
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    session_entry_t *entry, *tmp;
+    HASH_ITER(hh, registry->shards[i].sessions, entry, tmp) {
+      if (memcmp(entry->session_id, session_id, 16) == 0) {
+        if (out_shard_idx) {
+          *out_shard_idx = i;
+        }
+        return entry;
+      }
     }
   }
   return NULL;
@@ -162,6 +132,29 @@ static int find_empty_slot_locked(session_entry_t *session) {
   return -1;
 }
 
+/**
+ * @brief Free a session entry and all its resources
+ * @param entry Session entry to free
+ */
+static void session_entry_free(session_entry_t *entry) {
+  if (!entry) {
+    return;
+  }
+
+  // Free all participants
+  for (size_t i = 0; i < MAX_PARTICIPANTS; i++) {
+    if (entry->participants[i]) {
+      SAFE_FREE(entry->participants[i]);
+    }
+  }
+
+  // Destroy per-entry mutex
+  mutex_destroy(&entry->participant_mutex);
+
+  // Free the entry itself
+  SAFE_FREE(entry);
+}
+
 // ============================================================================
 // Registry Lifecycle
 // ============================================================================
@@ -173,64 +166,48 @@ asciichat_error_t session_registry_init(session_registry_t *registry) {
 
   memset(registry, 0, sizeof(*registry));
 
-  /* Create RCU lock-free hash table
-     - Initial size: 256 buckets
-     - Auto-resize enabled
-     - No flags needed for simplicity
-   */
-  registry->sessions = cds_lfht_new(256, 256, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
-  if (!registry->sessions) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create RCU hash table");
+  // Initialize all shards
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    asciichat_error_t result = rwlock_init(&registry->shards[i].lock);
+    if (result != ASCIICHAT_OK) {
+      // Cleanup already initialized shards
+      for (uint32_t j = 0; j < i; j++) {
+        rwlock_destroy(&registry->shards[j].lock);
+      }
+      return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize shard %u rwlock", i);
+    }
+    registry->shards[i].sessions = NULL; // uthash starts with NULL
   }
 
-  log_info("Session registry initialized (RCU lock-free hash table)");
+  log_info("Session registry initialized (%d shards with rwlocks)", SESSION_REGISTRY_NUM_SHARDS);
   return ASCIICHAT_OK;
 }
 
 void session_registry_destroy(session_registry_t *registry) {
-  if (!registry || !registry->sessions) {
+  if (!registry) {
     return;
   }
 
-  /*
-   * Destroy is called during shutdown when no other threads are accessing
-   * the registry. Still use RCU context for consistency with the rest of
-   * the codebase.
-   */
-  rcu_read_lock();
-
-  session_entry_t *entry;
-  struct cds_lfht_iter iter;
   int deleted_count = 0;
 
-  /* Iterate and delete all entries
-     NOTE: Deleting during iteration is safe in shutdown context */
-  cds_lfht_for_each_entry(registry->sessions, &iter, entry, hash_node) {
-    int ret = cds_lfht_del(registry->sessions, &entry->hash_node);
-    if (ret == 0) {
-      /* Successfully deleted from hash table
-         Schedule deferred freeing via call_rcu() to ensure RCU readers
-         can't access the entry after we return from this function */
-      call_rcu(&entry->rcu_head, session_free_rcu);
+  // Destroy all shards
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    // Acquire write lock for this shard
+    rwlock_wrlock(&registry->shards[i].lock);
+
+    // Free all sessions in this shard
+    session_entry_t *entry, *tmp;
+    HASH_ITER(hh, registry->shards[i].sessions, entry, tmp) {
+      HASH_DEL(registry->shards[i].sessions, entry);
+      session_entry_free(entry);
       deleted_count++;
     }
-  }
 
-  rcu_read_unlock();
+    rwlock_wrunlock(&registry->shards[i].lock);
+    rwlock_destroy(&registry->shards[i].lock);
+  }
 
   log_debug("Deleted %d sessions during registry shutdown", deleted_count);
-
-  /* Force RCU grace period to ensure all entries are freed before exit
-     This blocks until all RCU readers complete and all deferred callbacks execute */
-  synchronize_rcu();
-
-  /* Destroy the RCU hash table
-     It should be empty now after synchronize_rcu() completes */
-  int ret = cds_lfht_destroy(registry->sessions, NULL);
-  if (ret < 0) {
-    log_warn("Failed to destroy RCU hash table (returned %d)", ret);
-  }
-
   log_info("Session registry destroyed");
 }
 
@@ -268,6 +245,10 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
     }
   }
 
+  // Determine which shard this session belongs to
+  uint32_t shard_idx = get_shard_index(session_string);
+  session_shard_t *shard = &registry->shards[shard_idx];
+
   // Allocate new session entry
   session_entry_t *session = SAFE_MALLOC(sizeof(session_entry_t), session_entry_t *);
   if (!session) {
@@ -282,9 +263,6 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
     SAFE_FREE(session);
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize participant mutex");
   }
-
-  // Initialize RCU node
-  cds_lfht_node_init(&session->hash_node);
 
   // Fill session data
   SAFE_STRNCPY(session->session_string, session_string, sizeof(session->session_string));
@@ -316,19 +294,23 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
   session->created_at = now;
   session->expires_at = now + ACIP_SESSION_EXPIRATION_MS;
 
-  /* Insert into RCU hash table
-     Returns duplicate if already exists
-   */
-  unsigned long hash = session_string_hash(session_string);
-  struct cds_lfht_node *ret_node =
-      cds_lfht_add_unique(registry->sessions, hash, session_string_match, session_string, &session->hash_node);
+  // Acquire write lock for this shard
+  rwlock_wrlock(&shard->lock);
 
-  if (ret_node != &session->hash_node) {
-    // Duplicate exists - cleanup and return error
+  // Check if session_string already exists
+  session_entry_t *existing = NULL;
+  HASH_FIND_STR(shard->sessions, session_string, existing);
+  if (existing) {
+    rwlock_wrunlock(&shard->lock);
     mutex_destroy(&session->participant_mutex);
     SAFE_FREE(session);
     return SET_ERRNO(ERROR_INVALID_STATE, "Session string already exists: %s", session_string);
   }
+
+  // Add to hash table
+  HASH_ADD_STR(shard->sessions, session_string, session);
+
+  rwlock_wrunlock(&shard->lock);
 
   // Fill response
   resp->session_string_len = (uint8_t)strlen(session_string);
@@ -340,8 +322,8 @@ asciichat_error_t session_create(session_registry_t *registry, const acip_sessio
   resp->stun_count = config->stun_count;
   resp->turn_count = config->turn_count;
 
-  log_info("Session created: %s (max_participants=%d, has_password=%d)", session_string, session->max_participants,
-           session->has_password);
+  log_info("Session created: %s (max_participants=%d, has_password=%d, shard=%u)", session_string,
+           session->max_participants, session->has_password, shard_idx);
 
   return ASCIICHAT_OK;
 }
@@ -354,25 +336,23 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
 
   memset(resp, 0, sizeof(*resp));
 
-  /* RCU read-side critical section - NO LOCK ACQUIRED!
-     This is the key performance improvement: lookups never contend
-   */
-  rcu_read_lock();
+  // Determine which shard this session belongs to
+  uint32_t shard_idx = get_shard_index(session_string);
+  session_shard_t *shard = &registry->shards[shard_idx];
 
-  // Find session by string using RCU hash table
-  unsigned long hash = session_string_hash(session_string);
-  struct cds_lfht_iter iter;
-  cds_lfht_lookup(registry->sessions, hash, session_string_match, session_string, &iter);
-  struct cds_lfht_node *node = cds_lfht_iter_get_node(&iter);
+  // Acquire read lock for this shard
+  rwlock_rdlock(&shard->lock);
 
-  if (!node) {
-    rcu_read_unlock();
+  // Find session by string
+  session_entry_t *session = NULL;
+  HASH_FIND_STR(shard->sessions, session_string, session);
+
+  if (!session) {
+    rwlock_rdunlock(&shard->lock);
     resp->found = 0;
     log_debug("Session lookup failed: %s (not found)", session_string);
     return ASCIICHAT_OK;
   }
-
-  session_entry_t *session = caa_container_of(node, session_entry_t, hash_node);
 
   // Fill response - session data
   resp->found = 1;
@@ -396,7 +376,7 @@ asciichat_error_t session_lookup(session_registry_t *registry, const char *sessi
   // It is only revealed after successful authentication via SESSION_JOIN to prevent
   // IP address leakage to unauthenticated clients.
 
-  rcu_read_unlock();
+  rwlock_rdunlock(&shard->lock);
 
   log_debug("Session lookup: %s (found, participants=%d/%d)", session_string, resp->current_participants,
             resp->max_participants);
@@ -420,26 +400,24 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   memcpy(session_string, req->session_string, len);
   session_string[len] = '\0';
 
-  /* RCU read-side critical section for lookup
-     (Read-side critical section, not write lock!)
-   */
-  rcu_read_lock();
+  // Determine which shard this session belongs to
+  uint32_t shard_idx = get_shard_index(session_string);
+  session_shard_t *shard = &registry->shards[shard_idx];
+
+  // Acquire read lock for this shard (we'll upgrade to write if needed via participant_mutex)
+  rwlock_rdlock(&shard->lock);
 
   // Find session
-  unsigned long hash = session_string_hash(session_string);
-  struct cds_lfht_iter iter;
-  cds_lfht_lookup(registry->sessions, hash, session_string_match, session_string, &iter);
-  struct cds_lfht_node *node = cds_lfht_iter_get_node(&iter);
+  session_entry_t *session = NULL;
+  HASH_FIND_STR(shard->sessions, session_string, session);
 
-  if (!node) {
-    rcu_read_unlock();
+  if (!session) {
+    rwlock_rdunlock(&shard->lock);
     resp->error_code = ACIP_ERROR_SESSION_NOT_FOUND;
     SAFE_STRNCPY(resp->error_message, "Session not found", sizeof(resp->error_message));
     log_warn("Session join failed: %s (not found)", session_string);
     return ASCIICHAT_OK;
   }
-
-  session_entry_t *session = caa_container_of(node, session_entry_t, hash_node);
 
   // Acquire fine-grained per-entry mutex for participant modifications
   mutex_lock(&session->participant_mutex);
@@ -447,7 +425,7 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   // Check if session full
   if (session->current_participants >= session->max_participants) {
     mutex_unlock(&session->participant_mutex);
-    rcu_read_unlock();
+    rwlock_rdunlock(&shard->lock);
     resp->error_code = ACIP_ERROR_SESSION_FULL;
     SAFE_STRNCPY(resp->error_message, "Session is full", sizeof(resp->error_message));
     log_warn("Session join failed: %s (full)", session_string);
@@ -458,7 +436,7 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   if (session->has_password && req->has_password) {
     if (!verify_password(req->password, session->password_hash)) {
       mutex_unlock(&session->participant_mutex);
-      rcu_read_unlock();
+      rwlock_rdunlock(&shard->lock);
       resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
       SAFE_STRNCPY(resp->error_message, "Invalid password", sizeof(resp->error_message));
       log_warn("Session join failed: %s (invalid password)", session_string);
@@ -466,7 +444,7 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
     }
   } else if (session->has_password && !req->has_password) {
     mutex_unlock(&session->participant_mutex);
-    rcu_read_unlock();
+    rwlock_rdunlock(&shard->lock);
     resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
     SAFE_STRNCPY(resp->error_message, "Password required", sizeof(resp->error_message));
     log_warn("Session join failed: %s (password required)", session_string);
@@ -477,7 +455,7 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   int slot = find_empty_slot_locked(session);
   if (slot < 0) {
     mutex_unlock(&session->participant_mutex);
-    rcu_read_unlock();
+    rwlock_rdunlock(&shard->lock);
     resp->error_code = ACIP_ERROR_SESSION_FULL;
     SAFE_STRNCPY(resp->error_message, "No participant slots available", sizeof(resp->error_message));
     log_error("Session join failed: %s (no slots, but count was not full)", session_string);
@@ -488,7 +466,7 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   participant_t *participant = SAFE_MALLOC(sizeof(participant_t), participant_t *);
   if (!participant) {
     mutex_unlock(&session->participant_mutex);
-    rcu_read_unlock();
+    rwlock_rdunlock(&shard->lock);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate participant");
   }
 
@@ -551,7 +529,7 @@ asciichat_error_t session_join(session_registry_t *registry, const acip_session_
   }
 
   mutex_unlock(&session->participant_mutex);
-  rcu_read_unlock();
+  rwlock_rdunlock(&shard->lock);
 
   return ASCIICHAT_OK;
 }
@@ -562,12 +540,24 @@ asciichat_error_t session_leave(session_registry_t *registry, const uint8_t sess
     return SET_ERRNO(ERROR_INVALID_PARAM, "registry, session_id, or participant_id is NULL");
   }
 
-  rcu_read_lock();
+  // Need to find session by ID - must check all shards
+  // First, acquire read locks on all shards to find the session
+  session_entry_t *session = NULL;
+  uint32_t found_shard_idx = 0;
 
-  // Find session by ID
-  session_entry_t *session = find_session_by_id_rcu(registry, session_id);
+  // Acquire read locks on all shards
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    rwlock_rdlock(&registry->shards[i].lock);
+  }
+
+  // Find the session
+  session = find_session_by_id_unlocked(registry, session_id, &found_shard_idx);
+
   if (!session) {
-    rcu_read_unlock();
+    // Release all read locks
+    for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+      rwlock_rdunlock(&registry->shards[i].lock);
+    }
     return SET_ERRNO(ERROR_INVALID_STATE, "Session not found");
   }
 
@@ -578,7 +568,9 @@ asciichat_error_t session_leave(session_registry_t *registry, const uint8_t sess
   participant_t *participant = find_participant_locked(session, participant_id);
   if (!participant) {
     mutex_unlock(&session->participant_mutex);
-    rcu_read_unlock();
+    for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+      rwlock_rdunlock(&registry->shards[i].lock);
+    }
     return SET_ERRNO(ERROR_INVALID_STATE, "Participant not in session");
   }
 
@@ -591,7 +583,10 @@ asciichat_error_t session_leave(session_registry_t *registry, const uint8_t sess
     }
   }
 
-  log_info("Participant left session %s (participants=%d/%d)", session->session_string, session->current_participants,
+  char session_string_copy[48];
+  SAFE_STRNCPY(session_string_copy, session->session_string, sizeof(session_string_copy));
+
+  log_info("Participant left session %s (participants=%d/%d)", session_string_copy, session->current_participants,
            session->max_participants);
 
   // If no participants left, mark session for deletion
@@ -599,56 +594,190 @@ asciichat_error_t session_leave(session_registry_t *registry, const uint8_t sess
 
   mutex_unlock(&session->participant_mutex);
 
-  if (should_delete) {
-    log_info("Session %s has no participants, deleting", session->session_string);
-
-    // Delete from RCU hash table and schedule deferred freeing
-    cds_lfht_del(registry->sessions, &session->hash_node);
-    call_rcu(&session->rcu_head, session_free_rcu);
+  // Release read locks on all shards except the found one
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    if (i != found_shard_idx) {
+      rwlock_rdunlock(&registry->shards[i].lock);
+    }
   }
 
-  rcu_read_unlock();
+  if (should_delete) {
+    // Upgrade to write lock on the found shard
+    rwlock_rdunlock(&registry->shards[found_shard_idx].lock);
+    rwlock_wrlock(&registry->shards[found_shard_idx].lock);
+
+    // Re-find session (it may have been modified while we didn't hold the lock)
+    session_entry_t *check_session = NULL;
+    HASH_FIND_STR(registry->shards[found_shard_idx].sessions, session_string_copy, check_session);
+
+    if (check_session && check_session->current_participants == 0) {
+      log_info("Session %s has no participants, deleting", session_string_copy);
+      HASH_DEL(registry->shards[found_shard_idx].sessions, check_session);
+      session_entry_free(check_session);
+    }
+
+    rwlock_wrunlock(&registry->shards[found_shard_idx].lock);
+  } else {
+    rwlock_rdunlock(&registry->shards[found_shard_idx].lock);
+  }
 
   return ASCIICHAT_OK;
 }
 
 void session_cleanup_expired(session_registry_t *registry) {
-  if (!registry || !registry->sessions) {
+  if (!registry) {
     return;
   }
 
   uint64_t now = get_current_time_ms();
   size_t removed_count = 0;
 
-  rcu_read_lock();
+  // Process each shard independently
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    // Acquire write lock for this shard
+    rwlock_wrlock(&registry->shards[i].lock);
 
-  session_entry_t *entry;
-  struct cds_lfht_iter iter;
+    session_entry_t *entry, *tmp;
+    HASH_ITER(hh, registry->shards[i].sessions, entry, tmp) {
+      if (now > entry->expires_at) {
+        log_info("Session %s expired (created_at=%llu, expires_at=%llu, now=%llu)", entry->session_string,
+                 (unsigned long long)entry->created_at, (unsigned long long)entry->expires_at, (unsigned long long)now);
 
-  // Iterate through hash table and collect expired sessions
-  cds_lfht_for_each_entry(registry->sessions, &iter, entry, hash_node) {
-    if (now > entry->expires_at) {
-      log_info("Session %s expired (created_at=%llu, expires_at=%llu, now=%llu)", entry->session_string,
-               (unsigned long long)entry->created_at, (unsigned long long)entry->expires_at, (unsigned long long)now);
-
-      // Delete from hash table
-      cds_lfht_del(registry->sessions, &entry->hash_node);
-
-      // Schedule deferred freeing via RCU callback
-      call_rcu(&entry->rcu_head, session_free_rcu);
-      removed_count++;
+        HASH_DEL(registry->shards[i].sessions, entry);
+        session_entry_free(entry);
+        removed_count++;
+      }
     }
-  }
 
-  rcu_read_unlock();
+    rwlock_wrunlock(&registry->shards[i].lock);
+  }
 
   if (removed_count > 0) {
     log_info("Cleaned up %zu expired sessions", removed_count);
-
-    // Optionally synchronize RCU if many deletions to avoid callback backlog
-    if (removed_count > 100) {
-      log_debug("Synchronizing RCU after bulk session cleanup");
-      synchronize_rcu();
-    }
   }
+}
+
+// ============================================================================
+// Session Lookup by ID (for external use)
+// ============================================================================
+
+/**
+ * @brief Find session by session_id and copy data to output
+ *
+ * This is a convenience function for external code (server.c, database.c)
+ * that needs to lookup sessions by ID rather than session_string.
+ *
+ * @param registry Session registry
+ * @param session_id Session UUID
+ * @param out_session Output: copy of session data (caller must not free)
+ * @return Pointer to session entry (valid only while holding locks), or NULL
+ */
+session_entry_t *session_find_by_id(session_registry_t *registry, const uint8_t session_id[16]) {
+  if (!registry || !session_id) {
+    return NULL;
+  }
+
+  // Acquire read locks on all shards
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    rwlock_rdlock(&registry->shards[i].lock);
+  }
+
+  session_entry_t *session = find_session_by_id_unlocked(registry, session_id, NULL);
+
+  // Release all read locks
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    rwlock_rdunlock(&registry->shards[i].lock);
+  }
+
+  return session;
+}
+
+/**
+ * @brief Find session by session_string
+ *
+ * Thread-safe lookup that acquires/releases the appropriate shard lock.
+ *
+ * @param registry Session registry
+ * @param session_string Session string to find
+ * @return Pointer to session entry (valid only while holding locks), or NULL
+ */
+session_entry_t *session_find_by_string(session_registry_t *registry, const char *session_string) {
+  if (!registry || !session_string) {
+    return NULL;
+  }
+
+  uint32_t shard_idx = get_shard_index(session_string);
+  session_shard_t *shard = &registry->shards[shard_idx];
+
+  rwlock_rdlock(&shard->lock);
+
+  session_entry_t *session = NULL;
+  HASH_FIND_STR(shard->sessions, session_string, session);
+
+  rwlock_rdunlock(&shard->lock);
+
+  return session;
+}
+
+/**
+ * @brief Iterate over all sessions (for database operations)
+ *
+ * Calls the callback for each session while holding the appropriate shard lock.
+ * The callback should NOT store the session pointer - it's only valid during the callback.
+ *
+ * @param registry Session registry
+ * @param callback Function to call for each session
+ * @param user_data User data passed to callback
+ */
+void session_foreach(session_registry_t *registry, void (*callback)(session_entry_t *session, void *user_data),
+                     void *user_data) {
+  if (!registry || !callback) {
+    return;
+  }
+
+  for (uint32_t i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
+    rwlock_rdlock(&registry->shards[i].lock);
+
+    session_entry_t *entry, *tmp;
+    HASH_ITER(hh, registry->shards[i].sessions, entry, tmp) {
+      callback(entry, user_data);
+    }
+
+    rwlock_rdunlock(&registry->shards[i].lock);
+  }
+}
+
+/**
+ * @brief Add a session entry directly to the registry (for database loading)
+ *
+ * This bypasses the normal creation flow and adds a pre-populated entry.
+ * Used by database_load_sessions() to restore sessions from disk.
+ *
+ * @param registry Session registry
+ * @param session Pre-allocated and populated session entry (ownership transferred)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t session_add_entry(session_registry_t *registry, session_entry_t *session) {
+  if (!registry || !session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "registry or session is NULL");
+  }
+
+  uint32_t shard_idx = get_shard_index(session->session_string);
+  session_shard_t *shard = &registry->shards[shard_idx];
+
+  rwlock_wrlock(&shard->lock);
+
+  // Check for duplicate
+  session_entry_t *existing = NULL;
+  HASH_FIND_STR(shard->sessions, session->session_string, existing);
+  if (existing) {
+    rwlock_wrunlock(&shard->lock);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Session already exists: %s", session->session_string);
+  }
+
+  HASH_ADD_STR(shard->sessions, session_string, session);
+
+  rwlock_wrunlock(&shard->lock);
+
+  return ASCIICHAT_OK;
 }

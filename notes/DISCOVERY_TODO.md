@@ -9,15 +9,14 @@
 | Phase | Status | Completion Date | Notes |
 |-------|--------|-----------------|-------|
 | **Phase 1** | ✅ Complete | January 2026 | mDNS Service Publication & Client Discovery |
-| **Phase 2** | ✅ Complete | January 3, 2026 | ACDS Integration + librcu lock-free session registry |
+| **Phase 2** | ✅ Complete | January 3, 2026 | ACDS Integration + sharded rwlock session registry |
 | **Phase 3** | ✅ Complete | January 3, 2026 | WebRTC Signaling + Connection Fallback (8/10 complete, manual testing pending) |
 
 **Phase 2 Summary:**
 - ✅ Server-side ACDS registration (`--acds` flag) with security validation
 - ✅ Client-side parallel mDNS + ACDS discovery (discover_session_parallel)
-- ✅ Lock-free RCU session registry (liburcu integration, 8/8 tests passing)
-- ✅ CMake dependency management for liburcu
-- ✅ Comprehensive documentation (docs/LIBRCU_INTEGRATION.md)
+- ✅ Sharded rwlock session registry (16 shards + uthash, 4/4 tests passing)
+- ✅ Thread-safe session management with fine-grained locking
 
 **Phase 3 Summary (Complete - Manual Testing Pending):**
 - ✅ Connection state machine with 13 states (src/client/connection_state.h)
@@ -459,43 +458,32 @@ Typical success: 2-8 seconds
   - Automatic failover if primary unavailable
   - Log capacity utilization
 
-### 5. Lock-Free Session Registry with librcu
-**Goal:** Replace uthash + rwlock with liburcu for scalable concurrent access
+### 5. High-Concurrency Session Registry
+**Goal:** Scalable concurrent access to session data
 
-#### 5.1 librcu Integration
-- [x] Add liburcu as dependency
-  - Create `cmake/dependencies/Liburcu.cmake` for library discovery (DONE: commit b293d29d)
-  - Add to `cmake/dependencies/Dependencies.cmake` (DONE)
-  - Support pkg-config on Linux/macOS, vcpkg on Windows (DONE)
-  - Cache built library in `.deps-cache/` (similar to BearSSL) (DONE)
+#### 5.1 Sharded RWLock Implementation
+- [x] Implement sharded rwlock + uthash design
+  - 16 shards reduce lock contention (FNV-1a hash for distribution)
+  - uthash provides O(1) lookups within each shard
+  - Fine-grained per-entry locking for participant modifications
+  - Uses platform abstraction layer for portable rwlocks
 
-- [x] Replace session registry implementation
-  - Replace `uthash` with `rcu_lfht_new()` (lock-free hash table) (DONE)
-  - Eliminate `rwlock_t` from `session_registry_t` (DONE)
-  - Use RCU read-side critical sections for lookups (DONE)
-  - Use RCU synchronization for updates (create/leave) (DONE)
+- [x] Session registry implementation
+  - `session_find_by_string()` → O(1) lookup using shard selection
+  - `session_find_by_id()` → Searches across shards by UUID
+  - `session_foreach()` → Iterates all sessions (for cleanup/stats)
+  - `session_add_entry()` → Thread-safe session insertion
 
-- [x] Implement RCU-aware session operations
-  - `session_lookup()` → use `rcu_read_lock()` / `rcu_read_unlock()` (DONE)
-  - `session_create()` / `session_join()` → use `synchronize_rcu()` for updates (DONE)
-  - `session_leave()` → use deferred freeing via RCU callbacks (DONE)
+- [x] Thread-safe session operations
+  - Read locks for lookups (multiple concurrent readers)
+  - Write locks for modifications (create/join/leave)
+  - Per-entry mutex for participant list changes
 
-- [x] Update memory management
-  - Use `call_rcu()` for deferred node freeing (after RCU grace period) (DONE)
-  - Avoid manual lock/unlock in session operations (DONE)
-  - Handle RCU thread registration in server main loop (DONE: src/acds/server.c)
-
-#### 5.2 Performance Improvements
-- [x] Benchmark before/after
-  - Measure SESSION_LOOKUP latency under high concurrency (Tests created: 8/8 passing)
-  - Compare memory usage (RCU has epoch tracking overhead) (Analyzed in LIBRCU_INTEGRATION.md)
-  - Test with 100+ concurrent clients doing rapid lookups (Test infrastructure in place)
-  - Expected: 5-10x faster lookups on high contention workloads (Documented)
-
-- [x] Document RCU constraints
-  - Max RCU reader threads and grace period tuning parameters (DONE: docs/LIBRCU_INTEGRATION.md)
-  - When to use `rcu_quiescent_state()` in long-running code paths (DONE)
-  - Debugging RCU deadlocks (use `urcu-bp` for blocking hooks if needed) (DONE)
+#### 5.2 Performance Characteristics
+- [x] Testing and validation
+  - 4/4 session registry tests passing
+  - Thread-safe under concurrent access
+  - No external dependencies (uses platform abstraction layer)
 
 ---
 
@@ -997,11 +985,6 @@ todo: when using sdp for audio and terminal capabilities, don't communicate them
 - ✅ **mDNS/Avahi** - Local network discovery
 - ✅ **SQLite3** - Session persistence database
 
-### Need to Add (Development)
-- 📦 **liburcu** - Lock-free data structures for session registry
-  - Replaces uthash + rwlock with scalable RCU primitives
-  - Expected to arrive in Phase 2 (server registration)
-
 ### Need to Deploy (Infrastructure)
 - ⚠️ **ACDS server** - Central discovery service (implementation in progress)
 - ⚠️ **Monitoring/Metrics** - Health checks, metrics collection, alerting
@@ -1029,13 +1012,11 @@ todo: when using sdp for audio and terminal capabilities, don't communicate them
    - Defined in lib/options/options.h:355-360
    - Working as of January 2026
 
-3. ✅ **Integrate librcu** - Replace uthash + rwlock with lock-free session registry
-   - CMake dependency: cmake/dependencies/Liburcu.cmake created
-   - Session registry: lib/acds/session.c uses cds_lfht (lock-free hash table)
-   - RCU thread registration: src/acds/server.c cleanup thread
-   - Tests: 8/8 passing unit tests in tests/unit/acds/session_registry_rcu_test.c
-   - Documentation: docs/LIBRCU_INTEGRATION.md (488 lines, comprehensive)
-   - Commit: b293d29d (librcu migration), c21fd54f (RCU tests)
+3. ✅ **Sharded rwlock session registry** - High-concurrency session management
+   - Session registry: lib/acds/session.c uses sharded rwlock + uthash
+   - 16 shards with FNV-1a hash distribution
+   - Tests: 4/4 passing unit tests in tests/unit/acds/session_registry_test.c
+   - Thread-safe with fine-grained per-entry locking
 
 4. ✅ Implement client fallback: if not found on mDNS and `--server-key` provided, query ACDS
    - Client discovery: src/client/main.c:720 detects session strings
