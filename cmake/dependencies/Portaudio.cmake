@@ -28,15 +28,23 @@ endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-# TEMPORARY FIX: vcpkg's PortAudio doesn't detect audio devices
-# Force use of system PortAudio via pkg-config instead
-message(STATUS "PortAudio: Preferring system library (vcpkg build has device detection issues)")
-
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
-
-set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
-set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
-set(PORTAUDIO_FOUND TRUE)
-
-message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+# Check if we're using vcpkg (CMAKE_TOOLCHAIN_FILE points to vcpkg)
+if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
+    # Use vcpkg's portaudio - our overlay port enables ALSA for device enumeration
+    message(STATUS "PortAudio: Using vcpkg (overlay port with ALSA support)")
+    find_package(portaudio CONFIG REQUIRED)
+    # vcpkg provides portaudio_static target for static builds
+    set(PORTAUDIO_LIBRARIES portaudio_static)
+    get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio_static INTERFACE_INCLUDE_DIRECTORIES)
+    set(PORTAUDIO_FOUND TRUE)
+    message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
+else()
+    # Use system PortAudio via pkg-config
+    message(STATUS "PortAudio: Using system library via pkg-config")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+    set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
+    set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
+    set(PORTAUDIO_FOUND TRUE)
+    message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+endif()
