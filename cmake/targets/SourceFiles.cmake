@@ -94,10 +94,11 @@ set_source_files_properties(
 )
 
 # Suppress warnings for third-party mdns library (we don't control this code)
+# Can't use -w because it disables -Wwrite-strings which breaks PCH compatibility
 set_source_files_properties(
     deps/mdns/mdns.c
     PROPERTIES
-    COMPILE_FLAGS "-w"
+    COMPILE_FLAGS "-Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable"
     SKIP_LINTING ON
 )
 
