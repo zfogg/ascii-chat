@@ -7,6 +7,7 @@
  * in the SESSION_JOINED response.
  */
 
+#include "acds/database.h"
 #include "acds/session.h"
 #include "acds/main.h"
 #include "asciichat_errno.h"
@@ -15,17 +16,37 @@
 #include <criterion/criterion.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 // Test fixture
 TestSuite(acds_webrtc_turn, .timeout = 10.0);
+
+// Helper to create a temporary database path
+static void get_temp_db_path(char *buf, size_t buflen, const char *suffix) {
+  snprintf(buf, buflen, "/tmp/acds_turn_%s_%d.db", suffix, getpid());
+}
+
+// Helper to clean up test database
+static void cleanup_test_db(const char *path) {
+  unlink(path);
+  // Also remove WAL and SHM files
+  char wal_path[256], shm_path[256];
+  snprintf(wal_path, sizeof(wal_path), "%s-wal", path);
+  snprintf(shm_path, sizeof(shm_path), "%s-shm", path);
+  unlink(wal_path);
+  unlink(shm_path);
+}
 
 /**
  * @brief Test WebRTC session creation and TURN credential generation on join
  */
 Test(acds_webrtc_turn, join_generates_turn_credentials) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "gen_creds");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   // Configure ACDS with TURN secret
   acds_config_t config;
@@ -44,7 +65,7 @@ Test(acds_webrtc_turn, join_generates_turn_credentials) {
   create_req.server_port = 27224;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
   cr_assert_neq(create_resp.session_string[0], '\0', "Session string should not be empty");
 
@@ -60,7 +81,7 @@ Test(acds_webrtc_turn, join_generates_turn_credentials) {
   join_req.has_password = false;
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.success, 1, "Join success flag should be set");
   cr_assert_eq(join_resp.session_type, SESSION_TYPE_WEBRTC, "Session type should be WebRTC");
@@ -89,16 +110,20 @@ Test(acds_webrtc_turn, join_generates_turn_credentials) {
   long expiration = atol(timestamp_str);
   cr_assert_gt(expiration, (long)time(NULL), "TURN credentials should not be expired");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test that TURN credentials are NOT generated for TCP sessions
  */
 Test(acds_webrtc_turn, tcp_session_no_turn_credentials) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "tcp_no_creds");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   // Configure ACDS with TURN secret
   acds_config_t config;
@@ -116,7 +141,7 @@ Test(acds_webrtc_turn, tcp_session_no_turn_credentials) {
   create_req.server_port = 27224;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join the session
@@ -127,7 +152,7 @@ Test(acds_webrtc_turn, tcp_session_no_turn_credentials) {
   join_req.has_password = false;
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be TCP");
 
@@ -135,16 +160,20 @@ Test(acds_webrtc_turn, tcp_session_no_turn_credentials) {
   cr_assert_eq(join_resp.turn_username[0], '\0', "TURN username should be empty for TCP session");
   cr_assert_eq(join_resp.turn_password[0], '\0', "TURN password should be empty for TCP session");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test that TURN credentials are NOT generated without turn_secret
  */
 Test(acds_webrtc_turn, no_credentials_without_secret) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "no_secret");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   // Configure ACDS WITHOUT TURN secret
   acds_config_t config;
@@ -162,7 +191,7 @@ Test(acds_webrtc_turn, no_credentials_without_secret) {
   create_req.server_port = 27224;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join the session
@@ -173,23 +202,27 @@ Test(acds_webrtc_turn, no_credentials_without_secret) {
   join_req.has_password = false;
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
 
   // Verify TURN credentials were NOT generated without secret
   cr_assert_eq(join_resp.turn_username[0], '\0', "TURN username should be empty without turn_secret");
   cr_assert_eq(join_resp.turn_password[0], '\0', "TURN password should be empty without turn_secret");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test TURN credentials are regenerated for each join
  */
 Test(acds_webrtc_turn, credentials_unique_per_join) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "unique");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   // Configure ACDS with TURN secret
   acds_config_t config;
@@ -208,7 +241,7 @@ Test(acds_webrtc_turn, credentials_unique_per_join) {
   create_req.server_port = 27224;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // First join
@@ -219,7 +252,7 @@ Test(acds_webrtc_turn, credentials_unique_per_join) {
   join_req1.has_password = false;
 
   acip_session_joined_t join_resp1;
-  result = session_join(&registry, &join_req1, &config, &join_resp1);
+  result = database_session_join(db, &join_req1, &config, &join_resp1);
   cr_assert_eq(result, ASCIICHAT_OK, "First join should succeed");
 
   // Second join (same session, different participant)
@@ -230,7 +263,7 @@ Test(acds_webrtc_turn, credentials_unique_per_join) {
   join_req2.has_password = false;
 
   acip_session_joined_t join_resp2;
-  result = session_join(&registry, &join_req2, &config, &join_resp2);
+  result = database_session_join(db, &join_req2, &config, &join_resp2);
   cr_assert_eq(result, ASCIICHAT_OK, "Second join should succeed");
 
   // Verify both joins got credentials
@@ -243,5 +276,6 @@ Test(acds_webrtc_turn, credentials_unique_per_join) {
   cr_assert_str_eq(join_resp1.turn_password, join_resp2.turn_password,
                    "TURN passwords should be identical (same username + secret)");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }

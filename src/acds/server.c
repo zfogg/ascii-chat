@@ -8,8 +8,7 @@
  * - select()-based accept loop
  *
  * ACDS-specific functionality:
- * - Session registry management
- * - SQLite persistence
+ * - SQLite as single source of truth for sessions
  * - ACIP packet dispatch to session/signaling handlers
  */
 
@@ -35,10 +34,11 @@
 #include <time.h>
 
 /**
- * @brief Background thread for periodic rate limit cleanup
+ * @brief Background thread for periodic cleanup
  *
- * Wakes up every 5 minutes to remove old rate limit events from the database.
- * This prevents the rate_events table from growing unbounded.
+ * Wakes up every 5 minutes to:
+ * - Remove old rate limit events from the database
+ * - Clean up expired sessions
  */
 static void *cleanup_thread_func(void *arg) {
   acds_server_t *server = (acds_server_t *)arg;
@@ -46,7 +46,7 @@ static void *cleanup_thread_func(void *arg) {
     return NULL;
   }
 
-  log_info("Rate limit cleanup thread started");
+  log_info("Cleanup thread started (rate limits + expired sessions)");
 
   while (!atomic_load(&server->shutdown)) {
     // Sleep for 5 minutes (or until shutdown)
@@ -58,15 +58,19 @@ static void *cleanup_thread_func(void *arg) {
       break;
     }
 
-    // Run cleanup (delete events older than 1 hour)
+    // Run rate limit cleanup (delete events older than 1 hour)
     log_debug("Running rate limit cleanup...");
     asciichat_error_t result = rate_limiter_cleanup(server->rate_limiter, 3600);
     if (result != ASCIICHAT_OK) {
       log_warn("Rate limit cleanup failed");
     }
+
+    // Run expired session cleanup
+    log_debug("Running expired session cleanup...");
+    database_session_cleanup_expired(server->db);
   }
 
-  log_info("Rate limit cleanup thread exiting");
+  log_info("Cleanup thread exiting");
   return NULL;
 }
 
@@ -78,38 +82,16 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   memset(server, 0, sizeof(*server));
   memcpy(&server->config, config, sizeof(acds_config_t));
 
-  // Initialize session registry
-  server->sessions = SAFE_MALLOC(sizeof(session_registry_t), session_registry_t *);
-  if (!server->sessions) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate session registry");
-  }
-
-  asciichat_error_t result = session_registry_init(server->sessions);
+  // Open database (SQLite as single source of truth)
+  asciichat_error_t result = database_init(config->database_path, &server->db);
   if (result != ASCIICHAT_OK) {
-    SAFE_FREE(server->sessions);
     return result;
-  }
-
-  // Open database
-  result = database_init(config->database_path, &server->db);
-  if (result != ASCIICHAT_OK) {
-    session_registry_destroy(server->sessions);
-    SAFE_FREE(server->sessions);
-    return result;
-  }
-
-  // Load sessions from database
-  result = database_load_sessions(server->db, server->sessions);
-  if (result != ASCIICHAT_OK) {
-    log_warn("Failed to load sessions from database (continuing anyway)");
   }
 
   // Initialize rate limiter with SQLite backend
   server->rate_limiter = rate_limiter_create_sqlite(NULL); // NULL = externally managed DB
   if (!server->rate_limiter) {
     database_close(server->db);
-    session_registry_destroy(server->sessions);
-    SAFE_FREE(server->sessions);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create rate limiter");
   }
 
@@ -133,8 +115,6 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   if (result != ASCIICHAT_OK) {
     rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
-    session_registry_destroy(server->sessions);
-    SAFE_FREE(server->sessions);
     return result;
   }
 
@@ -146,14 +126,12 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
     tcp_server_shutdown(&server->tcp_server);
     rate_limiter_destroy(server->rate_limiter);
     database_close(server->db);
-    session_registry_destroy(server->sessions);
-    SAFE_FREE(server->sessions);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create worker thread pool");
   }
 
-  // Spawn rate limit cleanup thread in worker pool
-  if (thread_pool_spawn(server->worker_pool, cleanup_thread_func, server, 0, "rate_limit_cleanup") != ASCIICHAT_OK) {
-    log_warn("Failed to spawn rate limit cleanup thread (continuing without cleanup)");
+  // Spawn cleanup thread in worker pool
+  if (thread_pool_spawn(server->worker_pool, cleanup_thread_func, server, 0, "cleanup") != ASCIICHAT_OK) {
+    log_warn("Failed to spawn cleanup thread (continuing without cleanup)");
   }
 
   log_info("Discovery server initialized successfully");
@@ -183,7 +161,6 @@ void acds_server_shutdown(acds_server_t *server) {
   tcp_server_shutdown(&server->tcp_server);
 
   // Wait for all client handler threads to exit
-  // We need to stop all active client connections gracefully
   size_t remaining_clients;
   int shutdown_attempts = 0;
   const int max_shutdown_attempts = 100; // 10 seconds (100 * 100ms)
@@ -219,12 +196,6 @@ void acds_server_shutdown(acds_server_t *server) {
   if (server->db) {
     database_close(server->db);
     server->db = NULL;
-  }
-
-  // Destroy session registry
-  if (server->sessions) {
-    session_registry_destroy(server->sessions);
-    SAFE_FREE(server->sessions);
   }
 
   log_info("Server shutdown complete");
@@ -318,7 +289,7 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
   acip_session_created_t resp;
   memset(&resp, 0, sizeof(resp));
 
-  asciichat_error_t create_result = session_create(server->sessions, req, &server->config, &resp);
+  asciichat_error_t create_result = database_session_create(server->db, req, &server->config, &resp);
   if (create_result == ASCIICHAT_OK) {
     // Build complete payload: fixed response + variable STUN/TURN servers
     size_t stun_size = (size_t)resp.stun_count * sizeof(stun_server_t);
@@ -351,12 +322,6 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
 
     log_info("Session created: %.*s (UUID: %02x%02x..., %d STUN, %d TURN servers)", resp.session_string_len,
              resp.session_string, resp.session_id[0], resp.session_id[1], resp.stun_count, resp.turn_count);
-
-    /* Save to database - look up session entry using sharded rwlock lookup */
-    session_entry_t *session = session_find_by_string(server->sessions, resp.session_string);
-    if (session) {
-      database_save_session(server->db, session);
-    }
   } else {
     // Error - send error response using proper error code
     acip_send_error(transport, create_result, "Failed to create session");
@@ -390,7 +355,7 @@ static void acds_on_session_lookup(const acip_session_lookup_t *req, int client_
       (req->session_string_len < sizeof(session_string) - 1) ? req->session_string_len : sizeof(session_string) - 1;
   memcpy(session_string, req->session_string, copy_len);
 
-  asciichat_error_t lookup_result = session_lookup(server->sessions, session_string, &server->config, &resp);
+  asciichat_error_t lookup_result = database_session_lookup(server->db, session_string, &server->config, &resp);
   if (lookup_result == ASCIICHAT_OK) {
     acip_send_session_info(transport, &resp);
     log_info("Session lookup for '%s' from %s: %s", session_string, client_ip, resp.found ? "found" : "not found");
@@ -452,7 +417,7 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
   acip_session_joined_t resp;
   memset(&resp, 0, sizeof(resp));
 
-  asciichat_error_t join_result = session_join(server->sessions, req, &server->config, &resp);
+  asciichat_error_t join_result = database_session_join(server->db, req, &server->config, &resp);
   if (join_result == ASCIICHAT_OK && resp.success) {
     acip_send_session_joined(transport, &resp);
 
@@ -467,12 +432,6 @@ static void acds_on_session_join(const acip_session_join_t *req, int client_sock
 
     log_info("Client %s joined session (participant %02x%02x...)", client_ip, resp.participant_id[0],
              resp.participant_id[1]);
-
-    // Save to database - look up session entry using sharded rwlock lookup
-    session_entry_t *joined_session = session_find_by_id(server->sessions, resp.session_id);
-    if (joined_session) {
-      database_save_session(server->db, joined_session);
-    }
   } else {
     acip_send_session_joined(transport, &resp);
     log_warn("Session join failed for %s: %s", client_ip, resp.error_message);
@@ -488,7 +447,7 @@ static void acds_on_session_leave(const acip_session_leave_t *req, int client_so
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  asciichat_error_t leave_result = session_leave(server->sessions, req->session_id, req->participant_id);
+  asciichat_error_t leave_result = database_session_leave(server->db, req->session_id, req->participant_id);
   if (leave_result == ASCIICHAT_OK) {
     log_info("Client %s left session", client_ip);
 
@@ -497,12 +456,6 @@ static void acds_on_session_leave(const acip_session_leave_t *req, int client_so
     if (tcp_server_get_client(&server->tcp_server, client_socket, &retrieved_data) == ASCIICHAT_OK && retrieved_data) {
       acds_client_data_t *client_data = (acds_client_data_t *)retrieved_data;
       client_data->joined_session = false;
-    }
-
-    // Save updated session to database - look up session entry using sharded rwlock lookup
-    session_entry_t *left_session = session_find_by_id(server->sessions, req->session_id);
-    if (left_session) {
-      database_save_session(server->db, left_session);
     }
   } else {
     acip_send_error(transport, leave_result, asciichat_error_string(leave_result));
@@ -521,7 +474,7 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, int client_socket, 
   // Calculate payload size (header + SDP string)
   size_t payload_size = sizeof(acip_webrtc_sdp_t) + sdp->sdp_len;
 
-  asciichat_error_t relay_result = signaling_relay_sdp(server->sessions, &server->tcp_server, sdp, payload_size);
+  asciichat_error_t relay_result = signaling_relay_sdp(server->db, &server->tcp_server, sdp, payload_size);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "SDP relay failed");
     log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
@@ -539,7 +492,7 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, int client_socket, 
   // Calculate payload size (header + candidate string)
   size_t payload_size = sizeof(acip_webrtc_ice_t) + ice->candidate_len;
 
-  asciichat_error_t relay_result = signaling_relay_ice(server->sessions, &server->tcp_server, ice, payload_size);
+  asciichat_error_t relay_result = signaling_relay_ice(server->db, &server->tcp_server, ice, payload_size);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "ICE relay failed");
     log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));

@@ -6,11 +6,12 @@
  * Relays SDP offers/answers and ICE candidates between participants
  * using participant_id → socket mapping from tcp_server client registry.
  *
- * Session lookups use the sharded rwlock session registry for thread-safety.
+ * Session validation uses SQLite database lookups.
  */
 
 #include "acds/signaling.h"
 #include "acds/server.h"
+#include "acds/database.h"
 #include "acds/session.h"
 #include "log/logging.h"
 #include "network/network.h"
@@ -106,24 +107,24 @@ static void broadcast_callback(socket_t socket, void *client_data, void *user_ar
   }
 }
 
-asciichat_error_t signaling_relay_sdp(session_registry_t *registry, tcp_server_t *tcp_server,
-                                      const acip_webrtc_sdp_t *sdp, size_t total_packet_len) {
-  if (!registry || !tcp_server || !sdp) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, tcp_server, or sdp is NULL");
+asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, const acip_webrtc_sdp_t *sdp,
+                                      size_t total_packet_len) {
+  if (!db || !tcp_server || !sdp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or sdp is NULL");
   }
 
-  /* Find session by UUID using sharded rwlock registry */
-  session_entry_t *session = session_find_by_id(registry, sdp->session_id);
+  /* Find session by UUID using database lookup */
+  session_entry_t *session = database_session_find_by_id(db, sdp->session_id);
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for SDP relay");
   }
+  session_entry_free(session); // We only need to validate existence
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(sdp->recipient_id)) {
     // Broadcast to all participants in session
     log_debug("Broadcasting SDP to all participants in session");
-    return signaling_broadcast(registry, tcp_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp,
-                               total_packet_len);
+    return signaling_broadcast(db, tcp_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len);
   } else {
     // Unicast to specific recipient
     find_client_context_t ctx = {
@@ -147,24 +148,24 @@ asciichat_error_t signaling_relay_sdp(session_registry_t *registry, tcp_server_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_relay_ice(session_registry_t *registry, tcp_server_t *tcp_server,
-                                      const acip_webrtc_ice_t *ice, size_t total_packet_len) {
-  if (!registry || !tcp_server || !ice) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, tcp_server, or ice is NULL");
+asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, const acip_webrtc_ice_t *ice,
+                                      size_t total_packet_len) {
+  if (!db || !tcp_server || !ice) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, or ice is NULL");
   }
 
-  /* Find session by UUID using sharded rwlock registry */
-  session_entry_t *session = session_find_by_id(registry, ice->session_id);
+  /* Find session by UUID using database lookup */
+  session_entry_t *session = database_session_find_by_id(db, ice->session_id);
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for ICE relay");
   }
+  session_entry_free(session); // We only need to validate existence
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(ice->recipient_id)) {
     // Broadcast to all participants in session
     log_debug("Broadcasting ICE candidate to all participants in session");
-    return signaling_broadcast(registry, tcp_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice,
-                               total_packet_len);
+    return signaling_broadcast(db, tcp_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len);
   } else {
     // Unicast to specific recipient
     find_client_context_t ctx = {
@@ -188,18 +189,18 @@ asciichat_error_t signaling_relay_ice(session_registry_t *registry, tcp_server_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t signaling_broadcast(session_registry_t *registry, tcp_server_t *tcp_server,
-                                      const uint8_t session_id[16], packet_type_t packet_type, const void *packet,
-                                      size_t packet_len) {
-  if (!registry || !tcp_server || !session_id || !packet) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "registry, tcp_server, session_id, or packet is NULL");
+asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, const uint8_t session_id[16],
+                                      packet_type_t packet_type, const void *packet, size_t packet_len) {
+  if (!db || !tcp_server || !session_id || !packet) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, session_id, or packet is NULL");
   }
 
-  /* Find session by UUID using sharded rwlock registry */
-  session_entry_t *session = session_find_by_id(registry, session_id);
+  /* Find session by UUID using database lookup */
+  session_entry_t *session = database_session_find_by_id(db, session_id);
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for broadcast");
   }
+  session_entry_free(session); // We only need to validate existence
 
   // Broadcast to all participants in session
   broadcast_context_t ctx = {.target_session_id = session_id,

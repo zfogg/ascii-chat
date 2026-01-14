@@ -1,29 +1,36 @@
 /**
  * @file acds/database.c
- * @brief 💾 SQLite persistence implementation
+ * @brief 💾 SQLite-based session management implementation
  *
- * Provides SQLite persistence for sessions, participants, and rate limiting.
- * Sessions are saved on creation and loaded on startup for crash recovery.
- *
- * Sessions are loaded into the sharded rwlock registry using session_add_entry().
+ * SQLite is the single source of truth for all session data.
+ * All session operations go directly to the database.
+ * WAL mode provides good concurrent read performance.
  */
 
 #include "acds/database.h"
+#include "acds/strings.h"
 #include "log/logging.h"
-#include "acds/session.h"
+#include "network/webrtc/turn_credentials.h"
 #include <string.h>
 #include <time.h>
+#include <sodium.h>
 
 // SQL schema for creating tables
 static const char *schema_sql =
-    // Sessions table
+    // Sessions table (extended schema with all fields)
     "CREATE TABLE IF NOT EXISTS sessions ("
     "  session_id BLOB PRIMARY KEY,"
     "  session_string TEXT UNIQUE NOT NULL,"
     "  host_pubkey BLOB NOT NULL,"
     "  password_hash TEXT,"
     "  max_participants INTEGER DEFAULT 4,"
+    "  current_participants INTEGER DEFAULT 0,"
     "  capabilities INTEGER DEFAULT 3," // video + audio
+    "  has_password INTEGER DEFAULT 0,"
+    "  expose_ip_publicly INTEGER DEFAULT 0,"
+    "  session_type INTEGER DEFAULT 0,"
+    "  server_address TEXT,"
+    "  server_port INTEGER DEFAULT 0,"
     "  created_at INTEGER NOT NULL,"
     "  expires_at INTEGER NOT NULL"
     ");"
@@ -51,6 +58,137 @@ static const char *schema_sql =
     "CREATE INDEX IF NOT EXISTS idx_participants_session ON participants(session_id);"
     "CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events(ip_address, event_type, timestamp);";
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * @brief Generate random UUID (v4)
+ */
+static void generate_uuid(uint8_t uuid_out[16]) {
+  randombytes_buf(uuid_out, 16);
+  uuid_out[6] = (uuid_out[6] & 0x0F) | 0x40; // Version 4
+  uuid_out[8] = (uuid_out[8] & 0x3F) | 0x80; // RFC4122 variant
+}
+
+/**
+ * @brief Get current time in milliseconds
+ */
+static uint64_t get_current_time_ms(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+}
+
+/**
+ * @brief Verify password against hash
+ */
+static bool verify_password(const char *password, const char *hash) {
+  return crypto_pwhash_str_verify(hash, password, strlen(password)) == 0;
+}
+
+/**
+ * @brief Load session from SQLite row
+ *
+ * @param stmt Prepared statement positioned at a row
+ * @return Allocated session_entry_t or NULL on error
+ */
+static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
+  session_entry_t *session = SAFE_MALLOC(sizeof(session_entry_t), session_entry_t *);
+  if (!session) {
+    return NULL;
+  }
+  memset(session, 0, sizeof(*session));
+
+  // Column order from SELECT statements must match:
+  // 0: session_id, 1: session_string, 2: host_pubkey, 3: password_hash,
+  // 4: max_participants, 5: current_participants, 6: capabilities,
+  // 7: has_password, 8: expose_ip_publicly, 9: session_type,
+  // 10: server_address, 11: server_port, 12: created_at, 13: expires_at
+
+  const void *blob = sqlite3_column_blob(stmt, 0);
+  if (blob) {
+    memcpy(session->session_id, blob, 16);
+  }
+
+  const char *str = (const char *)sqlite3_column_text(stmt, 1);
+  if (str) {
+    SAFE_STRNCPY(session->session_string, str, sizeof(session->session_string));
+  }
+
+  blob = sqlite3_column_blob(stmt, 2);
+  if (blob) {
+    memcpy(session->host_pubkey, blob, 32);
+  }
+
+  str = (const char *)sqlite3_column_text(stmt, 3);
+  if (str) {
+    SAFE_STRNCPY(session->password_hash, str, sizeof(session->password_hash));
+  }
+
+  session->max_participants = (uint8_t)sqlite3_column_int(stmt, 4);
+  session->current_participants = (uint8_t)sqlite3_column_int(stmt, 5);
+  session->capabilities = (uint8_t)sqlite3_column_int(stmt, 6);
+  session->has_password = sqlite3_column_int(stmt, 7) != 0;
+  session->expose_ip_publicly = sqlite3_column_int(stmt, 8) != 0;
+  session->session_type = (uint8_t)sqlite3_column_int(stmt, 9);
+
+  str = (const char *)sqlite3_column_text(stmt, 10);
+  if (str) {
+    SAFE_STRNCPY(session->server_address, str, sizeof(session->server_address));
+  }
+
+  session->server_port = (uint16_t)sqlite3_column_int(stmt, 11);
+  session->created_at = (uint64_t)sqlite3_column_int64(stmt, 12);
+  session->expires_at = (uint64_t)sqlite3_column_int64(stmt, 13);
+
+  return session;
+}
+
+/**
+ * @brief Load participants for a session from database
+ */
+static void load_session_participants(sqlite3 *db, session_entry_t *session) {
+  const char *sql = "SELECT participant_id, identity_pubkey, joined_at "
+                    "FROM participants WHERE session_id = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return;
+  }
+
+  sqlite3_bind_blob(stmt, 1, session->session_id, 16, SQLITE_STATIC);
+
+  size_t idx = 0;
+  while (sqlite3_step(stmt) == SQLITE_ROW && idx < MAX_PARTICIPANTS) {
+    participant_t *p = SAFE_MALLOC(sizeof(participant_t), participant_t *);
+    if (!p) {
+      break;
+    }
+    memset(p, 0, sizeof(*p));
+
+    const void *blob = sqlite3_column_blob(stmt, 0);
+    if (blob) {
+      memcpy(p->participant_id, blob, 16);
+    }
+
+    blob = sqlite3_column_blob(stmt, 1);
+    if (blob) {
+      memcpy(p->identity_pubkey, blob, 32);
+    }
+
+    p->joined_at = (uint64_t)sqlite3_column_int64(stmt, 2);
+
+    session->participants[idx++] = p;
+  }
+
+  sqlite3_finalize(stmt);
+}
+
+// ============================================================================
+// Database Lifecycle
+// ============================================================================
+
 asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
   if (!db_path || !db) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db_path or db is NULL");
@@ -58,7 +196,6 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
 
   log_info("Opening database: %s", db_path);
 
-  // Open database
   int rc = sqlite3_open(db_path, db);
   if (rc != SQLITE_OK) {
     const char *err = sqlite3_errmsg(*db);
@@ -67,7 +204,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to open database: %s", err);
   }
 
-  // Enable Write-Ahead Logging for better concurrency
+  // Enable Write-Ahead Logging for concurrent reads
   char *err_msg = NULL;
   rc = sqlite3_exec(*db, "PRAGMA journal_mode=WAL;", NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
@@ -95,231 +232,7 @@ asciichat_error_t database_init(const char *db_path, sqlite3 **db) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to create database schema");
   }
 
-  log_info("Database initialized successfully");
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t database_load_sessions(sqlite3 *db, session_registry_t *registry) {
-  if (!db || !registry) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db or registry is NULL");
-  }
-
-  // Get current time
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  uint64_t now = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-
-  // Prepare statement to load non-expired sessions
-  const char *sql = "SELECT session_id, session_string, host_pubkey, password_hash, "
-                    "max_participants, capabilities, created_at, expires_at "
-                    "FROM sessions WHERE expires_at > ?";
-
-  sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-  if (rc != SQLITE_OK) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session load query: %s", sqlite3_errmsg(db));
-  }
-
-  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
-
-  size_t loaded_count = 0;
-
-  // Iterate through sessions
-  while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-    // Allocate session entry
-    session_entry_t *session = SAFE_MALLOC(sizeof(session_entry_t), session_entry_t *);
-    if (!session) {
-      sqlite3_finalize(stmt);
-      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate session entry");
-    }
-
-    memset(session, 0, sizeof(*session));
-
-    // Load session data
-    memcpy(session->session_id, sqlite3_column_blob(stmt, 0), 16);
-    const char *session_string = (const char *)sqlite3_column_text(stmt, 1);
-    SAFE_STRNCPY(session->session_string, session_string, sizeof(session->session_string));
-    memcpy(session->host_pubkey, sqlite3_column_blob(stmt, 2), 32);
-
-    const char *password_hash = (const char *)sqlite3_column_text(stmt, 3);
-    if (password_hash) {
-      SAFE_STRNCPY(session->password_hash, password_hash, sizeof(session->password_hash));
-      session->has_password = true;
-    } else {
-      session->has_password = false;
-    }
-
-    session->max_participants = (uint8_t)sqlite3_column_int(stmt, 4);
-    session->capabilities = (uint8_t)sqlite3_column_int(stmt, 5);
-    session->created_at = (uint64_t)sqlite3_column_int64(stmt, 6);
-    session->expires_at = (uint64_t)sqlite3_column_int64(stmt, 7);
-    session->current_participants = 0; // Will be updated when loading participants
-
-    // Load participants for this session
-    sqlite3_stmt *part_stmt = NULL;
-    const char *part_sql = "SELECT participant_id, identity_pubkey, joined_at "
-                           "FROM participants WHERE session_id = ?";
-
-    rc = sqlite3_prepare_v2(db, part_sql, -1, &part_stmt, NULL);
-    if (rc == SQLITE_OK) {
-      sqlite3_bind_blob(part_stmt, 1, session->session_id, 16, SQLITE_STATIC);
-
-      size_t part_idx = 0;
-      while ((rc = sqlite3_step(part_stmt)) == SQLITE_ROW && part_idx < MAX_PARTICIPANTS) {
-        participant_t *participant = SAFE_MALLOC(sizeof(participant_t), participant_t *);
-        if (participant) {
-          memcpy(participant->participant_id, sqlite3_column_blob(part_stmt, 0), 16);
-          memcpy(participant->identity_pubkey, sqlite3_column_blob(part_stmt, 1), 32);
-          participant->joined_at = (uint64_t)sqlite3_column_int64(part_stmt, 2);
-
-          session->participants[part_idx] = participant;
-          session->current_participants++;
-          part_idx++;
-        }
-      }
-
-      sqlite3_finalize(part_stmt);
-    }
-
-    /* Initialize participant mutex for this loaded session */
-    mutex_init(&session->participant_mutex);
-
-    /* Add to sharded rwlock registry */
-    asciichat_error_t add_err = session_add_entry(registry, session);
-    if (add_err != ASCIICHAT_OK) {
-      /* Session already exists or error - free this duplicate */
-      mutex_destroy(&session->participant_mutex);
-      for (size_t i = 0; i < MAX_PARTICIPANTS; i++) {
-        SAFE_FREE(session->participants[i]);
-      }
-      SAFE_FREE(session);
-      log_warn("Failed to add session from database: %s (skipping)", session_string);
-      continue;
-    }
-
-    loaded_count++;
-  }
-
-  sqlite3_finalize(stmt);
-
-  if (rc != SQLITE_DONE) {
-    log_warn("Session loading ended with status %d: %s", rc, sqlite3_errmsg(db));
-  }
-
-  log_info("Loaded %zu sessions from database", loaded_count);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t database_save_session(sqlite3 *db, const session_entry_t *session) {
-  if (!db || !session) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db or session is NULL");
-  }
-
-  // Begin transaction
-  char *err_msg = NULL;
-  int rc = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, &err_msg);
-  if (rc != SQLITE_OK) {
-    log_error("Failed to begin transaction: %s", err_msg ? err_msg : "unknown error");
-    sqlite3_free(err_msg);
-    return SET_ERRNO(ERROR_CONFIG, "Failed to begin transaction");
-  }
-
-  // Insert or replace session
-  const char *sql = "INSERT OR REPLACE INTO sessions "
-                    "(session_id, session_string, host_pubkey, password_hash, "
-                    "max_participants, capabilities, created_at, expires_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-  sqlite3_stmt *stmt = NULL;
-  rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-  if (rc != SQLITE_OK) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
-    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session save query: %s", sqlite3_errmsg(db));
-  }
-
-  sqlite3_bind_blob(stmt, 1, session->session_id, 16, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, session->session_string, -1, SQLITE_STATIC);
-  sqlite3_bind_blob(stmt, 3, session->host_pubkey, 32, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 4, session->has_password ? session->password_hash : NULL, -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 5, session->max_participants);
-  sqlite3_bind_int(stmt, 6, session->capabilities);
-  sqlite3_bind_int64(stmt, 7, (sqlite3_int64)session->created_at);
-  sqlite3_bind_int64(stmt, 8, (sqlite3_int64)session->expires_at);
-
-  rc = sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
-
-  if (rc != SQLITE_DONE) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
-    return SET_ERRNO(ERROR_CONFIG, "Failed to save session: %s", sqlite3_errmsg(db));
-  }
-
-  // Delete old participants (will re-insert current ones)
-  const char *del_sql = "DELETE FROM participants WHERE session_id = ?";
-  rc = sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL);
-  if (rc == SQLITE_OK) {
-    sqlite3_bind_blob(stmt, 1, session->session_id, 16, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-  }
-
-  // Insert participants
-  const char *part_sql = "INSERT INTO participants (participant_id, session_id, identity_pubkey, joined_at) "
-                         "VALUES (?, ?, ?, ?)";
-
-  for (size_t i = 0; i < MAX_PARTICIPANTS; i++) {
-    if (session->participants[i]) {
-      rc = sqlite3_prepare_v2(db, part_sql, -1, &stmt, NULL);
-      if (rc != SQLITE_OK) {
-        continue;
-      }
-
-      sqlite3_bind_blob(stmt, 1, session->participants[i]->participant_id, 16, SQLITE_STATIC);
-      sqlite3_bind_blob(stmt, 2, session->session_id, 16, SQLITE_STATIC);
-      sqlite3_bind_blob(stmt, 3, session->participants[i]->identity_pubkey, 32, SQLITE_STATIC);
-      sqlite3_bind_int64(stmt, 4, (sqlite3_int64)session->participants[i]->joined_at);
-
-      sqlite3_step(stmt);
-      sqlite3_finalize(stmt);
-    }
-  }
-
-  // Commit transaction
-  rc = sqlite3_exec(db, "COMMIT;", NULL, NULL, &err_msg);
-  if (rc != SQLITE_OK) {
-    log_error("Failed to commit transaction: %s", err_msg ? err_msg : "unknown error");
-    sqlite3_free(err_msg);
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
-    return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
-  }
-
-  log_debug("Session %s saved to database", session->session_string);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t database_delete_session(sqlite3 *db, const uint8_t session_id[16]) {
-  if (!db || !session_id) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
-  }
-
-  const char *sql = "DELETE FROM sessions WHERE session_id = ?";
-
-  sqlite3_stmt *stmt = NULL;
-  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-  if (rc != SQLITE_OK) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session delete query: %s", sqlite3_errmsg(db));
-  }
-
-  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
-
-  rc = sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
-
-  if (rc != SQLITE_DONE) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to delete session: %s", sqlite3_errmsg(db));
-  }
-
-  log_debug("Session deleted from database");
+  log_info("Database initialized successfully (SQLite as single source of truth)");
   return ASCIICHAT_OK;
 }
 
@@ -327,7 +240,499 @@ void database_close(sqlite3 *db) {
   if (!db) {
     return;
   }
-
   sqlite3_close(db);
   log_debug("Database closed");
+}
+
+// ============================================================================
+// Session Operations
+// ============================================================================
+
+asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req, const acds_config_t *config,
+                                          acip_session_created_t *resp) {
+  if (!db || !req || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
+  }
+
+  memset(resp, 0, sizeof(*resp));
+
+  // Generate or use reserved session string
+  char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
+  if (req->reserved_string_len > 0) {
+    const char *reserved_str = (const char *)(req + 1);
+    size_t len = req->reserved_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->reserved_string_len
+                                                                              : (ACIP_MAX_SESSION_STRING_LEN - 1);
+    memcpy(session_string, reserved_str, len);
+    session_string[len] = '\0';
+
+    if (!acds_string_validate(session_string)) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session string format: %s", session_string);
+    }
+  } else {
+    asciichat_error_t result = acds_string_generate(session_string, sizeof(session_string));
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+  }
+
+  // Generate session ID
+  uint8_t session_id[16];
+  generate_uuid(session_id);
+
+  // Set timestamps
+  uint64_t now = get_current_time_ms();
+  uint64_t expires_at = now + ACIP_SESSION_EXPIRATION_MS;
+
+  // Calculate max_participants
+  uint8_t max_participants =
+      req->max_participants > 0 && req->max_participants <= MAX_PARTICIPANTS ? req->max_participants : MAX_PARTICIPANTS;
+
+  // Insert into database
+  const char *sql = "INSERT INTO sessions "
+                    "(session_id, session_string, host_pubkey, password_hash, max_participants, "
+                    "current_participants, capabilities, has_password, expose_ip_publicly, "
+                    "session_type, server_address, server_port, created_at, expires_at) "
+                    "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+  sqlite3_stmt *stmt = NULL;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session insert: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 3, req->identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 4, req->has_password ? (const char *)req->password_hash : NULL, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 5, max_participants);
+  sqlite3_bind_int(stmt, 6, req->capabilities);
+  sqlite3_bind_int(stmt, 7, req->has_password ? 1 : 0);
+  sqlite3_bind_int(stmt, 8, req->expose_ip_publicly ? 1 : 0);
+  sqlite3_bind_int(stmt, 9, req->session_type);
+  sqlite3_bind_text(stmt, 10, req->server_address, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 11, req->server_port);
+  sqlite3_bind_int64(stmt, 12, (sqlite3_int64)now);
+  sqlite3_bind_int64(stmt, 13, (sqlite3_int64)expires_at);
+
+  rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    if (rc == SQLITE_CONSTRAINT) {
+      return SET_ERRNO(ERROR_INVALID_STATE, "Session string already exists: %s", session_string);
+    }
+    return SET_ERRNO(ERROR_CONFIG, "Failed to insert session: %s", sqlite3_errmsg(db));
+  }
+
+  // Fill response
+  resp->session_string_len = (uint8_t)strlen(session_string);
+  SAFE_STRNCPY(resp->session_string, session_string, sizeof(resp->session_string));
+  memcpy(resp->session_id, session_id, 16);
+  resp->expires_at = expires_at;
+  resp->stun_count = config->stun_count;
+  resp->turn_count = config->turn_count;
+
+  log_info("Session created: %s (max_participants=%d, has_password=%d)", session_string, max_participants,
+           req->has_password ? 1 : 0);
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string, const acds_config_t *config,
+                                          acip_session_info_t *resp) {
+  if (!db || !session_string || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_string, config, or resp is NULL");
+  }
+
+  memset(resp, 0, sizeof(*resp));
+
+  const char *sql = "SELECT session_id, session_string, host_pubkey, password_hash, "
+                    "max_participants, current_participants, capabilities, has_password, "
+                    "expose_ip_publicly, session_type, server_address, server_port, "
+                    "created_at, expires_at FROM sessions WHERE session_string = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session lookup: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+
+  rc = sqlite3_step(stmt);
+  if (rc != SQLITE_ROW) {
+    sqlite3_finalize(stmt);
+    resp->found = 0;
+    log_debug("Session lookup failed: %s (not found)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // Load session data
+  resp->found = 1;
+
+  const void *blob = sqlite3_column_blob(stmt, 0);
+  if (blob) {
+    memcpy(resp->session_id, blob, 16);
+  }
+
+  blob = sqlite3_column_blob(stmt, 2);
+  if (blob) {
+    memcpy(resp->host_pubkey, blob, 32);
+  }
+
+  resp->max_participants = (uint8_t)sqlite3_column_int(stmt, 4);
+  resp->current_participants = (uint8_t)sqlite3_column_int(stmt, 5);
+  resp->capabilities = (uint8_t)sqlite3_column_int(stmt, 6);
+  resp->has_password = sqlite3_column_int(stmt, 7) != 0;
+  resp->session_type = (uint8_t)sqlite3_column_int(stmt, 9);
+  resp->created_at = (uint64_t)sqlite3_column_int64(stmt, 12);
+  resp->expires_at = (uint64_t)sqlite3_column_int64(stmt, 13);
+
+  // ACDS policy flags
+  resp->require_server_verify = config->require_server_verify ? 1 : 0;
+  resp->require_client_verify = config->require_client_verify ? 1 : 0;
+
+  sqlite3_finalize(stmt);
+
+  log_debug("Session lookup: %s (found, participants=%d/%d)", session_string, resp->current_participants,
+            resp->max_participants);
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req, const acds_config_t *config,
+                                        acip_session_joined_t *resp) {
+  if (!db || !req || !config || !resp) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, req, config, or resp is NULL");
+  }
+
+  memset(resp, 0, sizeof(*resp));
+  resp->success = 0;
+
+  // Extract session string
+  char session_string[ACIP_MAX_SESSION_STRING_LEN] = {0};
+  size_t len = req->session_string_len < (ACIP_MAX_SESSION_STRING_LEN - 1) ? req->session_string_len
+                                                                           : (ACIP_MAX_SESSION_STRING_LEN - 1);
+  memcpy(session_string, req->session_string, len);
+  session_string[len] = '\0';
+
+  // Find session
+  session_entry_t *session = database_session_find_by_string(db, session_string);
+  if (!session) {
+    resp->error_code = ACIP_ERROR_SESSION_NOT_FOUND;
+    SAFE_STRNCPY(resp->error_message, "Session not found", sizeof(resp->error_message));
+    log_warn("Session join failed: %s (not found)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // Check if session is full
+  if (session->current_participants >= session->max_participants) {
+    session_entry_free(session);
+    resp->error_code = ACIP_ERROR_SESSION_FULL;
+    SAFE_STRNCPY(resp->error_message, "Session is full", sizeof(resp->error_message));
+    log_warn("Session join failed: %s (full)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // Verify password if required
+  if (session->has_password && req->has_password) {
+    if (!verify_password(req->password, session->password_hash)) {
+      session_entry_free(session);
+      resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
+      SAFE_STRNCPY(resp->error_message, "Invalid password", sizeof(resp->error_message));
+      log_warn("Session join failed: %s (invalid password)", session_string);
+      return ASCIICHAT_OK;
+    }
+  } else if (session->has_password && !req->has_password) {
+    session_entry_free(session);
+    resp->error_code = ACIP_ERROR_INVALID_PASSWORD;
+    SAFE_STRNCPY(resp->error_message, "Password required", sizeof(resp->error_message));
+    log_warn("Session join failed: %s (password required)", session_string);
+    return ASCIICHAT_OK;
+  }
+
+  // Generate participant ID
+  uint8_t participant_id[16];
+  generate_uuid(participant_id);
+  uint64_t now = get_current_time_ms();
+
+  // Begin transaction
+  char *err_msg = NULL;
+  int rc = sqlite3_exec(db, "BEGIN IMMEDIATE;", NULL, NULL, &err_msg);
+  if (rc != SQLITE_OK) {
+    session_entry_free(session);
+    log_error("Failed to begin transaction: %s", err_msg ? err_msg : "unknown");
+    sqlite3_free(err_msg);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to begin transaction");
+  }
+
+  // Insert participant
+  const char *insert_sql = "INSERT INTO participants (participant_id, session_id, identity_pubkey, joined_at) "
+                           "VALUES (?, ?, ?, ?)";
+  sqlite3_stmt *stmt = NULL;
+  rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_free(session);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant insert: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 2, session->session_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 3, req->identity_pubkey, 32, SQLITE_STATIC);
+  sqlite3_bind_int64(stmt, 4, (sqlite3_int64)now);
+
+  rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_free(session);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to insert participant: %s", sqlite3_errmsg(db));
+  }
+
+  // Update participant count
+  const char *update_sql = "UPDATE sessions SET current_participants = current_participants + 1 "
+                           "WHERE session_id = ?";
+  rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_blob(stmt, 1, session->session_id, 16, SQLITE_STATIC);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+  }
+
+  // Commit transaction
+  rc = sqlite3_exec(db, "COMMIT;", NULL, NULL, &err_msg);
+  if (rc != SQLITE_OK) {
+    log_error("Failed to commit transaction: %s", err_msg ? err_msg : "unknown");
+    sqlite3_free(err_msg);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    session_entry_free(session);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
+  }
+
+  // Fill response
+  resp->success = 1;
+  resp->error_code = ACIP_ERROR_NONE;
+  memcpy(resp->participant_id, participant_id, 16);
+  memcpy(resp->session_id, session->session_id, 16);
+
+  // IP disclosure logic
+  bool reveal_ip = false;
+  if (session->has_password) {
+    reveal_ip = true; // Password was verified
+  } else if (session->expose_ip_publicly) {
+    reveal_ip = true; // Explicit opt-in
+  }
+
+  if (reveal_ip) {
+    SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));
+    resp->server_port = session->server_port;
+    resp->session_type = session->session_type;
+
+    // Generate TURN credentials for WebRTC sessions
+    if (session->session_type == SESSION_TYPE_WEBRTC && config->turn_secret[0] != '\0') {
+      turn_credentials_t turn_creds;
+      asciichat_error_t turn_result =
+          turn_generate_credentials(session_string, config->turn_secret, 86400, &turn_creds);
+      if (turn_result == ASCIICHAT_OK) {
+        SAFE_STRNCPY(resp->turn_username, turn_creds.username, sizeof(resp->turn_username));
+        SAFE_STRNCPY(resp->turn_password, turn_creds.password, sizeof(resp->turn_password));
+        log_debug("Generated TURN credentials for session %s", session_string);
+      }
+    }
+
+    log_info("Participant joined session %s (participants=%d/%d, server=%s:%d, type=%s)", session_string,
+             session->current_participants + 1, session->max_participants, resp->server_address, resp->server_port,
+             session->session_type == SESSION_TYPE_WEBRTC ? "WebRTC" : "DirectTCP");
+  } else {
+    log_info("Participant joined session %s (participants=%d/%d, IP WITHHELD)", session_string,
+             session->current_participants + 1, session->max_participants);
+  }
+
+  session_entry_free(session);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16], const uint8_t participant_id[16]) {
+  if (!db || !session_id || !participant_id) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or participant_id is NULL");
+  }
+
+  // Begin transaction
+  char *err_msg = NULL;
+  int rc = sqlite3_exec(db, "BEGIN IMMEDIATE;", NULL, NULL, &err_msg);
+  if (rc != SQLITE_OK) {
+    log_error("Failed to begin transaction: %s", err_msg ? err_msg : "unknown");
+    sqlite3_free(err_msg);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to begin transaction");
+  }
+
+  // Delete participant
+  const char *del_sql = "DELETE FROM participants WHERE participant_id = ? AND session_id = ?";
+  sqlite3_stmt *stmt = NULL;
+  rc = sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant delete: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
+  sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
+  rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to delete participant: %s", sqlite3_errmsg(db));
+  }
+
+  int changes = sqlite3_changes(db);
+  if (changes == 0) {
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Participant not in session");
+  }
+
+  // Decrement participant count
+  const char *update_sql = "UPDATE sessions SET current_participants = current_participants - 1 "
+                           "WHERE session_id = ? AND current_participants > 0";
+  rc = sqlite3_prepare_v2(db, update_sql, -1, &stmt, NULL);
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+  }
+
+  // Check if session is now empty and delete if so
+  const char *check_sql = "SELECT current_participants, session_string FROM sessions WHERE session_id = ?";
+  rc = sqlite3_prepare_v2(db, check_sql, -1, &stmt, NULL);
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+      int count = sqlite3_column_int(stmt, 0);
+      const char *session_string = (const char *)sqlite3_column_text(stmt, 1);
+
+      if (count <= 0) {
+        log_info("Session %s has no participants, deleting", session_string ? session_string : "<unknown>");
+        sqlite3_finalize(stmt);
+
+        // Delete empty session
+        const char *del_session_sql = "DELETE FROM sessions WHERE session_id = ?";
+        rc = sqlite3_prepare_v2(db, del_session_sql, -1, &stmt, NULL);
+        if (rc == SQLITE_OK) {
+          sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+          sqlite3_step(stmt);
+          sqlite3_finalize(stmt);
+        }
+        stmt = NULL;
+      } else {
+        log_info("Participant left session (participants=%d remaining)", count);
+      }
+    }
+    if (stmt) {
+      sqlite3_finalize(stmt);
+    }
+  }
+
+  // Commit transaction
+  rc = sqlite3_exec(db, "COMMIT;", NULL, NULL, &err_msg);
+  if (rc != SQLITE_OK) {
+    log_error("Failed to commit transaction: %s", err_msg ? err_msg : "unknown");
+    sqlite3_free(err_msg);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_id[16]) {
+  if (!db || !session_id) {
+    return NULL;
+  }
+
+  const char *sql = "SELECT session_id, session_string, host_pubkey, password_hash, "
+                    "max_participants, current_participants, capabilities, has_password, "
+                    "expose_ip_publicly, session_type, server_address, server_port, "
+                    "created_at, expires_at FROM sessions WHERE session_id = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return NULL;
+  }
+
+  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+
+  session_entry_t *session = NULL;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    session = load_session_from_row(stmt);
+    if (session) {
+      load_session_participants(db, session);
+    }
+  }
+
+  sqlite3_finalize(stmt);
+  return session;
+}
+
+session_entry_t *database_session_find_by_string(sqlite3 *db, const char *session_string) {
+  if (!db || !session_string) {
+    return NULL;
+  }
+
+  const char *sql = "SELECT session_id, session_string, host_pubkey, password_hash, "
+                    "max_participants, current_participants, capabilities, has_password, "
+                    "expose_ip_publicly, session_type, server_address, server_port, "
+                    "created_at, expires_at FROM sessions WHERE session_string = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return NULL;
+  }
+
+  sqlite3_bind_text(stmt, 1, session_string, -1, SQLITE_STATIC);
+
+  session_entry_t *session = NULL;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    session = load_session_from_row(stmt);
+    if (session) {
+      load_session_participants(db, session);
+    }
+  }
+
+  sqlite3_finalize(stmt);
+  return session;
+}
+
+void database_session_cleanup_expired(sqlite3 *db) {
+  if (!db) {
+    return;
+  }
+
+  uint64_t now = get_current_time_ms();
+
+  // Log sessions about to be deleted
+  const char *log_sql = "SELECT session_string FROM sessions WHERE expires_at < ?";
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, log_sql, -1, &stmt, NULL) == SQLITE_OK) {
+    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      const char *session_string = (const char *)sqlite3_column_text(stmt, 0);
+      log_info("Session %s expired, deleting", session_string ? session_string : "<unknown>");
+    }
+    sqlite3_finalize(stmt);
+  }
+
+  // Delete expired sessions (CASCADE deletes participants)
+  const char *del_sql = "DELETE FROM sessions WHERE expires_at < ?";
+  if (sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL) == SQLITE_OK) {
+    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+    sqlite3_step(stmt);
+    int deleted = sqlite3_changes(db);
+    sqlite3_finalize(stmt);
+
+    if (deleted > 0) {
+      log_info("Cleaned up %d expired sessions", deleted);
+    }
+  }
 }

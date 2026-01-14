@@ -32,7 +32,6 @@
 #include "network/tcp/server.h"
 #include "thread_pool.h"
 #include "acds/main.h"
-#include "acds/session.h"
 
 /**
  * @brief Per-client connection data
@@ -51,7 +50,8 @@ typedef struct {
  * @brief Discovery server state
  *
  * Contains all runtime state for the discovery server including
- * network sockets, identity keys, session registry, and database.
+ * network sockets, identity keys, and database. Sessions are stored
+ * directly in SQLite as the single source of truth.
  */
 typedef struct {
   tcp_server_t tcp_server; ///< TCP server abstraction
@@ -60,10 +60,7 @@ typedef struct {
   uint8_t identity_public[32]; ///< Ed25519 public key
   uint8_t identity_secret[64]; ///< Ed25519 secret key
 
-  // Session management
-  session_registry_t *sessions; ///< In-memory session registry
-
-  // Persistence
+  // Persistence (SQLite as single source of truth for sessions)
   sqlite3 *db; ///< SQLite database handle
 
   // Rate limiting

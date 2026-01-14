@@ -1,97 +1,81 @@
 /**
  * @file acds/session_registry_test.c
- * @brief Unit tests for sharded rwlock session registry
+ * @brief Unit tests for SQLite-based session management
  *
  * Tests validate:
- * - Sharded rwlock initialization and cleanup
- * - Session creation, lookup, and destruction
- * - Thread-safety via per-shard rwlocks
+ * - Database initialization and cleanup
+ * - Session creation, lookup, join, and leave via SQLite
+ * - Session cleanup for expired sessions
  *
  * Note: Full ACIP protocol testing is in integration tests (ip_privacy_test.c, etc.).
- * This focuses on the sharded rwlock data structure itself.
+ * This focuses on the database session operations.
  */
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 
+#include "acds/database.h"
 #include "acds/session.h"
 #include "log/logging.h"
 #include <string.h>
+#include <unistd.h>
+
+// Helper to create a temporary database path
+static void get_temp_db_path(char *buf, size_t buflen) {
+  snprintf(buf, buflen, "/tmp/acds_test_%d.db", getpid());
+}
+
+// Helper to clean up test database
+static void cleanup_test_db(const char *path) {
+  unlink(path);
+  // Also remove WAL and SHM files
+  char wal_path[256], shm_path[256];
+  snprintf(wal_path, sizeof(wal_path), "%s-wal", path);
+  snprintf(shm_path, sizeof(shm_path), "%s-shm", path);
+  unlink(wal_path);
+  unlink(shm_path);
+}
 
 // ============================================================================
 // Test Fixtures
 // ============================================================================
 
-Test(session_registry, registry_initialization, .timeout = 5) {
-  session_registry_t registry = {0};
+Test(session_database, database_initialization, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
 
-  // Initialize the sharded rwlock registry
-  asciichat_error_t result = session_registry_init(&registry);
+  sqlite3 *db = NULL;
 
-  cr_expect_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  // Initialize the database
+  asciichat_error_t result = database_init(db_path, &db);
 
-  // All shards should have NULL hash table heads initially
-  for (int i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
-    cr_expect_null(registry.shards[i].sessions, "Shard %d should be empty initially", i);
-  }
+  cr_expect_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
+  cr_expect_not_null(db, "Database handle should be non-NULL");
 
   // Cleanup
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
-Test(session_registry, multiple_registries, .timeout = 5) {
-  // Test that multiple independent registries work correctly
-  session_registry_t registry1 = {0};
-  session_registry_t registry2 = {0};
+Test(session_database, create_session_basic, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
 
-  cr_expect_eq(session_registry_init(&registry1), ASCIICHAT_OK);
-  cr_expect_eq(session_registry_init(&registry2), ASCIICHAT_OK);
-
-  // Create a session in each registry
-  acip_session_create_t create_req = {0};
-  create_req.max_participants = 4;
-  create_req.capabilities = 0x03;
-  create_req.session_type = 0;
-
-  acip_session_created_t response1 = {0};
-  acip_session_created_t response2 = {0};
-  acds_config_t config = {0};
-
-  cr_expect_eq(session_create(&registry1, &create_req, &config, &response1), ASCIICHAT_OK);
-  cr_expect_eq(session_create(&registry2, &create_req, &config, &response2), ASCIICHAT_OK);
-
-  // Each session should be in its respective registry
-  session_entry_t *found1 = session_find_by_string(&registry1, response1.session_string);
-  session_entry_t *found2 = session_find_by_string(&registry2, response2.session_string);
-
-  cr_expect_not_null(found1, "Session should be found in registry1");
-  cr_expect_not_null(found2, "Session should be found in registry2");
-
-  // Sessions should NOT be found in the wrong registry
-  session_entry_t *not_found1 = session_find_by_string(&registry1, response2.session_string);
-  session_entry_t *not_found2 = session_find_by_string(&registry2, response1.session_string);
-
-  cr_expect_null(not_found1, "Registry1 should not contain registry2's session");
-  cr_expect_null(not_found2, "Registry2 should not contain registry1's session");
-
-  session_registry_destroy(&registry1);
-  session_registry_destroy(&registry2);
-}
-
-Test(session_registry, create_session_basic, .timeout = 5) {
-  session_registry_t registry = {0};
-  cr_expect_eq(session_registry_init(&registry), ASCIICHAT_OK);
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
 
   // Create a test session using the public API
   acip_session_create_t create_req = {0};
   create_req.max_participants = 4;
   create_req.capabilities = 0x03; // video + audio
   create_req.session_type = 0;    // DIRECT_TCP
+  SAFE_STRNCPY(create_req.server_address, "127.0.0.1", sizeof(create_req.server_address));
+  create_req.server_port = 12345;
 
   acip_session_created_t response = {0};
   acds_config_t config = {0};
 
-  asciichat_error_t result = session_create(&registry, &create_req, &config, &response);
+  asciichat_error_t result = database_session_create(db, &create_req, &config, &response);
 
   // Should succeed
   cr_expect_eq(result, ASCIICHAT_OK, "Session creation should succeed");
@@ -101,19 +85,243 @@ Test(session_registry, create_session_basic, .timeout = 5) {
   cr_expect_not_null(response.session_id, "Session ID should be set");
 
   // Session should be findable by string
-  session_entry_t *found = session_find_by_string(&registry, response.session_string);
+  session_entry_t *found = database_session_find_by_string(db, response.session_string);
   cr_expect_not_null(found, "Created session should be findable by string");
+  if (found) {
+    session_entry_free(found);
+  }
 
   // Session should be findable by ID
-  found = session_find_by_id(&registry, response.session_id);
+  found = database_session_find_by_id(db, response.session_id);
   cr_expect_not_null(found, "Created session should be findable by ID");
+  if (found) {
+    session_entry_free(found);
+  }
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
-Test(session_registry, cleanup_expired_sessions, .timeout = 5) {
-  session_registry_t registry = {0};
-  cr_expect_eq(session_registry_init(&registry), ASCIICHAT_OK);
+Test(session_database, session_lookup_basic, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
+
+  // Create a session first
+  acip_session_create_t create_req = {0};
+  create_req.max_participants = 4;
+  create_req.capabilities = 0x03;
+  create_req.session_type = 0;
+
+  acip_session_created_t create_response = {0};
+  acds_config_t config = {0};
+
+  cr_expect_eq(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+
+  // Now lookup the session
+  acip_session_info_t lookup_response = {0};
+  asciichat_error_t result = database_session_lookup(db, create_response.session_string, &config, &lookup_response);
+
+  cr_expect_eq(result, ASCIICHAT_OK, "Session lookup should succeed");
+  cr_expect_eq(lookup_response.found, 1, "Session should be found");
+  cr_expect_eq(lookup_response.max_participants, 4, "Max participants should match");
+  cr_expect_eq(lookup_response.current_participants, 0, "No participants yet");
+
+  database_close(db);
+  cleanup_test_db(db_path);
+}
+
+Test(session_database, session_lookup_not_found, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
+
+  // Try to lookup a session that doesn't exist
+  acip_session_info_t lookup_response = {0};
+  acds_config_t config = {0};
+
+  asciichat_error_t result = database_session_lookup(db, "nonexistent-session-string", &config, &lookup_response);
+
+  cr_expect_eq(result, ASCIICHAT_OK, "Lookup should return OK (not an error)");
+  cr_expect_eq(lookup_response.found, 0, "Session should not be found");
+
+  // Try with find_by_string
+  session_entry_t *not_found = database_session_find_by_string(db, "nonexistent-session-string");
+  cr_expect_null(not_found, "Nonexistent session should return NULL");
+
+  // Try with fake ID
+  uint8_t fake_id[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  not_found = database_session_find_by_id(db, fake_id);
+  cr_expect_null(not_found, "Nonexistent session ID should return NULL");
+
+  database_close(db);
+  cleanup_test_db(db_path);
+}
+
+Test(session_database, session_join_basic, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
+
+  // Create a session first (with expose_ip_publicly for test)
+  acip_session_create_t create_req = {0};
+  create_req.max_participants = 4;
+  create_req.capabilities = 0x03;
+  create_req.session_type = 0;
+  create_req.expose_ip_publicly = 1;
+  SAFE_STRNCPY(create_req.server_address, "127.0.0.1", sizeof(create_req.server_address));
+  create_req.server_port = 12345;
+
+  acip_session_created_t create_response = {0};
+  acds_config_t config = {0};
+
+  cr_expect_eq(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+
+  // Now join the session
+  acip_session_join_t join_req = {0};
+  join_req.session_string_len = create_response.session_string_len;
+  memcpy(join_req.session_string, create_response.session_string, create_response.session_string_len);
+
+  acip_session_joined_t join_response = {0};
+  asciichat_error_t result = database_session_join(db, &join_req, &config, &join_response);
+
+  cr_expect_eq(result, ASCIICHAT_OK, "Session join should succeed");
+  cr_expect_eq(join_response.success, 1, "Join should be successful");
+  cr_expect_neq(join_response.participant_id[0], 0, "Participant ID should be set");
+
+  // Verify participant count increased
+  acip_session_info_t lookup_response = {0};
+  database_session_lookup(db, create_response.session_string, &config, &lookup_response);
+  cr_expect_eq(lookup_response.current_participants, 1, "Should have 1 participant");
+
+  database_close(db);
+  cleanup_test_db(db_path);
+}
+
+Test(session_database, session_leave_basic, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
+
+  // Create and join a session
+  acip_session_create_t create_req = {0};
+  create_req.max_participants = 4;
+  create_req.capabilities = 0x03;
+  create_req.expose_ip_publicly = 1;
+
+  acip_session_created_t create_response = {0};
+  acds_config_t config = {0};
+
+  cr_expect_eq(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+
+  // Join the session
+  acip_session_join_t join_req = {0};
+  join_req.session_string_len = create_response.session_string_len;
+  memcpy(join_req.session_string, create_response.session_string, create_response.session_string_len);
+
+  acip_session_joined_t join_response = {0};
+  cr_expect_eq(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
+  cr_expect_eq(join_response.success, 1);
+
+  // Now leave the session
+  asciichat_error_t result = database_session_leave(db, join_response.session_id, join_response.participant_id);
+  cr_expect_eq(result, ASCIICHAT_OK, "Session leave should succeed");
+
+  // Session should be deleted (no participants left)
+  session_entry_t *found = database_session_find_by_string(db, create_response.session_string);
+  cr_expect_null(found, "Empty session should be deleted");
+
+  database_close(db);
+  cleanup_test_db(db_path);
+}
+
+Test(session_database, session_full, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
+
+  // Create a session with max 2 participants
+  acip_session_create_t create_req = {0};
+  create_req.max_participants = 2;
+  create_req.capabilities = 0x03;
+  create_req.expose_ip_publicly = 1;
+
+  acip_session_created_t create_response = {0};
+  acds_config_t config = {0};
+
+  cr_expect_eq(database_session_create(db, &create_req, &config, &create_response), ASCIICHAT_OK);
+
+  // Join twice
+  acip_session_join_t join_req = {0};
+  join_req.session_string_len = create_response.session_string_len;
+  memcpy(join_req.session_string, create_response.session_string, create_response.session_string_len);
+
+  acip_session_joined_t join_response = {0};
+  cr_expect_eq(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
+  cr_expect_eq(join_response.success, 1);
+
+  cr_expect_eq(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
+  cr_expect_eq(join_response.success, 1);
+
+  // Third join should fail (session full)
+  cr_expect_eq(database_session_join(db, &join_req, &config, &join_response), ASCIICHAT_OK);
+  cr_expect_eq(join_response.success, 0, "Third join should fail");
+  cr_expect_eq(join_response.error_code, ACIP_ERROR_SESSION_FULL, "Error should be SESSION_FULL");
+
+  database_close(db);
+  cleanup_test_db(db_path);
+}
+
+Test(session_database, multiple_sessions, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
+
+  // Create multiple sessions
+  acip_session_create_t create_req = {0};
+  create_req.max_participants = 4;
+  create_req.capabilities = 0x03;
+
+  acds_config_t config = {0};
+  char session_strings[5][48] = {0};
+
+  for (int i = 0; i < 5; i++) {
+    acip_session_created_t response = {0};
+    cr_expect_eq(database_session_create(db, &create_req, &config, &response), ASCIICHAT_OK);
+    memcpy(session_strings[i], response.session_string, response.session_string_len);
+  }
+
+  // All sessions should be findable
+  for (int i = 0; i < 5; i++) {
+    session_entry_t *found = database_session_find_by_string(db, session_strings[i]);
+    cr_expect_not_null(found, "Session %d should be findable", i);
+    if (found) {
+      session_entry_free(found);
+    }
+  }
+
+  database_close(db);
+  cleanup_test_db(db_path);
+}
+
+Test(session_database, cleanup_expired_sessions, .timeout = 5) {
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path));
+
+  sqlite3 *db = NULL;
+  cr_expect_eq(database_init(db_path, &db), ASCIICHAT_OK);
 
   // Create a session
   acip_session_create_t create_req = {0};
@@ -123,109 +331,20 @@ Test(session_registry, cleanup_expired_sessions, .timeout = 5) {
   acip_session_created_t response = {0};
   acds_config_t config = {0};
 
-  cr_expect_eq(session_create(&registry, &create_req, &config, &response), ASCIICHAT_OK);
+  cr_expect_eq(database_session_create(db, &create_req, &config, &response), ASCIICHAT_OK);
 
   // Call cleanup (newly created sessions should not be expired)
-  session_cleanup_expired(&registry);
+  database_session_cleanup_expired(db);
 
   // Session should still exist (not expired yet - 24hr lifetime)
-  session_entry_t *found = session_find_by_string(&registry, response.session_string);
+  session_entry_t *found = database_session_find_by_string(db, response.session_string);
   cr_expect_not_null(found, "Non-expired session should still exist after cleanup");
-
-  session_registry_destroy(&registry);
-}
-
-Test(session_registry, session_lookup_not_found, .timeout = 5) {
-  session_registry_t registry = {0};
-  cr_expect_eq(session_registry_init(&registry), ASCIICHAT_OK);
-
-  // Try to find a session that doesn't exist
-  session_entry_t *not_found = session_find_by_string(&registry, "nonexistent-session-string");
-  cr_expect_null(not_found, "Nonexistent session should return NULL");
-
-  // Try with NULL ID
-  uint8_t fake_id[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-  not_found = session_find_by_id(&registry, fake_id);
-  cr_expect_null(not_found, "Nonexistent session ID should return NULL");
-
-  session_registry_destroy(&registry);
-}
-
-Test(session_registry, session_foreach_empty, .timeout = 5) {
-  session_registry_t registry = {0};
-  cr_expect_eq(session_registry_init(&registry), ASCIICHAT_OK);
-
-  // Count sessions in empty registry
-  size_t count = 0;
-  session_foreach(&registry, NULL, &count);
-
-  // Empty registry should iterate 0 times (callback is NULL so nothing happens)
-  cr_expect(true, "Empty registry foreach should not crash");
-
-  session_registry_destroy(&registry);
-}
-
-// Callback to count sessions
-static void count_sessions_callback(session_entry_t *session, void *user_data) {
-  (void)session;
-  size_t *count = (size_t *)user_data;
-  (*count)++;
-}
-
-Test(session_registry, session_foreach_with_sessions, .timeout = 5) {
-  session_registry_t registry = {0};
-  cr_expect_eq(session_registry_init(&registry), ASCIICHAT_OK);
-
-  // Create multiple sessions
-  acip_session_create_t create_req = {0};
-  create_req.max_participants = 4;
-  create_req.capabilities = 0x03;
-
-  acip_session_created_t response = {0};
-  acds_config_t config = {0};
-
-  for (int i = 0; i < 5; i++) {
-    cr_expect_eq(session_create(&registry, &create_req, &config, &response), ASCIICHAT_OK);
+  if (found) {
+    session_entry_free(found);
   }
 
-  // Count sessions using foreach
-  size_t count = 0;
-  session_foreach(&registry, count_sessions_callback, &count);
-
-  cr_expect_eq(count, 5, "Should count all 5 created sessions");
-
-  session_registry_destroy(&registry);
-}
-
-Test(session_registry, shard_distribution, .timeout = 5) {
-  session_registry_t registry = {0};
-  cr_expect_eq(session_registry_init(&registry), ASCIICHAT_OK);
-
-  // Create many sessions to test distribution across shards
-  acip_session_create_t create_req = {0};
-  create_req.max_participants = 4;
-  create_req.capabilities = 0x03;
-
-  acip_session_created_t response = {0};
-  acds_config_t config = {0};
-
-  // Create 32 sessions (should distribute across 16 shards)
-  for (int i = 0; i < 32; i++) {
-    cr_expect_eq(session_create(&registry, &create_req, &config, &response), ASCIICHAT_OK);
-  }
-
-  // Count sessions in each shard
-  size_t total = 0;
-  for (int i = 0; i < SESSION_REGISTRY_NUM_SHARDS; i++) {
-    session_entry_t *session;
-    for (session = registry.shards[i].sessions; session != NULL; session = (session_entry_t *)session->hh.next) {
-      total++;
-    }
-  }
-
-  cr_expect_eq(total, 32, "All 32 sessions should be accounted for across shards");
-
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 // ============================================================================
@@ -233,35 +352,35 @@ Test(session_registry, shard_distribution, .timeout = 5) {
 // ============================================================================
 
 /**
- * @brief Sharded RWLock Session Registry Test Suite
+ * @brief SQLite-Based Session Management Test Suite
  *
- * This test suite validates the core sharded rwlock session registry functionality:
+ * This test suite validates the SQLite-based session management functionality:
  *
  * 1. **Basic Operations**
- *    - Registry initialization/destruction with 16 shards
+ *    - Database initialization with WAL mode
  *    - Session creation via public API
  *    - Session lookup by string and UUID
- *    - Cleanup operations
+ *    - Session join and leave operations
+ *    - Cleanup operations for expired sessions
  *
- * 2. **Sharding Behavior**
- *    - Sessions distributed across 16 shards using FNV-1a hash
- *    - Independent shard access reduces lock contention
- *    - Multiple registries can coexist
+ * 2. **Session Lifecycle**
+ *    - Create session → Join participants → Leave participants → Auto-delete when empty
+ *    - Participant count tracking
+ *    - Session full detection
  *
- * 3. **Thread Safety**
- *    - Per-shard rwlocks allow concurrent reads
- *    - Fine-grained per-entry locking for participant modifications
- *    - Uses platform abstraction layer for portable locking
+ * 3. **Database Features**
+ *    - WAL mode for concurrent reads
+ *    - Transactions for atomic operations
+ *    - Foreign key constraints for participant cleanup
  *
  * 4. **Memory Safety**
- *    - Session cleanup properly frees memory
- *    - Registry destruction cleans up all shards
+ *    - session_entry_free() properly frees allocated sessions
  *    - Uses SAFE_MALLOC/SAFE_FREE macros for leak tracking
  *
  * Performance Notes:
- * - 16 shards reduce lock contention vs single rwlock
- * - uthash provides O(1) lookups within each shard
- * - No RCU dependency - uses standard rwlocks
+ * - SQLite as single source of truth eliminates sync bugs
+ * - WAL mode provides good concurrent read performance
+ * - Indexed queries for fast session lookups
  *
  * Related Tests:
  * - tests/integration/acds/ip_privacy_test.c - ACDS protocol validation

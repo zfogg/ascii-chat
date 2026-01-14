@@ -11,6 +11,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <errno.h>
+#if defined(__linux__) || defined(__APPLE__)
+#include <sys/resource.h>
+#endif
 
 #include "acds/main.h"
 #include "acds/server.h"
@@ -51,6 +55,17 @@ static void signal_handler(int sig) {
 
 int main(int argc, char **argv) {
   asciichat_error_t result;
+
+  // Increase file descriptor limit for many concurrent connections
+#ifdef __linux__
+  struct rlimit rl = {.rlim_cur = 65536, .rlim_max = 65536};
+  if (setrlimit(RLIMIT_NOFILE, &rl) < 0) {
+    log_warn("couldn't raise fd limit: %s", strerror(errno));
+  }
+#elif defined(__APPLE__)
+  struct rlimit rl = {.rlim_cur = 10240, .rlim_max = RLIM_INFINITY};
+  setrlimit(RLIMIT_NOFILE, &rl);
+#endif
 
   // Parse command-line arguments using options module
   // Note: ACDS is a separate binary, so argv[0] is the program name

@@ -11,6 +11,7 @@
  * the session string.
  */
 
+#include "acds/database.h"
 #include "acds/session.h"
 #include "acds/main.h"
 #include "asciichat_errno.h"
@@ -18,17 +19,37 @@
 #include <criterion/criterion.h>
 #include <string.h>
 #include <sodium.h>
+#include <unistd.h>
 
 // Test fixture
 TestSuite(acds_ip_privacy, .timeout = 10.0);
+
+// Helper to create a temporary database path
+static void get_temp_db_path(char *buf, size_t buflen, const char *suffix) {
+  snprintf(buf, buflen, "/tmp/acds_ip_privacy_%s_%d.db", suffix, getpid());
+}
+
+// Helper to clean up test database
+static void cleanup_test_db(const char *path) {
+  unlink(path);
+  // Also remove WAL and SHM files
+  char wal_path[256], shm_path[256];
+  snprintf(wal_path, sizeof(wal_path), "%s-wal", path);
+  snprintf(shm_path, sizeof(shm_path), "%s-shm", path);
+  unlink(wal_path);
+  unlink(shm_path);
+}
 
 /**
  * @brief Test that IP is revealed for password-protected session with correct password
  */
 Test(acds_ip_privacy, password_protected_reveals_ip) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "passwd_reveal");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -51,7 +72,7 @@ Test(acds_ip_privacy, password_protected_reveals_ip) {
   cr_assert_eq(hash_result, 0, "Password hashing should succeed");
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join with correct password
@@ -63,7 +84,7 @@ Test(acds_ip_privacy, password_protected_reveals_ip) {
   SAFE_STRNCPY(join_req.password, "test-password-123", sizeof(join_req.password));
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
@@ -73,16 +94,20 @@ Test(acds_ip_privacy, password_protected_reveals_ip) {
   cr_assert_eq(join_resp.server_port, 27224, "Server port should be revealed");
   cr_assert_eq(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be revealed");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test that IP is withheld for session without password or opt-in
  */
 Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "no_passwd");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -99,7 +124,7 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   create_req.server_port = 27224;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join session (no password required)
@@ -110,7 +135,7 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   join_req.has_password = 0;
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
@@ -120,16 +145,20 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   cr_assert_eq(join_resp.server_port, 0, "Server port should be zero");
   cr_assert_eq(join_resp.session_type, 0, "Session type should be zero");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test that IP is revealed for session with explicit expose_ip_publicly opt-in
  */
 Test(acds_ip_privacy, explicit_optin_reveals_ip) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "optin");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -146,7 +175,7 @@ Test(acds_ip_privacy, explicit_optin_reveals_ip) {
   create_req.server_port = 8080;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join session (no password)
@@ -157,7 +186,7 @@ Test(acds_ip_privacy, explicit_optin_reveals_ip) {
   join_req.has_password = 0;
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
@@ -167,16 +196,20 @@ Test(acds_ip_privacy, explicit_optin_reveals_ip) {
   cr_assert_eq(join_resp.server_port, 8080, "Server port should be revealed");
   cr_assert_eq(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be revealed");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test that IP is withheld for password-protected session with WRONG password
  */
 Test(acds_ip_privacy, wrong_password_withholds_ip) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "wrong_passwd");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -199,7 +232,7 @@ Test(acds_ip_privacy, wrong_password_withholds_ip) {
   cr_assert_eq(hash_result, 0, "Password hashing should succeed");
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join with WRONG password
@@ -211,23 +244,27 @@ Test(acds_ip_privacy, wrong_password_withholds_ip) {
   SAFE_STRNCPY(join_req.password, "wrong-password-456", sizeof(join_req.password));
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
 
-  // session_join returns ASCIICHAT_OK but sets success=0 and error_code when password is wrong
-  cr_assert_eq(result, ASCIICHAT_OK, "session_join should return OK");
+  // database_session_join returns ASCIICHAT_OK but sets success=0 and error_code when password is wrong
+  cr_assert_eq(result, ASCIICHAT_OK, "database_session_join should return OK");
   cr_assert_eq(join_resp.success, 0, "Join should fail with wrong password");
   cr_assert_eq(join_resp.error_code, ACIP_ERROR_INVALID_PASSWORD, "Error code should be INVALID_PASSWORD");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
 
 /**
  * @brief Test that WebRTC sessions follow the same IP privacy rules
  */
 Test(acds_ip_privacy, webrtc_session_ip_privacy) {
-  session_registry_t registry;
-  asciichat_error_t result = session_registry_init(&registry);
-  cr_assert_eq(result, ASCIICHAT_OK, "Registry initialization should succeed");
+  char db_path[256];
+  get_temp_db_path(db_path, sizeof(db_path), "webrtc");
+
+  sqlite3 *db = NULL;
+  asciichat_error_t result = database_init(db_path, &db);
+  cr_assert_eq(result, ASCIICHAT_OK, "Database initialization should succeed");
 
   acds_config_t config;
   memset(&config, 0, sizeof(config));
@@ -244,7 +281,7 @@ Test(acds_ip_privacy, webrtc_session_ip_privacy) {
   create_req.server_port = 27224;
 
   acip_session_created_t create_resp;
-  result = session_create(&registry, &create_req, &config, &create_resp);
+  result = database_session_create(db, &create_req, &config, &create_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session creation should succeed");
 
   // Join session
@@ -255,7 +292,7 @@ Test(acds_ip_privacy, webrtc_session_ip_privacy) {
   join_req.has_password = 0;
 
   acip_session_joined_t join_resp;
-  result = session_join(&registry, &join_req, &config, &join_resp);
+  result = database_session_join(db, &join_req, &config, &join_resp);
   cr_assert_eq(result, ASCIICHAT_OK, "Session join should succeed");
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
@@ -269,5 +306,6 @@ Test(acds_ip_privacy, webrtc_session_ip_privacy) {
   cr_assert_eq(join_resp.turn_username[0], '\0', "TURN username should be empty");
   cr_assert_eq(join_resp.turn_password[0], '\0', "TURN password should be empty");
 
-  session_registry_destroy(&registry);
+  database_close(db);
+  cleanup_test_db(db_path);
 }
