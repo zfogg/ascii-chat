@@ -60,6 +60,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
 # miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Miniupnpc.cmake)
 
+# SQLite3 - Database for ACDS sessions and rate limiting
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/SQLite3.cmake)
+
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 

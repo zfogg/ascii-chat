@@ -295,7 +295,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-core
         ascii-chat-util
         ascii-chat-platform
-        sqlite3
+        ${SQLITE3_LIBRARIES}
     )
 endif()
 
@@ -357,7 +357,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-crypto
         ascii-chat-core
         ${ZSTD_LIBRARIES}
-        sqlite3  # Rate limiting SQLite backend
+        ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
     )
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
@@ -371,7 +371,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     endif()
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} sqlite3 libdatachannel)
+    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
@@ -750,7 +750,7 @@ else()
         pkg_check_modules(JACK jack)
 
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${CORE_LIBS} m sqlite3
+            ${CORE_LIBS} m ${SQLITE3_LIBRARIES}
             ${JACK_LIBRARIES}
         )
         # Link miniupnpc if available (UPnP/NAT-PMP support)

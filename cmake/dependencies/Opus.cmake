@@ -10,10 +10,12 @@
 #
 # Build strategy:
 #   - For musl: Built from source in MuslDependencies.cmake
+#   - For vcpkg: Uses vcpkg-installed Opus
 #   - For glibc: Uses system-installed Opus via pkg-config
 #
 # Prerequisites (must be set before including this file):
 #   - USE_MUSL: Whether using musl libc
+#   - USE_VCPKG: Whether using vcpkg
 #   - CMAKE_BUILD_TYPE: Build type
 #
 # Outputs (variables set by this file):
@@ -27,7 +29,37 @@ if(USE_MUSL)
     return()
 endif()
 
-# For Windows: Try to find Opus via Vcpkg or pkg-config
+# =============================================================================
+# Try vcpkg first if enabled (all platforms)
+# =============================================================================
+if(USE_VCPKG AND VCPKG_ROOT)
+    find_library(OPUS_LIB_RELEASE NAMES opus libopus
+                 PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_library(OPUS_LIB_DEBUG NAMES opus libopus
+                 PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
+    find_path(OPUS_INC NAMES opus/opus.h
+              PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+
+    if(OPUS_LIB_RELEASE OR OPUS_LIB_DEBUG)
+        set(OPUS_FOUND TRUE)
+        if(OPUS_LIB_RELEASE AND OPUS_LIB_DEBUG)
+            set(OPUS_LIBRARIES optimized ${OPUS_LIB_RELEASE} debug ${OPUS_LIB_DEBUG})
+        elseif(OPUS_LIB_RELEASE)
+            set(OPUS_LIBRARIES ${OPUS_LIB_RELEASE})
+        else()
+            set(OPUS_LIBRARIES ${OPUS_LIB_DEBUG})
+        endif()
+        set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
+        message(STATUS "Found ${BoldGreen}Opus${ColorReset} via vcpkg: ${OPUS_LIB_RELEASE}${OPUS_LIB_DEBUG}")
+        return()
+    endif()
+endif()
+
+# =============================================================================
+# Fallback: Platform-specific methods
+# =============================================================================
+
+# For Windows without vcpkg: Try pkg-config (MSYS2/MinGW)
 if(WIN32)
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
@@ -36,21 +68,6 @@ if(WIN32)
             message(STATUS "${BoldGreen}Opus${ColorReset} found via pkg-config (Windows): ${OPUS_LIBRARIES}")
             return()
         endif()
-    endif()
-
-    # Try to find Opus from Vcpkg
-    # VCPKG_LIB_PATH and VCPKG_INCLUDE_PATH are set by Vcpkg.cmake
-    find_library(OPUS_LIB NAMES opus libopus
-                 PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_path(OPUS_INC NAMES opus/opus.h
-              PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
-
-    if(OPUS_LIB AND OPUS_INC)
-        set(OPUS_FOUND TRUE)
-        set(OPUS_LIBRARIES "${OPUS_LIB}")
-        set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
-        message(STATUS "${BoldGreen}Opus${ColorReset} found (Windows Vcpkg): ${OPUS_LIB}")
-        return()
     endif()
 
     message(FATAL_ERROR "${BoldRed}Opus not found on Windows${ColorReset}. Install with:\n"

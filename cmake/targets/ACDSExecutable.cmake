@@ -36,7 +36,7 @@ get_core_deps_libraries(CORE_LIBS)
 target_link_libraries(acds PRIVATE ${CORE_LIBS})
 
 # Link SQLite3 explicitly (acds-specific dependency)
-target_link_libraries(acds PRIVATE sqlite3)
+target_link_libraries(acds PRIVATE ${SQLITE3_LIBRARIES})
 
 # Include generated version header
 target_include_directories(acds PRIVATE
