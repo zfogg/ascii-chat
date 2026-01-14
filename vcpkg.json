@@ -19,5 +19,14 @@
     },
     "libdatachannel"
   ],
-  "overrides": []
+  "overrides": [
+    { "name": "zstd", "version": "1.5.7" },
+    { "name": "libsodium", "version": "1.0.20" },
+    { "name": "opus", "version": "1.5.2" },
+    { "name": "portaudio", "version": "19.7" },
+    { "name": "miniupnpc", "version": "2.3.2" },
+    { "name": "openssl", "version": "3.6.0" },
+    { "name": "mimalloc", "version": "2.2.4" },
+    { "name": "libdatachannel", "version": "0.24.0" }
+  ]
 }
