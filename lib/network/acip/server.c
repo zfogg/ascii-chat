@@ -76,13 +76,12 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 // Server Send (to client)
 // =============================================================================
 
-asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, uint32_t width,
-                                        uint32_t height) {
+asciichat_error_t acip_send_ascii_frame(acip_transport_t *transport, const char *frame_data, size_t frame_size,
+                                        uint32_t width, uint32_t height) {
   if (!transport || !frame_data) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or frame_data");
   }
 
-  size_t frame_size = strlen(frame_data);
   if (frame_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Empty frame data");
   }

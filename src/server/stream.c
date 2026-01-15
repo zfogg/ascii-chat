@@ -1062,7 +1062,20 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
 
   if (ascii_frame) {
-    *out_size = strlen(ascii_frame);
+    // Find the actual end of frame by locating the final reset sequence (ESC[0m)
+    // This ensures we capture the correct frame size without relying on strlen()
+    const char *reset_seq = "\033[0m";
+    char *frame_end = strstr(ascii_frame, reset_seq);
+
+    if (frame_end) {
+      // Include the reset sequence in the count and null-terminate right after it
+      *out_size = (size_t)(frame_end - ascii_frame) + strlen(reset_seq);
+      // Null-terminate right after the reset sequence to remove any garbage
+      ascii_frame[*out_size] = '\0';
+    } else {
+      // Fallback: use strlen if no reset sequence found
+      *out_size = strlen(ascii_frame);
+    }
     out = ascii_frame;
   } else {
     SET_ERRNO(ERROR_TERMINAL, "Per-client %u: Failed to convert image to ASCII", target_client_id);

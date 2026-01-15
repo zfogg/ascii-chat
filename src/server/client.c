@@ -1712,7 +1712,7 @@ void *client_send_thread_func(void *arg) {
       mutex_unlock(&client->send_mutex);
 
       // Network I/O happens OUTSIDE the mutex
-      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, width, height);
+      asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame->size, width, height);
       (void)clock_gettime(CLOCK_MONOTONIC, &step5);
 
       if (send_result != ASCIICHAT_OK) {

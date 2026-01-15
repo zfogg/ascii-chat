@@ -555,14 +555,15 @@ char *image_print_color(const image_t *p, const char *palette) {
 
   const size_t pixel_bytes = total_pixels * bytes_per_pixel;
 
-  // Per row: reset sequence + clear-to-eol + newline (except last row)
+  // Per row: clear-to-eol + newline (except last row)
+  // Final reset added once by ansi_rle_finish()
   const size_t clear_to_eol_len = 3; // \033[K
-  const size_t total_resets = h_sz * reset_len;
   const size_t total_clear_to_eol = h_sz * clear_to_eol_len;
   const size_t total_newlines = (h_sz > 0) ? (h_sz - 1) : 0;
+  const size_t final_reset = reset_len; // One reset at end (from ansi_rle_finish)
 
-  // Final buffer size: pixel bytes + per-row extras + null terminator
-  const size_t extra_bytes = total_resets + total_clear_to_eol + total_newlines + 1;
+  // Final buffer size: pixel bytes + per-row extras + final reset + null terminator
+  const size_t extra_bytes = total_clear_to_eol + total_newlines + final_reset + 1;
 
   if (pixel_bytes > SIZE_MAX - extra_bytes) {
     SET_ERRNO(ERROR_INVALID_STATE, "Final buffer size would overflow: %d x %d", h, w);

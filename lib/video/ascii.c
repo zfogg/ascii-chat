@@ -832,8 +832,9 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   }
 
   // Calculate buffer size needed
+  // Each padding row needs: ESC[K (3 bytes) + newline (1 byte) = 4 bytes
   size_t frame_len = strlen(frame);
-  size_t top_padding_len = pad_top; // Just newlines, no spaces
+  size_t top_padding_len = pad_top * 4; // ESC[K + newline per padding row
   size_t total_len = top_padding_len + frame_len;
 
   char *buffer;
@@ -841,13 +842,17 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
 
   char *position = buffer;
 
-  // Add top padding (blank lines - just newlines)
+  // Add top padding with ESC[K to clear any leftover terminal content
+  // Without ESC[K, old frame content would remain visible causing flickering
   for (size_t i = 0; i < pad_top; i++) {
+    *position++ = '\033';
+    *position++ = '[';
+    *position++ = 'K';
     *position++ = '\n';
   }
 
   // Copy the original frame
-  size_t remaining = total_len + 1 - pad_top;
+  size_t remaining = frame_len + 1;
   SAFE_MEMCPY(position, remaining, frame, frame_len);
   position += frame_len;
   *position = '\0';
