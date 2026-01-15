@@ -164,6 +164,8 @@ function(configure_asan_ubsan_sanitizers)
             message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
         else()
             # Linux - includes LeakSanitizer
+            # Use -shared-libsan to link sanitizer runtimes as shared libraries
+            # This is required when the main binary loads shared libraries that are also sanitized
             add_compile_options(
                 -fsanitize=address
                 -fsanitize=undefined
@@ -175,17 +177,49 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize-address-use-after-scope
                 -fno-omit-frame-pointer
                 -fno-optimize-sibling-calls
+                -shared-libsan
             )
-            add_link_options(
-                -fsanitize=address
-                -fsanitize=undefined
-                -fsanitize=leak
-                -fsanitize=integer
-                -fsanitize=nullability
-                -fsanitize=implicit-conversion
-                -fsanitize=float-divide-by-zero
+            # Find the clang runtime library directory for rpath
+            # First try --print-runtime-dir (may return non-existent path on some systems)
+            execute_process(
+                COMMAND ${CMAKE_C_COMPILER} --print-runtime-dir
+                OUTPUT_VARIABLE CLANG_RUNTIME_DIR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
             )
-            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
+            # If --print-runtime-dir fails or returns non-existent path, try resource-dir/lib/linux
+            if(NOT CLANG_RUNTIME_DIR OR NOT EXISTS "${CLANG_RUNTIME_DIR}")
+                execute_process(
+                    COMMAND ${CMAKE_C_COMPILER} --print-resource-dir
+                    OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/lib/linux")
+                    set(CLANG_RUNTIME_DIR "${CLANG_RESOURCE_DIR}/lib/linux")
+                endif()
+            endif()
+            if(CLANG_RUNTIME_DIR AND EXISTS "${CLANG_RUNTIME_DIR}")
+                add_link_options(
+                    -fsanitize=address
+                    -fsanitize=undefined
+                    -fsanitize=leak
+                    -fsanitize=integer
+                    -fsanitize=nullability
+                    -fsanitize=implicit-conversion
+                    -fsanitize=float-divide-by-zero
+                    -shared-libsan
+                    "LINKER:-rpath,${CLANG_RUNTIME_DIR}"
+                )
+                message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (shared runtimes)")
+                message(STATUS "  Sanitizer runtime: ${CLANG_RUNTIME_DIR}")
+            else()
+                message(FATAL_ERROR "Could not find Clang sanitizer runtime directory.\n"
+                    "Tried:\n"
+                    "  - clang --print-runtime-dir\n"
+                    "  - clang --print-resource-dir + /lib/linux\n"
+                    "Install libclang-rt-*-dev package or use cmake -DCMAKE_BUILD_TYPE=Dev to disable sanitizers.")
+            endif()
         endif()
     elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
         # GCC on Unix - disable ALL sanitizers if mimalloc is enabled (same spinlock issue as Clang)
