@@ -323,8 +323,8 @@ int strtoint_safe(const char *str);
  */
 #define ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                \
   ASCIICHAT_BINARY_OPTIONS_STRUCT                                                                                      \
-  unsigned short int width;                                                                                            \
-  unsigned short int height;                                                                                           \
+  int width;  /* Terminal width - must be int (not short) to match OPTION_TYPE_INT size */                             \
+  int height; /* Terminal height - must be int (not short) to match OPTION_TYPE_INT size */                            \
   bool auto_width;                                                                                                     \
   bool auto_height;
 
@@ -451,10 +451,10 @@ typedef struct options_state {
   // ============================================================================
   // Terminal Dimensions
   // ============================================================================
-  unsigned short int width;  ///< Terminal width in characters
-  unsigned short int height; ///< Terminal height in characters
-  bool auto_width;           ///< Auto-detect width from terminal
-  bool auto_height;          ///< Auto-detect height from terminal
+  int width;        ///< Terminal width in characters (int for OPTION_TYPE_INT compat)
+  int height;       ///< Terminal height in characters (int for OPTION_TYPE_INT compat)
+  bool auto_width;  ///< Auto-detect width from terminal
+  bool auto_height; ///< Auto-detect height from terminal
 
   // ============================================================================
   // Network Options
@@ -675,7 +675,7 @@ asciichat_error_t options_update(void (*updater)(options_t *, void *), void *con
  * @param height New terminal height in characters
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t options_set_dimensions(unsigned short int width, unsigned short int height);
+asciichat_error_t options_set_dimensions(int width, int height);
 
 /**
  * @brief Update color mode
@@ -714,7 +714,7 @@ asciichat_error_t options_set_log_level(log_level_t level);
  *
  * @return Terminal width in characters
  */
-static inline unsigned short int options_get_width(void) {
+static inline int options_get_width(void) {
   return options_get()->width;
 }
 
@@ -725,7 +725,7 @@ static inline unsigned short int options_get_width(void) {
  *
  * @return Terminal height in characters
  */
-static inline unsigned short int options_get_height(void) {
+static inline int options_get_height(void) {
   return options_get()->height;
 }
 

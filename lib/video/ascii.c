@@ -255,6 +255,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   struct timespec prof_print_start, prof_print_end;
   (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_start);
 
+  // DEBUG: Log dimensions going to renderer
+  log_debug_every(LOG_RATE_SLOW,
+                  "ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)", original->w,
+                  original->h, width, height, resized->w, resized->h, pad_width, pad_height, caps->render_mode);
+
   // Use the capability-aware image printing function with client's palette
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars, luminance_palette);
 

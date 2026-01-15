@@ -1113,6 +1113,9 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
  * @ingroup client_connection
  */
 int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
+  // Log the dimensions being sent to server (helps debug dimension mismatch issues)
+  log_info("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
+           GET_OPTION(auto_width), GET_OPTION(auto_height));
 
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {

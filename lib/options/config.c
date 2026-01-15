@@ -337,7 +337,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *
   if (width.type == TOML_INT64 && !config_width_set && !opts->auto_width) {
     int64_t width_val = width.u.int64;
     if (width_val > 0) {
-      opts->width = (unsigned short int)width_val;
+      opts->width = (int)width_val;
       opts->auto_width = false;
       config_width_set = true;
     }
@@ -346,7 +346,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *
     char error_msg[256];
     int width_val = validate_opt_positive_int(width_str, error_msg, sizeof(error_msg));
     if (width_val > 0) {
-      opts->width = (unsigned short int)width_val;
+      opts->width = width_val;
       opts->auto_width = false;
       config_width_set = true;
     } else {
@@ -359,7 +359,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *
   if (height.type == TOML_INT64 && !config_height_set && !opts->auto_height) {
     int64_t height_val = height.u.int64;
     if (height_val > 0) {
-      opts->height = (unsigned short int)height_val;
+      opts->height = (int)height_val;
       opts->auto_height = false;
       config_height_set = true;
     }
@@ -368,7 +368,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *
     char error_msg[256];
     int height_val = validate_opt_positive_int(height_str, error_msg, sizeof(error_msg));
     if (height_val > 0) {
-      opts->height = (unsigned short int)height_val;
+      opts->height = height_val;
       opts->auto_height = false;
       config_height_set = true;
     } else {

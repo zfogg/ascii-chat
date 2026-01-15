@@ -515,6 +515,21 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     last_render_time = current_time;
   }
 
+  // DEBUG: Periodically log frame stats on client side
+  static int client_frame_counter = 0;
+  client_frame_counter++;
+  if (client_frame_counter % 60 == 1) {
+    // Count lines and check for issues
+    int line_count = 0;
+    size_t frame_len = strlen(frame_data);
+    for (size_t i = 0; i < frame_len; i++) {
+      if (frame_data[i] == '\n')
+        line_count++;
+    }
+    log_info("CLIENT_FRAME: received %zu bytes, %d newlines, header: %ux%u", frame_len, line_count, header.width,
+             header.height);
+  }
+
   display_render_frame(frame_data, take_snapshot);
 
   SAFE_FREE(frame_data);

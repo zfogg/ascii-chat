@@ -458,14 +458,15 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
 
   int composite_width_px, composite_height_px;
 
+  // Always create composite at full terminal dimensions
+  // Aspect ratio correction is handled later in ascii_convert_with_capabilities
+  composite_width_px = width;
   if (use_half_block) {
-    // Half-block mode: use full terminal dimensions for 2x resolution
-    composite_width_px = width;
+    // Half-block mode: 2 vertical pixels per character
     composite_height_px = height * 2;
   } else {
-    // Normal modes: use aspect-ratio fitted dimensions
-    calculate_fit_dimensions_pixel(single_source->w, single_source->h, width, height, &composite_width_px,
-                                   &composite_height_px);
+    // Normal modes: 1 pixel per character
+    composite_height_px = height;
   }
 
   // Create composite from buffer pool for consistent memory management
@@ -847,6 +848,16 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   // Render with client's custom palette using enhanced capabilities
   // Palette data is stable after initialization, so no locking needed
   const int h = caps_snapshot.render_mode == RENDER_MODE_HALF_BLOCK ? height * 2 : height;
+
+  // DEBUG: Log dimensions being used for ASCII conversion
+  log_debug_every(LOG_RATE_SLOW, "convert_composite_to_ascii: composite=%dx%d, terminal=%dx%d, h=%d (mode=%d)",
+                  composite->w, composite->h, width, height, h, caps_snapshot.render_mode);
+
+  // CRITICAL CHECK: Verify composite width matches terminal width
+  if (composite->w != width) {
+    log_warn("DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
+  }
+
   char *ascii_frame =
       ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
                                       render_client->client_palette_chars, render_client->client_luminance_palette);
@@ -1039,6 +1050,15 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   // Convert composite to ASCII using client capabilities
+  log_debug("Frame gen: composite=%dx%d, terminal=%dx%d, client=%u", composite ? composite->w : 0,
+            composite ? composite->h : 0, width, height, target_client_id);
+
+  // CRITICAL: Verify composite width matches expected terminal width
+  if (composite && composite->w != width) {
+    log_error("FRAME_WIDTH_BUG: composite->w=%d != terminal_width=%d for client %u", composite->w, width,
+              target_client_id);
+  }
+
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
 
   if (ascii_frame) {

@@ -157,7 +157,10 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *asci
       }
     }
 
-    // Add newline (except for last row)
+    // Add clear-to-end-of-line and newline (except last row)
+    *pos++ = '\033';
+    *pos++ = '[';
+    *pos++ = 'K';
     if (y < h - 1) {
       *pos++ = '\n';
     }
@@ -456,7 +459,10 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
       }
     }
 
-    // End row: reset SGR, add newline (except for last row) (copied from NEON)
+    // End row: clear to EOL, reset SGR, add newline (except for last row) (copied from NEON)
+    ob_putc(&ob, '\033');
+    ob_putc(&ob, '[');
+    ob_putc(&ob, 'K');
     emit_reset(&ob);
     if (y < height - 1) {
       ob_putc(&ob, '\n');

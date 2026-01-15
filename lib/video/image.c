@@ -555,12 +555,14 @@ char *image_print_color(const image_t *p, const char *palette) {
 
   const size_t pixel_bytes = total_pixels * bytes_per_pixel;
 
-  // Per row: reset sequence + newline (except last row)
+  // Per row: reset sequence + clear-to-eol + newline (except last row)
+  const size_t clear_to_eol_len = 3; // \033[K
   const size_t total_resets = h_sz * reset_len;
+  const size_t total_clear_to_eol = h_sz * clear_to_eol_len;
   const size_t total_newlines = (h_sz > 0) ? (h_sz - 1) : 0;
 
   // Final buffer size: pixel bytes + per-row extras + null terminator
-  const size_t extra_bytes = total_resets + total_newlines + 1;
+  const size_t extra_bytes = total_resets + total_clear_to_eol + total_newlines + 1;
 
   if (pixel_bytes > SIZE_MAX - extra_bytes) {
     SET_ERRNO(ERROR_INVALID_STATE, "Final buffer size would overflow: %d x %d", h, w);
@@ -602,6 +604,14 @@ char *image_print_color(const image_t *p, const char *palette) {
       ansi_rle_add_pixel(&rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
     }
 
+    // Add clear-to-end-of-line sequence to prevent leftover characters from previous frames
+    // This is critical when frame content varies (e.g., webcam movement causes different pixel counts)
+    if (rle_ctx.length + 3 < rle_ctx.capacity) {
+      rle_ctx.buffer[rle_ctx.length++] = '\033';
+      rle_ctx.buffer[rle_ctx.length++] = '[';
+      rle_ctx.buffer[rle_ctx.length++] = 'K';
+    }
+
     // Add newline between rows (except last row)
     if (y != h - 1 && rle_ctx.length < rle_ctx.capacity - 1) {
       rle_ctx.buffer[rle_ctx.length++] = '\n';
@@ -609,6 +619,62 @@ char *image_print_color(const image_t *p, const char *palette) {
   }
 
   ansi_rle_finish(&rle_ctx);
+
+  // DEBUG: Validate frame integrity right after rendering
+  // Check for incomplete ANSI sequences line by line
+  {
+    const char *line_start = lines;
+    int line_num = 0;
+    while (*line_start) {
+      const char *line_end = line_start;
+      while (*line_end && *line_end != '\n')
+        line_end++;
+
+      // Check for incomplete ANSI sequence at end of this line
+      for (const char *p = line_start; p < line_end;) {
+        if (*p == '\033' && p + 1 < line_end && *(p + 1) == '[') {
+          const char *seq_start = p;
+          p += 2;
+          // Scan for terminator (@ through ~, i.e., 0x40-0x7E)
+          while (p < line_end && !(*p >= '@' && *p <= '~'))
+            p++;
+          if (p >= line_end) {
+            // Incomplete sequence found
+            size_t incomplete_len = (size_t)(line_end - seq_start);
+            log_error("RENDER_INCOMPLETE_ANSI: Line %d (w=%d h=%d) has incomplete ANSI sequence (%zu bytes)", line_num,
+                      w, h, incomplete_len);
+            // Show the incomplete sequence
+            char debug_buf[128] = {0};
+            size_t debug_pos = 0;
+            for (const char *d = seq_start; d < line_end && debug_pos < sizeof(debug_buf) - 10; d++) {
+              unsigned char c = (unsigned char)*d;
+              if (c == '\033') {
+                debug_buf[debug_pos++] = '<';
+                debug_buf[debug_pos++] = 'E';
+                debug_buf[debug_pos++] = 'S';
+                debug_buf[debug_pos++] = 'C';
+                debug_buf[debug_pos++] = '>';
+              } else if (c >= 0x20 && c < 0x7F) {
+                debug_buf[debug_pos++] = (char)c;
+              } else {
+                debug_pos += (size_t)snprintf(debug_buf + debug_pos, sizeof(debug_buf) - debug_pos, "<%02X>", c);
+              }
+            }
+            log_error("  Incomplete seq: %s", debug_buf);
+            break;
+          } else {
+            p++; // Skip terminator
+          }
+        } else {
+          p++;
+        }
+      }
+
+      line_num++;
+      line_start = *line_end ? line_end + 1 : line_end;
+    }
+  }
+
   return lines;
 }
 

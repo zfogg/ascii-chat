@@ -729,7 +729,10 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
       }
     }
 
-    // Add newline (except for last row)
+    // Add clear-to-end-of-line and newline (except last row)
+    *pos++ = '\033';
+    *pos++ = '[';
+    *pos++ = 'K';
     if (y < h - 1) {
       *pos++ = '\n';
     }
@@ -986,7 +989,10 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       }
     }
 
-    // End row: reset SGR, add newline (except for last row)
+    // End row: clear to EOL, reset SGR, add newline (except for last row)
+    ob_putc(&ob, '\033');
+    ob_putc(&ob, '[');
+    ob_putc(&ob, 'K');
     emit_reset(&ob);
     if (y < height - 1) { // Only add newline if not the last row
       ob_putc(&ob, '\n');
@@ -1192,7 +1198,10 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
       x = j;
     }
 
-    // End emitted line: reset and newline (only for non-final lines)
+    // End emitted line: clear to EOL, reset and newline (only for non-final lines)
+    ob_putc(&ob, '\033');
+    ob_putc(&ob, '[');
+    ob_putc(&ob, 'K');
     emit_reset(&ob);
     // Check if this is the last output line (since we process 2 pixel rows per output line)
     if (y + 2 < height) { // Only add newline if not the last output line

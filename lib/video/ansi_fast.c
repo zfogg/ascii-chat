@@ -126,6 +126,14 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
   // Check if we need to emit a new SGR sequence
   bool color_changed = ctx->first_pixel || (r != ctx->last_r) || (g != ctx->last_g) || (b != ctx->last_b);
 
+  if (color_changed) {
+    if (ctx->length + 40 >= ctx->capacity) {
+      // Log when we can't add a color change due to buffer capacity
+      log_warn_every(1000000, "RLE_CAPACITY: Cannot add SGR at length=%zu, capacity=%zu (need 40 bytes)", ctx->length,
+                     ctx->capacity);
+    }
+  }
+
   if (color_changed && (ctx->length + 40 < ctx->capacity)) { // Reserve 40 bytes for SGR (FG+BG max is 38)
     char *pos = ctx->buffer + ctx->length;
 

@@ -350,18 +350,46 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_terminal_size");
   }
 
-  // Method 1: ioctl(TIOCGWINSZ)
   struct winsize ws;
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
-    if (ws.ws_col > 0 && ws.ws_row > 0) {
-      *width = ws.ws_col;
-      *height = ws.ws_row;
-      log_debug("POSIX terminal size from ioctl: %dx%d", *width, *height);
-      return ASCIICHAT_OK;
-    }
+
+  // Method 1a: Try ioctl on stdout first (most common case)
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+    *width = ws.ws_col;
+    *height = ws.ws_row;
+    log_debug("POSIX terminal size from stdout ioctl: %dx%d", *width, *height);
+    return ASCIICHAT_OK;
   }
 
-  // Method 2: Environment variables
+  // Method 1b: Try ioctl on stdin (works when stdout is redirected)
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+    *width = ws.ws_col;
+    *height = ws.ws_row;
+    log_debug("POSIX terminal size from stdin ioctl: %dx%d", *width, *height);
+    return ASCIICHAT_OK;
+  }
+
+  // Method 1c: Try ioctl on stderr (works when stdout/stdin are redirected)
+  if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+    *width = ws.ws_col;
+    *height = ws.ws_row;
+    log_debug("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
+    return ASCIICHAT_OK;
+  }
+
+  // Method 1d: Try opening /dev/tty directly (works in all cases with a controlling terminal)
+  int tty_fd = open("/dev/tty", O_RDONLY);
+  if (tty_fd >= 0) {
+    if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+      *width = ws.ws_col;
+      *height = ws.ws_row;
+      close(tty_fd);
+      log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
+      return ASCIICHAT_OK;
+    }
+    close(tty_fd);
+  }
+
+  // Method 2: Environment variables (COLUMNS and LINES)
   const char *lines_env = SAFE_GETENV("LINES");
   const char *cols_env = SAFE_GETENV("COLUMNS");
   if (lines_env && cols_env) {
@@ -372,7 +400,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
       log_debug("POSIX terminal size from env: %dx%d", *width, *height);
-      return 0;
+      return ASCIICHAT_OK;
     }
     log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
   }

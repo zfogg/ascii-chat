@@ -281,8 +281,8 @@ asciichat_error_t options_update(void (*updater)(options_t *, void *), void *con
 
 // Helper struct for passing multiple params to updater
 struct dimensions_update_ctx {
-  unsigned short int width;
-  unsigned short int height;
+  int width;
+  int height;
 };
 
 static void dimensions_updater(options_t *opts, void *context) {
@@ -291,7 +291,7 @@ static void dimensions_updater(options_t *opts, void *context) {
   opts->height = ctx->height;
 }
 
-asciichat_error_t options_set_dimensions(unsigned short int width, unsigned short int height) {
+asciichat_error_t options_set_dimensions(int width, int height) {
   struct dimensions_update_ctx ctx = {.width = width, .height = height};
   return options_update(dimensions_updater, &ctx);
 }
