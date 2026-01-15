@@ -660,11 +660,18 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
 
   // Start send thread for this client (stop_id=3, stop last)
   snprintf(thread_name, sizeof(thread_name), "send_%u", atomic_load(&client->client_id));
+  fprintf(stderr, "*** ABOUT_TO_SPAWN_SEND_THREAD client_id=%u socket=%d ***\n", atomic_load(&client->client_id),
+          client->socket);
+  fflush(stderr);
   asciichat_error_t send_result =
       tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_send_thread_func, client, 3, thread_name);
+  fprintf(stderr, "*** SPAWN_RESULT=%d ***\n", send_result);
+  fflush(stderr);
   if (send_result != ASCIICHAT_OK) {
     // tcp_server_stop_client_threads() will be called by remove_client()
     // to clean up the receive thread we just created
+    fprintf(stderr, "*** SEND_THREAD_SPAWN_FAILED result=%d ***\n", send_result);
+    fflush(stderr);
     if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
       log_error("Failed to remove client after send thread creation failure");
     }
@@ -1363,6 +1370,10 @@ void *client_receive_thread(void *arg) {
 
 // Thread function to handle sending data to a specific client
 void *client_send_thread_func(void *arg) {
+  // CRITICAL: Log entry immediately - this proves the thread actually started
+  fprintf(stderr, "*** SEND_THREAD_STARTED arg=%p ***\n", arg);
+  fflush(stderr);
+
   client_info_t *client = (client_info_t *)arg;
 
   // CRITICAL: Validate client pointer immediately before any access
@@ -1386,7 +1397,7 @@ void *client_send_thread_func(void *arg) {
     return NULL;
   }
 
-  log_debug("Started send thread for client %u (%s)", client->client_id, client->display_name);
+  log_info("Started send thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
   // Mark thread as running
   atomic_store(&client->send_thread_running, true);
@@ -1399,11 +1410,23 @@ void *client_send_thread_func(void *arg) {
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
   int loop_iteration_count = 0;
+  int silence_log_count = 0;
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     loop_iteration_count++;
-    log_debug_every(LOG_RATE_FAST, "Send thread loop iteration %d for client %u", loop_iteration_count,
-                    client->client_id);
+
+    // Log client state every iteration (so we can debug why loop exits)
+    bool should_exit = atomic_load(&g_server_should_exit);
+    bool is_shutting_down = atomic_load(&client->shutting_down);
+    bool is_active = atomic_load(&client->active);
+    bool is_running = atomic_load(&client->send_thread_running);
+
+    if (loop_iteration_count <= 5 || loop_iteration_count % 100 == 0) {
+      log_info("SEND_DEBUG: client=%u iter=%d active=%d shutting=%d running=%d queue=%p",
+               atomic_load(&client->client_id), loop_iteration_count, is_active, is_shutting_down, is_running,
+               client->audio_queue);
+    }
+
     bool sent_something = false;
 
     // PRIORITY: Drain all queued audio packets before video
@@ -1421,8 +1444,11 @@ void *client_send_thread_func(void *arg) {
           break; // No more packets available
         }
       }
+      if (audio_packet_count > 0 || silence_log_count++ % 1000 == 0) {
+        log_info("SEND_AUDIO: client=%u dequeued=%d packets", atomic_load(&client->client_id), audio_packet_count);
+      }
     } else {
-      log_warn_every(1000000, "Send thread: audio_queue is NULL for client %u", client->client_id);
+      log_warn("Send thread: audio_queue is NULL for client %u", atomic_load(&client->client_id));
     }
 
     // Send batched audio if we have packets
@@ -1456,11 +1482,20 @@ void *client_send_thread_func(void *arg) {
         // Network I/O happens OUTSIDE the mutex
         if (pkt_type == PACKET_TYPE_AUDIO_OPUS) {
           result = acip_send_audio_opus(transport, audio_packets[0]->data, audio_packets[0]->data_len);
-          log_debug_every(500000, "Sent single Opus packet: client=%u, len=%zu, result=%d", client->client_id,
-                          audio_packets[0]->data_len, result);
+          if (result != ASCIICHAT_OK) {
+            log_error("AUDIO SEND FAIL (single): client=%u, len=%zu, result=%d, errno=%d", client->client_id,
+                      audio_packets[0]->data_len, result, GET_ERRNO());
+          } else {
+            fprintf(stderr, "[SEND_SINGLE] client=%u sent 1 Opus packet (%zu bytes)\n", client->client_id,
+                    audio_packets[0]->data_len);
+          }
         } else {
           // Raw float audio - use generic packet sender
           result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len);
+          if (result != ASCIICHAT_OK) {
+            log_error("AUDIO SEND FAIL (raw): client=%u, len=%zu, result=%d", client->client_id,
+                      audio_packets[0]->data_len, result);
+          }
         }
       } else {
         // Multiple packets - batch them together
@@ -1504,8 +1539,13 @@ void *client_send_thread_func(void *arg) {
                 av_send_audio_opus_batch(send_socket, batched_opus, total_opus_size, frame_sizes, AUDIO_SAMPLE_RATE, 20,
                                          audio_packet_count, (crypto_context_t *)crypto_ctx);
 
-            log_debug_every(LOG_RATE_FAST, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
-                            total_opus_size, client->client_id);
+            if (result != ASCIICHAT_OK) {
+              log_error("AUDIO SEND FAIL (batch): client=%u, frames=%d, total_size=%zu, result=%d", client->client_id,
+                        audio_packet_count, total_opus_size, result);
+            } else {
+              fprintf(stderr, "[SEND_BATCH] client=%u sent %d Opus frames (%zu bytes total)\n", client->client_id,
+                      audio_packet_count, total_opus_size);
+            }
           } else {
             log_error("Failed to allocate buffer for Opus batch");
             result = ERROR_MEMORY;
@@ -1549,8 +1589,13 @@ void *client_send_thread_func(void *arg) {
 
             SAFE_FREE(batched_audio);
 
-            log_debug_every(LOG_RATE_FAST, "Sent audio batch: %d packets (%zu samples) to client %u",
-                            audio_packet_count, total_samples, client->client_id);
+            if (result != ASCIICHAT_OK) {
+              log_error("AUDIO SEND FAIL (raw batch): client=%u, packets=%d, samples=%zu, result=%d", client->client_id,
+                        audio_packet_count, total_samples, result);
+            } else {
+              fprintf(stderr, "[SEND_RAW_BATCH] client=%u sent %d audio packets (%zu samples)\n", client->client_id,
+                      audio_packet_count, total_samples);
+            }
           } else {
             log_error("Failed to allocate buffer for audio batch");
             result = ERROR_MEMORY;
