@@ -191,9 +191,9 @@ run_on_two "cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --targe
   echo "WARNING: Build failed on $HOST_TWO, continuing with existing binary"
 }
 
-# Start server on localhost for better performance
-echo "[6/8] Starting server on localhost:$PORT..."
-timeout $((DURATION + 10)) ./build/bin/ascii-chat --log-file /tmp/server_debug.log server 127.0.0.1 --port $PORT > /dev/null 2>&1 &
+# Start server on all interfaces so remote clients can connect
+echo "[6/8] Starting server on all interfaces:$PORT..."
+timeout $((DURATION + 10)) ./build/bin/ascii-chat --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT > /dev/null 2>&1 &
 SERVER_PID=$!
 
 # Give server time to start (tmux session init + server startup)
@@ -226,25 +226,37 @@ done
 pgrep -x ascii-chat > /dev/null || { echo "ERROR: Server process not found"; exit 1; }
 echo "Server verified running on localhost"
 
-# Start client 1 on HOST_ONE (connecting to localhost server)
-echo "[7/8] Starting client 1 on $HOST_ONE with audio analysis..."
+# Determine server address for clients to use
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis --microphone-index 1"
+  # Running on HOST_ONE, server is local
+  SERVER_ADDR_FOR_CLIENTS="localhost"
 else
-  # Use nohup for reliable background execution - connect to localhost server
+  # Running on HOST_TWO, server is on HOST_TWO, use hostname so remote clients can reach it
+  SERVER_ADDR_FOR_CLIENTS="manjaro-twopal"
+fi
+
+# Start client 1 on HOST_ONE (connecting to server)
+echo "[7/8] Starting client 1 on $HOST_ONE with audio (same device for I/O)..."
+if [[ $LOCAL_IS_ONE -eq 1 ]]; then
+  # BeaglePlay: Use device 0 (HDMI hw:0,0) for both input and output
+  # (HDMI claims inputs=2, outputs=2; may help avoid device incompatibility)
+  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis --microphone-index 0 --speakers-index 0"
+else
+  # Use nohup for reliable background execution - connect to server on HOST_TWO
+  # BeaglePlay: Use device 0 for both input and output to avoid device incompatibility
   CLIENT1_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client 127.0.0.1:${PORT} --test-pattern --audio --audio-analysis --microphone-index 1\" > /tmp/client1_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${SERVER_ADDR_FOR_CLIENTS}:${PORT} --test-pattern --audio --audio-analysis --microphone-index 0 --speakers-index 0\" > /tmp/client1_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
-# Start client 2 on HOST_TWO (connecting to localhost server)
+# Start client 2 on HOST_TWO (connecting to server)
 echo "[8/8] Starting client 2 on $HOST_TWO..."
 if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client 127.0.0.1:$PORT --test-pattern --audio --audio-analysis"
+  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
 else
-  # Use nohup for consistency - connect to localhost server
+  # Use nohup for consistency - connect to server on HOST_TWO (itself)
   CLIENT2_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client 127.0.0.1:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client localhost:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
@@ -263,14 +275,11 @@ sleep $((DURATION))
 echo "Waiting for clients to finish and write analysis reports..."
 sleep 10
 
-# Clean up any remaining processes on both hosts (use SIGTERM for graceful shutdown)
+# Clean up any remaining processes (kill local server first, then remote clients with timeout)
 echo "Cleaning up any remaining processes..."
-run_on_one "pkill -x ascii-chat" 2>/dev/null || true
-run_on_two "pkill -x ascii-chat" 2>/dev/null || true
-sleep 3
-# Force kill any stubborn processes
-run_on_one "pkill -9 -x ascii-chat" 2>/dev/null || true
-run_on_two "pkill -9 -x ascii-chat" 2>/dev/null || true
+pkill -x ascii-chat 2>/dev/null || true
+timeout 2 run_on_one "pkill -9 -x ascii-chat" 2>/dev/null || true
+timeout 2 run_on_two "pkill -9 -x ascii-chat" 2>/dev/null || true
 sleep 1
 
 echo ""

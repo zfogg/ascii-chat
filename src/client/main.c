@@ -444,8 +444,8 @@ static int initialize_client_systems(bool shared_init_completed) {
   // Initialize audio if enabled
   if (GET_OPTION(audio_enabled)) {
     if (audio_client_init() != 0) {
-      log_fatal("Failed to initialize audio system");
-      return ERROR_AUDIO;
+      log_warn("Failed to initialize audio system");
+      // Continue without audio instead of crashing (e.g., ARM systems with audio device incompatibility)
     }
 
     // Initialize audio analysis if requested
