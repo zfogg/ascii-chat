@@ -226,6 +226,11 @@ endif()
 # -----------------------------------------------------------------------------
 # Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
+# Add FFmpeg include directories BEFORE creating the module (for media file streaming)
+if(FFMPEG_FOUND)
+    include_directories(${FFMPEG_INCLUDE_DIRS})
+endif()
+
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-video
@@ -234,6 +239,10 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-core
         ascii-chat-simd
     )
+    # Link FFmpeg for media file streaming
+    if(FFMPEG_FOUND)
+        target_link_libraries(ascii-chat-video ${FFMPEG_LIBRARIES})
+    endif()
 endif()
 
 # -----------------------------------------------------------------------------
@@ -831,9 +840,9 @@ if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-shared PRIVATE libdatachannel)
 endif()
 
-# Link media_source for FFmpeg media file streaming
-if(TARGET media_source AND FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-shared PRIVATE media_source)
+# Link FFmpeg for media file streaming
+if(FFMPEG_FOUND)
+    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
 endif()
 
 # Add build timing for ascii-chat-shared library
@@ -1090,11 +1099,6 @@ endif()
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
 if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
-endif()
-
-# Link media_source for FFmpeg media file streaming (static library)
-if(TARGET media_source AND FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-static-lib INTERFACE media_source)
 endif()
 
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)

@@ -39,24 +39,8 @@ message(STATUS "  - libavutil: ${FFMPEG_libavutil_VERSION}")
 message(STATUS "  - libswscale: ${FFMPEG_libswscale_VERSION}")
 message(STATUS "  - libswresample: ${FFMPEG_libswresample_VERSION}")
 
-# Create media source library
-set(MEDIA_SOURCE_FILES
-    ${CMAKE_SOURCE_DIR}/lib/media/source.c
-    ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_decoder.c
-)
-
-add_library(media_source STATIC ${MEDIA_SOURCE_FILES})
-
-target_include_directories(media_source PUBLIC
-    ${CMAKE_SOURCE_DIR}/lib
-    ${FFMPEG_INCLUDE_DIRS}
-)
-
-target_link_libraries(media_source PUBLIC
-    ${FFMPEG_LIBRARIES}
-)
-
-# Ensure media_source is available globally
+# Export FFmpeg libraries and include directories for use in Libraries.cmake
+# SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
 set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} PARENT_SCOPE)
 set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIRS} PARENT_SCOPE)
 set(FFMPEG_FOUND ${FFMPEG_FOUND} PARENT_SCOPE)

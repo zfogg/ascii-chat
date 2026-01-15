@@ -214,6 +214,14 @@ set(VIDEO_SRCS
     lib/video/webcam/webcam.c
 )
 
+# Media source files (only when FFmpeg is available)
+if(FFMPEG_FOUND)
+    list(APPEND VIDEO_SRCS
+        lib/media/source.c
+        lib/media/ffmpeg_decoder.c
+    )
+endif()
+
 # Platform-specific webcam sources already added to PLATFORM_SRCS
 # (webcam_avfoundation.m, webcam_v4l2.c, webcam_mediafoundation.c)
 
