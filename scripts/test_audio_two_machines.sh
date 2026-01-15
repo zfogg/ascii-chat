@@ -236,16 +236,15 @@ else
 fi
 
 # Start client 1 on HOST_ONE (connecting to server)
-echo "[7/8] Starting client 1 on $HOST_ONE with audio (same device for I/O)..."
+echo "[7/8] Starting client 1 on $HOST_ONE with audio (default devices)..."
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-  # BeaglePlay: Use device 0 (HDMI hw:0,0) for both input and output
-  # (HDMI claims inputs=2, outputs=2; may help avoid device incompatibility)
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis --microphone-index 0 --speakers-index 0"
+  # BeaglePlay: Use default audio devices (arecord works with defaults)
+  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
 else
   # Use nohup for reliable background execution - connect to server on HOST_TWO
-  # BeaglePlay: Use device 0 for both input and output to avoid device incompatibility
+  # BeaglePlay: Use default audio devices (arecord works with defaults)
   CLIENT1_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${SERVER_ADDR_FOR_CLIENTS}:${PORT} --test-pattern --audio --audio-analysis --microphone-index 0 --speakers-index 0\" > /tmp/client1_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${SERVER_ADDR_FOR_CLIENTS}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
