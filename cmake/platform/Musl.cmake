@@ -36,9 +36,14 @@ function(configure_musl_pre_project)
     #     - Debug/Dev: OFF (use glibc for better debugging experience)
     #   macOS/Windows: OFF (not applicable - use system libc + mimalloc)
     #
+    # Detect Homebrew environment - use system libraries instead of musl
+    # Homebrew provides its own glibc and libraries, so we should use those
+    if(DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR})
+        set(USE_MUSL OFF CACHE BOOL "Homebrew build - using system libraries" FORCE)
+        message(STATUS "Homebrew build detected - disabling musl (using Homebrew's system libraries)")
     # Detect Linux early (before project()) using CMAKE_HOST_SYSTEM_NAME
     # CMAKE_SYSTEM_NAME is only set after project() is called
-    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
         # Detect architecture early using uname (before project() sets CMAKE_SYSTEM_PROCESSOR)
         execute_process(
             COMMAND uname -m
