@@ -1046,6 +1046,25 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
                         input_callback, ctx);
     bool input_ok = (err == paNoError);
+
+    // If input failed on same device, try device 0 as fallback (HDMI on BeaglePlay)
+    if (!input_ok && same_device) {
+      log_debug("Input failed - trying device 0 as fallback");
+      PaStreamParameters fallback_input_params = inputParams;
+      fallback_input_params.device = 0;
+      const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
+      if (device_0_info && device_0_info->maxInputChannels > 0) {
+        err = Pa_OpenStream(&ctx->input_stream, &fallback_input_params, NULL, input_stream_rate,
+                            AUDIO_FRAMES_PER_BUFFER, paClipOff, input_callback, ctx);
+        if (err == paNoError) {
+          log_info("Input stream opened on device 0 (fallback from default)");
+          input_ok = true;
+        } else {
+          log_warn("Fallback also failed on device 0: %s", Pa_GetErrorText(err));
+        }
+      }
+    }
+
     if (!input_ok) {
       log_warn("Failed to open input stream: %s", Pa_GetErrorText(err));
     }
