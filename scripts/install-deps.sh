@@ -69,7 +69,10 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
-  if command -v apt-get &>/dev/null; then
+  if [ -f /etc/devian_version ]; then
+      sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+
+  elif command -v apt-get &>/dev/null; then
     echo "Detected apt-get package manager"
     echo "Installing dependencies..."
 
@@ -83,33 +86,35 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       sudo apt-get update
       sudo apt-get install ca-certificates gpg wget
 
-      test -f /usr/share/doc/kitware-archive-keyring/copyright \
-        || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
-        | gpg --dearmor - \
-        | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+      if [ ! -f /etc/debian_version ]; then
+        test -f /usr/share/doc/kitware-archive-keyring/copyright \
+          || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
+          | gpg --dearmor - \
+          | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 
-      ubuntu_version_major="$(lsb_release -a | grep Release: | grep -Eo '[0-9]+' | head -n1)"
-      ubuntu_version_name_short=""
-      if [ "$ubuntu_version_major" -eq "24" ] || [ "$ubuntu_version_major" -eq "25" ]; then
-        ubuntu_version_name_short="noble"
-      elif [ "$ubuntu_version_major" -eq "23" ]; then
-        ubuntu_version_name_short="jammy"
-      elif [ "$ubuntu_version_major" -eq "22" ]; then
-        ubuntu_version_name_short="focal"
-      else
-        echo >&2 "Unsupported Ubuntu version $ubuntu_version_major"
-        exit 1
+        ubuntu_version_major="$(lsb_release -a | grep Release: | grep -Eo '[0-9]+' | head -n1)"
+        ubuntu_version_name_short=""
+        if [ "$ubuntu_version_major" -eq "24" ] || [ "$ubuntu_version_major" -eq "25" ]; then
+          ubuntu_version_name_short="noble"
+        elif [ "$ubuntu_version_major" -eq "23" ]; then
+          ubuntu_version_name_short="jammy"
+        elif [ "$ubuntu_version_major" -eq "22" ]; then
+          ubuntu_version_name_short="focal"
+        else
+          echo >&2 "Unsupported Ubuntu version $ubuntu_version_major"
+          exit 1
+        fi
+
+        echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ '"$ubuntu_version_name_short"' main' \
+          | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+
+        sudo apt-get update
+
+        test -f /usr/share/doc/kitware-archive-keyring/copyright \
+          || sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+
+        sudo apt-get install kitware-archive-keyring
       fi
-
-      echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ '"$ubuntu_version_name_short"' main' \
-        | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
-
-      sudo apt-get update
-
-      test -f /usr/share/doc/kitware-archive-keyring/copyright \
-        || sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
-
-      sudo apt-get install kitware-archive-keyring
     fi
 
     sudo apt-get update
@@ -121,7 +126,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-tools musl-dev \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev \
       libcriterion-dev libffi-dev libsqlite3-dev \
-      liburcu-dev \
       libssl-dev \
       libminiupnpc-dev \
       libprotobuf-c-dev \
@@ -293,7 +297,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl mimalloc \
       zstd zlib libsodium portaudio opus sqlite \
       criterion \
-      liburcu \
       openssl \
       miniupnpc \
       protobuf-c \
