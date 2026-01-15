@@ -1023,17 +1023,27 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to create render buffer");
     }
 
-    // Open output stream at NATIVE device rate - we'll resample from 48kHz buffer in callback
-    err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, outputInfo->defaultSampleRate,
-                        AUDIO_FRAMES_PER_BUFFER, paClipOff, output_callback, ctx);
+    // When using separate streams on the same device, they must use the same sample rate
+    // Use output device's sample rate for both streams
+    double stream_sample_rate = outputInfo->defaultSampleRate;
+    bool same_device = (inputParams.device == outputParams.device);
+    if (same_device) {
+      log_info("Input and output on same device - using unified sample rate: %.0f Hz", stream_sample_rate);
+    }
+
+    // Open output stream at device native rate
+    err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, stream_sample_rate, AUDIO_FRAMES_PER_BUFFER,
+                        paClipOff, output_callback, ctx);
     bool output_ok = (err == paNoError);
     if (!output_ok) {
       log_warn("Failed to open output stream: %s", Pa_GetErrorText(err));
     }
 
-    // Open input stream at PIPELINE rate (48kHz) - let PortAudio resample from device if needed
-    // This ensures input matches sample_rate for AEC3, avoiding resampling in our callback
-    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+    // Open input stream - at same rate as output if on same device, otherwise at pipeline rate
+    // When on same device: use device's sample rate (PortAudio requires this)
+    // When on different devices: can use different rates and let PortAudio resample
+    double input_stream_rate = same_device ? stream_sample_rate : AUDIO_SAMPLE_RATE;
+    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
                         input_callback, ctx);
     bool input_ok = (err == paNoError);
     if (!input_ok) {
