@@ -606,7 +606,8 @@ char *image_print_color(const image_t *p, const char *palette) {
 
     // Add clear-to-end-of-line sequence to prevent leftover characters from previous frames
     // This is critical when frame content varies (e.g., webcam movement causes different pixel counts)
-    if (rle_ctx.length + 3 < rle_ctx.capacity) {
+    // Reserve space for ESC[K (3 bytes) plus null terminator (1 byte)
+    if (rle_ctx.length + 4 <= rle_ctx.capacity) {
       rle_ctx.buffer[rle_ctx.length++] = '\033';
       rle_ctx.buffer[rle_ctx.length++] = '[';
       rle_ctx.buffer[rle_ctx.length++] = 'K';
