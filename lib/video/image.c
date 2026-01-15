@@ -612,7 +612,8 @@ char *image_print_color(const image_t *p, const char *palette) {
       rle_ctx.buffer[rle_ctx.length++] = 'K';
     }
 
-    // Add newline between rows (except last row)
+    // Add newline after each row (except the last row)
+    // The last line's clear-to-EOL is followed directly by the reset sequence
     if (y != h - 1 && rle_ctx.length < rle_ctx.capacity - 1) {
       rle_ctx.buffer[rle_ctx.length++] = '\n';
     }

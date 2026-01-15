@@ -165,8 +165,8 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
 
 // Finish RLE sequence with reset and null terminator
 void ansi_rle_finish(ansi_rle_context_t *ctx) {
-  // Add reset sequence
-  if (ctx->length + 5 < ctx->capacity) {
+  // Add reset sequence (requires 4 bytes + 1 for null terminator = 5 bytes total)
+  if (ctx->length + 5 <= ctx->capacity) {
     SAFE_MEMCPY(ctx->buffer + ctx->length, 4, "\033[0m", 4);
     ctx->length += 4;
   }
