@@ -90,6 +90,7 @@
 #include "server.h"
 #include "video/webcam/webcam.h"
 #include "video/image.h"
+#include "media/source.h"
 #include "common.h"
 #include "util/endian.h"
 #include "asciichat_errno.h"
@@ -109,6 +110,20 @@
 #include <string.h>
 #include "platform/abstraction.h"
 #include "thread_pool.h"
+
+/* ============================================================================
+ * Media Source Management
+ * ============================================================================ */
+
+/**
+ * @brief Media source handle (webcam, file, or stdin)
+ *
+ * Unified media source that abstracts over webcam, media files, and stdin.
+ * Created during initialization, destroyed during cleanup.
+ *
+ * @ingroup client_capture
+ */
+static media_source_t *g_media_source = NULL;
 
 /* ============================================================================
  * Capture Thread Management
@@ -327,10 +342,15 @@ static void *webcam_capture_thread_func(void *arg) {
     // Use queue_depth=0 and target_depth=0 for constant-rate producer (no backlog management)
     adaptive_sleep_do(&sleep_state, 0, 0);
 
-    image_t *image = webcam_read();
+    image_t *image = media_source_read_video(g_media_source);
 
     if (!image) {
-      log_info("No frame available from webcam yet (webcam_read returned NULL)");
+      // Check if we've reached end of file for media sources
+      if (media_source_at_end(g_media_source)) {
+        log_info("Media source reached end of file");
+        break; // Exit capture loop - end of media
+      }
+      log_info("No frame available from media source yet (returned NULL)");
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
@@ -429,7 +449,7 @@ static void *webcam_capture_thread_func(void *arg) {
 /**
  * Initialize capture subsystem
  *
- * Sets up webcam device and prepares capture system for operation.
+ * Sets up media source (webcam, file, or stdin) and prepares capture system for operation.
  * Must be called once during client initialization.
  *
  * @return 0 on success, negative on error
@@ -437,14 +457,54 @@ static void *webcam_capture_thread_func(void *arg) {
  * @ingroup client_capture
  */
 int capture_init() {
-  // Initialize webcam capture
-  int webcam_index = GET_OPTION(webcam_index);
-  int result = webcam_init(webcam_index);
-  if (result != 0) {
-    SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam (error code: %d)", result);
-    // Preserve specific error code (e.g., WEBCAM vs WEBCAM_IN_USE)
-    return result;
+  // Determine media source type based on options
+  media_source_type_t source_type;
+  const char *source_path = NULL;
+
+  // Check if test pattern mode is enabled
+  if (GET_OPTION(test_pattern)) {
+    source_type = MEDIA_SOURCE_TEST;
+    log_info("Using test pattern mode");
   }
+  // Check if media file is specified
+  else if (GET_OPTION(media_file)[0] != '\0') {
+    const char *media_file = GET_OPTION(media_file);
+
+    // Check if stdin input
+    if (strcmp(media_file, "-") == 0) {
+      source_type = MEDIA_SOURCE_STDIN;
+      source_path = "-";
+      log_info("Using stdin for media input");
+    } else {
+      source_type = MEDIA_SOURCE_FILE;
+      source_path = media_file;
+      log_info("Using media file: %s", media_file);
+    }
+  }
+  // Default to webcam
+  else {
+    source_type = MEDIA_SOURCE_WEBCAM;
+    // Get webcam index and convert to string for media_source_create
+    int webcam_index = GET_OPTION(webcam_index);
+    static char webcam_index_str[16];
+    snprintf(webcam_index_str, sizeof(webcam_index_str), "%d", webcam_index);
+    source_path = webcam_index_str;
+    log_info("Using webcam device %d", webcam_index);
+  }
+
+  // Create media source
+  g_media_source = media_source_create(source_type, source_path);
+  if (!g_media_source) {
+    SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize media source");
+    return -1;
+  }
+
+  // Enable loop if requested (only for file sources)
+  if (GET_OPTION(media_loop) && source_type == MEDIA_SOURCE_FILE) {
+    media_source_set_loop(g_media_source, true);
+    log_info("Media loop enabled");
+  }
+
   return 0;
 }
 /**
@@ -494,18 +554,10 @@ void capture_stop_thread() {
     return;
   }
 
-  // Flush webcam to interrupt any blocking ReadSample operations
-  // This allows the capture thread to notice should_exit() and exit cleanly
-  webcam_flush();
-
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_capture_thread_exited)) {
     platform_sleep_usec(100000); // 100ms
-    // Keep flushing in case the thread went back into a blocking read
-    if (wait_count % 5 == 0) {
-      webcam_flush();
-    }
     wait_count++;
   }
 
@@ -529,12 +581,17 @@ bool capture_thread_exited() {
 /**
  * Cleanup capture subsystem
  *
- * Stops capture thread and cleans up webcam resources.
+ * Stops capture thread and cleans up media source resources.
  * Called during client shutdown.
  *
  * @ingroup client_capture
  */
 void capture_cleanup() {
   capture_stop_thread();
-  webcam_cleanup();
+
+  // Destroy media source
+  if (g_media_source) {
+    media_source_destroy(g_media_source);
+    g_media_source = NULL;
+  }
 }

@@ -64,6 +64,11 @@ typedef enum {
   ERROR_AUDIO = 23,             /**< Audio device initialization or I/O failed */
   ERROR_AUDIO_IN_USE = 24,      /**< Audio device is in use */
   ERROR_TERMINAL = 25,          /**< Terminal initialization or capability detection failed */
+  ERROR_MEDIA_INIT = 26,        /**< Media source initialization failed */
+  ERROR_MEDIA_OPEN = 27,        /**< Failed to open media file or stream */
+  ERROR_MEDIA_DECODE = 28,      /**< Media decoding failed */
+  ERROR_MEDIA_SEEK = 29,        /**< Media seek operation failed */
+  ERROR_NOT_SUPPORTED = 30,     /**< Operation not supported */
 
   /* Network errors (40-59) */
   ERROR_NETWORK = 40,          /**< General network error */
@@ -164,6 +169,16 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Audio device in use";
   case ERROR_TERMINAL:
     return "Terminal error";
+  case ERROR_MEDIA_INIT:
+    return "Media source initialization failed";
+  case ERROR_MEDIA_OPEN:
+    return "Failed to open media file or stream";
+  case ERROR_MEDIA_DECODE:
+    return "Media decoding failed";
+  case ERROR_MEDIA_SEEK:
+    return "Media seek operation failed";
+  case ERROR_NOT_SUPPORTED:
+    return "Operation not supported";
   case ERROR_NETWORK:
     return "Network error";
   case ERROR_NETWORK_BIND:

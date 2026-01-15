@@ -500,6 +500,12 @@ asciichat_error_t options_init(int argc, char **argv) {
     log_debug("--no-compress set: disabling audio encoding");
   }
 
+  // Set media_from_stdin flag if media_file is "-"
+  if (opts.media_file[0] != '\0' && strcmp(opts.media_file, "-") == 0) {
+    opts.media_from_stdin = true;
+    log_debug("Media file set to stdin");
+  }
+
   // ========================================================================
   // STAGE 7: Publish to RCU
   // ========================================================================

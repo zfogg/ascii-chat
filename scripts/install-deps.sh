@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl miniupnpc libnatpmp
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl miniupnpc libnatpmp ffmpeg
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -129,6 +129,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libssl-dev \
       libminiupnpc-dev \
       libprotobuf-c-dev \
+      libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       doxygen \
       dpkg-dev rpm
 
@@ -282,6 +283,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       openssl-devel \
       miniupnpc-devel \
       protobuf-c-devel \
+      ffmpeg-devel \
       doxygen \
       rpm-build
 
@@ -300,6 +302,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       openssl \
       miniupnpc \
       protobuf-c \
+      ffmpeg \
       doxygen \
       dpkg rpm-tools
 
@@ -317,6 +320,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - portaudio (library and development headers)"
     echo >&2 "  - opus (library and development headers, for audio codec)"
     echo >&2 "  - sqlite3 (library and development headers, for discovery service database)"
+    echo >&2 "  - ffmpeg (library and development headers, for media file streaming)"
     echo >&2 "  - criterion (testing framework, library and development headers)"
     echo >&2 "  - libffi (foreign function interface, required by criterion)"
     echo >&2 "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"

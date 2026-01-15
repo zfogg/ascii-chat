@@ -502,6 +502,13 @@ typedef struct options_state {
   bool no_audio_mixer;             ///< Disable audio mixer (debug)
 
   // ============================================================================
+  // Media File Streaming Options
+  // ============================================================================
+  char media_file[OPTIONS_BUFF_SIZE]; ///< Media file path or "-" for stdin
+  bool media_loop;                    ///< Loop media file playback
+  bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
+
+  // ============================================================================
   // Display Options
   // ============================================================================
   terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)

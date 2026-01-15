@@ -831,6 +831,11 @@ if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-shared PRIVATE libdatachannel)
 endif()
 
+# Link media_source for FFmpeg media file streaming
+if(TARGET media_source AND FFMPEG_FOUND)
+    target_link_libraries(ascii-chat-shared PRIVATE media_source)
+endif()
+
 # Add build timing for ascii-chat-shared library
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
@@ -1085,6 +1090,11 @@ endif()
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
 if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
+endif()
+
+# Link media_source for FFmpeg media file streaming (static library)
+if(TARGET media_source AND FFMPEG_FOUND)
+    target_link_libraries(ascii-chat-static-lib INTERFACE media_source)
 endif()
 
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
