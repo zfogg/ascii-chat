@@ -1026,50 +1026,73 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     // Open output stream at NATIVE device rate - we'll resample from 48kHz buffer in callback
     err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, outputInfo->defaultSampleRate,
                         AUDIO_FRAMES_PER_BUFFER, paClipOff, output_callback, ctx);
-    if (err != paNoError) {
-      audio_ring_buffer_destroy(ctx->render_buffer);
-      ctx->render_buffer = NULL;
-      mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Failed to open output stream: %s", Pa_GetErrorText(err));
+    bool output_ok = (err == paNoError);
+    if (!output_ok) {
+      log_warn("Failed to open output stream: %s", Pa_GetErrorText(err));
     }
 
     // Open input stream at PIPELINE rate (48kHz) - let PortAudio resample from device if needed
     // This ensures input matches sample_rate for AEC3, avoiding resampling in our callback
     err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
                         input_callback, ctx);
-    if (err != paNoError) {
-      Pa_CloseStream(ctx->output_stream);
-      ctx->output_stream = NULL;
-      audio_ring_buffer_destroy(ctx->render_buffer);
-      ctx->render_buffer = NULL;
-      mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Failed to open input stream: %s", Pa_GetErrorText(err));
+    bool input_ok = (err == paNoError);
+    if (!input_ok) {
+      log_warn("Failed to open input stream: %s", Pa_GetErrorText(err));
     }
 
-    // Start both streams
-    err = Pa_StartStream(ctx->output_stream);
-    if (err != paNoError) {
-      Pa_CloseStream(ctx->input_stream);
-      Pa_CloseStream(ctx->output_stream);
-      ctx->input_stream = NULL;
-      ctx->output_stream = NULL;
+    // Check if we got at least one stream working
+    if (!input_ok && !output_ok) {
+      // Neither stream works - fail completely
       audio_ring_buffer_destroy(ctx->render_buffer);
       ctx->render_buffer = NULL;
       mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
+      return SET_ERRNO(ERROR_AUDIO, "Failed to open both input and output streams");
     }
 
-    err = Pa_StartStream(ctx->input_stream);
-    if (err != paNoError) {
-      Pa_StopStream(ctx->output_stream);
-      Pa_CloseStream(ctx->input_stream);
-      Pa_CloseStream(ctx->output_stream);
-      ctx->input_stream = NULL;
+    // If output failed but input works, we can still send audio to server
+    if (!output_ok && input_ok) {
+      log_info("Output stream unavailable - continuing with input-only (can send audio to server)");
       ctx->output_stream = NULL;
-      audio_ring_buffer_destroy(ctx->render_buffer);
-      ctx->render_buffer = NULL;
-      mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Failed to start input stream: %s", Pa_GetErrorText(err));
+    }
+    // If input failed but output works, we can still receive audio from server
+    if (!input_ok && output_ok) {
+      log_info("Input stream unavailable - continuing with output-only (can receive audio from server)");
+      ctx->input_stream = NULL;
+    }
+
+    // Start output stream if it's open
+    if (ctx->output_stream) {
+      err = Pa_StartStream(ctx->output_stream);
+      if (err != paNoError) {
+        if (ctx->input_stream)
+          Pa_CloseStream(ctx->input_stream);
+        Pa_CloseStream(ctx->output_stream);
+        ctx->input_stream = NULL;
+        ctx->output_stream = NULL;
+        audio_ring_buffer_destroy(ctx->render_buffer);
+        ctx->render_buffer = NULL;
+        mutex_unlock(&ctx->state_mutex);
+        return SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
+      }
+    }
+
+    // Start input stream if it's open
+    if (ctx->input_stream) {
+      err = Pa_StartStream(ctx->input_stream);
+      if (err != paNoError) {
+        if (ctx->output_stream)
+          Pa_StopStream(ctx->output_stream);
+        if (ctx->input_stream)
+          Pa_CloseStream(ctx->input_stream);
+        if (ctx->output_stream)
+          Pa_CloseStream(ctx->output_stream);
+        ctx->input_stream = NULL;
+        ctx->output_stream = NULL;
+        audio_ring_buffer_destroy(ctx->render_buffer);
+        ctx->render_buffer = NULL;
+        mutex_unlock(&ctx->state_mutex);
+        return SET_ERRNO(ERROR_AUDIO, "Failed to start input stream: %s", Pa_GetErrorText(err));
+      }
     }
 
     ctx->separate_streams = true;
