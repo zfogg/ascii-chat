@@ -28,16 +28,16 @@ cleanup() {
 STASHED_REMOTE=0
 
 PORT=37228
-HOST_ONE="BeaglePlay"
-HOST_ONE_IP="100.79.232.55"  # Tailscale IP for HOST_ONE
-HOST_ONE_USER="debian"  # BeaglePlay default user
+HOST_ONE="RaspberryPi"
+HOST_ONE_IP="100.68.40.63"  # Tailscale IP for HOST_ONE
+HOST_ONE_USER="alarm"  # Raspberry Pi default user
 HOST_TWO="manjaro-twopal"
 HOST_TWO_IP="100.104.17.128"  # Tailscale IP for HOST_TWO
 HOST_TWO_USER="zfogg"  # manjaro-twopal user
 DURATION=30
 
 # Paths are CONSTANT regardless of which host we run from
-REPO_ONE="/home/debian/ascii-chat"  # Path on HOST_ONE (bp)
+REPO_ONE="/home/alarm/src/github.com/zfogg/ascii-chat"  # Path on HOST_ONE (rpi)
 REPO_TWO="/home/zfogg/src/github.com/zfogg/ascii-chat"   # Path on HOST_TWO (Linux)
 BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
 BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
@@ -45,7 +45,7 @@ BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
 # Detect which host we're on
 CURRENT_HOST=$(hostname)
 shopt -s nocasematch
-if [[ "$CURRENT_HOST" == "BeaglePlay" ]] || [[ "$CURRENT_HOST" == "$HOST_ONE" ]]; then
+if [[ "$CURRENT_HOST" == "pi5" ]] || [[ "$CURRENT_HOST" == "$HOST_ONE" ]]; then
   LOCAL_IS_ONE=1
   LOCAL_REPO="$REPO_ONE"
   LOCAL_BIN="$BIN_ONE"
@@ -193,7 +193,7 @@ run_on_two "cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --targe
 
 # Start server on all interfaces so remote clients can connect
 echo "[6/8] Starting server on all interfaces:$PORT..."
-timeout $((DURATION + 10)) ./build/bin/ascii-chat --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT > /dev/null 2>&1 &
+BYPASS_AEC3=1 timeout $((DURATION + 10)) ./build/bin/ascii-chat --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT --no-audio-mixer > /dev/null 2>&1 &
 SERVER_PID=$!
 
 # Give server time to start (tmux session init + server startup)
@@ -243,23 +243,23 @@ fi
 echo "[7/8] Starting client 1 on $HOST_ONE with audio (default devices)..."
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
   # BeaglePlay: Use default audio devices (arecord works with defaults)
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
+  run_bg_local "BYPASS_AEC3=1 ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE --log-file /tmp/client1_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
 else
   # Use nohup for reliable background execution - connect to server on HOST_TWO
   # BeaglePlay: Use default audio devices (arecord works with defaults)
   CLIENT1_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"BYPASS_AEC3=1 ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
 # Start client 2 on HOST_TWO (connecting to server)
 echo "[8/8] Starting client 2 on $HOST_TWO..."
 if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
+  run_bg_local "BYPASS_AEC3=1 ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
 else
   # Use nohup for consistency - connect to server on HOST_ONE using remote address
   CLIENT2_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"BYPASS_AEC3=1 ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
