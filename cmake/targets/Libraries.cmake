@@ -241,7 +241,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     )
     # Link FFmpeg for media file streaming
     if(FFMPEG_FOUND)
-        target_link_libraries(ascii-chat-video ${FFMPEG_LIBRARIES})
+        target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
     endif()
 endif()
 
@@ -842,7 +842,7 @@ endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
 endif()
 
 # Add build timing for ascii-chat-shared library
@@ -1061,7 +1061,7 @@ endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-static-lib INTERFACE ${FFMPEG_LIBRARIES})
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${FFMPEG_LINK_LIBRARIES})
 endif()
 
 # Platform-specific system libraries

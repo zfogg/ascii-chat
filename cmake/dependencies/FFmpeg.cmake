@@ -38,6 +38,9 @@ message(STATUS "  - libavcodec: ${FFMPEG_libavcodec_VERSION}")
 message(STATUS "  - libavutil: ${FFMPEG_libavutil_VERSION}")
 message(STATUS "  - libswscale: ${FFMPEG_libswscale_VERSION}")
 message(STATUS "  - libswresample: ${FFMPEG_libswresample_VERSION}")
+message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
+message(STATUS "  - FFMPEG_LDFLAGS: ${FFMPEG_LDFLAGS}")
+message(STATUS "  - FFMPEG_LINK_LIBRARIES: ${FFMPEG_LINK_LIBRARIES}")
 
 # Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND
 # are set by pkg_check_modules() and are available in parent scope
