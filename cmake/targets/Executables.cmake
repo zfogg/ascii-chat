@@ -77,6 +77,10 @@ else()
     # USE_MUSL needs static library because musl requires static linking
     add_dependencies(ascii-chat ascii-chat-static-build generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-static)
+    # Link FFmpeg for media file streaming (required for static builds)
+    if(FFMPEG_FOUND)
+        target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
+    endif()
     # Define BUILDING_STATIC_LIB for executable when using static library (Windows)
     # This prevents LNK4217 warnings about dllimport on locally defined symbols
     if(WIN32)
