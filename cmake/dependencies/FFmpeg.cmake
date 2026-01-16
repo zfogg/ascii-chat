@@ -39,8 +39,6 @@ message(STATUS "  - libavutil: ${FFMPEG_libavutil_VERSION}")
 message(STATUS "  - libswscale: ${FFMPEG_libswscale_VERSION}")
 message(STATUS "  - libswresample: ${FFMPEG_libswresample_VERSION}")
 
-# Export FFmpeg libraries and include directories for use in Libraries.cmake
+# Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND
+# are set by pkg_check_modules() and are available in parent scope
 # SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
-set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} PARENT_SCOPE)
-set(FFMPEG_INCLUDE_DIRS ${FFMPEG_INCLUDE_DIRS} PARENT_SCOPE)
-set(FFMPEG_FOUND ${FFMPEG_FOUND} PARENT_SCOPE)
