@@ -1097,8 +1097,24 @@ else()
         ${CMAKE_THREAD_LIBS_INIT}
         m
         dl
-        stdc++
     )
+
+    # Link C++ standard library
+    if(USE_MUSL)
+        # Musl builds use Alpine's musl-compatible libc++
+        if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
+            target_link_libraries(ascii-chat-static-lib INTERFACE
+                ${ALPINE_LIBCXX_STATIC}
+                ${ALPINE_LIBCXXABI_STATIC}
+            )
+            if(ALPINE_LIBUNWIND_STATIC)
+                target_link_libraries(ascii-chat-static-lib INTERFACE ${ALPINE_LIBUNWIND_STATIC})
+            endif()
+        endif()
+    else()
+        # Non-musl builds use system libstdc++
+        target_link_libraries(ascii-chat-static-lib INTERFACE stdc++)
+    endif()
 endif()
 
 # Link libdatachannel for WebRTC P2P connections (static library)
