@@ -27,9 +27,9 @@ cleanup() {
 # Track if we stashed on remote (for cleanup)
 STASHED_REMOTE=0
 
-PORT=27228
+PORT=37228
 HOST_ONE="BeaglePlay"
-HOST_ONE_IP="BeaglePlay.local"  # mDNS hostname
+HOST_ONE_IP="100.79.232.55"  # Tailscale IP for HOST_ONE
 HOST_ONE_USER="debian"  # BeaglePlay default user
 HOST_TWO="manjaro-twopal"
 HOST_TWO_IP="100.89.125.127"  # Tailscale IP for HOST_TWO
@@ -170,14 +170,14 @@ safe_git_pull() {
 }
 
 # Pull latest code on remote machine only (local already has latest)
-echo "[3/8] Pulling latest code on remote machine..."
+#echo "[3/8] Pulling latest code on remote machine..."
 # Check if remote has uncommitted changes (will need stash)
-if ! run_remote "git diff --quiet && git diff --staged --quiet" 2>/dev/null; then
-  STASHED_REMOTE=1
-fi
-run_remote "$(safe_git_pull $REMOTE_REPO)"
+#if ! run_remote "git diff --quiet && git diff --staged --quiet" 2>/dev/null; then
+#  STASHED_REMOTE=1
+#fi
+#run_remote "$(safe_git_pull $REMOTE_REPO)"
 # If we get here, safe_git_pull succeeded and popped the stash
-STASHED_REMOTE=0
+#STASHED_REMOTE=0
 
 # Rebuild on HOST_ONE
 echo "[4/8] Rebuilding on $HOST_ONE..."
@@ -228,11 +228,15 @@ echo "Server verified running on localhost"
 
 # Determine server address for clients to use
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-  # Running on HOST_ONE, server is local
+  # Running on HOST_ONE (BeaglePlay), server is local
   SERVER_ADDR_FOR_CLIENTS="localhost"
+  # Client 2 on HOST_TWO needs to reach server on HOST_ONE - use IP
+  REMOTE_SERVER_ADDR="$HOST_ONE_IP"
 else
-  # Running on HOST_TWO, server is on HOST_TWO, use hostname so remote clients can reach it
-  SERVER_ADDR_FOR_CLIENTS="manjaro-twopal"
+  # Running on HOST_TWO (manjaro-twopal), server is local
+  SERVER_ADDR_FOR_CLIENTS="localhost"
+  # Client 1 on HOST_ONE needs to reach server on HOST_TWO - use Tailscale IP
+  REMOTE_SERVER_ADDR="$HOST_TWO_IP"
 fi
 
 # Start client 1 on HOST_ONE (connecting to server)
@@ -244,7 +248,7 @@ else
   # Use nohup for reliable background execution - connect to server on HOST_TWO
   # BeaglePlay: Use default audio devices (arecord works with defaults)
   CLIENT1_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${SERVER_ADDR_FOR_CLIENTS}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
@@ -253,9 +257,9 @@ echo "[8/8] Starting client 2 on $HOST_TWO..."
 if [[ $LOCAL_IS_ONE -eq 0 ]]; then
   run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
 else
-  # Use nohup for consistency - connect to server on HOST_TWO (itself)
+  # Use nohup for consistency - connect to server on HOST_ONE using remote address
   CLIENT2_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client localhost:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
+  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
 fi
 sleep 2  # Give client time to connect
 
@@ -272,7 +276,6 @@ sleep $((DURATION))
 
 # Give clients time to write analysis report on graceful exit
 echo "Waiting for clients to finish and write analysis reports..."
-sleep 10
 
 # Clean up any remaining processes (kill local server first, then remote clients with timeout)
 echo "Cleaning up any remaining processes..."
