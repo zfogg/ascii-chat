@@ -202,6 +202,9 @@ static void add_crypto_common_options(options_builder_t *b) {
 
   options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
+
+  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
+                           "SECURITY", false, NULL);
 }
 
 // ============================================================================
@@ -321,7 +324,7 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   options_builder_add_bool(b, "no-audio-mixer", '\0', offsetof(options_t, no_audio_mixer), false,
                            "Disable audio mixer (debug)", "PERFORMANCE", false, NULL);
 
-  // Security options (common with client, plus server-specific client-keys and no-encrypt)
+  // Security options (common with client, plus server-specific client-keys)
   add_crypto_common_options(b);
 
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
@@ -329,9 +332,6 @@ const options_config_t *options_preset_server(const char *program_name, const ch
 
   options_builder_add_bool(b, "acds-expose-ip", '\0', offsetof(options_t, acds_expose_ip), false,
                            "Explicitly allow public IP disclosure in ACDS sessions (requires ACDS, opt-in only)",
-                           "SECURITY", false, NULL);
-
-  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
                            "SECURITY", false, NULL);
 
   // ACDS Session Registration
@@ -501,6 +501,9 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                                            "Cannot use --no-compress with --compression-level");
   options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
                                            "Cannot use both --encode-audio and --no-encode-audio");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
 
   // Action options (execute and exit)
   options_builder_add_action(b, "help", 'h', action_help_client, "Show this help message and exit", "ACTIONS");
@@ -609,20 +612,7 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                                "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
 
   // Encryption options (shared with client and server)
-  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
-                           "SECURITY", false, NULL);
-
-  options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
-                             false, "ASCII_CHAT_KEY", NULL);
-
-  options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
-                             "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
-
-  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
-                             "SECURITY", false, NULL, NULL);
-
-  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
-                           "SECURITY", false, NULL);
+  add_crypto_common_options(b);
 
   // Identity verification options
   options_builder_add_bool(b, "require-server-identity", 'S', offsetof(options_t, require_server_identity), false,
@@ -666,6 +656,11 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), false,
                            "Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)",
                            "WEBRTC", false, "ASCII_CHAT_UPNP");
+
+  // Dependencies
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
 
   // Action options (execute and exit)
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
