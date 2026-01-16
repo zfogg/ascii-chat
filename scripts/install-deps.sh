@@ -277,7 +277,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
-      jack-audio-connection-kit-devel \
       criterion-devel libffi-devel sqlite-devel \
       userspace-rcu-devel \
       openssl-devel \
@@ -292,17 +291,14 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
     sudo pacman -S --needed \
       pkg-config autoconf automake libtool \
-      clang llvm lldb ccache \
-      lld \
+      ccache \
+      clang llvm lldb lld \
       libc++ libc++abi \
       cmake ninja make \
       musl mimalloc \
-      zstd zlib libsodium portaudio opus sqlite \
-      criterion \
+      zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
       openssl \
-      miniupnpc \
-      protobuf-c \
-      ffmpeg \
+      criterion \
       doxygen \
       dpkg rpm-tools
 
@@ -323,7 +319,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - ffmpeg (library and development headers, for media file streaming)"
     echo >&2 "  - criterion (testing framework, library and development headers)"
     echo >&2 "  - libffi (foreign function interface, required by criterion)"
-    echo >&2 "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"
     exit 1
   fi
 
