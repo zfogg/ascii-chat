@@ -368,6 +368,154 @@ if(NOT TARGET OpenSSL::SSL)
 endif()
 
 # =============================================================================
+# FFmpeg - Media encoding/decoding libraries
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source...")
+
+set(FFMPEG_PREFIX "${MUSL_DEPS_DIR_STATIC}/ffmpeg")
+set(FFMPEG_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/ffmpeg-build")
+set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/src/ffmpeg")
+
+# Build FFmpeg synchronously at configure time if not cached
+if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libavutil.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libswscale.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libswresample.a")
+    message(STATUS "  FFmpeg libraries not found in cache, will build from source")
+    message(STATUS "  This may take several minutes on first build...")
+
+    file(MAKE_DIRECTORY "${FFMPEG_BUILD_DIR}")
+    file(MAKE_DIRECTORY "${FFMPEG_SOURCE_DIR}")
+
+    # Download FFmpeg source
+    set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-7.1.tar.xz")
+    if(NOT EXISTS "${FFMPEG_TARBALL}")
+        message(STATUS "  Downloading FFmpeg 7.1...")
+        file(DOWNLOAD
+            "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz"
+            "${FFMPEG_TARBALL}"
+            EXPECTED_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+            STATUS DOWNLOAD_STATUS
+            SHOW_PROGRESS
+        )
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+            message(FATAL_ERROR "Failed to download FFmpeg: ${ERROR_MSG}")
+        endif()
+    endif()
+
+    # Extract tarball
+    if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/configure")
+        message(STATUS "  Extracting FFmpeg...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xJf "${FFMPEG_TARBALL}"
+            WORKING_DIRECTORY "${FFMPEG_BUILD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract FFmpeg tarball")
+        endif()
+        # Move from ffmpeg-7.1/ to src/ffmpeg/
+        file(RENAME "${FFMPEG_BUILD_DIR}/ffmpeg-7.1" "${FFMPEG_SOURCE_DIR}")
+    endif()
+
+    # Configure FFmpeg with minimal build (only codecs we need)
+    message(STATUS "  Configuring FFmpeg...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env
+            CC=${MUSL_GCC}
+            REALGCC=${REAL_GCC}
+            CFLAGS=${MUSL_KERNEL_CFLAGS}
+            "${FFMPEG_SOURCE_DIR}/configure"
+            --prefix=${FFMPEG_PREFIX}
+            --cc=${MUSL_GCC}
+            --enable-static
+            --disable-shared
+            --enable-pic
+            --disable-programs
+            --disable-doc
+            --disable-htmlpages
+            --disable-manpages
+            --disable-podpages
+            --disable-txtpages
+            --disable-debug
+            --disable-runtime-cpudetect
+            --disable-autodetect
+            --disable-x86asm
+            --enable-protocol=file
+            --enable-demuxer=mov,matroska,avi,gif,image2
+            --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
+            --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video
+            --enable-swscale
+            --enable-swresample
+        WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+        RESULT_VARIABLE CONFIG_RESULT
+        OUTPUT_VARIABLE CONFIG_OUTPUT
+        ERROR_VARIABLE CONFIG_ERROR
+    )
+    if(NOT CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_ERROR}")
+    endif()
+
+    # Build FFmpeg
+    message(STATUS "  Building FFmpeg (this takes several minutes)...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+        WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+        RESULT_VARIABLE BUILD_RESULT
+        OUTPUT_VARIABLE BUILD_OUTPUT
+        ERROR_VARIABLE BUILD_ERROR
+    )
+    if(NOT BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to build FFmpeg:\n${BUILD_ERROR}")
+    endif()
+
+    # Install FFmpeg
+    message(STATUS "  Installing FFmpeg...")
+    execute_process(
+        COMMAND make install
+        WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+        RESULT_VARIABLE INSTALL_RESULT
+        OUTPUT_VARIABLE INSTALL_OUTPUT
+        ERROR_VARIABLE INSTALL_ERROR
+    )
+    if(NOT INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to install FFmpeg:\n${INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "  ${BoldGreen}FFmpeg${ColorReset} built and cached successfully")
+else()
+    message(STATUS "  ${BoldBlue}FFmpeg${ColorReset} libraries found in cache: ${BoldMagenta}${FFMPEG_PREFIX}/lib/libavformat.a${ColorReset}")
+endif()
+
+# Create dummy target for dependency tracking
+add_custom_target(ffmpeg-musl DEPENDS openssl-musl)
+
+# Set FFmpeg variables for use in the build
+set(FFMPEG_FOUND TRUE)
+set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include" CACHE PATH "FFmpeg include directory" FORCE)
+set(FFMPEG_LIBRARY_DIR "${FFMPEG_PREFIX}/lib" CACHE PATH "FFmpeg library directory" FORCE)
+
+# Set individual library paths
+set(FFMPEG_avformat_LIBRARY "${FFMPEG_PREFIX}/lib/libavformat.a" CACHE FILEPATH "FFmpeg avformat library" FORCE)
+set(FFMPEG_avcodec_LIBRARY "${FFMPEG_PREFIX}/lib/libavcodec.a" CACHE FILEPATH "FFmpeg avcodec library" FORCE)
+set(FFMPEG_avutil_LIBRARY "${FFMPEG_PREFIX}/lib/libavutil.a" CACHE FILEPATH "FFmpeg avutil library" FORCE)
+set(FFMPEG_swscale_LIBRARY "${FFMPEG_PREFIX}/lib/libswscale.a" CACHE FILEPATH "FFmpeg swscale library" FORCE)
+set(FFMPEG_swresample_LIBRARY "${FFMPEG_PREFIX}/lib/libswresample.a" CACHE FILEPATH "FFmpeg swresample library" FORCE)
+
+# Set FFMPEG_LINK_LIBRARIES for use in target_link_libraries
+set(FFMPEG_LINK_LIBRARIES
+    "${FFMPEG_PREFIX}/lib/libavformat.a"
+    "${FFMPEG_PREFIX}/lib/libavcodec.a"
+    "${FFMPEG_PREFIX}/lib/libavutil.a"
+    "${FFMPEG_PREFIX}/lib/libswscale.a"
+    "${FFMPEG_PREFIX}/lib/libswresample.a"
+    CACHE STRING "FFmpeg link libraries" FORCE
+)
+
+# =============================================================================
 # ALSA - Advanced Linux Sound Architecture
 # =============================================================================
 message(STATUS "Configuring ${BoldBlue}ALSA${ColorReset} from source...")

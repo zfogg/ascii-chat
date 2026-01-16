@@ -3,6 +3,15 @@
 # =============================================================================
 # Find FFmpeg libraries for media file decoding
 
+# Skip pkg-config search if using musl (libraries are built from source in MuslDependencies.cmake)
+if(USE_MUSL)
+    # MuslDependencies.cmake will set FFMPEG_FOUND and FFMPEG_LINK_LIBRARIES
+    if(FFMPEG_FOUND)
+        message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg (musl): using musl-built static libraries")
+        return()
+    endif()
+endif()
+
 # Find pkg-config (required for finding FFmpeg)
 find_package(PkgConfig QUIET)
 
