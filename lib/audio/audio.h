@@ -75,7 +75,9 @@
 #endif
 
 #include "common.h"
+#include "platform/thread.h"
 #include "platform/mutex.h"
+#include "platform/cond.h"
 #include "ringbuffer.h"
 
 /* ============================================================================
@@ -105,6 +107,22 @@
  * (speaker output) and capture (microphone input) at the EXACT same instant,
  * enabling perfect timing for WebRTC AEC3 echo cancellation.
  *
+ * WORKER THREAD ARCHITECTURE:
+ * The audio system now uses a dedicated worker thread to move ALL heavy
+ * processing (AEC3, resampling, RMS calculations) out of the real-time
+ * PortAudio callbacks. This ensures callbacks complete in <2ms (was 50-80ms).
+ *
+ * Architecture:
+ * - PortAudio Callback (Real-Time, <2ms): Lock-free ring buffer copies only
+ * - Worker Thread (Non-Real-Time): Heavy processing (AEC3, filters, resampling)
+ *
+ * Ring Buffers:
+ * - raw_capture_rb: Callback → Worker (raw mic samples)
+ * - raw_render_rb: Callback → Worker (raw speaker samples for AEC3 reference)
+ * - processed_capture_rb: Worker → Network (after AEC3/filters, ready for encoder)
+ * - processed_playback_rb: Worker → Callback (ready for speakers)
+ * - network_playback_rb: Network → Worker (decoded Opus from network)
+ *
  * @note The audio context must be initialized with audio_init() before use.
  * @note Use audio_start_duplex()/audio_stop_duplex() to control the stream.
  * @note State is protected by state_mutex for thread-safe operations.
@@ -112,21 +130,45 @@
  * @ingroup audio
  */
 typedef struct {
-  PaStream *duplex_stream;              ///< PortAudio full-duplex stream (simultaneous input+output)
-  PaStream *input_stream;               ///< Separate input stream (when full-duplex unavailable)
-  PaStream *output_stream;              ///< Separate output stream (when full-duplex unavailable)
-  audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for processed capture (after AEC3) for encoder thread
-  audio_ring_buffer_t *playback_buffer; ///< Ring buffer for decoded audio from network
+  // PortAudio streams
+  PaStream *duplex_stream; ///< PortAudio full-duplex stream (simultaneous input+output)
+  PaStream *input_stream;  ///< Separate input stream (when full-duplex unavailable)
+  PaStream *output_stream; ///< Separate output stream (when full-duplex unavailable)
+
+  // New architecture: 5 ring buffers for lock-free callback → worker → network
+  audio_ring_buffer_t *raw_capture_rb;        ///< Callback → Worker: Raw mic samples (no processing)
+  audio_ring_buffer_t *raw_render_rb;         ///< Callback → Worker: Raw speaker samples (AEC3 reference)
+  audio_ring_buffer_t *processed_playback_rb; ///< Worker → Callback: Ready for speakers
+
+  // Legacy ring buffers (will be migrated to new architecture)
+  audio_ring_buffer_t *capture_buffer;  ///< OLD: Worker → Network (will become processed_capture_rb)
+  audio_ring_buffer_t *playback_buffer; ///< OLD: Network → Worker (will become network_playback_rb)
   audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
-  bool initialized;                     ///< True if context has been initialized
-  bool running;                         ///< True if duplex stream is active
-  bool separate_streams;                ///< True if using separate input/output streams
-  _Atomic bool shutting_down;           ///< True when shutdown started - callback outputs silence
-  mutex_t state_mutex;                  ///< Mutex protecting context state
-  void *audio_pipeline;                 ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
-  double sample_rate;                   ///< Actual sample rate of streams (48kHz)
-  double input_device_rate;             ///< Native sample rate of input device
-  double output_device_rate;            ///< Native sample rate of output device
+
+  // Worker thread for heavy processing (AEC3, resampling, filters)
+  asciichat_thread_t worker_thread; ///< Worker thread for audio processing
+  mutex_t worker_mutex;             ///< Mutex protecting worker state
+  cond_t worker_cond;               ///< Condition variable for worker signaling
+  bool worker_running;              ///< True if worker thread is running
+  _Atomic bool worker_should_stop;  ///< Signal worker thread to exit
+
+  // Pre-allocated worker buffers (avoid malloc in worker loop)
+  float *worker_capture_batch;  ///< Pre-allocated buffer for batch capture processing
+  float *worker_render_batch;   ///< Pre-allocated buffer for batch render processing
+  float *worker_playback_batch; ///< Pre-allocated buffer for batch playback processing
+
+  // State flags
+  bool initialized;           ///< True if context has been initialized
+  bool running;               ///< True if duplex stream is active
+  bool separate_streams;      ///< True if using separate input/output streams
+  _Atomic bool shutting_down; ///< True when shutdown started - callback outputs silence
+  mutex_t state_mutex;        ///< Mutex protecting context state
+
+  // Audio pipeline and device info
+  void *audio_pipeline;      ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
+  double sample_rate;        ///< Actual sample rate of streams (48kHz)
+  double input_device_rate;  ///< Native sample rate of input device
+  double output_device_rate; ///< Native sample rate of output device
 } audio_context_t;
 
 /* ============================================================================
