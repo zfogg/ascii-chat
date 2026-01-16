@@ -8,13 +8,13 @@ sleep 0.5
 echo "Starting server..."
 /home/zfogg/src/github.com/zfogg/ascii-chat/build/bin/ascii-chat --log-level error --quiet server --port $PORT &
 SERVER_PID=$!
+sleep 3
 
 echo "Capturing frame from real webcam..."
 export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
-(sleep 5 && killall -9 ascii-chat) &
-timeout 5 /home/zfogg/src/github.com/zfogg/ascii-chat/build/bin/ascii-chat --log-level error --quiet client 127.0.0.1:$PORT --snapshot --snapshot-delay 1 >/tmp/frame_webcam.txt 2>/tmp/frame_error.txt || true
+(sleep 8 && killall -9 ascii-chat) &
+/home/zfogg/src/github.com/zfogg/ascii-chat/build/bin/ascii-chat --log-level error --quiet client 127.0.0.1:$PORT --snapshot --snapshot-delay 1 --width 120 --height 28 >/tmp/frame_webcam.txt 2>/tmp/frame_error.txt
 
-# Give server time to shutdown cleanly, then force kill any remaining processes
 sleep 1
 killall -9 ascii-chat 2>/dev/null || true
 

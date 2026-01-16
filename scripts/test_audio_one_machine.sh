@@ -68,7 +68,7 @@ run_cmd "cmake --build build --target ascii-chat 2>&1 | tail -5" || {
 
 # Start server
 echo "[4/6] Starting server on localhost:$PORT..."
-run_bg "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 10)) $BIN --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT --no-upnp"
+run_bg "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 10)) $BIN --log-file /tmp/server_debug.log server 0.0.0.0 --port $PORT"
 
 # Give server time to start
 sleep 2
