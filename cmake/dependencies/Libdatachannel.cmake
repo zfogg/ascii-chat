@@ -129,7 +129,31 @@ if(USE_VCPKG AND VCPKG_ROOT)
 endif()
 
 # =============================================================================
-# Build from source if not found in vcpkg
+# Try system package if not found in vcpkg
+# =============================================================================
+if(NOT LIBDATACHANNEL_FOUND)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking system packages...")
+
+    # Try find_package for system installation (e.g., Arch extra repo)
+    find_package(LibDataChannel QUIET)
+
+    if(LibDataChannel_FOUND)
+        set(LIBDATACHANNEL_FOUND TRUE)
+        message(STATUS "${BoldGreen}libdatachannel${ColorReset} found via system package manager")
+
+        # Create INTERFACE library that wraps the found package
+        # LibDataChannel::LibDataChannel is the imported target from find_package
+        if(NOT TARGET libdatachannel)
+            add_library(libdatachannel INTERFACE)
+            target_link_libraries(libdatachannel INTERFACE LibDataChannel::LibDataChannel)
+        endif()
+    else()
+        message(STATUS "${BoldYellow}libdatachannel${ColorReset} not found in system packages")
+    endif()
+endif()
+
+# =============================================================================
+# Build from source if not found anywhere
 # =============================================================================
 if(NOT LIBDATACHANNEL_FOUND)
     message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Building from source...")
