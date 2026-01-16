@@ -32,7 +32,7 @@ HOST_ONE="BeaglePlay"
 HOST_ONE_IP="100.79.232.55"  # Tailscale IP for HOST_ONE
 HOST_ONE_USER="debian"  # BeaglePlay default user
 HOST_TWO="manjaro-twopal"
-HOST_TWO_IP="100.89.125.127"  # Tailscale IP for HOST_TWO
+HOST_TWO_IP="100.104.17.128"  # Tailscale IP for HOST_TWO
 HOST_TWO_USER="zfogg"  # manjaro-twopal user
 DURATION=30
 
