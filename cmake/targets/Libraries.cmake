@@ -1059,6 +1059,11 @@ elseif(MIMALLOC_LIBRARIES)
     target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
 endif()
 
+# Link FFmpeg for media file streaming
+if(FFMPEG_FOUND)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${FFMPEG_LIBRARIES})
+endif()
+
 # Platform-specific system libraries
 if(WIN32)
     target_link_libraries(ascii-chat-static-lib INTERFACE
