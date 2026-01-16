@@ -17,6 +17,11 @@ case "$PLATFORM" in
             echo -e "${GREEN}✓ Binary is statically linked${RESET}"
             exit 0
         else
+            # Check if this is a Homebrew build (allow dynamic linking for Homebrew)
+            if ldd "$BINARY" | grep -q '/home/linuxbrew\|/opt/homebrew'; then
+                echo -e "${GREEN}✓ Binary uses Homebrew libraries (dynamic linking expected)${RESET}"
+                exit 0
+            fi
             echo -e "${YELLOW}WARNING: Release build is NOT statically linked!${RESET}"
             ldd "$BINARY"
             exit 1
