@@ -4,32 +4,31 @@ Video chat in your terminal
 
 Probably the first command line video chat program (let me know if this isn't
 true). Initial commits _November 20-24, 2013_, with
-[@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon
-(I forget which one).
+[@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon.
 
 ascii-chat is a client-server application that operates over TCP/IP. It
 supports color and audio and crypto and compression and multiple clients
-and has lots of other little features and options.
+and has many little features and options.
 
 The client functions by simply printing text and terminal escape codes to your
 terminal, so it works EVERYWHERE that terminals work: on rxvt-unicode in
 OpenBox, in a Putty SSH session, in iTerm and Kitty.app on macOS, and
 theoretically everywhere else terminals run. You just need a webcam.
 
-ascii-chat even works in an initial UNIX login shell. You know, the shell that
-runs 'startx' and launches your desktop environment so you can open a GUI
-terminal app like Konsole or Kitty or Alacritty. You don't need a desktop
-environment at all to video chat with ascii-chat. (\*)
+ascii-chat even works in an initial unix login shell. You know, the shell that
+runs 'startx' and launches your desktop environment so you can open a gui
+terminal app like Konsole or Kitty or Alacritty in kde or xfce. You don't need a
+desktop environment at all to video chat with ascii-chat. (\*)
 
-🆕 We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
+🆕 We support UTF-8 now so it's not just ASCII anymore. However, the name is still ascii-chat.
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol docs](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**.
 
-🆕 Audio is now supported - turn on your microphone and start talking! (TODO: buggy - needs work) See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**.
+🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work, audio isn't crisp)
 
 📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
 
-\(\*) Testing needed to verify a decent framerate on different systems and environments.
+\(\*) Testing needed to verify a decent framerate.
 
 ## Animated Demonstrations
 
@@ -54,37 +53,31 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
   - [Code Coverage](#code-coverage)
   - [Table of Contents](#table-of-contents)
   - [Get ascii-chat](#get-ascii-chat)
+  - [Build From Source](#build-from-source)
   - [Usage](#usage)
-  - [Command line flags](#command-line-flags)
-    - [Client Options](#client-options)
-    - [Server Options](#server-options)
+  - [Command Line Flags](#command-line-flags)
+    - [Client Mode Options](#client-mode-options)
+    - [Server Mode Options](#server-mode-options)
+    - [Mirror Mode Options](#mirror-mode-options)
   - [Cryptography](#cryptography)
     - [Authentication Options](#authentication-options)
     - [Usage Examples](#usage-examples)
-  - [Open Source](#open-source)
-    - [Dependencies](#dependencies)
-      - [List of Dependencies and What We Use Them For](#list-of-dependencies-and-what-we-use-them-for)
-      - [Operating System APIs](#operating-system-apis)
-      - [Install Dependencies on Linux or macOS](#install-dependencies-on-linux-or-macos)
-      - [Install Dependencies on Windows](#install-dependencies-on-windows)
-    - [Build from source](#build-from-source)
-      - [What is musl and mimalloc?](#what-is-musl-and-mimalloc)
-      - [Development Tools](#development-tools)
-      - [Configuration Options](#configuration-options)
-      - [Documentation](#documentation)
-    - [Testing](#testing)
-      - [Testing Framework](#testing-framework)
-      - [Quick Start](#quick-start)
-      - [Test Types](#test-types)
-      - [Using the Test Script Directly](#using-the-test-script-directly)
-      - [Windows Docker Testing](#windows-docker-testing)
-      - [Manual Test Execution](#manual-test-execution)
   - [Environment Variables](#environment-variables)
     - [Security Variables](#security-variables)
     - [Terminal Variables (Used for Display Detection)](#terminal-variables-used-for-display-detection)
     - [POSIX-Specific Variables](#posix-specific-variables)
     - [Windows-Specific Variables](#windows-specific-variables)
     - [Development/Testing Variables](#developmenttesting-variables)
+  - [libasciichat](#libasciichat)
+  - [Open Source](#open-source)
+    - [Dependencies](#dependencies)
+      - [List of Dependencies and What We Use Them For](#list-of-dependencies-and-what-we-use-them-for)
+      - [Operating System APIs](#operating-system-apis)
+      - [Install Dependencies](#install-dependencies)
+    - [What is musl and mimalloc?](#what-is-musl-and-mimalloc)
+    - [Development Tools & Configuration](#development-tools--configuration)
+    - [Documentation](#documentation)
+    - [Testing](#testing)
   - [TODO](#todo)
   - [Notes](#notes)
 
@@ -121,6 +114,35 @@ paru -S libasciichat-git     # Development libraries from git
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
 - Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
 - Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
+
+## Build From Source
+
+> 📚 **Complete build guide: [Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)** — CMake presets, configuration options, troubleshooting, and platform-specific details.
+
+**Quick start:**
+
+```bash
+# 1. Clone the repository
+git clone git@github.com:zfogg/ascii-chat.git
+cd ascii-chat
+
+# 2. Get submodules
+git submodule update --init --recursive
+
+# 3. Install dependencies (see supported platforms above)
+./scripts/install-deps.sh      # Linux or macOS
+# ./scripts/install-deps.ps1   # Windows
+
+# 4. Build
+cmake --preset default
+cmake --build build
+
+# 5. Run
+./build/bin/ascii-chat server  # Start server
+./build/bin/ascii-chat client  # Connect client (in another terminal)
+```
+
+For detailed build instructions, configuration options, and troubleshooting, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
 
 ## Usage
 
@@ -168,7 +190,7 @@ From the build directory (after running `cmake --build build --target docs`):
 man build/docs/ascii-chat.1
 ```
 
-## Command line flags
+## Command Line Flags
 
 ### Binary-Level Options
 
@@ -199,18 +221,20 @@ ascii-chat -V --log-level debug --log-file /tmp/debug.log client
 ascii-chat --config ~/my-config.toml server
 ```
 
-### Client Options
+### Client Mode Options
 
 Run `ascii-chat client --help` to see all client options.
 
 **Connection (positional argument):**
 
 Client accepts 0-1 positional argument for server address:
+
 - `[address][:port]`: Server address with optional port
   - `address`: IPv4, IPv6, or hostname (default: localhost)
   - `:port`: Optional port suffix (default: 27224)
 
 Examples:
+
 ```bash
 ascii-chat client                      # Connect to localhost:27224
 ascii-chat client 192.168.1.1          # Connect to 192.168.1.1:27224
@@ -278,18 +302,20 @@ ascii-chat client [::1]:8080           # Connect to IPv6 ::1:8080
 - `--no-encrypt`: Disable encryption (for local testing)
 - `--server-key KEY`: Expected server public key for identity verification (prevents MITM attacks)
 
-### Server Options
+### Server Mode Options
 
 Run `ascii-chat server --help` to see all server options.
 
 **Network Binding (positional arguments):**
 
 Server accepts 0-2 positional arguments for bind addresses:
+
 - 0 arguments: bind to defaults (127.0.0.1 and ::1)
 - 1 argument: bind to this IPv4 OR IPv6 address
 - 2 arguments: bind to both (must be one IPv4 and one IPv6)
 
 Examples:
+
 ```bash
 ascii-chat server                      # Bind to 127.0.0.1 and ::1
 ascii-chat server 0.0.0.0              # Bind to all IPv4 interfaces
@@ -455,421 +481,6 @@ ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --pas
 ascii-chat server --key gpg:7FE90A79F2E80ED3 --password "password123"
 ```
 
-## libasciichat
-
-ascii-chat is built on a modern, reusable C library called **libasciichat** that can be embedded in other projects. The library provides production-ready implementations for video processing, networking, cryptography, and cross-platform development. You can install libasciichat as a development dependency and use it in your own applications.
-
-**What's in the library:**
-
-- **Network Protocol**: Full implementation of the ascii-chat client/server protocol with encrypted packet exchange, lossless frame compression (zstd), and audio codec integration (Opus). See the protocol reference in the docs.
-- **Image Processing**: The `video` module converts images to ASCII art with hardware acceleration via SIMD (AVX2, NEON, SSE) for 1-4x performance gains. Includes grid layout algorithms for multi-client rendering.
-- **Platform Abstraction**: Write once, run anywhere. Cross-platform abstractions for threads, mutexes, read-write locks, condition variables, sockets, and terminal I/O that work identically on Windows, macOS, and Linux.
-- **Media Support**: Audio capture, mixing, and playback via PortAudio; webcam integration with V4L2 (Linux), AVFoundation (macOS), and Media Foundation (Windows); frame buffering and synchronization.
-- **Cryptography**: End-to-end encryption with libsodium (X25519 key exchange, XSalsa20-Poly1305 AEAD, Ed25519 signatures) and SSH key authentication with agent support.
-- **Debugging & Profiling**: Built-in memory leak detection with source file/line tracking, lock contention analysis, AddressSanitizer integration, and comprehensive logging infrastructure.
-- **Memory Management**: High-performance buffer pooling, lock-free ring buffers, and thread-safe packet queues designed for real-time video/audio applications.
-
-**Install libasciichat:**
-
-```bash
-# macOS (Homebrew)
-brew install libasciichat
-
-# Arch Linux (AUR)
-paru -S libasciichat       # Stable release
-paru -S libasciichat-git   # Latest from git
-```
-
-The library headers, static and shared libraries, and API documentation are included. Installation also provides CMake config files (`asciichatConfig.cmake`) and pkg-config metadata (`libasciichat.pc`) for integration into your own projects.
-
-**Using libasciichat in your CMake project:**
-
-```cmake
-find_package(asciichat REQUIRED)
-target_link_libraries(your_project asciichat::asciichat)
-```
-
-**Using libasciichat with pkg-config:**
-
-```bash
-pkg-config --cflags --libs libasciichat
-```
-
-See the online **[API documentation](https://zfogg.github.io/ascii-chat/)** for detailed function references and architecture guides.
-
-## Open Source
-
-ascii-chat is an open source project with an MIT license, meaning you can and should use our code to make cool stuff. Follow through this Open Source section of the README and you'll be compiling against libasciichat in no time.
-
-> 💡 **For detailed API documentation**, see the **[online docs](https://zfogg.github.io/ascii-chat/)** — includes function references, architecture diagrams, and module documentation generated from source comments.
-
-The first thing you need to do is get the dependencies. Some of them are git submodules of the repo. When you clone the repo get the submodules too.
-
-```bash
-git submodule init
-git submodule update --recursive
-```
-
-Now let's list out and talk about the dependencies before we install them.
-
-### Dependencies
-
-> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)**
-
-ascii-chat is built on operating system code and several libraries.
-
-#### List of Dependencies and What We Use Them For
-
-- [musl libc](https://musl.libc.org/) - A small and focused implementation of the C standard library for Linux
-
-  - **Purpose**: This enables us to nicely make static builds that work on any Linux system. This is just for Linux releases - you can build ascii-chat with your system libc if you don't want to use musl (`cmake -B build -DUSE_MUSL=OFF`).
-  - **License**: MIT
-
-- [mimalloc](https://github.com/microsoft/mimalloc) - A drop-in replacement for `malloc()`
-
-  - **Purpose**: Better performing memory allocation. ascii-chat releases are build with mimalloc but you can build without it if you want to use the system default allocator (`cmake -B build -DUSE_MIMALLOC=OFF`).
-  - **License**: MIT
-
-- [PortAudio](http://www.portaudio.com/) - Audio I/O Library
-
-  - **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
-  - **License**: MIT
-
-- [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
-
-  - **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
-  - **License**: MIT
-
-- [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
-
-  - **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
-  - **License**: BSD revised
-
-- [libsodium](https://libsodium.org/) - Cryptographic Library
-
-  - **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
-  - **License**: ISC
-
-- [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
-
-  - **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This code for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
-  - **License**: [none]
-
-- [BearSSL](https://bearssl.org/) - SSL/TLS Library
-
-  - **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
-  - **License**: MIT
-
-- [zstd](https://facebook.github.io/zstd/) - Compression Library
-
-  - **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
-  - **License**: BSD/GPLv2
-
-- [Opus](https://opus-codec.org/) - Audio Codec Library
-
-  - **Purpose**: Real-time audio compression for low-bandwidth audio transmission. Enables high-quality bidirectional voice and audio communication between clients with minimal latency and bandwidth overhead.
-  - **License**: BSD
-
-- [Sokol](https://github.com/floooh/sokol) - Utility Library
-
-  - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
-  - **License**: zlib/libpng
-
-- [SQLite3](https://www.sqlite.org/) - Embedded SQL Database Engine
-
-  - **Purpose**: Persistent storage for the ACDS (ASCII-Chat Discovery Service) session database. Stores active sessions, user identities, and connection metadata for the discovery service.
-  - **License**: Public Domain
-
-- [OpenSSL](https://www.openssl.org/) - Cryptography and SSL/TLS Toolkit
-
-  - **Purpose**: Used by libdatachannel for TURN server credential generation and secure WebRTC connections. Also used for the musl static builds to provide a complete TLS implementation.
-  - **License**: Apache 2.0
-
-- [libdatachannel](https://github.com/paullouisageneau/libdatachannel) - WebRTC Data Channels Library
-
-  - **Purpose**: Lightweight (~50k LOC) WebRTC library providing DataChannels for P2P connections. Used for NAT traversal and direct peer-to-peer communication via ICE/STUN/TURN.
-  - **License**: MPL 2.0
-
-- [miniupnpc](https://miniupnp.tuxfamily.org/) - UPnP IGD Client Library
-
-  - **Purpose**: Enables automatic port forwarding on home routers via UPnP (Universal Plug and Play). Allows approximately 70% of home users to establish direct TCP connections without requiring WebRTC fallback. This is an optional dependency - if not available, ascii-chat gracefully falls back to WebRTC for NAT traversal.
-  - **License**: BSD
-
-#### Operating System APIs
-
-> 🔌 **Cross-platform details: [Platform Abstraction Layer](https://zfogg.github.io/ascii-chat/group__platform.html#topic_platform)**
-
-ascii-chat uses native platform APIs for each platform for webcam access:
-
-- **Linux**: V4L2 Linux kernel module
-- **macOS**: AVFoundation native macOS API
-- **Windows**: Media Foundation native Windows API
-
-#### Install Dependencies on Linux or macOS
-
-**Linux (apt/yum/pacman)**:
-
-```bash
-./scripts/install-deps.sh
-```
-
-**macOS**:
-
-```bash
-brew install make cmake ninja llvm zstd portaudio opus libsodium criterion sqlite3 openssl miniupnpc
-```
-
-#### Install Dependencies on Windows
-
-1. **Install Scoop** (if not already installed):
-
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   irm get.scoop.sh | iex
-   ```
-
-2. **Install build tools via Scoop**:
-
-   ```powershell
-   scoop install cmake ninja llvm
-   ```
-
-3. **Install Windows SDK**:
-
-   - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
-   - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
-
-4. **Install vcpkg and dependencies**:
-
-   ```powershell
-   # Install vcpkg (if not already installed)
-   git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-   C:\vcpkg\bootstrap-vcpkg.bat
-
-   # Set VCPKG_ROOT environment variable
-   [Environment]::SetEnvironmentVariable("VCPKG_ROOT", "C:\vcpkg", "User")
-   $env:VCPKG_ROOT = "C:\vcpkg"
-   ```
-
-   **Option A: Manifest mode (recommended)** — Dependencies install automatically during CMake configure:
-
-   ```powershell
-   # Just build - vcpkg.json handles dependencies automatically
-   cmake --preset windows-release
-   cmake --build build_release
-   ```
-
-   **Option B: Classic mode** — Install packages manually:
-
-   ```powershell
-   # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows sqlite3:x64-windows openssl:x64-windows miniupnpc:x64-windows
-
-   # For release builds (static linking)
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static sqlite3:x64-windows-static openssl:x64-windows-static mimalloc:x64-windows-static miniupnpc:x64-windows-static
-   ```
-
-‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
-
-#### Using vcpkg on Unix (Optional)
-
-On Linux and macOS, the default is to use system package managers (apt/brew). However, you can optionally use vcpkg for consistent cross-platform builds:
-
-```bash
-# Install vcpkg
-git clone https://github.com/Microsoft/vcpkg.git ~/.local/share/vcpkg
-~/.local/share/vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT=~/.local/share/vcpkg
-
-# Option A: Manifest mode - dependencies install automatically
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
-cmake --build build
-
-# Option B: Classic mode - install packages manually, then build with USE_VCPKG
-vcpkg install zstd libsodium opus portaudio miniupnpc openssl sqlite3 libdatachannel
-cmake -B build -DUSE_VCPKG=ON
-cmake --build build
-```
-
-### Build from source
-
-> 📚 **See also: [Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)** — CMake presets, configuration options, and platform-specific build details.
-
-For open source developers who want a working copy:
-
-1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
-2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__dependencies.html)).
-3. Build an optimized-with-debug build: `make CMAKE_BUILD_TYPE=RelWithDebInfo`.
-4. Run `./build/bin/ascii-chat server`.
-5. Open a second terminal window, tab, split, or pane. Or go to another computer.
-6. Run `./build/bin/ascii-chat client`.
-7. 👯 _Optional:_ open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
-
-`make` configures CMake for you; if you prefer manual steps, you can still run cmake directly: `cmake --preset default && cmake --build build` (or choose another --preset).
-
-#### What is musl and mimalloc?
-
-**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. `Release` builds (`cmake --preset release`) use musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
-
-**mimalloc**: Microsoft's high-performance memory allocator. Release builds use mimalloc instead of the system allocator for better performance. It provides:
-
-- Up to 2x faster allocation/deallocation
-- Better memory locality and cache performance
-- Lower memory fragmentation
-- Optimized for multi-threaded workloads
-
-#### Development Tools
-
-First configure a debug build so the cmake targets we want will be available:
-
-```bash
-cmake --preset debug
-```
-
-Now we can access useful development targets:
-
-- `cmake --build build --target format` - Format all source code using clang-format
-- `cmake --build build --target format-check` - Error if the code is not formatted correctly
-- `cmake --build build --target clang-tidy` - Run clang-tidy across the tree
-- `cmake --build build --target docs` - Generate the Doxygen API reference into `build/docs/html`
-- `cmake --build build --target docs-open` - Build and open the docs in your default browser
-- `cmake --build build --target package-productbuild` - Build a release and make a `.pkg` installer for macOS (analogous targets exist per platform.. try `--target package-deb` for a `.deb` installer on Linux)
-- `./build.ps1` - PowerShell helper that stops running binaries, cleans, configures, builds, and syncs artifacts into `bin/` when developing on Windows
-- `ctest --test-dir build --output-on-failure --parallel 0` - Run all tests with ctest (auto-detects CPU cores).
-- `./tests/scripts/run-docker-tests.ps1` - Runs tests in a Docker container. Useful on Windows where Criterion tests don't compile.
-- `./scripts/*` - Developer utilities (dependency installers, useful aliases and functions, etc.)
-
-Sanitizers giving you trouble? Here's how to build a `Dev` build, which is like `Debug` but with sanitizers disabled:
-
-```bash
-cmake --preset dev && cmake --build build --target ascii-chat
-```
-
-#### Configuration Options
-
-Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for example `cmake -B build -DASCIICHAT_ENABLE_ANALYZERS=ON`). Defaults reflect the logic in our CMake modules. For complete details, see the **[Build System Reference](https://zfogg.github.io/ascii-chat/group__build.html)**.
-
-- `USE_MUSL` (Linux only): defaults to `ON` for `Release`/`RelWithDebInfo` builds to produce static PIE binaries with musl + mimalloc; `OFF` for other build types and on non-Linux hosts.
-- `USE_MIMALLOC`: defaults to `ON` whenever we're optimizing for performance (Release/RelWithDebInfo or musl builds), and `OFF` for `Debug`/`Dev` configurations to keep debugging predictable.
-- `BUILD_TESTS`: defaults to `ON` so Criterion unit/integration/performance tests are compiled.
-- `USE_PRECOMPILED_HEADERS`: defaults to `ON` (requires CMake ≥ 3.16 and is disabled automatically for musl builds) to accelerate core library builds.
-- `USE_CCACHE`: defaults to `ON` to speed up rebuilds with `ccache` (forced `OFF` when musl is enabled).
-- `USE_CPACK`: defaults to `ON` to make packaging targets (`package`, `package-productbuild`, etc.) available. The release preset turns this `ON`.
-- `ASCIICHAT_RELEASE_ENABLE_FAST_MATH`: defaults to `OFF`; flip to `ON` to allow aggressive fast-math optimizations in Release builds. The release preset turns this `ON`.
-- `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS`: defaults to `ON`; set `OFF` if you want slightly tighter Release binaries and are okay with poorer stack traces. The release preset turns this `OFF`.
-- `ASCIICHAT_ENABLE_ANALYZERS`: defaults to `OFF`; enable to wire clang-tidy/cppcheck into the build (respecting `ASCIICHAT_CLANG_TIDY`/`ASCIICHAT_CPPCHECK` overrides). The release preset turns this `OFF`.
-- `ASCIICHAT_ENABLE_UNITY_BUILDS`: defaults to `OFF`, but the presets turn it `ON`; enable to batch-compile sources for faster rebuilds on some toolchains.
-- `ASCIICHAT_ENABLE_CTEST_DASHBOARD`: defaults to `OFF`; enable to include CTest dashboard configuration (`include(CTest)`). All presets except release and release-musl turn this `ON`.
-
-#### Documentation
-
-📖 **Online Documentation: [zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)**
-
-The documentation is automatically generated from source code comments using Doxygen and published to GitHub Pages on every push to master.
-
-**To build documentation locally:**
-
-1. Install Doxygen (`brew install doxygen`, `apt-get install doxygen`, etc.) to enable the documentation targets.
-2. Configure a build (`cmake --preset default`) to let cmake find the doxygen binary.
-3. Run `cmake --build build --target docs` to generate HTML + manpage docs in `build/docs/`.
-4. Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
-
-### Testing
-
-> 🧪 **Full documentation: [Testing Framework](https://zfogg.github.io/ascii-chat/group__testing.html)**
-
-#### Testing Framework
-
-- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
-- **Coverage**: Code coverage reports generated in CI
-- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
-- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
-
-Tests are run using CMake's ctest tool, which integrates with Criterion for parallel execution and XML output.
-
-#### Quick Start
-
-- Have the dependencies installed.
-- Choose:
-  1. Linux or macOS: Use ctest directly
-  2. Windows: Use Docker: `./tests/scripts/run-docker-tests.ps1`
-
-#### Test Types
-
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions and full workflows
-- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
-
-#### Running Tests with ctest
-
-```bash
-# Build tests first
-cmake --build build --target tests
-
-# Run all tests
-ctest --test-dir build --output-on-failure --parallel 0
-
-# Run specific test categories using labels
-ctest --test-dir build --label-regex "^unit$" --output-on-failure
-ctest --test-dir build --label-regex "^integration$" --output-on-failure
-ctest --test-dir build --label-regex "^performance$" --output-on-failure
-
-# Run specific tests by name pattern
-ctest --test-dir build -R "buffer_pool" --output-on-failure
-ctest --test-dir build -R "test_unit_options" --output-on-failure
-
-# Verbose output
-ctest --test-dir build --output-on-failure --verbose
-
-# List available tests
-ctest --test-dir build -N
-```
-
-#### Windows Docker Testing
-
-On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
-
-```powershell
-# Run all tests
-./tests/scripts/run-docker-tests.ps1
-
-# Run specific test category
-./tests/scripts/run-docker-tests.ps1 unit
-./tests/scripts/run-docker-tests.ps1 integration
-./tests/scripts/run-docker-tests.ps1 performance
-
-# Run tests matching a pattern
-./tests/scripts/run-docker-tests.ps1 -Filter "buffer"
-
-# This script can also run clang-tidy static analysis
-./tests/scripts/run-docker-tests.ps1 clang-tidy
-./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
-
-# INFO: powershell doesn't like when you pass -Verbose to a script - use -VerboseOutput
-./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
-
-```
-
-The Docker script automatically:
-
-- Builds the test container if needed
-- Mounts your source code for live testing
-- Handles incremental builds
-- Provides the same test interface as the native script
-
-#### Manual Test Execution
-
-You can also run individual test executables directly:
-
-```bash
-# Build the project first
-cmake --preset debug && cmake --build build
-
-# Run individual tests
-build/bin/test_unit_mixer --verbose
-build/bin/test_performance_ascii_simd --filter "*monochrome*"
-```
-
 ## Environment Variables
 
 ascii-chat uses several environment variables for configuration and security
@@ -990,6 +601,233 @@ changing command-line arguments.
   - **Values**: `1`, `true`, `yes`, or `on` (case-insensitive for string values)
   - **Used for**: CI/CD pipelines and testing environments where no physical webcam is available
   - **Effect**: Sets `opt_test_pattern = true`, causing the client to use a generated test pattern instead of webcam input
+
+## ascii-chat internet protocol (acip)
+
+ascii-chat's protocol is called acip, and it's currently used and implemented by three three ascii-chat applications: ascii-chat client, ascii-chat server, and ascii-chat discovery service (acds). The protocol is designed in a future-proof and extensible way. The protocol is defined and implemented in libasciichat code in `lib/network` and used by the programs of this repo.
+
+## libasciichat
+
+ascii-chat is built on a modern, reusable C library called **libasciichat** that can be embedded in other projects. The library provides cross-platform code for developing ascii-chat internet protocol (ACIP) applications. You can install libasciichat as a development dependency and use to build other ACIP applications.
+
+**What's in the library:**
+
+- **Network Protocol**: Full implementation of the ascii-chat internet protocol with encrypted packet exchange, lossless frame compression (zstd), and audio codec integration (Opus). See the protocol reference in the docs.
+- **Image Processing**: The `video` module converts images and videos to ASCII art with hardware acceleration via SIMD (AVX2, NEON, SSE) for 1-4x performance gains. Includes grid layout algorithms for multi-client rendering.
+- **Platform Abstraction**: Write once, run anywhere. Cross-platform abstractions for threads, mutexes, read-write locks, condition variables, sockets, and terminal I/O that work identically on Windows, macOS, and Linux.
+- **Media Support**: Audio capture, mixing, and playback via PortAudio; webcam integration with V4L2 (Linux), AVFoundation (macOS), and Media Foundation (Windows); frame buffering and synchronization. File media support via ffmpeg.
+- **Cryptography**: End-to-end encryption with libsodium (X25519 key exchange, XSalsa20-Poly1305 AEAD, Ed25519 signatures) and SSH key authentication with agent support.
+- **Debugging & Profiling**: Built-in memory leak detection with source file/line tracking, lock contention analysis, AddressSanitizer integration, and comprehensive logging infrastructure.
+- **Memory Management**: High-performance buffer pooling, lock-free ring buffers, and thread-safe packet queues designed for real-time video/audio applications.
+
+**Install libasciichat:**
+
+```bash
+# macOS (Homebrew)
+brew install libasciichat
+
+# Arch Linux (AUR)
+paru -S libasciichat       # Stable release
+paru -S libasciichat-git   # Latest from git
+```
+
+The library headers, static and shared libraries, and API documentation are included. Installation also provides CMake config files (`asciichatConfig.cmake`) and pkg-config metadata (`libasciichat.pc`) for integration into your own projects.
+
+**Using libasciichat in your CMake project:**
+
+```cmake
+find_package(asciichat REQUIRED)
+target_link_libraries(your_project asciichat::asciichat)
+```
+
+**Using libasciichat with pkg-config:**
+
+```bash
+pkg-config --cflags --libs libasciichat
+```
+
+See the online **[API documentation](https://zfogg.github.io/ascii-chat/)** for detailed function references and architecture guides.
+
+## Open Source
+
+ascii-chat is an open source project with an MIT license, meaning you can and should use our code to make cool stuff. Follow through this Open Source section of the README and you'll be compiling against libasciichat in no time.
+
+> 💡 **For detailed API documentation**, see the **[online docs](https://zfogg.github.io/ascii-chat/)** — includes function references, architecture diagrams, and module documentation generated from source comments.
+
+The first thing you need to do is get the dependencies. Some of them are git submodules of the repo. When you clone the repo get the submodules too.
+
+```bash
+git submodule init
+git submodule update --recursive
+```
+
+Now let's list out and talk about the dependencies before we install them.
+
+### Dependencies
+
+> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)**
+
+ascii-chat is built on operating system code and several libraries.
+
+#### List of Dependencies and What We Use Them For
+
+- [**musl libc**](https://musl.libc.org/) - Static builds for Linux releases (optional for development)
+- [**mimalloc**](https://github.com/microsoft/mimalloc) - High-performance memory allocator (optional for development)
+- [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O for bidirectional voice communication
+- [**tomlc17**](https://github.com/cktan/tomlc17) - TOML config file parsing (`~/.config/ascii-chat/config.toml`)
+- [**uthash**](https://troydhanson.github.io/uthash/) - Hash tables for fast O(1) client lookups
+- [**libsodium**](https://libsodium.org/) - End-to-end encryption (X25519, XSalsa20-Poly1305, Ed25519)
+- [**libsodium-bcrypt-pbkdf**](https://github.com/imaami/libsodium-bcrypt-pbkdf) - Decrypt password-protected SSH Ed25519 keys
+- [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
+- [**zstd**](https://facebook.github.io/zstd/) - Frame compression for bandwidth efficiency
+- [**Opus**](https://opus-codec.org/) - Real-time audio codec for low-latency voice transmission
+- [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
+- [**SQLite3**](https://www.sqlite.org/) - Database for ACDS discovery service
+- [**OpenSSL**](https://www.openssl.org/) - TLS for WebRTC TURN servers and musl static builds
+- [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels for P2P NAT traversal
+- [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Automatic UPnP port forwarding (optional, fallback to WebRTC)
+- [**FFmpeg**](https://ffmpeg.org/) - Media file streaming support
+
+#### Operating System APIs
+
+> 🔌 **Cross-platform details: [Platform Abstraction Layer](https://zfogg.github.io/ascii-chat/group__platform.html#topic_platform)**
+
+ascii-chat uses native platform APIs for each platform for webcam access:
+
+- **Linux**: V4L2 Linux kernel module
+- **macOS**: AVFoundation native macOS API
+- **Windows**: Media Foundation native Windows API
+
+#### Install Dependencies
+
+**Supported platforms:**
+
+- macOS (Homebrew)
+- Linux: Debian/Ubuntu (apt), Fedora/RedHat/CentOS (yum), Arch (pacman)
+- Windows (vcpkg via PowerShell)
+
+**Linux or macOS:**
+
+```bash
+./scripts/install-deps.sh
+```
+
+**Windows:**
+
+```powershell
+./scripts/install-deps.ps1
+```
+
+For detailed installation instructions and troubleshooting, see the **[Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)** documentation.
+
+### What is musl and mimalloc?
+
+**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. `Release` builds (`cmake --preset release`) use musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
+
+**mimalloc**: Microsoft's high-performance memory allocator. Release builds use mimalloc instead of the system allocator for better performance. It provides:
+
+- Up to 2x faster allocation/deallocation
+- Better memory locality and cache performance
+- Lower memory fragmentation
+- Optimized for multi-threaded workloads
+
+### Development Tools & Configuration
+
+For development tools (formatting, linting, documentation generation, packaging) and CMake configuration options (presets, sanitizers, build types, etc.), see the comprehensive **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
+
+### Documentation
+
+📖 **[Online Documentation](https://zfogg.github.io/ascii-chat/)** — API reference, architecture guides, and module documentation
+
+The documentation is automatically generated from source code using Doxygen and published to GitHub Pages. For local documentation builds, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
+
+### Testing
+
+> 🧪 **Full documentation: [Testing Framework](https://zfogg.github.io/ascii-chat/group__testing.html)**
+
+#### Testing Framework
+
+- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
+- **Coverage**: Code coverage reports generated in CI
+- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
+- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
+
+Tests are run using CMake's ctest tool, which integrates with Criterion for parallel execution and XML output.
+
+#### Quick Start
+
+- Have the dependencies installed.
+- Choose:
+  1. Linux or macOS: Use ctest directly
+  2. Windows: Use Docker: `./tests/scripts/run-docker-tests.ps1`
+
+#### Test Types
+
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test component interactions and full workflows
+- **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
+
+#### Running Tests with ctest
+
+```bash
+# Build tests first
+cmake --build build --target tests
+
+# Run all tests
+ctest --test-dir build --output-on-failure --parallel 0
+
+# Run specific test categories using labels
+ctest --test-dir build --label-regex "^unit$" --output-on-failure
+ctest --test-dir build --label-regex "^integration$" --output-on-failure
+ctest --test-dir build --label-regex "^performance$" --output-on-failure
+
+# Run specific tests by name pattern
+ctest --test-dir build -R "buffer_pool" --output-on-failure
+
+# List available tests
+ctest --test-dir build -N
+```
+
+#### Windows Docker Testing
+
+On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
+
+```powershell
+# Run all tests
+./tests/scripts/run-docker-tests.ps1
+
+# Run specific test category
+./tests/scripts/run-docker-tests.ps1 unit
+./tests/scripts/run-docker-tests.ps1 integration
+./tests/scripts/run-docker-tests.ps1 performance
+
+# Run tests matching a pattern
+./tests/scripts/run-docker-tests.ps1 -Filter "*buffer*"
+
+# INFO: powershell doesn't like when you pass -Verbose to a script - use -VerboseOutput
+./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+
+```
+
+The Docker script automatically:
+
+- Builds the test container if needed
+- Mounts your source code for live testing
+- Handles incremental builds
+- Provides the same test interface as the native script
+
+#### Manual Test Execution
+
+You can also run individual test executables directly:
+
+```bash
+# Build the project first
+cmake --preset debug && cmake --build build
+
+# Run individual tests
+build/bin/test_unit_mixer --verbose
+build/bin/test_performance_ascii_simd --filter "*monochrome*"
+```
 
 ## TODO
 
