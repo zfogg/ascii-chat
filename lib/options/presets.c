@@ -551,6 +551,13 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   add_display_options(b);
   add_snapshot_options(b);
 
+  // Media file streaming options (same as client mode)
+  options_builder_add_string(b, "file", 'f', offsetof(options_t, media_file), "",
+                             "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL);
+
+  options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
+                           "Loop media file playback (not supported for stdin)", "MEDIA", false, NULL);
+
   // Add binary-level logging options (--log-file, --log-level, -V, -q)
   // These work before or after the mode name
   add_binary_logging_options(b);
@@ -558,6 +565,8 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
                                           "Option --snapshot-delay requires --snapshot");
+
+  options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
 
   // Action options (execute and exit)
   options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "ACTIONS");

@@ -1,14 +1,16 @@
 /**
  * @file mirror/main.c
  * @ingroup mirror
- * @brief Local webcam mirror mode: view webcam as ASCII art without network
+ * @brief Local media mirror mode: view webcam or media files as ASCII art without network
  *
- * Mirror mode provides a simple way to view your own webcam feed converted
+ * Mirror mode provides a simple way to view webcam feed or media files converted
  * to ASCII art directly in the terminal. No server connection is required.
  *
  * ## Features
  *
  * - Local webcam capture and ASCII conversion
+ * - Media file playback (video/audio files, animated GIFs)
+ * - Loop playback for media files
  * - Terminal capability detection for optimal color output
  * - Frame rate limiting for smooth display
  * - Clean shutdown on Ctrl+C
@@ -17,7 +19,9 @@
  *
  * Run as a standalone mode:
  * @code
- * ascii-chat mirror
+ * ascii-chat mirror                        # Use webcam
+ * ascii-chat mirror --file video.mp4       # Play video file
+ * ascii-chat mirror --file video.mp4 --loop # Loop video file
  * @endcode
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -25,6 +29,7 @@
  */
 
 #include "main.h"
+#include "media/source.h"
 #include "video/webcam/webcam.h"
 #include "video/ascii.h"
 #include "video/image.h"
@@ -217,18 +222,47 @@ int mirror_main(void) {
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
-  // Initialize webcam
-  int webcam_result = webcam_init(GET_OPTION(webcam_index));
-  if (webcam_result != 0) {
-    log_fatal("Failed to initialize webcam: %s", asciichat_error_string(webcam_result));
-    webcam_print_init_error_help(webcam_result);
-    return webcam_result;
+  // Initialize media source (webcam, file, or stdin)
+  media_source_t *media_source = NULL;
+  const char *media_file = GET_OPTION(media_file);
+  bool media_from_stdin = GET_OPTION(media_from_stdin);
+  bool media_loop = GET_OPTION(media_loop);
+
+  if (media_file[0] != '\0') {
+    // File or stdin streaming
+    media_source_type_t type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+    media_source = media_source_create(type, media_file);
+    if (!media_source) {
+      log_fatal("Failed to initialize media source: %s", media_file);
+      return ERROR_MEDIA_INIT;
+    }
+
+    if (media_loop && !media_from_stdin) {
+      media_source_set_loop(media_source, true);
+      log_info("Media loop enabled");
+    }
+  } else if (GET_OPTION(test_pattern)) {
+    // Test pattern mode
+    media_source = media_source_create(MEDIA_SOURCE_TEST, NULL);
+    if (!media_source) {
+      log_fatal("Failed to initialize test pattern");
+      return ERROR_MEDIA_INIT;
+    }
+  } else {
+    // Webcam mode (default)
+    char webcam_index_str[32];
+    snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+    media_source = media_source_create(MEDIA_SOURCE_WEBCAM, webcam_index_str);
+    if (!media_source) {
+      log_fatal("Failed to initialize webcam");
+      return ERROR_MEDIA_INIT;
+    }
   }
 
   // Initialize display
   if (mirror_display_init() != 0) {
     log_fatal("Failed to initialize display");
-    webcam_cleanup();
+    media_source_destroy(media_source);
     return ERROR_DISPLAY;
   }
 
@@ -255,7 +289,7 @@ int mirror_main(void) {
   if (initialize_client_palette(palette_type, custom_chars, palette_chars, &palette_len, luminance_palette) != 0) {
     log_fatal("Failed to initialize palette");
     mirror_display_cleanup();
-    webcam_cleanup();
+    media_source_destroy(media_source);
     return ERROR_INVALID_STATE;
   }
 
@@ -305,9 +339,14 @@ int mirror_main(void) {
       }
     }
 
-    // Read frame from webcam
-    image_t *image = webcam_read();
+    // Read frame from media source
+    image_t *image = media_source_read_video(media_source);
     if (!image) {
+      // Check if we've reached end of file for media sources
+      if (media_source_at_end(media_source)) {
+        log_info("Media source reached end of file");
+        break; // Exit mirror loop - end of media
+      }
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
@@ -361,7 +400,7 @@ int mirror_main(void) {
   log_info("Mirror mode shutting down");
 
   mirror_display_cleanup();
-  webcam_cleanup();
+  media_source_destroy(media_source);
 
   return 0;
 }
