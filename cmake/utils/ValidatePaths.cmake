@@ -65,6 +65,9 @@ endif()
 set(WHITELIST_PATTERNS
     # Alpine Linux official package builder (always uses this path)
     "/home/buildozer/aports/"
+    # Homebrew builds (official package manager paths)
+    "/home/linuxbrew/"
+    "/opt/homebrew/"
     # Dependency cache paths (non-developer paths, deterministic across builds)
     ".deps-cache/"
 )
