@@ -521,7 +521,6 @@ int client_main(void) {
    */
 
   int reconnect_attempt = 0;
-  bool first_connection = true;
 
   // LAN Discovery: If --scan flag is set, discover servers on local network
   const options_t *opts = options_get();
@@ -823,7 +822,6 @@ int client_main(void) {
 
     // Connection successful - reset counters and flags
     reconnect_attempt = 0;
-    first_connection = false;
 
     // Integrate the active transport from connection fallback into server connection layer
     // (Transport is TCP for Stage 1, WebRTC DataChannel for Stages 2/3)

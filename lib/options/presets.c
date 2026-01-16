@@ -24,6 +24,8 @@
  * count argument. Increments verbose_level each time called.
  */
 static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
+  (void)error_msg; // Unused but required by function signature
+
   // If arg is NULL or starts with a flag, just increment
   // Otherwise try to parse as integer count
   unsigned short int *verbose_level = (unsigned short int *)dest;

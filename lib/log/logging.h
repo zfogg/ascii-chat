@@ -49,6 +49,9 @@ using std::memory_order_relaxed;
 #include "platform/socket.h"
 #include "platform/system.h"
 
+/* Forward declarations */
+struct crypto_context_t;
+
 /**
  * @brief Logging levels enumeration
  * @ingroup logging

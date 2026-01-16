@@ -9,6 +9,7 @@
  */
 
 #include "ice.h"
+#include "webrtc.h"
 #include "log/logging.h"
 #include <string.h>
 #include <stdio.h>
@@ -317,8 +318,9 @@ asciichat_error_t ice_gather_candidates(const ice_config_t *config) {
  * ICE Connectivity
  * ============================================================================ */
 
-asciichat_error_t ice_add_remote_candidate(const ice_candidate_t *candidate, const char *mid) {
-  if (!candidate || !mid) {
+asciichat_error_t ice_add_remote_candidate(webrtc_peer_connection_t *pc, const ice_candidate_t *candidate,
+                                           const char *mid) {
+  if (!pc || !candidate || !mid) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid remote candidate parameters");
   }
 
@@ -330,45 +332,33 @@ asciichat_error_t ice_add_remote_candidate(const ice_candidate_t *candidate, con
   log_debug("ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s", candidate->ip_address,
             candidate->port, ice_candidate_type_name(candidate->type), candidate->foundation, mid);
 
-  // TODO: Implement remote candidate addition to peer connection
-  // Integration point with libdatachannel peer manager:
-  // Steps:
-  // 1. Get current peer connection from global state (webrtc_get_transport() or similar)
-  // 2. Call libdatachannel's addIceCandidate(candidate) function
-  // 3. libdatachannel will:
-  //    - Add to remote candidate list
-  //    - Begin connectivity checks with local candidates
-  //    - Measure RTT, jitter, packet loss
-  //    - Select best working pair
-  // 4. When connection succeeds, data channel becomes ready
+  // Format candidate to SDP attribute line for libdatachannel
+  char candidate_line[512];
+  asciichat_error_t err = ice_format_candidate(candidate, candidate_line, sizeof(candidate_line));
+  if (err != ASCIICHAT_OK) {
+    return err;
+  }
 
-  // For now, log the candidate and return success
-  // Real implementation will integrate with webrtc_peer_manager_add_remote_candidate()
-  // or similar function that will be called by the signaling relay
-
-  return ASCIICHAT_OK;
+  // Delegate to WebRTC layer
+  return webrtc_add_remote_candidate(pc, candidate_line, mid);
 }
 
-bool ice_is_connected(void) {
-  // TODO: Implement connectivity check
-  // This requires integration with libdatachannel peer connection state machine.
-  // For now, return false - will be implemented when peer_manager state tracking is added.
-  // Step 1: Get current peer connection from global state
-  // Step 2: Check if state == CONNECTED or READY
-  // Step 3: Return true if at least one candidate pair has data flowing
-  return false;
+bool ice_is_connected(webrtc_peer_connection_t *pc) {
+  if (!pc) {
+    return false;
+  }
+
+  // Check peer connection state
+  webrtc_state_t state = webrtc_get_state(pc);
+  return (state == WEBRTC_STATE_CONNECTED);
 }
 
-asciichat_error_t ice_get_selected_pair(ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate) {
-  // TODO: Implement selected pair retrieval
-  // This requires integration with libdatachannel peer connection.
-  // For now, return error - will be implemented when peer_manager is integrated.
-  // Steps:
-  // 1. Get current peer connection from global state
-  // 2. Find the candidate pair in "Ready" state (data is flowing)
-  // 3. Copy local candidate if local_candidate != NULL
-  // 4. Copy remote candidate if remote_candidate != NULL
-  // 5. Return error if no pair selected yet
+// Forward declaration of C++ implementation (in ice_selected_pair.cpp)
+asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
+                                             ice_candidate_t *remote_candidate);
 
-  return SET_ERRNO(ERROR_INVALID_STATE, "No candidate pair selected yet");
+asciichat_error_t ice_get_selected_pair(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
+                                        ice_candidate_t *remote_candidate) {
+  // Delegate to C++ implementation which uses libdatachannel's C++ API
+  return ice_get_selected_pair_impl(pc, local_candidate, remote_candidate);
 }

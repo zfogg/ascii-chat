@@ -1416,7 +1416,6 @@ void *client_send_thread_func(void *arg) {
     loop_iteration_count++;
 
     // Log client state every iteration (so we can debug why loop exits)
-    bool should_exit = atomic_load(&g_server_should_exit);
     bool is_shutting_down = atomic_load(&client->shutting_down);
     bool is_active = atomic_load(&client->active);
     bool is_running = atomic_load(&client->send_thread_running);

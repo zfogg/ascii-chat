@@ -1003,8 +1003,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
 
-  char *base = (char *)options_struct;
-
   // Separate positional and flag arguments while respecting order
   char **positional_args = SAFE_MALLOC(argc * sizeof(char *), char **);
   if (!positional_args) {
@@ -1042,8 +1040,6 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
   }
 
   // Now parse positional arguments
-  asciichat_error_t pos_err = ASCIICHAT_OK;
-
   if (config->num_positional_args > 0) {
     // Parse positional arguments in order
     int arg_index = 0;

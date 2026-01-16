@@ -60,7 +60,6 @@ image_t *webcam_read(void) {
     // Use cached test pattern for 60 FPS performance
     // Generate once on first call, reuse for subsequent calls
     static image_t *cached_pattern = NULL;
-    static int frame_counter = 0;
 
     if (!cached_pattern) {
       // Generate a colorful test pattern ONCE on first call
@@ -103,8 +102,6 @@ image_t *webcam_read(void) {
         }
       }
     }
-
-    frame_counter++;
 
     // Clone the cached pattern for each call (caller owns and frees it)
     // This is MUCH faster than regenerating the pattern each time

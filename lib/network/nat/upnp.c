@@ -37,27 +37,6 @@
 #endif
 
 /**
- * @brief Helper to convert UPnP error to ascii-chat error code
- * Only defined if miniupnpc is available
- */
-#ifdef HAVE_MINIUPNPC
-static asciichat_error_t upnp_error_to_asciichat(int upnp_result) {
-  switch (upnp_result) {
-  case UPNPCOMMAND_SUCCESS:
-    return ASCIICHAT_OK;
-  case UPNPCOMMAND_UNKNOWN_ERROR:
-  case UPNPCOMMAND_INVALID_ARGS:
-  case UPNPCOMMAND_HTTP_ERROR:
-    SET_ERRNO(ERROR_NETWORK, "UPnP error: %d", upnp_result);
-    return ERROR_NETWORK;
-  default:
-    SET_ERRNO(ERROR_NETWORK, "UPnP unknown error: %d", upnp_result);
-    return ERROR_NETWORK;
-  }
-}
-#endif
-
-/**
  * @brief Try UPnP port mapping
  *
  * @return ASCIICHAT_OK on success, ERROR_NETWORK_* on failure

@@ -36,22 +36,6 @@ static inline void *data_from_node(buffer_node_t *node) {
   return (void *)((char *)node + sizeof(buffer_node_t));
 }
 
-/** @brief Check if a buffer is from a pool (has valid pool magic, not fallback) */
-static inline bool is_pooled_buffer(void *data) {
-  if (!data)
-    return false;
-  buffer_node_t *node = node_from_data(data);
-  return node->magic == BUFFER_POOL_MAGIC;
-}
-
-/** @brief Check if a buffer has any valid magic (pool or fallback) */
-static inline bool has_buffer_header(void *data) {
-  if (!data)
-    return false;
-  buffer_node_t *node = node_from_data(data);
-  return node->magic == BUFFER_POOL_MAGIC || node->magic == BUFFER_POOL_MAGIC_FALLBACK;
-}
-
 /** @brief Atomically update peak if new value is higher */
 static inline void update_peak(atomic_size_t *peak, size_t value) {
   size_t old = atomic_load_explicit(peak, memory_order_relaxed);

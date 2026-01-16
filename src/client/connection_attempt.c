@@ -403,7 +403,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
  * 4. Wait for data channel connection within 8s
  */
 static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, const char *server_address,
-                                             uint16_t server_port, const char *acds_server, uint16_t acds_port) {
+                                             const char *acds_server, uint16_t acds_port) {
   if (!ctx || !server_address || !acds_server) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -628,7 +628,7 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
  * This is the final fallback - guaranteed to work if TURN server is reachable.
  */
 static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, const char *server_address,
-                                             uint16_t server_port, const char *acds_server, uint16_t acds_port) {
+                                             const char *acds_server, uint16_t acds_port) {
   if (!ctx || !server_address || !acds_server) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
@@ -927,7 +927,7 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   // Stage 2: WebRTC + STUN (8s timeout)
   // ─────────────────────────────────────────────────────────────
 
-  result = attempt_webrtc_stun(ctx, server_address, server_port, acds_server, acds_port);
+  result = attempt_webrtc_stun(ctx, server_address, acds_server, acds_port);
   if (result == ASCIICHAT_OK) {
     log_info("Connection succeeded via WebRTC+STUN");
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
@@ -946,7 +946,7 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   // Stage 3: WebRTC + TURN (15s timeout)
   // ─────────────────────────────────────────────────────────────
 
-  result = attempt_webrtc_turn(ctx, server_address, server_port, acds_server, acds_port);
+  result = attempt_webrtc_turn(ctx, server_address, acds_server, acds_port);
   if (result == ASCIICHAT_OK) {
     log_info("Connection succeeded via WebRTC+TURN");
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
