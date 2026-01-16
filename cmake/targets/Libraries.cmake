@@ -1123,6 +1123,13 @@ if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
 endif()
 
+# Link OpenSSL for TURN credentials (required by network module)
+# This is linked to ascii-chat-network module, but must also be exposed via the
+# INTERFACE library for final executables since libasciichat.a includes turn_credentials.c
+if(TARGET OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-static-lib INTERFACE OpenSSL::Crypto)
+endif()
+
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
 # This is linked to ascii-chat-network module, but must also be exposed via the
 # INTERFACE library for final executables since libasciichat.a includes upnp.c
