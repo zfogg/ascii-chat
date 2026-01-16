@@ -8,6 +8,7 @@
 
 #include "tests/common.h"
 #include "audio/audio.h"
+#include "buffer_pool.h"  // For buffer_pool_init_global
 #include "tests/logging.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
@@ -74,6 +75,8 @@ ParameterizedTestParameters(audio, ringbuffer_operations) {
 }
 
 ParameterizedTest(ringbuffer_operation_test_case_t *tc, audio, ringbuffer_operations) {
+  buffer_pool_init_global();  // Initialize buffer pool for ring buffer allocation
+
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
 
@@ -144,6 +147,8 @@ ParameterizedTestParameters(audio, ringbuffer_capacity_scenarios) {
 }
 
 ParameterizedTest(ringbuffer_capacity_test_case_t *tc, audio, ringbuffer_capacity_scenarios) {
+  buffer_pool_init_global();  // Initialize buffer pool for ring buffer allocation
+
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
 
@@ -230,6 +235,8 @@ Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
 }
 
 Test(audio, ringbuffer_basic_operations) {
+  buffer_pool_init_global();  // Initialize buffer pool for ring buffer allocation
+
   audio_ring_buffer_t *rb = audio_ring_buffer_create();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
 
@@ -241,6 +248,8 @@ Test(audio, ringbuffer_basic_operations) {
 }
 
 Test(audio, ringbuffer_write_read) {
+  buffer_pool_init_global();  // Initialize buffer pool for ring buffer allocation
+
   // Use capture buffer which disables jitter buffering for basic read/write testing
   audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
