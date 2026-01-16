@@ -70,6 +70,16 @@ static void *audio_worker_thread(void *arg) {
   log_info("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
            WORKER_BATCH_SAMPLES);
 
+  // Check for AEC3 bypass (static, checked once)
+  static int bypass_aec3_worker = -1;
+  if (bypass_aec3_worker == -1) {
+    const char *env = platform_getenv("BYPASS_AEC3");
+    bypass_aec3_worker = (env && (strcmp(env, "1") == 0 || strcmp(env, "true") == 0)) ? 1 : 0;
+    if (bypass_aec3_worker) {
+      log_warn("Worker thread: AEC3 BYPASSED via BYPASS_AEC3=1 (worker will skip AEC3 processing)");
+    }
+  }
+
   while (true) {
     // Wait for signal from callback or timeout
     mutex_lock(&ctx->worker_mutex);
@@ -93,20 +103,26 @@ static void *audio_worker_thread(void *arg) {
     }
 
     // STEP 1: Process capture path (mic → AEC3 → encoder)
-    if (capture_available >= WORKER_BATCH_SAMPLES || render_available >= WORKER_BATCH_SAMPLES) {
-      // Read raw capture and render samples from callbacks
+    // Process capture samples if available (don't wait for render samples)
+    if (capture_available >= WORKER_BATCH_SAMPLES) {
+      // Read raw capture samples from callbacks
       size_t capture_read =
           audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, WORKER_BATCH_SAMPLES);
-      size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, WORKER_BATCH_SAMPLES);
 
-      if (capture_read > 0 && render_read > 0) {
-        // Process through AEC3 if pipeline is available
-        if (ctx->audio_pipeline) {
-          // AEC3 processing can take 50-80ms on Raspberry Pi - that's OK here!
-          // Output is written back to worker_capture_batch (in-place processing)
-          client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
-                                               ctx->worker_capture_batch, (int)capture_read,
-                                               ctx->worker_capture_batch); // Process in-place
+      if (capture_read > 0) {
+        // For AEC3, we need render samples too. If not available, skip AEC3 but still process capture.
+        if (!bypass_aec3_worker && ctx->audio_pipeline && render_available >= WORKER_BATCH_SAMPLES) {
+          // Read render samples for AEC3
+          size_t render_read =
+              audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, WORKER_BATCH_SAMPLES);
+
+          if (render_read > 0) {
+            // AEC3 processing can take 50-80ms on Raspberry Pi - that's OK here!
+            // Output is written back to worker_capture_batch (in-place processing)
+            client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
+                                                 ctx->worker_capture_batch, (int)capture_read,
+                                                 ctx->worker_capture_batch); // Process in-place
+          }
         }
 
         // TODO: Add optional resampling here if input device rate != 48kHz
@@ -115,7 +131,10 @@ static void *audio_worker_thread(void *arg) {
         // Write processed capture to encoder buffer
         audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
 
-        log_debug_every(1000000, "Worker processed %zu capture samples (AEC3 applied)", capture_read);
+        log_debug_every(1000000, "Worker processed %zu capture samples (AEC3 %s)", capture_read,
+                        bypass_aec3_worker
+                            ? "BYPASSED"
+                            : (render_available >= WORKER_BATCH_SAMPLES ? "applied" : "skipped-no-render"));
       }
     }
 

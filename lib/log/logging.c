@@ -615,20 +615,22 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     result = snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_strings[level]);
   }
 #else
-  // Debug mode: full format with file location and function
+  // Debug mode: full format with file location, function, and thread ID
   const char *rel_file = extract_project_relative_path(file);
+  uint64_t tid = asciichat_thread_current_id();
   if (use_colors) {
-    // Use specific colors for file/function info: file=yellow, line=magenta, function=blue
+    // Use specific colors for file/function info: file=yellow, line=magenta, function=blue, tid=cyan
     // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta)
     const char *file_color = colors[3]; // WARN: Yellow for file paths
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
-    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color, timestamp, reset,
-                      color, level_string, reset, file_color, rel_file, reset, line_color, line, reset, func_color,
-                      func, reset, reset, newline_or_not);
+    const char *tid_color = colors[1];  // DEBUG: Cyan for thread ID
+    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [%stid:%lu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color,
+                      timestamp, reset, color, level_string, reset, tid_color, tid, reset, file_color, rel_file, reset,
+                      line_color, line, reset, func_color, func, reset, reset, newline_or_not);
   } else {
-    result = snprintf(buffer, buffer_size, "[%s] [%s] %s:%d in %s(): %s", timestamp, level_strings[level], rel_file,
-                      line, func, newline_or_not);
+    result = snprintf(buffer, buffer_size, "[%s] [%s] [tid:%lu] %s:%d in %s(): %s", timestamp, level_strings[level],
+                      tid, rel_file, line, func, newline_or_not);
   }
 #endif
 
