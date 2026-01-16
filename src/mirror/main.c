@@ -373,7 +373,7 @@ int mirror_main(void) {
       // Snapshot mode: exit after capturing the final frame
       if (snapshot_mode && snapshot_done) {
         SAFE_FREE(ascii_frame);
-        image_destroy(image);
+        // NOTE: Do NOT free 'image' - it's owned by media_source
         break;
       }
 
@@ -381,7 +381,7 @@ int mirror_main(void) {
       frame_count++;
     }
 
-    image_destroy(image);
+    // NOTE: Do NOT free 'image' - it's owned by media_source and reused on next read
 
     // FPS reporting every 5 seconds
     uint64_t fps_elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
