@@ -35,10 +35,11 @@ static unsigned int g_pa_init_refcount = 0;
 static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 
 // Worker thread batch size (in frames, not samples)
-// 480 frames = 10ms at 48kHz, matches AUDIO_FRAMES_PER_BUFFER
-#define WORKER_BATCH_FRAMES 480
+// Reduced from 480 (10ms) to 128 (2.7ms) for lower latency and less jitter
+// Smaller batches mean more frequent processing, reducing audio gaps
+#define WORKER_BATCH_FRAMES 128
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
-#define WORKER_TIMEOUT_MS 10 // Wake up every 10ms to check for audio
+#define WORKER_TIMEOUT_MS 3 // Wake up every 3ms to check for audio (was 10ms)
 
 /**
  * @brief Audio worker thread for heavy processing
@@ -80,11 +81,24 @@ static void *audio_worker_thread(void *arg) {
     }
   }
 
+  // Timing instrumentation for debugging
+  static uint64_t loop_count = 0;
+  static uint64_t timeout_count = 0;
+  static uint64_t signal_count = 0;
+  static uint64_t process_count = 0;
+
   while (true) {
+    loop_count++;
+
     // Wait for signal from callback or timeout
     mutex_lock(&ctx->worker_mutex);
+    struct timespec wait_start, wait_end;
+    clock_gettime(CLOCK_MONOTONIC, &wait_start);
     int wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS);
+    clock_gettime(CLOCK_MONOTONIC, &wait_end);
     mutex_unlock(&ctx->worker_mutex);
+
+    long wait_ms = (wait_end.tv_sec - wait_start.tv_sec) * 1000L + (wait_end.tv_nsec - wait_start.tv_nsec) / 1000000L;
 
     // Check shutdown flag
     if (atomic_load(&ctx->worker_should_stop)) {
@@ -92,36 +106,81 @@ static void *audio_worker_thread(void *arg) {
       break;
     }
 
+    // Count wake-ups
+    if (wait_result == 0) {
+      signal_count++;
+    } else {
+      timeout_count++;
+    }
+
     // Skip processing if we timed out and no data available
     size_t capture_available = audio_ring_buffer_available_read(ctx->raw_capture_rb);
     size_t render_available = audio_ring_buffer_available_read(ctx->raw_render_rb);
     size_t playback_available = audio_ring_buffer_available_read(ctx->playback_buffer);
+
+    // Log worker loop state every 100 iterations
+    if (loop_count % 100 == 0) {
+      log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu, last_wait=%ldms", loop_count,
+               signal_count, timeout_count, process_count, wait_ms);
+      log_info("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
+               render_available, playback_available, WORKER_BATCH_SAMPLES);
+    }
 
     if (wait_result != 0 && capture_available == 0 && playback_available == 0) {
       // Timeout with no data - continue waiting
       continue;
     }
 
+    process_count++;
+
     // STEP 1: Process capture path (mic → AEC3 → encoder)
-    // Process capture samples if available (don't wait for render samples)
-    if (capture_available >= WORKER_BATCH_SAMPLES) {
-      // Read raw capture samples from callbacks
-      size_t capture_read =
-          audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, WORKER_BATCH_SAMPLES);
+    // Process capture samples if available (don't wait for full batch - reduces latency)
+    // Minimum: 64 samples (1.3ms @ 48kHz) to avoid excessive overhead
+    const size_t MIN_PROCESS_SAMPLES = 64;
+    if (capture_available >= MIN_PROCESS_SAMPLES) {
+      // Read up to WORKER_BATCH_SAMPLES, but process whatever is available
+      size_t samples_to_process = (capture_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : capture_available;
+      // Read raw capture samples from callbacks (variable size batch)
+      size_t capture_read = audio_ring_buffer_read(ctx->raw_capture_rb, ctx->worker_capture_batch, samples_to_process);
 
       if (capture_read > 0) {
         // For AEC3, we need render samples too. If not available, skip AEC3 but still process capture.
-        if (!bypass_aec3_worker && ctx->audio_pipeline && render_available >= WORKER_BATCH_SAMPLES) {
-          // Read render samples for AEC3
-          size_t render_read =
-              audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, WORKER_BATCH_SAMPLES);
+        bool aec3_applied = false;
+        if (!bypass_aec3_worker && ctx->audio_pipeline && render_available >= capture_read) {
+          // Read render samples for AEC3 (match capture size)
+          size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, capture_read);
 
           if (render_read > 0) {
-            // AEC3 processing can take 50-80ms on Raspberry Pi - that's OK here!
+            // Measure AEC3 processing time
+            struct timespec aec3_start, aec3_end;
+            clock_gettime(CLOCK_MONOTONIC, &aec3_start);
+
+            // AEC3 processing - should be fast enough for real-time on Pi 5
             // Output is written back to worker_capture_batch (in-place processing)
             client_audio_pipeline_process_duplex(ctx->audio_pipeline, ctx->worker_render_batch, (int)render_read,
                                                  ctx->worker_capture_batch, (int)capture_read,
                                                  ctx->worker_capture_batch); // Process in-place
+
+            clock_gettime(CLOCK_MONOTONIC, &aec3_end);
+            long aec3_ns =
+                (aec3_end.tv_sec - aec3_start.tv_sec) * 1000000000L + (aec3_end.tv_nsec - aec3_start.tv_nsec);
+
+            // Log AEC3 timing periodically
+            static int aec3_count = 0;
+            static long aec3_total_ns = 0;
+            static long aec3_max_ns = 0;
+            aec3_count++;
+            aec3_total_ns += aec3_ns;
+            if (aec3_ns > aec3_max_ns)
+              aec3_max_ns = aec3_ns;
+
+            if (aec3_count % 100 == 0) {
+              long avg_ns = aec3_total_ns / aec3_count;
+              log_info("AEC3 performance: avg=%.2fms, max=%.2fms, latest=%.2fms (samples=%zu, %d calls)",
+                       avg_ns / 1000000.0, aec3_max_ns / 1000000.0, aec3_ns / 1000000.0, capture_read, aec3_count);
+            }
+
+            aec3_applied = true;
           }
         }
 
@@ -139,10 +198,13 @@ static void *audio_worker_thread(void *arg) {
     }
 
     // STEP 2: Process playback path (network → worker → speakers)
-    if (playback_available >= WORKER_BATCH_SAMPLES) {
-      // Read decoded audio from network
+    // Process even partial batches to reduce latency
+    if (playback_available >= MIN_PROCESS_SAMPLES) {
+      size_t playback_to_process =
+          (playback_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : playback_available;
+      // Read decoded audio from network (variable size batch)
       size_t playback_read =
-          audio_ring_buffer_read(ctx->playback_buffer, ctx->worker_playback_batch, WORKER_BATCH_SAMPLES);
+          audio_ring_buffer_read(ctx->playback_buffer, ctx->worker_playback_batch, playback_to_process);
 
       if (playback_read > 0) {
         // TODO: Add optional resampling here if output device rate != 48kHz
@@ -347,6 +409,27 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   const float *input = (const float *)inputBuffer;
   size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
 
+  // Track callback frequency
+  static uint64_t callback_count = 0;
+  static struct timespec last_log_time = {0};
+  callback_count++;
+
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  // Log every second
+  if (last_log_time.tv_sec == 0) {
+    last_log_time = now;
+  } else {
+    long elapsed_ms = (now.tv_sec - last_log_time.tv_sec) * 1000L + (now.tv_nsec - last_log_time.tv_nsec) / 1000000L;
+    if (elapsed_ms >= 1000) {
+      log_info("Input callback: %lu calls/sec, %lu frames/call, %zu samples/call", callback_count, framesPerBuffer,
+               num_samples);
+      callback_count = 0;
+      last_log_time = now;
+    }
+  }
+
   // Silence on shutdown
   if (atomic_load(&ctx->shutting_down)) {
     return paContinue;
@@ -470,31 +553,24 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   }
   int available = AUDIO_RING_BUFFER_SIZE - buffer_level;
 
-  // HIGH WATER MARK: Drop OLD samples to prevent latency accumulation
-  // This is critical for real-time audio - we always want the NEWEST data
-  // ALWAYS apply high-water-mark on write, regardless of jitter_buffer_enabled
-  // jitter_buffer_enabled only controls READ side (whether to wait for threshold)
-  // On WRITE side, we ALWAYS want to drop old samples to bound latency
-  if (buffer_level + samples > AUDIO_JITTER_HIGH_WATER_MARK) {
-    // Calculate how many old samples to drop to bring buffer to target level
-    int excess = (buffer_level + samples) - AUDIO_JITTER_TARGET_LEVEL;
-    if (excess > 0) {
-      // Advance read_index to drop old samples
-      // Note: This is safe because the reader checks for underrun and handles it gracefully
-      unsigned int new_read_idx = (read_idx + (unsigned int)excess) % AUDIO_RING_BUFFER_SIZE;
-      atomic_store_explicit(&rb->read_index, new_read_idx, memory_order_release);
+  // HIGH WATER MARK: Drop INCOMING samples to prevent latency accumulation
+  // CRITICAL FIX: Writer must NOT modify read_index (race condition with reader!)
+  // Instead, we drop INCOMING samples to keep buffer bounded.
+  // This sacrifices newest data to prevent unbounded latency growth.
+  if (buffer_level > AUDIO_JITTER_HIGH_WATER_MARK) {
+    // Buffer is already too full - drop incoming samples to maintain target level
+    int target_writes = AUDIO_JITTER_TARGET_LEVEL - buffer_level;
+    if (target_writes < 0) {
+      target_writes = 0; // Buffer is way over - drop everything
+    }
 
+    if (samples > target_writes) {
+      int dropped = samples - target_writes;
       log_warn_every(LOG_RATE_FAST,
-                     "Audio buffer high water mark exceeded: dropping %d OLD samples to reduce latency "
-                     "(buffer was %d, target %d)",
-                     excess, buffer_level, AUDIO_JITTER_TARGET_LEVEL);
-
-      // Recalculate available space after dropping old samples
-      read_idx = new_read_idx;
-      buffer_level = AUDIO_JITTER_TARGET_LEVEL - samples;
-      if (buffer_level < 0)
-        buffer_level = 0;
-      available = AUDIO_RING_BUFFER_SIZE - buffer_level;
+                     "Audio buffer high water mark exceeded (%d > %d): dropping %d INCOMING samples "
+                     "(keeping newest %d to maintain target %d)",
+                     buffer_level, AUDIO_JITTER_HIGH_WATER_MARK, dropped, target_writes, AUDIO_JITTER_TARGET_LEVEL);
+      samples = target_writes; // Only write what fits within target level
     }
   }
 
@@ -561,31 +637,6 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // Jitter buffer: don't read until initial fill threshold is reached
   // (only for playback buffers - capture buffers have jitter_buffer_enabled = false)
   if (!jitter_filled && rb->jitter_buffer_enabled) {
-    // First, check if we're in the middle of a fade-out that needs to continue
-    // This happens when fade-out spans multiple buffer reads
-    if (!fade_in && crossfade_remaining > 0) {
-      // Continue fade-out from where we left off
-      int fade_start = AUDIO_CROSSFADE_SAMPLES - crossfade_remaining;
-      size_t fade_samples = (samples < (size_t)crossfade_remaining) ? samples : (size_t)crossfade_remaining;
-      float last = rb->last_sample; // NOT atomic - only written by reader
-      for (size_t i = 0; i < fade_samples; i++) {
-        float fade_factor = 1.0f - ((float)(fade_start + (int)i) / (float)AUDIO_CROSSFADE_SAMPLES);
-        data[i] = last * fade_factor;
-      }
-      // Fill rest with silence
-      for (size_t i = fade_samples; i < samples; i++) {
-        data[i] = 0.0f;
-      }
-      // Update crossfade state atomically
-      atomic_store_explicit(&rb->crossfade_samples_remaining, crossfade_remaining - (int)fade_samples,
-                            memory_order_release);
-      if (crossfade_remaining - (int)fade_samples <= 0) {
-        rb->last_sample = 0.0f;
-      }
-
-      return samples; // Return full buffer (with continued fade-out)
-    }
-
     // Check if we've accumulated enough samples to start playback
     if (available >= AUDIO_JITTER_BUFFER_THRESHOLD) {
       atomic_store_explicit(&rb->jitter_buffer_filled, true, memory_order_release);
@@ -600,7 +651,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       // Log buffer fill progress every second
       log_debug_every(1000000, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
                       AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
-      return 0; // Return silence until buffer is filled
+      return 0; // Return 0 samples - caller will pad with silence
     }
   }
 
@@ -671,16 +722,13 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     rb->last_sample = data[to_read - 1];
   }
 
-  // Fill any remaining samples with pure silence if we couldn't read enough
-  // NOTE: Previous code applied fade-out from last sample, but this created
-  // audible "little extra sounds in the gaps" during frequent underruns.
-  // Pure silence is less disruptive than artificial fade artifacts.
-  if (to_read < samples) {
-    size_t silence_samples = samples - to_read;
-    SAFE_MEMSET(data + to_read, silence_samples * sizeof(float), 0, silence_samples * sizeof(float));
-  }
-
-  return samples; // Always return full buffer (with silence padding if needed)
+  // Return ACTUAL number of samples read, not padded count
+  // The caller (mixer) expects truthful return values to detect underruns
+  // and handle silence padding externally. Internal padding creates double-padding bugs.
+  //
+  // CRITICAL FIX: This function was lying by always returning `samples` even when
+  // it only read `to_read` samples. This broke the mixer's underrun detection.
+  return to_read;
 }
 
 /**
@@ -1205,21 +1253,47 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
     // Open output stream only if output device exists
     bool output_ok = false;
+    double actual_output_rate = 0;
     if (has_output) {
-      // When using separate streams on the same device, they must use the same sample rate
-      // Use output device's sample rate for both streams
-      double stream_sample_rate = outputInfo->defaultSampleRate;
-      bool same_device = (inputParams.device == outputParams.device);
-      if (same_device) {
-        log_info("Input and output on same device - using unified sample rate: %.0f Hz", stream_sample_rate);
+      // Try to use AUDIO_SAMPLE_RATE (48kHz) first for best quality and duplex compatibility
+      // Fall back to native rate if 48kHz not supported
+      double preferred_rate = AUDIO_SAMPLE_RATE;
+      double native_rate = outputInfo->defaultSampleRate;
+
+      log_info("Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)", preferred_rate, native_rate);
+
+      // Try preferred rate first
+      err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                          output_callback, ctx);
+
+      if (err == paNoError) {
+        actual_output_rate = preferred_rate;
+        output_ok = true;
+        log_info("✓ Output opened at preferred rate: %.0f Hz (matches input - optimal!)", preferred_rate);
+      } else {
+        log_warn("Failed to open output at %.0f Hz: %s, trying native rate %.0f Hz", preferred_rate,
+                 Pa_GetErrorText(err), native_rate);
+
+        // Fall back to native rate
+        err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                            output_callback, ctx);
+
+        if (err == paNoError) {
+          actual_output_rate = native_rate;
+          output_ok = true;
+          log_info("✓ Output opened at native rate: %.0f Hz (will need resampling)", native_rate);
+        } else {
+          log_warn("Failed to open output stream at native rate: %s", Pa_GetErrorText(err));
+        }
       }
 
-      // Open output stream at device native rate
-      err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, stream_sample_rate, AUDIO_FRAMES_PER_BUFFER,
-                          paClipOff, output_callback, ctx);
-      output_ok = (err == paNoError);
-      if (!output_ok) {
-        log_warn("Failed to open output stream: %s", Pa_GetErrorText(err));
+      // Store actual output rate for resampling
+      if (output_ok) {
+        ctx->output_device_rate = actual_output_rate;
+        if (actual_output_rate != AUDIO_SAMPLE_RATE) {
+          log_warn("⚠️  Output rate mismatch: %.0f Hz output vs %.0f Hz input - resampling will be used",
+                   actual_output_rate, (double)AUDIO_SAMPLE_RATE);
+        }
       }
     }
 
