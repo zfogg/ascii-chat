@@ -773,7 +773,7 @@ The protocol is **fully documented** in the [Network Protocol Reference](https:/
 
 ## ASCII-Chat Discovery Service (ACDS)
 
-> 🔍 **ACDS Documentation: [Discovery Service Reference](https://zfogg.github.io/ascii-chat/group__acds.html)** (coming soon)
+> 🔍 **ACDS Documentation: [Discovery Service Reference](https://zfogg.github.io/ascii-chat/group__module__acds.html#topic_acds)**
 
 ### Philosophy
 
