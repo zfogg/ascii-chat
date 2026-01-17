@@ -44,10 +44,10 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->envelope = 0.0f;
   comp->gain_lin = 1.0f;
 
-  // Set default parameters with +6dB makeup gain
-  // The client playback path now has proper soft clipping to handle any peaks
-  // Server ducking (-6dB) + crowd scaling (-3dB) needs compensation
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 6.0f);
+  // Set default parameters with 0dB makeup gain (unity)
+  // Soft clip at 0.7 provides 3dB headroom to prevent hard clipping
+  // Ducking and crowd scaling naturally reduce volume, no compensation needed
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 0.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
@@ -590,10 +590,10 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     for (int s = 0; s < frame_size; s++) {
       float mix = mixer->mix_buffer[s] * comp_gain;
 
-      // Compressor provides +6dB makeup gain for better audibility
-      // Soft clip threshold 1.0f allows full range without premature clipping
-      // Steepness 3.0 for smoother clipping behavior
-      output[frame_start + s] = soft_clip(mix, 1.0f, 3.0f);
+      // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
+      // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
+      // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
+      output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
     }
   }
 
@@ -802,10 +802,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     for (int s = 0; s < frame_size; s++) {
       float mix = mixer->mix_buffer[s] * comp_gain;
 
-      // Compressor provides +6dB makeup gain for better audibility
-      // Soft clip threshold 1.0f allows full range without premature clipping
-      // Steepness 3.0 for smoother clipping behavior
-      output[frame_start + s] = soft_clip(mix, 1.0f, 3.0f);
+      // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
+      // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
+      // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
+      output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
     }
   }
 
