@@ -329,6 +329,19 @@ static void shutdown_client() {
 #endif
 }
 
+#ifndef NDEBUG
+/**
+ * Helper function to enable test pattern mode (debug builds only)
+ *
+ * Used as callback for options_update() to enable test pattern fallback
+ * when webcam is in use during development.
+ */
+static void enable_test_pattern_callback(options_t *opts, void *context) {
+  (void)context; // Unused
+  opts->test_pattern = true;
+}
+#endif
+
 /**
  * Initialize all client subsystems
  *
@@ -482,13 +495,37 @@ int client_main(void) {
   // Initialize all client subsystems (shared init already completed)
   int init_result = initialize_client_systems(true);
   if (init_result != 0) {
-    // Check if this is a webcam-related error and print help
-    if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
-      webcam_print_init_error_help(init_result);
-      FATAL(init_result, "%s", asciichat_error_string(init_result));
+#ifndef NDEBUG
+    // Debug builds: automatically fall back to test pattern if webcam is in use
+    if (init_result == ERROR_WEBCAM_IN_USE && !GET_OPTION(test_pattern)) {
+      log_warn("Webcam is in use - automatically falling back to test pattern mode (debug build only)");
+
+      // Enable test pattern mode via RCU update
+      asciichat_error_t update_result = options_update(enable_test_pattern_callback, NULL);
+      if (update_result != ASCIICHAT_OK) {
+        log_error("Failed to update options for test pattern fallback");
+        FATAL(init_result, "%s", asciichat_error_string(init_result));
+      }
+
+      // Retry initialization with test pattern enabled
+      init_result = initialize_client_systems(true);
+      if (init_result != 0) {
+        log_error("Failed to initialize even with test pattern fallback");
+        webcam_print_init_error_help(init_result);
+        FATAL(init_result, "%s", asciichat_error_string(init_result));
+      }
+      log_info("Successfully initialized with test pattern fallback");
+    } else
+#endif
+    {
+      // Release builds or other errors: print help and exit
+      if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
+        webcam_print_init_error_help(init_result);
+        FATAL(init_result, "%s", asciichat_error_string(init_result));
+      }
+      // For other errors, just exit with the error code
+      return init_result;
     }
-    // For other errors, just exit with the error code
-    return init_result;
   }
 
   // Register cleanup function for graceful shutdown

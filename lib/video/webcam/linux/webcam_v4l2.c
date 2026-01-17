@@ -132,7 +132,19 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     return 0;
   }
 
-  log_error("Failed to set V4L2 format: device supports neither RGB24 nor YUYV");
+  // Save errno before log_error() clears it
+  int saved_errno = errno;
+
+  // Check if format setting failed because device is busy
+  if (saved_errno == EBUSY) {
+    log_error("Failed to set V4L2 format: device is busy (another application is using it)");
+    errno = saved_errno; // Restore errno for caller to check
+    return -1;
+  }
+
+  log_error("Failed to set V4L2 format: device supports neither RGB24 nor YUYV (errno=%d: %s)", saved_errno,
+            SAFE_STRERROR(saved_errno));
+  errno = saved_errno; // Restore errno for caller
   return -1;
 }
 
@@ -280,16 +292,21 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Set format (try 640x480 first, fallback to whatever the device supports)
   if (webcam_v4l2_set_format(context, 640, 480) != 0) {
+    int saved_errno = errno; // Save errno before close() potentially changes it
     close(context->fd);
     SAFE_FREE(context);
-    return ERROR_WEBCAM;
+    // If format setting failed because device is busy, return ERROR_WEBCAM_IN_USE
+    if (saved_errno == EBUSY) {
+      return SET_ERRNO(ERROR_WEBCAM_IN_USE, "V4L2 device %s is in use - cannot set format", device_path);
+    }
+    return SET_ERRNO(ERROR_WEBCAM, "Failed to set V4L2 format for device %s", device_path);
   }
 
   // Initialize buffers
   if (webcam_v4l2_init_buffers(context) != 0) {
     close(context->fd);
     SAFE_FREE(context);
-    return ERROR_WEBCAM;
+    return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize V4L2 buffers for device %s", device_path);
   }
 
   // Start streaming
@@ -303,7 +320,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     SAFE_FREE(context->buffers);
     close(context->fd);
     SAFE_FREE(context);
-    return -1;
+    return SET_ERRNO(ERROR_WEBCAM, "Failed to start V4L2 streaming for device %s", device_path);
   }
 
   *ctx = context;
