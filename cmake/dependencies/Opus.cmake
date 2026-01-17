@@ -83,8 +83,9 @@ if(NOT PkgConfig_FOUND)
 endif()
 
 # On macOS Release builds: prefer static library over dynamic (from pkg-config)
+# Skip static preference if ASCIICHAT_SHARED_DEPS is set (e.g., Homebrew builds)
 # Otherwise use pkg-config for dynamic linking
-if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
+if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
     # Try to find static libopus.a for static release builds
     # Search in standard homebrew paths first
     find_library(OPUS_STATIC_LIB
