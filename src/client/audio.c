@@ -502,6 +502,17 @@ static void *audio_capture_thread_func(void *arg) {
     fps_tracker_initialized = true;
   }
 
+  // Detailed timing stats
+  static double total_loop_ns = 0;
+  static double total_read_ns = 0;
+  static double total_encode_ns = 0;
+  static double total_queue_ns = 0;
+  static double max_loop_ns = 0;
+  static double max_read_ns = 0;
+  static double max_encode_ns = 0;
+  static double max_queue_ns = 0;
+  static uint64_t timing_loop_count = 0;
+
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_FRAME_SAMPLES 960
 #define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
@@ -538,14 +549,17 @@ static void *audio_capture_thread_func(void *arg) {
 
   while (!should_exit() && !server_connection_is_lost()) {
     START_TIMER("audio_capture_loop_iteration");
+    timing_loop_count++;
 
     if (!server_connection_is_active()) {
-      platform_sleep_usec(100 * 1000); // Wait for connection
+      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
+      platform_sleep_usec(100 * 1000);            // Wait for connection
       continue;
     }
 
     // Check if pipeline is ready
     if (!g_audio_pipeline) {
+      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
       platform_sleep_usec(100 * 1000);
       continue;
     }
@@ -570,10 +584,11 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      // Sleep longer to reduce CPU usage when idle (was 5ms → 50ms)
-      // At 50ms polling, we wake 20 times/sec vs 200 times/sec
-      // This reduces CPU from ~90% to <5% when no audio is being captured
-      platform_sleep_usec(50 * 1000); // 50ms
+      // Sleep briefly to reduce CPU usage when idle
+      // 5ms polling = 200 times/sec, fast enough to catch audio promptly
+      // CRITICAL: 50ms was causing 872ms gaps in audio transmission!
+      STOP_TIMER("audio_capture_loop_iteration"); // Must stop before loop repeats
+      platform_sleep_usec(5 * 1000);              // 5ms (was 50ms - caused huge gaps!)
       continue;
     }
 
@@ -585,9 +600,14 @@ static void *audio_capture_thread_func(void *arg) {
     asciichat_error_t read_result = audio_read_samples(&g_audio_context, audio_buffer, to_read);
     double read_time_ns = STOP_TIMER("audio_read_samples");
 
+    total_read_ns += read_time_ns;
+    if (read_time_ns > max_read_ns)
+      max_read_ns = read_time_ns;
+
     if (read_result != ASCIICHAT_OK) {
       log_error("Failed to read audio samples from ring buffer");
-      platform_sleep_usec(50 * 1000); // 50ms (error path, less critical but consistent with above)
+      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
+      platform_sleep_usec(5 * 1000);              // 5ms (error path - was 50ms, caused gaps!)
       continue;
     }
 
@@ -677,6 +697,10 @@ static void *audio_capture_thread_func(void *arg) {
                                                        opus_packet, OPUS_MAX_PACKET_SIZE);
           double encode_time_ns = STOP_TIMER("opus_encode");
 
+          total_encode_ns += encode_time_ns;
+          if (encode_time_ns > max_encode_ns)
+            max_encode_ns = encode_time_ns;
+
           if (opus_len > 0) {
             static int encode_count = 0;
             encode_count++;
@@ -727,6 +751,10 @@ static void *audio_capture_thread_func(void *arg) {
         int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
         double queue_time_ns = STOP_TIMER("audio_queue_packet");
 
+        total_queue_ns += queue_time_ns;
+        if (queue_time_ns > max_queue_ns)
+          max_queue_ns = queue_time_ns;
+
         if (queue_result < 0) {
           log_debug_every(LOG_RATE_VERY_FAST, "Failed to queue audio batch (queue full)");
         } else {
@@ -750,15 +778,30 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Log overall loop iteration time periodically
       double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
-      static int loop_count = 0;
-      loop_count++;
-      if (loop_count % 100 == 0) {
-        char loop_duration_str[32];
-        format_duration_ns(loop_time_ns, loop_duration_str, sizeof(loop_duration_str));
-        char read_duration_str[32];
-        format_duration_ns(read_time_ns, read_duration_str, sizeof(read_duration_str));
-        log_info("Audio capture loop #%d: total=%s, read=%s, available=%d, samples_read=%d", loop_count,
-                 loop_duration_str, read_duration_str, available, samples_read);
+      total_loop_ns += loop_time_ns;
+      if (loop_time_ns > max_loop_ns)
+        max_loop_ns = loop_time_ns;
+
+      // Comprehensive timing report every 100 iterations (~2 seconds)
+      if (timing_loop_count % 100 == 0) {
+        char avg_loop_str[32], max_loop_str[32];
+        char avg_read_str[32], max_read_str[32];
+        char avg_encode_str[32], max_encode_str[32];
+        char avg_queue_str[32], max_queue_str[32];
+
+        format_duration_ns(total_loop_ns / timing_loop_count, avg_loop_str, sizeof(avg_loop_str));
+        format_duration_ns(max_loop_ns, max_loop_str, sizeof(max_loop_str));
+        format_duration_ns(total_read_ns / timing_loop_count, avg_read_str, sizeof(avg_read_str));
+        format_duration_ns(max_read_ns, max_read_str, sizeof(max_read_str));
+        format_duration_ns(total_encode_ns / timing_loop_count, avg_encode_str, sizeof(avg_encode_str));
+        format_duration_ns(max_encode_ns, max_encode_str, sizeof(max_encode_str));
+        format_duration_ns(total_queue_ns / timing_loop_count, avg_queue_str, sizeof(avg_queue_str));
+        format_duration_ns(max_queue_ns, max_queue_str, sizeof(max_queue_str));
+
+        log_info("CAPTURE TIMING #%lu: loop avg=%s max=%s, read avg=%s max=%s", timing_loop_count, avg_loop_str,
+                 max_loop_str, avg_read_str, max_read_str);
+        log_info("  encode avg=%s max=%s, queue avg=%s max=%s", avg_encode_str, max_encode_str, avg_queue_str,
+                 max_queue_str);
       }
 
       // Check if we have a partial batch that's been waiting too long (time-based flush)
@@ -797,7 +840,11 @@ static void *audio_capture_thread_func(void *arg) {
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
       platform_sleep_usec(1000); // 1ms
     } else {
-      STOP_TIMER("audio_capture_loop_iteration"); // Stop timer even if no samples read
+      // Track loop time even when no samples processed
+      double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
+      total_loop_ns += loop_time_ns;
+      if (loop_time_ns > max_loop_ns)
+        max_loop_ns = loop_time_ns;
 
       // Flush partial batch before sleeping on error path (prevent starvation)
       if (batch_has_data && batch_frame_count > 0) {
@@ -816,7 +863,7 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      platform_sleep_usec(50 * 1000); // 50ms (error path - no samples read)
+      platform_sleep_usec(5 * 1000); // 5ms (error path - was 50ms, caused gaps!)
     }
   }
 

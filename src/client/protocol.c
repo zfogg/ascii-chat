@@ -675,6 +675,8 @@ __attribute__((unused)) static void handle_audio_batch_packet(const void *data, 
  * @ingroup client_protocol
  */
 static void handle_audio_opus_packet(const void *data, size_t len) {
+  START_TIMER("audio_packet_total");
+
   // Validate parameters
   if (!data || len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio opus packet: data=%p, len=%zu", data, len);
@@ -691,7 +693,10 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
 
   // Opus max frame size is 2880 samples (120ms @ 48kHz)
   float samples[2880];
+
+  START_TIMER("opus_decode");
   int decoded_samples = audio_decode_opus(opus_data, len, samples, 2880);
+  double decode_ns = STOP_TIMER("opus_decode");
 
   if (decoded_samples <= 0) {
     log_warn("Failed to decode Opus audio packet, decoded=%d", decoded_samples);
@@ -704,7 +709,17 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   // Process decoded audio through audio subsystem
+  START_TIMER("process_samples");
   audio_process_received_samples(samples, decoded_samples);
+  double process_ns = STOP_TIMER("process_samples");
+
+  double total_ns = STOP_TIMER("audio_packet_total");
+
+  static int timing_count = 0;
+  if (++timing_count % 100 == 0) {
+    log_info("Audio packet timing #%d: decode=%.2fµs, process=%.2fµs, total=%.2fµs", timing_count, decode_ns / 1000.0,
+             process_ns / 1000.0, total_ns / 1000.0);
+  }
 
   log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,
                   len);

@@ -140,12 +140,14 @@ typedef struct {
  * Too small = underruns and audio gaps when network packets arrive late
  * Too large = excessive latency + AEC3 gets silence during fill period
  *
- * For LAN with ~10ms network latency, we only need 1 Opus frame (20ms) of buffer.
- * This minimizes end-to-end latency while still absorbing minor network jitter.
+ * INCREASED from 960 (20ms) to 4800 (100ms) to eliminate stuttering caused by:
+ * - Network jitter (packets arriving in bursts)
+ * - Packet processing overhead
+ * - Thread scheduling delays
  *
- * 960 samples @ 48kHz = 20ms = 1 Opus frame
+ * 4800 samples @ 48kHz = 100ms = 5 Opus frames
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD 960
+#define AUDIO_JITTER_BUFFER_THRESHOLD 4800
 
 /** @brief Low water mark - warn when available drops below this
  *
@@ -153,10 +155,12 @@ typedef struct {
  * keep playing to avoid choppy audio. The jitter buffer should absorb
  * network jitter without constantly pausing/resuming.
  *
- * Set to 50% of threshold (10ms when threshold is 20ms).
- * 480 samples @ 48kHz = 10ms = 0.5 Opus frames
+ * INCREASED from 480 (10ms) to 2400 (50ms) to provide adequate headroom
+ * and prevent thousands of micro-underruns that cause audio stuttering.
+ *
+ * 2400 samples @ 48kHz = 50ms = 2.5 Opus frames
  */
-#define AUDIO_JITTER_LOW_WATER_MARK 480
+#define AUDIO_JITTER_LOW_WATER_MARK 2400
 
 /** @brief High water mark - drop OLD samples when buffer exceeds this
  *
