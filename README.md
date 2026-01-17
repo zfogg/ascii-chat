@@ -216,10 +216,11 @@ ascii-chat includes a man page with comprehensive documentation. When installed 
 man ascii-chat
 ```
 
-From the build directory (after running `cmake --build build --target docs`):
+Build them yourself:
 
 ```bash
-man build/docs/ascii-chat.1
+cmake --build build --target man1
+man build/share/man/man1/ascii-chat.1
 ```
 
 ## Command Line Flags

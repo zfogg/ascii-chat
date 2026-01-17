@@ -88,7 +88,7 @@ class AsciiChat < Formula
 
     # Install binaries and documentation
     bin.install "build/bin/ascii-chat"
-    man1.install "build/docs/ascii-chat.1"
+    man1.install "build/share/man/man1/ascii-chat.1"
 
     # Install shell completions
     bash_completion.install "share/completions/ascii-chat.bash" => "ascii-chat"
