@@ -95,6 +95,8 @@ _ascii_chat() {
     '--audio' 'enable audio capture and playback'
     '--microphone-index' 'microphone device index (-1 for default)'
     '--speakers-index' 'speakers device index (-1 for default)'
+    '--microphone-sensitivity' 'microphone volume multiplier (0.0-1.0)'
+    '--speakers-volume' 'speaker volume multiplier (0.0-1.0)'
     '--audio-analysis' 'enable audio analysis for debugging'
     '--no-audio-playback' 'disable speaker playback while keeping audio recording'
     '-s' 'stretch or shrink video to fit (ignore aspect ratio)'
@@ -221,7 +223,7 @@ _ascii_chat() {
     return
     ;;
   # Options that take numeric values - no completion
-  -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps | --microphone-index | --speakers-index | --max-clients)
+  -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps | --microphone-index | --speakers-index | --microphone-sensitivity | --speakers-volume | --max-clients)
     return
     ;;
   -C | --palette-chars | --password)

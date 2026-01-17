@@ -416,6 +416,14 @@ Default: \fB-1\fR
 Speakers (audio output) device index. Use \fB-1\fR for system default.
 Default: \fB-1\fR
 .TP
+.BR \-\-microphone\-sensitivity =\fIVALUE\fR
+Microphone volume multiplier, range \fB0.0\fR (muted) to \fB1.0\fR (original volume).
+Default: \fB1.0\fR (no change)
+.TP
+.BR \-\-speakers\-volume =\fIVALUE\fR
+Speaker volume multiplier, range \fB0.0\fR (muted) to \fB1.0\fR (original volume).
+Default: \fB1.0\fR (no change)
+.TP
 .BR \-\-list\-microphones
 List all available audio input devices (microphones) and exit.
 Shows device index, name, and capabilities.
@@ -687,7 +695,7 @@ Config file values override default values.
 webcam_index, webcam_flip, color_mode, render_mode, fps, stretch, quiet,
 snapshot_mode, snapshot_delay, test_pattern, show_capabilities, force_utf8
 .IP \(bu 2
-\fB[audio]\fR: enabled, microphone_index, speakers_index
+\fB[audio]\fR: enabled, microphone_index, speakers_index, microphone_sensitivity, speakers_volume
 .IP \(bu 2
 \fB[palette]\fR: type, chars
 .IP \(bu 2

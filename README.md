@@ -306,6 +306,8 @@ ascii-chat client [::1]:8080           # Connect to IPv6 ::1:8080
 - `-A --audio`: Enable audio capture and playback
 - `--microphone-index INDEX`: Microphone device index (-1 for system default)
 - `--speakers-index INDEX`: Speakers device index (-1 for system default)
+- `--microphone-sensitivity VALUE`: Microphone volume multiplier, 0.0-1.0 (default: 1.0)
+- `--speakers-volume VALUE`: Speaker volume multiplier, 0.0-1.0 (default: 1.0)
 - `--list-microphones`: List available audio input devices and exit
 - `--list-speakers`: List available audio output devices and exit
 - `--audio-analysis`: Enable audio analysis for debugging audio quality issues

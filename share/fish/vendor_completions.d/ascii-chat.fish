@@ -68,6 +68,8 @@ complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s M -l render-mode
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s A -l audio -d 'enable audio capture and playback'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l microphone-index -x -d 'microphone device index (-1 for default)'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l speakers-index -x -d 'speakers device index (-1 for default)'
+complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l microphone-sensitivity -x -a '0.0 0.25 0.5 0.75 1.0' -d 'microphone volume multiplier (0.0-1.0)'
+complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l speakers-volume -x -a '0.0 0.25 0.5 0.75 1.0' -d 'speaker volume multiplier (0.0-1.0)'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l audio-analysis -d 'enable audio analysis for debugging'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l no-audio-playback -d 'disable speaker playback while keeping audio recording'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s s -l stretch -d 'stretch or shrink video to fit (ignore aspect ratio)'

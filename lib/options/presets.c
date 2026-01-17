@@ -436,6 +436,12 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
                           "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
 
+  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity), 1.0,
+                             "Microphone volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
+
+  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume), 1.0,
+                             "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
+
   options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled), false,
                            "Enable audio analysis (debug)", "AUDIO", false, NULL);
 

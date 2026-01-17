@@ -10,6 +10,7 @@
 #include "util/endian.h"
 #include "common.h"
 #include "util/endian.h"
+#include "util/time.h"       // For START_TIMER/STOP_TIMER macros
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "options/options.h"
@@ -39,7 +40,7 @@ static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 // Smaller batches mean more frequent processing, reducing audio gaps
 #define WORKER_BATCH_FRAMES 128
 #define WORKER_BATCH_SAMPLES (WORKER_BATCH_FRAMES * AUDIO_CHANNELS)
-#define WORKER_TIMEOUT_MS 3 // Wake up every 3ms to check for audio (was 10ms)
+#define WORKER_TIMEOUT_MS 1 // Wake up every 1ms to keep up with 48kHz playback (was 3ms)
 
 /**
  * @brief Audio worker thread for heavy processing
@@ -87,18 +88,28 @@ static void *audio_worker_thread(void *arg) {
   static uint64_t signal_count = 0;
   static uint64_t process_count = 0;
 
+  // Detailed timing stats
+  static double total_wait_ns = 0;
+  static double total_capture_ns = 0;
+  static double total_playback_ns = 0;
+  static double max_wait_ns = 0;
+  static double max_capture_ns = 0;
+  static double max_playback_ns = 0;
+
   while (true) {
     loop_count++;
+    START_TIMER("worker_loop_iteration");
 
     // Wait for signal from callback or timeout
     mutex_lock(&ctx->worker_mutex);
-    struct timespec wait_start, wait_end;
-    clock_gettime(CLOCK_MONOTONIC, &wait_start);
+    START_TIMER("worker_cond_wait");
     int wait_result = cond_timedwait(&ctx->worker_cond, &ctx->worker_mutex, WORKER_TIMEOUT_MS);
-    clock_gettime(CLOCK_MONOTONIC, &wait_end);
+    double wait_time_ns = STOP_TIMER("worker_cond_wait");
     mutex_unlock(&ctx->worker_mutex);
 
-    long wait_ms = (wait_end.tv_sec - wait_start.tv_sec) * 1000L + (wait_end.tv_nsec - wait_start.tv_nsec) / 1000000L;
+    total_wait_ns += wait_time_ns;
+    if (wait_time_ns > max_wait_ns)
+      max_wait_ns = wait_time_ns;
 
     // Check shutdown flag
     if (atomic_load(&ctx->worker_should_stop)) {
@@ -118,16 +129,31 @@ static void *audio_worker_thread(void *arg) {
     size_t render_available = audio_ring_buffer_available_read(ctx->raw_render_rb);
     size_t playback_available = audio_ring_buffer_available_read(ctx->playback_buffer);
 
-    // Log worker loop state every 100 iterations
+    // Log worker loop state every 100 iterations with detailed timing
     if (loop_count % 100 == 0) {
-      log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu, last_wait=%ldms", loop_count,
-               signal_count, timeout_count, process_count, wait_ms);
+      char avg_wait_str[32], max_wait_str[32];
+      char avg_capture_str[32], max_capture_str[32];
+      char avg_playback_str[32], max_playback_str[32];
+      format_duration_ns(total_wait_ns / loop_count, avg_wait_str, sizeof(avg_wait_str));
+      format_duration_ns(max_wait_ns, max_wait_str, sizeof(max_wait_str));
+      format_duration_ns(total_capture_ns / (process_count > 0 ? process_count : 1), avg_capture_str,
+                         sizeof(avg_capture_str));
+      format_duration_ns(max_capture_ns, max_capture_str, sizeof(max_capture_str));
+      format_duration_ns(total_playback_ns / (process_count > 0 ? process_count : 1), avg_playback_str,
+                         sizeof(avg_playback_str));
+      format_duration_ns(max_playback_ns, max_playback_str, sizeof(max_playback_str));
+
+      log_info("Worker stats: loops=%lu, signals=%lu, timeouts=%lu, processed=%lu", loop_count, signal_count,
+               timeout_count, process_count);
+      log_info("Worker timing: wait avg=%s max=%s, capture avg=%s max=%s, playback avg=%s max=%s", avg_wait_str,
+               max_wait_str, avg_capture_str, max_capture_str, avg_playback_str, max_playback_str);
       log_info("Worker buffers: capture=%zu, render=%zu, playback=%zu (need >= %d to process)", capture_available,
                render_available, playback_available, WORKER_BATCH_SAMPLES);
     }
 
     if (wait_result != 0 && capture_available == 0 && playback_available == 0) {
       // Timeout with no data - continue waiting
+      STOP_TIMER("worker_loop_iteration"); // Must stop before loop repeats
       continue;
     }
 
@@ -138,6 +164,8 @@ static void *audio_worker_thread(void *arg) {
     // Minimum: 64 samples (1.3ms @ 48kHz) to avoid excessive overhead
     const size_t MIN_PROCESS_SAMPLES = 64;
     if (capture_available >= MIN_PROCESS_SAMPLES) {
+      START_TIMER("worker_capture_processing");
+
       // Read up to WORKER_BATCH_SAMPLES, but process whatever is available
       size_t samples_to_process = (capture_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : capture_available;
       // Read raw capture samples from callbacks (variable size batch)
@@ -145,7 +173,6 @@ static void *audio_worker_thread(void *arg) {
 
       if (capture_read > 0) {
         // For AEC3, we need render samples too. If not available, skip AEC3 but still process capture.
-        bool aec3_applied = false;
         if (!bypass_aec3_worker && ctx->audio_pipeline && render_available >= capture_read) {
           // Read render samples for AEC3 (match capture size)
           size_t render_read = audio_ring_buffer_read(ctx->raw_render_rb, ctx->worker_render_batch, capture_read);
@@ -179,13 +206,25 @@ static void *audio_worker_thread(void *arg) {
               log_info("AEC3 performance: avg=%.2fms, max=%.2fms, latest=%.2fms (samples=%zu, %d calls)",
                        avg_ns / 1000000.0, aec3_max_ns / 1000000.0, aec3_ns / 1000000.0, capture_read, aec3_count);
             }
-
-            aec3_applied = true;
           }
         }
 
         // TODO: Add optional resampling here if input device rate != 48kHz
         // For now, assume 48kHz (most common for professional audio)
+
+        // Apply microphone sensitivity (volume control)
+        float mic_sensitivity = GET_OPTION(microphone_sensitivity);
+        if (mic_sensitivity != 1.0f) {
+          // Clamp to valid range [0.0, 1.0]
+          if (mic_sensitivity < 0.0f)
+            mic_sensitivity = 0.0f;
+          if (mic_sensitivity > 1.0f)
+            mic_sensitivity = 1.0f;
+
+          for (size_t i = 0; i < capture_read; i++) {
+            ctx->worker_capture_batch[i] *= mic_sensitivity;
+          }
+        }
 
         // Write processed capture to encoder buffer
         audio_ring_buffer_write(ctx->capture_buffer, ctx->worker_capture_batch, (int)capture_read);
@@ -195,26 +234,34 @@ static void *audio_worker_thread(void *arg) {
                             ? "BYPASSED"
                             : (render_available >= WORKER_BATCH_SAMPLES ? "applied" : "skipped-no-render"));
       }
+
+      double capture_time_ns = STOP_TIMER("worker_capture_processing");
+      total_capture_ns += capture_time_ns;
+      if (capture_time_ns > max_capture_ns)
+        max_capture_ns = capture_time_ns;
     }
 
-    // STEP 2: Process playback path (network → worker → speakers)
-    // Process even partial batches to reduce latency
-    if (playback_available >= MIN_PROCESS_SAMPLES) {
-      size_t playback_to_process =
-          (playback_available > WORKER_BATCH_SAMPLES) ? WORKER_BATCH_SAMPLES : playback_available;
-      // Read decoded audio from network (variable size batch)
-      size_t playback_read =
-          audio_ring_buffer_read(ctx->playback_buffer, ctx->worker_playback_batch, playback_to_process);
+    // STEP 2: Playback processing REMOVED - now handled directly in duplex_callback()
+    // PERFORMANCE FIX: Duplex callback reads playback_buffer directly to avoid worker bottleneck
+    // Worker was too slow (128 samples/iteration) for callback's 960 samples/10ms demand
+    // Volume control moved to duplex callback since it's lightweight (just multiplication)
+    //
+    // IMPORTANT: Do NOT read from playback_buffer here - would create race with duplex callback!
+    (void)playback_available; // Suppress unused variable warning
 
-      if (playback_read > 0) {
-        // TODO: Add optional resampling here if output device rate != 48kHz
-        // TODO: Add optional filtering/equalization/ducking here
+    // Log overall loop iteration time
+    double loop_time_ns = STOP_TIMER("worker_loop_iteration");
+    static double total_loop_ns = 0;
+    static double max_loop_ns = 0;
+    total_loop_ns += loop_time_ns;
+    if (loop_time_ns > max_loop_ns)
+      max_loop_ns = loop_time_ns;
 
-        // Write to processed playback buffer for callback
-        audio_ring_buffer_write(ctx->processed_playback_rb, ctx->worker_playback_batch, (int)playback_read);
-
-        log_debug_every(1000000, "Worker processed %zu playback samples", playback_read);
-      }
+    if (loop_count % 100 == 0) {
+      char avg_loop_str[32], max_loop_str[32];
+      format_duration_ns(total_loop_ns / loop_count, avg_loop_str, sizeof(avg_loop_str));
+      format_duration_ns(max_loop_ns, max_loop_str, sizeof(max_loop_str));
+      log_info("Worker loop timing: avg=%s max=%s", avg_loop_str, max_loop_str);
     }
   }
 
@@ -240,6 +287,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
                            const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
                            void *userData) {
   (void)timeInfo;
+  START_TIMER("duplex_callback");
 
   audio_context_t *ctx = (audio_context_t *)userData;
   const float *input = (const float *)inputBuffer;
@@ -251,6 +299,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     if (output) {
       SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
     }
+    STOP_TIMER("duplex_callback");
     return paContinue;
   }
 
@@ -264,14 +313,48 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     }
   }
 
-  // STEP 1: Read processed playback from worker → speakers (~0.5ms)
-  if (output && ctx->processed_playback_rb) {
-    size_t samples_read = audio_ring_buffer_read(ctx->processed_playback_rb, output, num_samples);
+  // Static counters for playback tracking (used in logging below)
+  static uint64_t total_samples_read_local = 0;
+  static uint64_t underrun_count_local = 0;
+
+  // STEP 1: Read playback directly from network buffer → speakers (~0.5ms)
+  // PERFORMANCE FIX: Bypass worker thread for playback to eliminate underruns
+  // Worker was processing 128 samples/iteration but callback needs 960 samples/10ms
+  // Volume control is lightweight (just multiplication) so we can do it here
+
+  if (output && ctx->playback_buffer) {
+    size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+    total_samples_read_local += samples_read;
+
     if (samples_read < num_samples) {
       // Fill remaining with silence if underrun
       SAFE_MEMSET(output + samples_read, (num_samples - samples_read) * sizeof(float), 0,
                   (num_samples - samples_read) * sizeof(float));
       log_debug_every(1000000, "Playback underrun: got %zu/%zu samples", samples_read, num_samples);
+      underrun_count_local++;
+    }
+
+    // Apply speaker volume control (moved from worker thread)
+    if (samples_read > 0) {
+      float speaker_volume = GET_OPTION(speakers_volume);
+
+      // BUG FIX: If speakers_volume is 0.0 (uninitialized), default to 1.0
+      // This was causing ALL audio to be multiplied by 0 = SILENCE!
+      if (speaker_volume == 0.0f) {
+        speaker_volume = 1.0f;
+      }
+
+      if (speaker_volume != 1.0f) {
+        // Clamp to valid range [0.0, 1.0]
+        if (speaker_volume < 0.0f)
+          speaker_volume = 0.0f;
+        if (speaker_volume > 1.0f)
+          speaker_volume = 1.0f;
+
+        for (size_t i = 0; i < samples_read; i++) {
+          output[i] *= speaker_volume;
+        }
+      }
     }
   } else if (output) {
     SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -291,6 +374,33 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // STEP 4: Signal worker thread (non-blocking, ~0.1ms)
   // Worker wakes up, processes batch, writes back to processed buffers
   cond_signal(&ctx->worker_cond);
+
+  // Log callback timing and playback stats periodically
+  double callback_time_ns = STOP_TIMER("duplex_callback");
+  static double total_callback_ns = 0;
+  static double max_callback_ns = 0;
+  static uint64_t callback_count = 0;
+
+  callback_count++;
+  total_callback_ns += callback_time_ns;
+  if (callback_time_ns > max_callback_ns)
+    max_callback_ns = callback_time_ns;
+
+  if (callback_count % 500 == 0) { // Log every ~10 seconds @ 48 FPS
+    char avg_str[32], max_str[32];
+    format_duration_ns(total_callback_ns / callback_count, avg_str, sizeof(avg_str));
+    format_duration_ns(max_callback_ns, max_str, sizeof(max_str));
+    log_info("Duplex callback timing: count=%lu, avg=%s, max=%s (budget: 2ms)", callback_count, avg_str, max_str);
+    log_info("Playback stats: total_samples_read=%lu, underruns=%lu, read_success_rate=%.1f%%",
+             total_samples_read_local, underrun_count_local,
+             100.0 * (double)(callback_count - underrun_count_local) / (double)callback_count);
+
+    // DEBUG: Log first few output samples to verify they're not zero
+    if (output && num_samples >= 4) {
+      log_info("Output sample check: first4=[%.4f, %.4f, %.4f, %.4f] (verifying audio is not silent)", output[0],
+               output[1], output[2], output[3]);
+    }
+  }
 
   return paContinue;
 }
