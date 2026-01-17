@@ -1053,6 +1053,7 @@ target_link_libraries(ascii-chat-static-lib INTERFACE
     ${ZSTD_LIBRARIES}
     ${PORTAUDIO_LIBRARIES}
     ${OPUS_LIBRARIES}
+    ${SQLITE3_LIBRARIES}
 )
 if(TARGET mimalloc-static)
     target_link_libraries(ascii-chat-static-lib INTERFACE mimalloc-static)
