@@ -210,13 +210,15 @@ ascii-chat discovery-server --help     # Discovery-server-specific help
 
 **Man Page:**
 
-ascii-chat includes a man page with comprehensive documentation. When installed via Homebrew or a package manager:
+ascii-chat includes a man page with comprehensive documentation.
+
+When installed via a package manager:
 
 ```bash
 man ascii-chat
 ```
 
-Build them yourself:
+Or create it yourself from the repo source:
 
 ```bash
 cmake --build build --target man1
