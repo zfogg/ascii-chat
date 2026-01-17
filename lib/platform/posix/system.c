@@ -932,16 +932,22 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   }
 
   // Common CA certificate bundle paths (ordered by likelihood)
-  static const char *ca_paths[] = {"/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo/Arch
-                                   "/etc/pki/tls/certs/ca-bundle.crt",                  // RHEL/CentOS/Fedora
-                                   "/etc/ssl/cert.pem",                                 // OpenBSD/macOS/Alpine
-                                   "/usr/local/etc/openssl/cert.pem",                   // Homebrew OpenSSL on macOS
-                                   "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
-                                   "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7+
-                                   "/usr/share/ssl/certs/ca-bundle.crt",                // Old Red Hat
-                                   "/usr/local/share/certs/ca-root-nss.crt",            // FreeBSD
-                                   "/etc/openssl/certs/ca-certificates.crt",            // OpenWall (musl)
-                                   NULL};
+  // On macOS, prefer Homebrew ca-certificates if installed (more up-to-date than system)
+  static const char *ca_paths[] = {
+#ifdef __APPLE__
+      "/opt/homebrew/opt/ca-certificates/share/ca-certificates/cacert.pem", // Homebrew ca-certificates (Apple Silicon)
+      "/usr/local/opt/ca-certificates/share/ca-certificates/cacert.pem",    // Homebrew ca-certificates (Intel Mac)
+#endif
+      "/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo/Arch
+      "/etc/pki/tls/certs/ca-bundle.crt",                  // RHEL/CentOS/Fedora
+      "/etc/ssl/cert.pem",                                 // OpenBSD/macOS/Alpine
+      "/usr/local/etc/openssl/cert.pem",                   // Homebrew OpenSSL on macOS
+      "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
+      "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7+
+      "/usr/share/ssl/certs/ca-bundle.crt",                // Old Red Hat
+      "/usr/local/share/certs/ca-root-nss.crt",            // FreeBSD
+      "/etc/openssl/certs/ca-certificates.crt",            // OpenWall (musl)
+      NULL};
 
   // Try each path until we find one that exists and is readable
   for (int i = 0; ca_paths[i] != NULL; i++) {
@@ -986,6 +992,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
     // Success!
     *pem_data_out = pem_data;
     *pem_size_out = bytes_read;
+    log_debug("Loaded CA certificates from: %s (%zu bytes)", ca_paths[i], bytes_read);
     return ASCIICHAT_OK;
   }
 
