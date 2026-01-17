@@ -587,6 +587,17 @@ else()
         )
     endif()
 
+    # Set rpath for shared library (needed for ASCIICHAT_SHARED_DEPS builds)
+    # The library links against @rpath/libunwind.1.dylib so needs LLVM paths
+    if(ASCIICHAT_SHARED_DEPS AND (APPLE OR UNIX))
+        set_target_properties(ascii-chat-shared PROPERTIES
+            BUILD_RPATH "${CMAKE_BUILD_RPATH}"
+            INSTALL_RPATH "${CMAKE_BUILD_RPATH}"
+            INSTALL_RPATH_USE_LINK_PATH TRUE
+        )
+        message(STATUS "libasciichat using rpath for SHARED_DEPS build: ${CMAKE_BUILD_RPATH}")
+    endif()
+
     # Add version dependency
     add_dependencies(ascii-chat-shared generate_version)
 
