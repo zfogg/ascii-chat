@@ -20,11 +20,11 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 function(configure_include_directories)
     # Base include directories (source tree). Panic-instrumentation-enabled builds prepend
     # instrumented include directories later during ascii_panic_finalize().
+    # Note: uthash is now bundled in lib/uthash/ (not deps/uthash/)
     include_directories(
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/deps/tomlc17/src
-        ${CMAKE_SOURCE_DIR}/deps/uthash/src
         ${CMAKE_SOURCE_DIR}/deps/mdns
     )
 

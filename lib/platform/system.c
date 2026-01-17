@@ -23,7 +23,7 @@
     }                                                                                                                  \
   } while (0)
 
-#include "util/uthash.h"
+#include "uthash/uthash.h"
 #include "log/logging.h"
 
 // Platform-specific binary suffix

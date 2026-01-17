@@ -443,9 +443,9 @@
  * # Update all submodules
  * git submodule update --remote --merge
  *
- * # Update specific submodule
- * cd deps/uthash && git checkout v2.3.0
- * cd ../.. && git add deps/uthash && git commit -m "Update uthash"
+ * # Update specific submodule (note: uthash is now bundled in lib/uthash/, not a submodule)
+ * cd deps/bearssl && git checkout v0.6
+ * cd ../.. && git add deps/bearssl && git commit -m "Update bearssl"
  * @endcode
  *
  * **System Libraries**:

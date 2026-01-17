@@ -10,7 +10,7 @@
 #include "../asciichat_errno.h"
 #include "../platform/rwlock.h"
 #include "../platform/abstraction.h"
-#include "uthash.h"
+#include "uthash/uthash.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
