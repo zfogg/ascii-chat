@@ -526,6 +526,16 @@ static void *audio_capture_thread_func(void *arg) {
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_samples_collected = 0;
 
+  // Batch buffer for multiple Opus frames - send all at once to reduce blocking
+#define MAX_BATCH_FRAMES 8
+#define BATCH_TIMEOUT_MS 40 // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
+  static uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
+  static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
+  static int batch_frame_count = 0;
+  static size_t batch_total_size = 0;
+  static struct timespec batch_start_time = {0};
+  static bool batch_has_data = false;
+
   while (!should_exit() && !server_connection_is_lost()) {
     START_TIMER("audio_capture_loop_iteration");
 
@@ -543,6 +553,23 @@ static void *audio_capture_thread_func(void *arg) {
     // Check how many samples are available in the ring buffer
     int available = audio_ring_buffer_available_read(g_audio_context.capture_buffer);
     if (available <= 0) {
+      // Flush partial batch before sleeping (prevent starvation during idle periods)
+      if (batch_has_data && batch_frame_count > 0) {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long elapsed_ms =
+            ((now.tv_sec - batch_start_time.tv_sec) * 1000) + ((now.tv_nsec - batch_start_time.tv_nsec) / 1000000);
+
+        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+          log_debug_every(LOG_RATE_FAST, "Idle timeout flush: %d frames (%zu bytes) after %ld ms", batch_frame_count,
+                          batch_total_size, elapsed_ms);
+          (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          batch_frame_count = 0;
+          batch_total_size = 0;
+          batch_has_data = false;
+        }
+      }
+
       // Sleep longer to reduce CPU usage when idle (was 5ms → 50ms)
       // At 50ms polling, we wake 20 times/sec vs 200 times/sec
       // This reduces CPU from ~90% to <5% when no audio is being captured
@@ -627,13 +654,6 @@ static void *audio_capture_thread_func(void *arg) {
       int samples_to_process = samples_read;
       int sample_offset = 0;
 
-// Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define MAX_BATCH_FRAMES 8
-      static uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
-      static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
-      static int batch_frame_count = 0;
-      static size_t batch_total_size = 0;
-
       while (samples_to_process > 0) {
         // How many samples can we add to current frame?
         int space_in_frame = OPUS_FRAME_SAMPLES - opus_frame_samples_collected;
@@ -673,6 +693,12 @@ static void *audio_capture_thread_func(void *arg) {
 
             // Add to batch buffer
             if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
+              // Mark batch start time on first frame
+              if (batch_frame_count == 0) {
+                clock_gettime(CLOCK_MONOTONIC, &batch_start_time);
+                batch_has_data = true;
+              }
+
               memcpy(batch_buffer + batch_total_size, opus_packet, (size_t)opus_len);
               batch_frame_sizes[batch_frame_count] = (uint16_t)opus_len;
               batch_total_size += (size_t)opus_len;
@@ -719,6 +745,7 @@ static void *audio_capture_thread_func(void *arg) {
         // Reset batch
         batch_frame_count = 0;
         batch_total_size = 0;
+        batch_has_data = false;
       }
 
       // Log overall loop iteration time periodically
@@ -734,13 +761,62 @@ static void *audio_capture_thread_func(void *arg) {
                  loop_duration_str, read_duration_str, available, samples_read);
       }
 
+      // Check if we have a partial batch that's been waiting too long (time-based flush)
+      // This prevents batches from sitting indefinitely when audio capture is irregular
+      if (batch_has_data && batch_frame_count > 0) {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long elapsed_ms =
+            ((now.tv_sec - batch_start_time.tv_sec) * 1000) + ((now.tv_nsec - batch_start_time.tv_nsec) / 1000000);
+
+        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+          static int timeout_flush_count = 0;
+          timeout_flush_count++;
+
+          log_debug_every(LOG_RATE_FAST, "Timeout flush #%d: %d frames (%zu bytes) after %ld ms", timeout_flush_count,
+                          batch_frame_count, batch_total_size, elapsed_ms);
+
+          // Queue partial batch
+          int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          if (queue_result == 0) {
+            // Track audio frame for FPS reporting
+            struct timespec current_time;
+            (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+            fps_frame(&fps_tracker, &current_time, "audio batch timeout flush");
+          }
+
+          // Reset batch
+          batch_frame_count = 0;
+          batch_total_size = 0;
+          batch_has_data = false;
+        }
+      }
+
       // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (960 samples @ 48kHz)
       // Without sleep, thread spins at 90-100% CPU constantly checking for new samples
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
       platform_sleep_usec(1000); // 1ms
     } else {
       STOP_TIMER("audio_capture_loop_iteration"); // Stop timer even if no samples read
-      platform_sleep_usec(50 * 1000);             // 50ms (error path - no samples read)
+
+      // Flush partial batch before sleeping on error path (prevent starvation)
+      if (batch_has_data && batch_frame_count > 0) {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        long elapsed_ms =
+            ((now.tv_sec - batch_start_time.tv_sec) * 1000) + ((now.tv_nsec - batch_start_time.tv_nsec) / 1000000);
+
+        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+          log_debug_every(LOG_RATE_FAST, "Error path timeout flush: %d frames (%zu bytes) after %ld ms",
+                          batch_frame_count, batch_total_size, elapsed_ms);
+          (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          batch_frame_count = 0;
+          batch_total_size = 0;
+          batch_has_data = false;
+        }
+      }
+
+      platform_sleep_usec(50 * 1000); // 50ms (error path - no samples read)
     }
   }
 
