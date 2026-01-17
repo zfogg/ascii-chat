@@ -166,10 +166,10 @@ $RequiredPackages = @(
     "portaudio",       # Audio I/O library for capture/playback
     "opus",            # Audio codec library for real-time compression
     "sqlite3",         # Database library for discovery service
-    "liburcu",         # Userspace RCU for lock-free concurrent data structures
     "openssl",         # SSL/TLS library (required by libdatachannel for TURN credentials)
     "libdatachannel",  # WebRTC DataChannels for P2P connections
-    "miniupnpc"        # UPnP client library for automatic router port forwarding
+    "miniupnpc",       # UPnP client library for automatic router port forwarding
+    "abseil"           # C++ utility library (used by WebRTC AEC3)
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan

@@ -169,33 +169,80 @@ file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/aec3/CMakeLists.txt" "${A
 message(STATUS "Patched WebRTC AEC3 aec3/CMakeLists.txt - removed duplicate ooura_fft compilation")
 
 # =============================================================================
-# Patch 4: base/CMakeLists.txt - Uncomment Abseil include path for C++ consumers
+# Patch 4: base/CMakeLists.txt - Try system Abseil, fall back to bundled
 # =============================================================================
-# The base module depends on Abseil. We need to expose the Abseil include
-# path so that code using base (like client_audio_pipeline.cpp) can access
-# Abseil headers that are included by base's headers.
+# The base module depends on Abseil. Try to use system-installed Abseil first
+# (from vcpkg on Windows, Homebrew on macOS, or apt on Linux).
+# If not found, fall back to building the bundled Abseil.
 
-file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/CMakeLists.txt" BASE_CMAKE_CONTENT)
+# Write the new base/CMakeLists.txt with system Abseil detection
+# Using a single bracket argument to avoid semicolon artifacts from concatenation
+file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/CMakeLists.txt" [=[
+# Try to find system Abseil (vcpkg, Homebrew, apt, etc.)
+find_package(absl QUIET CONFIG)
 
-# Uncomment the Abseil subdirectory
-string(REPLACE
-    "#add_subdirectory(abseil)"
-    "add_subdirectory(abseil)"
-    BASE_CMAKE_CONTENT
-    "${BASE_CMAKE_CONTENT}"
-)
+if(absl_FOUND)
+    message(STATUS "WebRTC AEC3: Using system Abseil")
 
-# Uncomment the Abseil include path
-string(REPLACE
-    "#include_directories(\"\\${PROJECT_SOURCE_DIR}/base/abseil\")"
-    "include_directories(\"\\${PROJECT_SOURCE_DIR}/base/abseil\")"
-    BASE_CMAKE_CONTENT
-    "${BASE_CMAKE_CONTENT}"
-)
+    # Build base library WITHOUT bundled Abseil sources
+    add_library(base
+            rtc_base/checks.cc
+            rtc_base/time_utils.cc
+            rtc_base/logging.cc
+            rtc_base/memory/aligned_malloc.cc
+            rtc_base/race_checker.cc
+            rtc_base/string_encode.cc
+            rtc_base/string_utils.cc
+            rtc_base/platform_thread_types.cc
+            rtc_base/strings/string_builder.cc
+            rtc_base/critical_section.cc
+            system_wrappers/source/field_trial.cc
+            system_wrappers/source/metrics.cc
+            system_wrappers/source/cpu_features.cc
+            )
 
-file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/CMakeLists.txt" "${BASE_CMAKE_CONTENT}")
+    # Link against system Abseil targets
+    # These provide the functionality that was in the bundled Abseil sources
+    target_link_libraries(base PUBLIC
+        absl::strings          # string_view, ascii, memutil
+        absl::base             # throw_delegate
+        absl::optional         # bad_optional_access
+    )
 
-message(STATUS "Patched WebRTC AEC3 base/CMakeLists.txt - enabled Abseil include path for C++ consumers")
+    # Abseil include paths are automatically set by find_package
+
+else()
+    message(STATUS "WebRTC AEC3: System Abseil not found, using bundled")
+
+    # Use bundled Abseil
+    add_subdirectory(abseil)
+    include_directories("${PROJECT_SOURCE_DIR}/base/abseil")
+
+    # Build base library WITH bundled Abseil sources
+    add_library(base
+            rtc_base/checks.cc
+            rtc_base/time_utils.cc
+            rtc_base/logging.cc
+            rtc_base/memory/aligned_malloc.cc
+            rtc_base/race_checker.cc
+            rtc_base/string_encode.cc
+            rtc_base/string_utils.cc
+            rtc_base/platform_thread_types.cc
+            rtc_base/strings/string_builder.cc
+            rtc_base/critical_section.cc
+            system_wrappers/source/field_trial.cc
+            system_wrappers/source/metrics.cc
+            system_wrappers/source/cpu_features.cc
+            abseil/absl/types/bad_optional_access.cc
+            abseil/absl/base/internal/throw_delegate.cc
+            abseil/absl/strings/string_view.cc
+            abseil/absl/strings/internal/memutil.cc
+            abseil/absl/strings/ascii.cc
+            )
+endif()
+]=])
+
+message(STATUS "Patched WebRTC AEC3 base/CMakeLists.txt - system Abseil preferred, bundled as fallback")
 
 # =============================================================================
 # Patch 5: base/abseil/CMakeLists.txt - Disable test framework requirements

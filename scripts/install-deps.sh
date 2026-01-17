@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl miniupnpc libnatpmp ffmpeg
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 openssl miniupnpc libnatpmp ffmpeg abseil
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -130,6 +130,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libminiupnpc-dev \
       libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
+      libabsl-dev \
       doxygen \
       dpkg-dev rpm
 
@@ -278,11 +279,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-devel musl-gcc musl-libc-static \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
       criterion-devel libffi-devel sqlite-devel \
-      userspace-rcu-devel \
       openssl-devel \
       miniupnpc-devel \
       protobuf-c-devel \
       ffmpeg-devel \
+      abseil-cpp-devel \
       doxygen \
       rpm-build
 
@@ -298,6 +299,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl mimalloc \
       zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
       openssl \
+      abseil-cpp \
       criterion \
       doxygen \
       dpkg rpm-tools

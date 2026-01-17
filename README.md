@@ -967,6 +967,7 @@ ascii-chat is built on operating system code and several libraries.
 - [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
 - [**zstd**](https://facebook.github.io/zstd/) - Frame compression for bandwidth efficiency
 - [**Opus**](https://opus-codec.org/) - Real-time audio codec for low-latency voice transmission
+- [**WebRTC AEC3**](https://github.com/nicnacnic/webrtc_AEC3) - Extracted WebRTC audio processing for acoustic echo cancellation
 - [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
 - [**SQLite3**](https://www.sqlite.org/) - Database for ACDS discovery service
 - [**OpenSSL**](https://www.openssl.org/) - TLS for WebRTC TURN servers and musl static builds
