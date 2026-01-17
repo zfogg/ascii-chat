@@ -6,6 +6,9 @@
 
 set -e
 
+SSH_ARGS="-o ConnectTimeout=5"
+SSH_CMD="ssh $SSH_ARGS"
+
 # Cleanup function for Ctrl+C
 cleanup() {
   echo ""
@@ -13,12 +16,12 @@ cleanup() {
   run_local "pkill -x ascii-chat" 2>/dev/null || true
 
   # Use timeout for SSH commands to prevent hanging on Ctrl+C
-  timeout 3 ssh $REMOTE_HOST "cd $REMOTE_REPO && pkill -x ascii-chat" 2>/dev/null || true
+  timeout 3 $SSH_CMD $REMOTE_HOST "cd $REMOTE_REPO && pkill -x ascii-chat" 2>/dev/null || true
 
   # Pop stash if we created one on the remote machine
   if [[ $STASHED_REMOTE -eq 1 ]]; then
     echo "Restoring stashed changes on remote..."
-    timeout 5 ssh $REMOTE_HOST "cd $REMOTE_REPO && git stash pop" 2>/dev/null || true
+    timeout 5 $SSH_CMD $REMOTE_HOST "cd $REMOTE_REPO && git stash pop" 2>/dev/null || true
   fi
   echo "Cleanup complete."
   exit 130
@@ -87,7 +90,7 @@ run_local() {
 
 run_remote() {
   # Add connection timeout to prevent hanging if SSH is unresponsive
-  ssh -o ConnectTimeout=5 $REMOTE_HOST "cd $REMOTE_REPO && $1"
+  $SSH_CMD $REMOTE_HOST "cd $REMOTE_REPO && $1"
 }
 
 run_bg_local() {
@@ -95,7 +98,7 @@ run_bg_local() {
 }
 
 run_bg_remote() {
-  ssh -o ConnectTimeout=5 $REMOTE_HOST "cd $REMOTE_REPO && setsid bash -c '$1' > /dev/null 2>&1 < /dev/null &"
+  $SSH_CMD $REMOTE_HOST "cd $REMOTE_REPO && setsid bash -c '$1' > /dev/null 2>&1 < /dev/null &"
 }
 
 # Helper functions - target specific host regardless of where we're running
@@ -103,7 +106,7 @@ run_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
     run_local "$1"
   else
-    ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && $1"
+    $SSH_CMD $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && $1"
   fi
 }
 
@@ -111,7 +114,7 @@ run_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
     run_local "$1"
   else
-    ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && $1"
+    $SSH_CMD $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && $1"
   fi
 }
 
@@ -119,7 +122,7 @@ run_bg_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
     run_bg_local "$1"
   else
-    ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && screen -dmS ascii-test bash -c '$1'"
+    $SSH_CMD $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && screen -dmS ascii-test bash -c '$1'"
   fi
 }
 
@@ -127,7 +130,7 @@ run_bg_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
     run_bg_local "$1"
   else
-    ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && setsid bash -c '$1' > /dev/null 2>&1 < /dev/null &"
+    $SSH_CMD $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && setsid bash -c '$1' > /dev/null 2>&1 < /dev/null &"
   fi
 }
 
@@ -140,11 +143,11 @@ run_on_two "rm -f /tmp/client2_debug.log /tmp/audio_*.wav /tmp/aec3_*.wav" 2>/de
 echo "[2/8] Killing existing ascii-chat processes..."
 run_on_one "pkill -x ascii-chat" 2>/dev/null || true
 run_on_two "pkill -x ascii-chat" 2>/dev/null || true
-sleep 2
+sleep 1
 # Force kill any remaining processes
 run_on_one "pkill -9 -x ascii-chat" 2>/dev/null || true
 run_on_two "pkill -9 -x ascii-chat" 2>/dev/null || true
-sleep 1
+sleep 0.2
 
 # Function to safely pull with stash handling
 safe_git_pull() {
@@ -197,19 +200,19 @@ timeout $((DURATION + 10)) ./build/bin/ascii-chat --log-file /tmp/server_debug.l
 SERVER_PID=$!
 
 # Give server time to start
-sleep 2
+sleep 0.1
 
 # Wait for server to be listening
 echo "Waiting for server to be listening on localhost:$PORT..."
-MAX_WAIT=30
+MAX_WAIT=50
 for i in $(seq 1 $MAX_WAIT); do
   if nc -z localhost $PORT 2>/dev/null; then
     echo "Server is listening! (took ${i}s)"
     break
   fi
 
-  if [ $i -eq 5 ]; then
-    echo "=== DEBUG: Server not listening after 5s ==="
+  if [ $i -eq $MAX_WAIT ]; then
+    echo "=== DEBUG: Server not listening ==="
     pgrep -x ascii-chat && echo "Process is running" || echo "Process NOT running"
     lsof -i :$PORT 2>/dev/null | head -5 || echo "Nothing listening on port $PORT"
     tail -30 /tmp/server_debug.log 2>/dev/null || echo "No log file"
@@ -219,7 +222,7 @@ for i in $(seq 1 $MAX_WAIT); do
     exit 1
   fi
 
-  sleep 1
+  sleep 0.1
 done
 
 # Verify process is still running
@@ -248,20 +251,18 @@ else
   # Use nohup for reliable background execution - connect to server on HOST_TWO
   # BeaglePlay: Use default audio devices (arecord works with defaults)
   CLIENT1_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
+  $SSH_CMD $HOST_ONE_USER@$HOST_ONE_IP "cd $REPO_ONE && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT1_TIMEOUT} ${BIN_ONE} --log-file /tmp/client1_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client1_nohup.log 2>&1 &"
 fi
-sleep 2  # Give client time to connect
 
 # Start client 2 on HOST_TWO (connecting to server)
 echo "[8/8] Starting client 2 on $HOST_TWO..."
 if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis"
+  run_bg_local "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO --log-file /tmp/client2_debug.log client localhost:$PORT --test-pattern --audio --audio-analysis --speakers-volume 0.5"
 else
   # Use nohup for consistency - connect to server on HOST_ONE using remote address
   CLIENT2_TIMEOUT=$((DURATION + 5))
-  ssh -o ConnectTimeout=5 $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
+  $SSH_CMD $HOST_TWO_USER@$HOST_TWO_IP "cd $REPO_TWO && nohup bash -c \"ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout ${CLIENT2_TIMEOUT} ${BIN_TWO} --log-file /tmp/client2_debug.log client ${REMOTE_SERVER_ADDR}:${PORT} --test-pattern --audio --audio-analysis\" > /tmp/client2_nohup.log 2>&1 &"
 fi
-sleep 2  # Give client time to connect
 
 echo ""
 echo "Running test for $DURATION seconds..."
