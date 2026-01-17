@@ -317,6 +317,19 @@ target_include_directories(webrtc_audio_processing
     "${webrtc_aec3_SOURCE_DIR}/base/abseil"
 )
 
+# Link against system Abseil if available (matches what base library uses)
+# The base library links against absl::strings, absl::base, absl::optional via find_package
+# Since we import the static .a files, we need to also link Abseil here for transitive deps
+find_package(absl QUIET CONFIG)
+if(absl_FOUND)
+    target_link_libraries(webrtc_audio_processing INTERFACE
+        absl::strings
+        absl::base
+        absl::optional
+    )
+    message(STATUS "  WebRTC AEC3: Linking against system Abseil")
+endif()
+
 message(STATUS "  ${BoldGreen}✓ WebRTC AEC3 configured and built successfully${ColorReset}")
 message(STATUS "  Source dir: ${webrtc_aec3_SOURCE_DIR}")
 message(STATUS "  Library dir: ${WEBRTC_BUILD_DIR}/lib")
