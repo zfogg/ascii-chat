@@ -110,6 +110,8 @@ if(NOT webrtc_aec3_POPULATED)
             -DENABLE_SIMD_AVX2=${ENABLE_SIMD_AVX2}
             -DENABLE_SIMD_NEON=${ENABLE_SIMD_NEON}
             -DENABLE_SIMD_SVE=${ENABLE_SIMD_SVE}
+            # Pass shared deps preference for Abseil linking
+            -DASCIICHAT_SHARED_DEPS=${ASCIICHAT_SHARED_DEPS}
         )
 
         # For musl builds, add target triple and disable FORTIFY_SOURCE
