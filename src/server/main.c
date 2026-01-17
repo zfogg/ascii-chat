@@ -75,7 +75,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/ip.h"
-#include "util/uthash.h"
+#include "uthash/uthash.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"

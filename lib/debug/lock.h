@@ -58,7 +58,7 @@ uint64_t asciichat_thread_current_id(void);
 
 #ifdef DEBUG_LOCKS
 // Lock debugging is enabled when DEBUG_LOCKS is defined
-#include "util/uthash.h"
+#include "uthash/uthash.h"
 #include "util/fnv1a.h"
 
 #ifdef __cplusplus

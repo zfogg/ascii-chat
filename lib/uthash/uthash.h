@@ -1,26 +1,33 @@
 /**
- * @file util/uthash.h
- * @brief #️⃣ Wrapper for uthash.h that ensures common.h is included first
+ * @file uthash/uthash.h
+ * @brief #️⃣ Wrapper for uthash.h with ascii-chat customizations
  * @ingroup util
  *
- * This header ensures that common.h is included before uthash.h throughout
- * the codebase. This is necessary because common.h defines HASH_FUNCTION
- * which must be set before uthash.h is included.
+ * This header wraps the upstream uthash.h with ascii-chat specific customizations:
+ * - Custom allocators (ALLOC_MALLOC/ALLOC_FREE) for memory debugging
+ * - UBSan-safe hash functions to avoid undefined behavior
+ * - FNV-1a hash function for better distribution
  *
- * @note Always include this instead of directly including uthash.h
+ * @note Always include this instead of directly including upstream uthash.h
+ *
+ * Installation layout:
+ *   include/ascii-chat/uthash/uthash.h      (this wrapper)
+ *   include/ascii-chat/uthash/upstream/     (raw uthash headers)
  */
 
 #pragma once
 
-// Define these BEFORE including uthash.h
+// Define custom allocators BEFORE including uthash.h
+// These integrate with ascii-chat's memory debugging system
 #define uthash_malloc(sz) ALLOC_MALLOC(sz)
 #define uthash_free(ptr, sz) ALLOC_FREE(ptr)
-// when common.h transitively includes lock_debug.h via platform/abstraction.h
-// Use relative path for the local uthash header from deps/
-#include "../../deps/uthash/src/uthash.h"
 
+// Include the upstream uthash header
+#include "upstream/uthash.h"
+
+// Include ascii-chat headers for allocators and hash function
 #include "../common.h"
-#include "util/fnv1a.h"
+#include "../util/fnv1a.h"
 
 // UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
 // Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter

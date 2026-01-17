@@ -26,7 +26,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "util/uthash.h"
+#include "uthash/uthash.h"
 #include "util/number.h" // For write_decimal, write_u8
 #include "../image.h"
 

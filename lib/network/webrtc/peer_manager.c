@@ -15,7 +15,7 @@
 #include "network/acip/transport.h"
 #include "log/logging.h"
 #include "platform/mutex.h"
-#include "uthash.h"
+#include "uthash/uthash.h"
 #include <string.h>
 
 /**

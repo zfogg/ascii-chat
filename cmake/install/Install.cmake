@@ -251,13 +251,17 @@ else()
     )
 endif()
 
-# Install uthash.h dependency header
-# lib/util/uthash.h includes "../../deps/uthash/src/uthash.h"
-# From include/ascii-chat/util/, ../../ resolves to include/
-# So we install to include/deps/uthash/src/
-install(FILES "${CMAKE_SOURCE_DIR}/deps/uthash/src/uthash.h"
-    DESTINATION include/deps/uthash/src
+# Install uthash headers (bundled in lib/uthash/)
+# Layout: include/ascii-chat/uthash/uthash.h (wrapper)
+#         include/ascii-chat/uthash/upstream/*.h (raw uthash)
+install(FILES "${CMAKE_SOURCE_DIR}/lib/uthash/uthash.h"
+    DESTINATION include/ascii-chat/uthash
     COMPONENT Development
+)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/uthash/upstream/"
+    DESTINATION include/ascii-chat/uthash/upstream
+    COMPONENT Development
+    FILES_MATCHING PATTERN "*.h"
 )
 
 # Install pkg-config files for both shared and static libraries
