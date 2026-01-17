@@ -629,27 +629,16 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
                         mixer->source_ids[exclude_index] == exclude_client_id);
 
   if (valid_exclude) {
-    // Check if this is the ONLY active source - if so, include it (solo mode for testing/fallback)
-    // With N>1 clients, other threads drain this buffer. With N=1, allow client to receive their own audio
+    // Apply exclusion to prevent echo feedback
     uint64_t mask_without_excluded = active_mask & ~(1ULL << exclude_index);
-    if (mask_without_excluded == 0) {
-      // Solo client: instead of discarding audio, allow them to receive it back
-      // This provides a fallback for single-client scenarios or testing
-      log_debug_every(LOG_RATE_DEFAULT, "Mixer: Solo mode for client %u - allowing them to receive their own audio",
-                      exclude_client_id);
-      // IMPORTANT: Don't set active_mask to 0 - keep the client's audio in the mix
-      // This allows solo clients to hear something instead of silence
-    } else {
-      // Multiple clients: apply normal exclusion to prevent echo feedback
-      active_mask = mask_without_excluded;
+    active_mask = mask_without_excluded;
 
-      // DIAGNOSTIC: Log which client was excluded and which remain active
-      log_info_every(
-          1000000,
-          "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
-          exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL << exclude_index)),
-          (unsigned long long)active_mask);
-    }
+    // DIAGNOSTIC: Log which client was excluded and which remain active
+    log_info_every(
+        1000000,
+        "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
+        exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL << exclude_index)),
+        (unsigned long long)active_mask);
   } else {
     // DIAGNOSTIC: Failed to exclude - log why
     log_warn_every(1000000, "MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u",

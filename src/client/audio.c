@@ -873,19 +873,17 @@ int audio_client_init() {
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
   pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
 
-  // Use FLAGS_MINIMAL but enable echo cancellation and jitter buffer
-  // Noise suppression, AGC, VAD destroy music/non-voice audio, so keep them disabled
-  // But AEC removes echo without destroying audio quality
-  // Jitter buffer helps synchronize the AEC echo reference
+  // Enable echo cancellation, AGC, and essential processing for clear audio
+  // Noise suppression and VAD can destroy music quality, so keep them disabled
   pipeline_config.flags.echo_cancel = true;     // ENABLE: removes echo
   pipeline_config.flags.jitter_buffer = true;   // ENABLE: needed for AEC sync
-  pipeline_config.flags.noise_suppress = false; // DISABLED: destroys audio
-  pipeline_config.flags.agc = false;            // DISABLED: destroys audio
-  pipeline_config.flags.vad = false;            // DISABLED: destroys audio
-  pipeline_config.flags.compressor = false;     // DISABLED: minimal processing
-  pipeline_config.flags.noise_gate = false;     // DISABLED: minimal processing
-  pipeline_config.flags.highpass = false;       // DISABLED: minimal processing
-  pipeline_config.flags.lowpass = false;        // DISABLED: minimal processing
+  pipeline_config.flags.noise_suppress = false; // DISABLED: destroys music quality
+  pipeline_config.flags.agc = true;             // ENABLE: boost quiet microphones (35 dB gain)
+  pipeline_config.flags.vad = false;            // DISABLED: destroys music quality
+  pipeline_config.flags.compressor = true;      // ENABLE: prevent clipping from AGC boost
+  pipeline_config.flags.noise_gate = false;     // DISABLED: would cut quiet music passages
+  pipeline_config.flags.highpass = true;        // ENABLE: remove rumble and low-frequency feedback
+  pipeline_config.flags.lowpass = false;        // DISABLED: preserve high-frequency content
 
   // Set jitter buffer margin for smooth playback without excessive delay
   // 100ms is conservative - AEC3 will adapt to actual network delay automatically
