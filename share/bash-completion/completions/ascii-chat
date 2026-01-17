@@ -152,15 +152,37 @@ _ascii_chat() {
     '--strip-ansi' 'remove all ANSI escape codes from output'
   )
 
+  # Discovery-server-only options with help text
+  local -a discovery_server_opts=(
+    '-k' 'path to ACDS identity key file'
+    '--key' 'path to ACDS identity key file'
+    '-d' 'path to ACDS database file'
+    '--database' 'path to ACDS database file'
+    '-S' 'require servers to provide signed identity'
+    '--require-server-identity' 'require servers to provide signed identity when creating sessions'
+    '-C' 'require clients to provide signed identity'
+    '--require-client-identity' 'require clients to provide signed identity when joining sessions'
+    '-V' 'require servers to verify client identity'
+    '--require-server-verify' 'ACDS policy: require servers to verify client identity during handshake'
+    '-c' 'require clients to verify server identity'
+    '--require-client-verify' 'ACDS policy: require clients to verify server identity during handshake'
+    '--stun-servers' 'comma-separated list of STUN server URLs'
+    '--turn-servers' 'comma-separated list of TURN server URLs'
+    '--turn-username' 'username for TURN server authentication'
+    '--turn-credential' 'credential/password for TURN server authentication'
+    '--turn-secret' 'shared secret for dynamic TURN credential generation'
+    '--upnp' 'enable UPnP/NAT-PMP for automatic router port mapping'
+  )
+
   # Modes
-  local modes="server client mirror"
+  local modes="server client mirror discovery-server"
 
   # Detect which mode we're in by scanning previous words
   local mode=""
   local i
   for ((i = 1; i < cword; i++)); do
     case "${words[i]}" in
-    server | client | mirror)
+    server | client | mirror | discovery-server)
       mode="${words[i]}"
       break
       ;;
@@ -169,7 +191,7 @@ _ascii_chat() {
 
   case "$prev" in
   # Options that take file paths
-  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config)
+  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config | -d | --database | -k)
     _filedir
     return
     ;;
@@ -220,6 +242,9 @@ _ascii_chat() {
       ;;
     mirror)
       opts_to_complete=("${binary_opts[@]}" "${mirror_opts[@]}")
+      ;;
+    discovery-server)
+      opts_to_complete=("${binary_opts[@]}" "${discovery_server_opts[@]}")
       ;;
     *)
       # No mode yet - show binary options and modes

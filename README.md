@@ -171,7 +171,7 @@ For detailed build instructions, configuration options, and troubleshooting, see
 
 ## Usage
 
-ascii-chat uses a unified binary with three modes: `server`, `client`, and `mirror`.
+ascii-chat uses a unified binary with four modes: `server`, `client`, `mirror`, and `discovery-server`.
 
 **Start a server** and wait for client connections:
 
@@ -192,13 +192,20 @@ ascii-chat [binary-options...] client [<address>] [client-options...]
 ascii-chat [binary-options...] mirror [mirror-options...]
 ```
 
+**Run discovery service** for session management and WebRTC signaling:
+
+```bash
+ascii-chat [binary-options...] discovery-server [discovery-server-options...]
+```
+
 **Get help** for any mode:
 
 ```bash
-ascii-chat --help             # Top-level help
-ascii-chat server --help      # Server-specific help
-ascii-chat client --help      # Client-specific help
-ascii-chat mirror --help      # Mirror-specific help
+ascii-chat --help                      # Top-level help
+ascii-chat server --help               # Server-specific help
+ascii-chat client --help               # Client-specific help
+ascii-chat mirror --help               # Mirror-specific help
+ascii-chat discovery-server --help     # Discovery-server-specific help
 ```
 
 **Man Page:**
@@ -425,6 +432,55 @@ ascii-chat mirror --color-mode truecolor --render-mode half-block
 
 # Capture a single snapshot with debug logging
 ascii-chat -V --log-level debug mirror --snapshot
+```
+
+### Discovery-Server Mode Options
+
+Run `ascii-chat discovery-server --help` to see all discovery-server mode options.
+
+The discovery-server mode runs the ASCII-Chat Discovery Service (ACDS), which provides session management and WebRTC signaling for peer-to-peer connections. It enables clients to create discoverable sessions, join existing sessions, and relay WebRTC connection information.
+
+**Network Options:**
+
+- `-p --port PORT`: TCP listen port (default: 27225)
+- Bind addresses (positional): IPv4 and/or IPv6 addresses (default: 127.0.0.1 ::1)
+  - Examples: `0.0.0.0` (all IPv4), `::` (all IPv6), `0.0.0.0 ::` (dual-stack)
+
+**Database & Identity:**
+
+- `-d --database PATH`: SQLite database file path (default: ~/.config/ascii-chat/acds.db)
+- `-k --key PATH`: Ed25519 identity key file path (default: ~/.config/ascii-chat/acds_identity)
+
+**Security Policies:**
+
+- `-S --require-server-identity`: Require servers to provide signed Ed25519 identity when creating sessions
+- `-C --require-client-identity`: Require clients to provide signed Ed25519 identity when joining sessions
+- `-V --require-server-verify`: ACDS policy: require servers to verify client identity during handshake
+- `-c --require-client-verify`: ACDS policy: require clients to verify server identity during handshake
+
+**WebRTC Configuration:**
+
+- `--stun-servers LIST`: Comma-separated STUN server URLs (default: stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302)
+- `--turn-servers LIST`: Comma-separated TURN server URLs (default: turn:turn.ascii-chat.com:3478)
+- `--turn-username USER`: Username for TURN server authentication (default: ascii)
+- `--turn-credential PASS`: Credential/password for TURN server authentication
+- `--turn-secret SECRET`: Shared secret for dynamic TURN credential generation (HMAC-SHA1)
+- `--upnp`: Enable UPnP/NAT-PMP for automatic router port mapping
+
+**Example:**
+
+```bash
+# Run discovery server on all interfaces
+ascii-chat discovery-server 0.0.0.0 :: --port 27225
+
+# Run with custom database and identity key
+ascii-chat discovery-server --database /var/lib/acds/sessions.db --key /etc/acds/identity.key
+
+# Run with strict identity requirements
+ascii-chat discovery-server --require-server-identity --require-client-identity
+
+# Run with debug logging
+ascii-chat -V --log-level debug discovery-server --port 27225
 ```
 
 ## Cryptography

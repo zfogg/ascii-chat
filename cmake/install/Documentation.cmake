@@ -10,7 +10,7 @@
 #   - docs: Doxygen executable must be installed
 #
 # Outputs:
-#   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1 and acds.1
+#   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1
 #   - docs: ${CMAKE_BINARY_DIR}/docs/html/ and ${CMAKE_BINARY_DIR}/docs/man/man3/
 # =============================================================================
 
@@ -34,24 +34,9 @@ add_custom_command(
     VERBATIM
 )
 
-# Generate acds man page at build time
-add_custom_command(
-    OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating acds man page from template..."
-    COMMAND ${CMAKE_COMMAND}
-        -DINPUT_FILE=${CMAKE_SOURCE_DIR}/share/man/man1/acds.1.in
-        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/share/man/man1/acds.1
-        -DPROJECT_VERSION=${PROJECT_VERSION_FROM_GIT}
-        -P ${CMAKE_SOURCE_DIR}/cmake/scripts/ConfigureManPage.cmake
-    COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
-    DEPENDS "${CMAKE_SOURCE_DIR}/share/man/man1/acds.1.in"
-    COMMENT "Generating acds.1 from share/man/man1/acds.1.in"
-    VERBATIM
-)
-
 # Build man pages by default for release/packaging - they're needed by CPack install
 add_custom_target(man1 ALL
-    DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1" "${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
+    DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
     COMMENT "Man pages build complete"
 )
 
