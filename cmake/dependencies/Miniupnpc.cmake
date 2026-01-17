@@ -57,7 +57,29 @@ if(MINIUPNPC_FOUND)
     # so we must test at configure time rather than relying on MINIUPNPC_API_VERSION
     include(CheckCSourceCompiles)
     set(CMAKE_REQUIRED_INCLUDES ${MINIUPNPC_INCLUDE_DIRS})
-    set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
+
+    # For check_c_source_compiles, we need actual library paths, not CMake imported targets
+    # Extract the actual library location from the target if it's an imported target
+    if(TARGET PkgConfig::MINIUPNPC)
+        get_target_property(_miniupnpc_lib PkgConfig::MINIUPNPC INTERFACE_LINK_LIBRARIES)
+        get_target_property(_miniupnpc_loc PkgConfig::MINIUPNPC IMPORTED_LOCATION)
+        if(_miniupnpc_loc)
+            set(CMAKE_REQUIRED_LIBRARIES ${_miniupnpc_loc})
+        elseif(_miniupnpc_lib)
+            set(CMAKE_REQUIRED_LIBRARIES ${_miniupnpc_lib})
+        else()
+            # Fallback: try to find the library manually
+            find_library(_miniupnpc_lib_path NAMES miniupnpc)
+            if(_miniupnpc_lib_path)
+                set(CMAKE_REQUIRED_LIBRARIES ${_miniupnpc_lib_path})
+            else()
+                set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
+            endif()
+        endif()
+    else()
+        set(CMAKE_REQUIRED_LIBRARIES ${MINIUPNPC_LIBRARIES})
+    endif()
+
     check_c_source_compiles("
         #include <stddef.h>  // For size_t - miniupnpc headers need it but don't include it
         #include <miniupnpc/miniupnpc.h>
