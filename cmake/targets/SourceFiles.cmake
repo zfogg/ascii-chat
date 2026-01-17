@@ -389,13 +389,7 @@ set(APP_SRCS
     src/client/connection_attempt.c
     # Mirror mode sources
     src/mirror/main.c
-)
-
-# =============================================================================
-# Discovery Server (ACDS) Sources - Executable only
-# Note: session.c, database.c, identity.c, strings.c are in lib/acds (part of CORE_SRCS)
-# =============================================================================
-set(ACDS_SRCS
+    # Discovery-server mode sources
     src/acds/main.c
     src/acds/server.c
     src/acds/signaling.c

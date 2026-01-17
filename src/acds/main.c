@@ -53,7 +53,7 @@ static void signal_handler(int sig) {
   // UPnP context will be cleaned up after server shutdown
 }
 
-int main(int argc, char **argv) {
+int acds_main(void) {
   asciichat_error_t result;
 
   // Increase file descriptor limit for many concurrent connections
@@ -67,46 +67,8 @@ int main(int argc, char **argv) {
   setrlimit(RLIMIT_NOFILE, &rl);
 #endif
 
-  // Parse command-line arguments using options module
-  // Note: ACDS is a separate binary, so argv[0] is the program name
-  // We need to insert "acds" mode argument for options parsing
-  char **acds_argv = SAFE_MALLOC((size_t)(argc + 2) * sizeof(char *), char **);
-  if (!acds_argv) {
-    return ERROR_MEMORY;
-  }
-  acds_argv[0] = argv[0];
-  acds_argv[1] = "acds";
-  for (int i = 1; i < argc; i++) {
-    acds_argv[i + 1] = argv[i];
-  }
-  acds_argv[argc + 1] = NULL;
-
-  result = options_init(argc + 1, acds_argv);
-
-  SAFE_FREE(acds_argv);
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  // Handle --help and --version early (before shared init)
+  // Options already parsed and shared initialization complete (done by main.c)
   const options_t *opts = options_get();
-  if (opts && opts->help) {
-    usage(stdout, MODE_ACDS);
-    return 0;
-  }
-
-  if (opts && opts->version) {
-    printf("ascii-chat-acds version %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE,
-           ASCII_CHAT_BUILD_DATE);
-    return 0;
-  }
-
-  // Initialize shared infrastructure (platform, logging, buffer pool, errno, etc.)
-  // This also registers atexit handlers for cleanup (options, buffer pool, known_hosts, errno)
-  result = asciichat_shared_init("acds.log", false /* is_client */);
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
 
   log_info("ASCII-Chat Discovery Service (acds) starting...");
   log_info("Version: %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);

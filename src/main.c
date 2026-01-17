@@ -25,6 +25,7 @@
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
+#include "acds/main.h"
 
 // Common headers for version info and initialization
 #include "common.h"
@@ -74,6 +75,11 @@ static const mode_descriptor_t g_mode_table[] = {
         .name = "mirror",
         .description = "View local webcam as ASCII art (no server)",
         .entry_point = mirror_main,
+    },
+    {
+        .name = "discovery-server",
+        .description = "Run discovery service for session management",
+        .entry_point = acds_main,
     },
     {.name = NULL, .description = NULL, .entry_point = NULL},
 };
@@ -154,14 +160,6 @@ static void print_version(void) {
 }
 
 static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
-  // Special case: ACDS is a separate binary, not in this dispatcher
-  if (mode == MODE_ACDS) {
-    fprintf(stderr, "Error: ACDS mode is not available in the unified ascii-chat binary.\n");
-    fprintf(stderr, "The discovery service is provided as a separate 'acds' executable.\n");
-    fprintf(stderr, "Build and run the 'acds' binary for discovery service functionality.\n");
-    return NULL;
-  }
-
   for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
     switch (mode) {
     case MODE_SERVER:
@@ -174,6 +172,10 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
       break;
     case MODE_MIRROR:
       if (strcmp(m->name, "mirror") == 0)
+        return m;
+      break;
+    case MODE_ACDS:
+      if (strcmp(m->name, "discovery-server") == 0)
         return m;
       break;
     default:
@@ -284,6 +286,9 @@ int main(int argc, char *argv[]) {
     break;
   case MODE_MIRROR:
     default_log_filename = "mirror.log";
+    break;
+  case MODE_ACDS:
+    default_log_filename = "acds.log";
     break;
   default:
     default_log_filename = "ascii-chat.log";

@@ -595,8 +595,8 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   b->program_name = program_name ? program_name : "ascii-chat discovery service";
   b->description = description ? description : "session management and WebRTC signaling";
 
-  // Help and version
-  options_builder_add_bool(b, "help", 'h', offsetof(options_t, help), false, "Show this help", "GENERAL", false, NULL);
+  // Action options (execute and exit)
+  options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "ACTIONS");
 
   // Network options
   // Note: Bind addresses are specified via positional arguments, not flags

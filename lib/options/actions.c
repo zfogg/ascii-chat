@@ -206,3 +206,9 @@ void action_help_mirror(void) {
   (void)fflush(stdout);
   _exit(0);
 }
+
+void action_help_acds(void) {
+  usage_acds(stdout);
+  (void)fflush(stdout);
+  _exit(0);
+}

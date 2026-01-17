@@ -88,3 +88,13 @@ typedef struct {
   turn_server_t turn_servers[4]; ///< TURN server configurations
   char turn_secret[256];         ///< Shared secret for TURN credential generation (HMAC-SHA1)
 } acds_config_t;
+
+/**
+ * @brief ACDS (discovery-server mode) entry point
+ *
+ * Expects options already parsed and shared initialization complete.
+ * Called by main.c mode dispatcher after options_init() and asciichat_shared_init().
+ *
+ * @return Exit code (0 = success, non-zero = error)
+ */
+int acds_main(void);

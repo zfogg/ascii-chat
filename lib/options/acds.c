@@ -46,7 +46,7 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ============================================================================
 
 asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_acds("acds", "ascii-chat discovery service");
+  const options_config_t *config = options_preset_acds("ascii-chat discovery-server", "ascii-chat discovery service");
   int remaining_argc;
   char **remaining_argv;
 
@@ -108,7 +108,7 @@ asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
 
 void usage_acds(FILE *desc) {
   // Get config with program name and description
-  const options_config_t *config = options_preset_acds("acds", "ascii-chat discovery service");
+  const options_config_t *config = options_preset_acds("ascii-chat discovery-server", "ascii-chat discovery service");
   if (!config) {
     (void)fprintf(desc, "Error: Failed to create options config\n");
     return;
