@@ -27,9 +27,21 @@ endif()
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
-# For Release: static library
+# For Release: static library (unless ASCIICHAT_SHARED_DEPS is ON)
 # For USE_MUSL: always static (musl requires static linking)
-if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
+# Determine if we should use shared library linking
+set(_use_shared_lib FALSE)
+if(NOT USE_MUSL)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+        set(_use_shared_lib TRUE)
+    elseif(ASCIICHAT_SHARED_DEPS)
+        # Homebrew builds: link against shared library for smaller binary
+        set(_use_shared_lib TRUE)
+        message(STATUS "ascii-chat will link against libasciichat.dylib (ASCIICHAT_SHARED_DEPS=ON)")
+    endif()
+endif()
+
+if(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
     target_link_libraries(ascii-chat ascii-chat-shared)
 
@@ -104,13 +116,20 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     )
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     # Release builds with shared deps (Homebrew) need rpath for dynamic linking
-    # Use CMAKE_BUILD_RPATH which contains LLVM library paths from compiler/LLVM.cmake
+    # Include:
+    #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
+    #   - CMAKE_BUILD_RPATH for LLVM library paths (libc++, libunwind)
+    if(APPLE)
+        set(_install_rpath "@loader_path/../lib;${CMAKE_BUILD_RPATH}")
+    else()
+        set(_install_rpath "$ORIGIN/../lib;${CMAKE_BUILD_RPATH}")
+    endif()
     set_target_properties(ascii-chat PROPERTIES
-        BUILD_RPATH "${CMAKE_BUILD_RPATH}"
-        INSTALL_RPATH "${CMAKE_BUILD_RPATH}"
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
+        INSTALL_RPATH "${_install_rpath}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
-    message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${CMAKE_BUILD_RPATH}")
+    message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Release builds use static linking - no rpath needed
     set_target_properties(ascii-chat PROPERTIES

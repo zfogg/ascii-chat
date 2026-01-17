@@ -29,6 +29,12 @@ else()
     set(BUILDING_OBJECT_LIBS FALSE)
 endif()
 
+# In CMakeLists.txt - for macOS
+if(APPLE)
+    # Use standard install paths, let Homebrew handle relocation
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
+
 # Helper macro to create a module with common settings
 macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # For Windows Debug/Dev builds: use OBJECT libraries so we can build a proper DLL
