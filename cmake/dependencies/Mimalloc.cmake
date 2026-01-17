@@ -70,9 +70,21 @@ if(USE_MIMALLOC)
             # When ASCIICHAT_SHARED_DEPS is set, prefer the shared library (for Homebrew builds)
             # Otherwise use mimalloc-static for consistency with our FetchContent build
             if(ASCIICHAT_SHARED_DEPS AND TARGET mimalloc)
+                # Get the actual library path from the imported target
+                get_target_property(_mimalloc_shared_lib mimalloc IMPORTED_LOCATION_RELEASE)
+                if(NOT _mimalloc_shared_lib)
+                    get_target_property(_mimalloc_shared_lib mimalloc IMPORTED_LOCATION)
+                endif()
                 message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} shared library (ASCIICHAT_SHARED_DEPS=ON)")
-                set(MIMALLOC_LIBRARIES mimalloc)
-                set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
+                message(STATUS "  Library path: ${_mimalloc_shared_lib}")
+                # Use the actual library path, not just the target name
+                if(_mimalloc_shared_lib)
+                    set(MIMALLOC_LIBRARIES "${_mimalloc_shared_lib}")
+                    set(ASCIICHAT_MIMALLOC_LINK_LIB "${_mimalloc_shared_lib}")
+                else()
+                    set(MIMALLOC_LIBRARIES mimalloc)
+                    set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
+                endif()
                 set(_MIMALLOC_FROM_SYSTEM TRUE)
                 set(MIMALLOC_IS_SHARED_LIB TRUE CACHE INTERNAL "Using shared mimalloc library")
                 # Create alias for compatibility
