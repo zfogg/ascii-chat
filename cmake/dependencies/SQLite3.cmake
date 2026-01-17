@@ -8,11 +8,13 @@
 #   - Rate limiting backend
 #
 # Build strategy:
+#   - For musl: Built from source in MuslDependencies.cmake
 #   - For vcpkg: Uses vcpkg-installed SQLite3
 #   - Otherwise: Uses system-installed SQLite3 via pkg-config or find_package
 #
 # Prerequisites (must be set before including this file):
 #   - USE_VCPKG: Whether using vcpkg
+#   - USE_MUSL: Whether using musl (skip system search if true)
 #   - VCPKG_ROOT, VCPKG_LIB_PATH, etc.: vcpkg config (if USE_VCPKG=ON)
 #
 # Outputs (variables set by this file):
@@ -20,6 +22,16 @@
 #   - SQLITE3_LIBRARIES: Libraries to link against
 #   - SQLITE3_INCLUDE_DIRS: Include directories
 # =============================================================================
+
+# =============================================================================
+# Skip system search if using musl (built in MuslDependencies.cmake)
+# =============================================================================
+if(USE_MUSL)
+    if(SQLITE3_FOUND)
+        message(STATUS "${BoldGreen}✓${ColorReset} SQLite3 (musl): using musl-built static library")
+        return()
+    endif()
+endif()
 
 # =============================================================================
 # Try vcpkg first if enabled

@@ -148,7 +148,6 @@
  * @see client.c For thread lifecycle management
  */
 
-#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -191,7 +190,7 @@ extern atomic_bool g_server_should_exit;
  * Audio render threads use this mixer to combine audio from multiple clients
  * while excluding the target client's own audio (prevents echo/feedback).
  */
-extern mixer_t *g_audio_mixer;
+extern mixer_t *volatile g_audio_mixer;
 
 /* ============================================================================
  * Cross-Platform Utility Functions

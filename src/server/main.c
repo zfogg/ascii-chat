@@ -70,7 +70,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <stdatomic.h>
 
 #include "main.h"
 #include "common.h"
@@ -154,8 +153,9 @@ static bool check_shutdown(void) {
  *
  * THREAD SAFETY: The mixer itself is thread-safe and can be used concurrently
  * by multiple render.c audio threads without external synchronization.
+ * During shutdown, set to NULL before destroying to prevent use-after-free.
  */
-mixer_t *g_audio_mixer = NULL;
+mixer_t *volatile g_audio_mixer = NULL;
 
 /**
  * @brief Global shutdown condition variable for waking blocked threads
@@ -1842,8 +1842,13 @@ cleanup:
 
   // Clean up audio mixer
   if (g_audio_mixer) {
-    mixer_destroy(g_audio_mixer);
+    // CRITICAL: Set to NULL FIRST before destroying
+    // Client handler threads may still be running and checking g_audio_mixer
+    // Setting it to NULL first prevents use-after-free race condition
+    // volatile ensures this write is visible to other threads immediately
+    mixer_t *mixer_to_destroy = g_audio_mixer;
     g_audio_mixer = NULL;
+    mixer_destroy(mixer_to_destroy);
   }
 
   // Clean up mDNS context

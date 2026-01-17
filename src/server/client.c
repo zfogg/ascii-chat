@@ -205,7 +205,7 @@ rwlock_t g_client_manager_rwlock = {0};
 
 // External globals from main.c
 extern atomic_bool g_server_should_exit; ///< Global shutdown flag from main.c
-extern mixer_t *g_audio_mixer;           ///< Global audio mixer from main.c
+extern mixer_t *volatile g_audio_mixer;  ///< Global audio mixer from main.c (volatile pointer)
 
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
@@ -1153,6 +1153,20 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
 
+  // CRITICAL: Re-validate target_client pointer after reacquiring lock
+  // Another thread might have invalidated the pointer while we had the lock released
+  if (target_client) {
+    // Verify client_id still matches and client is still in shutting_down state
+    uint32_t current_id = atomic_load(&target_client->client_id);
+    bool still_shutting_down = atomic_load(&target_client->shutting_down);
+    if (current_id != client_id || !still_shutting_down) {
+      log_warn("Client %u pointer invalidated during thread cleanup (id=%u, shutting_down=%d)", client_id, current_id,
+               still_shutting_down);
+      rwlock_wrunlock(&g_client_manager_rwlock);
+      return 0; // Another thread completed the cleanup
+    }
+  }
+
   // Mark socket as closed in client structure
   if (target_client && target_client->socket != INVALID_SOCKET_VALUE) {
     mutex_lock(&target_client->client_state_mutex);
@@ -1173,9 +1187,18 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   }
 
   // Remove from uthash table
+  // CRITICAL: Verify client is actually in the hash table before deleting
+  // Another thread might have already removed it
   if (target_client) {
-    HASH_DELETE(hh, g_client_manager.clients_by_id, target_client);
-    log_debug("Removed client %u from uthash table", client_id);
+    client_info_t *hash_entry = NULL;
+    HASH_FIND(hh, g_client_manager.clients_by_id, &client_id, sizeof(client_id), hash_entry);
+    if (hash_entry == target_client) {
+      HASH_DELETE(hh, g_client_manager.clients_by_id, target_client);
+      log_debug("Removed client %u from uthash table", client_id);
+    } else {
+      log_warn("Client %u already removed from hash table by another thread (found=%p, expected=%p)", client_id,
+               (void *)hash_entry, (void *)target_client);
+    }
   } else {
     log_warn("Failed to remove client %u from hash table (client not found)", client_id);
   }
