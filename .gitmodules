@@ -9,9 +9,6 @@
 [submodule "deps/libsodium-bcrypt-pbkdf"]
 	path = deps/libsodium-bcrypt-pbkdf
 	url = https://github.com/zfogg/libsodium-bcrypt-pbkdf.git
-[submodule "deps/uthash"]
-	path = deps/uthash
-	url = https://github.com/troydhanson/uthash.git
 [submodule "deps/sokol"]
 	path = deps/sokol
 	url = https://github.com/floooh/sokol

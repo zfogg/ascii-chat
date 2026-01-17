@@ -114,6 +114,11 @@ if(NOT webrtc_aec3_POPULATED)
             -DASCIICHAT_SHARED_DEPS=${ASCIICHAT_SHARED_DEPS}
         )
 
+        # Pass CMAKE_PREFIX_PATH so WebRTC can find system Abseil (Homebrew, vcpkg, etc.)
+        if(CMAKE_PREFIX_PATH)
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+        endif()
+
         # For musl builds, add target triple and disable FORTIFY_SOURCE
         # WebRTC must be built with the same target as the main binary to avoid glibc dependencies
         if(USE_MUSL)
