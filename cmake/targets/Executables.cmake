@@ -94,6 +94,7 @@ endif()
 # Ensure build directory takes precedence in rpath for Debug/Dev builds
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
+# EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
@@ -101,6 +102,15 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
+    # Release builds with shared deps (Homebrew) need rpath for dynamic linking
+    # Use CMAKE_BUILD_RPATH which contains LLVM library paths from compiler/LLVM.cmake
+    set_target_properties(ascii-chat PROPERTIES
+        BUILD_RPATH "${CMAKE_BUILD_RPATH}"
+        INSTALL_RPATH "${CMAKE_BUILD_RPATH}"
+        INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
+    message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${CMAKE_BUILD_RPATH}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Release builds use static linking - no rpath needed
     set_target_properties(ascii-chat PROPERTIES

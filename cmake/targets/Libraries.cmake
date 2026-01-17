@@ -1055,7 +1055,12 @@ target_link_libraries(ascii-chat-static-lib INTERFACE
     ${OPUS_LIBRARIES}
     ${SQLITE3_LIBRARIES}
 )
-if(TARGET mimalloc-static)
+# Link mimalloc - use shared library when MIMALLOC_IS_SHARED_LIB is TRUE
+# (this happens when ASCIICHAT_SHARED_DEPS=ON for Homebrew builds)
+if(MIMALLOC_IS_SHARED_LIB AND MIMALLOC_LIBRARIES)
+    # Use the shared library path directly (not the target, which may point to static)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
+elseif(TARGET mimalloc-static)
     target_link_libraries(ascii-chat-static-lib INTERFACE mimalloc-static)
 elseif(MIMALLOC_LIBRARIES)
     target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})

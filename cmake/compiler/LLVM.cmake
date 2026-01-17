@@ -330,8 +330,19 @@ function(configure_llvm_post_project)
 
     # Add library paths and linking for the detected LLVM installation
     # (determined via LLVM_ROOT_PREFIX from llvm-config)
-    # NOTE: Skip for Release builds - we want to use system libc++/libunwind for portability
+    # NOTE: For Release builds, we normally use system libc++/libunwind for portability.
+    # EXCEPTION: When ASCIICHAT_SHARED_DEPS=ON (Homebrew formula builds), we MUST use
+    # Homebrew LLVM's libc++ to ensure ABI compatibility with libraries like libdatachannel
+    # that are built with Homebrew LLVM.
+    set(_need_llvm_libs FALSE)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(_need_llvm_libs TRUE)
+    elseif(ASCIICHAT_SHARED_DEPS)
+        set(_need_llvm_libs TRUE)
+        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release+SHARED_DEPS build (Homebrew libc++ for ABI compatibility)")
+    endif()
+
+    if(_need_llvm_libs)
         set(DETECTED_LLVM_LINK_FLAGS "")
 
         # Check library layout: Homebrew uses subdirectories, git-built and others use flat lib/
@@ -365,8 +376,8 @@ function(configure_llvm_post_project)
         message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for Release build (using system libc++/libunwind)")
     endif()
 
-    # Add LLVM library paths to rpath for Debug/Dev builds (for dynamic linking)
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Add LLVM library paths to rpath for Debug/Dev builds or SHARED_DEPS builds (for dynamic linking)
+    if(_need_llvm_libs)
         set(LLVM_RPATH_UNWIND "")
         set(LLVM_RPATH_CXX "")
 
