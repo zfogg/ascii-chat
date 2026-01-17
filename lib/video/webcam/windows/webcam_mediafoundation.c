@@ -176,7 +176,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     log_error("  0x80070005 = E_ACCESSDENIED (device in use)");
     log_error("  0xc00d3704 = Device already in use");
     log_error("  0xc00d3e85 = MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED");
-    result = ERROR_WEBCAM_IN_USE;
+    result = SET_ERRNO(ERROR_WEBCAM_IN_USE, "Media Foundation device %d is in use (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -186,7 +186,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   hr = MFCreateAttributes(&readerAttrs, 1);
   if (FAILED(hr)) {
     log_error("Failed to create reader attributes: 0x%08x", hr);
-    result = ERROR_WEBCAM;
+    result =
+        SET_ERRNO(ERROR_WEBCAM, "Failed to create reader attributes for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -206,7 +207,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
-    result = ERROR_WEBCAM_IN_USE;
+    result =
+        SET_ERRNO(ERROR_WEBCAM_IN_USE,
+                  "Failed to create Media Foundation source reader for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -221,6 +224,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   log_info("SetStreamSelection (select video) returned: 0x%08x", hr);
   if (FAILED(hr)) {
     log_error("Failed to select video stream: 0x%08x", hr);
+    result = SET_ERRNO(ERROR_WEBCAM, "Failed to select video stream for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -286,7 +290,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read test frame during initialization: 0x%08x", hr);
-    result = ERROR_WEBCAM_IN_USE;
+    result =
+        SET_ERRNO(ERROR_WEBCAM_IN_USE, "Failed to read test frame from device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 

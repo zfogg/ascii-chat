@@ -493,6 +493,14 @@ int capture_init() {
   // Create media source
   g_media_source = media_source_create(source_type, source_path);
   if (!g_media_source) {
+    // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
+    // If so, return that error code instead of generic ERROR_MEDIA_INIT
+    asciichat_error_t existing_error = GET_ERRNO();
+    log_debug("media_source_create failed, GET_ERRNO() returned: %d", existing_error);
+    if (existing_error != ASCIICHAT_OK) {
+      log_debug("Returning existing error code %d", existing_error);
+      return existing_error;
+    }
     SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize media source");
     return -1;
   }

@@ -515,6 +515,9 @@ int client_main(void) {
         FATAL(init_result, "%s", asciichat_error_string(init_result));
       }
       log_info("Successfully initialized with test pattern fallback");
+
+      // Clear the error state since we successfully recovered
+      CLEAR_ERRNO();
     } else
 #endif
     {
