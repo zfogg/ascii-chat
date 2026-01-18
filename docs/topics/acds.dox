@@ -510,12 +510,14 @@
  *
  * @section acds_deployment ACDS Deployment & Operation
  *
- * @subsection acds_official_operation Official ACDS Server (discovery.ascii-chat.com)
+ * @subsection acds_official_operation Official ACDS Infrastructure
  *
- * The official ACDS server at **discovery.ascii-chat.com** demonstrates best practices for
- * public ACDS operation:
+ * The official ACDS infrastructure consists of two components:
  *
- * **Public Key Distribution via HTTPS**:
+ * 1. **discovery.ascii-chat.com** - Public key distribution website (HTTPS)
+ * 2. **discovery-server.ascii-chat.com:27225** - ACDS server (TCP)
+ *
+ * **Public Key Distribution via HTTPS** (discovery.ascii-chat.com):
  * - SSH Ed25519 public key: `https://discovery.ascii-chat.com/key.pub` (OpenSSH format)
  * - GPG public key: `https://discovery.ascii-chat.com/key.gpg` (GPG export format)
  * - Both key types are provided as a convenience - clients can use either
@@ -523,30 +525,39 @@
  * - HTML landing page displays key fingerprints and usage instructions
  * - Plaintext rendering allows users to verify keys manually before downloading
  *
+ * **ACDS Server** (discovery-server.ascii-chat.com:27225):
+ * - Default ACDS server address built into ascii-chat client
+ * - Handles session creation, lookup, join, and WebRTC signaling
+ * - Operates transparently - no manual configuration needed
+ * - Uses the Ed25519 keys published at discovery.ascii-chat.com
+ *
  * **Client Trust Model**:
  * - ascii-chat client automatically trusts keys downloaded from `discovery.ascii-chat.com` over HTTPS
+ * - Connects to `discovery-server.ascii-chat.com:27225` by default for ACDS operations
  * - Keys are cached locally and trusted for subsequent connections
  * - **User verification required** if ACDS keys ever change (prevents MITM attacks)
- * - Alternative: Users can manually specify ACDS keys via command-line flags
+ * - Alternative: Users can manually specify ACDS server and keys via command-line flags
  *
- * **Command-Line Key Specification** (optional for discovery.ascii-chat.com):
+ * **Default Behavior** (no flags needed):
  * @code{.bash}
- * # Connect to ACDS (automatic key trust for discovery.ascii-chat.com)
- * ascii-chat client happy-sunset-ocean --acds-server discovery.ascii-chat.com
+ * # Client automatically uses discovery-server.ascii-chat.com:27225
+ * # and trusts keys from discovery.ascii-chat.com
+ * ascii-chat client happy-sunset-ocean
  *
- * # Or explicitly specify SSH key
+ * # Or explicitly specify ACDS server and key
  * ascii-chat client happy-sunset-ocean \
- *   --acds-server discovery.ascii-chat.com \
+ *   --acds-server discovery-server.ascii-chat.com \
  *   --acds-key https://discovery.ascii-chat.com/key.pub
+ * @endcode
  *
- * # Or explicitly specify GPG key
- * ascii-chat client happy-sunset-ocean \
- *   --acds-server discovery.ascii-chat.com \
- *   --acds-key https://discovery.ascii-chat.com/key.gpg
+ * **Manual Key Specification** (optional):
+ * @code{.bash}
+ * # Download and verify SSH key
+ * curl -O https://discovery.ascii-chat.com/key.pub
+ * ssh-keygen -lf key.pub  # Verify fingerprint
  *
- * # Or use local key file
+ * # Use local key file
  * ascii-chat client happy-sunset-ocean \
- *   --acds-server discovery.ascii-chat.com \
  *   --acds-key ~/.config/ascii-chat/acds_known_keys/discovery.ascii-chat.com.pub
  * @endcode
  *

@@ -232,8 +232,9 @@ static void add_port_option(options_builder_t *b, const char *default_port, cons
  * Used by: client, server modes
  */
 static void add_acds_discovery_options(options_builder_t *b) {
-  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), "127.0.0.1",
-                             "ACDS discovery server address (default: 127.0.0.1)", "DISCOVERY", false, NULL, NULL);
+  options_builder_add_string(
+      b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-server.ascii-chat.com",
+      "ACDS discovery server address (default: discovery-server.ascii-chat.com)", "DISCOVERY", false, NULL, NULL);
 
   options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
                           "DISCOVERY", false, NULL, NULL);
