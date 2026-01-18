@@ -478,3 +478,66 @@ int validate_opt_password(const char *value_str, char *error_msg, size_t error_m
 
   return 0;
 }
+
+/**
+ * Collect multiple --key flags into identity_keys array
+ *
+ * Scans argv for all --key or -K flags and populates:
+ * - opts->encrypt_key with the first key (backward compatibility)
+ * - opts->identity_keys[] with all keys
+ * - opts->num_identity_keys with count
+ *
+ * This enables multi-key support for servers/ACDS that need to present
+ * different identity keys (SSH, GPG) based on client expectations.
+ */
+int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
+  if (!opts || !argv) {
+    log_error("options_collect_identity_keys: Invalid arguments");
+    return -1;
+  }
+
+  size_t key_count = 0;
+
+  // Scan argv for all --key or -K flags
+  for (int i = 1; i < argc && key_count < MAX_IDENTITY_KEYS; i++) {
+    const char *arg = argv[i];
+
+    // Check if this is a --key or -K flag
+    bool is_key_flag = false;
+    const char *key_value = NULL;
+
+    if (strcmp(arg, "--key") == 0 || strcmp(arg, "-K") == 0) {
+      // Next argument is the key path
+      if (i + 1 < argc) {
+        key_value = argv[i + 1];
+        is_key_flag = true;
+        i++; // Skip the value argument
+      }
+    } else if (strncmp(arg, "--key=", 6) == 0) {
+      // --key=value format
+      key_value = arg + 6;
+      is_key_flag = true;
+    }
+
+    if (is_key_flag && key_value && strlen(key_value) > 0) {
+      // Store in identity_keys array
+      SAFE_STRNCPY(opts->identity_keys[key_count], key_value, OPTIONS_BUFF_SIZE);
+
+      // First key also goes into encrypt_key for backward compatibility
+      if (key_count == 0) {
+        SAFE_STRNCPY(opts->encrypt_key, key_value, OPTIONS_BUFF_SIZE);
+      }
+
+      key_count++;
+      log_debug("Collected identity key #%zu: %s", key_count, key_value);
+    }
+  }
+
+  opts->num_identity_keys = key_count;
+
+  if (key_count > 0) {
+    log_info("Collected %zu identity key(s) for multi-key support", key_count);
+  }
+
+  return (int)key_count;
+}

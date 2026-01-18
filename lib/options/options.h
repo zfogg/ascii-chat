@@ -236,6 +236,9 @@
 /** @brief Default microphone device index (-1 means system default) */
 #define OPT_MICROPHONE_INDEX_DEFAULT (-1)
 
+/** @brief Maximum number of identity keys that can be loaded (for multi-key support) */
+#define MAX_IDENTITY_KEYS 32
+
 /** @brief Default speakers device index (-1 means system default) */
 #define OPT_SPEAKERS_INDEX_DEFAULT (-1)
 
@@ -348,6 +351,8 @@ int strtoint_safe(const char *str);
   char encrypt_keyfile[OPTIONS_BUFF_SIZE];                                                                             \
   unsigned short int no_encrypt;                                                                                       \
   char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
+  char identity_keys[MAX_IDENTITY_KEYS][OPTIONS_BUFF_SIZE]; /* All identity keys (multi-key support) */                \
+  size_t num_identity_keys;                                 /* Number of identity keys loaded */                       \
   unsigned short int require_server_verify;                                                                            \
   bool acds;           /* Enable ACDS session registration (default: false) */                                         \
   bool acds_expose_ip; /* Explicitly allow public IP disclosure in ACDS sessions (opt-in) */                           \
@@ -383,6 +388,8 @@ int strtoint_safe(const char *str);
   char server_key[OPTIONS_BUFF_SIZE];                                                                                  \
   char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
   char password[OPTIONS_BUFF_SIZE];                                                                                    \
+  char identity_keys[MAX_IDENTITY_KEYS][OPTIONS_BUFF_SIZE]; /* All identity keys (multi-key support) */                \
+  size_t num_identity_keys;                                 /* Number of identity keys loaded */                       \
   unsigned short int require_client_verify;
 
 /**
@@ -550,12 +557,18 @@ typedef struct options_state {
   // Encryption Options
   // ============================================================================
   unsigned short int encrypt_enabled;      ///< Enable encryption
-  char encrypt_key[OPTIONS_BUFF_SIZE];     ///< SSH/GPG key file path
+  char encrypt_key[OPTIONS_BUFF_SIZE];     ///< SSH/GPG key file path (first --key flag, kept for compatibility)
   char password[OPTIONS_BUFF_SIZE];        ///< Password string
   char encrypt_keyfile[OPTIONS_BUFF_SIZE]; ///< Alternative key file path
   unsigned short int no_encrypt;           ///< Disable encryption (opt-out)
   char server_key[OPTIONS_BUFF_SIZE];      ///< Expected server public key (client)
   char client_keys[OPTIONS_BUFF_SIZE];     ///< Allowed client keys (server)
+
+  // Multi-key support: When multiple --key flags are provided, all keys are stored here
+  // encrypt_key is duplicated in identity_keys[0] for backward compatibility
+  char identity_keys[MAX_IDENTITY_KEYS]
+                    [OPTIONS_BUFF_SIZE]; ///< All identity keys (populated when --key is used multiple times)
+  size_t num_identity_keys;              ///< Number of identity keys loaded (0 means single-key mode using encrypt_key)
 
   // ============================================================================
   // Identity Verification Options (ACDS + Crypto Handshake)
