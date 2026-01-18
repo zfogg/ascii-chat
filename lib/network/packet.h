@@ -358,6 +358,9 @@ typedef enum {
   /** @brief Batched Opus-encoded audio frames */
   PACKET_TYPE_AUDIO_OPUS_BATCH = 35,
 
+  /** @brief Client -> Server: Expected server key fingerprint for multi-key selection (UNENCRYPTED, handshake) */
+  PACKET_TYPE_CRYPTO_CLIENT_HELLO = 36,
+
   // ============================================================================
   // Discovery Service Protocol (ACDS)
   // ============================================================================
@@ -437,6 +440,10 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
   }
   // Rekey packets (25-27) - Note: REKEY_COMPLETE is encrypted with new key but still considered handshake
   if (type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
+    return true;
+  }
+  // Client hello for multi-key selection (36)
+  if (type == PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
     return true;
   }
   return false;
