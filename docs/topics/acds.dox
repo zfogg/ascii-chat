@@ -665,10 +665,7 @@
  * - `acds_client.c` - Client-side ACDS protocol
  * - `send.c` - ACDS packet sending helpers
  *
- * @see topic_network For network protocol details
- * @see topic_crypto For cryptographic operations
- * @see topic_server For server architecture
- * @see topic_client For client architecture
- * @see README.md#ascii-chat-discovery-service-acds For user-facing documentation
+ * @see topic_network
+ * @see topic_handshake
  */
 
