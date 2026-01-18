@@ -57,24 +57,12 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
   - [Get ascii-chat](#get-ascii-chat)
   - [Build From Source](#build-from-source)
   - [Usage](#usage)
-  - [Command Line Flags](#command-line-flags)
-    - [Binary-Level Options](#binary-level-options)
-    - [Client Mode Options](#client-mode-options)
-    - [Server Mode Options](#server-mode-options)
-    - [Mirror Mode Options](#mirror-mode-options)
   - [Cryptography](#cryptography)
-    - [Authentication Options](#authentication-options)
-    - [Usage Examples](#usage-examples)
   - [Environment Variables](#environment-variables)
-    - [Security Variables](#security-variables)
-    - [Terminal Variables (Used for Display Detection)](#terminal-variables-used-for-display-detection)
-    - [POSIX-Specific Variables](#posix-specific-variables)
-    - [Windows-Specific Variables](#windows-specific-variables)
-    - [Development/Testing Variables](#developmenttesting-variables)
-  - [ascii-chat Internet Protocol (ACIP)](#ascii-chat-internet-protocol-acip)
+  - [ASCII-Chat Internet Protocol (ACIP)](#ascii-chat-internet-protocol-acip)
     - [Philosophy](#philosophy)
     - [Protocol Overview](#protocol-overview)
-    - [Why ACIP is Perfect for Terminal Conference Calling](#why-acip-is-perfect-for-terminal-conference-calling)
+    - [Why ACIP](#why-acip)
     - [Technical Details](#technical-details)
   - [ascii-chat Discovery Service (ACDS)](#ascii-chat-discovery-service-acds)
     - [Philosophy](#philosophy-1)
@@ -84,7 +72,7 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
     - [NAT Traversal Technologies](#nat-traversal-technologies)
     - [Network Error Handling](#network-error-handling)
     - [Privacy & Security](#privacy--security)
-    - [Why ACDS is Powerful](#why-acds-is-powerful)
+    - [Why ACDS](#why-acds)
   - [libasciichat](#libasciichat)
   - [Open Source](#open-source)
     - [Dependencies](#dependencies)
@@ -214,54 +202,23 @@ See **[ascii-chat.com/env](https://ascii-chat.com/env)** for complete environmen
 
 ### Philosophy
 
-When I started building ascii-chat, **no existing protocol fit the requirements** for real-time terminal-based video conferencing. HTTP/WebSocket protocols are too heavyweight and browser-focused. RTP/RTSP are designed for traditional video streams, not ASCII art frames. VNC/RDP are for desktop sharing, not peer-to-peer communication.
+When I started building ascii-chat, no existing protocol fit the requirements for real-time terminal-based video conferencing. HTTP/WebSocket are too heavyweight and browser-focused. RTP/RTSP are designed for traditional video streams, not ASCII frames. VNC/RDP are for desktop sharing, not peer-to-peer.
 
-So I designed **ACIP** - a protocol I'm genuinely proud of and believe others can use for similar applications. ACIP is purpose-built for **low-latency, encrypted, multi-client conference calling** in terminal environments.
+So I designed ACIP. It's a binary protocol over TCP built for low-latency, encrypted, multi-client conference calling in terminals.
 
 ### Protocol Overview
 
-ACIP is a **binary packet protocol over TCP** with the following characteristics:
+ACIP is a binary packet protocol over TCP. It starts with a TCP handshake and capability negotiation, followed by a cryptographic handshake using X25519 Diffie-Hellman key exchange with Ed25519 authentication. Clients send their terminal dimensions, color support, and audio capabilities. The server sends session info, connected clients, and grid layout.
 
-**Initialization & Handshake:**
+All packets are encrypted with XSalsa20-Poly1305 (AEAD cipher). Ephemeral session keys provide perfect forward secrecy. Optional SSH/GPG key verification prevents MITM attacks. Session keys rotate periodically for long-lived connections.
 
-- **Connection establishment** - TCP handshake followed by capability negotiation
-- **Cryptographic handshake** - X25519 Diffie-Hellman key exchange with Ed25519 authentication
-- **Client capabilities** - Terminal dimensions, color support, audio capabilities
-- **Server state** - Current session info, connected clients, grid layout
+Clients must complete the crypto handshake before sending media. TCP guarantees packet order, and ACIP relies on this. Senders adapt to slow receivers via TCP flow control. Hardware-accelerated CRC32 checksums detect corruption.
 
-**Encryption & Security:**
+Single packets contain complete ASCII/image frames (no app-layer fragmentation). Multiple audio samples are bundled for efficiency. Frames use zstd compression (configurable level 1-9). Audio uses Opus encoding (optional, can send raw PCM). Comprehensive packet tracing is available in debug builds. Error signaling will be added to the main protocol (currently only ACDS has proper error packets). Rate limiting and QoS are planned.
 
-- **End-to-end encryption** - All packets encrypted with XSalsa20-Poly1305 (AEAD cipher)
-- **Perfect forward secrecy** - Ephemeral session keys generated per connection
-- **Mutual authentication** - Optional SSH/GPG key verification (prevents MITM attacks)
-- **Automatic rekeying** - Session keys rotate periodically for long-lived connections
+### Why ACIP
 
-**Packet Flow Rules:**
-
-- **No packets before handshake** - Clients must complete crypto handshake before sending media
-- **Ordered delivery** - TCP guarantees packet order, ACIP builds on this assumption
-- **Back-pressure handling** - Senders adapt to slow receivers (TCP flow control)
-- **CRC32 validation** - Hardware-accelerated checksums detect corruption
-
-**Protocol Features:**
-
-- **Unified frame packets** - Single packet contains complete ASCII/image frame (no fragmentation at app layer)
-- **Batched audio** - Multiple audio samples bundled for efficiency
-- **Compression** - zstd compression for frames (configurable level 1-9)
-- **Audio codec** - Opus encoding for voice (optional, can send raw PCM)
-- **Network logging** - Comprehensive packet tracing for debugging (debug builds)
-- **Error signaling** - Future: proper error packets with codes (currently only ACDS has them)
-- **Rate limiting** - Future: per-client bandwidth limits and QoS (planned)
-
-### Why ACIP is Perfect for Terminal Conference Calling
-
-1. **Binary efficiency** - Packet headers are 20 bytes, no text parsing overhead
-2. **TCP reliability** - No need to handle packet loss/reordering at app layer
-3. **Encryption by default** - Security built into the protocol, not bolted on
-4. **Extensible design** - New packet types can be added without breaking old clients
-5. **Terminal-aware** - Protocol understands terminal capabilities (color depth, dimensions)
-6. **Multi-client optimized** - Server efficiently mixes video/audio from N clients
-7. **Simple implementation** - ~3000 lines of C in `lib/network/`, easy to understand and port
+The protocol is efficient (20-byte headers, binary), reliable (TCP handles packet loss/ordering), encrypted by default, and extensible (new packet types don't break old clients). It understands terminal capabilities like color depth and dimensions. The server mixes video/audio from multiple clients. Implementation is ~3000 lines of C in `lib/network/`.
 
 ### Technical Details
 
@@ -301,37 +258,17 @@ The protocol is **fully documented** in the [Network Protocol Reference](https:/
 
 ### Philosophy
 
-**The Problem:** Running a video chat server should be as easy as opening a Zoom meeting. But networking is hard:
+**The Problem:** Running a video chat server should be as easy as opening a Zoom meeting. But networking is hard. Most home routers block incoming connections, requiring manual UPnP/NAT-PMP configuration. You need to know your public IP and share it with others. Symmetric NAT makes peer-to-peer connections nearly impossible. Corporate/university networks often block non-standard ports.
 
-- **Port forwarding** - Most home routers block incoming connections, requiring manual UPnP/NAT-PMP configuration
-- **IP addresses** - You need to know your public IP and share it with others
-- **NAT traversal** - Symmetric NAT makes peer-to-peer connections nearly impossible
-- **Firewalls** - Corporate/university networks often block non-standard ports
-
-**The ACDS Solution:** ACDS makes connecting **effortless**. Instead of dealing with networking complexity, you get:
-
-**Three-word session strings** like `purple-mountain-lake` that uniquely identify your session. Share those three words and people can join - no IP addresses, no port forwarding, no network configuration.
+**The ACDS Solution:** Share a three-word session string like `purple-mountain-lake` and people can join. No IP addresses, no port forwarding, no network configuration.
 
 ### How ACDS Works
 
-ACDS is a **rendezvous server** that helps clients find each other and establish the best possible connection:
+ACDS is a rendezvous server that helps clients find each other. The server registers with ACDS and gets a memorable session string (e.g., `happy-sunset-ocean`). ACDS attempts NAT traversal using UPnP, NAT-PMP, and WebRTC ICE/STUN/TURN. The server shares the session string with potential clients.
 
-**Session Creation:**
+When a client queries ACDS with the session string, ACDS returns connection info: IP address(es), ports, NAT type, and relay options. The client tries direct TCP first (if UPnP/NAT-PMP succeeded, best latency), then WebRTC DataChannel (P2P via ICE/STUN, good latency, works behind NAT), and finally TURN relay as a fallback (higher latency, always works).
 
-1. Server registers with ACDS, gets a memorable session string (e.g., `happy-sunset-ocean`)
-2. ACDS attempts NAT traversal: UPnP, NAT-PMP, and WebRTC ICE/STUN/TURN
-3. Server shares the session string with potential clients
-
-**Client Connection:**
-
-1. Client queries ACDS with session string
-2. ACDS returns connection info: IP address(es), ports, NAT type, relay options
-3. Client attempts connection in order of preference:
-   - **Direct TCP** (if UPnP/NAT-PMP succeeded) - best latency
-   - **WebRTC DataChannel** (P2P via ICE/STUN) - good latency, works behind NAT
-   - **TURN relay** (fallback if P2P fails) - higher latency, always works
-
-**The beauty:** Clients get the **ideal TCP connection for their network situation**, and it all happens automatically. No user intervention required.
+It all happens automatically. No user intervention required.
 
 ### mDNS Support (No Server Required!)
 
@@ -345,39 +282,15 @@ ascii-chat server --mdns
 ascii-chat client --mdns
 ```
 
-This enables **zero-configuration local sessions** - perfect for office environments, conferences, or home networks where you don't need internet-wide discovery.
+This enables local sessions without any configuration - good for office environments, conferences, or home networks where you don't need internet-wide discovery.
 
 ### Session Strings
 
-ACDS generates memorable session identifiers from a curated word list:
-
-- **Format:** `adjective-noun-noun` (e.g., `bright-forest-river`)
-- **Collision resistance:** 16.7M+ possible combinations
-- **Human-friendly:** Easy to speak over phone, remember briefly, type without errors
-- **Ephemeral:** Session strings expire when the server disconnects
+ACDS generates memorable session identifiers from a curated word list. The format is `adjective-noun-noun` (e.g., `bright-forest-river`), with 16.7M+ possible combinations for collision resistance. They're easy to speak over the phone, remember briefly, and type without errors. Session strings expire when the server disconnects.
 
 ### NAT Traversal Technologies
 
-ACDS leverages multiple NAT traversal techniques:
-
-**UPnP (Universal Plug and Play):**
-
-- Works on ~70% of home routers
-- Automatic port forwarding
-- Enables direct TCP connections (lowest latency)
-
-**NAT-PMP (NAT Port Mapping Protocol):**
-
-- Apple's alternative to UPnP
-- Common on Apple routers and some enterprise gear
-- Also enables direct TCP connections
-
-**WebRTC (ICE/STUN/TURN):**
-
-- STUN discovers public IP/port mapping
-- ICE negotiates P2P connection through NAT
-- TURN provides relay fallback (always succeeds)
-- Higher overhead but works in 99% of networks
+ACDS leverages multiple NAT traversal techniques. UPnP (Universal Plug and Play) works on ~70% of home routers with automatic port forwarding, enabling direct TCP connections with lowest latency. NAT-PMP (NAT Port Mapping Protocol) is Apple's alternative to UPnP, common on Apple routers and some enterprise gear, also enabling direct TCP connections. WebRTC (ICE/STUN/TURN) uses STUN to discover public IP/port mapping, ICE to negotiate P2P connections through NAT, and TURN as a relay fallback that always succeeds. Higher overhead but works in 99% of networks.
 
 ### Network Error Handling
 
@@ -411,16 +324,9 @@ Future enhancement: ACIP will adopt this error framework for comprehensive error
 - Automatic cleanup of expired sessions
 - Optional: private ACDS instances for corporate deployments
 
-### Why ACDS is Powerful
+### Why ACDS
 
-1. **User experience** - "Join happy-sunset-ocean" beats "Connect to 73.251.42.118:27224"
-2. **Automatic NAT traversal** - Works behind firewalls without manual configuration
-3. **Fallback strategy** - Tries best connection first, falls back gracefully
-4. **mDNS for local** - Zero-config on LANs, no internet/server required
-5. **Open protocol** - Run your own ACDS server for privacy
-6. **Future-proof** - Designed for WebRTC integration and advanced NAT scenarios
-
-ACDS transforms ascii-chat from a **LAN-only toy** into a **production-ready video conferencing system** that works anywhere, for anyone.
+"Join happy-sunset-ocean" is easier than "Connect to 73.251.42.118:27224". Works behind firewalls without manual configuration. Tries the best connection first, falls back gracefully. mDNS support for LANs without a server. You can run your own ACDS server for privacy.
 
 ## libasciichat
 
