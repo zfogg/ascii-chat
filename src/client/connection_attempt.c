@@ -28,6 +28,7 @@
 #include "protocol.h"
 #include "webrtc.h"
 #include "crypto.h"
+#include "crypto/acds_keys.h"
 #include "common.h"
 #include "log/logging.h"
 #include "options/options.h"
@@ -436,6 +437,24 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   acds_config.server_port = acds_port;
   acds_config.timeout_ms = 5000; // 5s timeout for ACDS connection
 
+  // ACDS key verification (optional in debug builds, only if --acds-key is provided)
+  if (strlen(GET_OPTION(acds_server_key)) > 0) {
+    log_info("Verifying ACDS server key for %s...", acds_config.server_address);
+    uint8_t acds_pubkey[32];
+    asciichat_error_t verify_result =
+        acds_keys_verify(acds_config.server_address, GET_OPTION(acds_server_key), acds_pubkey);
+    if (verify_result != ASCIICHAT_OK) {
+      log_error("ACDS key verification failed for %s", acds_config.server_address);
+      return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "ACDS key verification failed");
+    }
+    log_info("ACDS server key verified successfully");
+  }
+#ifndef NDEBUG
+  else {
+    log_debug("Skipping ACDS key verification (debug build, no --acds-key provided)");
+  }
+#endif
+
   result = acds_client_connect(&acds_client, &acds_config);
   if (result != ASCIICHAT_OK) {
     log_warn("Failed to connect to ACDS server %s:%u: %d", acds_server, acds_port, result);
@@ -660,6 +679,24 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
   acds_config.server_port = acds_port;
   acds_config.timeout_ms = 5000; // 5s timeout for ACDS connection
+
+  // ACDS key verification (optional in debug builds, only if --acds-key is provided)
+  if (strlen(GET_OPTION(acds_server_key)) > 0) {
+    log_info("Verifying ACDS server key for %s...", acds_config.server_address);
+    uint8_t acds_pubkey[32];
+    asciichat_error_t verify_result =
+        acds_keys_verify(acds_config.server_address, GET_OPTION(acds_server_key), acds_pubkey);
+    if (verify_result != ASCIICHAT_OK) {
+      log_error("ACDS key verification failed for %s", acds_config.server_address);
+      return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "ACDS key verification failed");
+    }
+    log_info("ACDS server key verified successfully");
+  }
+#ifndef NDEBUG
+  else {
+    log_debug("Skipping ACDS key verification (debug build, no --acds-key provided)");
+  }
+#endif
 
   result = acds_client_connect(&acds_client, &acds_config);
   if (result != ASCIICHAT_OK) {

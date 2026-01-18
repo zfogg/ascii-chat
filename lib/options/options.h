@@ -354,7 +354,8 @@ int strtoint_safe(const char *str);
   bool acds_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */                  \
   char acds_server[OPTIONS_BUFF_SIZE];                                                                                 \
   int acds_port;                                                                                                       \
-  bool webrtc; /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
+  char acds_server_key[OPTIONS_BUFF_SIZE]; /* ACDS server public key (SSH/GPG or HTTPS URL) for verification */        \
+  bool webrtc;                             /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
 
 /**
  * @brief Client mode options
@@ -468,11 +469,12 @@ typedef struct options_state {
   // ============================================================================
   // ACDS Discovery Options (server only)
   // ============================================================================
-  bool acds;                                  ///< Enable ACDS session registration (default: false)
-  char acds_server[OPTIONS_BUFF_SIZE];        ///< ACDS server address (default: 127.0.0.1)
-  int acds_port;                              ///< ACDS server port (default: 27225)
-  bool webrtc;                                ///< Enable WebRTC mode for ACDS session (default: false, Direct TCP)
-  char acds_key_path[OPTIONS_BUFF_SIZE];      ///< ACDS identity key file path (default: ~/.ascii-chat/acds_identity)
+  bool acds;                               ///< Enable ACDS session registration (default: false)
+  char acds_server[OPTIONS_BUFF_SIZE];     ///< ACDS server address (default: 127.0.0.1)
+  int acds_port;                           ///< ACDS server port (default: 27225)
+  char acds_server_key[OPTIONS_BUFF_SIZE]; ///< ACDS server public key for trust verification (SSH/GPG key or HTTPS URL)
+  bool webrtc;                             ///< Enable WebRTC mode for ACDS session (default: false, Direct TCP)
+  char acds_key_path[OPTIONS_BUFF_SIZE];   ///< ACDS identity key file path (default: ~/.ascii-chat/acds_identity)
   char acds_database_path[OPTIONS_BUFF_SIZE]; ///< ACDS database file path (default: ~/.ascii-chat/acds.db)
 
   // ============================================================================

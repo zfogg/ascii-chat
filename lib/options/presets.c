@@ -238,6 +238,11 @@ static void add_acds_discovery_options(options_builder_t *b) {
   options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
                           "DISCOVERY", false, NULL, NULL);
 
+  options_builder_add_string(
+      b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
+      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
+      "DISCOVERY", false, NULL, NULL);
+
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
                            "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
 }
