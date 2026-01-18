@@ -665,7 +665,9 @@
  * - `acds_client.c` - Client-side ACDS protocol
  * - `send.c` - ACDS packet sending helpers
  *
- * @see topic_network
- * @see topic_handshake
+ * @see @ref topic_network "Network Protocol"
+ * @see @ref topic_handshake "Cryptographic Handshake"
+ * @see @ref topic_server "Server Architecture"
+ * @see @ref topic_client "Client Architecture"
  */
 
