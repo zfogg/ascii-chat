@@ -434,6 +434,7 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
             --enable-static
             --disable-shared
             --enable-pic
+            --extra-cflags=-fPIC
             --disable-programs
             --disable-doc
             --disable-htmlpages
@@ -462,7 +463,7 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
     # Build FFmpeg
     message(STATUS "  Building FFmpeg (this takes several minutes)...")
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS} make -j${CMAKE_BUILD_PARALLEL_LEVEL}
         WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
         RESULT_VARIABLE BUILD_RESULT
         OUTPUT_VARIABLE BUILD_OUTPUT
