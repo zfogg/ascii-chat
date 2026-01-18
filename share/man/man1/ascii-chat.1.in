@@ -26,13 +26,19 @@ ascii-chat \- Video chat in your terminal
 .RI [ binary-options ]
 .B mirror
 .RI [ options ]
+.PP
+.B ascii-chat
+.RI [ binary-options ]
+.B discovery-server
+.RI [ address ]
+.RI [ options ]
 .SH DESCRIPTION
 .B ascii-chat
 is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
 using a local console, a remote SSH session, or any terminal emulator.
 .PP
-The program operates in three modes:
+The program operates in four modes:
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
@@ -48,6 +54,12 @@ the server sends back.
 .B mirror
 Displays your local webcam as ASCII art without any network connection.
 Perfect for testing webcam, palette settings, and terminal rendering.
+.TP
+.B discovery-server
+Runs an ACDS (ascii-chat Discovery Service) server for session management.
+Allows clients and servers to discover each other using memorable session strings
+instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
+aren't possible.
 .SH OPTIONS
 .SS "Binary-Level Options"
 These options apply to all modes and must be specified \fBbefore\fR the mode argument.
