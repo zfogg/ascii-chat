@@ -138,6 +138,7 @@ paru -S libasciichat-git     # Development libraries from git
 
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
 - Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
+- Discovery Service: **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)** — Official ACDS server public keys
 - Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
 
 ## Build From Source
@@ -774,6 +775,8 @@ The protocol is **fully documented** in the [Network Protocol Reference](https:/
 ## ASCII-Chat Discovery Service (ACDS)
 
 > 🔍 **ACDS Documentation: [Discovery Service Reference](https://zfogg.github.io/ascii-chat/group__module__acds.html#topic_acds)**
+>
+> 🔑 **Official ACDS Server: [discovery.ascii-chat.com](https://discovery.ascii-chat.com)** — Public keys and server info
 
 ### Philosophy
 
@@ -797,6 +800,8 @@ ACDS is a **rendezvous server** that helps clients find each other and establish
 1. Server registers with ACDS, gets a memorable session string (e.g., `happy-sunset-ocean`)
 2. ACDS attempts NAT traversal: UPnP, NAT-PMP, and WebRTC ICE/STUN/TURN
 3. Server shares the session string with potential clients
+
+The official ACDS server runs at **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)** (port 27225) and is automatically used by default.
 
 **Client Connection:**
 
@@ -874,6 +879,12 @@ Future enhancement: ACIP will adopt this error framework for comprehensive error
 - Only exchanges connection metadata (IP addresses, ports)
 - All media flows **directly between peers** using ACIP encryption
 - ACDS doesn't decrypt, proxy, or store media content
+
+**Official server authentication:**
+
+- The official ACDS server at **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)** provides Ed25519 public keys for identity verification
+- Keys are served over HTTPS and automatically trusted by ascii-chat clients
+- Manual verification available via SSH and GPG fingerprints on the website
 
 **Session database:**
 
