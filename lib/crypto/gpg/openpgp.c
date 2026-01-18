@@ -8,9 +8,13 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../log/logging.h"
+#include "../../platform/question.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sodium.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 // =============================================================================
 // Base64 Decoding for PGP Armor
@@ -365,6 +369,358 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
 
   if (!found_pubkey) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 public key found in PGP armored block");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+// =============================================================================
+// Secret Key Packet Parsing
+// =============================================================================
+
+asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, size_t body_len,
+                                                  openpgp_secret_key_t *seckey) {
+  if (!packet_body || !seckey || body_len < 6) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for secret key packet parsing");
+  }
+
+  memset(seckey, 0, sizeof(openpgp_secret_key_t));
+
+  size_t offset = 0;
+
+  // Parse public key portion (same as public key packet)
+  // Version (1 byte, must be 4)
+  seckey->version = packet_body[offset++];
+  if (seckey->version != 4) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported OpenPGP secret key version: %u (only version 4 supported)",
+                     seckey->version);
+  }
+
+  // Creation time (4 bytes, big-endian Unix timestamp)
+  seckey->created = ((uint32_t)packet_body[offset] << 24) | ((uint32_t)packet_body[offset + 1] << 16) |
+                    ((uint32_t)packet_body[offset + 2] << 8) | packet_body[offset + 3];
+  offset += 4;
+
+  // Algorithm (1 byte)
+  seckey->algorithm = packet_body[offset++];
+
+  log_debug("Secret key packet: version=%u, created=%u, algorithm=%u", seckey->version, seckey->created,
+            seckey->algorithm);
+
+  // Only support EdDSA (algorithm 22)
+  if (seckey->algorithm != OPENPGP_ALGO_EDDSA) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported secret key algorithm: %u (only EdDSA/22 supported)",
+                     seckey->algorithm);
+  }
+
+  // EdDSA public key: OID + 0x40 prefix + 32 bytes of Ed25519 public key
+  // Search for 0x40 prefix byte
+  bool found_prefix = false;
+  size_t pubkey_offset = 0;
+
+  for (size_t i = offset; i < body_len - 32; i++) {
+    if (packet_body[i] == 0x40) {
+      pubkey_offset = i + 1;
+      found_prefix = true;
+      log_debug("Found Ed25519 public key prefix 0x40 at offset %zu", i);
+      break;
+    }
+  }
+
+  if (!found_prefix) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Ed25519 public key prefix (0x40) not found in secret key packet");
+  }
+
+  if (pubkey_offset + 32 > body_len) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Insufficient data for Ed25519 public key (need 32 bytes after 0x40 prefix)");
+  }
+
+  // Extract the 32-byte Ed25519 public key
+  memcpy(seckey->pubkey, packet_body + pubkey_offset, 32);
+
+  log_debug("Extracted Ed25519 public key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", seckey->pubkey[0],
+            seckey->pubkey[1], seckey->pubkey[2], seckey->pubkey[3], seckey->pubkey[4], seckey->pubkey[5],
+            seckey->pubkey[6], seckey->pubkey[7]);
+
+  // Move offset past public key material
+  offset = pubkey_offset + 32;
+
+  // S2K usage byte (1 byte)
+  // 0x00 = secret key is not encrypted
+  // 0xFE or 0xFF = secret key is encrypted with S2K
+  if (offset >= body_len) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Missing S2K usage byte in secret key packet");
+  }
+
+  uint8_t s2k_usage = packet_body[offset++];
+  log_debug("S2K usage byte: 0x%02x", s2k_usage);
+
+  if (s2k_usage != 0x00) {
+    seckey->is_encrypted = true;
+    log_debug("Detected encrypted secret key (S2K usage = 0x%02x)", s2k_usage);
+    // Don't parse encrypted key material here - caller will need to decrypt with gpg
+    return ASCIICHAT_OK;
+  }
+
+  seckey->is_encrypted = false;
+
+  // For unencrypted keys (S2K usage = 0x00), secret key material follows directly
+  // For Ed25519: 32 bytes of secret key
+  if (offset + 32 > body_len) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Insufficient data for Ed25519 secret key (need 32 bytes)");
+  }
+
+  // Extract the 32-byte Ed25519 secret key
+  memcpy(seckey->seckey, packet_body + offset, 32);
+
+  log_debug("Extracted Ed25519 secret key (first 8 bytes): %02x%02x%02x%02x%02x%02x%02x%02x", seckey->seckey[0],
+            seckey->seckey[1], seckey->seckey[2], seckey->seckey[3], seckey->seckey[4], seckey->seckey[5],
+            seckey->seckey[6], seckey->seckey[7]);
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Decrypt GPG armored secret key using gpg binary
+ * @param armored_text Encrypted GPG armored text
+ * @param decrypted_out Output buffer for decrypted armored text (caller must free)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char **decrypted_out) {
+  if (!armored_text || !decrypted_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for GPG decryption");
+  }
+
+  // Get passphrase from environment variable or interactive prompt
+  const char *passphrase = SAFE_GETENV("ASCII_CHAT_KEY_PASSWORD");
+  char passphrase_buffer[512] = {0};
+
+  if (!passphrase) {
+    // No environment variable - try interactive prompt
+    if (platform_is_interactive()) {
+      log_info("GPG key is encrypted - prompting for passphrase");
+      if (platform_prompt_question("Enter passphrase for GPG key", passphrase_buffer, sizeof(passphrase_buffer),
+                                   PROMPT_OPTS_PASSWORD) != 0) {
+        return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted GPG key");
+      }
+      passphrase = passphrase_buffer;
+    } else {
+      return SET_ERRNO(ERROR_CRYPTO_KEY,
+                       "Encrypted GPG key requires passphrase. Set ASCII_CHAT_KEY_PASSWORD environment variable or "
+                       "run interactively.");
+    }
+  }
+
+  // Create temporary files for input and output
+  char input_path[] = "/tmp/ascii-chat-gpg-XXXXXX";
+  int input_fd = mkstemp(input_path);
+  if (input_fd < 0) {
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary file for GPG decryption");
+  }
+
+  // Write armored key to temp file
+  size_t armored_len = strlen(armored_text);
+  ssize_t written = write(input_fd, armored_text, armored_len);
+  close(input_fd);
+
+  if (written != (ssize_t)armored_len) {
+    unlink(input_path);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write armored key to temp file");
+  }
+
+  // Create output file for decrypted key
+  char output_path[] = "/tmp/ascii-chat-gpg-out-XXXXXX";
+  int output_fd = mkstemp(output_path);
+  if (output_fd < 0) {
+    unlink(input_path);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary output file");
+  }
+  close(output_fd);
+
+  // Build gpg command to import, decrypt, and re-export as unencrypted
+  // We need to:
+  // 1. Import the key to gpg keyring
+  // 2. Export it unencrypted with the passphrase
+  char command[4096];
+  safe_snprintf(command, sizeof(command),
+                "gpg --batch --import '%s' 2>/dev/null && "
+                "KEY_FPR=$(gpg --list-secret-keys --with-colons 2>/dev/null | grep '^fpr' | head -1 | cut -d: -f10) && "
+                "gpg --batch --pinentry-mode loopback --passphrase '%s' --armor --export-secret-keys --export-options "
+                "export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' 2>/dev/null",
+                input_path, passphrase, output_path);
+
+  int status = system(command);
+
+  if (status != 0) {
+    unlink(input_path);
+    unlink(output_path);
+    // Clean up the imported key
+    system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys --with-colons 2>/dev/null | "
+           "grep '^fpr' | tail -1 | cut -d: -f10) 2>/dev/null");
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "GPG decryption failed. Check passphrase and key format.");
+  }
+
+  // Read the decrypted output
+  FILE *output_file = platform_fopen(output_path, "r");
+  if (!output_file) {
+    unlink(input_path);
+    unlink(output_path);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read decrypted GPG output");
+  }
+
+  fseek(output_file, 0, SEEK_END);
+  long output_size = ftell(output_file);
+  fseek(output_file, 0, SEEK_SET);
+
+  if (output_size <= 0 || output_size > 1024 * 1024) {
+    fclose(output_file);
+    unlink(input_path);
+    unlink(output_path);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid decrypted GPG output size: %ld bytes", output_size);
+  }
+
+  *decrypted_out = SAFE_MALLOC((size_t)output_size + 1, char *);
+  size_t bytes_read = fread(*decrypted_out, 1, (size_t)output_size, output_file);
+  (*decrypted_out)[bytes_read] = '\0';
+  fclose(output_file);
+
+  // Clean up temporary files and imported key
+  unlink(input_path);
+  unlink(output_path);
+  system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys --with-colons 2>/dev/null | "
+         "grep '^fpr' | tail -1 | cut -d: -f10) 2>/dev/null");
+
+  // Securely erase passphrase from memory
+  sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+
+  log_info("Successfully decrypted GPG key using passphrase");
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[32],
+                                               uint8_t ed25519_sk[32]) {
+  if (!armored_text || !ed25519_pk || !ed25519_sk) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for armored seckey parsing");
+  }
+
+  // Find the BEGIN marker (try both "PRIVATE KEY" and "SECRET KEY" formats)
+  const char *begin = strstr(armored_text, "-----BEGIN PGP PRIVATE KEY BLOCK-----");
+  if (!begin) {
+    begin = strstr(armored_text, "-----BEGIN PGP SECRET KEY BLOCK-----");
+  }
+  if (!begin) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Missing PGP PRIVATE/SECRET KEY BLOCK BEGIN marker");
+  }
+
+  // Skip to the end of the BEGIN line
+  const char *base64_start = strchr(begin, '\n');
+  if (!base64_start) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid PGP armored format: no newline after BEGIN marker");
+  }
+  base64_start++; // Skip the newline
+
+  // Find the END marker (try both formats)
+  const char *end = strstr(base64_start, "-----END PGP PRIVATE KEY BLOCK-----");
+  if (!end) {
+    end = strstr(base64_start, "-----END PGP SECRET KEY BLOCK-----");
+  }
+  if (!end) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Missing PGP PRIVATE/SECRET KEY BLOCK END marker");
+  }
+
+  // Find the checksum line (starts with '=') and exclude it
+  const char *base64_end = end;
+  const char *checksum = base64_end;
+  while (checksum > base64_start && *checksum != '=') {
+    checksum--;
+  }
+  if (*checksum == '=') {
+    // Move back to before the checksum line
+    while (checksum > base64_start && (checksum[-1] == '\n' || checksum[-1] == '\r')) {
+      checksum--;
+    }
+    base64_end = checksum;
+  }
+
+  size_t base64_len = (size_t)(base64_end - base64_start);
+
+  log_debug("Extracting base64 data from PGP secret key armor (%zu bytes)", base64_len);
+
+  // Decode base64 to binary OpenPGP packets
+  uint8_t *binary_data;
+  size_t binary_len;
+  asciichat_error_t decode_result = openpgp_base64_decode(base64_start, base64_len, &binary_data, &binary_len);
+  if (decode_result != ASCIICHAT_OK) {
+    return decode_result;
+  }
+
+  log_debug("Decoded %zu bytes of OpenPGP secret key packet data", binary_len);
+
+  // Parse OpenPGP packets to find the secret key packet (tag 5)
+  size_t offset = 0;
+  bool found_seckey = false;
+
+  while (offset < binary_len) {
+    openpgp_packet_header_t header;
+    asciichat_error_t header_result = openpgp_parse_packet_header(binary_data + offset, binary_len - offset, &header);
+    if (header_result != ASCIICHAT_OK) {
+      SAFE_FREE(binary_data);
+      return header_result;
+    }
+
+    log_debug("Packet at offset %zu: tag=%u, length=%zu", offset, header.tag, header.length);
+
+    // Check if this is a secret key packet (tag 5)
+    if (header.tag == OPENPGP_TAG_SECRET_KEY) {
+      openpgp_secret_key_t seckey;
+      asciichat_error_t parse_result =
+          openpgp_parse_secret_key_packet(binary_data + offset + header.header_len, header.length, &seckey);
+
+      if (parse_result == ASCIICHAT_OK) {
+        // Check if key is encrypted
+        if (seckey.is_encrypted) {
+          SAFE_FREE(binary_data);
+          log_info("Detected encrypted GPG key, attempting to decrypt with passphrase");
+
+          // Decrypt the key using gpg binary
+          char *decrypted_text = NULL;
+          asciichat_error_t decrypt_result = openpgp_decrypt_with_gpg(armored_text, &decrypted_text);
+          if (decrypt_result != ASCIICHAT_OK) {
+            return decrypt_result;
+          }
+
+          // Recursively parse the decrypted key
+          asciichat_error_t recursive_result = openpgp_parse_armored_seckey(decrypted_text, ed25519_pk, ed25519_sk);
+          SAFE_FREE(decrypted_text);
+          return recursive_result;
+        }
+
+        // Unencrypted key - extract directly
+        memcpy(ed25519_pk, seckey.pubkey, 32);
+        memcpy(ed25519_sk, seckey.seckey, 32);
+        found_seckey = true;
+        log_info("Extracted Ed25519 keypair from OpenPGP armored secret key block");
+        break;
+      } else {
+        // Not an Ed25519 key, try next packet
+        log_debug("Skipping non-Ed25519 secret key packet");
+      }
+    }
+
+    // Move to next packet
+    offset += header.header_len + header.length;
+  }
+
+  SAFE_FREE(binary_data);
+
+  if (!found_seckey) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "No Ed25519 secret key found in PGP armored block");
   }
 
   return ASCIICHAT_OK;

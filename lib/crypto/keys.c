@@ -8,6 +8,7 @@
 #include "key_types.h"
 #include "ssh/ssh_keys.h"
 #include "gpg/gpg_keys.h"
+#include "gpg/openpgp.h"
 #include "https_keys.h"
 #include "common.h"
 #include "asciichat_errno.h"
@@ -207,13 +208,85 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     return ASCIICHAT_OK;
   }
 
-  // Try SSH private key parsing
+  // Try to load file and detect format
   char *normalized_path = NULL;
   asciichat_error_t path_result = path_validate_user_path(key_path, PATH_ROLE_KEY_PRIVATE, &normalized_path);
   if (path_result != ASCIICHAT_OK) {
     SAFE_FREE(normalized_path);
     return path_result;
   }
+
+  // Read file content to detect format
+  FILE *f = platform_fopen(normalized_path, "r");
+  if (!f) {
+    SAFE_FREE(normalized_path);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open private key file: %s", key_path);
+  }
+
+  // Read first 50 bytes to detect format
+  char header[50];
+  size_t bytes_read = fread(header, 1, sizeof(header) - 1, f);
+  header[bytes_read] = '\0';
+  fclose(f);
+
+  log_debug("parse_private_key: Read %zu bytes from %s, header: %.50s", bytes_read, key_path, header);
+
+  // Check for PGP armored secret key format
+  if (strstr(header, "-----BEGIN PGP PRIVATE KEY") != NULL || strstr(header, "-----BEGIN PGP SECRET KEY") != NULL) {
+    log_debug("Detected PGP armored secret key format in %s", key_path);
+    // Load entire file for OpenPGP parsing
+    f = platform_fopen(normalized_path, "r");
+    if (!f) {
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open GPG key file: %s", key_path);
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size <= 0 || file_size > 1024 * 1024) { // Sanity check: max 1MB
+      fclose(f);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key file size: %ld bytes", file_size);
+    }
+
+    char *file_content = SAFE_MALLOC((size_t)file_size + 1, char *);
+    size_t content_read = fread(file_content, 1, (size_t)file_size, f);
+    file_content[content_read] = '\0';
+    fclose(f);
+
+    // Parse OpenPGP armored secret key
+    uint8_t ed25519_pk[32];
+    uint8_t ed25519_sk[32];
+    asciichat_error_t openpgp_result = openpgp_parse_armored_seckey(file_content, ed25519_pk, ed25519_sk);
+    SAFE_FREE(file_content);
+    SAFE_FREE(normalized_path);
+
+    if (openpgp_result != ASCIICHAT_OK) {
+      return openpgp_result;
+    }
+
+    // Populate private_key_t structure
+    key_out->type = KEY_TYPE_ED25519;
+    key_out->use_gpg_agent = false;
+    key_out->use_ssh_agent = false;
+
+    // Store keypair in Ed25519 format (64 bytes: 32-byte seed + 32-byte public key)
+    // libsodium expects the seed in first 32 bytes and public key in second 32 bytes
+    memcpy(key_out->key.ed25519, ed25519_sk, 32);      // Secret key (seed)
+    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32); // Public key
+    memcpy(key_out->public_key, ed25519_pk, 32);       // Also store in public_key field
+
+    // Store comment
+    safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
+
+    log_info("Loaded unencrypted GPG Ed25519 key from %s", key_path);
+    return ASCIICHAT_OK;
+  }
+
+  // Fall back to SSH private key parsing
   asciichat_error_t result = parse_ssh_private_key(normalized_path, key_out);
   SAFE_FREE(normalized_path);
   return result;

@@ -997,20 +997,21 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);
   }
 
-  // Check if this is an SSH key file by looking for the header
+  // Check if this is an SSH key file or GPG armored key by looking for the header
   char header[BUFFER_SIZE_SMALL];
-  bool is_ssh_key_file = false;
+  bool is_valid_key_file = false;
   if (fgets(header, sizeof(header), test_file) != NULL) {
     if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
-        strstr(header, "BEGIN EC PRIVATE KEY") != NULL) {
-      is_ssh_key_file = true;
+        strstr(header, "BEGIN EC PRIVATE KEY") != NULL || strstr(header, "BEGIN PGP PRIVATE KEY") != NULL ||
+        strstr(header, "BEGIN PGP SECRET KEY") != NULL) {
+      is_valid_key_file = true;
     }
   }
   (void)fclose(test_file);
 
-  if (!is_ssh_key_file) {
+  if (!is_valid_key_file) {
     SAFE_FREE(normalized_path);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "File is not a valid SSH key: %s", key_path);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "File is not a valid SSH or GPG key: %s", key_path);
   }
 
   // Check permissions for SSH key files (should be 600 or 400)

@@ -40,6 +40,9 @@
 /** @brief OpenPGP packet tag for Public Key Packet */
 #define OPENPGP_TAG_PUBLIC_KEY 6
 
+/** @brief OpenPGP packet tag for Secret Key Packet */
+#define OPENPGP_TAG_SECRET_KEY 5
+
 /** @brief OpenPGP packet tag for User ID Packet */
 #define OPENPGP_TAG_USER_ID 13
 
@@ -96,6 +99,29 @@ typedef struct {
 /** @} */
 
 /**
+ * @name OpenPGP Secret Key Packet
+ * @{
+ */
+
+/**
+ * @brief OpenPGP secret key packet data
+ *
+ * Represents the parsed data from a Secret Key Packet (tag 5),
+ * containing algorithm, creation time, and both public and secret key material.
+ */
+typedef struct {
+  uint8_t version;    ///< Packet version (should be 4)
+  uint32_t created;   ///< Creation timestamp (Unix epoch)
+  uint8_t algorithm;  ///< Public key algorithm (22 = EdDSA)
+  uint8_t pubkey[32]; ///< Ed25519 public key (32 bytes)
+  uint8_t seckey[32]; ///< Ed25519 secret key (32 bytes)
+  uint64_t keyid;     ///< OpenPGP Key ID (last 8 bytes of fingerprint)
+  bool is_encrypted;  ///< True if secret key material is encrypted
+} openpgp_secret_key_t;
+
+/** @} */
+
+/**
  * @name PGP Armored Format Parsing
  * @{
  */
@@ -130,6 +156,39 @@ typedef struct {
  * @ingroup crypto
  */
 asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t ed25519_pk[32]);
+
+/**
+ * @brief Parse PGP armored secret key block and extract Ed25519 keypair
+ * @param armored_text PGP armored text (-----BEGIN PGP PRIVATE KEY BLOCK-----)
+ * @param ed25519_pk Output buffer for Ed25519 public key (32 bytes)
+ * @param ed25519_sk Output buffer for Ed25519 secret key (32 bytes)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Parses a complete PGP armored secret key block:
+ * 1. Extracts base64 data between BEGIN/END markers
+ * 2. Decodes base64 to binary OpenPGP packets
+ * 3. Parses packet headers to find secret key packet (tag 5)
+ * 4. Extracts Ed25519 public and secret keys from packet body
+ *
+ * @note Only supports Ed25519 keys (algorithm 22)
+ * @note Only supports unencrypted secret keys (S2K usage = 0)
+ * @note Ignores signatures, user IDs, and other packet types
+ * @note Does not verify checksums or signatures
+ *
+ * Example armored format:
+ * ```
+ * -----BEGIN PGP PRIVATE KEY BLOCK-----
+ *
+ * lIYEaWxCORYJKwYBBAHaRw8BAQdAOaykIMyaQi8CBTNiF9o/Nbm6L5DwR9h1maS3
+ * yqG5PFMAAQDm8...
+ * =abcd
+ * -----END PGP PRIVATE KEY BLOCK-----
+ * ```
+ *
+ * @ingroup crypto
+ */
+asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t ed25519_pk[32],
+                                               uint8_t ed25519_sk[32]);
 
 /** @} */
 
@@ -177,6 +236,32 @@ asciichat_error_t openpgp_parse_packet_header(const uint8_t *data, size_t data_l
  */
 asciichat_error_t openpgp_parse_public_key_packet(const uint8_t *packet_body, size_t body_len,
                                                   openpgp_public_key_t *pubkey);
+
+/**
+ * @brief Parse OpenPGP Secret Key Packet (tag 5)
+ * @param packet_body Packet body data (after header)
+ * @param body_len Length of packet body
+ * @param seckey Output parameter for parsed secret key
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Parses Secret Key Packet (tag 5) body:
+ * - Version (1 byte, must be 4)
+ * - Creation time (4 bytes, Unix timestamp)
+ * - Algorithm (1 byte, 22 = EdDSA)
+ * - Public key material (MPI format for Ed25519)
+ * - S2K usage (1 byte, must be 0 for unencrypted)
+ * - Secret key material (32 bytes for Ed25519)
+ *
+ * RFC 4880 Section 5.5.3: Secret-Key Packet Formats
+ *
+ * @note Only supports version 4 packets
+ * @note Only supports EdDSA (algorithm 22)
+ * @note Only supports unencrypted secret keys (S2K usage = 0)
+ *
+ * @ingroup crypto
+ */
+asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, size_t body_len,
+                                                  openpgp_secret_key_t *seckey);
 
 /**
  * @brief Extract Ed25519 public key from MPI-encoded data
