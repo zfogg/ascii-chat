@@ -13,7 +13,7 @@ ascii-chat \- Video chat in your terminal
 .B ascii-chat
 .RI [ binary-options ]
 .B server
-.RI [ address ]
+.RI [ address ][: port ]
 .RI [ options ]
 .PP
 .B ascii-chat
@@ -30,7 +30,7 @@ ascii-chat \- Video chat in your terminal
 .B ascii-chat
 .RI [ binary-options ]
 .B discovery-server
-.RI [ address ]
+.RI [ address ][: port ]
 .RI [ options ]
 .SH DESCRIPTION
 .B ascii-chat
@@ -439,7 +439,7 @@ Default: \fB0\fR
 .TP
 .BR \-f ", " \-\-webcam\-flip
 Toggle horizontal flipping of webcam image.
-Default: flipped (mirror mode)
+Default: flipped (like looking in a mirror)
 .TP
 .BR \-\-test\-pattern
 Use a test pattern instead of real webcam input.
@@ -462,13 +462,13 @@ Supports common formats: MP4, MOV, AVI, PNG, JPEG, etc.
 .BR \-l ", " \-\-loop
 Loop media file playback continuously.
 Only works with regular files, not stdin streams.
-.SS "Snapshot Mode (Client Only)"
+.SS "Snapshot Mode"
 .TP
 .BR \-S ", " \-\-snapshot
-Connect to a server and print at least one frame, then exit. 
+Connect to a server (or use mirror mode locally) and print at least one frame, then exit.
 Some webcams "warm up" and need time, so there is --snapshot\-delay to control how long after the camera starts before a frame is sampled.
-In your terimanl you can pipe the stdout of \fIascii-chat client --snapshot\fR a file to take a photo.
---snapshot is useful for testing, scripting, ai agent like Claude and Cursor, and CI/CD pipelines. It's also very useful when combined with \-\-mirror.
+In your terminal you can pipe the stdout of \fIascii-chat client --snapshot\fR or \fIascii-chat mirror --snapshot\fR to a file to take a photo.
+--snapshot is useful for testing, scripting, ai agents like Claude and Cursor, and CI/CD pipelines. Works with both client and mirror modes.
 .PP
 Connection behavior in snapshot mode:
 .RS
@@ -483,34 +483,9 @@ instead of attempting to reconnect.
 .BR \-D ", " \-\-snapshot\-delay =\fISECONDS\fR
 Delay in seconds before capturing snapshot (for frame warmup).
 Default: \fB3.0\fR
-.SS "Mirror Mode (Client Only)"
-.TP
-.BR \-\-mirror
-View your webcam as ASCII art directly in the terminal without connecting
-to a server. This is a local-only mode that captures from your webcam (or media file
-with \fB\-\-file\fR), converts the video to ASCII art in real-time, and displays it
-in your terminal.
-.PP
-Mirror mode is great for:
-.RS
-.IP \(bu 2
-\fBTesting your webcam\fR: See how your camera looks as ASCII art before joining a call
-.IP \(bu 2
-\fBPlaying with the ASCII renderer\fR: Experiment with different palettes, color modes,
-and render modes without needing to run a server
-.IP \(bu 2
-\fBTaking ASCII selfies\fR: Combine with \fB\-\-snapshot\fR to capture a single frame
-.IP \(bu 2
-\fBPlaying media files as ASCII\fR: Use \fB\-\-file\fR to stream videos or images as ASCII art
-.RE
-.PP
-Press Ctrl-C to exit mirror mode.
-.PP
-Mirror mode works with all media file options (\fB\-\-file\fR, \fB\-\-loop\fR) and
-webcam options. Note: Mirror mode is incompatible with audio (\fB\-\-audio\fR).
 .SS "Piping and Redirecting (Mirror + Snapshot)"
 .PP
-When you combine \fB\-\-mirror\fR with \fB\-\-snapshot\fR, the output is optimized for
+When you use \fBmirror\fR mode with \fB\-\-snapshot\fR, the output is optimized for
 piping to other commands or redirecting to files. When stdout is redirected
 (not a terminal), ascii-chat automatically:
 .RS
@@ -775,27 +750,27 @@ ascii-chat client \-\-snapshot \-\-color\-mode truecolor
 .fi
 .SS "View webcam locally in mirror mode"
 .nf
-ascii-chat client \-\-mirror \-\-color\-mode truecolor
+ascii-chat mirror \-\-color\-mode truecolor
 .fi
 .SS "Capture local webcam snapshot (no server)"
 .nf
-ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 1.0
+ascii-chat mirror \-\-snapshot \-\-snapshot\-delay 1.0
 .fi
 .SS "Save ASCII selfie to a file"
 .nf
-ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 2 > selfie.txt
+ascii-chat mirror \-\-snapshot \-\-snapshot\-delay 2 > selfie.txt
 .fi
 .SS "Save ASCII selfie with no ANSI codes (plain text)"
 .nf
-ascii-chat client \-\-mirror \-\-snapshot \-\-strip\-ansi > selfie.txt
+ascii-chat mirror \-\-snapshot \-\-strip\-ansi > selfie.txt
 .fi
 .SS "Pipe ASCII art to another command"
 .nf
-ascii-chat client \-\-mirror \-\-snapshot | head \-10
+ascii-chat mirror \-\-snapshot | head \-10
 .fi
 .SS "Instant capture (no delay)"
 .nf
-ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 0 > instant.txt
+ascii-chat mirror \-\-snapshot \-\-snapshot\-delay 0 > instant.txt
 .fi
 .SS "Test without webcam using test pattern"
 .nf
@@ -1096,7 +1071,7 @@ terminal emulator (kitty, alacritty, iTerm2, Windows Terminal).
 Use \fB\-\-stretch\fR to fill the entire terminal (may distort the image).
 .IP \(bu 2
 \fBPiping Output\fR: When piping or redirecting stdout in snapshot mode
-(\fBclient \-\-mirror \-\-snapshot > file\fR), ascii-chat automatically detects
+(\fBmirror \-\-snapshot > file\fR), ascii-chat automatically detects
 that stdout is not a terminal and outputs clean ASCII without cursor movement
 or RLE compression codes. Only the final frame is output. Use
 \fB\-\-color\-mode mono\fR for completely plain ASCII with no escape codes at all.
