@@ -30,6 +30,8 @@
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "network/tcp/server.h"
+#include "network/acip/acds.h"
+#include "options/options.h" // For MAX_IDENTITY_KEYS
 #include "thread_pool.h"
 #include "acds/main.h"
 
@@ -39,11 +41,30 @@
  * Stored in tcp_server client registry to track which session and
  * participant this connection represents. Used by signaling relay
  * to map participant_id → socket for message delivery.
+ *
+ * Multi-Key Session Creation Protocol:
+ * =====================================
+ * When creating a session with multiple identity keys (e.g., SSH + GPG):
+ * 1. Client sends SESSION_CREATE with first key (creates session UUID)
+ * 2. Client sends SESSION_CREATE with second key (adds to same session)
+ * 3. Client sends SESSION_CREATE with zero key (finalizes session)
+ *
+ * During multi-key creation:
+ * - in_multikey_session_create = true
+ * - All keys stored in pending_session_keys[]
+ * - Only PING/PONG allowed, other messages blocked
+ * - Keys validated to ensure no duplicates
  */
 typedef struct {
   uint8_t session_id[16];     ///< Session UUID (valid if joined_session)
   uint8_t participant_id[16]; ///< Participant UUID (valid if joined_session)
   bool joined_session;        ///< Whether client has successfully joined a session
+
+  // Multi-key session creation state
+  bool in_multikey_session_create;                     ///< True during multi-key SESSION_CREATE sequence
+  acip_session_create_t pending_session;               ///< Pending session data (from first SESSION_CREATE)
+  uint8_t pending_session_keys[MAX_IDENTITY_KEYS][32]; ///< Array of identity public keys
+  size_t num_pending_keys;                             ///< Number of keys received so far
 } acds_client_data_t;
 
 /**
