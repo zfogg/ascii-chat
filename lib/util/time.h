@@ -43,7 +43,10 @@
 // Include sokol_time.h declarations (WITHOUT implementation)
 // SOKOL_IMPL is defined only in time.c to avoid duplicate symbols
 #include <ascii-chat-deps/sokol/sokol_time.h>
-#include <ascii-chat-deps/uthash/src/uthash.h>
+
+// Include uthash wrapper for UBSan-safe hash functions
+// Headers can include this even before common.h is fully processed
+#include "uthash/uthash.h"
 
 // ============================================================================
 // Timer Record Structure

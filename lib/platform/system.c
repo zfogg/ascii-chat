@@ -8,22 +8,9 @@
 // All necessary headers are already included by the parent files
 
 #include <stdatomic.h>
+#include <errno.h>
 #include "common.h"
-#include "util/fnv1a.h"
-
-// UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
-// Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
-#undef HASH_FUNCTION
-#define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
-  do {                                                                                                                 \
-    if (!(keyptr) || (keylen) == 0) {                                                                                  \
-      (hashv) = 1; /* Non-zero constant for safety */                                                                  \
-    } else {                                                                                                           \
-      (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
-    }                                                                                                                  \
-  } while (0)
-
-#include <ascii-chat-deps/uthash/src/uthash.h>
+#include "uthash/uthash.h" // UBSan-safe uthash wrapper
 #include "log/logging.h"
 
 // Platform-specific binary suffix

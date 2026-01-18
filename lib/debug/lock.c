@@ -17,7 +17,7 @@
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
 #include "util/time.h"
-#include <ascii-chat-deps/uthash/src/uthash.h>
+#include "uthash/uthash.h"
 #include <stdlib.h>
 #include <time.h>
 #include <stdatomic.h>

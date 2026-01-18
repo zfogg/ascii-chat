@@ -67,7 +67,6 @@
 #include "platform/socket.h"
 #include "platform/abstraction.h"
 #include "thread_pool.h"
-#include <ascii-chat-deps/uthash/src/uthash.h>
 
 // Forward declarations
 typedef struct tcp_client_entry tcp_client_entry_t;
