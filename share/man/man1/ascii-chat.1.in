@@ -182,6 +182,59 @@ This works for approximately 70% of home routers.
 If port mapping fails, clients can still connect via WebRTC fallback.
 Default: \fBdisabled\fR (opt-in for security)
 .TP
+.BR \-\-acds
+Enable ACDS (ASCII Chat Discovery Service) session registration.
+When enabled, the server registers with an ACDS discovery server and receives
+a memorable three-word session string (e.g., \fChappy-sunset-ocean\fR) that
+clients can use to connect instead of IP addresses.
+.RS
+.IP \(bu 2
+Requires authentication: \fB--key\fR, \fB--password\fR, or \fB--acds-expose-ip\fR
+.IP \(bu 2
+Handles NAT traversal automatically via WebRTC when direct TCP fails
+.IP \(bu 2
+Default ACDS server: \fCdiscovery-server.ascii-chat.com:27225\fR
+.RE
+.IP
+Default: \fBdisabled\fR
+.TP
+.BR \-\-acds\-server =\fIADDRESS\fR
+ACDS discovery server address to register with.
+Default: \fBdiscovery-server.ascii-chat.com\fR
+.TP
+.BR \-\-acds\-port =\fIPORT\fR
+ACDS discovery server port.
+Default: \fB27225\fR
+.TP
+.BR \-\-acds\-key =\fIKEY\fR
+ACDS server public key for trust verification. Prevents man-in-the-middle
+attacks by verifying the ACDS server's identity. Accepts:
+.RS
+.IP \(bu 2
+Path to SSH Ed25519 public key file
+.IP \(bu 2
+HTTPS URL to fetch key from
+.IP \(bu 2
+GitHub: \fCgithub:username\fR
+.IP \(bu 2
+GitLab: \fCgitlab:username\fR
+.RE
+.TP
+.BR \-\-acds\-expose\-ip
+Explicitly allow public IP disclosure in ACDS sessions.
+When enabled, allows ACDS registration without authentication keys.
+Default: \fBdisabled\fR (opt-in for privacy)
+.TP
+.BR \-\-webrtc
+Use WebRTC peer-to-peer mode instead of direct TCP.
+Useful when both server and client are behind NAT without port forwarding.
+Default: \fBdirect TCP\fR
+.TP
+.BR \-\-no\-mdns\-advertise
+Disable mDNS service advertisement on the local network.
+When disabled, clients using \fB--scan\fR won't discover this server.
+Default: \fBenabled\fR (advertise via mDNS)
+.TP
 .BR \-\-max\-clients =\fIN\fR
 Maximum number of concurrent client connections allowed.
 Valid range: 1-32.
@@ -285,6 +338,59 @@ Default: \fBauto\fR (unlimited)
 .IP
 Each retry attempt waits 2 seconds before connecting again.
 Snapshot mode always disables reconnection regardless of this setting.
+.TP
+.BR \-\-scan
+Scan for ASCII-Chat servers on the local network using mDNS service discovery.
+Displays available servers and allows you to select one to connect to.
+Servers must have mDNS advertisement enabled (default).
+.TP
+.BR \-\-acds\-server =\fIADDRESS\fR
+ACDS discovery server address to query.
+Default: \fBdiscovery-server.ascii-chat.com\fR
+.TP
+.BR \-\-acds\-port =\fIPORT\fR
+ACDS discovery server port.
+Default: \fB27225\fR
+.TP
+.BR \-\-acds\-key =\fIKEY\fR
+ACDS server public key for trust verification. Accepts:
+.RS
+.IP \(bu 2
+Path to SSH Ed25519 public key file
+.IP \(bu 2
+HTTPS URL to fetch key from
+.IP \(bu 2
+GitHub: \fCgithub:username\fR
+.IP \(bu 2
+GitLab: \fCgitlab:username\fR
+.RE
+.TP
+.BR \-\-webrtc
+Use WebRTC peer-to-peer mode instead of direct TCP.
+Default: \fBdirect TCP\fR
+.TP
+.BR \-\-prefer\-webrtc
+Try WebRTC connection before attempting direct TCP.
+Useful when direct TCP connections are known to fail due to NAT.
+Default: try direct TCP first
+.TP
+.BR \-\-no\-webrtc
+Disable WebRTC entirely, use only direct TCP connections.
+Connection will fail if direct TCP is not possible.
+.TP
+.BR \-\-webrtc\-skip\-stun
+Skip the WebRTC+STUN connection attempt and go straight to TURN relay.
+Faster connection when STUN is known to fail, but uses more relay bandwidth.
+.TP
+.BR \-\-webrtc\-disable\-turn
+Disable WebRTC+TURN relay connections, use only STUN.
+Connection will fail if STUN hole punching doesn't work.
+.TP
+.BR \-\-acds\-insecure
+Skip server key verification when connecting through ACDS.
+Makes you vulnerable to man-in-the-middle attacks.
+Requires explicit opt-in for security awareness.
+Default: \fBserver key verification enabled\fR
 .SS "Terminal Dimensions (Client Only)"
 .TP
 .BR \-x ", " \-\-width =\fICOLS\fR
@@ -346,6 +452,16 @@ Shows device index and name for each detected camera.
 .BR \-\-fps =\fIFPS\fR
 Desired frame rate (1-144).
 Default: \fB60\fR
+.SS "Media File Options (Client Only)"
+.TP
+.BR \-f ", " \-\-file =\fIFILE\fR
+Stream from a media file instead of webcam.
+Accepts video files, image files, or stdin (use \fC-\fR for stdin).
+Supports common formats: MP4, MOV, AVI, PNG, JPEG, etc.
+.TP
+.BR \-l ", " \-\-loop
+Loop media file playback continuously.
+Only works with regular files, not stdin streams.
 .SS "Snapshot Mode (Client Only)"
 .TP
 .BR \-S ", " \-\-snapshot
@@ -371,8 +487,9 @@ Default: \fB3.0\fR
 .TP
 .BR \-\-mirror
 View your webcam as ASCII art directly in the terminal without connecting
-to a server. This is a local-only mode that captures from your webcam,
-converts the video to ASCII art in real-time, and displays it in your terminal.
+to a server. This is a local-only mode that captures from your webcam (or media file
+with \fB\-\-file\fR), converts the video to ASCII art in real-time, and displays it
+in your terminal.
 .PP
 Mirror mode is great for:
 .RS
@@ -383,11 +500,14 @@ Mirror mode is great for:
 and render modes without needing to run a server
 .IP \(bu 2
 \fBTaking ASCII selfies\fR: Combine with \fB\-\-snapshot\fR to capture a single frame
+.IP \(bu 2
+\fBPlaying media files as ASCII\fR: Use \fB\-\-file\fR to stream videos or images as ASCII art
 .RE
 .PP
 Press Ctrl-C to exit mirror mode.
 .PP
-Note: Mirror mode is incompatible with audio (\fB\-\-audio\fR).
+Mirror mode works with all media file options (\fB\-\-file\fR, \fB\-\-loop\fR) and
+webcam options. Note: Mirror mode is incompatible with audio (\fB\-\-audio\fR).
 .SS "Piping and Redirecting (Mirror + Snapshot)"
 .PP
 When you combine \fB\-\-mirror\fR with \fB\-\-snapshot\fR, the output is optimized for
@@ -514,6 +634,61 @@ GPG: gpg:KEYID (8, 16, or 40-character key ID or fingerprint)
 Uses SSH \fIauthorized_keys\fR format: one key per line, each line formatted as
 \fCssh-ed25519 AAAAC3... [comment]\fR. Also accepts \fIknown_hosts\fR format.
 Only Ed25519 keys are parsed; RSA/ECDSA keys in the file are ignored.
+.SS "Discovery Server Options"
+The following options apply to \fBdiscovery-server\fR mode only.
+.TP
+.BR \-p ", " \-\-port =\fIPORT\fR
+ACDS server port to listen on.
+Default: \fB27225\fR
+.TP
+.BR \-k ", " \-\-key =\fIPATH\fR
+Path to ACDS identity key file (Ed25519 private key).
+This is the server's long-term identity key used for signing session data.
+Default: \fB~/.ascii-chat/acds_identity\fR
+.TP
+.BR \-d ", " \-\-database =\fIPATH\fR
+Path to ACDS database file (SQLite).
+Stores active sessions and their connection information.
+Default: \fB~/.ascii-chat/acds.db\fR
+.TP
+.BR \-S ", " \-\-require\-server\-identity
+Require servers to provide signed Ed25519 identity when creating sessions.
+Prevents anonymous session creation.
+.TP
+.BR \-C ", " \-\-require\-client\-identity
+Require clients to provide signed Ed25519 identity when joining sessions.
+Prevents anonymous session joining.
+.TP
+.BR \-V ", " \-\-require\-server\-verify
+ACDS policy: require servers to verify client identity during handshake.
+Forces all servers using this ACDS to authenticate clients.
+.TP
+.BR \-c ", " \-\-require\-client\-verify
+ACDS policy: require clients to verify server identity during handshake.
+Forces all clients using this ACDS to authenticate servers.
+.TP
+.BR \-\-stun\-servers =\fIURLs\fR
+Comma-separated list of STUN server URLs for WebRTC NAT traversal.
+Default: \fCstun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302\fR
+.TP
+.BR \-\-turn\-servers =\fIURLs\fR
+Comma-separated list of TURN server URLs for WebRTC relay.
+Default: \fCturn:turn.ascii-chat.com:3478\fR
+.TP
+.BR \-\-turn\-username =\fIUSERNAME\fR
+Username for TURN server authentication.
+Default: \fBascii\fR
+.TP
+.BR \-\-turn\-credential =\fICREDENTIAL\fR
+Credential/password for TURN server authentication.
+.TP
+.BR \-\-turn\-secret =\fISECRET\fR
+Shared secret for dynamic TURN credential generation using HMAC-SHA1.
+Allows the ACDS to generate time-limited TURN credentials.
+.TP
+.BR \-\-upnp
+Enable UPnP/NAT-PMP for automatic router port mapping.
+Allows the discovery server to be accessible from the internet without manual port forwarding.
 .SH EXAMPLES
 .SS "Configuration Management"
 .TP
