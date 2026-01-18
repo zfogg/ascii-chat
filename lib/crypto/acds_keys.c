@@ -115,7 +115,7 @@ static bool is_official_server(const char *acds_server) {
     *p = (char)tolower((unsigned char)*p);
   }
 
-  return strcmp(server_lower, "acds.ascii-chat.com") == 0;
+  return strcmp(server_lower, "discovery.ascii-chat.com") == 0;
 }
 
 /**

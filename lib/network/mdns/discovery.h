@@ -114,7 +114,7 @@ typedef struct {
   bool insecure_mode;             ///< Allow no verification (--acds-insecure flag)
 
   // Connection details
-  char acds_server[256]; ///< ACDS server address (e.g., "localhost" or "acds.ascii-chat.com")
+  char acds_server[256]; ///< ACDS server address (e.g., "localhost" or "discovery.ascii-chat.com")
   uint16_t acds_port;    ///< ACDS server port (default: 27225)
 
   // Timeouts
@@ -131,7 +131,7 @@ typedef struct {
  * @brief Initialize discovery config with defaults
  *
  * Sets sensible defaults:
- * - ACDS server: localhost:27225 (debug), acds.ascii-chat.com (release)
+ * - ACDS server: localhost:27225 (debug), discovery.ascii-chat.com (release)
  * - Timeouts: mdns=2000ms, acds=5000ms
  * - Verification: None (expected_pubkey=NULL)
  * - Insecure mode: false
