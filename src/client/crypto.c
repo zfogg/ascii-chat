@@ -160,6 +160,7 @@
 #include "buffer_pool.h"
 #include "network/packet.h"
 #include "network/acip/acds_client.h"
+#include "network/mdns/discovery.h" // For pubkey_to_hex
 #include "util/time.h"
 #include "util/endian.h"
 #include "capture.h"
@@ -582,6 +583,36 @@ int client_crypto_handshake(socket_t socket) {
   }
 
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol negotiation completed successfully");
+
+  // Step 0.5: Send CRYPTO_CLIENT_HELLO with expected server key (multi-key support)
+  // This allows the server to select the correct identity key from g_server_identity_keys[]
+  if (g_crypto_ctx.verify_server_key && strlen(g_crypto_ctx.expected_server_key) > 0) {
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending expected server key to support multi-key selection");
+
+    // Parse expected server key to get the Ed25519 public key
+    public_key_t expected_keys[MAX_CLIENTS];
+    size_t num_expected_keys = 0;
+
+    if (parse_public_keys(g_crypto_ctx.expected_server_key, expected_keys, &num_expected_keys, MAX_CLIENTS) == 0 &&
+        num_expected_keys > 0) {
+      // Send the first expected key (client should only have one expected server key)
+      // Format: 32-byte Ed25519 public key
+      log_info("Sending CRYPTO_CLIENT_HELLO with expected server key for multi-key selection");
+      result = send_packet(socket, PACKET_TYPE_CRYPTO_CLIENT_HELLO, expected_keys[0].key, ED25519_PUBLIC_KEY_SIZE);
+
+      if (result != ASCIICHAT_OK) {
+        FATAL(result, "Failed to send CRYPTO_CLIENT_HELLO packet");
+      }
+
+      // Log the key fingerprint for debugging
+      char hex_key[65];
+      pubkey_to_hex(expected_keys[0].key, hex_key);
+      log_debug("Sent expected server key: %s", hex_key);
+    } else {
+      log_warn("Failed to parse expected server key '%s' - server will use default key",
+               g_crypto_ctx.expected_server_key);
+    }
+  }
 
   // Step 1: Receive server's public key and send our public key
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");

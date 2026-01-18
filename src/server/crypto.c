@@ -141,6 +141,7 @@
 #include "crypto/handshake/server.h"
 #include "crypto/crypto.h"
 #include "crypto/keys.h"
+#include "network/mdns/discovery.h" // For pubkey_to_hex
 #include "util/time.h"
 #include "util/endian.h"
 
@@ -151,6 +152,10 @@
 // External references to global server crypto state
 extern bool g_server_encryption_enabled;
 extern private_key_t g_server_private_key;
+
+// External references to multi-key support (defined in main.c)
+extern private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS];
+extern size_t g_num_server_identity_keys;
 
 // External references to client whitelist (defined in main.c)
 extern public_key_t g_client_whitelist[];
@@ -489,6 +494,98 @@ int server_crypto_handshake(client_info_t *client) {
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     FATAL(result, "Failed to set crypto parameters for client %u", atomic_load(&client->client_id));
     return -1;
+  }
+
+  // Step 0.5: Receive CRYPTO_CLIENT_HELLO (multi-key support)
+  // When server has multiple identity keys, client MUST send CLIENT_HELLO to select the correct key
+  // For single-key servers, CLIENT_HELLO is optional (backward compatibility)
+  if (g_num_server_identity_keys > 0) {
+    log_debug("SERVER_CRYPTO_HANDSHAKE: Waiting for optional CRYPTO_CLIENT_HELLO from client %u",
+              atomic_load(&client->client_id));
+
+    // Try to receive CLIENT_HELLO packet
+    packet_type_t hello_packet_type;
+    uint8_t *hello_payload = NULL;
+    size_t hello_payload_len = 0;
+
+    result = receive_packet(socket, &hello_packet_type, (void **)&hello_payload, &hello_payload_len);
+    if (result != ASCIICHAT_OK) {
+      log_info("Client %u disconnected during handshake initialization", atomic_load(&client->client_id));
+      if (hello_payload) {
+        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+      }
+      client->crypto_initialized = false;
+      STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+      return -1;
+    }
+
+    if (hello_packet_type == PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
+      // Client sent expected server key - select matching key
+      if (hello_payload_len != ED25519_PUBLIC_KEY_SIZE) {
+        log_error("Invalid CRYPTO_CLIENT_HELLO size: %zu (expected %d)", hello_payload_len, ED25519_PUBLIC_KEY_SIZE);
+        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        client->crypto_initialized = false;
+        STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+        return -1;
+      }
+
+      const uint8_t *expected_server_key = hello_payload;
+
+      // Log the expected key for debugging
+      char hex_expected[65];
+      pubkey_to_hex(expected_server_key, hex_expected);
+      log_debug("Client %u expects server key: %s", atomic_load(&client->client_id), hex_expected);
+
+      // Search g_server_identity_keys[] for matching public key
+      bool key_found = false;
+      for (size_t i = 0; i < g_num_server_identity_keys; i++) {
+        if (sodium_memcmp(expected_server_key, g_server_identity_keys[i].public_key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+          // Found matching key - use this one for handshake
+          memcpy(&client->crypto_handshake_ctx.server_private_key, &g_server_identity_keys[i], sizeof(private_key_t));
+
+          char hex_selected[65];
+          pubkey_to_hex(g_server_identity_keys[i].public_key, hex_selected);
+          log_info("Client %u selected server identity key #%zu: %s", atomic_load(&client->client_id), i + 1,
+                   hex_selected);
+
+          key_found = true;
+          break;
+        }
+      }
+
+      if (!key_found) {
+        // Client requested a key we don't have - reject connection
+        log_error("Client %u requested unknown server key %s - rejecting connection", atomic_load(&client->client_id),
+                  hex_expected);
+        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        client->crypto_initialized = false;
+        STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+        return -1;
+      }
+
+      buffer_pool_free(NULL, hello_payload, hello_payload_len);
+    } else {
+      // Client didn't send CLIENT_HELLO
+      // This is ONLY acceptable for single-key servers (backward compatibility)
+      if (g_num_server_identity_keys > 1) {
+        log_error("Client %u must send CRYPTO_CLIENT_HELLO when server has multiple keys (got packet type %u)",
+                  atomic_load(&client->client_id), hello_packet_type);
+        buffer_pool_free(NULL, hello_payload, hello_payload_len);
+        client->crypto_initialized = false;
+        STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+        return -1;
+      }
+
+      // Single-key server: Old client didn't send CLIENT_HELLO
+      // Store this packet for later processing (it's probably the first handshake packet)
+      log_debug("Client %u is using old protocol (no CLIENT_HELLO) - using default key",
+                atomic_load(&client->client_id));
+
+      // Store pending packet so we can process it after KEY_EXCHANGE_INIT
+      client->pending_packet_type = hello_packet_type;
+      client->pending_packet_payload = hello_payload;
+      client->pending_packet_length = hello_payload_len;
+    }
   }
 
   // Step 1: Send our public key to client
