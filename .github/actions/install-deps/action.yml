@@ -176,7 +176,7 @@ runs:
       with:
         path: |
           .deps-cache
-          deps/bearssl/build
+          deps/ascii-chat-deps/bearssl/build
         # Use computed key from cache-keys step (hashFiles not available in composite actions)
         # v8: Fix cache timing - cache is now saved by workflows AFTER cmake configure
         key: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}

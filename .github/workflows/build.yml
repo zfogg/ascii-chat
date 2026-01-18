@@ -204,7 +204,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       # Save ccache after build for incremental compilation on next run

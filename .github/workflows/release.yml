@@ -272,7 +272,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       - name: Build and package with CPack
@@ -438,7 +438,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       - name: Build and package with CPack
@@ -546,16 +546,16 @@ jobs:
         run: |
           # Verify BearSSL source files exist (debug for CI issues)
           Write-Host "=== BearSSL submodule verification ==="
-          Write-Host "Checking if deps/bearssl exists..."
-          if (!(Test-Path "deps/bearssl")) {
-            Write-Host "ERROR: deps/bearssl directory not found!"
+          Write-Host "Checking if deps/ascii-chat-deps/bearssl exists..."
+          if (!(Test-Path "deps/ascii-chat-deps/bearssl")) {
+            Write-Host "ERROR: deps/ascii-chat-deps/bearssl directory not found!"
             exit 1
           }
-          Write-Host "Checking if deps/bearssl/src/aead/ccm.c exists..."
-          if (!(Test-Path "deps/bearssl/src/aead/ccm.c")) {
-            Write-Host "ERROR: deps/bearssl/src/aead/ccm.c not found!"
-            Write-Host "Contents of deps/bearssl:"
-            Get-ChildItem -Path "deps/bearssl" -Recurse | Select-Object -First 50
+          Write-Host "Checking if deps/ascii-chat-deps/bearssl/src/aead/ccm.c exists..."
+          if (!(Test-Path "deps/ascii-chat-deps/bearssl/src/aead/ccm.c")) {
+            Write-Host "ERROR: deps/ascii-chat-deps/bearssl/src/aead/ccm.c not found!"
+            Write-Host "Contents of deps/ascii-chat-deps/bearssl:"
+            Get-ChildItem -Path "deps/ascii-chat-deps/bearssl" -Recurse | Select-Object -First 50
             exit 1
           }
           Write-Host "BearSSL source files verified OK"
@@ -592,7 +592,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       - name: Build and package with CPack
