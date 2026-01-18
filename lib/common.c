@@ -3,6 +3,7 @@
  * @file common.c
  * @ingroup common
  * @brief 🔧 Core utilities: memory management, safe macros, and cross-platform helpers
+ *
  */
 
 // Platform abstraction includes memory sizing functions
