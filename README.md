@@ -59,8 +59,8 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
   - [Usage](#usage)
   - [Cryptography](#cryptography)
   - [Environment Variables](#environment-variables)
-  - [ASCII-Chat Internet Protocol (ACIP)](#ascii-chat-internet-protocol-acip)
-  - [ASCII-Chat Discovery Service (ACDS)](#ascii-chat-discovery-service-acds)
+  - [ascii-chat Internet Protocol (ACIP)](#ascii-chat-internet-protocol-acip)
+  - [ascii-chat Discovery Service (ACDS)](#ascii-chat-discovery-service-acds)
   - [libasciichat](#libasciichat)
   - [Open Source](#open-source)
   - [TODO](#todo)
@@ -170,7 +170,7 @@ See **[ascii-chat.com/crypto](https://ascii-chat.com/crypto)** for complete cryp
 
 See **[ascii-chat.com/env](https://ascii-chat.com/env)** for complete environment variable documentation.
 
-## ASCII-Chat Internet Protocol (ACIP)
+## ascii-chat Internet Protocol (ACIP)
 
 > 📡 **Protocol Reference: [Network Protocol Documentation](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**
 
@@ -222,7 +222,7 @@ typedef struct {
 
 The protocol is **fully documented** in the [Network Protocol Reference](https://zfogg.github.io/ascii-chat/group__network.html#topic_network) with packet formats, state machines, and implementation notes.
 
-## ASCII-Chat Discovery Service (ACDS)
+## ascii-chat Discovery Service (ACDS)
 
 > 🔍 **ACDS Documentation: [Discovery Service Reference](https://zfogg.github.io/ascii-chat/group__module__acds.html#topic_acds)**
 >
