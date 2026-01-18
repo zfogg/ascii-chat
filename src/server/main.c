@@ -330,16 +330,40 @@ static thread_pool_t *g_server_worker_pool = NULL;
 bool g_server_encryption_enabled = false;
 
 /**
- * @brief Global server private key
+ * @brief Global server private key (first identity key, for backward compatibility)
  *
- * Stores the server's private key loaded from the key file. Used for
- * cryptographic handshakes and packet encryption/decryption. Initialized
- * during server startup from the configured key file path.
+ * Stores the server's primary private key loaded from the first --key flag.
+ * Used for cryptographic handshakes and packet encryption/decryption.
+ * Initialized during server startup from the configured key file path.
  *
+ * @note This is an alias to g_server_identity_keys[0] for backward compatibility
  * @note Accessed from crypto.c for server-side crypto operations
  * @ingroup server_main
  */
 private_key_t g_server_private_key = {0};
+
+/**
+ * @brief Global server identity keys array (multi-key support)
+ *
+ * Stores all server identity keys loaded from multiple --key flags.
+ * Enables servers to present different keys (SSH, GPG) based on client expectations.
+ * Server selects the appropriate key during handshake based on what the client
+ * downloaded from ACDS.
+ *
+ * @note g_server_private_key points to g_server_identity_keys[0] for compatibility
+ * @ingroup server_main
+ */
+private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS] = {0};
+
+/**
+ * @brief Number of loaded server identity keys
+ *
+ * Tracks how many identity keys were successfully loaded from --key flags.
+ * Zero means server is running in simple mode (no identity key).
+ *
+ * @ingroup server_main
+ */
+size_t g_num_server_identity_keys = 0;
 
 /**
  * @brief Global client public key whitelist
@@ -1103,26 +1127,80 @@ static int init_server_crypto(void) {
     return 0;
   }
 
-  // Load server private key if provided via --key
-  if (strlen(GET_OPTION(encrypt_key)) > 0) {
-    // --key requires signing capabilities (SSH key files or GPG keys with gpg-agent)
+  // Load server identity keys (supports multiple --key flags for multi-key mode)
+  size_t num_keys = GET_OPTION(num_identity_keys);
 
-    // Validate SSH key file (skip validation for special prefixes - they have their own validation)
-    bool is_special_key =
-        (strncmp(GET_OPTION(encrypt_key), "gpg:", 4) == 0 || strncmp(GET_OPTION(encrypt_key), "github:", 7) == 0 ||
-         strncmp(GET_OPTION(encrypt_key), "gitlab:", 7) == 0);
+  if (num_keys > 0) {
+    // Multi-key mode: load all identity keys from identity_keys[] array
+    log_info("Loading %zu identity key(s) for multi-key support...", num_keys);
+
+    for (size_t i = 0; i < num_keys && i < MAX_IDENTITY_KEYS; i++) {
+      const char *key_path = GET_OPTION(identity_keys[i]);
+
+      if (strlen(key_path) == 0) {
+        continue; // Skip empty entries
+      }
+
+      // Validate SSH key file (skip validation for special prefixes)
+      bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 ||
+                             strncmp(key_path, "gitlab:", 7) == 0);
+
+      if (!is_special_key) {
+        if (validate_ssh_key_file(key_path) != 0) {
+          log_warn("Skipping invalid SSH key file: %s", key_path);
+          continue;
+        }
+      }
+
+      // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
+      log_info("Loading identity key #%zu: %s", i + 1, key_path);
+      if (parse_private_key(key_path, &g_server_identity_keys[g_num_server_identity_keys]) == ASCIICHAT_OK) {
+        log_info("Successfully loaded identity key #%zu: %s", i + 1, key_path);
+
+        // Display key fingerprint for verification
+        char hex_pubkey[65];
+        pubkey_to_hex(g_server_identity_keys[g_num_server_identity_keys].public_key, hex_pubkey);
+        log_info("  Key fingerprint: %s", hex_pubkey);
+
+        g_num_server_identity_keys++;
+      } else {
+        log_warn("Failed to parse identity key #%zu: %s (skipping)", i + 1, key_path);
+      }
+    }
+
+    if (g_num_server_identity_keys == 0) {
+      log_error("No valid identity keys loaded despite %zu --key flag(s)", num_keys);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "No valid identity keys loaded");
+      return -1;
+    }
+
+    // Copy first key to g_server_private_key for backward compatibility
+    memcpy(&g_server_private_key, &g_server_identity_keys[0], sizeof(private_key_t));
+    log_info("Loaded %zu identity key(s) total", g_num_server_identity_keys);
+
+  } else if (strlen(GET_OPTION(encrypt_key)) > 0) {
+    // Single-key mode (backward compatibility): load from encrypt_key field
+    const char *key_path = GET_OPTION(encrypt_key);
+
+    // Validate SSH key file (skip validation for special prefixes)
+    bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 ||
+                           strncmp(key_path, "gitlab:", 7) == 0);
 
     if (!is_special_key) {
-      if (validate_ssh_key_file(GET_OPTION(encrypt_key)) != 0) {
-        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", GET_OPTION(encrypt_key));
+      if (validate_ssh_key_file(key_path) != 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", key_path);
         return -1;
       }
     }
 
-    // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
-    log_info("Loading key for authentication: %s", GET_OPTION(encrypt_key));
-    if (parse_private_key(GET_OPTION(encrypt_key), &g_server_private_key) == ASCIICHAT_OK) {
-      log_info("Successfully loaded server key: %s", GET_OPTION(encrypt_key));
+    // Parse key
+    log_info("Loading key for authentication: %s", key_path);
+    if (parse_private_key(key_path, &g_server_private_key) == ASCIICHAT_OK) {
+      log_info("Successfully loaded server key: %s", key_path);
+
+      // Also store in identity_keys array for consistency
+      memcpy(&g_server_identity_keys[0], &g_server_private_key, sizeof(private_key_t));
+      g_num_server_identity_keys = 1;
     } else {
       log_error("Failed to parse key: %s\n"
                 "This may be due to:\n"
@@ -1132,14 +1210,15 @@ static int init_server_crypto(void) {
                 "\n"
                 "Note: RSA and ECDSA keys are not yet supported\n"
                 "To generate an Ed25519 key: ssh-keygen -t ed25519\n",
-                GET_OPTION(encrypt_key));
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", GET_OPTION(encrypt_key));
+                key_path);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", key_path);
       return -1;
     }
   } else if (strlen(GET_OPTION(password)) == 0) {
     // No identity key provided - server will run in simple mode
     // The server will still generate ephemeral keys for encryption, but no identity key
     g_server_private_key.type = KEY_TYPE_UNKNOWN;
+    g_num_server_identity_keys = 0;
     log_info("Server running without identity key (simple mode)");
   }
 
