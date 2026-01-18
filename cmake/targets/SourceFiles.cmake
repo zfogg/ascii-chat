@@ -67,16 +67,16 @@ set(CRYPTO_SRCS
     lib/crypto/acds_keys.c     # ACDS server key trust management
     lib/crypto/keys_validation.c  # Key validation utilities
     # libsodium-bcrypt-pbkdf (OpenBSD implementation)
-    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
-    deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
+    deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
 )
 
 # Suppress specific Clang warnings for libsodium-bcrypt-pbkdf (third-party code)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     set_source_files_properties(
-        deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-        deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+        deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
         PROPERTIES
         COMPILE_FLAGS "-Wno-sizeof-array-div"
     )
@@ -84,9 +84,9 @@ endif()
 
 # Disable static analyzers for third-party libsodium-bcrypt-pbkdf code
 set_source_files_properties(
-    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
-    deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
+    deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
     PROPERTIES
     SKIP_LINTING ON
 )
@@ -94,7 +94,7 @@ set_source_files_properties(
 # Suppress warnings for third-party mdns library (we don't control this code)
 # Can't use -w because it disables -Wwrite-strings which breaks PCH compatibility
 set_source_files_properties(
-    deps/mdns/mdns.c
+    deps/ascii-chat-deps/mdns/mdns.c
     PROPERTIES
     COMPILE_FLAGS "-Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable"
     SKIP_LINTING ON
@@ -293,7 +293,7 @@ set(NETWORK_SRCS
     lib/network/mdns/mdns.c
     lib/network/mdns/discovery_tui.c
     lib/network/mdns/discovery.c
-    deps/mdns/mdns.c
+    deps/ascii-chat-deps/mdns/mdns.c
 )
 
 # =============================================================================
@@ -325,7 +325,7 @@ set(CORE_SRCS
     lib/acds/identity.c
     lib/acds/strings.c
     # Add tomlc17 parser source
-    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
 
 # Only include lock debugging runtime in non-release builds (when NDEBUG is not defined)
@@ -338,7 +338,7 @@ endif()
 
 # Disable precompiled headers and static analyzers for tomlc17 (third-party code)
 set_source_files_properties(
-    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
     PROPERTIES
     SKIP_PRECOMPILE_HEADERS ON
     SKIP_LINTING ON

@@ -444,8 +444,8 @@
  * git submodule update --remote --merge
  *
  * # Update specific submodule (note: uthash is now bundled in lib/uthash/, not a submodule)
- * cd deps/bearssl && git checkout v0.6
- * cd ../.. && git add deps/bearssl && git commit -m "Update bearssl"
+ * cd deps/ascii-chat-deps/bearssl && git checkout v0.6
+ * cd ../.. && git add deps/ascii-chat-deps/bearssl && git commit -m "Update bearssl"
  * @endcode
  *
  * **System Libraries**:

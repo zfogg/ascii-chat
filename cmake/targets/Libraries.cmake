@@ -193,26 +193,29 @@ endif()
 # Add BearSSL if available
 if(BEARSSL_FOUND)
     target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
-    target_include_directories(ascii-chat-crypto PRIVATE ${BEARSSL_INCLUDE_DIRS})
 endif()
 
-# Add libsodium-bcrypt-pbkdf include directory
-target_include_directories(ascii-chat-crypto PRIVATE
-    ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
-    ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
-)
-
-# Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
+# Configure libsodium-bcrypt-pbkdf source files
+# These files need src/ directory in include path to find their own internal headers
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    # Disable false-positive warnings for bcrypt_pbkdf.c (third-party code)
     set(BCRYPT_PBKDF_WARNINGS "-Wno-sizeof-array-div")
     if(HAVE_WNO_UNTERMINATED_STRING_INIT)
         list(APPEND BCRYPT_PBKDF_WARNINGS "-Wno-unterminated-string-initialization")
     endif()
     set_source_files_properties(
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
         PROPERTIES COMPILE_OPTIONS "${BCRYPT_PBKDF_WARNINGS}"
     )
 endif()
+
+# Add src/ directory for all libsodium-bcrypt-pbkdf source files to find internal headers
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    PROPERTIES COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src"
+)
 
 # -----------------------------------------------------------------------------
 # Module 4: SIMD (depends on: util, core, video)
@@ -496,17 +499,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
     )
-
-    if(LIBSODIUM_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-    endif()
-
-    if(BEARSSL_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
-    endif()
 
     if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
         target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
@@ -630,18 +623,6 @@ else()
     # Musl flag
     if(USE_MUSL)
         target_compile_definitions(ascii-chat-shared PRIVATE USE_MUSL=1)
-    endif()
-
-    # Crypto module dependencies (libsodium-bcrypt-pbkdf, libsodium, BearSSL)
-    target_include_directories(ascii-chat-shared PRIVATE
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
-    )
-    if(LIBSODIUM_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-    endif()
-    if(BEARSSL_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
     endif()
 
     # Add dependency on libsodium build target if building from source

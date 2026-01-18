@@ -3,17 +3,14 @@
 # =============================================================================
 # This module handles uthash dependency setup.
 #
-# Uthash is a header-only hash table library for C structures. It's bundled
-# in lib/uthash/ with a wrapper that adds ascii-chat specific customizations:
-# - Custom allocators for memory debugging
-# - UBSan-safe hash functions
+# Uthash is a header-only hash table library for C structures. It's located
+# in deps/ascii-chat-deps/uthash/ as a git submodule.
 #
 # Directory structure:
-#   lib/uthash/uthash.h       - Wrapper with customizations
-#   lib/uthash/upstream/*.h   - Raw upstream uthash headers
+#   deps/ascii-chat-deps/uthash/src/*.h - Upstream uthash headers
 #
 # Prerequisites:
-#   - None (runs early in build process)
+#   - uthash submodule must be initialized
 #
 # Outputs:
 #   - Configures uthash include directory for use
@@ -21,20 +18,14 @@
 # =============================================================================
 
 function(configure_uthash)
-    set(UTHASH_DIR "${CMAKE_SOURCE_DIR}/lib/uthash")
+    set(UTHASH_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/uthash/src")
     set(UTHASH_HEADER "${UTHASH_DIR}/uthash.h")
-    set(UTHASH_UPSTREAM "${UTHASH_DIR}/upstream/uthash.h")
 
-    # Verify the wrapper header exists
+    # Verify the header exists
     if(NOT EXISTS "${UTHASH_HEADER}")
-        message(FATAL_ERROR "uthash wrapper header not found: ${UTHASH_HEADER}")
+        message(FATAL_ERROR "uthash header not found: ${UTHASH_HEADER}\nMake sure the uthash submodule is initialized: git submodule update --init --recursive")
     endif()
 
-    # Verify the upstream header exists
-    if(NOT EXISTS "${UTHASH_UPSTREAM}")
-        message(FATAL_ERROR "uthash upstream header not found: ${UTHASH_UPSTREAM}")
-    endif()
-
-    message(STATUS "Configured ${BoldGreen}uthash${ColorReset} from ${BoldCyan}${UTHASH_DIR}${ColorReset} (bundled)")
+    message(STATUS "Configured ${BoldGreen}uthash${ColorReset} from ${BoldCyan}${UTHASH_DIR}${ColorReset} (submodule)")
 endfunction()
 

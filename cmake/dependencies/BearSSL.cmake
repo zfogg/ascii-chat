@@ -70,8 +70,8 @@ if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
     endif()
 
 # Fall back to building from submodule
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
-    set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
+    set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 
     if(WIN32)
         # Windows: Build to cache directory (ASCIICHAT_DEPS_CACHE_DIR already includes build type)

@@ -786,7 +786,7 @@ set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
 message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source...")
 
 # BearSSL doesn't use CMake, so we build it manually
-set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 set(BEARSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/bearssl-build")
 set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 

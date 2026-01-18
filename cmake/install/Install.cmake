@@ -251,15 +251,47 @@ else()
     )
 endif()
 
-# Install uthash headers (bundled in lib/uthash/)
-# Layout: include/ascii-chat/uthash/uthash.h (wrapper)
-#         include/ascii-chat/uthash/upstream/*.h (raw uthash)
-install(FILES "${CMAKE_SOURCE_DIR}/lib/uthash/uthash.h"
-    DESTINATION include/ascii-chat/uthash
+# Install all ascii-chat-deps headers to include/ascii-chat-deps/
+# This allows includes like: #include <ascii-chat-deps/uthash/src/uthash.h>
+
+# uthash (header-only hash table library)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/uthash/src/"
+    DESTINATION include/ascii-chat-deps/uthash/src
     COMPONENT Development
+    FILES_MATCHING PATTERN "*.h"
 )
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/uthash/upstream/"
-    DESTINATION include/ascii-chat/uthash/upstream
+
+# BearSSL (lightweight TLS library)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl/inc/"
+    DESTINATION include/ascii-chat-deps/bearssl/inc
+    COMPONENT Development
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# libsodium-bcrypt-pbkdf (SSH key derivation)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/include/"
+    DESTINATION include/ascii-chat-deps/libsodium-bcrypt-pbkdf/include
+    COMPONENT Development
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# mdns (mDNS service discovery)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/mdns/"
+    DESTINATION include/ascii-chat-deps/mdns
+    COMPONENT Development
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# sokol (header-only utility libraries)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/sokol/"
+    DESTINATION include/ascii-chat-deps/sokol
+    COMPONENT Development
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# tomlc17 (TOML config file parser)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/"
+    DESTINATION include/ascii-chat-deps/tomlc17/src
     COMPONENT Development
     FILES_MATCHING PATTERN "*.h"
 )

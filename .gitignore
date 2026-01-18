@@ -32,11 +32,11 @@ coverage_html/
 /.deps-cache-*/
 
 # tomlc17 patch artifacts (created by CMake during build)
-/deps/tomlc17/.patch_applied
-/deps/libsodium-bcrypt-pbkdf/.patch_applied
-/deps/tomlc17/src/tomlc17.c
-/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
-/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+/deps/ascii-chat-deps/tomlc17/.patch_applied
+/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/.patch_applied
+/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
+/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
 
 /tests/fixtures/*
 
