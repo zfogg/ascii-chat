@@ -58,6 +58,7 @@ set(CRYPTO_SRCS
     lib/crypto/gpg/signing.c
     lib/crypto/gpg/verification.c
     lib/crypto/gpg/gpg_keys.c  # GPG key parsing
+    lib/crypto/gpg/openpgp.c   # OpenPGP packet format parser (RFC 4880)
     # SSH module (refactored into ssh/ subdirectory)
     lib/crypto/ssh/ssh_agent.c
     lib/crypto/ssh/ssh_keys.c  # SSH key parsing
