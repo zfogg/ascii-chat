@@ -16,6 +16,7 @@
 #include "options/server.h"
 #include "options/mirror.h"
 #include "options/acds.h"
+#include "options/validation.h"
 
 #include "options/config.h"
 #include "asciichat_errno.h"
@@ -467,6 +468,17 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 6: Post-Processing & Validation
   // ========================================================================
+
+  // Collect multiple --key flags for multi-key support (server/ACDS only)
+  // This enables servers to load both SSH and GPG keys and select the right one
+  // during handshake based on what the client expects
+  if (detected_mode == MODE_SERVER || detected_mode == MODE_ACDS) {
+    int num_keys = options_collect_identity_keys(&opts, argc, argv);
+    if (num_keys < 0) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to collect identity keys");
+    }
+    // num_keys == 0 is OK (no --key flags provided)
+  }
 
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic

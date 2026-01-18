@@ -32,7 +32,6 @@
 #include "version.h"
 #include "options/options.h"
 #include "options/rcu.h"
-#include "options/validation.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
@@ -259,22 +258,10 @@ int main(int argc, char *argv[]) {
   }
 
   // Get parsed options including detected mode
-  options_t *opts_writable = (options_t *)options_get();
-  const options_t *opts = opts_writable;
+  const options_t *opts = options_get();
   if (!opts) {
     fprintf(stderr, "Error: Options not initialized\n");
     return 1;
-  }
-
-  // Collect multiple --key flags for multi-key support (server/ACDS only)
-  // This enables servers to load both SSH and GPG keys and select the right one
-  // during handshake based on what the client expects
-  if (opts->detected_mode == MODE_SERVER || opts->detected_mode == MODE_ACDS) {
-    int num_keys = options_collect_identity_keys(opts_writable, argc, argv);
-    if (num_keys < 0) {
-      fprintf(stderr, "Error: Failed to collect identity keys\n");
-      return 1;
-    }
   }
 
   // Handle --help and --version (these are detected and flagged by options_init)
