@@ -777,6 +777,8 @@ runs:
         # Run vcpkg install from manifest (vcpkg.json) before cmake configure
         # This pre-installs packages to speed up cmake configure and enable caching
         runVcpkgInstall: true
+        # Explicitly specify vcpkg.json location to avoid auto-detection issues
+        vcpkgJsonGlob: 'vcpkg.json'
 
 
     # =========================================================================
