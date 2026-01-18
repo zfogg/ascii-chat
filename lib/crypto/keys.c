@@ -113,6 +113,11 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     }
   }
 
+  // Try PGP armored format (-----BEGIN PGP PUBLIC KEY BLOCK-----)
+  if (strstr(input, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL) {
+    return parse_gpg_key_binary((const uint8_t *)input, strlen(input), key_out);
+  }
+
   if (path_looks_like_path(input)) {
     char *normalized_path = NULL;
     asciichat_error_t path_result = path_validate_user_path(input, PATH_ROLE_KEY_PUBLIC, &normalized_path);

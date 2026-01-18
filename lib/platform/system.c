@@ -23,7 +23,7 @@
     }                                                                                                                  \
   } while (0)
 
-#include "uthash/uthash.h"
+#include <ascii-chat-deps/uthash/src/uthash.h>
 #include "log/logging.h"
 
 // Platform-specific binary suffix

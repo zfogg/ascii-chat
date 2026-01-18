@@ -6,7 +6,7 @@
 
 #include "common.h"
 #include "video/simd/common.h"
-#include "uthash/uthash.h"
+#include <ascii-chat-deps/uthash/src/uthash.h>
 #include "video/palette.h"
 #include "util/fnv1a.h"
 #include <time.h>

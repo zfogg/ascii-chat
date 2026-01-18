@@ -11,7 +11,7 @@
 #include "platform/socket.h"
 #include <string.h>
 #include <stdio.h>
-#include <mdns.h>
+#include <ascii-chat-deps/mdns/mdns.h>
 #include <netinet/in.h> /* For struct sockaddr_in, sockaddr_in6 */
 
 /** @brief Internal mDNS context structure */

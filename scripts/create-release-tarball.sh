@@ -45,7 +45,7 @@ git archive HEAD | tar -x -C "$RELEASE_DIR"
 
 # Copy submodule contents (not as git repos, just the files)
 echo "Bundling submodules..."
-for submodule in deps/bearssl deps/tomlc17 deps/libsodium-bcrypt-pbkdf deps/sokol; do
+for submodule in deps/ascii-chat-deps/bearssl deps/ascii-chat-deps/tomlc17 deps/ascii-chat-deps/libsodium-bcrypt-pbkdf deps/ascii-chat-deps/sokol; do
   if [[ -d "$submodule" ]]; then
     echo "  - $submodule"
     mkdir -p "$RELEASE_DIR/$submodule"

@@ -135,7 +135,7 @@
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
 #include "video/video_frame.h"
-#include "uthash/uthash.h"
+#include <ascii-chat-deps/uthash/src/uthash.h>
 #include "util/endian.h"
 #include "util/format.h"
 #include "util/time.h"

@@ -29,7 +29,7 @@
 #include "symbols.h"
 #include "system.h"
 #include "common.h"
-#include "uthash/uthash.h"
+#include <ascii-chat-deps/uthash/src/uthash.h>
 #include "platform/rwlock.h"
 #include "platform/init.h"
 #include "util/path.h"

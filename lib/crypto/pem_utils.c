@@ -31,7 +31,7 @@
 #include "pem_utils.h"
 #include "asciichat_errno.h"
 
-#include <bearssl.h>
+#include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

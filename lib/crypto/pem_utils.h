@@ -51,7 +51,7 @@
  * @date October 2025
  */
 
-#include <bearssl.h>
+#include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #include <stddef.h>
 
 /**

@@ -5,6 +5,7 @@
  */
 
 #include "gpg_keys.h"
+#include "openpgp.h" // For openpgp_parse_armored_pubkey()
 #include "../keys_validation.h"
 #include "common.h"
 #include "asciichat_errno.h"
@@ -86,10 +87,29 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
     return ERROR_INVALID_PARAM;
   }
 
-  // TODO: Implement binary GPG key parsing
-  // This requires parsing the OpenPGP packet format
-  SET_ERRNO(ERROR_CRYPTO_KEY, "Binary GPG key parsing not yet implemented");
-  return ERROR_CRYPTO_KEY;
+  // Treat as PGP armored text - null-terminate for string operations
+  char *armored_text = SAFE_MALLOC(key_size + 1, char *);
+  memcpy(armored_text, gpg_key_binary, key_size);
+  armored_text[key_size] = '\0';
+
+  // Parse OpenPGP armored format and extract Ed25519 public key
+  uint8_t ed25519_pk[32];
+  asciichat_error_t result = openpgp_parse_armored_pubkey(armored_text, ed25519_pk);
+  SAFE_FREE(armored_text);
+
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  // Initialize the public key structure
+  memset(key_out, 0, sizeof(public_key_t));
+  key_out->type = KEY_TYPE_GPG;
+  memcpy(key_out->key, ed25519_pk, 32);
+
+  // Set comment for display
+  safe_snprintf(key_out->comment, sizeof(key_out->comment), "GPG Ed25519 key");
+
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_id, uint8_t ed25519_pk[32]) {

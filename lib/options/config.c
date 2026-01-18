@@ -17,7 +17,7 @@
 #include "version.h"
 #include "tooling/defer/defer.h"
 
-#include "tomlc17.h"
+#include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

@@ -302,7 +302,7 @@
 #include "platform/memory.h"
 #include "platform/process.h"
 #include "platform/fs.h"
-#include "uthash/uthash.h" // Wrapper ensures common.h is included first
+#include <ascii-chat-deps/uthash/src/uthash.h> // Wrapper ensures common.h is included first
 #include "platform/file.h"
 #include "platform/pipe.h"
 #ifndef __cplusplus

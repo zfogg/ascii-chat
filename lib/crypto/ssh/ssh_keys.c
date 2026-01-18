@@ -15,8 +15,8 @@
 #include "util/bytes.h"
 #include "ssh_agent.h"
 #include "../gpg/gpg.h" // For GPG agent signing support
-#include <bearssl.h>
-#include <sodium_bcrypt_pbkdf.h>
+#include <ascii-chat-deps/bearssl/inc/bearssl.h>
+#include <ascii-chat-deps/libsodium-bcrypt-pbkdf/include/sodium_bcrypt_pbkdf.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

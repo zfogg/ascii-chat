@@ -19,7 +19,7 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "log/logging.h"
-#include "mdns.h"
+#include "network/mdns/mdns.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
