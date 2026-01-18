@@ -2,6 +2,8 @@
 
 Video chat in your terminal
 
+🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
+
 Probably the first command line video chat program (let me know if this isn't
 true). Initial commits _November 20-24, 2013_, with
 [@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon.
