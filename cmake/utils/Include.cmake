@@ -24,8 +24,10 @@ function(configure_include_directories)
     include_directories(
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/deps
     )
+    # deps/ must use SYSTEM to ensure -isystem (not -iquote) for angle bracket includes
+    # Code uses: #include <ascii-chat-deps/uthash/src/uthash.h>
+    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/deps)
 
     # Add dependency include directories (matching pkg-config approach)
     if(WIN32)
