@@ -12,7 +12,8 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
-#include "gpg/export.h" // For gpg_get_public_key()
+#include "gpg/export.h"          // For gpg_get_public_key()
+#include "network/http_client.h" // For https_get()
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -42,6 +43,39 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
   // Try GPG key parsing
   if (strncmp(input, "gpg:", 4) == 0) {
     return parse_gpg_key(input + 4, key_out);
+  }
+
+  // Try HTTPS URLs (https://...)
+  if (strncmp(input, "https://", 8) == 0) {
+    const char *url = input + 8; // Skip "https://"
+
+    // Find the first '/' to separate hostname from path
+    const char *slash = strchr(url, '/');
+    if (!slash) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid HTTPS URL (missing path): %s", input);
+    }
+
+    // Extract hostname and path
+    size_t hostname_len = (size_t)(slash - url);
+    char hostname[256];
+    if (hostname_len >= sizeof(hostname)) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "HTTPS hostname too long: %s", input);
+    }
+
+    memcpy(hostname, url, hostname_len);
+    hostname[hostname_len] = '\0';
+    const char *path = slash; // Path includes the leading '/'
+
+    // Fetch the key via HTTPS
+    char *response = https_get(hostname, path);
+    if (!response) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch key from HTTPS URL: %s", input);
+    }
+
+    // Parse the fetched content as a public key
+    asciichat_error_t result = parse_public_key(response, key_out);
+    SAFE_FREE(response);
+    return result;
   }
 
   // Try HTTPS key fetching (GitHub/GitLab) - delegate to parse_public_keys and return first

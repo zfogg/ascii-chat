@@ -682,10 +682,12 @@ void *acds_client_handler(void *arg) {
                  client_ip, packet_type);
 
         // Send error response
-        ACDS_CREATE_TRANSPORT(client_socket, error_transport);
-        acip_send_error(error_transport, ERROR_INVALID_PARAM,
-                        "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
-        ACDS_DESTROY_TRANSPORT(error_transport);
+        acip_transport_t *error_transport = acip_tcp_transport_create(client_socket, NULL);
+        if (error_transport) {
+          acip_send_error(error_transport, ERROR_INVALID_PARAM,
+                          "Only SESSION_CREATE/PING/PONG allowed during multi-key session creation");
+          ACDS_DESTROY_TRANSPORT(error_transport);
+        }
 
         // Free payload and continue
         if (payload) {
