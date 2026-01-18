@@ -809,6 +809,38 @@ ascii-chat client \-\-render\-mode half\-block \-\-utf8
 .nf
 ascii-chat client example.com \-\-key github:username
 .fi
+.SS "Stream video file as ASCII art"
+.nf
+ascii-chat mirror \-\-file video.mp4 \-\-color\-mode truecolor
+.fi
+.IP
+Plays an MP4 video file as ASCII art. Works with any video format supported by FFmpeg (MP4, MOV, AVI, MKV, WebM).
+.SS "Play animated GIF as ASCII"
+.nf
+ascii-chat mirror \-\-file animation.gif \-\-loop
+.fi
+.IP
+Loops an animated GIF continuously. Great for testing or creating looping ASCII animations.
+.SS "Display image as ASCII"
+.nf
+ascii-chat mirror \-\-file photo.jpg \-\-snapshot
+.fi
+.IP
+Converts a JPEG or PNG image to ASCII art. Useful for one-off ASCII conversions of photos.
+.SS "Stream audio visualized as ASCII"
+.nf
+ascii-chat mirror \-\-file song.mp3 \-\-test\-pattern
+.fi
+.IP
+Plays audio from an MP3 file. Use with \fB\-\-test\-pattern\fR to show a visual pattern while audio plays.
+Note: Pure audio files don't have video frames, so combine with test pattern or another visual source.
+.SS "Pipe video through stdin"
+.nf
+cat video.mp4 | ascii-chat mirror \-\-file \-
+.fi
+.IP
+Streams video from stdin. Use \fC-\fR as the filename to read from standard input.
+Useful for chaining with other commands or streaming from network sources.
 .SS "Use Unicode block characters for higher contrast"
 .nf
 ascii-chat client \-\-palette blocks \-\-utf8
