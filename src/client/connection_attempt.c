@@ -28,6 +28,7 @@
 #include "protocol.h"
 #include "webrtc.h"
 #include "crypto.h"
+#include "main.h"
 #include "crypto/acds_keys.h"
 #include "common.h"
 #include "log/logging.h"
@@ -183,6 +184,7 @@ void connection_context_cleanup(connection_attempt_context_t *ctx) {
   if (ctx->peer_manager) {
     webrtc_peer_manager_destroy(ctx->peer_manager);
     ctx->peer_manager = NULL;
+    g_peer_manager = NULL; // Clear global reference
   }
 
   ctx->active_transport = NULL;
@@ -554,6 +556,9 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
     return SET_ERRNO(ERROR_NETWORK, "WebRTC peer manager creation failed");
   }
 
+  // Set global peer manager for ACIP handlers to receive incoming SDP/ICE
+  g_peer_manager = ctx->peer_manager;
+
   // ─────────────────────────────────────────────────────────────
   // Step 4: Initiate WebRTC connection (send SDP offer)
   // ─────────────────────────────────────────────────────────────
@@ -815,6 +820,9 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
     acds_client_disconnect(&acds_client);
     return SET_ERRNO(ERROR_NETWORK, "WebRTC peer manager creation failed");
   }
+
+  // Set global peer manager for ACIP handlers to receive incoming SDP/ICE
+  g_peer_manager = ctx->peer_manager;
 
   // Initiate WebRTC connection with TURN
   result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
