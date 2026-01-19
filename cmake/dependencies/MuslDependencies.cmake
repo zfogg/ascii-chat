@@ -445,6 +445,7 @@ if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
             --disable-runtime-cpudetect
             --disable-autodetect
             --disable-x86asm
+            --disable-inline-asm
             --enable-protocol=file
             --enable-demuxer=mov,matroska,avi,gif,image2
             --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
