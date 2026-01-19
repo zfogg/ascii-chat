@@ -644,7 +644,9 @@ connection_success:
  * @ingroup client_connection
  */
 bool server_connection_is_active() {
-  return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE);
+  // For TCP: check socket validity
+  // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
+  return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
 }
 
 /**
