@@ -21,6 +21,7 @@
 #include "platform/socket.h"
 #include "util/endian.h"
 
+#include <netdb.h>
 #include <string.h>
 #include <time.h>
 
@@ -73,21 +74,33 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
     return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket timeouts");
   }
 
-  // Connect to server
-  struct sockaddr_in server_addr;
-  memset(&server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(config->server_port);
+  // Resolve server address (supports both hostnames and IP addresses)
+  struct addrinfo hints;
+  struct addrinfo *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;       // IPv4
+  hints.ai_socktype = SOCK_STREAM; // TCP
 
-  if (inet_pton(AF_INET, config->server_address, &server_addr.sin_addr) <= 0) {
+  char port_str[16];
+  snprintf(port_str, sizeof(port_str), "%d", config->server_port);
+
+  int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
+  if (gai_result != 0) {
     socket_close(client->socket);
     client->socket = INVALID_SOCKET_VALUE;
-    return SET_ERRNO(ERROR_NETWORK, "Invalid server address: %s", config->server_address);
+    return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
+                     gai_strerror(gai_result));
   }
 
-  if (connect(client->socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+  // Try to connect (use first result)
+  int connect_result = connect(client->socket, result->ai_addr, result->ai_addrlen);
+  int connect_errno = errno; // Save errno before freeaddrinfo
+  freeaddrinfo(result);
+
+  if (connect_result < 0) {
     socket_close(client->socket);
     client->socket = INVALID_SOCKET_VALUE;
+    errno = connect_errno; // Restore errno for socket_get_error_string()
     return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d: %s", config->server_address, config->server_port,
                      socket_get_error_string());
   }
