@@ -71,11 +71,12 @@ static void find_participant_callback(socket_t socket, void *client_data, void *
  * @brief Context for broadcasting to session participants
  */
 typedef struct {
-  const uint8_t *target_session_id; ///< Session to broadcast to
-  packet_type_t packet_type;        ///< Packet type to send
-  const void *packet;               ///< Packet data
-  size_t packet_len;                ///< Packet length
-  size_t sent_count;                ///< Number of successful sends
+  const uint8_t *target_session_id;      ///< Session to broadcast to
+  const uint8_t *exclude_participant_id; ///< Participant to exclude (NULL = no exclusion)
+  packet_type_t packet_type;             ///< Packet type to send
+  const void *packet;                    ///< Packet data
+  size_t packet_len;                     ///< Packet length
+  size_t sent_count;                     ///< Number of successful sends
 } broadcast_context_t;
 
 /**
@@ -96,6 +97,11 @@ static void broadcast_callback(socket_t socket, void *client_data, void *user_ar
   // Check if client is in target session
   if (!uuid_equals(acds_data->session_id, ctx->target_session_id)) {
     return; // Different session
+  }
+
+  // Skip excluded participant (e.g., sender)
+  if (ctx->exclude_participant_id && uuid_equals(acds_data->participant_id, ctx->exclude_participant_id)) {
+    return; // Skip sender
   }
 
   // Send packet to this participant
@@ -127,9 +133,10 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(sdp->recipient_id)) {
-    // Broadcast to all participants in session
-    log_debug("Broadcasting SDP to all participants in session");
-    return signaling_broadcast(db, tcp_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len);
+    // Broadcast to all participants in session (except sender)
+    log_debug("Broadcasting SDP to all participants in session (excluding sender)");
+    return signaling_broadcast(db, tcp_server, sdp->session_id, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp, total_packet_len,
+                               sdp->sender_id);
   } else {
     // Unicast to specific recipient
     find_client_context_t ctx = {
@@ -168,9 +175,10 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
 
   // Check if broadcast (recipient_id all zeros) or unicast
   if (is_broadcast_uuid(ice->recipient_id)) {
-    // Broadcast to all participants in session
-    log_debug("Broadcasting ICE candidate to all participants in session");
-    return signaling_broadcast(db, tcp_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len);
+    // Broadcast to all participants in session (except sender)
+    log_debug("Broadcasting ICE candidate to all participants in session (excluding sender)");
+    return signaling_broadcast(db, tcp_server, ice->session_id, PACKET_TYPE_ACIP_WEBRTC_ICE, ice, total_packet_len,
+                               ice->sender_id);
   } else {
     // Unicast to specific recipient
     find_client_context_t ctx = {
@@ -195,7 +203,8 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
 }
 
 asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, const uint8_t session_id[16],
-                                      packet_type_t packet_type, const void *packet, size_t packet_len) {
+                                      packet_type_t packet_type, const void *packet, size_t packet_len,
+                                      const uint8_t *exclude_participant_id) {
   if (!db || !tcp_server || !session_id || !packet) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "db, tcp_server, session_id, or packet is NULL");
   }
@@ -207,8 +216,9 @@ asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, con
   }
   session_entry_free(session); // We only need to validate existence
 
-  // Broadcast to all participants in session
+  // Broadcast to all participants in session (excluding sender if specified)
   broadcast_context_t ctx = {.target_session_id = session_id,
+                             .exclude_participant_id = exclude_participant_id,
                              .packet_type = packet_type,
                              .packet = packet,
                              .packet_len = packet_len,

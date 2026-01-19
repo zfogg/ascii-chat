@@ -49,8 +49,8 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
 /**
  * @brief Broadcast packet to all session participants
  *
- * Sends packet to all participants in a session. Used internally by
- * SDP/ICE relay when recipient_id is all zeros.
+ * Sends packet to all participants in a session (optionally excluding one).
+ * Used internally by SDP/ICE relay when recipient_id is all zeros.
  *
  * @param db SQLite database handle (for session validation)
  * @param tcp_server TCP server with client registry
@@ -58,7 +58,9 @@ asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server, con
  * @param packet_type Packet type to send
  * @param packet Packet data to broadcast
  * @param packet_len Packet length
+ * @param exclude_participant_id Participant to exclude (NULL = no exclusion, typically sender)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
 asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server, const uint8_t session_id[16],
-                                      packet_type_t packet_type, const void *packet, size_t packet_len);
+                                      packet_type_t packet_type, const void *packet, size_t packet_len,
+                                      const uint8_t *exclude_participant_id);
