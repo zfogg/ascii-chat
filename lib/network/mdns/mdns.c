@@ -54,7 +54,7 @@ asciichat_mdns_t *asciichat_mdns_init(void) {
     return NULL;
   }
 
-  log_info("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
+  log_debug("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
   return mdns;
 }
 
@@ -69,7 +69,7 @@ void asciichat_mdns_shutdown(asciichat_mdns_t *mdns) {
 
   SAFE_FREE(mdns->buffer);
   SAFE_FREE(mdns);
-  log_info("mDNS context shutdown");
+  log_debug("mDNS context shutdown");
 }
 
 asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciichat_mdns_service_t *service) {
@@ -81,7 +81,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
     return SET_ERRNO(ERROR_INVALID_PARAM, "Service name, type, or host is NULL");
   }
 
-  log_info("Advertising mDNS service: %s (%s:%d)", service->name, service->host, service->port);
+  log_debug("Advertising mDNS service: %s (%s:%d)", service->name, service->host, service->port);
 
   /* TODO: Implement actual advertisement using mdns library
    * This will involve creating service records and sending announcements

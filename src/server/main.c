@@ -633,7 +633,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
     return;
   }
 
-  log_info("WebRTC transport ready for participant %.8s...", (const char *)participant_id);
+  log_debug("WebRTC transport ready for participant %.8s...", (const char *)participant_id);
 
   // Convert participant_id to string for logging (ASCII-safe portion)
   char participant_str[33];
@@ -650,7 +650,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
     return;
   }
 
-  log_info("Successfully added WebRTC client ID=%d for participant %s", client_id, participant_str);
+  log_debug("Successfully added WebRTC client ID=%d for participant %s", client_id, participant_str);
 }
 
 /**
@@ -682,7 +682,8 @@ static void on_webrtc_sdp_server(const acip_webrtc_sdp_t *sdp, size_t total_len,
   // Determine SDP type (offer=0, answer=1)
   const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
 
-  log_info("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id, sdp_len);
+  log_debug("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id,
+            sdp_len);
 
   // Forward to peer_manager (pass full packet structure)
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_webrtc_peer_manager, sdp);
@@ -796,11 +797,9 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
     asciichat_mdns_shutdown(g_mdns_ctx);
     g_mdns_ctx = NULL;
   } else {
-    printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
-    printf("📋 Session String: %s\n", session_string);
-    printf("   Join with: ascii-chat %s\n", session_string);
-    log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
-             service.name, service.port, session_string, service.txt_count);
+    log_info("🌐 mDNS: Server advertised as '%s.local' on LAN", session_name);
+    log_debug("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
+              service.name, service.port, session_string, service.txt_count);
   }
 }
 
@@ -816,7 +815,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
 static void *acds_ping_thread(void *arg) {
   (void)arg;
 
-  log_info("ACDS keepalive ping thread started");
+  log_debug("ACDS keepalive ping thread started");
 
   while (!atomic_load(&g_server_should_exit)) {
     if (!g_acds_transport) {
@@ -841,7 +840,7 @@ static void *acds_ping_thread(void *arg) {
     }
   }
 
-  log_info("ACDS keepalive ping thread exiting");
+  log_debug("ACDS keepalive ping thread exiting");
   return NULL;
 }
 
@@ -857,7 +856,7 @@ static void *acds_ping_thread(void *arg) {
 static void *acds_receive_thread(void *arg) {
   (void)arg;
 
-  log_info("ACDS receive thread started");
+  log_debug("ACDS receive thread started");
 
   // Configure callbacks for WebRTC signaling packets
   acip_client_callbacks_t callbacks = {
@@ -881,7 +880,7 @@ static void *acds_receive_thread(void *arg) {
 
     if (result != ASCIICHAT_OK) {
       if (result == ERROR_NETWORK) {
-        log_info("ACDS connection closed");
+        log_debug("ACDS connection closed");
       } else {
         log_error("ACDS receive error: %s", asciichat_error_string(result));
       }
@@ -889,7 +888,7 @@ static void *acds_receive_thread(void *arg) {
     }
   }
 
-  log_info("ACDS receive thread exiting");
+  log_debug("ACDS receive thread exiting");
   return NULL;
 }
 
@@ -1003,7 +1002,7 @@ static void *ascii_chat_client_handler(void *arg) {
     client_port = 0;
   }
 
-  log_info("Client handler started for %s:%d", client_ip, client_port);
+  log_debug("Client handler started for %s:%d", client_ip, client_port);
 
   // Check connection rate limit (prevent DoS attacks)
   if (server_ctx->rate_limiter) {
@@ -1049,7 +1048,7 @@ static void *ascii_chat_client_handler(void *arg) {
   socket_close(client_socket);
   SAFE_FREE(ctx);
 
-  log_info("Client handler finished for %s:%d", client_ip, client_port);
+  log_debug("Client handler finished for %s:%d", client_ip, client_port);
   return NULL;
 }
 
@@ -1153,14 +1152,14 @@ static int init_server_crypto(void) {
       }
 
       // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
-      log_info("Loading identity key #%zu: %s", i + 1, key_path);
+      log_debug("Loading identity key #%zu: %s", i + 1, key_path);
       if (parse_private_key(key_path, &g_server_identity_keys[g_num_server_identity_keys]) == ASCIICHAT_OK) {
-        log_info("Successfully loaded identity key #%zu: %s", i + 1, key_path);
+        log_debug("Successfully loaded identity key #%zu: %s", i + 1, key_path);
 
         // Display key fingerprint for verification
         char hex_pubkey[65];
         pubkey_to_hex(g_server_identity_keys[g_num_server_identity_keys].public_key, hex_pubkey);
-        log_info("  Key fingerprint: %s", hex_pubkey);
+        log_debug("  Key fingerprint: %s", hex_pubkey);
 
         g_num_server_identity_keys++;
       } else {
@@ -1307,7 +1306,7 @@ int server_main(void) {
   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, "stats_logger") != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
   } else {
-    log_info("Statistics logger thread started");
+    log_debug("Statistics logger thread started");
   }
 
   // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
@@ -1657,10 +1656,7 @@ int server_main(void) {
 
       if (create_err == ASCIICHAT_OK) {
         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
-        log_plain("✨ Session created successfully!");
-        log_plain("📋 Session string: %s", session_string);
-        log_plain("🔗 Share this with others to join:");
-        log_plain("   ascii-chat %s", session_string);
+        log_info("✨ Session created successfully on ACDS");
 
         // Server must join its own session so ACDS can route signaling messages
         log_debug("Server joining session as first participant for WebRTC signaling...");
@@ -1683,8 +1679,8 @@ int server_main(void) {
                     join_result.error_message[0] ? join_result.error_message : "unknown");
           // Continue anyway - this is not fatal for Direct TCP sessions
         } else {
-          log_info("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
-                   join_result.participant_id[1]);
+          log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
+                    join_result.participant_id[1]);
           // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
           memcpy(create_result.session_id, join_result.session_id, 16);
         }
@@ -1704,14 +1700,14 @@ int server_main(void) {
           if (ping_thread_result != 0) {
             log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
           } else {
-            log_info("ACDS ping thread started to keep connection alive");
+            log_debug("ACDS ping thread started to keep connection alive");
             g_acds_ping_thread_started = true;
           }
         }
 
         // Initialize WebRTC peer_manager if session type is WebRTC
         if (create_params.session_type == SESSION_TYPE_WEBRTC) {
-          log_info("Initializing WebRTC peer manager for session (role=CREATOR)...");
+          log_debug("Initializing WebRTC peer manager for session (role=CREATOR)...");
 
           // Configure STUN servers for ICE gathering
           stun_server_t stun_servers[2];
@@ -1743,7 +1739,7 @@ int server_main(void) {
             log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
             g_webrtc_peer_manager = NULL;
           } else {
-            log_info("WebRTC peer_manager initialized successfully");
+            log_debug("WebRTC peer_manager initialized successfully");
 
             // Start ACDS receive thread for WebRTC signaling relay
             int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
@@ -1753,7 +1749,7 @@ int server_main(void) {
               webrtc_peer_manager_destroy(g_webrtc_peer_manager);
               g_webrtc_peer_manager = NULL;
             } else {
-              log_info("ACDS receive thread started for WebRTC signaling relay");
+              log_debug("ACDS receive thread started for WebRTC signaling relay");
               g_acds_receive_thread_started = true;
             }
           }
@@ -1808,13 +1804,28 @@ skip_acds_session:
     snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
              adjectives[adj2_idx]);
 
-    log_info("Generated random session string for mDNS: '%s'", session_string);
+    log_debug("Generated random session string for mDNS: '%s'", session_string);
 
     // Advertise mDNS with random session string
     advertise_mdns_with_session(session_string, (uint16_t)port);
   }
 
-  log_info("Server entering accept loop (port %d)...", port);
+  // ====================================================================
+  // Display session string prominently as the FINAL startup message
+  // This ensures users see the connection info clearly without logs
+  // wiping it away
+  // ====================================================================
+  if (session_string[0] != '\0') {
+    log_plain("");
+    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    log_plain("📋 Session String: %s", session_string);
+    log_plain("🔗 Share this with others to join:");
+    log_plain("   ascii-chat %s", session_string);
+    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    log_plain("");
+  }
+
+  log_debug("Server entering accept loop (port %d)...", port);
 
   // Run TCP server (blocks until shutdown signal received)
   // tcp_server_run() handles:
@@ -1827,11 +1838,11 @@ skip_acds_session:
     log_error("TCP server exited with error");
   }
 
-  log_info("Server accept loop exited");
+  log_debug("Server accept loop exited");
 
 cleanup:
   // Cleanup
-  log_info("Server shutting down...");
+  log_debug("Server shutting down...");
   atomic_store(&g_server_should_exit, true);
 
   // Wake up any threads that might be blocked on condition variables
@@ -1845,7 +1856,7 @@ cleanup:
   // CRITICAL: Close all client sockets immediately to unblock receive threads
   // The signal handler only closed the listening socket, but client receive threads
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
-  log_info("Closing all client sockets to unblock receive threads...");
+  log_debug("Closing all client sockets to unblock receive threads...");
 
   // Use write lock since we're modifying client->socket
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -1858,13 +1869,13 @@ cleanup:
   }
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  log_info("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
+  log_debug("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
 
   // Stop and destroy server worker thread pool (stats logger, etc.)
   if (g_server_worker_pool) {
     thread_pool_destroy(g_server_worker_pool);
     g_server_worker_pool = NULL;
-    log_info("Server worker thread pool stopped");
+    log_debug("Server worker thread pool stopped");
   }
 
   // Destroy rate limiter
@@ -1874,7 +1885,7 @@ cleanup:
   }
 
   // Clean up all connected clients
-  log_info("Cleaning up connected clients...");
+  log_debug("Cleaning up connected clients...");
   // FIXED: Simplified to collect client IDs first, then remove them without holding locks
   uint32_t clients_to_remove[MAX_CLIENTS];
   int client_count = 0;
@@ -1934,7 +1945,7 @@ cleanup:
   if (g_mdns_ctx) {
     asciichat_mdns_shutdown(g_mdns_ctx);
     g_mdns_ctx = NULL;
-    log_info("mDNS context shut down");
+    log_debug("mDNS context shut down");
   }
 
   // Clean up synchronization primitives

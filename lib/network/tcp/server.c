@@ -157,7 +157,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
                      "client_handler is required for tcp_server_run() - use custom accept loop if handler is NULL");
   }
 
-  log_info("TCP server starting accept loop...");
+  log_debug("TCP server starting accept loop...");
 
   while (atomic_load(&server->running)) {
     // Build fd_set for select()
@@ -231,7 +231,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
       SAFE_STRNCPY(client_ip, "(unknown)", sizeof(client_ip));
     }
 
-    log_info("Accepted connection from %s", client_ip);
+    log_debug("Accepted connection from %s", client_ip);
 
     // Allocate client context
     tcp_client_context_t *ctx = SAFE_MALLOC(sizeof(tcp_client_context_t), tcp_client_context_t *);
@@ -266,7 +266,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     (void)thread; // Suppress unused warning
   }
 
-  log_info("TCP server accept loop exited");
+  log_debug("TCP server accept loop exited");
   return ASCIICHAT_OK;
 }
 
@@ -275,7 +275,7 @@ void tcp_server_shutdown(tcp_server_t *server) {
     return;
   }
 
-  log_info("Shutting down TCP server...");
+  log_debug("Shutting down TCP server...");
 
   // Signal server to stop
   atomic_store(&server->running, false);
@@ -320,7 +320,7 @@ void tcp_server_shutdown(tcp_server_t *server) {
   // Note: This function does NOT wait for client threads to exit
   // Caller is responsible for thread lifecycle management
 
-  log_info("TCP server shutdown complete");
+  log_debug("TCP server shutdown complete");
 }
 
 // ============================================================================

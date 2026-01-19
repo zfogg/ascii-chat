@@ -80,8 +80,8 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms) {
 
   char pretty_max[64];
   format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
-  log_info("Created buffer pool (max: %s, shrink: %llu ms, lock-free)", pretty_max,
-           (unsigned long long)pool->shrink_delay_ms);
+  log_debug("Created buffer pool (max: %s, shrink: %llu ms, lock-free)", pretty_max,
+            (unsigned long long)pool->shrink_delay_ms);
 
   return pool;
 }
@@ -362,12 +362,12 @@ void buffer_pool_log_stats(buffer_pool_t *pool, const char *name) {
   uint64_t total_requests = hits + allocs + fallbacks;
   double hit_rate = total_requests > 0 ? (double)hits * 100.0 / (double)total_requests : 0;
 
-  log_info("=== Buffer Pool: %s ===", name ? name : "unnamed");
-  log_info("  Pool: %s / %s (peak: %s)", pretty_current, pretty_max, pretty_peak_pool);
-  log_info("  Used: %s, Free: %s (peak used: %s)", pretty_used, pretty_free, pretty_peak);
-  log_info("  Hits: %llu (%.1f%%), Allocs: %llu, Fallbacks: %llu", (unsigned long long)hits, hit_rate,
-           (unsigned long long)allocs, (unsigned long long)fallbacks);
-  log_info("  Returns: %llu, Shrink freed: %llu", (unsigned long long)returns, (unsigned long long)shrink_freed);
+  log_debug("=== Buffer Pool: %s ===", name ? name : "unnamed");
+  log_debug("  Pool: %s / %s (peak: %s)", pretty_current, pretty_max, pretty_peak_pool);
+  log_debug("  Used: %s, Free: %s (peak used: %s)", pretty_used, pretty_free, pretty_peak);
+  log_debug("  Hits: %llu (%.1f%%), Allocs: %llu, Fallbacks: %llu", (unsigned long long)hits, hit_rate,
+            (unsigned long long)allocs, (unsigned long long)fallbacks);
+  log_debug("  Returns: %llu, Shrink freed: %llu", (unsigned long long)returns, (unsigned long long)shrink_freed);
 }
 
 /* ============================================================================
@@ -383,7 +383,7 @@ void buffer_pool_init_global(void) {
   if (!g_global_pool) {
     g_global_pool = buffer_pool_create(0, 0);
     if (g_global_pool) {
-      log_info("Initialized global buffer pool");
+      log_debug("Initialized global buffer pool");
     }
   }
   static_mutex_unlock(&g_global_pool_mutex);

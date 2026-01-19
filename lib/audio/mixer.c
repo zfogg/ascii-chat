@@ -338,7 +338,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
   compressor_init(&mixer->compressor, (float)sample_rate);
 
-  log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
+  log_debug("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
   return mixer;
 }
@@ -357,7 +357,7 @@ void mixer_destroy(mixer_t *mixer) {
   SAFE_FREE(mixer->source_active);
   SAFE_FREE(mixer->mix_buffer);
   SAFE_FREE(mixer);
-  log_info("Audio mixer destroyed");
+  log_debug("Audio mixer destroyed");
 }
 
 int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *buffer) {

@@ -605,7 +605,7 @@ static void *debug_thread_func(void *arg) {
 // ============================================================================
 
 int lock_debug_init(void) {
-  log_info("Starting lock debug system initialization...");
+  log_debug("Starting lock debug system initialization...");
 
   if (atomic_load(&g_lock_debug_manager.initialized)) {
     log_info("Lock debug system already initialized");
@@ -764,7 +764,7 @@ void lock_debug_cleanup(void) {
   g_lock_debug_manager.orphaned_releases = NULL;
 
   // initialized flag already set to false at the beginning via atomic_exchange
-  log_info("Lock debug system cleaned up");
+  log_debug("Lock debug system cleaned up");
 }
 
 void lock_debug_cleanup_thread(void) {
