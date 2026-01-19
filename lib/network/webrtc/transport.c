@@ -456,6 +456,26 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
     return NULL;
   }
 
+  // IMPORTANT: The transport is always created from peer_manager's on_datachannel_open callback,
+  // which means the DataChannel is ALREADY OPEN when we get here. However, by setting our own
+  // callbacks above (webrtc_datachannel_set_callbacks), we replaced the callbacks that would
+  // have set dc->is_open=true. So we need to manually mark both the transport AND the DataChannel
+  // as open/connected now.
+  //
+  // We cannot rely on webrtc_on_open being called later because:
+  // 1. The DataChannel is already open
+  // 2. libdatachannel won't fire the open event again
+  // 3. Setting callbacks after open doesn't trigger a retroactive open event
+
+  // Mark DataChannel as open (needed for webrtc_datachannel_send() check)
+  webrtc_datachannel_set_open_state(data_channel, true);
+
+  // Mark transport as connected
+  mutex_lock(&wrtc_data->state_mutex);
+  wrtc_data->is_connected = true;
+  mutex_unlock(&wrtc_data->state_mutex);
+  log_debug("Transport and DataChannel marked as connected/open (already open from peer_manager callback)");
+
   // Initialize transport
   transport->methods = &webrtc_methods;
   transport->crypto_ctx = crypto_ctx;

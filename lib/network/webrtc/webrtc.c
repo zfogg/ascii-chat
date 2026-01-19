@@ -66,6 +66,11 @@ static void rtc_log_callback(rtcLogLevel level, const char *message) {
   }
 }
 
+// Forward declarations for callback functions
+static void on_datachannel_open_adapter(int dc_id, void *user_data);
+static void on_datachannel_message_adapter(int dc_id, const char *data, int size, void *user_data);
+static void on_datachannel_error_adapter(int dc_id, const char *error, void *user_data);
+
 static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) {
   (void)pc_id; // Unused - we get peer connection from user_data
   webrtc_peer_connection_t *pc = (webrtc_peer_connection_t *)user_data;
@@ -133,6 +138,8 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   if (!pc)
     return;
 
+  log_info("on_datachannel_adapter: received DataChannel (dc_id=%d) from remote peer", dc_id);
+
   // Allocate data channel wrapper
   webrtc_data_channel_t *dc = SAFE_MALLOC(sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
   if (!dc) {
@@ -144,24 +151,36 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   dc->rtc_id = dc_id;
   dc->pc = pc;
   dc->is_open = false;
+  log_debug("Initialized DataChannel wrapper: dc=%p, is_open=false", (void *)dc);
 
   // Store in peer connection
   pc->dc = dc;
 
-  // Set up data channel callbacks (will be done when we receive open event)
-  log_debug("Received DataChannel (id=%d) from remote peer", dc_id);
+  // Set up data channel callbacks for incoming channel
+  rtcSetUserPointer(dc_id, dc);
+  rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
+  rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
+  rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
+
+  log_info("Set up callbacks for incoming DataChannel (dc_id=%d, dc=%p)", dc_id, (void *)dc);
 }
 
 static void on_datachannel_open_adapter(int dc_id, void *user_data) {
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
-  if (!dc)
+  log_info("on_datachannel_open_adapter called: dc_id=%d, dc=%p", dc_id, (void *)dc);
+  if (!dc) {
+    log_error("on_datachannel_open_adapter: dc is NULL!");
     return;
+  }
 
   dc->is_open = true;
-  log_debug("DataChannel opened (id=%d)", dc_id);
+  log_info("DataChannel opened (id=%d, dc=%p), set is_open=true", dc_id, (void *)dc);
 
   if (dc->pc && dc->pc->config.on_datachannel_open) {
+    log_debug("Calling user on_datachannel_open callback");
     dc->pc->config.on_datachannel_open(dc, dc->pc->config.user_data);
+  } else {
+    log_warn("No user on_datachannel_open callback registered");
   }
 }
 
@@ -440,6 +459,12 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
 
 bool webrtc_datachannel_is_open(webrtc_data_channel_t *dc) {
   return dc && dc->is_open;
+}
+
+void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open) {
+  if (dc) {
+    dc->is_open = is_open;
+  }
 }
 
 const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc) {

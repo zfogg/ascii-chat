@@ -238,7 +238,7 @@ int threaded_send_pong_packet(void);
  *
  * @ingroup client_connection
  */
-int threaded_send_stream_start_packet(uint32_t stream_type);
+asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type);
 
 /**
  * @brief Thread-safe terminal size packet transmission with auto-detection
@@ -249,7 +249,7 @@ int threaded_send_stream_start_packet(uint32_t stream_type);
  *
  * @ingroup client_connection
  */
-int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height);
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height);
 
 /**
  * @brief Thread-safe client join packet transmission

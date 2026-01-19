@@ -610,6 +610,18 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
     asciichat_error_t recv_result = acip_client_receive_and_dispatch(ctx->acds_transport, callbacks);
 
     if (recv_result != ASCIICHAT_OK) {
+      // Check if WebRTC succeeded before treating ACDS errors as fatal
+      mutex_lock(&ctx->webrtc_mutex);
+      bool transport_ready = ctx->webrtc_transport_received;
+      mutex_unlock(&ctx->webrtc_mutex);
+
+      if (transport_ready) {
+        // WebRTC connection succeeded, ACDS errors are no longer relevant
+        log_debug("ACDS receive error after WebRTC success - signaling complete");
+        connection_successful = true;
+        break;
+      }
+
       if (recv_result == ERROR_NETWORK) {
         log_warn("ACDS connection closed during WebRTC signaling");
         break;
@@ -631,6 +643,7 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   }
 
   log_info("WebRTC+STUN connection established");
+  log_info("WebRTC connection established"); // For test script detection
   connection_state_transition(ctx, CONN_STATE_WEBRTC_STUN_CONNECTED);
   ctx->active_transport = ctx->webrtc_transport;
 

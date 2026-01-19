@@ -113,11 +113,17 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
     return;
   }
 
+  log_debug("Transport created, checking callback: on_transport_ready=%p, user_data=%p",
+            (void *)manager->config.on_transport_ready, manager->config.user_data);
+
   // Notify application
   if (manager->config.on_transport_ready) {
+    log_debug("Calling on_transport_ready callback");
     manager->config.on_transport_ready(transport, peer->participant_id, manager->config.user_data);
+    log_debug("Callback completed");
   } else {
     // No callback - clean up transport
+    log_warn("No on_transport_ready callback registered, cleaning up transport");
     acip_transport_destroy(transport);
   }
 
@@ -374,6 +380,23 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
 
   // Find or create peer connection
   peer_entry_t *peer;
+
+  // Special case: If receiving an answer and we're a joiner, we may have created
+  // a peer with broadcast ID (00000000...) and need to update it to the real sender_id
+  if (sdp->sdp_type == 1 && manager->role == WEBRTC_ROLE_JOINER) {
+    static const uint8_t broadcast_id[16] = {0};
+    peer = find_peer_locked(manager, broadcast_id);
+    if (peer) {
+      log_debug("Updating broadcast peer with real participant_id from answer");
+      // Remove from hash with old ID
+      HASH_DEL(manager->peers, peer);
+      // Update to real participant_id
+      memcpy(peer->participant_id, sdp->sender_id, 16);
+      // Re-add with new ID
+      HASH_ADD(hh, manager->peers, participant_id, 16, peer);
+    }
+  }
+
   asciichat_error_t result = create_peer_connection_locked(manager, sdp->session_id, sdp->sender_id, &peer);
   if (result != ASCIICHAT_OK) {
     mutex_unlock(&manager->peers_mutex);

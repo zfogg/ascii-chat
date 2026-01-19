@@ -269,6 +269,16 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
 bool webrtc_datachannel_is_open(webrtc_data_channel_t *dc);
 
 /**
+ * @brief Set DataChannel open state (internal use)
+ * @param dc Data channel
+ * @param is_open Open state to set
+ *
+ * Internal function for transport layer to manually set open state when
+ * callbacks are replaced after the DataChannel is already open.
+ */
+void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open);
+
+/**
  * @brief Get DataChannel label
  * @param dc Data channel
  * @return Label string (null-terminated), or NULL on error

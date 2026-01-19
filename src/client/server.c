@@ -923,29 +923,29 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  * @ingroup client_connection
  */
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
-  // Get socket and crypto context while holding mutex (brief lock)
+  // Get transport reference while holding mutex (brief lock)
   mutex_lock(&g_send_mutex);
 
-  // Check connection status and get socket reference
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+  // Check connection status and get transport reference
+  if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return -1;
   }
 
-  // Get crypto context if encryption is enabled
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+  // Get transport reference - transport has its own internal synchronization
+  acip_transport_t *transport = g_client_transport;
   mutex_unlock(&g_send_mutex);
 
   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
-  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
+  asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
 
   // If send failed due to network error, signal connection loss
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     server_connection_lost();
+    return -1;
   }
 
-  return result;
+  return 0;
 }
 
 /**
@@ -1086,11 +1086,8 @@ int threaded_send_pong_packet(void) {
  *
  * @ingroup client_connection
  */
-int threaded_send_stream_start_packet(uint32_t stream_type) {
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
+asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type) {
+  // Connection and transport availability is checked by threaded_send_packet()
 
   // Build STREAM_START packet locally
   uint32_t type_data = HOST_TO_NET_U32(stream_type);
@@ -1112,15 +1109,12 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
  *
  * @ingroup client_connection
  */
-int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
   log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
             GET_OPTION(auto_width), GET_OPTION(auto_height));
 
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
+  // Connection and transport availability is checked by threaded_send_packet()
 
   // Build terminal capabilities packet locally
   // Detect terminal capabilities automatically
@@ -1199,10 +1193,7 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
  * @ingroup client_connection
  */
 int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
+  // Connection and transport availability is checked by threaded_send_packet()
 
   // Build CLIENT_JOIN packet locally
   client_info_packet_t join_packet;

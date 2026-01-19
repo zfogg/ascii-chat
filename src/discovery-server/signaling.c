@@ -86,25 +86,36 @@ static void broadcast_callback(socket_t socket, void *client_data, void *user_ar
   broadcast_context_t *ctx = (broadcast_context_t *)user_arg;
 
   if (!client_data) {
+    log_debug("Broadcast: socket=%d has no client_data", socket);
     return; // Client not yet joined a session
   }
 
   acds_client_data_t *acds_data = (acds_client_data_t *)client_data;
   if (!acds_data->joined_session) {
+    log_debug("Broadcast: socket=%d not joined (joined_session=false)", socket);
     return; // Client connected but hasn't joined
   }
 
+  log_debug("Broadcast: checking socket=%d (session=%02x%02x..., participant=%02x%02x...)", socket,
+            acds_data->session_id[0], acds_data->session_id[1], acds_data->participant_id[0],
+            acds_data->participant_id[1]);
+
   // Check if client is in target session
   if (!uuid_equals(acds_data->session_id, ctx->target_session_id)) {
+    log_debug("Broadcast: socket=%d in different session", socket);
     return; // Different session
   }
 
   // Skip excluded participant (e.g., sender)
   if (ctx->exclude_participant_id && uuid_equals(acds_data->participant_id, ctx->exclude_participant_id)) {
+    log_debug("Broadcast: socket=%d is excluded sender (participant=%02x%02x...)", socket, acds_data->participant_id[0],
+              acds_data->participant_id[1]);
     return; // Skip sender
   }
 
   // Send packet to this participant
+  log_debug("Broadcast: sending to socket=%d (participant=%02x%02x...)", socket, acds_data->participant_id[0],
+            acds_data->participant_id[1]);
   int result = send_packet(socket, ctx->packet_type, ctx->packet, ctx->packet_len);
   if (result == 0) {
     ctx->sent_count++;
