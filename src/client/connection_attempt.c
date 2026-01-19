@@ -563,8 +563,10 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   // Step 4: Initiate WebRTC connection (send SDP offer)
   // ─────────────────────────────────────────────────────────────
 
-  // Initiate peer connection as JOINER - this creates peer, data channel, and sends SDP offer
-  result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
+  // Broadcast SDP offer to all session participants (recipient_id = all zeros)
+  // The server will receive this and respond with its own SDP answer
+  uint8_t broadcast_recipient[16] = {0};
+  result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, broadcast_recipient);
   if (result != ASCIICHAT_OK) {
     log_warn("Failed to initiate WebRTC connection: %d", result);
     acds_client_disconnect(&acds_client);
@@ -825,7 +827,9 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   g_peer_manager = ctx->peer_manager;
 
   // Initiate WebRTC connection with TURN
-  result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, ctx->session_ctx.participant_id);
+  // Use broadcast recipient (all zeros) to connect to all session participants
+  uint8_t broadcast_recipient_turn[16] = {0};
+  result = webrtc_peer_manager_connect(ctx->peer_manager, ctx->session_ctx.session_id, broadcast_recipient_turn);
   if (result != ASCIICHAT_OK) {
     log_warn("Failed to initiate WebRTC+TURN connection: %d", result);
     acds_client_disconnect(&acds_client);
