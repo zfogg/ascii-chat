@@ -1,45 +1,15 @@
 /**
- * @file acds/strings.c
+ * @file discovery/strings.c
  * @brief Session string generation implementation
  */
 
 #include "discovery/strings.h"
+#include "discovery/adjectives.h"
+#include "discovery/nouns.h"
 #include "log/logging.h"
 #include <sodium.h>
 #include <string.h>
 #include <ctype.h>
-
-// Embedded wordlists (minimal for now - ~100 words each)
-// Future: Load from wordlists/adjectives.txt and wordlists/nouns.txt
-
-static const char *adjectives[] = {
-    "swift",  "quiet",    "bright",   "gentle",  "bold",     "calm",   "dark",     "free",    "golden",  "happy",
-    "icy",    "jolly",    "kind",     "lively",  "noble",    "proud",  "rapid",    "silver",  "tall",    "warm",
-    "wild",   "wise",     "young",    "brave",   "clever",   "eager",  "fair",     "great",   "huge",    "just",
-    "keen",   "lucky",    "mild",     "neat",    "open",     "pure",   "quick",    "red",     "safe",    "true",
-    "vast",   "white",    "yellow",   "zealous", "amber",    "blue",   "cool",     "deep",    "easy",    "fast",
-    "good",   "high",     "jade",     "long",    "new",      "old",    "pink",     "rich",    "slow",    "thin",
-    "vivid",  "wide",     "zenithed", "assured", "clear",    "divine", "ethereal", "firm",    "grand",   "honest",
-    "iron",   "jade",     "keen",     "loyal",   "mellow",   "noble",  "open",     "prime",   "quiet",   "radiant",
-    "serene", "tranquil", "unique",   "vibrant", "warm",     "xenial", "youthful", "zestful", "agile",   "brilliant",
-    "crisp",  "deft",     "elegant",  "fluid",   "graceful", "humble", "intense",  "jovial",  "kinetic", "lucid",
-    "mystic", "nimble",   "ornate",   "placid"};
-
-static const char *nouns[] = {
-    "river",    "mountain", "forest",   "ocean",     "valley",     "peak",      "lake",     "hill",      "meadow",
-    "canyon",   "delta",    "ridge",    "cliff",     "shore",      "stream",    "bay",      "cove",      "dune",
-    "field",    "grove",    "isle",     "marsh",     "plain",      "reef",      "stone",    "trail",     "vista",
-    "wave",     "aurora",   "beacon",   "cloud",     "dawn",       "ember",     "flame",    "glow",      "horizon",
-    "island",   "jungle",   "moon",     "nebula",    "oasis",      "planet",    "quasar",   "star",      "thunder",
-    "universe", "volcano",  "wind",     "crystal",   "diamond",    "echo",      "frost",    "glacier",   "harbor",
-    "iceberg",  "jade",     "keystone", "lagoon",    "mesa",       "nexus",     "orbit",    "prism",     "quartz",
-    "reef",     "summit",   "temple",   "umbra",     "vertex",     "waterfall", "xenolith", "zenith",    "abyss",
-    "bridge",   "castle",   "dome",     "echo",      "fountain",   "garden",    "haven",    "inlet",     "mesa",
-    "obelisk",  "portal",   "quarry",   "rapids",    "sanctuary",  "tower",     "vault",    "whirlpool", "asylum",
-    "bastion",  "citadel",  "fortress", "sanctuary", "stronghold", "threshold"};
-
-static const size_t adjectives_count = sizeof(adjectives) / sizeof(adjectives[0]);
-static const size_t nouns_count = sizeof(nouns) / sizeof(nouns[0]);
 
 asciichat_error_t acds_string_init(void) {
   // libsodium's randombytes is already initialized by sodium_init()
