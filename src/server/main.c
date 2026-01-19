@@ -245,6 +245,14 @@ static acds_client_t *g_acds_client = NULL;
 static acip_transport_t *g_acds_transport = NULL;
 
 /**
+ * @brief Server's participant ID in the ACDS session
+ *
+ * Used as sender_id in WebRTC SDP/ICE packets sent via ACDS relay.
+ * Set during SESSION_JOIN, all zeros if not using ACDS.
+ */
+static uint8_t g_server_participant_id[16] = {0};
+
+/**
  * @brief Global WebRTC peer manager for accepting client connections
  *
  * Manages WebRTC peer connections when acting as session creator (server role).
@@ -520,9 +528,8 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uin
   // Fill header
   acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
   memcpy(header->session_id, session_id, 16);
-  // Server participant_id: Currently zero, ACDS relay identifies sender by socket connection
-  // NOTE: If ACDS requires explicit participant_id, server needs to join its own session
-  memset(header->sender_id, 0, 16);
+  // Use server's participant_id from SESSION_JOIN as sender
+  memcpy(header->sender_id, g_server_participant_id, 16);
   memcpy(header->recipient_id, recipient_id, 16);
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
@@ -585,8 +592,8 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
   // Fill header
   acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
   memcpy(header->session_id, session_id, 16);
-  // Server participant_id: Currently zero, ACDS relay identifies sender by socket connection
-  memset(header->sender_id, 0, 16);
+  // Use server's participant_id from SESSION_JOIN as sender
+  memcpy(header->sender_id, g_server_participant_id, 16);
   memcpy(header->recipient_id, recipient_id, 16);
   header->candidate_len = HOST_TO_NET_U16((uint16_t)payload_len);
 
@@ -1682,6 +1689,7 @@ int server_main(void) {
           log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
                     join_result.participant_id[1]);
           // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
+          memcpy(g_server_participant_id, join_result.participant_id, 16);
           memcpy(create_result.session_id, join_result.session_id, 16);
         }
 
