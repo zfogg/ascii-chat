@@ -908,6 +908,12 @@ static void *acds_receive_thread(void *arg) {
     asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
     if (result != ASCIICHAT_OK) {
+      // Timeouts are normal when there are no packets - just continue waiting
+      if (result == ERROR_NETWORK_TIMEOUT) {
+        continue;
+      }
+
+      // Fatal errors - exit thread
       if (result == ERROR_NETWORK) {
         log_warn("ACDS connection closed (network error), exiting receive thread");
       } else {
