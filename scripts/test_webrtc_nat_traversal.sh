@@ -26,7 +26,7 @@ TURN_CRED="0aa9917b4dad1b01631e87a32b875e09"
 
 # Cleanup on exit
 cleanup() {
-  ssh $REMOTE_HOST "pkill -9 ascii-chat" 2>/dev/null || true
+  timeout 5 ssh -o ConnectTimeout=3 -o ServerAliveInterval=1 -o ServerAliveCountMax=1 $REMOTE_HOST "pkill -9 ascii-chat" 2>/dev/null || true
   exit ${1:-130}
 }
 trap cleanup SIGINT SIGTERM
@@ -41,7 +41,7 @@ echo "TURN:   $TURN_SERVERS"
 echo ""
 
 # Helper
-run_remote() { ssh $REMOTE_HOST "cd $REMOTE_REPO && $1"; }
+run_remote() { timeout 10 ssh -o ConnectTimeout=5 -o ServerAliveInterval=2 -o ServerAliveCountMax=2 $REMOTE_HOST "cd $REMOTE_REPO && $1"; }
 
 # Track results
 TESTS_PASSED=0
@@ -78,7 +78,7 @@ fi
 # [3/5] Start ACDS discovery server
 ACDS_PORT=27225
 echo "[3/5] Starting ACDS..."
-ssh -f $REMOTE_HOST "cd $REMOTE_REPO && nohup ./build/bin/ascii-chat discovery-server --port $ACDS_PORT > /tmp/acds.log 2>&1 &"
+ssh -f -o ConnectTimeout=5 -o ServerAliveInterval=2 -o ServerAliveCountMax=2 $REMOTE_HOST "cd $REMOTE_REPO && nohup ./build/bin/ascii-chat discovery-server --port $ACDS_PORT > /tmp/acds.log 2>&1 &"
 sleep 2
 if ! run_remote "lsof -i :$ACDS_PORT" > /dev/null 2>&1; then
   echo "ERROR: ACDS failed to start"
@@ -89,7 +89,7 @@ echo "   ✓ ACDS running on port $ACDS_PORT"
 
 # [4/5] Start server with WebRTC
 echo "[4/5] Starting server..."
-ssh -f $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 timeout 30 ./build/bin/ascii-chat server 0.0.0.0 --port $SERVER_PORT --password \"$TEST_PASSWORD\" --webrtc --acds --acds-server 127.0.0.1 --acds-port $ACDS_PORT > /tmp/server_output.txt 2>&1"
+ssh -f -o ConnectTimeout=5 -o ServerAliveInterval=2 -o ServerAliveCountMax=2 $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 timeout 30 ./build/bin/ascii-chat server 0.0.0.0 --port $SERVER_PORT --password \"$TEST_PASSWORD\" --webrtc --acds --acds-server 127.0.0.1 --acds-port $ACDS_PORT > /tmp/server_output.txt 2>&1"
 
 sleep 2
 if ! run_remote "lsof -i :$SERVER_PORT" > /dev/null 2>&1; then
