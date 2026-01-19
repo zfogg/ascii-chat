@@ -30,6 +30,7 @@ using std::atomic_uint;
 #include "video/video_frame.h"
 #include "platform/terminal.h"
 #include "video/palette.h"
+#include "uthash/uthash.h" // For UT_hash_handle
 
 /**
  * @brief Per-client state structure for server-side client management
