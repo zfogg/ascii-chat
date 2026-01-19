@@ -880,7 +880,7 @@ static void *acds_receive_thread(void *arg) {
   // Keepalive is handled by separate ping thread
   while (!atomic_load(&g_server_should_exit)) {
     if (!g_acds_transport) {
-      log_debug("ACDS transport destroyed, exiting receive thread");
+      log_warn("ACDS transport is NULL, exiting receive thread");
       break;
     }
 
@@ -888,15 +888,19 @@ static void *acds_receive_thread(void *arg) {
 
     if (result != ASCIICHAT_OK) {
       if (result == ERROR_NETWORK) {
-        log_debug("ACDS connection closed");
+        log_warn("ACDS connection closed (network error), exiting receive thread");
       } else {
-        log_error("ACDS receive error: %s", asciichat_error_string(result));
+        log_error("ACDS receive error: %s, exiting receive thread", asciichat_error_string(result));
       }
       break;
     }
   }
 
-  log_debug("ACDS receive thread exiting");
+  if (atomic_load(&g_server_should_exit)) {
+    log_debug("ACDS receive thread exiting (server shutdown)");
+  } else {
+    log_warn("ACDS receive thread exiting unexpectedly");
+  }
   return NULL;
 }
 
