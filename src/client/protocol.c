@@ -412,12 +412,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
       // If delay is 0, take snapshot immediately on first frame
       if (GET_OPTION(snapshot_delay) == 0) {
-        log_info("Snapshot captured immediately (delay=0)!");
+        log_debug("Snapshot captured immediately (delay=0)!");
         take_snapshot = true;
         signal_exit();
       } else {
-        log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
-                 GET_OPTION(snapshot_delay));
+        log_debug("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
+                  GET_OPTION(snapshot_delay));
       }
     } else {
       struct timespec current_time;
@@ -430,7 +430,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       if (elapsed >= GET_OPTION(snapshot_delay)) {
         char duration_str[32];
         format_duration_s(elapsed, duration_str, sizeof(duration_str));
-        log_info("Snapshot captured after %s!", duration_str);
+        log_debug("Snapshot captured after %s!", duration_str);
         take_snapshot = true;
         signal_exit();
       }
@@ -444,7 +444,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!first_frame_rendered) {
     // Always clear display and disable logging before rendering the first frame
     // This ensures clean ASCII display regardless of packet arrival order
-    log_info("First frame - clearing display and disabling terminal logging");
+    log_debug("First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
     display_full_reset();
     first_frame_rendered = true;
@@ -526,8 +526,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       if (frame_data[i] == '\n')
         line_count++;
     }
-    log_info("CLIENT_FRAME: received %zu bytes, %d newlines, header: %ux%u", frame_len, line_count, header.width,
-             header.height);
+    log_debug("CLIENT_FRAME: received %zu bytes, %d newlines, header: %ux%u", frame_len, line_count, header.width,
+              header.height);
   }
 
   display_render_frame(frame_data, take_snapshot);
@@ -717,8 +717,8 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
 
   static int timing_count = 0;
   if (++timing_count % 100 == 0) {
-    log_info("Audio packet timing #%d: decode=%.2fµs, process=%.2fµs, total=%.2fµs", timing_count, decode_ns / 1000.0,
-             process_ns / 1000.0, total_ns / 1000.0);
+    log_debug("Audio packet timing #%d: decode=%.2fµs, process=%.2fµs, total=%.2fµs", timing_count, decode_ns / 1000.0,
+              process_ns / 1000.0, total_ns / 1000.0);
   }
 
   log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,
@@ -907,8 +907,8 @@ static void handle_server_state_packet(const void *data, size_t len) {
   // Check if connected count changed - if so, set flag to clear console before next frame
   if (g_server_state_initialized) {
     if (g_last_active_count != active_count) {
-      log_info("Active client count changed from %u to %u - will clear console before next frame", g_last_active_count,
-               active_count);
+      log_debug("Active client count changed from %u to %u - will clear console before next frame", g_last_active_count,
+                active_count);
       g_should_clear_before_next_frame = true;
     }
   } else {
@@ -1099,12 +1099,12 @@ int protocol_start_connection() {
 
   // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
   // Server expects this as the first packet after crypto handshake
-  log_info("Sending client capabilities to server...");
+  log_debug("Sending client capabilities to server...");
   if (threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height)) < 0) {
     log_error("Failed to send client capabilities to server");
     return -1;
   }
-  log_info("Client capabilities sent successfully");
+  log_debug("Client capabilities sent successfully");
 
   // Send STREAM_START packet with combined stream types BEFORE starting worker threads
   // This tells the server what streams to expect before any data arrives
@@ -1112,13 +1112,13 @@ int protocol_start_connection() {
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
   }
-  log_info("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
-           (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
+  log_debug("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
+            (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
   if (threaded_send_stream_start_packet(stream_types) < 0) {
     log_error("Failed to send STREAM_START packet");
     return -1;
   }
-  log_info("STREAM_START packet sent successfully");
+  log_debug("STREAM_START packet sent successfully");
 
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
@@ -1129,28 +1129,28 @@ int protocol_start_connection() {
   }
 
   // Start webcam capture thread
-  log_info("Starting webcam capture thread...");
+  log_debug("Starting webcam capture thread...");
   if (capture_start_thread() != 0) {
     log_error("Failed to start webcam capture thread");
     return -1;
   }
-  log_info("Webcam capture thread started successfully");
+  log_debug("Webcam capture thread started successfully");
 
   // Start audio capture thread if audio is enabled
-  log_info("Starting audio capture thread...");
+  log_debug("Starting audio capture thread...");
   if (audio_start_thread() != 0) {
     log_error("Failed to start audio capture thread");
     return -1;
   }
-  log_info("Audio capture thread started successfully (or skipped if audio disabled)");
+  log_debug("Audio capture thread started successfully (or skipped if audio disabled)");
 
   // Start keepalive/ping thread to prevent server timeout
-  log_info("Starting keepalive/ping thread...");
+  log_debug("Starting keepalive/ping thread...");
   if (keepalive_start_thread() != 0) {
     log_error("Failed to start keepalive/ping thread");
     return -1;
   }
-  log_info("Keepalive/ping thread started successfully");
+  log_debug("Keepalive/ping thread started successfully");
 
   g_data_thread_created = true;
   return 0;
@@ -1208,7 +1208,7 @@ void protocol_stop_connection() {
   g_data_thread_created = false;
 
 #ifdef DEBUG_THREADS
-  log_info("Data reception thread stopped and joined by thread pool");
+  log_debug("Data reception thread stopped and joined by thread pool");
 #endif
 }
 
@@ -1403,7 +1403,7 @@ static void acip_on_clear_console(void *ctx) {
 
   // Server requested console clear
   display_full_reset();
-  log_info("Console cleared by server");
+  log_debug("Console cleared by server");
 }
 
 /**
@@ -1468,7 +1468,8 @@ static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, v
 
   // Log SDP type for debugging
   const char *sdp_type_str = (sdp->sdp_type == 0) ? "offer" : "answer";
-  log_info("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str, (const char *)sdp->session_id);
+  log_debug("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str,
+            (const char *)sdp->session_id);
 
   // Handle SDP through peer manager (extracts variable data internally)
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_peer_manager, sdp);
@@ -1544,18 +1545,18 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
   }
 
   // Join succeeded - we have session context now
-  log_info("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)",
-           (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
-           joined->server_address, joined->server_port);
+  log_debug("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)",
+            (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
+            joined->server_address, joined->server_port);
 
   // Check if this is a WebRTC session
   if (joined->session_type == SESSION_TYPE_WEBRTC) {
     // TODO: Phase 3 - Initialize WebRTC connection with TURN credentials
     // webrtc_initialize_session(joined->session_id, joined->participant_id,
     //                           joined->turn_username, joined->turn_password);
-    log_info("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
+    log_debug("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
   } else {
     // Direct TCP - connection is already established or will be established
-    log_info("Direct TCP session - using existing connection");
+    log_debug("Direct TCP session - using existing connection");
   }
 }

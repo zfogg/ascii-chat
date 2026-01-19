@@ -376,7 +376,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       // Try IPv6 loopback connection
       g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
           SAFE_STRNCPY(g_server_ip, "::1", sizeof(g_server_ip));
@@ -410,7 +410,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     if (ipv4_result == 0 && res != NULL) {
       g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
           SAFE_STRNCPY(g_server_ip, "127.0.0.1", sizeof(g_server_ip));
@@ -605,9 +605,9 @@ connection_success:
 
   // Send client join packet for multi-user support
   uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
-  log_info("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
+  log_debug("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
   if (GET_OPTION(audio_enabled)) {
-    log_info("Adding CLIENT_CAP_AUDIO to capabilities");
+    log_debug("Adding CLIENT_CAP_AUDIO to capabilities");
     my_capabilities |= CLIENT_CAP_AUDIO;
   }
   if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
@@ -1114,8 +1114,8 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
  */
 int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
-  log_info("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
-           GET_OPTION(auto_width), GET_OPTION(auto_height));
+  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
+            GET_OPTION(auto_width), GET_OPTION(auto_height));
 
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {

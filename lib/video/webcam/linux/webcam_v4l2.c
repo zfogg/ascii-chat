@@ -118,7 +118,7 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->pixelformat = V4L2_PIX_FMT_RGB24;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
-    log_info("V4L2 format set to RGB24 %dx%d", ctx->width, ctx->height);
+    log_debug("V4L2 format set to RGB24 %dx%d", ctx->width, ctx->height);
     return 0;
   }
 
@@ -128,7 +128,7 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->pixelformat = V4L2_PIX_FMT_YUYV;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
-    log_info("V4L2 format set to YUYV %dx%d (will convert to RGB)", ctx->width, ctx->height);
+    log_debug("V4L2 format set to YUYV %dx%d (will convert to RGB)", ctx->width, ctx->height);
     return 0;
   }
 
@@ -225,7 +225,7 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
     return -1;
   }
 
-  log_info("V4L2 streaming started");
+  log_debug("V4L2 streaming started");
   return 0;
 }
 
@@ -324,7 +324,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   *ctx = context;
-  log_info("V4L2 webcam initialized successfully on %s", device_path);
+  log_debug("V4L2 webcam initialized successfully on %s", device_path);
   return 0;
 }
 
@@ -361,7 +361,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
 
   close(ctx->fd);
   SAFE_FREE(ctx);
-  log_info("V4L2 webcam cleaned up");
+  log_debug("V4L2 webcam cleaned up");
 }
 
 image_t *webcam_read_context(webcam_context_t *ctx) {

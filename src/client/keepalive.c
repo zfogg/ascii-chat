@@ -279,7 +279,7 @@ void keepalive_stop_thread() {
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_ping_thread_created = false;
 
-  log_info("Ping thread stopped and joined");
+  log_debug("Ping thread stopped and joined");
 }
 
 /**

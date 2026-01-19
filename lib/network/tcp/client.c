@@ -456,7 +456,7 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
       // Try IPv6 loopback connection
       client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (client->sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
         if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
           SAFE_STRNCPY(client->server_ip, "::1", sizeof(client->server_ip));
@@ -479,7 +479,7 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
     if (ipv4_result == 0 && res != NULL) {
       client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (client->sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
         if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
           SAFE_STRNCPY(client->server_ip, "127.0.0.1", sizeof(client->server_ip));

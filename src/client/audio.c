@@ -256,7 +256,7 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
  */
 static void *audio_sender_thread_func(void *arg) {
   (void)arg;
-  log_info("Audio sender thread started");
+  log_debug("Audio sender thread started");
 
   // Initialize timing system for performance profiling
   if (!timer_is_initialized()) {
@@ -296,12 +296,12 @@ static void *audio_sender_thread_func(void *arg) {
     } else if (send_count % 50 == 0) {
       char duration_str[32];
       format_duration_ns(send_time_ns, duration_str, sizeof(duration_str));
-      log_info("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,
-               duration_str);
+      log_debug("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,
+                duration_str);
     }
   }
 
-  log_info("Audio sender thread exiting");
+  log_debug("Audio sender thread exiting");
 
   // Clean up thread-local error context before exit
   asciichat_errno_cleanup();
@@ -327,7 +327,7 @@ static void audio_sender_init(void) {
   // Start sender thread
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
-    log_info("Audio sender thread created");
+    log_debug("Audio sender thread created");
   } else {
     log_error("Failed to spawn audio sender thread in worker pool");
     LOG_ERRNO_IF_SET("Audio sender thread creation failed");
@@ -351,7 +351,7 @@ static void audio_sender_cleanup(void) {
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
     g_audio_sender_thread_created = false;
-    log_info("Audio sender thread will be joined by thread pool");
+    log_debug("Audio sender thread will be joined by thread pool");
   }
 
   mutex_destroy(&g_audio_send_queue_mutex);
@@ -435,9 +435,9 @@ void audio_process_received_samples(const float *samples, int num_samples) {
       if (abs_val > peak)
         peak = abs_val;
     }
-    log_info("CLIENT AUDIO RECV #%d: %d samples, RMS=%.6f, Peak=%.6f, first4=[%.4f,%.4f,%.4f,%.4f]", recv_count,
-             num_samples, received_rms, peak, num_samples > 0 ? samples[0] : 0.0f, num_samples > 1 ? samples[1] : 0.0f,
-             num_samples > 2 ? samples[2] : 0.0f, num_samples > 3 ? samples[3] : 0.0f);
+    log_debug("CLIENT AUDIO RECV #%d: %d samples, RMS=%.6f, Peak=%.6f, first4=[%.4f,%.4f,%.4f,%.4f]", recv_count,
+              num_samples, received_rms, peak, num_samples > 0 ? samples[0] : 0.0f, num_samples > 1 ? samples[1] : 0.0f,
+              num_samples > 2 ? samples[2] : 0.0f, num_samples > 3 ? samples[3] : 0.0f);
   }
 
   // Submit to playback system (goes to jitter buffer and speakers)
@@ -487,7 +487,7 @@ void audio_process_received_samples(const float *samples, int num_samples) {
 static void *audio_capture_thread_func(void *arg) {
   (void)arg;
 
-  log_info("Audio capture thread started");
+  log_debug("Audio capture thread started");
 
   // Initialize timing system for performance profiling
   if (!timer_is_initialized()) {
@@ -529,7 +529,7 @@ static void *audio_capture_thread_func(void *arg) {
   if (!wav_dumpers_initialized && wav_dump_enabled()) {
     g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
     g_wav_capture_processed = wav_writer_open("/tmp/audio_capture_processed.wav", AUDIO_SAMPLE_RATE, 1);
-    log_info("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
+    log_debug("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
     wav_dumpers_initialized = true;
   }
 
@@ -617,7 +617,8 @@ static void *audio_capture_thread_func(void *arg) {
     static int total_reads = 0;
     total_reads++;
     if (total_reads % 10 == 0) {
-      log_info("Audio capture loop iteration #%d: available=%d, samples_read=%d", total_reads, available, samples_read);
+      log_debug("Audio capture loop iteration #%d: available=%d, samples_read=%d", total_reads, available,
+                samples_read);
     }
 
     if (samples_read > 0) {
@@ -640,7 +641,7 @@ static void *audio_capture_thread_func(void *arg) {
         static int norm_count = 0;
         norm_count++;
         if (norm_count <= 5 || norm_count % 100 == 0) {
-          log_info("Input normalization #%d: peak=%.4f, gain=%.4f", norm_count, peak, gain);
+          log_debug("Input normalization #%d: peak=%.4f, gain=%.4f", norm_count, peak, gain);
         }
       }
 
@@ -658,9 +659,9 @@ static void *audio_capture_thread_func(void *arg) {
       }
       float rms = sqrtf(sum_squares / (samples_read > 10 ? 10 : samples_read));
       if (read_count <= 5 || read_count % 20 == 0) {
-        log_info("Audio capture read #%d: available=%d, samples_read=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f", read_count,
-                 available, samples_read, samples_read > 0 ? audio_buffer[0] : 0.0f,
-                 samples_read > 1 ? audio_buffer[1] : 0.0f, samples_read > 2 ? audio_buffer[2] : 0.0f, rms);
+        log_debug("Audio capture read #%d: available=%d, samples_read=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f", read_count,
+                  available, samples_read, samples_read > 0 ? audio_buffer[0] : 0.0f,
+                  samples_read > 1 ? audio_buffer[1] : 0.0f, samples_read > 2 ? audio_buffer[2] : 0.0f, rms);
       }
 
       // Track sent samples for analysis
@@ -707,8 +708,8 @@ static void *audio_capture_thread_func(void *arg) {
             if (encode_count % 50 == 0) {
               char duration_str[32];
               format_duration_ns(encode_time_ns, duration_str, sizeof(duration_str));
-              log_info("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
-                       duration_str);
+              log_debug("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
+                        duration_str);
             }
 
             log_debug_every(LOG_RATE_VERY_FAST, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)",
@@ -761,8 +762,8 @@ static void *audio_capture_thread_func(void *arg) {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
             char queue_duration_str[32];
             format_duration_ns(queue_time_ns, queue_duration_str, sizeof(queue_duration_str));
-            log_info("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes) in %s", batch_send_count, batch_frame_count,
-                     batch_total_size, queue_duration_str);
+            log_debug("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes) in %s", batch_send_count, batch_frame_count,
+                      batch_total_size, queue_duration_str);
           }
           // Track audio frame for FPS reporting
           struct timespec current_time;
@@ -798,8 +799,8 @@ static void *audio_capture_thread_func(void *arg) {
         format_duration_ns(total_queue_ns / timing_loop_count, avg_queue_str, sizeof(avg_queue_str));
         format_duration_ns(max_queue_ns, max_queue_str, sizeof(max_queue_str));
 
-        log_info("CAPTURE TIMING #%lu: loop avg=%s max=%s, read avg=%s max=%s", timing_loop_count, avg_loop_str,
-                 max_loop_str, avg_read_str, max_read_str);
+        log_debug("CAPTURE TIMING #%lu: loop avg=%s max=%s, read avg=%s max=%s", timing_loop_count, avg_loop_str,
+                  max_loop_str, avg_read_str, max_read_str);
         log_info("  encode avg=%s max=%s, queue avg=%s max=%s", avg_encode_str, max_encode_str, avg_queue_str,
                  max_queue_str);
       }
@@ -867,7 +868,7 @@ static void *audio_capture_thread_func(void *arg) {
     }
   }
 
-  log_info("Audio capture thread stopped");
+  log_debug("Audio capture thread stopped");
   atomic_store(&g_audio_capture_thread_exited, true);
 
   // Clean up thread-local error context before exit
@@ -899,12 +900,12 @@ int audio_client_init() {
   if (wav_dump_enabled()) {
     g_wav_playback_received = wav_writer_open("/tmp/audio_playback_received.wav", AUDIO_SAMPLE_RATE, 1);
     if (g_wav_playback_received) {
-      log_info("Audio debugging enabled: dumping received audio to /tmp/audio_playback_received.wav");
+      log_debug("Audio debugging enabled: dumping received audio to /tmp/audio_playback_received.wav");
     }
   }
 
   // Initialize PortAudio context using library function
-  log_info("DEBUG: About to call audio_init()...");
+  log_debug("DEBUG: About to call audio_init()...");
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     // Clean up WAV writer if it was opened
@@ -914,7 +915,7 @@ int audio_client_init() {
     }
     return -1;
   }
-  log_info("DEBUG: audio_init() completed successfully");
+  log_debug("DEBUG: audio_init() completed successfully");
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
@@ -937,9 +938,9 @@ int audio_client_init() {
   // We don't tune this; let the system adapt to its actual conditions
   pipeline_config.jitter_margin_ms = 100;
 
-  log_info("DEBUG: About to create audio pipeline...");
+  log_debug("DEBUG: About to create audio pipeline...");
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
-  log_info("DEBUG: client_audio_pipeline_create() returned");
+  log_debug("DEBUG: client_audio_pipeline_create() returned");
   if (!g_audio_pipeline) {
     log_error("Failed to create audio pipeline");
     audio_destroy(&g_audio_context);
@@ -951,8 +952,8 @@ int audio_client_init() {
     return -1;
   }
 
-  log_info("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
-           pipeline_config.opus_bitrate);
+  log_debug("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
+            pipeline_config.opus_bitrate);
 
   // Associate pipeline with audio context for echo cancellation
   // The audio output callback will feed playback samples directly to AEC3 from the speaker output,
@@ -990,10 +991,10 @@ int audio_client_init() {
  * @ingroup client_audio
  */
 int audio_start_thread() {
-  log_info("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
+  log_debug("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
 
   if (!GET_OPTION(audio_enabled)) {
-    log_info("Audio is disabled, skipping audio capture thread creation");
+    log_debug("Audio is disabled, skipping audio capture thread creation");
     return 0; // Audio disabled - not an error
   }
 
@@ -1005,7 +1006,7 @@ int audio_start_thread() {
 
   // If thread exited, allow recreation
   if (g_audio_capture_thread_created && atomic_load(&g_audio_capture_thread_exited)) {
-    log_info("Previous audio capture thread exited, recreating");
+    log_debug("Previous audio capture thread exited, recreating");
     // Use timeout to prevent indefinite blocking
     int join_result = asciichat_thread_join_timeout(&g_audio_capture_thread, NULL, 5000);
     if (join_result != 0) {
@@ -1079,7 +1080,7 @@ void audio_stop_thread() {
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_audio_capture_thread_created = false;
 
-  log_info("Audio capture thread stopped");
+  log_debug("Audio capture thread stopped");
 }
 
 /**
@@ -1135,24 +1136,24 @@ void audio_cleanup() {
   if (g_audio_pipeline) {
     client_audio_pipeline_destroy(g_audio_pipeline);
     g_audio_pipeline = NULL;
-    log_info("Audio pipeline destroyed");
+    log_debug("Audio pipeline destroyed");
   }
 
   // Close WAV dumpers
   if (g_wav_capture_raw) {
     wav_writer_close(g_wav_capture_raw);
     g_wav_capture_raw = NULL;
-    log_info("Closed audio capture raw dump");
+    log_debug("Closed audio capture raw dump");
   }
   if (g_wav_capture_processed) {
     wav_writer_close(g_wav_capture_processed);
     g_wav_capture_processed = NULL;
-    log_info("Closed audio capture processed dump");
+    log_debug("Closed audio capture processed dump");
   }
   if (g_wav_playback_received) {
     wav_writer_close(g_wav_playback_received);
     g_wav_playback_received = NULL;
-    log_info("Closed audio playback received dump");
+    log_debug("Closed audio playback received dump");
   }
 
   // Finally destroy the audio context

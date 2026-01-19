@@ -73,7 +73,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    log_info("Media source: Webcam device %u", index);
+    log_debug("Media source: Webcam device %u", index);
     break;
   }
 
@@ -100,7 +100,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    log_info("Media source: File '%s'", path);
+    log_debug("Media source: File '%s'", path);
     break;
   }
 
@@ -112,7 +112,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    log_info("Media source: stdin");
+    log_debug("Media source: stdin");
     break;
   }
 
@@ -122,7 +122,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     source->webcam_index = 0;
     source->webcam_ctx = NULL; // No context needed for test pattern
 
-    log_info("Media source: Test pattern");
+    log_debug("Media source: Test pattern");
     break;
   }
 

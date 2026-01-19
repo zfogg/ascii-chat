@@ -320,7 +320,7 @@ static void shutdown_client() {
   // Clean up RCU-based options state
   options_state_shutdown();
 
-  log_info("Client shutdown complete");
+  log_debug("Client shutdown complete");
   log_destroy();
 
 #ifndef NDEBUG
@@ -514,7 +514,7 @@ int client_main(void) {
         webcam_print_init_error_help(init_result);
         FATAL(init_result, "%s", asciichat_error_string(init_result));
       }
-      log_info("Successfully initialized with test pattern fallback");
+      log_debug("Successfully initialized with test pattern fallback");
 
       // Clear the error state since we successfully recovered
       CLEAR_ERRNO();
@@ -567,7 +567,7 @@ int client_main(void) {
   if (opts && opts->lan_discovery &&
       (opts->address[0] == '\0' || strcmp(opts->address, "127.0.0.1") == 0 ||
        strcmp(opts->address, "localhost") == 0)) {
-    log_info("LAN discovery: --scan flag set, querying for available servers");
+    log_debug("LAN discovery: --scan flag set, querying for available servers");
 
     discovery_tui_config_t lan_config;
     memset(&lan_config, 0, sizeof(lan_config));
@@ -606,7 +606,7 @@ int client_main(void) {
         exit(1);
       }
       // User cancelled (had servers to choose from but pressed cancel)
-      log_info("LAN discovery: User cancelled server selection");
+      log_debug("LAN discovery: User cancelled server selection");
       if (discovered_servers) {
         discovery_tui_free_results(discovered_servers);
       }
@@ -629,7 +629,7 @@ int client_main(void) {
       snprintf(port_str, sizeof(port_str), "%u", selected->port);
       SAFE_STRNCPY(opts_new->port, port_str, sizeof(opts_new->port));
 
-      log_info("LAN discovery: Selected server '%s' at %s:%s", selected->name, opts_new->address, opts_new->port);
+      log_debug("LAN discovery: Selected server '%s' at %s:%s", selected->name, opts_new->address, opts_new->port);
 
       // Note: In a real scenario, we'd update the global options via RCU
       // For now, we'll use the updated values directly for connection
@@ -688,7 +688,7 @@ int client_main(void) {
       opts_discovery && opts_discovery->session_string[0] != '\0' ? opts_discovery->session_string : "";
 
   if (session_string[0] != '\0') {
-    log_info("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
+    log_debug("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
 
     // Configure discovery coordinator
     discovery_config_t discovery_cfg;
@@ -701,7 +701,7 @@ int client_main(void) {
       asciichat_error_t parse_err = hex_to_pubkey(opts_discovery->server_key, expected_pubkey);
       if (parse_err == ASCIICHAT_OK) {
         discovery_cfg.expected_pubkey = expected_pubkey;
-        log_info("Server key verification enabled");
+        log_debug("Server key verification enabled");
       } else {
         log_warn("Failed to parse server key - skipping verification");
       }
@@ -745,8 +745,8 @@ int client_main(void) {
 
     // Log discovery result
     const char *source_name = discovery_result.source == DISCOVERY_SOURCE_MDNS ? "mDNS (LAN)" : "ACDS (internet)";
-    log_info("Session discovered via %s: %s:%d", source_name, discovery_result.server_address,
-             discovery_result.server_port);
+    log_debug("Session discovered via %s: %s:%d", source_name, discovery_result.server_address,
+              discovery_result.server_port);
 
     // Set discovered address/port for connection
     // Copy to static buffers since discovery_result goes out of scope after this block
@@ -769,7 +769,7 @@ int client_main(void) {
       log_debug("Populated session context for WebRTC fallback (session='%s')", session_string);
     }
 
-    log_info("Connecting to server: %s:%d", discovered_address, discovery_result.server_port);
+    log_info("Connecting to %s:%d", discovered_address, discovery_result.server_port);
   }
 
   const options_t *opts_conn = options_get();
@@ -844,15 +844,15 @@ int client_main(void) {
 
       if (has_ever_connected) {
         if (reconnect_attempts == -1) {
-          log_info("Reconnection attempt #%d... (unlimited retries)", reconnect_attempt);
+          log_info("Reconnecting (attempt %d)...", reconnect_attempt);
         } else {
-          log_info("Reconnection attempt #%d/%d...", reconnect_attempt, reconnect_attempts);
+          log_info("Reconnecting (attempt %d/%d)...", reconnect_attempt, reconnect_attempts);
         }
       } else {
         if (reconnect_attempts == -1) {
-          log_info("Connection attempt #%d... (unlimited retries)", reconnect_attempt);
+          log_info("Connecting (attempt %d)...", reconnect_attempt);
         } else {
-          log_info("Connection attempt #%d/%d...", reconnect_attempt, reconnect_attempts);
+          log_info("Connecting (attempt %d/%d)...", reconnect_attempt, reconnect_attempts);
         }
       }
 
@@ -881,10 +881,10 @@ int client_main(void) {
 
     // Show appropriate connection message based on whether this is first connection or reconnection
     if (!has_ever_connected) {
-      log_info("Connected successfully, starting worker threads");
+      log_info("Connected");
       has_ever_connected = true;
     } else {
-      log_info("Reconnected successfully, starting worker threads");
+      log_info("Reconnected");
     }
 
     // Start all worker threads for this connection
@@ -914,7 +914,7 @@ int client_main(void) {
     while (!should_exit() && server_connection_is_active()) {
       // Check if any critical threads have exited (indicates connection lost)
       if (protocol_connection_lost()) {
-        log_info("Connection lost detected by protocol threads");
+        log_debug("Connection lost detected by protocol threads");
         break;
       }
 
@@ -922,12 +922,12 @@ int client_main(void) {
     }
 
     if (should_exit()) {
-      log_info("Shutdown requested, exiting main loop");
+      log_debug("Shutdown requested, exiting main loop");
       break;
     }
 
     // Connection broken - clean up this connection and prepare for reconnect
-    log_info("Connection lost, cleaning up for reconnection");
+    log_debug("Connection lost, cleaning up for reconnection");
 
     // Re-enable terminal logging when connection is lost for debugging reconnection
     // (but only if we've ever successfully connected before)
@@ -948,16 +948,16 @@ int client_main(void) {
 
     // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
     if (has_ever_connected) {
-      log_info("Waiting 1 second before attempting reconnection...");
+      log_debug("Waiting 1 second before attempting reconnection...");
       platform_sleep_usec(1000000); // 1 second delay
     }
 
-    log_info("Cleanup complete, will attempt reconnection");
+    log_debug("Cleanup complete, will attempt reconnection");
   }
 
   // Cleanup connection context (closes any active transports)
   connection_context_cleanup(&connection_ctx);
 
-  log_info("ascii-chat client shutting down");
+  log_debug("ascii-chat client shutting down");
   return 0;
 }

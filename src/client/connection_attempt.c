@@ -497,8 +497,10 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   ctx->session_ctx.server_port = join_result.server_port;
   SAFE_STRNCPY(ctx->session_ctx.server_address, join_result.server_address, sizeof(ctx->session_ctx.server_address));
 
-  log_debug("Joined ACDS session: session_id=%.*s, participant_id=%.*s", 16, (char *)join_result.session_id, 16,
-            (char *)join_result.participant_id);
+  log_debug("Joined ACDS session: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...",
+            join_result.session_id[0], join_result.session_id[1], join_result.session_id[2], join_result.session_id[3],
+            join_result.participant_id[0], join_result.participant_id[1], join_result.participant_id[2],
+            join_result.participant_id[3]);
 
   // ─────────────────────────────────────────────────────────────
   // Step 3: Create WebRTC peer manager with STUN servers

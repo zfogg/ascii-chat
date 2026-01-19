@@ -142,6 +142,11 @@ static asciichat_error_t client_send_sdp(const uint8_t session_id[16], const uin
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
 
+  log_debug("SDP packet: session_id=%02x%02x%02x%02x..., sender=%02x%02x%02x%02x..., recipient=%02x%02x%02x%02x...",
+            session_id[0], session_id[1], session_id[2], session_id[3], g_session_context.participant_id[0],
+            g_session_context.participant_id[1], g_session_context.participant_id[2],
+            g_session_context.participant_id[3], recipient_id[0], recipient_id[1], recipient_id[2], recipient_id[3]);
+
   // Copy SDP string after header
   memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 

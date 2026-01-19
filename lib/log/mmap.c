@@ -282,15 +282,15 @@ void log_mmap_destroy(void) {
         SetEndOfFile(hFile);
       }
       CloseHandle(hFile);
-      log_info("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
-               g_mmap_log.text_capacity / 1024 / 1024);
+      log_debug("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
+                g_mmap_log.text_capacity / 1024 / 1024);
     }
 #else
     /* POSIX: Use ftruncate() on the file descriptor */
     if (g_mmap_log.mmap.fd >= 0) {
       if (ftruncate(g_mmap_log.mmap.fd, (off_t)final_pos) == 0) {
-        log_info("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
-                 g_mmap_log.text_capacity / 1024 / 1024);
+        log_debug("mmap log: truncated %s to %zu bytes (was %zu MB)", g_mmap_log.file_path, (size_t)final_pos,
+                  g_mmap_log.text_capacity / 1024 / 1024);
       }
     }
     platform_mmap_close(&g_mmap_log.mmap);
@@ -304,7 +304,7 @@ void log_mmap_destroy(void) {
   g_mmap_log.file_path[0] = '\0';
 
   g_mmap_log.initialized = false;
-  log_info("mmap log: destroyed");
+  log_debug("mmap log: destroyed");
 }
 
 void log_mmap_write(int level, const char *file, int line, const char *func, const char *fmt, ...) {

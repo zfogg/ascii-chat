@@ -347,10 +347,10 @@ static void *webcam_capture_thread_func(void *arg) {
     if (!image) {
       // Check if we've reached end of file for media sources
       if (media_source_at_end(g_media_source)) {
-        log_info("Media source reached end of file");
+        log_debug("Media source reached end of file");
         break; // Exit capture loop - end of media
       }
-      log_info("No frame available from media source yet (returned NULL)");
+      log_debug("No frame available from media source yet (returned NULL)");
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
@@ -431,7 +431,7 @@ static void *webcam_capture_thread_func(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Webcam capture thread stopped");
+  log_debug("Webcam capture thread stopped");
 #endif
 
   atomic_store(&g_capture_thread_exited, true);
@@ -462,7 +462,7 @@ int capture_init() {
   // Check if test pattern mode is enabled
   if (GET_OPTION(test_pattern)) {
     source_type = MEDIA_SOURCE_TEST;
-    log_info("Using test pattern mode");
+    log_debug("Using test pattern mode");
   }
   // Check if media file is specified
   else if (GET_OPTION(media_file)[0] != '\0') {
@@ -472,11 +472,11 @@ int capture_init() {
     if (strcmp(media_file, "-") == 0) {
       source_type = MEDIA_SOURCE_STDIN;
       source_path = "-";
-      log_info("Using stdin for media input");
+      log_debug("Using stdin for media input");
     } else {
       source_type = MEDIA_SOURCE_FILE;
       source_path = media_file;
-      log_info("Using media file: %s", media_file);
+      log_debug("Using media file: %s", media_file);
     }
   }
   // Default to webcam
@@ -487,7 +487,7 @@ int capture_init() {
     static char webcam_index_str[16];
     snprintf(webcam_index_str, sizeof(webcam_index_str), "%d", webcam_index);
     source_path = webcam_index_str;
-    log_info("Using webcam device %d", webcam_index);
+    log_debug("Using webcam device %d", webcam_index);
   }
 
   // Create media source
@@ -508,7 +508,7 @@ int capture_init() {
   // Enable loop if requested (only for file sources)
   if (GET_OPTION(media_loop) && source_type == MEDIA_SOURCE_FILE) {
     media_source_set_loop(g_media_source, true);
-    log_info("Media loop enabled");
+    log_debug("Media loop enabled");
   }
 
   return 0;
@@ -538,7 +538,7 @@ int capture_start_thread() {
   }
 
   g_capture_thread_created = true;
-  log_info("Webcam capture thread created successfully");
+  log_debug("Webcam capture thread created successfully");
 
   // Notify server we're starting to send video
   if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {

@@ -203,7 +203,7 @@ int client_crypto_init(void) {
 
   // Check if encryption is disabled
   if (GET_OPTION(no_encrypt)) {
-    log_info("Encryption disabled via --no-encrypt");
+    log_info("Encryption disabled");
     log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
     return 0;
   }
@@ -237,7 +237,7 @@ int client_crypto_init(void) {
     // Parse key (handles SSH files and gpg:keyid format)
     log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", encrypt_key);
     if (parse_private_key(encrypt_key, &private_key) == ASCIICHAT_OK) {
-      log_info("Successfully parsed SSH private key");
+      log_debug("Successfully parsed SSH private key");
       log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
       is_ssh_key = true;
     } else {
@@ -305,7 +305,7 @@ int client_crypto_init(void) {
         return -1;
       }
       g_crypto_ctx.crypto_ctx.has_password = true;
-      log_info("Password authentication enabled alongside SSH key");
+      log_debug("Password authentication enabled alongside SSH key");
     }
 
   } else if (strlen(GET_OPTION(password)) > 0) {
@@ -338,12 +338,12 @@ int client_crypto_init(void) {
   if (strlen(server_key) > 0) {
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
-    log_info("Server key verification enabled: %s", server_key);
+    log_debug("Server key verification enabled: %s", server_key);
   }
 
   // If --require-client-verify is set, perform ACDS session lookup for server identity
   if (GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
-    log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
+    log_debug("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
 
     // Connect to ACDS server (configurable via --acds-server and --acds-port options)
     acds_client_config_t acds_config;
@@ -354,7 +354,7 @@ int client_crypto_init(void) {
 
     // ACDS key verification (optional in debug builds, only if --acds-key is provided)
     if (strlen(GET_OPTION(acds_server_key)) > 0) {
-      log_info("Verifying ACDS server key for %s...", acds_config.server_address);
+      log_debug("Verifying ACDS server key for %s...", acds_config.server_address);
       uint8_t acds_pubkey[32];
       asciichat_error_t verify_result =
           acds_keys_verify(acds_config.server_address, GET_OPTION(acds_server_key), acds_pubkey);
@@ -362,7 +362,7 @@ int client_crypto_init(void) {
         log_error("ACDS key verification failed for %s", acds_config.server_address);
         return -1;
       }
-      log_info("ACDS server key verified successfully");
+      log_debug("ACDS server key verified successfully");
     }
 #ifndef NDEBUG
     else {
@@ -398,7 +398,7 @@ int client_crypto_init(void) {
     // Set expected server key for verification during handshake
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key_hex, sizeof(g_crypto_ctx.expected_server_key) - 1);
-    log_info("ACDS session lookup succeeded - server identity will be verified");
+    log_debug("ACDS session lookup succeeded - server identity will be verified");
     log_debug("Expected server key (from ACDS): %s", server_key_hex);
   }
 

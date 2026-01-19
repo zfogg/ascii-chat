@@ -204,7 +204,7 @@ asciichat_error_t webrtc_init(void) {
   rtcPreload();
 
   g_webrtc_initialized = true;
-  log_info("WebRTC library initialized (libdatachannel)");
+  log_debug("WebRTC library initialized (libdatachannel)");
   return ASCIICHAT_OK;
 }
 

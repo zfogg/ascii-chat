@@ -1243,13 +1243,13 @@ int server_main(void) {
   shutdown_register_callback(check_shutdown);
 
   // Initialize crypto after logging is ready
-  log_info("Initializing crypto...");
+  log_debug("Initializing crypto...");
   if (init_server_crypto() != 0) {
     // Print detailed error context if available
     LOG_ERRNO_IF_SET("Crypto initialization failed");
     FATAL(ERROR_CRYPTO, "Crypto initialization failed");
   }
-  log_info("Crypto initialized successfully");
+  log_debug("Crypto initialized successfully");
 
   // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
   log_set_terminal_output(!GET_OPTION(quiet));
