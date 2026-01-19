@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include "util/number.h" // For write_decimal, write_u8
 #include "../image.h"
+#include "uthash/uthash.h" // For UT_hash_handle
 
 /** @brief Ramp64 cache size (64 entries) */
 #define RAMP64_SIZE 64
