@@ -859,7 +859,14 @@ After installation, run:
         set(CPACK_SYSTEM_NAME "${_PACKAGE_OS}")
         set(CPACK_PACKAGE_ARCHITECTURE "${_PACKAGE_ARCH}")
 
-        set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+        # Optional package suffix (e.g., "-Homebrew" for dynamically linked builds)
+        if(ASCIICHAT_PACKAGE_SUFFIX)
+            set(_PACKAGE_SUFFIX "${ASCIICHAT_PACKAGE_SUFFIX}")
+        else()
+            set(_PACKAGE_SUFFIX "")
+        endif()
+
+        set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}${_PACKAGE_SUFFIX}")
 
         # Set CPack project config file for per-generator settings (e.g., install prefix)
         # This file is processed at cpack runtime, allowing different prefixes per generator:

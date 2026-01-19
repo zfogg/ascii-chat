@@ -382,15 +382,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   package-macos:
-    name: Package macOS installers
+    name: Package macOS ${{ matrix.homebrew && 'Homebrew' || 'static' }} (${{ matrix.os }})
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
+          # Static builds (portable, no Homebrew dependencies)
           - os: macos-15-intel
+            homebrew: false
           - os: macos-15
+            homebrew: false
+          # Homebrew builds (dynamically linked, smaller, shares deps)
+          - os: macos-15-intel
+            homebrew: true
+          - os: macos-15
+            homebrew: true
 
     steps:
       - name: Checkout code
@@ -430,6 +438,15 @@ jobs:
           else
             echo "No pre-built defer tool available - CMake will build from source"
           fi
+
+          # Homebrew builds: use shared deps and add suffix to package name
+          if [ "${{ matrix.homebrew }}" = "true" ]; then
+            echo "Building Homebrew variant (dynamically linked)"
+            CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_SHARED_DEPS=ON -DASCIICHAT_PACKAGE_SUFFIX=-Homebrew"
+          else
+            echo "Building static variant (portable)"
+          fi
+
           cmake $CMAKE_ARGS
 
       - name: Save CMake dependency cache
