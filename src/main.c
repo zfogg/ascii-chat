@@ -25,7 +25,7 @@
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
-#include "acds/main.h"
+#include "discovery-server/main.h"
 
 // Common headers for version info and initialization
 #include "common.h"
