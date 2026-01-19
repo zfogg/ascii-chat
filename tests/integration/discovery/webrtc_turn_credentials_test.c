@@ -7,9 +7,9 @@
  * in the SESSION_JOINED response.
  */
 
-#include "acds/database.h"
-#include "acds/session.h"
-#include "acds/main.h"
+#include "discovery/database.h"
+#include "discovery/session.h"
+#include "discovery-server/main.h"
 #include "asciichat_errno.h"
 #include "network/acip/acds.h"
 #include "network/webrtc/turn_credentials.h"

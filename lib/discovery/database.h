@@ -13,8 +13,8 @@
 #include <stdbool.h>
 #include <sqlite3.h>
 #include "common.h"
-#include "acds/session.h"
-#include "acds/main.h"
+#include "discovery/session.h"
+#include "discovery-server/main.h"
 #include "network/acip/acds.h"
 
 // ============================================================================

@@ -33,7 +33,7 @@
 #include "network/acip/acds.h"
 #include "options/options.h" // For MAX_IDENTITY_KEYS
 #include "thread_pool.h"
-#include "acds/main.h"
+#include "discovery-server/main.h"
 
 /**
  * @brief Per-client connection data

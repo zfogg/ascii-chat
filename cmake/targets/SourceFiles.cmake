@@ -319,11 +319,13 @@ set(CORE_SRCS
     lib/options/parsers.c          # Custom enum parsers (NEW)
     lib/options/actions.c          # Action option callbacks (NEW)
     lib/version.c
-    # ACDS Discovery Service core (reused by acds executable and tests)
-    lib/acds/session.c
-    lib/acds/database.c
-    lib/acds/identity.c
-    lib/acds/strings.c
+    # Discovery Service core (reused by discovery-server executable and tests)
+    lib/discovery/session.c
+    lib/discovery/database.c
+    lib/discovery/identity.c
+    lib/discovery/strings.c
+    lib/discovery/adjectives.c
+    lib/discovery/nouns.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
@@ -392,9 +394,9 @@ set(APP_SRCS
     # Mirror mode sources
     src/mirror/main.c
     # Discovery-server mode sources
-    src/acds/main.c
-    src/acds/server.c
-    src/acds/signaling.c
+    src/discovery-server/main.c
+    src/discovery-server/server.c
+    src/discovery-server/signaling.c
 )
 
 # =============================================================================

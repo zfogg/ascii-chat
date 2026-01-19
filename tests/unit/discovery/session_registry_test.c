@@ -14,8 +14,8 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 
-#include "acds/database.h"
-#include "acds/session.h"
+#include "discovery/database.h"
+#include "discovery/session.h"
 #include "log/logging.h"
 #include <string.h>
 #include <unistd.h>

@@ -16,10 +16,10 @@
 #include <sys/resource.h>
 #endif
 
-#include "acds/main.h"
-#include "acds/server.h"
-#include "acds/identity.h"
-#include "acds/strings.h"
+#include "discovery-server/main.h"
+#include "discovery-server/server.h"
+#include "discovery/identity.h"
+#include "discovery/strings.h"
 #include "common.h"
 #include "version.h"
 #include "log/logging.h"

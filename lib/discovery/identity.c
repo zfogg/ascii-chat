@@ -3,7 +3,7 @@
  * @brief Identity key management implementation
  */
 
-#include "acds/identity.h"
+#include "discovery/identity.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"

@@ -7,8 +7,8 @@
  * WAL mode provides good concurrent read performance.
  */
 
-#include "acds/database.h"
-#include "acds/strings.h"
+#include "discovery/database.h"
+#include "discovery/strings.h"
 #include "log/logging.h"
 #include "network/webrtc/turn_credentials.h"
 #include <string.h>
@@ -332,8 +332,8 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
   resp->stun_count = config->stun_count;
   resp->turn_count = config->turn_count;
 
-  log_info("Session created: %s (max_participants=%d, has_password=%d)", session_string, max_participants,
-           req->has_password ? 1 : 0);
+  log_info("Session created: %s (session_id=%02x%02x%02x%02x..., max_participants=%d, has_password=%d)", session_string,
+           session_id[0], session_id[1], session_id[2], session_id[3], max_participants, req->has_password ? 1 : 0);
 
   return ASCIICHAT_OK;
 }
@@ -516,6 +516,10 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   resp->error_code = ACIP_ERROR_NONE;
   memcpy(resp->participant_id, participant_id, 16);
   memcpy(resp->session_id, session->session_id, 16);
+
+  log_debug("SESSION_JOIN response: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...",
+            resp->session_id[0], resp->session_id[1], resp->session_id[2], resp->session_id[3], resp->participant_id[0],
+            resp->participant_id[1], resp->participant_id[2], resp->participant_id[3]);
 
   // IP disclosure logic
   bool reveal_ip = false;

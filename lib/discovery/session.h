@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include "network/acip/acds.h"
-#include "acds/main.h"
+#include "discovery-server/main.h"
 
 /**
  * @brief Maximum participants per session

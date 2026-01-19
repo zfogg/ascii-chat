@@ -12,10 +12,10 @@
  * - ACIP packet dispatch to session/signaling handlers
  */
 
-#include "acds/server.h"
-#include "acds/database.h"
-#include "acds/session.h"
-#include "acds/signaling.h"
+#include "discovery-server/server.h"
+#include "discovery/database.h"
+#include "discovery/session.h"
+#include "discovery-server/signaling.h"
 #include "network/acip/acds.h"
 #include "network/acip/acds_handlers.h"
 #include "network/acip/acds_client.h"
@@ -30,6 +30,7 @@
 #include "buffer_pool.h"
 #include "network/tcp/server.h"
 #include "util/ip.h"
+#include "util/endian.h"
 #include <string.h>
 #include <time.h>
 
@@ -570,10 +571,11 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len,
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  // Validate sdp_len is within bounds
-  size_t expected_size = sizeof(acip_webrtc_sdp_t) + sdp->sdp_len;
+  // Validate sdp_len is within bounds (convert from network byte order)
+  uint16_t sdp_len_host = NET_TO_HOST_U16(sdp->sdp_len);
+  size_t expected_size = sizeof(acip_webrtc_sdp_t) + sdp_len_host;
   if (expected_size > payload_len) {
-    log_warn("SDP packet from %s claims sdp_len=%u but payload_len=%zu (would overflow)", client_ip, sdp->sdp_len,
+    log_warn("SDP packet from %s claims sdp_len=%u but payload_len=%zu (would overflow)", client_ip, sdp_len_host,
              payload_len);
     acip_send_error(transport, ERROR_INVALID_PARAM, "SDP size mismatch");
     return;
@@ -595,11 +597,12 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  // Validate candidate_len is within bounds
-  size_t expected_size = sizeof(acip_webrtc_ice_t) + ice->candidate_len;
+  // Validate candidate_len is within bounds (convert from network byte order)
+  uint16_t candidate_len_host = NET_TO_HOST_U16(ice->candidate_len);
+  size_t expected_size = sizeof(acip_webrtc_ice_t) + candidate_len_host;
   if (expected_size > payload_len) {
     log_warn("ICE packet from %s claims candidate_len=%u but payload_len=%zu (would overflow)", client_ip,
-             ice->candidate_len, payload_len);
+             candidate_len_host, payload_len);
     acip_send_error(transport, ERROR_INVALID_PARAM, "ICE size mismatch");
     return;
   }

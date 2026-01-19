@@ -3,7 +3,7 @@
  * @brief Session string generation implementation
  */
 
-#include "acds/strings.h"
+#include "discovery/strings.h"
 #include "log/logging.h"
 #include <sodium.h>
 #include <string.h>

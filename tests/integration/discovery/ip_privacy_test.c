@@ -11,9 +11,9 @@
  * the session string.
  */
 
-#include "acds/database.h"
-#include "acds/session.h"
-#include "acds/main.h"
+#include "discovery/database.h"
+#include "discovery/session.h"
+#include "discovery-server/main.h"
 #include "asciichat_errno.h"
 #include "network/acip/acds.h"
 #include <criterion/criterion.h>

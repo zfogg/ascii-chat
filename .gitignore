@@ -49,3 +49,5 @@ coverage_html/
 /docker_out/
 
 /branches/
+scripts/.venv
+scripts/__pycache__

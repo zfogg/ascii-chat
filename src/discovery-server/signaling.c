@@ -9,10 +9,10 @@
  * Session validation uses SQLite database lookups.
  */
 
-#include "acds/signaling.h"
-#include "acds/server.h"
-#include "acds/database.h"
-#include "acds/session.h"
+#include "discovery-server/signaling.h"
+#include "discovery-server/server.h"
+#include "discovery/database.h"
+#include "discovery/session.h"
 #include "log/logging.h"
 #include "network/network.h"
 #include <string.h>
@@ -114,6 +114,11 @@ asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server, con
   }
 
   /* Find session by UUID using database lookup */
+  log_debug("SDP relay: Looking up session_id=%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+            sdp->session_id[0], sdp->session_id[1], sdp->session_id[2], sdp->session_id[3], sdp->session_id[4],
+            sdp->session_id[5], sdp->session_id[6], sdp->session_id[7], sdp->session_id[8], sdp->session_id[9],
+            sdp->session_id[10], sdp->session_id[11], sdp->session_id[12], sdp->session_id[13], sdp->session_id[14],
+            sdp->session_id[15]);
   session_entry_t *session = database_session_find_by_id(db, sdp->session_id);
   if (!session) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Session not found for SDP relay");
