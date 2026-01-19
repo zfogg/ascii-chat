@@ -1770,52 +1770,61 @@ int server_main(void) {
 
         // Initialize WebRTC peer_manager if session type is WebRTC
         if (create_params.session_type == SESSION_TYPE_WEBRTC) {
-          log_debug("Initializing WebRTC peer manager for session (role=CREATOR)...");
+          log_debug("Initializing WebRTC library and peer manager for session (role=CREATOR)...");
 
-          // Configure STUN servers for ICE gathering
-          stun_server_t stun_servers[2];
-          stun_servers[0].host_len = (uint8_t)strlen("stun:stun.l.google.com:19302");
-          SAFE_STRNCPY(stun_servers[0].host, "stun:stun.l.google.com:19302", sizeof(stun_servers[0].host));
-          stun_servers[1].host_len = (uint8_t)strlen("stun:stun1.l.google.com:19302");
-          SAFE_STRNCPY(stun_servers[1].host, "stun:stun1.l.google.com:19302", sizeof(stun_servers[1].host));
-
-          // Configure peer_manager
-          webrtc_peer_manager_config_t pm_config = {
-              .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-              .stun_servers = stun_servers,
-              .stun_count = 2,
-              .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
-              .turn_count = 0,
-              .on_transport_ready = on_webrtc_transport_ready,
-              .user_data = &server_ctx,
-              .crypto_ctx = NULL // WebRTC handles crypto internally
-          };
-
-          // Configure signaling callbacks for relaying SDP/ICE via ACDS
-          webrtc_signaling_callbacks_t signaling_callbacks = {
-              .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
-
-          // Create peer_manager
-          asciichat_error_t pm_result =
-              webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
-          if (pm_result != ASCIICHAT_OK) {
-            log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
+          // Initialize WebRTC library (libdatachannel)
+          asciichat_error_t webrtc_init_result = webrtc_init();
+          if (webrtc_init_result != ASCIICHAT_OK) {
+            log_error("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_init_result));
             g_webrtc_peer_manager = NULL;
           } else {
-            log_debug("WebRTC peer_manager initialized successfully");
+            log_debug("WebRTC library initialized successfully");
 
-            // Start ACDS receive thread for WebRTC signaling relay
-            int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
-            if (thread_result != 0) {
-              log_error("Failed to create ACDS receive thread: %d", thread_result);
-              // Cleanup peer_manager since signaling won't work
-              webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+            // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
+            static stun_server_t stun_servers[2];
+            stun_servers[0].host_len = (uint8_t)strlen("stun:stun.ascii-chat.com:3478");
+            SAFE_STRNCPY(stun_servers[0].host, "stun:stun.ascii-chat.com:3478", sizeof(stun_servers[0].host));
+            stun_servers[1].host_len = (uint8_t)strlen("stun:stun1.l.google.com:19302");
+            SAFE_STRNCPY(stun_servers[1].host, "stun:stun1.l.google.com:19302", sizeof(stun_servers[1].host));
+
+            // Configure peer_manager
+            webrtc_peer_manager_config_t pm_config = {
+                .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+                .stun_servers = stun_servers,
+                .stun_count = 2,
+                .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
+                .turn_count = 0,
+                .on_transport_ready = on_webrtc_transport_ready,
+                .user_data = &server_ctx,
+                .crypto_ctx = NULL // WebRTC handles crypto internally
+            };
+
+            // Configure signaling callbacks for relaying SDP/ICE via ACDS
+            webrtc_signaling_callbacks_t signaling_callbacks = {
+                .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
+
+            // Create peer_manager
+            asciichat_error_t pm_result =
+                webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
+            if (pm_result != ASCIICHAT_OK) {
+              log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
               g_webrtc_peer_manager = NULL;
             } else {
-              log_debug("ACDS receive thread started for WebRTC signaling relay");
-              g_acds_receive_thread_started = true;
+              log_debug("WebRTC peer_manager initialized successfully");
+
+              // Start ACDS receive thread for WebRTC signaling relay
+              int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
+              if (thread_result != 0) {
+                log_error("Failed to create ACDS receive thread: %d", thread_result);
+                // Cleanup peer_manager since signaling won't work
+                webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+                g_webrtc_peer_manager = NULL;
+              } else {
+                log_debug("ACDS receive thread started for WebRTC signaling relay");
+                g_acds_receive_thread_started = true;
+              }
             }
-          }
+          } // Close else block from webrtc_init() success
         } else {
           log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
         }
