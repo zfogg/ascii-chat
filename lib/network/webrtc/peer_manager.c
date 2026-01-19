@@ -15,6 +15,7 @@
 #include "network/acip/transport.h"
 #include "log/logging.h"
 #include "platform/mutex.h"
+#include "util/endian.h"
 #include "uthash/uthash.h"
 #include <string.h>
 
@@ -358,10 +359,16 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   }
 
   // Extract SDP string and type
-  const char *sdp_str = (const char *)(sdp + 1); // After header
+  const uint8_t *sdp_data = (const uint8_t *)(sdp + 1); // After header
   const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
+  uint16_t sdp_len = NET_TO_HOST_U16(sdp->sdp_len);
 
-  log_debug("Handling incoming SDP %s from remote peer", sdp_type);
+  // Allocate null-terminated buffer for SDP string (libdatachannel requires C string)
+  char *sdp_str = SAFE_MALLOC(sdp_len + 1, char *);
+  memcpy(sdp_str, sdp_data, sdp_len);
+  sdp_str[sdp_len] = '\0'; // Null-terminate
+
+  log_debug("Handling incoming SDP %s from remote peer (len=%u)", sdp_type, sdp_len);
 
   mutex_lock(&manager->peers_mutex);
 
@@ -370,6 +377,7 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   asciichat_error_t result = create_peer_connection_locked(manager, sdp->session_id, sdp->sender_id, &peer);
   if (result != ASCIICHAT_OK) {
     mutex_unlock(&manager->peers_mutex);
+    SAFE_FREE(sdp_str);
     return SET_ERRNO(result, "Failed to create peer connection for SDP");
   }
 
@@ -377,6 +385,8 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
 
   // Set remote SDP
   result = webrtc_set_remote_description(peer->pc, sdp_str, sdp_type);
+  SAFE_FREE(sdp_str); // Free after use
+
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO(result, "Failed to set remote SDP");
   }
@@ -395,11 +405,12 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Extract ICE candidate and mid
+  // Extract ICE candidate and mid (both are null-terminated in the packet)
   const char *candidate = (const char *)(ice + 1); // After header
-  const char *mid = candidate + ice->candidate_len;
+  size_t candidate_str_len = strlen(candidate);
+  const char *mid = candidate + candidate_str_len + 1; // After candidate + null terminator
 
-  log_debug("Handling incoming ICE candidate from remote peer");
+  log_debug("Handling incoming ICE candidate from remote peer (mid=%s)", mid);
 
   mutex_lock(&manager->peers_mutex);
 
