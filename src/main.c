@@ -124,39 +124,12 @@ static void print_usage(void) {
   printf("MODE-OPTIONS:\n");
   printf("  %s <mode> --help             Show options for a mode\n", binary_name);
   printf("\n");
+  printf("🔗 https://ascii-chat.com\n");
   printf("🔗 https://github.com/zfogg/ascii-chat\n");
 }
 
 static void print_version(void) {
   printf("%s %s (%s, %s)\n", APP_NAME, VERSION, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
-  printf("\n");
-
-  printf("Built with:\n");
-
-#ifdef __clang__
-  printf("  Compiler: Clang %s\n", __clang_version__);
-#elif defined(__GNUC__)
-  printf("  Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#elif defined(_MSC_VER)
-  printf("  Compiler: MSVC %d\n", _MSC_VER);
-#else
-  printf("  Compiler: Unknown\n");
-#endif
-
-#ifdef USE_MUSL
-  printf("  C Library: musl\n");
-#elif defined(__GLIBC__)
-  printf("  C Library: glibc %d.%d\n", __GLIBC__, __GLIBC_MINOR__);
-#elif defined(_WIN32)
-  printf("  C Library: MSVCRT\n");
-#elif defined(__APPLE__)
-  printf("  C Library: libSystem\n");
-#else
-  printf("  C Library: Unknown\n");
-#endif
-
-  printf("\n");
-  printf("For more information: https://github.com/zfogg/ascii-chat\n");
 }
 
 static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
