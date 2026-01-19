@@ -165,7 +165,7 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
   }
 
   *signature_len_out = sig_size;
-  log_info("GPG signature created successfully (%zu bytes)", *signature_len_out);
+  log_debug("GPG signature created successfully (%zu bytes)", *signature_len_out);
   result = 0;
 
 cleanup:
@@ -179,7 +179,7 @@ cleanup:
 
 int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
                               uint8_t signature_out[64]) {
-  log_info("gpg_sign_detached_ed25519: Signing with key ID %s (fallback mode)", key_id);
+  log_debug("gpg_sign_detached_ed25519: Signing with key ID %s (fallback mode)", key_id);
 
   // Get OpenPGP signature packet from gpg --detach-sign
   uint8_t openpgp_signature[512];
@@ -347,7 +347,7 @@ int gpg_sign_detached_ed25519(const char *key_id, const uint8_t *message, size_t
 
   memcpy(signature_out + 32, &openpgp_signature[offset], 32);
 
-  log_info("Successfully extracted 64-byte Ed25519 signature from OpenPGP packet");
+  log_debug("Successfully extracted 64-byte Ed25519 signature from OpenPGP packet");
 
   // Debug: Log signature components
   char hex_r[65], hex_s[65];

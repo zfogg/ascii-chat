@@ -137,15 +137,15 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     char duration_str[32];
     format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
-    log_info("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
-             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_debug("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
+              (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
     char duration_str[32];
     format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
-    log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
-             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_debug("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
+              (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
   return CRYPTO_OK;
 }
@@ -176,7 +176,7 @@ crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *pas
 
   ctx->has_password = true;
 
-  log_info("Crypto context initialized with password-based encryption");
+  log_debug("Crypto context initialized with password-based encryption");
   return CRYPTO_OK;
 }
 
@@ -1211,8 +1211,8 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   ctx->rekey_in_progress = true;
   ctx->has_temp_key = true;
 
-  log_info("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
-           (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
+  log_debug("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
+            (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
 
   return CRYPTO_OK;
 }
@@ -1306,8 +1306,8 @@ crypto_result_t crypto_rekey_commit(crypto_context_t *ctx) {
   // Reset failure counter on successful rekey
   ctx->rekey_failure_count = 0;
 
-  log_info("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)",
-           (unsigned long long)ctx->rekey_count);
+  log_debug("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)",
+            (unsigned long long)ctx->rekey_count);
 
   return CRYPTO_OK;
 }

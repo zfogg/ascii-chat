@@ -150,7 +150,7 @@ asciichat_error_t acds_keys_download_https(const char *url, uint8_t pubkey_out[3
   }
 
   memcpy(pubkey_out, key.key, 32);
-  log_info("Successfully downloaded and parsed ACDS key from %s", url);
+  log_debug("Successfully downloaded and parsed ACDS key from %s", url);
   return ASCIICHAT_OK;
 }
 
@@ -169,7 +169,7 @@ asciichat_error_t acds_keys_load_file(const char *file_path, uint8_t pubkey_out[
   }
 
   memcpy(pubkey_out, key.key, 32);
-  log_info("Successfully loaded ACDS key from file: %s", file_path);
+  log_debug("Successfully loaded ACDS key from file: %s", file_path);
   return ASCIICHAT_OK;
 }
 
@@ -182,7 +182,7 @@ asciichat_error_t acds_keys_fetch_github(const char *username, bool is_gpg, uint
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_fetch_github");
   }
 
-  log_info("Fetching ACDS key from GitHub for user: %s", username);
+  log_debug("Fetching ACDS key from GitHub for user: %s", username);
 
   // Use existing parse_public_key infrastructure
   char key_spec[512];
@@ -207,7 +207,7 @@ asciichat_error_t acds_keys_fetch_gitlab(const char *username, uint8_t pubkey_ou
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_fetch_gitlab");
   }
 
-  log_info("Fetching ACDS key from GitLab for user: %s", username);
+  log_debug("Fetching ACDS key from GitLab for user: %s", username);
 
   // Use existing parse_public_key infrastructure
   char key_spec[512];
@@ -310,7 +310,7 @@ asciichat_error_t acds_keys_save_cached(const char *acds_server, const uint8_t p
   fprintf(f, "ssh-ed25519 %s acds-cached-key\n", base64_key);
   fclose(f);
 
-  log_info("Cached ACDS key for server: %s", acds_server);
+  log_debug("Cached ACDS key for server: %s", acds_server);
   return ASCIICHAT_OK;
 }
 
@@ -329,7 +329,7 @@ asciichat_error_t acds_keys_clear_cache(const char *acds_server) {
     if (remove(cache_path) != 0) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to delete cached key: %s", cache_path);
     }
-    log_info("Cleared cached ACDS key for server: %s", acds_server);
+    log_debug("Cleared cached ACDS key for server: %s", acds_server);
   }
 
   return ASCIICHAT_OK;
@@ -468,6 +468,6 @@ asciichat_error_t acds_keys_verify(const char *acds_server, const char *key_spec
   // ===========================================================================
 
   memcpy(pubkey_out, new_pubkey, 32);
-  log_info("ACDS key verification successful for: %s", acds_server);
+  log_debug("ACDS key verification successful for: %s", acds_server);
   return ASCIICHAT_OK;
 }

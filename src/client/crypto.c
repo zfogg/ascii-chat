@@ -403,7 +403,7 @@ int client_crypto_init(void) {
   }
 
   g_crypto_initialized = true;
-  log_info("Client crypto handshake initialized");
+  log_debug("Client crypto handshake initialized");
   log_debug("CLIENT_CRYPTO_INIT: Initialization complete, g_crypto_initialized=true");
   return 0;
 }
@@ -431,7 +431,7 @@ int client_crypto_handshake(socket_t socket) {
     return CONNECTION_ERROR_AUTH_FAILED; // No retry - configuration error
   }
 
-  log_info("Starting crypto handshake with server...");
+  log_debug("Starting crypto handshake with server...");
 
   START_TIMER("client_crypto_handshake");
 
@@ -549,10 +549,10 @@ int client_crypto_handshake(socket_t socket) {
   uint16_t signature_size = NET_TO_HOST_U16(server_params.signature_size);
   uint16_t shared_secret_size = NET_TO_HOST_U16(server_params.shared_secret_size);
 
-  log_info("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
-           "secret_size=%u, verification=%u)",
-           server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
-           auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
+  log_debug("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
+            "secret_size=%u, verification=%u)",
+            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
+            auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
   log_debug("Raw server_params.kex_public_key_size = %u (network byte order)", server_params.kex_public_key_size);
 
   // Set the crypto parameters in the handshake context
@@ -597,7 +597,7 @@ int client_crypto_handshake(socket_t socket) {
         num_expected_keys > 0) {
       // Send the first expected key (client should only have one expected server key)
       // Format: 32-byte Ed25519 public key
-      log_info("Sending CRYPTO_CLIENT_HELLO with expected server key for multi-key selection");
+      log_debug("Sending CRYPTO_CLIENT_HELLO with expected server key for multi-key selection");
       result = send_packet(socket, PACKET_TYPE_CRYPTO_CLIENT_HELLO, expected_keys[0].key, ED25519_PUBLIC_KEY_SIZE);
 
       if (result != ASCIICHAT_OK) {
@@ -687,7 +687,7 @@ int client_crypto_handshake(socket_t socket) {
 
   // Check if handshake completed during auth response (no authentication needed)
   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
-    STOP_TIMER_AND_LOG("client_crypto_handshake", log_info,
+    STOP_TIMER_AND_LOG("client_crypto_handshake", log_debug,
                        "Crypto handshake completed successfully (no authentication)");
     return 0;
   }
@@ -699,7 +699,7 @@ int client_crypto_handshake(socket_t socket) {
     FATAL(result, "Crypto handshake completion failed");
   }
 
-  STOP_TIMER_AND_LOG("client_crypto_handshake", log_info, "Crypto handshake completed successfully");
+  STOP_TIMER_AND_LOG("client_crypto_handshake", log_debug, "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);
   return 0;
 }

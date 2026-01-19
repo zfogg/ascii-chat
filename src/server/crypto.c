@@ -176,7 +176,7 @@ int server_crypto_init(void) {
     return 0;
   }
 
-  log_info("Server crypto system initialized (per-client contexts will be created on demand)");
+  log_debug("Server crypto system initialized (per-client contexts will be created on demand)");
   return 0;
 }
 
@@ -249,7 +249,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_info("--require-server-verify enabled: clients must provide identity keys");
   }
 
-  log_info("Starting crypto handshake with client %u...", atomic_load(&client->client_id));
+  log_debug("Starting crypto handshake with client %u...", atomic_load(&client->client_id));
 
   START_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
 
@@ -429,8 +429,8 @@ int server_crypto_handshake(client_info_t *client) {
   uint16_t supported_auth = NET_TO_HOST_U16(client_caps.supported_auth_algorithms);
   uint16_t supported_cipher = NET_TO_HOST_U16(client_caps.supported_cipher_algorithms);
 
-  log_info("Client %u crypto capabilities: KEX=0x%04x, Auth=0x%04x, Cipher=0x%04x", atomic_load(&client->client_id),
-           supported_kex, supported_auth, supported_cipher);
+  log_debug("Client %u crypto capabilities: KEX=0x%04x, Auth=0x%04x, Cipher=0x%04x", atomic_load(&client->client_id),
+            supported_kex, supported_auth, supported_cipher);
 
   // Step 0d: Select crypto algorithms and send parameters to client
   crypto_parameters_packet_t server_params = {0};
@@ -484,8 +484,8 @@ int server_crypto_handshake(client_info_t *client) {
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
-  log_info("Server selected crypto for client %u: KEX=%u, Auth=%u, Cipher=%u", atomic_load(&client->client_id),
-           server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher);
+  log_debug("Server selected crypto for client %u: KEX=%u, Auth=%u, Cipher=%u", atomic_load(&client->client_id),
+            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher);
 
   // Set the crypto parameters in the handshake context
   result = crypto_handshake_set_parameters(&client->crypto_handshake_ctx, &server_params);
@@ -545,8 +545,8 @@ int server_crypto_handshake(client_info_t *client) {
 
           char hex_selected[65];
           pubkey_to_hex(g_server_identity_keys[i].public_key, hex_selected);
-          log_info("Client %u selected server identity key #%zu: %s", atomic_load(&client->client_id), i + 1,
-                   hex_selected);
+          log_debug("Client %u selected server identity key #%zu: %s", atomic_load(&client->client_id), i + 1,
+                    hex_selected);
 
           key_found = true;
           break;
@@ -613,7 +613,7 @@ int server_crypto_handshake(client_info_t *client) {
   // Check if handshake completed during auth challenge (no authentication needed)
   if (client->crypto_handshake_ctx.state == CRYPTO_HANDSHAKE_READY) {
     uint32_t cid = atomic_load(&client->client_id);
-    STOP_TIMER_AND_LOG("server_crypto_handshake_client_%u", log_info,
+    STOP_TIMER_AND_LOG("server_crypto_handshake_client_%u", log_debug,
                        "Crypto handshake completed successfully for client %u (no authentication)", cid);
     return 0;
   }
@@ -641,7 +641,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   uint32_t cid = atomic_load(&client->client_id);
-  STOP_TIMER_AND_LOG("server_crypto_handshake_client_%u", log_info,
+  STOP_TIMER_AND_LOG("server_crypto_handshake_client_%u", log_debug,
                      "Crypto handshake completed successfully for client %u", cid);
 
   // Send success notification to client (encrypted channel now established)

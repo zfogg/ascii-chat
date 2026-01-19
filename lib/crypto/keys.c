@@ -204,7 +204,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     // This is for compatibility with code that expects the public key at offset 32
     memcpy(key_out->key.ed25519 + 32, public_key, 32);
 
-    log_info("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
+    log_debug("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
     return ASCIICHAT_OK;
   }
 
@@ -282,7 +282,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     // Store comment
     safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
 
-    log_info("Loaded unencrypted GPG Ed25519 key from %s", key_path);
+    log_debug("Loaded unencrypted GPG Ed25519 key from %s", key_path);
     return ASCIICHAT_OK;
   }
 
@@ -361,7 +361,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
                        username);
     }
 
-    log_info("Parsed %zu Ed25519 key(s) from %s user: %s", *num_keys, is_github ? "GitHub" : "GitLab", username);
+    log_debug("Parsed %zu Ed25519 key(s) from %s user: %s", *num_keys, is_github ? "GitHub" : "GitLab", username);
     return ASCIICHAT_OK;
   }
 

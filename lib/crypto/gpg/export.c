@@ -232,12 +232,12 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
     if (mpi_bytes == 33 && packet_data[offset] == 0x40) {
       // Found it! Extract the 32-byte public key (skip 0x40 prefix)
       memcpy(public_key_out, &packet_data[offset + 1], 32);
-      log_info("Extracted Ed25519 public key from gpg --export (fallback method)");
+      log_debug("Extracted Ed25519 public key from gpg --export (fallback method)");
       return 0;
     } else if (mpi_bytes == 32) {
       // Key without prefix (less common but valid)
       memcpy(public_key_out, &packet_data[offset], 32);
-      log_info("Extracted Ed25519 public key from gpg --export (fallback method)");
+      log_debug("Extracted Ed25519 public key from gpg --export (fallback method)");
       return 0;
     }
 
@@ -355,11 +355,11 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Try to use GPG agent API to read the public key directly via READKEY command
   int agent_sock = gpg_agent_connect();
   if (agent_sock < 0) {
-    log_info("GPG agent not available, falling back to gpg --export for public key extraction");
+    log_debug("GPG agent not available, falling back to gpg --export for public key extraction");
     // Fallback: Use gpg --export to get the public key
     int export_result = gpg_export_public_key(key_id, public_key_out);
     if (export_result == 0) {
-      log_info("Successfully extracted public key using fallback method");
+      log_debug("Successfully extracted public key using fallback method");
     } else {
       log_error("Fallback public key extraction failed for key ID: %s", key_id);
     }
@@ -401,7 +401,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     // Fallback: Use gpg --export for public-only keys
     int export_result = gpg_export_public_key(key_id, public_key_out);
     if (export_result == 0) {
-      log_info("Successfully extracted public key using gpg --export fallback");
+      log_debug("Successfully extracted public key using gpg --export fallback");
     } else {
       log_error("Fallback public key extraction failed for key ID: %s", key_id);
     }
@@ -436,6 +436,6 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Copy the 32-byte public key (skip the 0x40 prefix)
   memcpy(public_key_out, binary_start + 1, 32);
 
-  log_info("Extracted Ed25519 public key from GPG agent via READKEY command");
+  log_debug("Extracted Ed25519 public key from GPG agent via READKEY command");
   return 0;
 }

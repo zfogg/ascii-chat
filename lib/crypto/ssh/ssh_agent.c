@@ -190,7 +190,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot add key to ssh-agent: only Ed25519 keys supported");
   }
 
-  log_info("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
+  log_debug("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
 
   // Open the pipe/socket for this operation (works on both Windows and Unix)
   pipe_t pipe = ssh_agent_open_pipe();
@@ -283,7 +283,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   // Response format: uint32 length, byte message_type
   uint8_t response_type = response[4];
   if (response_type == 6) {
-    log_info("Successfully added key to ssh-agent");
+    log_debug("Successfully added key to ssh-agent");
     return ASCIICHAT_OK;
   } else if (response_type == 5) {
     return SET_ERRNO(ERROR_CRYPTO, "ssh-agent rejected key (SSH_AGENT_FAILURE)");

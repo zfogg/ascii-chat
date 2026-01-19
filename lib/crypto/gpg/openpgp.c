@@ -353,7 +353,7 @@ asciichat_error_t openpgp_parse_armored_pubkey(const char *armored_text, uint8_t
       if (parse_result == ASCIICHAT_OK) {
         memcpy(ed25519_pk, pubkey.pubkey, 32);
         found_pubkey = true;
-        log_info("Extracted Ed25519 public key from OpenPGP armored block");
+        log_debug("Extracted Ed25519 public key from OpenPGP armored block");
         break;
       } else {
         // Not an Ed25519 key, try next packet
@@ -599,7 +599,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   // Securely erase passphrase from memory
   sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
 
-  log_info("Successfully decrypted GPG key using passphrase");
+  log_debug("Successfully decrypted GPG key using passphrase");
   return ASCIICHAT_OK;
 }
 
@@ -686,7 +686,7 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
         // Check if key is encrypted
         if (seckey.is_encrypted) {
           SAFE_FREE(binary_data);
-          log_info("Detected encrypted GPG key, attempting to decrypt with passphrase");
+          log_debug("Detected encrypted GPG key, attempting to decrypt with passphrase");
 
           // Decrypt the key using gpg binary
           char *decrypted_text = NULL;
@@ -705,7 +705,7 @@ asciichat_error_t openpgp_parse_armored_seckey(const char *armored_text, uint8_t
         memcpy(ed25519_pk, seckey.pubkey, 32);
         memcpy(ed25519_sk, seckey.seckey, 32);
         found_seckey = true;
-        log_info("Extracted Ed25519 keypair from OpenPGP armored secret key block");
+        log_debug("Extracted Ed25519 keypair from OpenPGP armored secret key block");
         break;
       } else {
         // Not an Ed25519 key, try next packet

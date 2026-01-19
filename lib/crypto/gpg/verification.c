@@ -38,7 +38,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   // Instead, we regenerate the OpenPGP signature using GPG (Ed25519 is deterministic).
   (void)signature;
 
-  log_info("gpg_verify_detached_ed25519: Verifying signature with key ID %s using gpg --verify", key_id);
+  log_debug("gpg_verify_detached_ed25519: Verifying signature with key ID %s using gpg --verify", key_id);
 
   // To verify with GPG, we need to:
   // 1. Reconstruct the OpenPGP signature packet from the raw R||S signature
@@ -117,7 +117,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   unlink(sig_path);
 
   if (exit_code == 0) {
-    log_info("GPG signature verification PASSED");
+    log_debug("GPG signature verification PASSED");
     return 0;
   } else {
     log_error("GPG signature verification FAILED (exit code %d)", exit_code);
@@ -421,7 +421,7 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
     }
   }
 
-  log_info("GPG signature verified successfully via gpg --verify binary");
+  log_debug("GPG signature verified successfully via gpg --verify binary");
   result = 0;
 
 cleanup:
