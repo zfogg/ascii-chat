@@ -861,18 +861,41 @@ static void *acds_ping_thread(void *arg) {
  * @param arg Unused (server uses globals)
  * @return NULL
  */
+/**
+ * @brief ACDS PING callback - respond with PONG to keep connection alive
+ */
+static void on_acds_ping(void *client_ctx, void *app_ctx) {
+  (void)client_ctx;
+  (void)app_ctx;
+  log_debug("ACDS keepalive: Received PING from ACDS, responding with PONG");
+  if (g_acds_transport) {
+    packet_send_via_transport(g_acds_transport, PACKET_TYPE_PONG, NULL, 0);
+  }
+}
+
+/**
+ * @brief ACDS PONG callback - log keepalive response
+ */
+static void on_acds_pong(void *client_ctx, void *app_ctx) {
+  (void)client_ctx;
+  (void)app_ctx;
+  log_debug("ACDS keepalive: Received PONG from ACDS server");
+}
+
 static void *acds_receive_thread(void *arg) {
   (void)arg;
 
   log_debug("ACDS receive thread started");
 
-  // Configure callbacks for WebRTC signaling packets
+  // Configure callbacks for WebRTC signaling packets and keepalive
   acip_client_callbacks_t callbacks = {
       .on_ascii_frame = NULL,
       .on_audio = NULL,
       .on_webrtc_sdp = on_webrtc_sdp_server,
       .on_webrtc_ice = on_webrtc_ice_server,
       .on_session_joined = NULL,
+      .on_ping = on_acds_ping,
+      .on_pong = on_acds_pong,
       .app_ctx = NULL,
   };
 
