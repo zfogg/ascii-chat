@@ -15,6 +15,7 @@
 #include "log/logging.h"
 #include "asciichat_errno.h"
 #include "common.h"
+#include "util/endian.h"
 #include <string.h>
 
 // =============================================================================
@@ -188,6 +189,15 @@ static asciichat_error_t handle_acds_webrtc_sdp(const void *payload, size_t payl
   }
 
   const acip_webrtc_sdp_t *sdp = (const acip_webrtc_sdp_t *)payload;
+
+  // Validate sdp_len against actual payload size (convert from network byte order)
+  uint16_t sdp_len_host = NET_TO_HOST_U16(sdp->sdp_len);
+  size_t expected_size = sizeof(acip_webrtc_sdp_t) + sdp_len_host;
+  if (expected_size > payload_len) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WEBRTC_SDP size mismatch from %s: claims %u bytes but payload is %zu",
+                     client_ip, sdp_len_host, payload_len);
+  }
+
   callbacks->on_webrtc_sdp(sdp, payload_len, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
@@ -203,6 +213,15 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
   }
 
   const acip_webrtc_ice_t *ice = (const acip_webrtc_ice_t *)payload;
+
+  // Validate candidate_len against actual payload size (convert from network byte order)
+  uint16_t candidate_len_host = NET_TO_HOST_U16(ice->candidate_len);
+  size_t expected_size = sizeof(acip_webrtc_ice_t) + candidate_len_host;
+  if (expected_size > payload_len) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WEBRTC_ICE size mismatch from %s: claims %u bytes but payload is %zu",
+                     client_ip, candidate_len_host, payload_len);
+  }
+
   callbacks->on_webrtc_ice(ice, payload_len, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }

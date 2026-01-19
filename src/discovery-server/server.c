@@ -30,7 +30,6 @@
 #include "buffer_pool.h"
 #include "network/tcp/server.h"
 #include "util/ip.h"
-#include "util/endian.h"
 #include <string.h>
 #include <time.h>
 
@@ -571,16 +570,7 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len,
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  // Validate sdp_len is within bounds (convert from network byte order)
-  uint16_t sdp_len_host = NET_TO_HOST_U16(sdp->sdp_len);
-  size_t expected_size = sizeof(acip_webrtc_sdp_t) + sdp_len_host;
-  if (expected_size > payload_len) {
-    log_warn("SDP packet from %s claims sdp_len=%u but payload_len=%zu (would overflow)", client_ip, sdp_len_host,
-             payload_len);
-    acip_send_error(transport, ERROR_INVALID_PARAM, "SDP size mismatch");
-    return;
-  }
-
+  // Validation is done in the library handler (lib/network/acip/acds_handlers.c)
   asciichat_error_t relay_result = signaling_relay_sdp(server->db, &server->tcp_server, sdp, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "SDP relay failed");
@@ -597,16 +587,7 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  // Validate candidate_len is within bounds (convert from network byte order)
-  uint16_t candidate_len_host = NET_TO_HOST_U16(ice->candidate_len);
-  size_t expected_size = sizeof(acip_webrtc_ice_t) + candidate_len_host;
-  if (expected_size > payload_len) {
-    log_warn("ICE packet from %s claims candidate_len=%u but payload_len=%zu (would overflow)", client_ip,
-             candidate_len_host, payload_len);
-    acip_send_error(transport, ERROR_INVALID_PARAM, "ICE size mismatch");
-    return;
-  }
-
+  // Validation is done in the library handler (lib/network/acip/acds_handlers.c)
   asciichat_error_t relay_result = signaling_relay_ice(server->db, &server->tcp_server, ice, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "ICE relay failed");
