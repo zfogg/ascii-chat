@@ -537,7 +537,8 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uin
   // Copy SDP string after header
   memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
-  log_debug("Server sending WebRTC SDP %s to participant (%.8s...) via ACDS", sdp_type, (const char *)recipient_id);
+  log_debug("Server sending WebRTC SDP %s to participant (sender=%02x%02x..., recipient=%02x%02x...) via ACDS",
+            sdp_type, g_server_participant_id[0], g_server_participant_id[1], recipient_id[0], recipient_id[1]);
 
   // Send via ACDS transport using generic packet sender
   asciichat_error_t result =
@@ -1690,6 +1691,8 @@ int server_main(void) {
                     join_result.participant_id[1]);
           // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
           memcpy(g_server_participant_id, join_result.participant_id, 16);
+          log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
+                    g_server_participant_id[1]);
           memcpy(create_result.session_id, join_result.session_id, 16);
         }
 
