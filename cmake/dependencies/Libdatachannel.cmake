@@ -93,12 +93,22 @@ if(USE_VCPKG AND VCPKG_ROOT)
             if(NOT TARGET OpenSSL::Crypto)
                 find_package(OpenSSL REQUIRED)
             endif()
+            # For static Release builds on macOS, use static libc++ to avoid runtime deps
+            if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+                set(_libcxx_link
+                    "${LLVM_ROOT_PREFIX}/lib/libc++.a"
+                    "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
+                    "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+                )
+            else()
+                set(_libcxx_link c++)
+            endif()
             target_link_libraries(libdatachannel INTERFACE
                 "-framework Foundation"
                 "-framework Security"
                 OpenSSL::SSL
                 OpenSSL::Crypto
-                c++
+                ${_libcxx_link}
             )
         elseif(WIN32)
             target_link_libraries(libdatachannel INTERFACE
@@ -465,6 +475,17 @@ endif()
         if(NOT TARGET OpenSSL::Crypto)
             find_package(OpenSSL REQUIRED)
         endif()
+        # For static Release builds on macOS, use static libc++ to avoid runtime deps
+        if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            set(_libcxx_link
+                "${LLVM_ROOT_PREFIX}/lib/libc++.a"
+                "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
+                "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+            )
+            message(STATUS "libdatachannel: using static libc++ from ${LLVM_ROOT_PREFIX}/lib")
+        else()
+            set(_libcxx_link c++)
+        endif()
         target_link_libraries(libdatachannel INTERFACE
             "${LIBDATACHANNEL_STATIC_LIB}"
             "${LIBJUICE_STATIC_LIB}"
@@ -473,7 +494,7 @@ endif()
             "-framework Security"
             OpenSSL::SSL
             OpenSSL::Crypto
-            c++
+            ${_libcxx_link}
         )
     elseif(WIN32)
         # Windows: link with Winsock and other system libraries

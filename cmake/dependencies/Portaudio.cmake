@@ -39,12 +39,47 @@ if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
     set(PORTAUDIO_FOUND TRUE)
     message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
 else()
-    # Use system PortAudio via pkg-config
-    message(STATUS "PortAudio: Using system library via pkg-config")
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
-    set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
-    set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
-    set(PORTAUDIO_FOUND TRUE)
-    message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+    # Use system PortAudio
+    # On macOS Release builds: prefer static library when ASCIICHAT_SHARED_DEPS is OFF
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        find_library(PORTAUDIO_STATIC_LIB
+            NAMES libportaudio.a
+            PATHS
+                /opt/homebrew/opt/portaudio/lib
+                /usr/local/opt/portaudio/lib
+            NO_DEFAULT_PATH
+        )
+        find_path(PORTAUDIO_INC NAMES portaudio.h
+            PATHS
+                /opt/homebrew/opt/portaudio/include
+                /usr/local/opt/portaudio/include
+            NO_DEFAULT_PATH
+        )
+
+        if(PORTAUDIO_STATIC_LIB AND PORTAUDIO_INC)
+            set(PORTAUDIO_LIBRARIES "${PORTAUDIO_STATIC_LIB}")
+            set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_INC}")
+            set(PORTAUDIO_FOUND TRUE)
+            # PortAudio on macOS needs these frameworks
+            list(APPEND PORTAUDIO_LIBRARIES
+                "-framework CoreAudio"
+                "-framework AudioToolbox"
+                "-framework AudioUnit"
+                "-framework CoreFoundation"
+                "-framework CoreServices"
+            )
+            message(STATUS "Found ${BoldGreen}PortAudio${ColorReset} (macOS static): ${PORTAUDIO_STATIC_LIB}")
+        endif()
+    endif()
+
+    # Fallback to pkg-config if static not found or not macOS Release
+    if(NOT PORTAUDIO_FOUND)
+        message(STATUS "PortAudio: Using system library via pkg-config")
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+        set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
+        set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
+        set(PORTAUDIO_FOUND TRUE)
+        message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+    endif()
 endif()

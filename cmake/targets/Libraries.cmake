@@ -1084,6 +1084,17 @@ if(WIN32)
         crypt32
     )
 elseif(APPLE)
+    # For static Release builds on macOS, use static libc++ to avoid runtime deps
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        set(_apple_libcxx_link
+            "${LLVM_ROOT_PREFIX}/lib/libc++.a"
+            "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
+            "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+        )
+        message(STATUS "ascii-chat-static-lib: using static libc++ from ${LLVM_ROOT_PREFIX}/lib")
+    else()
+        set(_apple_libcxx_link c++)
+    endif()
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${FOUNDATION_FRAMEWORK}
         ${AVFOUNDATION_FRAMEWORK}
@@ -1093,7 +1104,7 @@ elseif(APPLE)
         ${AUDIOUNIT_FRAMEWORK}
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
-        c++
+        ${_apple_libcxx_link}
     )
 else()
     # Linux

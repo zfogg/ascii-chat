@@ -330,13 +330,21 @@ function(configure_llvm_post_project)
 
     # Add library paths and linking for the detected LLVM installation
     # (determined via LLVM_ROOT_PREFIX from llvm-config)
-    # NOTE: For Release builds, we normally use system libc++/libunwind for portability.
-    # EXCEPTION: When ASCIICHAT_SHARED_DEPS=ON (Homebrew formula builds), we MUST use
-    # Homebrew LLVM's libc++ to ensure ABI compatibility with libraries like libdatachannel
-    # that are built with Homebrew LLVM.
+    # NOTE: For Release builds, we use LLVM's libc++ to ensure ABI compatibility
+    # with C++ libraries (libdatachannel, WebRTC) that are built with LLVM.
+    # On macOS, we always need LLVM libs because C++ deps are built with LLVM.
+    # On Linux with musl, this is handled separately in Musl.cmake.
     set(_need_llvm_libs FALSE)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         set(_need_llvm_libs TRUE)
+    elseif(APPLE AND ASCIICHAT_SHARED_DEPS)
+        # macOS Release with SHARED_DEPS: need LLVM library paths for dynamic linking
+        set(_need_llvm_libs TRUE)
+        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release+SHARED_DEPS build (LLVM libc++ for ABI compatibility)")
+    elseif(APPLE)
+        # macOS Release without SHARED_DEPS: using static libc++, skip dynamic linker flags
+        set(_need_llvm_libs FALSE)
+        message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for macOS Release build (using static libc++)")
     elseif(ASCIICHAT_SHARED_DEPS)
         set(_need_llvm_libs TRUE)
         message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release+SHARED_DEPS build (Homebrew libc++ for ABI compatibility)")

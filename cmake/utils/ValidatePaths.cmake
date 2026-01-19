@@ -70,6 +70,11 @@ set(WHITELIST_PATTERNS
     "/opt/homebrew/"
     # Dependency cache paths (non-developer paths, deterministic across builds)
     ".deps-cache/"
+    # LLVM/libc++ source paths - embedded in static libc++abi via __FILE__ macros
+    # These are from assertion messages and don't affect portability
+    "llvm-project/libcxxabi/"
+    "llvm-project/libcxx/"
+    "llvm-project/libunwind/"
 )
 
 # Track found paths (as a newline-separated string to avoid semicolon issues)
