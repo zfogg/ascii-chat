@@ -864,9 +864,8 @@ static void *acds_ping_thread(void *arg) {
 /**
  * @brief ACDS PING callback - respond with PONG to keep connection alive
  */
-static void on_acds_ping(void *client_ctx, void *app_ctx) {
-  (void)client_ctx;
-  (void)app_ctx;
+static void on_acds_ping(void *ctx) {
+  (void)ctx;
   log_debug("ACDS keepalive: Received PING from ACDS, responding with PONG");
   if (g_acds_transport) {
     packet_send_via_transport(g_acds_transport, PACKET_TYPE_PONG, NULL, 0);
@@ -876,9 +875,8 @@ static void on_acds_ping(void *client_ctx, void *app_ctx) {
 /**
  * @brief ACDS PONG callback - log keepalive response
  */
-static void on_acds_pong(void *client_ctx, void *app_ctx) {
-  (void)client_ctx;
-  (void)app_ctx;
+static void on_acds_pong(void *ctx) {
+  (void)ctx;
   log_debug("ACDS keepalive: Received PONG from ACDS server");
 }
 
