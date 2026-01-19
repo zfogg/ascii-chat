@@ -908,17 +908,38 @@ static void *acds_receive_thread(void *arg) {
     asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
     if (result != ASCIICHAT_OK) {
+      // Check error context to see if connection actually closed
+      asciichat_error_context_t err_ctx;
+      bool has_context = HAS_ERRNO(&err_ctx);
+
       // Timeouts are normal when there are no packets - just continue waiting
       if (result == ERROR_NETWORK_TIMEOUT) {
         continue;
       }
 
-      // Fatal errors - exit thread
+      // ERROR_NETWORK could be:
+      // 1. Receive timeout (non-fatal - continue waiting)
+      // 2. EOF/connection closed (fatal - exit thread)
+      // Check the error context message to distinguish
       if (result == ERROR_NETWORK) {
-        log_warn("ACDS connection closed (network error), exiting receive thread");
-      } else {
-        log_error("ACDS receive error: %s, exiting receive thread", asciichat_error_string(result));
+        if (has_context && strstr(err_ctx.context_message, "Failed to receive packet") != NULL) {
+          // Generic receive failure (likely timeout) - continue waiting
+          log_debug("ACDS receive timeout, continuing to wait for packets");
+          continue;
+        } else if (has_context && (strstr(err_ctx.context_message, "EOF") != NULL ||
+                                   strstr(err_ctx.context_message, "closed") != NULL)) {
+          // Connection actually closed
+          log_warn("ACDS connection closed: %s", err_ctx.context_message);
+          break;
+        } else {
+          // Unknown ERROR_NETWORK - log and exit
+          log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
+          break;
+        }
       }
+
+      // Other errors - exit thread
+      log_error("ACDS receive error: %s, exiting receive thread", asciichat_error_string(result));
       break;
     }
   }

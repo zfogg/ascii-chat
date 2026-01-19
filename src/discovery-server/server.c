@@ -671,7 +671,23 @@ void *acds_client_handler(void *arg) {
     // Receive packet (blocking with system timeout)
     int result = receive_packet(client_socket, &packet_type, &payload, &payload_size);
     if (result < 0) {
-      // Connection error - client disconnected
+      // Check error context to distinguish timeout from actual disconnect
+      asciichat_error_context_t err_ctx;
+      bool has_context = HAS_ERRNO(&err_ctx);
+
+      // Check if this is a timeout (non-fatal) or actual disconnect (fatal)
+      asciichat_error_t error = GET_ERRNO();
+      if (error == ERROR_NETWORK_TIMEOUT ||
+          (error == ERROR_NETWORK && has_context && strstr(err_ctx.context_message, "timed out") != NULL)) {
+        // Timeout waiting for next packet - this is normal, continue waiting
+        log_debug("Client %s: receive timeout, continuing to wait for packets", client_ip);
+        if (payload) {
+          buffer_pool_free(NULL, payload, payload_size);
+        }
+        continue;
+      }
+
+      // Actual disconnect or fatal error
       log_info("Client %s disconnected", client_ip);
       if (payload) {
         buffer_pool_free(NULL, payload, payload_size);
