@@ -1100,7 +1100,11 @@ API documentation (section 3):
 .BR ascii-chat-network (3),
 .BR ascii-chat-platform (3)
 .PP
-Project homepage: https://github.com/zfogg/ascii-chat
+Project homepage: https://ascii-chat.com
+.PP
+Discovery service: https://discover.ascii-chat.com
+.PP
+GitHub repository: https://github.com/zfogg/ascii-chat
 .PP
 Releases: https://github.com/zfogg/ascii-chat/releases
 .PP
