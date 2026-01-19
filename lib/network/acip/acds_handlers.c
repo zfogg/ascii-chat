@@ -188,7 +188,7 @@ static asciichat_error_t handle_acds_webrtc_sdp(const void *payload, size_t payl
   }
 
   const acip_webrtc_sdp_t *sdp = (const acip_webrtc_sdp_t *)payload;
-  callbacks->on_webrtc_sdp(sdp, client_socket, client_ip, callbacks->app_ctx);
+  callbacks->on_webrtc_sdp(sdp, payload_len, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
@@ -203,7 +203,7 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
   }
 
   const acip_webrtc_ice_t *ice = (const acip_webrtc_ice_t *)payload;
-  callbacks->on_webrtc_ice(ice, client_socket, client_ip, callbacks->app_ctx);
+  callbacks->on_webrtc_ice(ice, payload_len, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 

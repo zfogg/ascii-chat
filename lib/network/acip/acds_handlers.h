@@ -45,10 +45,12 @@ typedef struct {
   void (*on_session_leave)(const acip_session_leave_t *req, int client_socket, const char *client_ip, void *app_ctx);
 
   /** @brief Called when client sends WebRTC SDP offer/answer */
-  void (*on_webrtc_sdp)(const acip_webrtc_sdp_t *sdp, int client_socket, const char *client_ip, void *app_ctx);
+  void (*on_webrtc_sdp)(const acip_webrtc_sdp_t *sdp, size_t payload_len, int client_socket, const char *client_ip,
+                        void *app_ctx);
 
   /** @brief Called when client sends WebRTC ICE candidate */
-  void (*on_webrtc_ice)(const acip_webrtc_ice_t *ice, int client_socket, const char *client_ip, void *app_ctx);
+  void (*on_webrtc_ice)(const acip_webrtc_ice_t *ice, size_t payload_len, int client_socket, const char *client_ip,
+                        void *app_ctx);
 
   /** @brief Called when client sends discovery ping */
   void (*on_discovery_ping)(const void *payload, size_t payload_len, int client_socket, const char *client_ip,

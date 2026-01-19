@@ -252,9 +252,22 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
   // === MULTI-KEY PROTOCOL: Finalize session ===
   if (is_zero_key) {
     if (!client_data->in_multikey_session_create) {
-      acip_send_error(transport, ERROR_INVALID_PARAM, "Zero key received but not in multi-key session creation mode");
-      ACDS_DESTROY_TRANSPORT(transport);
-      return;
+      // Special case: If identity verification is not required, allow single zero-key session creation
+      if (!server->config.require_server_identity) {
+        log_debug(
+            "SESSION_CREATE with zero key from %s: identity verification not required, treating as anonymous session",
+            client_ip);
+        // Store the zero key as first key and proceed to finalize immediately
+        memcpy(&client_data->pending_session, req, sizeof(acip_session_create_t));
+        memcpy(client_data->pending_session_keys[0], req->identity_pubkey, 32);
+        client_data->num_pending_keys = 1;
+        client_data->in_multikey_session_create = true;
+        // Fall through to finalize logic below
+      } else {
+        acip_send_error(transport, ERROR_INVALID_PARAM, "Zero key received but not in multi-key session creation mode");
+        ACDS_DESTROY_TRANSPORT(transport);
+        return;
+      }
     }
 
     log_info("SESSION_CREATE finalize from %s: %zu identity key(s)", client_ip, client_data->num_pending_keys);
@@ -548,7 +561,8 @@ static void acds_on_session_leave(const acip_session_leave_t *req, int client_so
   }
 }
 
-static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, int client_socket, const char *client_ip, void *app_ctx) {
+static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t payload_len, int client_socket,
+                               const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_debug("WEBRTC_SDP packet from %s", client_ip);
@@ -556,17 +570,24 @@ static void acds_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, int client_socket, 
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  // Calculate payload size (header + SDP string)
-  size_t payload_size = sizeof(acip_webrtc_sdp_t) + sdp->sdp_len;
+  // Validate sdp_len is within bounds
+  size_t expected_size = sizeof(acip_webrtc_sdp_t) + sdp->sdp_len;
+  if (expected_size > payload_len) {
+    log_warn("SDP packet from %s claims sdp_len=%u but payload_len=%zu (would overflow)", client_ip, sdp->sdp_len,
+             payload_len);
+    acip_send_error(transport, ERROR_INVALID_PARAM, "SDP size mismatch");
+    return;
+  }
 
-  asciichat_error_t relay_result = signaling_relay_sdp(server->db, &server->tcp_server, sdp, payload_size);
+  asciichat_error_t relay_result = signaling_relay_sdp(server->db, &server->tcp_server, sdp, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "SDP relay failed");
     log_warn("SDP relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
   }
 }
 
-static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, int client_socket, const char *client_ip, void *app_ctx) {
+static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len, int client_socket,
+                               const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_debug("WEBRTC_ICE packet from %s", client_ip);
@@ -574,10 +595,16 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, int client_socket, 
   // Create ACIP transport for responses
   ACDS_CREATE_TRANSPORT(client_socket, transport);
 
-  // Calculate payload size (header + candidate string)
-  size_t payload_size = sizeof(acip_webrtc_ice_t) + ice->candidate_len;
+  // Validate candidate_len is within bounds
+  size_t expected_size = sizeof(acip_webrtc_ice_t) + ice->candidate_len;
+  if (expected_size > payload_len) {
+    log_warn("ICE packet from %s claims candidate_len=%u but payload_len=%zu (would overflow)", client_ip,
+             ice->candidate_len, payload_len);
+    acip_send_error(transport, ERROR_INVALID_PARAM, "ICE size mismatch");
+    return;
+  }
 
-  asciichat_error_t relay_result = signaling_relay_ice(server->db, &server->tcp_server, ice, payload_size);
+  asciichat_error_t relay_result = signaling_relay_ice(server->db, &server->tcp_server, ice, payload_len);
   if (relay_result != ASCIICHAT_OK) {
     acip_send_error(transport, relay_result, "ICE relay failed");
     log_warn("ICE relay failed from %s: %s", client_ip, asciichat_error_string(relay_result));
