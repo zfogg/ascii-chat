@@ -1050,8 +1050,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   // Convert composite to ASCII using client capabilities
-  log_debug("Frame gen: composite=%dx%d, terminal=%dx%d, client=%u", composite ? composite->w : 0,
-            composite ? composite->h : 0, width, height, target_client_id);
 
   // CRITICAL: Verify composite width matches expected terminal width
   if (composite && composite->w != width) {
@@ -1062,19 +1060,33 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
 
   if (ascii_frame) {
-    // Find the actual end of frame by locating the final reset sequence (ESC[0m)
+    // Find the actual end of frame by locating the FINAL reset sequence (ESC[0m)
     // This ensures we capture the correct frame size without relying on strlen()
+    // CRITICAL BUG FIX: Use strrchr/strrstr to find LAST occurrence, not first!
+    size_t ascii_len = strlen(ascii_frame);
     const char *reset_seq = "\033[0m";
-    char *frame_end = strstr(ascii_frame, reset_seq);
+    size_t reset_len = strlen(reset_seq);
+
+    // Find LAST occurrence of reset sequence by searching from the end
+    const char *frame_end = NULL;
+    if (ascii_len >= reset_len) {
+      // Start searching from near the end of the string
+      for (const char *p = ascii_frame + ascii_len - reset_len; p >= ascii_frame; p--) {
+        if (strncmp(p, reset_seq, reset_len) == 0) {
+          frame_end = p;
+          break;
+        }
+      }
+    }
 
     if (frame_end) {
       // Include the reset sequence in the count and null-terminate right after it
-      *out_size = (size_t)(frame_end - ascii_frame) + strlen(reset_seq);
+      *out_size = (size_t)(frame_end - ascii_frame) + reset_len;
       // Null-terminate right after the reset sequence to remove any garbage
       ascii_frame[*out_size] = '\0';
     } else {
       // Fallback: use strlen if no reset sequence found
-      *out_size = strlen(ascii_frame);
+      *out_size = ascii_len;
     }
     out = ascii_frame;
   } else {
