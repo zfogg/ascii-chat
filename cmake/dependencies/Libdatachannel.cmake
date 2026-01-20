@@ -95,10 +95,17 @@ if(USE_VCPKG AND VCPKG_ROOT)
             endif()
             # For static Release builds on macOS, use static libc++ to avoid runtime deps
             if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+                # Use ASCIICHAT_LIBCXX_STATIC_ROOT if set (e.g., from official LLVM release),
+                # otherwise fall back to LLVM_ROOT_PREFIX (Homebrew, etc.)
+                if(ASCIICHAT_LIBCXX_STATIC_ROOT)
+                    set(_ldc_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
+                else()
+                    set(_ldc_libcxx_root "${LLVM_ROOT_PREFIX}")
+                endif()
                 set(_libcxx_link
-                    "${LLVM_ROOT_PREFIX}/lib/libc++.a"
-                    "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
-                    "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+                    "${_ldc_libcxx_root}/lib/libc++.a"
+                    "${_ldc_libcxx_root}/lib/libc++abi.a"
+                    "${_ldc_libcxx_root}/lib/libunwind.a"
                 )
             else()
                 set(_libcxx_link c++)
@@ -477,12 +484,19 @@ endif()
         endif()
         # For static Release builds on macOS, use static libc++ to avoid runtime deps
         if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+            # Use ASCIICHAT_LIBCXX_STATIC_ROOT if set (e.g., from official LLVM release),
+            # otherwise fall back to LLVM_ROOT_PREFIX (Homebrew, etc.)
+            if(ASCIICHAT_LIBCXX_STATIC_ROOT)
+                set(_ldc_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
+            else()
+                set(_ldc_libcxx_root "${LLVM_ROOT_PREFIX}")
+            endif()
             set(_libcxx_link
-                "${LLVM_ROOT_PREFIX}/lib/libc++.a"
-                "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
-                "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+                "${_ldc_libcxx_root}/lib/libc++.a"
+                "${_ldc_libcxx_root}/lib/libc++abi.a"
+                "${_ldc_libcxx_root}/lib/libunwind.a"
             )
-            message(STATUS "libdatachannel: using static libc++ from ${LLVM_ROOT_PREFIX}/lib")
+            message(STATUS "libdatachannel: using static libc++ from ${_ldc_libcxx_root}/lib")
         else()
             set(_libcxx_link c++)
         endif()

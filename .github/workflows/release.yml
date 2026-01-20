@@ -409,6 +409,30 @@ jobs:
           extra-packages: ""
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download LLVM static libraries
+        id: llvm-static
+        run: |
+          # Download official LLVM release which includes static libc++ libraries
+          # Homebrew LLVM doesn't include static libs, so we need the official binaries
+          LLVM_VERSION="19.1.6"
+          if [[ "$(uname -m)" == "arm64" ]]; then
+            LLVM_ARCH="ARM64"
+          else
+            LLVM_ARCH="X64"
+          fi
+          LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
+          LLVM_DIR="${PWD}/.deps-cache/llvm-static"
+
+          echo "Downloading LLVM ${LLVM_VERSION} for macOS ${LLVM_ARCH}..."
+          mkdir -p "${LLVM_DIR}"
+          curl -fsSL "${LLVM_URL}" | tar -xJ -C "${LLVM_DIR}" --strip-components=1
+
+          # Verify static libs exist
+          ls -la "${LLVM_DIR}/lib/libc++.a" "${LLVM_DIR}/lib/libc++abi.a" "${LLVM_DIR}/lib/libunwind.a"
+
+          echo "llvm-static-dir=${LLVM_DIR}" >> $GITHUB_OUTPUT
+          echo "LLVM static libraries downloaded to ${LLVM_DIR}"
+
       - name: Clear WebRTC cache to force re-fetch with libc++ header fix
         if: runner.os == 'macOS'
         run: |
@@ -423,12 +447,17 @@ jobs:
       - name: Configure with CMake
         run: |
           DEFER_TOOL="${{ steps.install-deps.outputs.defer-tool-path }}"
+          LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           CMAKE_ARGS="--preset release"
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
           else
             echo "No pre-built defer tool available - CMake will build from source"
+          fi
+          if [ -n "$LLVM_STATIC_DIR" ]; then
+            echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
+            CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
           fi
           cmake $CMAKE_ARGS
 

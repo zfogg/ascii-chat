@@ -284,12 +284,19 @@ if(APPLE)
     # macOS uses -force_load to embed all symbols from static libraries
     # For static Release builds, use static libc++ to avoid runtime deps
     if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        # Use ASCIICHAT_LIBCXX_STATIC_ROOT if set (e.g., from official LLVM release),
+        # otherwise fall back to LLVM_ROOT_PREFIX (Homebrew, etc.)
+        if(ASCIICHAT_LIBCXX_STATIC_ROOT)
+            set(_webrtc_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
+        else()
+            set(_webrtc_libcxx_root "${LLVM_ROOT_PREFIX}")
+        endif()
         set(_webrtc_libcxx_link
-            "${LLVM_ROOT_PREFIX}/lib/libc++.a"
-            "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
-            "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+            "${_webrtc_libcxx_root}/lib/libc++.a"
+            "${_webrtc_libcxx_root}/lib/libc++abi.a"
+            "${_webrtc_libcxx_root}/lib/libunwind.a"
         )
-        message(STATUS "  WebRTC AEC3: using static libc++ from ${LLVM_ROOT_PREFIX}/lib")
+        message(STATUS "  WebRTC AEC3: using static libc++ from ${_webrtc_libcxx_root}/lib")
     else()
         set(_webrtc_libcxx_link c++)
     endif()

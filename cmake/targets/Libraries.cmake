@@ -1086,12 +1086,19 @@ if(WIN32)
 elseif(APPLE)
     # For static Release builds on macOS, use static libc++ to avoid runtime deps
     if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        # Use ASCIICHAT_LIBCXX_STATIC_ROOT if set (e.g., from official LLVM release),
+        # otherwise fall back to LLVM_ROOT_PREFIX (Homebrew, etc.)
+        if(ASCIICHAT_LIBCXX_STATIC_ROOT)
+            set(_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
+        else()
+            set(_libcxx_root "${LLVM_ROOT_PREFIX}")
+        endif()
         set(_apple_libcxx_link
-            "${LLVM_ROOT_PREFIX}/lib/libc++.a"
-            "${LLVM_ROOT_PREFIX}/lib/libc++abi.a"
-            "${LLVM_ROOT_PREFIX}/lib/libunwind.a"
+            "${_libcxx_root}/lib/libc++.a"
+            "${_libcxx_root}/lib/libc++abi.a"
+            "${_libcxx_root}/lib/libunwind.a"
         )
-        message(STATUS "ascii-chat-static-lib: using static libc++ from ${LLVM_ROOT_PREFIX}/lib")
+        message(STATUS "ascii-chat-static-lib: using static libc++ from ${_libcxx_root}/lib")
     else()
         set(_apple_libcxx_link c++)
     endif()
