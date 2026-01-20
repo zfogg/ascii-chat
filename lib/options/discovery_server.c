@@ -34,14 +34,6 @@
 #include <string.h>
 
 // ============================================================================
-// ACDS Option Globals
-// ============================================================================
-
-int opt_acds_port = 27225;
-char opt_acds_database_path[OPTIONS_BUFF_SIZE] = "";
-char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
-
-// ============================================================================
 // ACDS Option Parsing
 // ============================================================================
 
@@ -93,10 +85,6 @@ asciichat_error_t parse_discovery_server_options(int argc, char **argv, options_
     snprintf(opts->acds_key_path, sizeof(opts->acds_key_path), "%sacds_identity", config_dir);
     SAFE_FREE(config_dir);
   }
-
-  // Copy to global variables for backward compatibility
-  SAFE_STRNCPY(opt_acds_database_path, opts->acds_database_path, sizeof(opt_acds_database_path));
-  SAFE_STRNCPY(opt_acds_key_path, opts->acds_key_path, sizeof(opt_acds_key_path));
 
   options_config_destroy(config);
   return ASCIICHAT_OK;

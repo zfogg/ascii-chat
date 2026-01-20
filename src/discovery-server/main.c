@@ -84,8 +84,9 @@ int acds_main(void) {
   uint8_t public_key[32];
   uint8_t secret_key[64];
 
-  log_info("Loading identity key from %s", opt_acds_key_path);
-  result = acds_identity_load(opt_acds_key_path, public_key, secret_key);
+  const char *acds_key_path = GET_OPTION(acds_key_path);
+  log_info("Loading identity key from %s", acds_key_path);
+  result = acds_identity_load(acds_key_path, public_key, secret_key);
 
   if (result != ASCIICHAT_OK) {
     log_info("Identity key not found, generating new key...");
@@ -96,13 +97,13 @@ int acds_main(void) {
       return result;
     }
 
-    result = acds_identity_save(opt_acds_key_path, public_key, secret_key);
+    result = acds_identity_save(acds_key_path, public_key, secret_key);
     if (result != ASCIICHAT_OK) {
-      log_error("Failed to save identity key to %s", opt_acds_key_path);
+      log_error("Failed to save identity key to %s", acds_key_path);
       return result;
     }
 
-    log_info("Saved new identity key to %s", opt_acds_key_path);
+    log_info("Saved new identity key to %s", acds_key_path);
   }
 
   // Display server fingerprint
@@ -113,14 +114,14 @@ int acds_main(void) {
 
   // Create config from options for server initialization
   acds_config_t config;
-  config.port = opt_acds_port;
+  config.port = GET_OPTION(acds_port);
   const char *address = opts && opts->address[0] != '\0' ? opts->address : "127.0.0.1";
   const char *address6 = opts && opts->address6[0] != '\0' ? opts->address6 : "::1";
   const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "acds.log";
   SAFE_STRNCPY(config.address, address, sizeof(config.address));
   SAFE_STRNCPY(config.address6, address6, sizeof(config.address6));
-  SAFE_STRNCPY(config.database_path, opt_acds_database_path, sizeof(config.database_path));
-  SAFE_STRNCPY(config.key_path, opt_acds_key_path, sizeof(config.key_path));
+  SAFE_STRNCPY(config.database_path, GET_OPTION(acds_database_path), sizeof(config.database_path));
+  SAFE_STRNCPY(config.key_path, acds_key_path, sizeof(config.key_path));
   SAFE_STRNCPY(config.log_file, log_file, sizeof(config.log_file));
   config.log_level = GET_OPTION(log_level);
   config.require_server_identity = GET_OPTION(require_server_identity) != 0;

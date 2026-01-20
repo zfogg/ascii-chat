@@ -212,8 +212,17 @@
 #define SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif
 
-/** @brief Default TCP port for client/server communication */
+/** @brief Default TCP port for client/server communication (string) */
 #define OPT_PORT_DEFAULT "27224"
+
+/** @brief Default TCP port for client/server communication (integer) */
+#define OPT_PORT_INT_DEFAULT 27224
+
+/** @brief Default ACDS discovery service port (integer) */
+#define OPT_ACDS_PORT_INT_DEFAULT 27225
+
+/** @brief Default ACDS discovery service port (string) */
+#define OPT_ACDS_PORT_DEFAULT "27225"
 
 /** @brief Default server address for client connections */
 #define OPT_ADDRESS_DEFAULT "localhost"
@@ -257,7 +266,97 @@
 /** @brief Default audio encoding state (true = Opus encoding enabled) */
 #define OPT_ENCODE_AUDIO_DEFAULT true
 
-/** @} */
+/** @brief Default test pattern mode (false = use actual webcam) */
+#define OPT_TEST_PATTERN_DEFAULT false
+
+/** @brief Default show terminal capabilities flag */
+#define OPT_SHOW_CAPABILITIES_DEFAULT false
+
+/** @brief Default force UTF-8 support flag */
+#define OPT_FORCE_UTF8_DEFAULT false
+
+/** @brief Default allow aspect ratio distortion flag */
+#define OPT_STRETCH_DEFAULT false
+
+/** @brief Default strip ANSI escape sequences flag */
+#define OPT_STRIP_ANSI_DEFAULT false
+
+/** @brief Default snapshot mode flag (false = continuous) */
+#define OPT_SNAPSHOT_MODE_DEFAULT false
+
+/** @brief Default no compression flag (false = enable compression) */
+#define OPT_NO_COMPRESS_DEFAULT false
+
+/** @brief Default encrypt enabled flag (false = encryption optional) */
+#define OPT_ENCRYPT_ENABLED_DEFAULT false
+
+/** @brief Default no encrypt flag (false = allow encryption) */
+#define OPT_NO_ENCRYPT_DEFAULT false
+
+/** @brief Default WebRTC mode flag (false = direct TCP) */
+#define OPT_WEBRTC_DEFAULT false
+
+/** @brief Default audio enabled flag (false = audio disabled) */
+#define OPT_AUDIO_ENABLED_DEFAULT false
+
+/** @brief Default audio analysis enabled flag */
+#define OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT false
+
+/** @brief Default audio playback flag (false = enable playback) */
+#define OPT_AUDIO_NO_PLAYBACK_DEFAULT false
+
+/** @brief Default help flag */
+#define OPT_HELP_DEFAULT false
+
+/** @brief Default version flag */
+#define OPT_VERSION_DEFAULT false
+
+/** @brief Default no audio mixer flag (false = enable mixer) */
+#define OPT_NO_AUDIO_MIXER_DEFAULT false
+
+/** @brief Default ACDS expose IP flag (false = private by default) */
+#define OPT_ACDS_EXPOSE_IP_DEFAULT false
+
+/** @brief Default ACDS registration flag (false = disabled) */
+#define OPT_ACDS_DEFAULT false
+
+/** @brief Default enable UPnP flag (false = UPnP disabled) */
+#define OPT_ENABLE_UPNP_DEFAULT false
+
+/** @brief Default no mDNS advertise flag (false = advertise enabled) */
+#define OPT_NO_MDNS_ADVERTISE_DEFAULT false
+
+/** @brief Default LAN discovery flag (false = discovery disabled) */
+#define OPT_LAN_DISCOVERY_DEFAULT false
+
+/** @brief Default prefer WebRTC flag (false = try direct TCP first) */
+#define OPT_PREFER_WEBRTC_DEFAULT false
+
+/** @brief Default no WebRTC flag (false = WebRTC enabled) */
+#define OPT_NO_WEBRTC_DEFAULT false
+
+/** @brief Default WebRTC skip STUN flag (false = use STUN) */
+#define OPT_WEBRTC_SKIP_STUN_DEFAULT false
+
+/** @brief Default WebRTC disable TURN flag (false = use TURN) */
+#define OPT_WEBRTC_DISABLE_TURN_DEFAULT false
+
+/** @brief Default ACDS insecure mode flag (false = verify server) */
+#define OPT_ACDS_INSECURE_DEFAULT false
+
+/** @brief Default microphone sensitivity (1.0 = normal volume) */
+#define OPT_MICROPHONE_SENSITIVITY_DEFAULT 1.0
+
+/** @brief Default speakers volume (1.0 = normal volume) */
+#define OPT_SPEAKERS_VOLUME_DEFAULT 1.0
+
+/** @brief Default quiet mode flag (false = logging enabled) */
+#define OPT_QUIET_DEFAULT false
+
+/** @brief Default loop media flag (false = play once) */
+#define OPT_MEDIA_LOOP_DEFAULT false
+
+/** @{ @} */
 
 /**
  * @name Utility Functions
@@ -674,6 +773,29 @@ const options_t *options_get(void);
     static typeof(((options_t *)0)->field) _default = {0};                                                             \
     (_opts ? (_opts->field) : _default);                                                                               \
   })
+
+/**
+ * @brief Set a single option field (thread-safe, RCU-based)
+ *
+ * Convenience function for updating a single field in the options struct.
+ * Uses RCU (copy-on-write) internally for thread-safe updates.
+ *
+ * **Example:**
+ * ```c
+ * options_set_int("width", 120);
+ * options_set_bool("audio_enabled", true);
+ * options_set_string("port", "8080");
+ * ```
+ *
+ * **Thread Safety**: Multiple writers are serialized with a mutex.
+ * Readers are never blocked (lock-free reads via GET_OPTION).
+ *
+ * @note Use options_update() for complex multi-field updates.
+ */
+asciichat_error_t options_set_int(const char *field_name, int value);
+asciichat_error_t options_set_bool(const char *field_name, bool value);
+asciichat_error_t options_set_string(const char *field_name, const char *value);
+asciichat_error_t options_set_double(const char *field_name, double value);
 
 /**
  * @brief Update options using copy-on-write (thread-safe)

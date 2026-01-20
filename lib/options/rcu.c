@@ -161,7 +161,14 @@ asciichat_error_t options_state_init(void) {
   initial_opts->snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
   initial_opts->reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 
-  // Color and rendering defaults (using zero values which are the correct defaults)
+  // Boolean defaults that are true by default
+  initial_opts->encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
+  initial_opts->webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
+  initial_opts->show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
+  initial_opts->force_utf8 = OPT_FORCE_UTF8_DEFAULT;
+  initial_opts->audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
+
+  // Color and rendering defaults
   initial_opts->color_mode = COLOR_MODE_AUTO; // -1
 
   // Publish initial struct (release semantics - make all fields visible to readers)
@@ -321,4 +328,212 @@ static void log_level_updater(options_t *opts, void *context) {
 
 asciichat_error_t options_set_log_level(log_level_t level) {
   return options_update(log_level_updater, &level);
+}
+
+// ============================================================================
+// Generic Option Setters (for fields not covered by specific setters)
+// ============================================================================
+
+struct int_field_ctx {
+  const char *field_name;
+  int value;
+};
+
+static void int_field_updater(options_t *opts, void *context) {
+  struct int_field_ctx *ctx = (struct int_field_ctx *)context;
+  if (strcmp(ctx->field_name, "width") == 0) opts->width = ctx->value;
+  else if (strcmp(ctx->field_name, "height") == 0) opts->height = ctx->value;
+  else if (strcmp(ctx->field_name, "max_clients") == 0) opts->max_clients = ctx->value;
+  else if (strcmp(ctx->field_name, "compression_level") == 0) opts->compression_level = ctx->value;
+  else if (strcmp(ctx->field_name, "reconnect_attempts") == 0) opts->reconnect_attempts = ctx->value;
+  else if (strcmp(ctx->field_name, "microphone_index") == 0) opts->microphone_index = ctx->value;
+  else if (strcmp(ctx->field_name, "speakers_index") == 0) opts->speakers_index = ctx->value;
+  else if (strcmp(ctx->field_name, "acds_port") == 0) opts->acds_port = ctx->value;
+  else if (strcmp(ctx->field_name, "fps") == 0) opts->fps = ctx->value;
+}
+
+asciichat_error_t options_set_int(const char *field_name, int value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(field_name, "width") != 0 && strcmp(field_name, "height") != 0 &&
+      strcmp(field_name, "max_clients") != 0 && strcmp(field_name, "compression_level") != 0 &&
+      strcmp(field_name, "reconnect_attempts") != 0 && strcmp(field_name, "microphone_index") != 0 &&
+      strcmp(field_name, "speakers_index") != 0 && strcmp(field_name, "acds_port") != 0 &&
+      strcmp(field_name, "fps") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct int_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(int_field_updater, &ctx);
+}
+
+struct bool_field_ctx {
+  const char *field_name;
+  bool value;
+};
+
+static void bool_field_updater(options_t *opts, void *context) {
+  struct bool_field_ctx *ctx = (struct bool_field_ctx *)context;
+  if (strcmp(ctx->field_name, "no_compress") == 0) opts->no_compress = ctx->value;
+  else if (strcmp(ctx->field_name, "encode_audio") == 0) opts->encode_audio = ctx->value;
+  else if (strcmp(ctx->field_name, "webcam_flip") == 0) opts->webcam_flip = ctx->value;
+  else if (strcmp(ctx->field_name, "test_pattern") == 0) opts->test_pattern = ctx->value;
+  else if (strcmp(ctx->field_name, "no_audio_mixer") == 0) opts->no_audio_mixer = ctx->value;
+  else if (strcmp(ctx->field_name, "show_capabilities") == 0) opts->show_capabilities = ctx->value;
+  else if (strcmp(ctx->field_name, "force_utf8") == 0) opts->force_utf8 = ctx->value;
+  else if (strcmp(ctx->field_name, "audio_enabled") == 0) opts->audio_enabled = ctx->value;
+  else if (strcmp(ctx->field_name, "audio_analysis_enabled") == 0) opts->audio_analysis_enabled = ctx->value;
+  else if (strcmp(ctx->field_name, "audio_no_playback") == 0) opts->audio_no_playback = ctx->value;
+  else if (strcmp(ctx->field_name, "stretch") == 0) opts->stretch = ctx->value;
+  else if (strcmp(ctx->field_name, "snapshot_mode") == 0) opts->snapshot_mode = ctx->value;
+  else if (strcmp(ctx->field_name, "strip_ansi") == 0) opts->strip_ansi = ctx->value;
+  else if (strcmp(ctx->field_name, "quiet") == 0) opts->quiet = ctx->value;
+  else if (strcmp(ctx->field_name, "encrypt_enabled") == 0) opts->encrypt_enabled = ctx->value;
+  else if (strcmp(ctx->field_name, "no_encrypt") == 0) opts->no_encrypt = ctx->value;
+  else if (strcmp(ctx->field_name, "acds") == 0) opts->acds = ctx->value;
+  else if (strcmp(ctx->field_name, "acds_expose_ip") == 0) opts->acds_expose_ip = ctx->value;
+  else if (strcmp(ctx->field_name, "acds_insecure") == 0) opts->acds_insecure = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc") == 0) opts->webrtc = ctx->value;
+  else if (strcmp(ctx->field_name, "lan_discovery") == 0) opts->lan_discovery = ctx->value;
+  else if (strcmp(ctx->field_name, "no_mdns_advertise") == 0) opts->no_mdns_advertise = ctx->value;
+  else if (strcmp(ctx->field_name, "prefer_webrtc") == 0) opts->prefer_webrtc = ctx->value;
+  else if (strcmp(ctx->field_name, "no_webrtc") == 0) opts->no_webrtc = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc_skip_stun") == 0) opts->webrtc_skip_stun = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc_disable_turn") == 0) opts->webrtc_disable_turn = ctx->value;
+  else if (strcmp(ctx->field_name, "enable_upnp") == 0) opts->enable_upnp = ctx->value;
+  else if (strcmp(ctx->field_name, "require_server_identity") == 0) opts->require_server_identity = ctx->value;
+  else if (strcmp(ctx->field_name, "require_client_identity") == 0) opts->require_client_identity = ctx->value;
+  else if (strcmp(ctx->field_name, "require_server_verify") == 0) opts->require_server_verify = ctx->value;
+  else if (strcmp(ctx->field_name, "require_client_verify") == 0) opts->require_client_verify = ctx->value;
+  else if (strcmp(ctx->field_name, "palette_custom_set") == 0) opts->palette_custom_set = ctx->value;
+  else if (strcmp(ctx->field_name, "media_loop") == 0) opts->media_loop = ctx->value;
+  else if (strcmp(ctx->field_name, "media_from_stdin") == 0) opts->media_from_stdin = ctx->value;
+  else if (strcmp(ctx->field_name, "auto_width") == 0) opts->auto_width = ctx->value;
+  else if (strcmp(ctx->field_name, "auto_height") == 0) opts->auto_height = ctx->value;
+}
+
+asciichat_error_t options_set_bool(const char *field_name, bool value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Validate field exists
+  if (strcmp(field_name, "no_compress") != 0 && strcmp(field_name, "encode_audio") != 0 &&
+      strcmp(field_name, "webcam_flip") != 0 && strcmp(field_name, "test_pattern") != 0 &&
+      strcmp(field_name, "no_audio_mixer") != 0 && strcmp(field_name, "show_capabilities") != 0 &&
+      strcmp(field_name, "force_utf8") != 0 && strcmp(field_name, "audio_enabled") != 0 &&
+      strcmp(field_name, "audio_analysis_enabled") != 0 && strcmp(field_name, "audio_no_playback") != 0 &&
+      strcmp(field_name, "stretch") != 0 && strcmp(field_name, "snapshot_mode") != 0 &&
+      strcmp(field_name, "strip_ansi") != 0 && strcmp(field_name, "quiet") != 0 &&
+      strcmp(field_name, "encrypt_enabled") != 0 && strcmp(field_name, "no_encrypt") != 0 &&
+      strcmp(field_name, "acds") != 0 && strcmp(field_name, "acds_expose_ip") != 0 &&
+      strcmp(field_name, "acds_insecure") != 0 && strcmp(field_name, "webrtc") != 0 &&
+      strcmp(field_name, "lan_discovery") != 0 && strcmp(field_name, "no_mdns_advertise") != 0 &&
+      strcmp(field_name, "prefer_webrtc") != 0 && strcmp(field_name, "no_webrtc") != 0 &&
+      strcmp(field_name, "webrtc_skip_stun") != 0 && strcmp(field_name, "webrtc_disable_turn") != 0 &&
+      strcmp(field_name, "enable_upnp") != 0 && strcmp(field_name, "require_server_identity") != 0 &&
+      strcmp(field_name, "require_client_identity") != 0 && strcmp(field_name, "require_server_verify") != 0 &&
+      strcmp(field_name, "require_client_verify") != 0 && strcmp(field_name, "palette_custom_set") != 0 &&
+      strcmp(field_name, "media_loop") != 0 && strcmp(field_name, "media_from_stdin") != 0 &&
+      strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct bool_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(bool_field_updater, &ctx);
+}
+
+struct string_field_ctx {
+  const char *field_name;
+  const char *value;
+};
+
+static void string_field_updater(options_t *opts, void *context) {
+  struct string_field_ctx *ctx = (struct string_field_ctx *)context;
+  if (strcmp(ctx->field_name, "address") == 0) SAFE_STRNCPY(opts->address, ctx->value, sizeof(opts->address));
+  else if (strcmp(ctx->field_name, "address6") == 0) SAFE_STRNCPY(opts->address6, ctx->value, sizeof(opts->address6));
+  else if (strcmp(ctx->field_name, "port") == 0) SAFE_STRNCPY(opts->port, ctx->value, sizeof(opts->port));
+  else if (strcmp(ctx->field_name, "encrypt_key") == 0) SAFE_STRNCPY(opts->encrypt_key, ctx->value, sizeof(opts->encrypt_key));
+  else if (strcmp(ctx->field_name, "password") == 0) SAFE_STRNCPY(opts->password, ctx->value, sizeof(opts->password));
+  else if (strcmp(ctx->field_name, "encrypt_keyfile") == 0) SAFE_STRNCPY(opts->encrypt_keyfile, ctx->value, sizeof(opts->encrypt_keyfile));
+  else if (strcmp(ctx->field_name, "server_key") == 0) SAFE_STRNCPY(opts->server_key, ctx->value, sizeof(opts->server_key));
+  else if (strcmp(ctx->field_name, "client_keys") == 0) SAFE_STRNCPY(opts->client_keys, ctx->value, sizeof(opts->client_keys));
+  else if (strcmp(ctx->field_name, "acds_server") == 0) SAFE_STRNCPY(opts->acds_server, ctx->value, sizeof(opts->acds_server));
+  else if (strcmp(ctx->field_name, "acds_server_key") == 0) SAFE_STRNCPY(opts->acds_server_key, ctx->value, sizeof(opts->acds_server_key));
+  else if (strcmp(ctx->field_name, "acds_key_path") == 0) SAFE_STRNCPY(opts->acds_key_path, ctx->value, sizeof(opts->acds_key_path));
+  else if (strcmp(ctx->field_name, "acds_database_path") == 0) SAFE_STRNCPY(opts->acds_database_path, ctx->value, sizeof(opts->acds_database_path));
+  else if (strcmp(ctx->field_name, "log_file") == 0) SAFE_STRNCPY(opts->log_file, ctx->value, sizeof(opts->log_file));
+  else if (strcmp(ctx->field_name, "media_file") == 0) SAFE_STRNCPY(opts->media_file, ctx->value, sizeof(opts->media_file));
+  else if (strcmp(ctx->field_name, "palette_custom") == 0) SAFE_STRNCPY(opts->palette_custom, ctx->value, sizeof(opts->palette_custom));
+  else if (strcmp(ctx->field_name, "stun_servers") == 0) SAFE_STRNCPY(opts->stun_servers, ctx->value, sizeof(opts->stun_servers));
+  else if (strcmp(ctx->field_name, "turn_servers") == 0) SAFE_STRNCPY(opts->turn_servers, ctx->value, sizeof(opts->turn_servers));
+  else if (strcmp(ctx->field_name, "turn_username") == 0) SAFE_STRNCPY(opts->turn_username, ctx->value, sizeof(opts->turn_username));
+  else if (strcmp(ctx->field_name, "turn_credential") == 0) SAFE_STRNCPY(opts->turn_credential, ctx->value, sizeof(opts->turn_credential));
+  else if (strcmp(ctx->field_name, "turn_secret") == 0) SAFE_STRNCPY(opts->turn_secret, ctx->value, sizeof(opts->turn_secret));
+  else if (strcmp(ctx->field_name, "session_string") == 0) SAFE_STRNCPY(opts->session_string, ctx->value, sizeof(opts->session_string));
+}
+
+asciichat_error_t options_set_string(const char *field_name, const char *value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (!value) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "value is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Validate field exists
+  if (strcmp(field_name, "address") != 0 && strcmp(field_name, "address6") != 0 &&
+      strcmp(field_name, "port") != 0 && strcmp(field_name, "encrypt_key") != 0 &&
+      strcmp(field_name, "password") != 0 && strcmp(field_name, "encrypt_keyfile") != 0 &&
+      strcmp(field_name, "server_key") != 0 && strcmp(field_name, "client_keys") != 0 &&
+      strcmp(field_name, "acds_server") != 0 && strcmp(field_name, "acds_server_key") != 0 &&
+      strcmp(field_name, "acds_key_path") != 0 && strcmp(field_name, "acds_database_path") != 0 &&
+      strcmp(field_name, "log_file") != 0 && strcmp(field_name, "media_file") != 0 &&
+      strcmp(field_name, "palette_custom") != 0 && strcmp(field_name, "stun_servers") != 0 &&
+      strcmp(field_name, "turn_servers") != 0 && strcmp(field_name, "turn_username") != 0 &&
+      strcmp(field_name, "turn_credential") != 0 && strcmp(field_name, "turn_secret") != 0 &&
+      strcmp(field_name, "session_string") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown string field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct string_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(string_field_updater, &ctx);
+}
+
+struct double_field_ctx {
+  const char *field_name;
+  double value;
+};
+
+static void double_field_updater(options_t *opts, void *context) {
+  struct double_field_ctx *ctx = (struct double_field_ctx *)context;
+  if (strcmp(ctx->field_name, "snapshot_delay") == 0) opts->snapshot_delay = ctx->value;
+  else if (strcmp(ctx->field_name, "microphone_sensitivity") == 0) opts->microphone_sensitivity = ctx->value;
+  else if (strcmp(ctx->field_name, "speakers_volume") == 0) opts->speakers_volume = ctx->value;
+}
+
+asciichat_error_t options_set_double(const char *field_name, double value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(field_name, "snapshot_delay") != 0 && strcmp(field_name, "microphone_sensitivity") != 0 &&
+      strcmp(field_name, "speakers_volume") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown double field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct double_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(double_field_updater, &ctx);
 }

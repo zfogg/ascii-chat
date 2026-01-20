@@ -52,36 +52,9 @@ extern "C" {
  *
  * @note ACDS mode only
  * @ingroup options
+ *
+ * Access via GET_OPTION(acds_port)
  */
-extern ASCIICHAT_API int opt_acds_port;
-
-/**
- * @brief SQLite database path (ACDS mode only)
- *
- * Path to SQLite database for session storage and management.
- *
- * **Default**: `~/.config/ascii-chat/acds.db`
- *
- * **Command-line**: `--database <path>` or `-d <path>`
- *
- * @note ACDS mode only
- * @ingroup options
- */
-extern ASCIICHAT_API char opt_acds_database_path[OPTIONS_BUFF_SIZE];
-
-/**
- * @brief Ed25519 identity key path (ACDS mode only)
- *
- * Path to Ed25519 identity key for server identity.
- *
- * **Default**: `~/.config/ascii-chat/acds_identity`
- *
- * **Command-line**: `--key <path>` or `-k <path>`
- *
- * @note ACDS mode only
- * @ingroup options
- */
-extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
 
 /**
  * @brief Parse discovery server-specific command-line options
