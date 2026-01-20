@@ -14,9 +14,9 @@ LOCAL_REPO="/home/zfogg/src/github.com/zfogg/ascii-chat"
 SERVER_PORT=27224
 TEST_PASSWORD="webrtc-$(date +%s)"
 
-# Fast timeouts - total ~10 seconds
+# Fast timeouts - total ~30 seconds
 SNAPSHOT_DURATION=1  # 1 second per test
-TEST_TIMEOUT=3       # 3 seconds max per test
+TEST_TIMEOUT=10      # 10 seconds max per test (WebRTC needs 4-5 seconds)
 
 # Use actual coturn servers
 STUN_SERVERS="stun:stun.ascii-chat.com:3478"
