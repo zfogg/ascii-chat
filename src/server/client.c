@@ -1310,7 +1310,7 @@ void *client_receive_thread(void *arg) {
     }
 
     // Log before attempting to receive packet
-    log_debug("RECV_LOOP_ITER: Client %u, about to call acip_server_receive_and_dispatch, transport=%p",
+    log_error("RECV_LOOP_ITER_START: Client %u, about to call acip_server_receive_and_dispatch, transport=%p",
               atomic_load(&client->client_id), (void *)client->transport);
 
     // Receive and dispatch packet using ACIP transport API
@@ -1318,15 +1318,18 @@ void *client_receive_thread(void *arg) {
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
 
-    log_debug("RECV_LOOP_ITER: Client %u, dispatch returned %d", atomic_load(&client->client_id), acip_result);
+    log_error("RECV_DISPATCH_COMPLETED: Client %u, result=%d, active=%d, exit=%d", atomic_load(&client->client_id),
+              acip_result, atomic_load(&client->active), atomic_load(&g_server_should_exit));
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
+      log_error("RECV_EXIT: Server shutdown requested, breaking loop");
       break;
     }
 
     // Handle receive errors
     if (acip_result != ASCIICHAT_OK) {
+      log_error("RECV_ERROR: Client %u got error %d from dispatch", atomic_load(&client->client_id), acip_result);
       // Check error type to determine if we should disconnect
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
@@ -1346,6 +1349,8 @@ void *client_receive_thread(void *arg) {
       // Other errors - log but don't disconnect immediately
       log_warn("ACIP receive/dispatch failed for client %u: %s", client->client_id,
                asciichat_error_string(acip_result));
+    } else {
+      log_error("RECV_SUCCESS: Client %u dispatch succeeded, looping back", atomic_load(&client->client_id));
     }
   }
 

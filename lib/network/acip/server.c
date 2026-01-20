@@ -66,9 +66,9 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     void *allocated_buffer = NULL;
     size_t packet_len = 0;
 
-    log_debug("ACIP_SERVER_DISPATCH: Calling transport->methods->recv() for WebRTC");
+    log_error("★ ACIP_SERVER_DISPATCH: About to call transport->methods->recv() for WebRTC");
     asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
-    log_debug("ACIP_SERVER_DISPATCH: recv() returned %d, packet_len=%zu, packet_data=%p", recv_result, packet_len,
+    log_error("★ ACIP_SERVER_DISPATCH: recv() returned %d, packet_len=%zu, packet_data=%p", recv_result, packet_len,
               packet_data);
 
     if (recv_result != ASCIICHAT_OK) {
