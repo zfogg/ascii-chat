@@ -26,14 +26,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include "common.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
 #include "network/tcp/server.h"
 #include "network/acip/acds.h"
 #include "options/options.h" // For MAX_IDENTITY_KEYS
 #include "thread_pool.h"
 #include "discovery-server/main.h"
+#include "discovery/session.h" // For host_lost_candidate_t and MAX_PARTICIPANTS
 
 /**
  * @brief Per-client connection data
@@ -68,6 +66,20 @@ typedef struct {
 } acds_client_data_t;
 
 /**
+ * @brief In-memory host migration context
+ *
+ * Tracks migration timeout for sessions undergoing host failover.
+ * Used by monitor_host_migrations() to detect stalled migrations and timeout.
+ *
+ * NOTE: Election happens proactively (host picks future host every 5 minutes).
+ * No candidate collection or election needed here - just timeout tracking.
+ */
+typedef struct {
+  uint8_t session_id[16];     ///< Session UUID
+  uint64_t migration_start_ns; ///< When migration started (nanoseconds since sokol_time setup)
+} migration_context_t;
+
+/**
  * @brief Discovery server state
  *
  * Contains all runtime state for the discovery server including
@@ -86,6 +98,10 @@ typedef struct {
 
   // Rate limiting
   struct rate_limiter_s *rate_limiter; ///< SQLite-backed rate limiter
+
+  // Host migration tracking (in-memory during active migrations)
+  migration_context_t active_migrations[32]; ///< Slots for up to 32 concurrent migrations
+  size_t num_active_migrations;              ///< Number of active migrations
 
   // Background worker threads (cleanup, etc.)
   thread_pool_t *worker_pool; ///< Thread pool for background workers

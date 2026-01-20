@@ -12,6 +12,9 @@
 
 #include <string.h>
 
+// Maximum participants in a session (must match session.h definition)
+#define MAX_PARTICIPANTS 16
+
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
                     bool is_initiator) {
   if (!ctx) return;
@@ -80,6 +83,29 @@ asciichat_error_t negotiate_receive_peer_quality(negotiate_ctx_t *ctx, const aci
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Determine connection type for a NAT quality result
+ *
+ * Helper function to avoid code duplication. Returns the most direct connection
+ * type supported: DIRECT_PUBLIC > UPNP > STUN.
+ *
+ * @param quality NAT quality to evaluate
+ * @return Connection type (acip_connection_type_t)
+ */
+static uint8_t determine_connection_type(const nat_quality_t *quality) {
+  if (!quality) {
+    return ACIP_CONNECTION_TYPE_STUN; // Default fallback
+  }
+
+  if (quality->has_public_ip) {
+    return ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
+  } else if (quality->upnp_available) {
+    return ACIP_CONNECTION_TYPE_UPNP;
+  } else {
+    return ACIP_CONNECTION_TYPE_STUN;
+  }
+}
+
 asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx) {
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "ctx is NULL");
@@ -108,15 +134,7 @@ asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx) {
     }
 
     ctx->host_port = ctx->our_quality.upnp_available ? ctx->our_quality.upnp_mapped_port : ACIP_HOST_DEFAULT_PORT;
-
-    // Determine connection type
-    if (ctx->our_quality.has_public_ip) {
-      ctx->connection_type = CONNECTION_TYPE_DIRECT_PUBLIC;
-    } else if (ctx->our_quality.upnp_available) {
-      ctx->connection_type = CONNECTION_TYPE_UPNP;
-    } else {
-      ctx->connection_type = CONNECTION_TYPE_STUN;
-    }
+    ctx->connection_type = determine_connection_type(&ctx->our_quality);
 
     log_info("Negotiation result: WE ARE HOST (addr=%s:%u, type=%d)", ctx->host_address, ctx->host_port,
              ctx->connection_type);
@@ -131,15 +149,7 @@ asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx) {
     }
 
     ctx->host_port = ctx->peer_quality.upnp_available ? ctx->peer_quality.upnp_mapped_port : ACIP_HOST_DEFAULT_PORT;
-
-    // Determine connection type based on peer's capabilities
-    if (ctx->peer_quality.has_public_ip) {
-      ctx->connection_type = CONNECTION_TYPE_DIRECT_PUBLIC;
-    } else if (ctx->peer_quality.upnp_available) {
-      ctx->connection_type = CONNECTION_TYPE_UPNP;
-    } else {
-      ctx->connection_type = CONNECTION_TYPE_STUN;
-    }
+    ctx->connection_type = determine_connection_type(&ctx->peer_quality);
 
     log_info("Negotiation result: THEY ARE HOST (addr=%s:%u, type=%d)", ctx->host_address, ctx->host_port,
              ctx->connection_type);
@@ -162,4 +172,70 @@ bool negotiate_is_complete(const negotiate_ctx_t *ctx) {
 asciichat_error_t negotiate_get_error(const negotiate_ctx_t *ctx) {
   if (!ctx) return ERROR_INVALID_PARAM;
   return ctx->error;
+}
+
+asciichat_error_t negotiate_elect_future_host(
+    const acip_nat_quality_t collected_quality[],
+    const uint8_t participant_ids[][16],
+    size_t num_participants,
+    uint8_t out_future_host_id[16]) {
+  if (!collected_quality || !participant_ids || !out_future_host_id) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (num_participants == 0 || num_participants > MAX_PARTICIPANTS) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid participant count");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Special case: only one participant
+  if (num_participants == 1) {
+    memcpy(out_future_host_id, participant_ids[0], 16);
+    log_info("Only one participant, electing as future host");
+    return ASCIICHAT_OK;
+  }
+
+  // Convert all acip_nat_quality_t to nat_quality_t for comparison
+  nat_quality_t qualities[MAX_PARTICIPANTS];
+  for (size_t i = 0; i < num_participants; i++) {
+    nat_quality_from_acip(&collected_quality[i], &qualities[i]);
+  }
+
+  // Find the best candidate by comparing all pairs
+  // Winner is the one who "wins" most comparisons
+  size_t best_idx = 0;
+  int best_wins = 0;
+
+  for (size_t i = 0; i < num_participants; i++) {
+    int wins = 0;
+
+    // Compare against all others
+    for (size_t j = 0; j < num_participants; j++) {
+      if (i == j) continue;
+
+      // Compare: -1 means i wins, 1 means j wins, 0 means tie
+      // Note: we_are_initiator parameter doesn't matter for multiparty comparison
+      // We use false consistently for deterministic results
+      int result = nat_compare_quality(&qualities[i], &qualities[j], false);
+
+      if (result <= 0) {
+        wins++; // i wins or tie
+      }
+    }
+
+    // Select as winner if has more wins than current best
+    // In case of tie, lexicographically smaller participant_id wins (as tiebreaker)
+    if (wins > best_wins ||
+        (wins == best_wins && memcmp(participant_ids[i], participant_ids[best_idx], 16) < 0)) {
+      best_wins = wins;
+      best_idx = i;
+    }
+  }
+
+  // Copy elected host ID
+  memcpy(out_future_host_id, participant_ids[best_idx], 16);
+
+  log_info("Future host elected (participant index %zu with %d wins)", best_idx, best_wins);
+  return ASCIICHAT_OK;
 }

@@ -119,7 +119,7 @@ static bool g_runtime_mutex_initialized = false;
 static char g_output_dir[PATH_MAX];
 static bool g_output_dir_set = false;
 static bool g_disable_write = false;
-static uint64_t g_start_ticks = 0;
+static uint64_t g_start_ns = 0;
 static bool g_ticks_initialized = false;
 static bool g_coverage_enabled = false;
 static bool g_echo_to_stderr = false;
@@ -249,7 +249,7 @@ void asciichat_instr_runtime_global_shutdown(void) {
     ascii_tls_key_delete(g_runtime_key);
     g_runtime_initialized = false;
     g_ticks_initialized = false;
-    g_start_ticks = 0;
+    g_start_ns = 0;
     g_coverage_enabled = false;
     g_output_dir_set = false;
     g_output_dir[0] = '\0';
@@ -325,12 +325,9 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
   size_t pos = 0;
 
-  struct timespec ts;
-  memset(&ts, 0, sizeof(ts));
-#if defined(CLOCK_REALTIME)
-  (void)clock_gettime(CLOCK_REALTIME, &ts);
-#endif
-  time_t sec = ts.tv_sec;
+  uint64_t realtime_ns = time_get_realtime_ns();
+  time_t sec = (time_t)(realtime_ns / NS_PER_SEC_INT);
+  long nsec = (long)(realtime_ns % NS_PER_SEC_INT);
   struct tm tm_now;
   memset(&tm_now, 0, sizeof(tm_now));
   if (platform_gtime(&sec, &tm_now) != ASCIICHAT_OK) {
@@ -347,9 +344,9 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   char elapsed_buf[32];
   elapsed_buf[0] = '\0';
   if (g_ticks_initialized) {
-    uint64_t now_ticks = stm_now();
-    double elapsed_ns = stm_ns(stm_diff(now_ticks, g_start_ticks));
-    if (format_duration_ns(elapsed_ns, elapsed_buf, sizeof(elapsed_buf)) < 0) {
+    uint64_t now_ns = time_get_ns();
+    uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
+    if (format_duration_ns((double)elapsed_ns, elapsed_buf, sizeof(elapsed_buf)) < 0) {
       elapsed_buf[0] = '\0';
     }
   }
@@ -362,7 +359,7 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   pos += snprintf(buffer + pos, sizeof(buffer) - pos,
                   "pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=",
                   runtime->pid, (unsigned long long)runtime->thread_id, (unsigned long long)runtime->sequence,
-                  (int)ts_len, timestamp, (long)ts.tv_nsec, elapsed_field, safe_file_path, line_number,
+                  (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
                   function_name ? function_name : "<unknown>", (unsigned)is_macro_expansion);
 
   if (snippet != NULL) {
@@ -475,8 +472,7 @@ static void asciichat_instr_runtime_init_once(void) {
     }
     const char *coverage_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE");
     g_coverage_enabled = asciichat_instr_env_is_enabled(coverage_env);
-    stm_setup();
-    g_start_ticks = stm_now();
+    g_start_ns = time_get_ns();
     g_ticks_initialized = true;
     g_runtime_initialized = true;
   }

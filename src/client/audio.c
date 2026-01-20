@@ -544,7 +544,7 @@ static void *audio_capture_thread_func(void *arg) {
   static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
   static int batch_frame_count = 0;
   static size_t batch_total_size = 0;
-  static struct timespec batch_start_time = {0};
+  static uint64_t batch_start_time_ns = 0;
   static bool batch_has_data = false;
 
   while (!should_exit() && !server_connection_is_lost()) {
@@ -569,10 +569,9 @@ static void *audio_capture_thread_func(void *arg) {
     if (available <= 0) {
       // Flush partial batch before sleeping (prevent starvation during idle periods)
       if (batch_has_data && batch_frame_count > 0) {
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        long elapsed_ms =
-            ((now.tv_sec - batch_start_time.tv_sec) * 1000) + ((now.tv_nsec - batch_start_time.tv_nsec) / 1000000);
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
+        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
 
         if (elapsed_ms >= BATCH_TIMEOUT_MS) {
           log_debug_every(LOG_RATE_FAST, "Idle timeout flush: %d frames (%zu bytes) after %ld ms", batch_frame_count,
@@ -720,7 +719,7 @@ static void *audio_capture_thread_func(void *arg) {
             if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
               // Mark batch start time on first frame
               if (batch_frame_count == 0) {
-                clock_gettime(CLOCK_MONOTONIC, &batch_start_time);
+                batch_start_time_ns = time_get_ns();
                 batch_has_data = true;
               }
 
@@ -766,9 +765,7 @@ static void *audio_capture_thread_func(void *arg) {
                       batch_total_size, queue_duration_str);
           }
           // Track audio frame for FPS reporting
-          struct timespec current_time;
-          (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-          fps_frame(&fps_tracker, &current_time, "audio batch queued");
+          fps_frame_ns(&fps_tracker, time_get_ns(), "audio batch queued");
         }
 
         // Reset batch
@@ -808,10 +805,9 @@ static void *audio_capture_thread_func(void *arg) {
       // Check if we have a partial batch that's been waiting too long (time-based flush)
       // This prevents batches from sitting indefinitely when audio capture is irregular
       if (batch_has_data && batch_frame_count > 0) {
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        long elapsed_ms =
-            ((now.tv_sec - batch_start_time.tv_sec) * 1000) + ((now.tv_nsec - batch_start_time.tv_nsec) / 1000000);
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
+        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
 
         if (elapsed_ms >= BATCH_TIMEOUT_MS) {
           static int timeout_flush_count = 0;
@@ -824,9 +820,7 @@ static void *audio_capture_thread_func(void *arg) {
           int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
           if (queue_result == 0) {
             // Track audio frame for FPS reporting
-            struct timespec current_time;
-            (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-            fps_frame(&fps_tracker, &current_time, "audio batch timeout flush");
+            fps_frame_ns(&fps_tracker, time_get_ns(), "audio batch timeout flush");
           }
 
           // Reset batch
@@ -849,10 +843,9 @@ static void *audio_capture_thread_func(void *arg) {
 
       // Flush partial batch before sleeping on error path (prevent starvation)
       if (batch_has_data && batch_frame_count > 0) {
-        struct timespec now;
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        long elapsed_ms =
-            ((now.tv_sec - batch_start_time.tv_sec) * 1000) + ((now.tv_nsec - batch_start_time.tv_nsec) / 1000000);
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
+        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
 
         if (elapsed_ms >= BATCH_TIMEOUT_MS) {
           log_debug_every(LOG_RATE_FAST, "Error path timeout flush: %d frames (%zu bytes) after %ld ms",

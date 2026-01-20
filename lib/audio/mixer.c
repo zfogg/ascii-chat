@@ -659,8 +659,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   for (int frame_start = 0; frame_start < num_samples; frame_start += MIXER_FRAME_SIZE) {
     int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
 
-    struct timespec read_start, read_end;
-    (void)clock_gettime(CLOCK_MONOTONIC, &read_start);
+    uint64_t read_start_ns = time_get_ns();
 
     // Clear mix buffer
     SAFE_MEMSET(mixer->mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
@@ -710,11 +709,11 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       }
     }
 
-    (void)clock_gettime(CLOCK_MONOTONIC, &read_end);
-    uint64_t read_time_us = ((uint64_t)read_end.tv_sec * 1000000 + (uint64_t)read_end.tv_nsec / 1000) -
-                            ((uint64_t)read_start.tv_sec * 1000000 + (uint64_t)read_start.tv_nsec / 1000);
+    uint64_t read_end_ns = time_get_ns();
+    uint64_t read_time_ns = time_elapsed_ns(read_start_ns, read_end_ns);
+    uint64_t read_time_us = time_ns_to_us(read_time_ns);
 
-    if (read_time_us > 10000) { // Log if reading sources takes > 10ms
+    if (read_time_ns > 10 * NS_PER_MS_INT) {
       log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %lluus (%.2fms) for %d sources", read_time_us,
                      (float)read_time_us / 1000.0f, source_count);
     }

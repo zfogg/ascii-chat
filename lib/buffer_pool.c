@@ -10,6 +10,7 @@
 #include "platform/system.h"
 #include "platform/init.h"
 #include "util/format.h"
+#include "util/time.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,14 +18,6 @@
  * Internal Helpers
  * ============================================================================
  */
-
-static inline uint64_t get_time_ms(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-    return 0;
-  }
-  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
 
 /** @brief Get node header from user data pointer */
 static inline buffer_node_t *node_from_data(void *data) {
@@ -233,7 +226,7 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
   atomic_fetch_add_explicit(&pool->returns, 1, memory_order_relaxed);
 
   // Set return timestamp
-  atomic_store_explicit(&node->returned_at_ms, get_time_ms(), memory_order_relaxed);
+  atomic_store_explicit(&node->returned_at_ms, time_ns_to_ms(time_get_ns()), memory_order_relaxed);
 
   // Push to lock-free stack
   buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
@@ -258,7 +251,7 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
     return; // Another thread is shrinking
   }
 
-  uint64_t now = get_time_ms();
+  uint64_t now = time_ns_to_ms(time_get_ns());
   uint64_t cutoff = (now > pool->shrink_delay_ms) ? (now - pool->shrink_delay_ms) : 0;
 
   // Atomically swap out the entire free list

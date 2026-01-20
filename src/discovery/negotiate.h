@@ -117,6 +117,31 @@ bool negotiate_is_complete(const negotiate_ctx_t *ctx);
  */
 asciichat_error_t negotiate_get_error(const negotiate_ctx_t *ctx);
 
+/**
+ * @brief Elect future host from multiple participants (NEW P2P design)
+ *
+ * Called by quorum leader after collecting NAT quality from all participants.
+ * Determines who should become host if current host dies.
+ * Uses deterministic algorithm so all participants independently reach same result.
+ *
+ * @param collected_quality Array of NAT quality from all participants
+ * @param participant_ids Array of participant IDs (in same order as quality array)
+ * @param num_participants Number of participants
+ * @param out_future_host_id Output: Elected future host's participant ID
+ * @return ASCIICHAT_OK on success
+ *
+ * @note All participants compute this independently on their own collected data
+ *       and reach the same result (deterministic algorithm).
+ * @note If only one participant remains, that one is elected.
+ * @note If all have same quality, uses participant ID lexicographic order as tiebreaker.
+ */
+asciichat_error_t negotiate_elect_future_host(
+    const acip_nat_quality_t collected_quality[],
+    const uint8_t participant_ids[][16],
+    size_t num_participants,
+    uint8_t out_future_host_id[16]
+);
+
 #ifdef __cplusplus
 }
 #endif

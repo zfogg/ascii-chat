@@ -327,6 +327,11 @@ set(CORE_SRCS
     lib/discovery/strings.c
     lib/discovery/adjectives.c
     lib/discovery/nouns.c
+    # Discovery client (NAT detection and host negotiation)
+    src/discovery/nat.c
+    src/discovery/negotiate.c
+    src/discovery/session.c
+    src/discovery/webrtc.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )

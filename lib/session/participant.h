@@ -339,4 +339,73 @@ asciichat_error_t session_participant_request_settings(session_participant_t *p,
 
 /** @} */
 
+/* ============================================================================
+ * Session Participant Media Capture Functions
+ * @{
+ */
+
+/**
+ * @brief Start video capture and transmission to host
+ * @param p Participant handle (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Spawns a background thread that:
+ * - Captures video from webcam/file/test pattern
+ * - Resizes for network efficiency (bandwidth optimization)
+ * - Sends IMAGE_FRAME packets to the host
+ *
+ * Video capture respects the participant's enable_video flag and
+ * connection state. Multiple calls are safe (returns OK if already running).
+ *
+ * @note Requires connection to be established first via session_participant_connect()
+ * @note Use session_participant_stop_video_capture() to stop transmission
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_participant_start_video_capture(session_participant_t *p);
+
+/**
+ * @brief Stop video capture and transmission
+ * @param p Participant handle (must not be NULL)
+ *
+ * Stops the video capture background thread and cleans up resources.
+ * Safe to call if video is not running.
+ *
+ * @ingroup session
+ */
+void session_participant_stop_video_capture(session_participant_t *p);
+
+/**
+ * @brief Start audio capture and transmission to host
+ * @param p Participant handle (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Spawns a background thread that:
+ * - Captures audio from microphone
+ * - Encodes to Opus (lossy compression)
+ * - Sends AUDIO packets to the host
+ *
+ * Audio capture respects the participant's enable_audio flag and
+ * connection state. Multiple calls are safe (returns OK if already running).
+ *
+ * @note Requires connection to be established first via session_participant_connect()
+ * @note Use session_participant_stop_audio_capture() to stop transmission
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_participant_start_audio_capture(session_participant_t *p);
+
+/**
+ * @brief Stop audio capture and transmission
+ * @param p Participant handle (must not be NULL)
+ *
+ * Stops the audio capture background thread and cleans up resources.
+ * Safe to call if audio is not running.
+ *
+ * @ingroup session
+ */
+void session_participant_stop_audio_capture(session_participant_t *p);
+
+/** @} */
+
 /** @} */

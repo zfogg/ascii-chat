@@ -95,6 +95,7 @@
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
 #include "util/fps.h"
+#include "util/time.h"
 #include "util/thread.h" // For THREAD_IS_CREATED macro
 #include "network/acip/send.h"
 #include "network/acip/client.h"
@@ -198,7 +199,7 @@ static void *webcam_capture_thread_func(void *arg) {
   static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
   static uint64_t capture_frame_count = 0;
-  static struct timespec last_capture_frame_time = {0, 0};
+  static uint64_t last_capture_frame_time_ns = 0;
   if (!fps_tracker_initialized) {
     fps_init(&fps_tracker, CAPTURE_TARGET_FPS, "WEBCAM_TX");
     fps_tracker_initialized = true;
@@ -230,9 +231,7 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Track frame for FPS reporting
-    struct timespec frame_capture_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &frame_capture_time);
-    fps_frame(&fps_tracker, &frame_capture_time, "webcam frame captured");
+    fps_frame_ns(&fps_tracker, time_get_ns(), "webcam frame captured");
 
     // Process frame for network transmission using session library
     // session_capture_process_for_transmission() returns a new image that we own
@@ -270,22 +269,25 @@ static void *webcam_capture_thread_func(void *arg) {
     // FPS tracking - frame successfully captured and sent
     capture_frame_count++;
 
-    // Calculate time since last frame for lag detection
-    uint64_t frame_interval_us =
-        ((uint64_t)frame_capture_time.tv_sec * 1000000 + (uint64_t)frame_capture_time.tv_nsec / 1000) -
-        ((uint64_t)last_capture_frame_time.tv_sec * 1000000 + (uint64_t)last_capture_frame_time.tv_nsec / 1000);
-    last_capture_frame_time = frame_capture_time;
+    // Calculate time since last frame for lag detection (using nanosecond precision internally)
+    uint64_t frame_capture_time_ns = time_get_ns();
 
-    // Expected frame interval in microseconds
-    uint64_t expected_interval_us = 1000000 / session_capture_get_target_fps(g_capture_ctx);
-    uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
+    uint64_t frame_interval_ns = time_elapsed_ns(last_capture_frame_time_ns, frame_capture_time_ns);
+    last_capture_frame_time_ns = frame_capture_time_ns;
 
-    // Log warning if frame took too long to capture
-    if (capture_frame_count > 1 && frame_interval_us > lag_threshold_us) {
+    // Expected frame interval in nanoseconds
+    uint64_t expected_interval_ns = NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(g_capture_ctx);
+    uint64_t lag_threshold_ns = expected_interval_ns + (expected_interval_ns / 2); // 50% over expected
+
+    // Log warning if frame took too long to capture (display in milliseconds for readability)
+    if (capture_frame_count > 1 && frame_interval_ns > lag_threshold_ns) {
+      double late_ms = (double)(frame_interval_ns - expected_interval_ns) / 1e6;
+      double expected_ms = (double)expected_interval_ns / 1e6;
+      double actual_ms = (double)frame_interval_ns / 1e6;
+      double actual_fps = 1e9 / (double)frame_interval_ns;
       log_warn_every(LOG_RATE_FAST,
                      "CLIENT CAPTURE LAG: Frame captured %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)",
-                     (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
-                     (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
+                     late_ms, expected_ms, actual_ms, actual_fps);
     }
 
     // Clean up processed frame

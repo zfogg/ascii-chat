@@ -179,8 +179,7 @@ static void *audio_worker_thread(void *arg) {
 
           if (render_read > 0) {
             // Measure AEC3 processing time
-            struct timespec aec3_start, aec3_end;
-            clock_gettime(CLOCK_MONOTONIC, &aec3_start);
+            uint64_t aec3_start_ns = time_get_ns();
 
             // AEC3 processing - should be fast enough for real-time on Pi 5
             // Output is written back to worker_capture_batch (in-place processing)
@@ -188,9 +187,7 @@ static void *audio_worker_thread(void *arg) {
                                                  ctx->worker_capture_batch, (int)capture_read,
                                                  ctx->worker_capture_batch); // Process in-place
 
-            clock_gettime(CLOCK_MONOTONIC, &aec3_end);
-            long aec3_ns =
-                (aec3_end.tv_sec - aec3_start.tv_sec) * 1000000000L + (aec3_end.tv_nsec - aec3_start.tv_nsec);
+            long aec3_ns = (long)time_elapsed_ns(aec3_start_ns, time_get_ns());
 
             // Log AEC3 timing periodically
             static int aec3_count = 0;
@@ -521,22 +518,20 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
 
   // Track callback frequency
   static uint64_t callback_count = 0;
-  static struct timespec last_log_time = {0};
+  static uint64_t last_log_time_ns = 0;
   callback_count++;
 
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
+  uint64_t now_ns = time_get_ns();
 
-  // Log every second
-  if (last_log_time.tv_sec == 0) {
-    last_log_time = now;
+  if (last_log_time_ns == 0) {
+    last_log_time_ns = now_ns;
   } else {
-    long elapsed_ms = (now.tv_sec - last_log_time.tv_sec) * 1000L + (now.tv_nsec - last_log_time.tv_nsec) / 1000000L;
+    long elapsed_ms = (long)time_ns_to_ms(time_elapsed_ns(last_log_time_ns, now_ns));
     if (elapsed_ms >= 1000) {
       log_info("Input callback: %lu calls/sec, %lu frames/call, %zu samples/call", callback_count, framesPerBuffer,
                num_samples);
       callback_count = 0;
-      last_log_time = now;
+      last_log_time_ns = now_ns;
     }
   }
 

@@ -39,6 +39,7 @@
 #include "common.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
+#include "util/time.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -193,16 +194,15 @@ int mirror_main(void) {
   }
 
   // Snapshot mode timing
-  struct timespec snapshot_start_time = {0, 0};
+  uint64_t snapshot_start_time_ns = 0;
   bool snapshot_done = false;
   if (GET_OPTION(snapshot_mode)) {
-    (void)clock_gettime(CLOCK_MONOTONIC, &snapshot_start_time);
+    snapshot_start_time_ns = time_get_ns();
   }
 
   // FPS tracking
   uint64_t frame_count = 0;
-  struct timespec fps_report_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &fps_report_time);
+  uint64_t fps_report_time_ns = time_get_ns();
 
   log_info("Mirror mode running - press Ctrl+C to exit");
   log_set_terminal_output(false);
@@ -212,13 +212,11 @@ int mirror_main(void) {
     session_capture_sleep_for_fps(capture);
 
     // Capture timestamp for snapshot mode timing
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+    uint64_t current_time_ns = time_get_ns();
 
     // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
     if (GET_OPTION(snapshot_mode) && !snapshot_done) {
-      double elapsed_sec = (double)(current_time.tv_sec - snapshot_start_time.tv_sec) +
-                           (double)(current_time.tv_nsec - snapshot_start_time.tv_nsec) / 1e9;
+      double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
 
       float snapshot_delay = GET_OPTION(snapshot_delay);
       if (elapsed_sec >= snapshot_delay) {
@@ -274,14 +272,14 @@ int mirror_main(void) {
     // NOTE: Do NOT free 'image' - it's owned by capture context and reused on next read
 
     // FPS reporting every 5 seconds
-    uint64_t fps_elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                              ((uint64_t)fps_report_time.tv_sec * 1000000 + (uint64_t)fps_report_time.tv_nsec / 1000);
+    uint64_t fps_elapsed_ns = time_elapsed_ns(fps_report_time_ns, current_time_ns);
 
-    if (fps_elapsed_us >= 5000000) {
-      double fps = (double)frame_count / ((double)fps_elapsed_us / 1000000.0);
+    if (fps_elapsed_ns >= 5 * NS_PER_SEC_INT) {
+      double elapsed_sec = time_ns_to_s(fps_elapsed_ns);
+      double fps = (double)frame_count / elapsed_sec;
       log_debug("Mirror FPS: %.1f (target: %u)", fps, session_capture_get_target_fps(capture));
       frame_count = 0;
-      fps_report_time = current_time;
+      fps_report_time_ns = current_time_ns;
     }
   }
 

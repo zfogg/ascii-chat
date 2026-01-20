@@ -106,12 +106,8 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
   record->line_number = line_number;
   record->function_name = function_name;
 
-  // Get current time
-  if (clock_gettime(CLOCK_MONOTONIC, &record->acquisition_time) != 0) {
-    SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to get acquisition time");
-    SAFE_FREE(record);
-    return NULL;
-  }
+  // Get current time in nanoseconds
+  record->acquisition_time_ns = time_get_ns();
 
   // Capture backtrace
   // NOTE: platform_backtrace_symbols_free() safely handles the case where
@@ -204,24 +200,11 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
                       record->file_name, record->line_number, record->function_name);
 
   // Calculate how long the lock has been held
-  struct timespec current_time;
-  if (clock_gettime(CLOCK_MONOTONIC, &current_time) == 0) {
-    long long held_sec = current_time.tv_sec - record->acquisition_time.tv_sec;
-    long held_nsec = current_time.tv_nsec - record->acquisition_time.tv_nsec;
-
-    // Handle nanosecond underflow
-    if (held_nsec < 0) {
-      held_sec--;
-      held_nsec += 1000000000;
-    }
-
-    *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Held for: %lld.%09ld seconds\n",
-                        held_sec, held_nsec);
-  } else {
-    *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset),
-                        "  Acquired at: %lld.%09ld seconds (monotonic)\n", (long long)record->acquisition_time.tv_sec,
-                        record->acquisition_time.tv_nsec);
-  }
+  uint64_t current_time_ns = time_get_ns();
+  uint64_t held_ns = time_elapsed_ns(record->acquisition_time_ns, current_time_ns);
+  char duration_str[32];
+  format_duration_ns((double)held_ns, duration_str, sizeof(duration_str));
+  *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Held for: %s\n", duration_str);
 
   // Print backtrace using platform symbol resolution with colored format
   if (record->backtrace_size > 0) {
@@ -288,23 +271,26 @@ static void print_usage_stats_callback(lock_usage_stats_t *stats, void *user_dat
                           "  Total acquisitions: %llu\n", (unsigned long long)stats->total_acquisitions);
   offset +=
       safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                    "  Total hold time: %llu.%03llu ms\n", (unsigned long long)(stats->total_hold_time_ns / 1000000),
-                    (unsigned long long)((stats->total_hold_time_ns % 1000000) / 1000));
+                    "  Total hold time: %llu.%03llu ms\n", (unsigned long long)(stats->total_hold_time_ns / NS_PER_MS_INT),
+                    (unsigned long long)((stats->total_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                          "  Average hold time: %llu.%03llu ms\n", (unsigned long long)(avg_hold_time_ns / 1000000),
-                          (unsigned long long)((avg_hold_time_ns % 1000000) / 1000));
+                          "  Average hold time: %llu.%03llu ms\n", (unsigned long long)(avg_hold_time_ns / NS_PER_MS_INT),
+                          (unsigned long long)((avg_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                          "  Max hold time: %llu.%03llu ms\n", (unsigned long long)(stats->max_hold_time_ns / 1000000),
-                          (unsigned long long)((stats->max_hold_time_ns % 1000000) / 1000));
+                          "  Max hold time: %llu.%03llu ms\n", (unsigned long long)(stats->max_hold_time_ns / NS_PER_MS_INT),
+                          (unsigned long long)((stats->max_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                          "  Min hold time: %llu.%03llu ms\n", (unsigned long long)(stats->min_hold_time_ns / 1000000),
-                          (unsigned long long)((stats->min_hold_time_ns % 1000000) / 1000));
+                          "  Min hold time: %llu.%03llu ms\n", (unsigned long long)(stats->min_hold_time_ns / NS_PER_MS_INT),
+                          (unsigned long long)((stats->min_hold_time_ns % NS_PER_MS_INT) / NS_PER_US_INT));
+  char first_acq_str[32];
+  format_duration_ns((double)stats->first_acquisition_ns, first_acq_str, sizeof(first_acq_str));
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                          "  First acquisition: %lld.%09ld\n", (long long)stats->first_acquisition.tv_sec,
-                          stats->first_acquisition.tv_nsec);
+                          "  First acquisition: %s\n", first_acq_str);
+
+  char last_acq_str[32];
+  format_duration_ns((double)stats->last_acquisition_ns, last_acq_str, sizeof(last_acq_str));
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
-                          "  Last acquisition: %lld.%09ld", (long long)stats->last_acquisition.tv_sec,
-                          stats->last_acquisition.tv_nsec);
+                          "  Last acquisition: %s", last_acq_str);
 
   log_info("%s", log_message);
 }
@@ -348,8 +334,9 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
   log_info("Orphaned Release #%u: %s at %p", *count, lock_type_str, record->lock_address);
   log_info("  Thread ID: %llu", (unsigned long long)record->thread_id);
   log_info("  Released: %s:%d in %s()", record->file_name, record->line_number, record->function_name);
-  log_info("  Released at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
-           record->acquisition_time.tv_nsec);
+  char release_time_str[32];
+  format_duration_ns((double)record->acquisition_time_ns, release_time_str, sizeof(release_time_str));
+  log_info("  Released at: %s (nanosecond %llu)", release_time_str, (unsigned long long)record->acquisition_time_ns);
 
   // Print backtrace for the orphaned release
   if (record->backtrace_size > 0) {
@@ -407,11 +394,7 @@ static void check_long_held_locks(void) {
   // Acquire read lock for lock_records
   rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
 
-  struct timespec current_time;
-  if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0) {
-    rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
-    return;
-  }
+  uint64_t current_time_ns = time_get_ns();
 
   // Iterate through all currently held locks and collect info
   lock_record_t *entry, *tmp;
@@ -421,21 +404,9 @@ static void check_long_held_locks(void) {
     }
 
     // Calculate how long the lock has been held in nanoseconds
-    long long held_sec = current_time.tv_sec - entry->acquisition_time.tv_sec;
-    long held_nsec = current_time.tv_nsec - entry->acquisition_time.tv_nsec;
+    uint64_t held_ns = time_elapsed_ns(entry->acquisition_time_ns, current_time_ns);
 
-    // Handle nanosecond underflow
-    if (held_nsec < 0) {
-      held_sec--;
-      held_nsec += 1000000000;
-    }
-
-    // Convert to nanoseconds (double for format_duration_ns)
-    double held_ns = (held_sec * 1000000000.0) + held_nsec;
-
-    // Only collect if held longer than 100ms (100000000 nanoseconds)
-    const double WARNING_THRESHOLD_NS = 100000000.0; // 100ms in nanoseconds
-    if (held_ns > WARNING_THRESHOLD_NS) {
+    if (held_ns > 100 * NS_PER_MS_INT) {
       long_held_lock_info_t *info = &long_held_locks[num_long_held];
 
       // Get lock type string
@@ -455,7 +426,7 @@ static void check_long_held_locks(void) {
       }
 
       // Copy all info we need for logging later
-      format_duration_ns(held_ns, info->duration_str, sizeof(info->duration_str));
+      format_duration_ns((double)held_ns, info->duration_str, sizeof(info->duration_str));
       info->lock_address = entry->lock_address;
       strncpy(info->file_name, entry->file_name, sizeof(info->file_name) - 1);
       info->file_name[sizeof(info->file_name) - 1] = '\0';
@@ -965,36 +936,25 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   HASH_FIND(hash_handle, g_lock_debug_manager.lock_records, &key, sizeof(key), record);
   if (record) {
     // Calculate lock hold time BEFORE removing record
-    struct timespec current_time;
-    long long held_ms = 0;
-    if (clock_gettime(CLOCK_MONOTONIC, &current_time) == 0) {
-      long long held_sec = current_time.tv_sec - record->acquisition_time.tv_sec;
-      long held_nsec = current_time.tv_nsec - record->acquisition_time.tv_nsec;
+    uint64_t current_time_ns = time_get_ns();
+    uint64_t held_ns = time_elapsed_ns(record->acquisition_time_ns, current_time_ns);
+    uint64_t held_ms = time_ns_to_ms(held_ns);
 
-      // Handle nanosecond underflow
-      if (held_nsec < 0) {
-        held_sec--;
-        held_nsec += 1000000000;
-      }
+    // Check if lock was held too long - collect info for deferred logging
+    if (held_ms > LOCK_HOLD_TIME_WARNING_MS) {
+      should_log_warning = true;
+      format_duration_ms((double)held_ms, deferred_duration_str, sizeof(deferred_duration_str));
+      strncpy(deferred_file_name, file_name, sizeof(deferred_file_name) - 1);
+      deferred_line_number = line_number;
+      strncpy(deferred_function_name, function_name, sizeof(deferred_function_name) - 1);
+      deferred_lock_ptr = lock_ptr;
+      deferred_lock_type_str = lock_type_str;
 
-      held_ms = (held_sec * 1000) + (held_nsec / 1000000);
-
-      // Check if lock was held too long - collect info for deferred logging
-      if (held_ms > LOCK_HOLD_TIME_WARNING_MS) {
-        should_log_warning = true;
-        format_duration_ms((double)held_ms, deferred_duration_str, sizeof(deferred_duration_str));
-        strncpy(deferred_file_name, file_name, sizeof(deferred_file_name) - 1);
-        deferred_line_number = line_number;
-        strncpy(deferred_function_name, function_name, sizeof(deferred_function_name) - 1);
-        deferred_lock_ptr = lock_ptr;
-        deferred_lock_type_str = lock_type_str;
-
-        // Copy backtrace symbols if available (we need to copy, not just reference)
-        if (record->backtrace_size > 0 && record->backtrace_symbols) {
-          deferred_backtrace_size = record->backtrace_size;
-          deferred_backtrace_symbols = record->backtrace_symbols;
-          record->backtrace_symbols = NULL; // Transfer ownership to avoid double-free
-        }
+      // Copy backtrace symbols if available (we need to copy, not just reference)
+      if (record->backtrace_size > 0 && record->backtrace_symbols) {
+        deferred_backtrace_size = record->backtrace_size;
+        deferred_backtrace_symbols = record->backtrace_symbols;
+        record->backtrace_symbols = NULL; // Transfer ownership to avoid double-free
       }
     }
 
@@ -1090,7 +1050,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
     orphan_record->file_name = file_name;
     orphan_record->line_number = line_number;
     orphan_record->function_name = function_name;
-    (void)clock_gettime(CLOCK_MONOTONIC, &orphan_record->acquisition_time); // Use release time
+    orphan_record->acquisition_time_ns = time_get_ns(); // Use release time
 
     // Capture backtrace for this orphaned release
 #ifdef _WIN32
@@ -1425,9 +1385,11 @@ void lock_debug_print_state(void) {
                        (unsigned long long)orphan_entry->thread_id);
     offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Released: %s:%d in %s()\n",
                        orphan_entry->file_name, orphan_entry->line_number, orphan_entry->function_name);
+    char release_time_str[32];
+    format_duration_ns((double)orphan_entry->acquisition_time_ns, release_time_str, sizeof(release_time_str));
     offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Released at: %lld.%09ld seconds (monotonic)\n",
-                       (long long)orphan_entry->acquisition_time.tv_sec, orphan_entry->acquisition_time.tv_nsec);
+                       "  Released at: %s (nanosecond %llu)\n",
+                       release_time_str, (unsigned long long)orphan_entry->acquisition_time_ns);
 
     // Print backtrace for orphaned release
     if (orphan_entry->backtrace_size > 0) {

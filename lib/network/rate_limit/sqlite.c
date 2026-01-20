@@ -7,6 +7,7 @@
 
 #include "network/rate_limit/sqlite.h"
 #include "log/logging.h"
+#include "util/time.h"
 #include <sqlite3.h>
 #include <string.h>
 
@@ -26,7 +27,7 @@ static asciichat_error_t sqlite_check(void *backend_data, const char *ip_address
 
   // Get current time
   uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * 1000);
+  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * NS_PER_US_INT);
 
   // Count events in the time window
   const char *sql = "SELECT COUNT(*) FROM rate_events "
@@ -102,7 +103,7 @@ static asciichat_error_t sqlite_cleanup(void *backend_data, uint32_t max_age_sec
 
   // Calculate cutoff time
   uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * 1000);
+  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * NS_PER_US_INT);
 
   // Delete old events
   const char *sql = "DELETE FROM rate_events WHERE timestamp < ?";

@@ -13,6 +13,7 @@
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/ip.h"
+#include "util/time.h"
 #include "../symbols.h"
 
 #include <dbghelp.h>
@@ -1110,7 +1111,7 @@ int clock_gettime(int clk_id, struct timespec *tp) {
 
     // Convert to seconds and nanoseconds
     tp->tv_sec = (time_t)(counter.QuadPart / freq.QuadPart);
-    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart));
+    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * NS_PER_SEC_INT) / freq.QuadPart));
   }
 
   return 0;

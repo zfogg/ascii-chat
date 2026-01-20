@@ -11,6 +11,7 @@
 #include "../../common.h" // For log_error()
 #include "../../asciichat_errno.h"
 #include "../../util/ip.h"
+#include "../../util/time.h"
 #include "../symbols.h" // For symbol cache
 #include <unistd.h>
 #include <fcntl.h>
@@ -114,7 +115,7 @@ uint64_t platform_get_monotonic_time_us(void) {
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
     return 0; // Fallback on error (shouldn't happen)
   }
-  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+  return time_ns_to_us(time_timespec_to_ns(&ts));
 }
 
 /**

@@ -10,6 +10,7 @@
 #include "platform/abstraction.h"
 #include "platform/system.h"
 #include "util/path.h"
+#include "util/time.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,11 +126,15 @@ static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shut
 static bool g_shutdown_in_progress = false;          /* Track if shutdown phase is active */
 
 size_t get_current_time_formatted(char *time_buf) {
-  /* Log the rotation event */
-  struct timespec ts;
-  (void)clock_gettime(CLOCK_REALTIME, &ts);
+  /* Get wall-clock time in nanoseconds */
+  uint64_t ts_ns = time_get_realtime_ns();
+
+  // Extract seconds and nanoseconds from total nanoseconds
+  time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+  long nanoseconds = (long)(ts_ns % NS_PER_SEC_INT);
+
   struct tm tm_info;
-  platform_localtime(&ts.tv_sec, &tm_info);
+  platform_localtime(&seconds, &tm_info);
 
   // Format the time part first
   // strftime returns 0 on error, not negative (and len is size_t/unsigned)
@@ -139,8 +144,8 @@ size_t get_current_time_formatted(char *time_buf) {
     return 0;
   }
 
-  // Add microseconds manually
-  long microseconds = ts.tv_nsec / 1000;
+  // Add microseconds manually (convert nanoseconds to microseconds for display)
+  long microseconds = nanoseconds / 1000;
   if (microseconds < 0)
     microseconds = 0;
   if (microseconds > 999999)

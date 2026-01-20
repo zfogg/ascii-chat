@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <time.h>
 
 // ============================================================================
 // sokol_time.h Integration
@@ -47,6 +48,185 @@
 // Include uthash wrapper for UBSan-safe hash functions
 // Headers can include this even before common.h is fully processed
 #include "uthash/uthash.h"
+
+// ============================================================================
+// Core Monotonic Timing API (Nanosecond Precision)
+// ============================================================================
+
+/**
+ * @brief Get current monotonic time in nanoseconds
+ *
+ * Returns high-precision monotonic time that never goes backwards.
+ * Suitable for measuring elapsed time, FPS tracking, and performance metrics.
+ *
+ * @return Current time in nanoseconds (monotonic, never decreases)
+ * @ingroup module_utilities
+ *
+ * Usage:
+ * ```c
+ * uint64_t start = time_get_ns();
+ * // ... do work ...
+ * uint64_t elapsed_ns = time_elapsed_ns(start, time_get_ns());
+ * ```
+ */
+uint64_t time_get_ns(void);
+
+/**
+ * @brief Get current wall-clock (real) time in nanoseconds
+ *
+ * Returns high-precision wall-clock time that can jump forwards or backwards
+ * when system time is adjusted. Use this for timestamps, database records,
+ * and user-facing time displays.
+ *
+ * @return Current wall-clock time in nanoseconds (CLOCK_REALTIME)
+ * @ingroup module_utilities
+ *
+ * Note: This time can jump backward if system clock is adjusted. For measuring
+ * elapsed time, use time_get_ns() instead.
+ */
+uint64_t time_get_realtime_ns(void);
+
+/**
+ * @brief Sleep for specified nanoseconds
+ *
+ * Sleeps the current thread for at least the specified number of nanoseconds.
+ * On some systems, actual sleep time may be slightly longer due to scheduler
+ * granularity.
+ *
+ * @param ns Number of nanoseconds to sleep
+ * @ingroup module_utilities
+ */
+void time_sleep_ns(uint64_t ns);
+
+/**
+ * @brief Calculate elapsed time with wraparound safety
+ *
+ * Computes the difference between two time values, handling potential
+ * wraparound of uint64_t (which won't happen in practice - uint64_t
+ * wraps after ~584 years at nanosecond resolution, but this is defensive).
+ *
+ * @param start_ns Start time in nanoseconds
+ * @param end_ns End time in nanoseconds
+ * @return Elapsed time in nanoseconds (end - start)
+ * @ingroup module_utilities
+ *
+ * Usage:
+ * ```c
+ * uint64_t start = time_get_ns();
+ * // ... do work ...
+ * uint64_t elapsed = time_elapsed_ns(start, time_get_ns());
+ * ```
+ */
+uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns);
+
+// ============================================================================
+// Time Unit Constants (moved before inline functions that use them)
+// ============================================================================
+
+// Floating-point versions (for format_duration functions)
+#define NS_PER_US 1000.0
+#define NS_PER_MS 1000000.0
+#define NS_PER_SEC 1000000000.0
+#define NS_PER_MIN (NS_PER_SEC * 60.0)
+#define NS_PER_HOUR (NS_PER_MIN * 60.0)
+#define NS_PER_DAY (NS_PER_HOUR * 24.0)
+#define NS_PER_YEAR (NS_PER_DAY * 365.25) // Account for leap years
+
+// Integer versions (for comparing uint64_t nanosecond values)
+#define NS_PER_US_INT 1000ULL
+#define NS_PER_MS_INT 1000000ULL
+#define NS_PER_SEC_INT 1000000000ULL
+
+// ============================================================================
+// Inline Time Conversion Helpers
+// ============================================================================
+
+/**
+ * @brief Convert nanoseconds to microseconds (inline)
+ * @param ns Time in nanoseconds
+ * @return Time in microseconds
+ * @ingroup module_utilities
+ */
+static inline uint64_t time_ns_to_us(uint64_t ns) {
+  return ns / NS_PER_US_INT;
+}
+
+/**
+ * @brief Convert nanoseconds to milliseconds (inline)
+ * @param ns Time in nanoseconds
+ * @return Time in milliseconds
+ * @ingroup module_utilities
+ */
+static inline uint64_t time_ns_to_ms(uint64_t ns) {
+  return ns / NS_PER_MS_INT;
+}
+
+/**
+ * @brief Convert nanoseconds to seconds (inline, returns double)
+ * @param ns Time in nanoseconds
+ * @return Time in seconds
+ * @ingroup module_utilities
+ */
+static inline double time_ns_to_s(uint64_t ns) {
+  return (double)ns / 1e9;
+}
+
+/**
+ * @brief Convert microseconds to nanoseconds (inline)
+ * @param us Time in microseconds
+ * @return Time in nanoseconds
+ * @ingroup module_utilities
+ */
+static inline uint64_t time_us_to_ns(uint64_t us) {
+  return us * NS_PER_US_INT;
+}
+
+/**
+ * @brief Convert milliseconds to nanoseconds (inline)
+ * @param ms Time in milliseconds
+ * @return Time in nanoseconds
+ * @ingroup module_utilities
+ */
+static inline uint64_t time_ms_to_ns(uint64_t ms) {
+  return ms * NS_PER_MS_INT;
+}
+
+/**
+ * @brief Convert seconds to nanoseconds (inline)
+ * @param s Time in seconds (double)
+ * @return Time in nanoseconds
+ * @ingroup module_utilities
+ */
+static inline uint64_t time_s_to_ns(double s) {
+  return (uint64_t)(s * 1e9);
+}
+
+/**
+ * @brief Convert struct timespec to nanoseconds (inline)
+ * @param ts Pointer to timespec structure
+ * @return Time in nanoseconds
+ * @ingroup module_utilities
+ *
+ * Useful for converting CLOCK_MONOTONIC or CLOCK_REALTIME readings to nanoseconds.
+ */
+static inline uint64_t time_timespec_to_ns(const struct timespec *ts) {
+  if (!ts) return 0;
+  return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
+}
+
+/**
+ * @brief Convert nanoseconds to struct timespec (inline)
+ * @param ns Time in nanoseconds
+ * @param ts Pointer to timespec structure (output)
+ * @ingroup module_utilities
+ *
+ * Useful for nanosleep() or other system calls that require struct timespec.
+ */
+static inline void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
+  if (!ts) return;
+  ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+  ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
+}
 
 // ============================================================================
 // Timer Record Structure
@@ -175,18 +355,6 @@ bool timer_is_initialized(void);
     }                                                                                                                  \
     _elapsed;                                                                                                          \
   })
-
-// ============================================================================
-// Time Unit Constants
-// ============================================================================
-
-#define NS_PER_US 1000.0
-#define NS_PER_MS 1000000.0
-#define NS_PER_SEC 1000000000.0
-#define NS_PER_MIN (NS_PER_SEC * 60.0)
-#define NS_PER_HOUR (NS_PER_MIN * 60.0)
-#define NS_PER_DAY (NS_PER_HOUR * 24.0)
-#define NS_PER_YEAR (NS_PER_DAY * 365.25) // Account for leap years
 
 // ============================================================================
 // Time Formatting API

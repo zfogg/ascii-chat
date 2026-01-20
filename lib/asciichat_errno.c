@@ -15,6 +15,7 @@
 
 #include "asciichat_errno.h"
 #include "util/path.h"
+#include "util/time.h"
 #include "platform/system.h"
 #include "common.h"
 #include "log/logging.h"
@@ -65,15 +66,6 @@ static struct {
  * Internal Helper Functions
  * ============================================================================
  */
-
-static uint64_t get_timestamp_microseconds(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) == 0) {
-    // Convert seconds and nanoseconds to microseconds
-    return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000);
-  }
-  return 0;
-}
 
 static void capture_backtrace(void **backtrace, char ***backtrace_symbols, int *stack_depth) {
 #ifndef NDEBUG // Capture in Debug and Dev modes
@@ -132,7 +124,7 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
   asciichat_errno_context.file = file;
   asciichat_errno_context.line = line;
   asciichat_errno_context.function = function;
-  asciichat_errno_context.timestamp = get_timestamp_microseconds();
+  asciichat_errno_context.timestamp = time_ns_to_us(time_get_realtime_ns());
   asciichat_errno_context.has_system_error = false;
 
   // Set the simple error code variable
@@ -349,8 +341,8 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
 
   // Print timestamp
   if (context->timestamp > 0) {
-    time_t sec = (time_t)(context->timestamp / 1000000);
-    long usec = (long)(context->timestamp % 1000000);
+    time_t sec = (time_t)(context->timestamp / NS_PER_MS_INT);
+    long usec = (long)(context->timestamp % NS_PER_MS_INT);
     struct tm tm_info;
     if (platform_localtime(&sec, &tm_info) == ASCIICHAT_OK) {
       char time_str[64];
@@ -387,7 +379,7 @@ void asciichat_error_stats_record(asciichat_error_t code) {
     error_stats.error_counts[code]++;
   }
   error_stats.total_errors++;
-  error_stats.last_error_time = get_timestamp_microseconds();
+  error_stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
   error_stats.last_error_code = code;
 }
 
@@ -401,7 +393,7 @@ void asciichat_error_stats_print(void) {
   log_plain("Total errors: %llu\n", (unsigned long long)error_stats.total_errors);
 
   if (error_stats.last_error_time > 0) {
-    time_t sec = (time_t)(error_stats.last_error_time / 1000000);
+    time_t sec = (time_t)(error_stats.last_error_time / NS_PER_MS_INT);
     struct tm tm_info;
     if (platform_localtime(&sec, &tm_info) == ASCIICHAT_OK) {
       char time_str[64];

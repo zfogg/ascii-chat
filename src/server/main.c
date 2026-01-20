@@ -1484,9 +1484,6 @@ int server_main(void) {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
   }
 
-  struct timespec last_stats_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
-
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock) != 0) {
     FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");

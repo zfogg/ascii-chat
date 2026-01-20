@@ -18,9 +18,21 @@
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "platform/mutex.h"
+#include "log/logging.h"
+#include "network/packet.h"
 
 #include <string.h>
 #include <time.h>
+#include <stdio.h>
+#include <errno.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <netdb.h>
+#include <arpa/inet.h>
+#endif
 
 /* ============================================================================
  * Session Host Constants
@@ -104,6 +116,18 @@ struct session_host {
 
   /** @brief Client list mutex */
   mutex_t clients_mutex;
+
+  /** @brief Accept thread handle */
+  asciichat_thread_t accept_thread;
+
+  /** @brief Accept thread is running */
+  bool accept_thread_running;
+
+  /** @brief Receive thread handle */
+  asciichat_thread_t receive_thread;
+
+  /** @brief Receive thread is running */
+  bool receive_thread_running;
 
   /** @brief Context is initialized */
   bool initialized;
@@ -208,6 +232,299 @@ void session_host_destroy(session_host_t *host) {
  * Session Host Server Control Functions
  * ============================================================================ */
 
+/**
+ * @brief Create and bind a listening socket on the given address and port
+ * @return Socket on success, INVALID_SOCKET_VALUE on failure
+ */
+static socket_t create_listen_socket(const char *address, int port) {
+  struct addrinfo hints, *result = NULL, *rp = NULL;
+  char port_str[16];
+
+  if (!address) address = "0.0.0.0";
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;     // IPv4
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  snprintf(port_str, sizeof(port_str), "%d", port);
+
+  int s = getaddrinfo(address, port_str, &hints, &result);
+  if (s != 0) {
+    SET_ERRNO(ERROR_NETWORK, "getaddrinfo failed: %s", gai_strerror(s));
+    return INVALID_SOCKET_VALUE;
+  }
+
+  socket_t listen_sock = INVALID_SOCKET_VALUE;
+  for (rp = result; rp != NULL; rp = rp->ai_next) {
+    listen_sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (listen_sock == INVALID_SOCKET_VALUE) {
+      continue;
+    }
+
+    // Set SO_REUSEADDR to allow rebinding quickly after restart
+    int reuse = 1;
+    if (setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0) {
+      log_warn("setsockopt SO_REUSEADDR failed");
+    }
+
+    if (bind(listen_sock, rp->ai_addr, (int)rp->ai_addrlen) == 0) {
+      break; // Success
+    }
+
+    socket_close(listen_sock);
+    listen_sock = INVALID_SOCKET_VALUE;
+  }
+
+  freeaddrinfo(result);
+
+  if (listen_sock == INVALID_SOCKET_VALUE) {
+    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "Failed to bind listen socket on %s:%d", address, port);
+    return INVALID_SOCKET_VALUE;
+  }
+
+  if (listen(listen_sock, SOMAXCONN) != 0) {
+    SET_ERRNO_SYS(ERROR_NETWORK_BIND, "listen() failed on %s:%d", address, port);
+    socket_close(listen_sock);
+    return INVALID_SOCKET_VALUE;
+  }
+
+  return listen_sock;
+}
+
+/**
+ * @brief Accept loop thread - continuously accept incoming client connections
+ * @param arg session_host_t pointer
+ * @return NULL
+ *
+ * This thread runs in a loop accepting connections on the listen socket.
+ * For each accepted connection, it adds the client to the host and invokes callbacks.
+ */
+static void *accept_loop_thread(void *arg) {
+  session_host_t *host = (session_host_t *)arg;
+  if (!host) return NULL;
+
+  log_info("Accept loop started");
+
+  // Use select() to handle accept with timeout
+  struct timeval tv;
+  fd_set readfds;
+  int max_fd;
+
+  while (host->accept_thread_running && host->running) {
+    // Set timeout to 1 second
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+
+    FD_ZERO(&readfds);
+    max_fd = 0;
+
+    if (host->socket_v4 != INVALID_SOCKET_VALUE) {
+      FD_SET(host->socket_v4, &readfds);
+      max_fd = (int)host->socket_v4;
+    }
+
+    // Wait for incoming connections
+    int activity = select(max_fd + 1, &readfds, NULL, NULL, &tv);
+    if (activity < 0) {
+      if (errno != EINTR) {
+        log_error("select() failed");
+      }
+      continue;
+    }
+
+    if (activity == 0) {
+      // Timeout - check if we should exit
+      continue;
+    }
+
+    // Check for incoming connections
+    if (host->socket_v4 != INVALID_SOCKET_VALUE && FD_ISSET(host->socket_v4, &readfds)) {
+      struct sockaddr_in client_addr;
+      socklen_t client_addr_len = sizeof(client_addr);
+
+      // Accept incoming connection
+      socket_t client_socket = accept(host->socket_v4, (struct sockaddr *)&client_addr, &client_addr_len);
+      if (client_socket == INVALID_SOCKET_VALUE) {
+        log_warn("accept() failed");
+        continue;
+      }
+
+      // Get client IP and port
+      char client_ip[64];
+      inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
+      int client_port = ntohs(client_addr.sin_port);
+
+      log_info("New connection from %s:%d", client_ip, client_port);
+
+      // Add client to host
+      uint32_t client_id = session_host_add_client(host, client_socket, client_ip, client_port);
+      if (client_id == 0) {
+        log_error("Failed to add client");
+        socket_close(client_socket);
+      }
+    }
+  }
+
+  log_info("Accept loop stopped");
+  return NULL;
+}
+
+/**
+ * @brief Receive loop thread - continuously receive packets from connected clients
+ * @param arg session_host_t pointer
+ * @return NULL
+ *
+ * This thread runs in a loop listening for packets from all connected clients.
+ * When a packet arrives, it processes it based on the packet type.
+ */
+static void *receive_loop_thread(void *arg) {
+  session_host_t *host = (session_host_t *)arg;
+  if (!host) return NULL;
+
+  log_info("Receive loop started");
+
+  struct timeval tv;
+  fd_set readfds;
+  socket_t max_fd;
+
+  while (host->receive_thread_running && host->running) {
+    // Set timeout to 1 second
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+
+    FD_ZERO(&readfds);
+    max_fd = INVALID_SOCKET_VALUE;
+
+    // Add all active client sockets to the set
+    mutex_lock(&host->clients_mutex);
+    for (int i = 0; i < host->max_clients; i++) {
+      if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
+        FD_SET(host->clients[i].socket, &readfds);
+        if (max_fd == INVALID_SOCKET_VALUE || host->clients[i].socket > max_fd) {
+          max_fd = host->clients[i].socket;
+        }
+      }
+    }
+    mutex_unlock(&host->clients_mutex);
+
+    // If no clients, just wait for timeout
+    if (max_fd == INVALID_SOCKET_VALUE) {
+      continue;
+    }
+
+    // Wait for data on any client socket
+    int activity = select((int)max_fd + 1, &readfds, NULL, NULL, &tv);
+    if (activity < 0) {
+      if (errno != EINTR) {
+        log_error("select() failed in receive loop");
+      }
+      continue;
+    }
+
+    if (activity == 0) {
+      // Timeout - check if we should exit
+      continue;
+    }
+
+    // Check each client for incoming data
+    mutex_lock(&host->clients_mutex);
+    for (int i = 0; i < host->max_clients; i++) {
+      if (!host->clients[i].active || host->clients[i].socket == INVALID_SOCKET_VALUE) {
+        continue;
+      }
+
+      if (!FD_ISSET(host->clients[i].socket, &readfds)) {
+        continue;
+      }
+
+      // Try to receive packet from this client
+      packet_type_t ptype;
+      void *data = NULL;
+      size_t len = 0;
+      asciichat_error_t result = packet_receive(host->clients[i].socket, &ptype, &data, &len);
+
+      if (result != ASCIICHAT_OK) {
+        log_warn("packet_receive failed from client %u: %d", host->clients[i].client_id, result);
+        // Client disconnected or error - will be cleaned up by timeout mechanism
+        continue;
+      }
+
+      // Process packet based on type
+      uint32_t client_id = host->clients[i].client_id;
+      mutex_unlock(&host->clients_mutex);
+
+      switch (ptype) {
+      case PACKET_TYPE_IMAGE_FRAME:
+        // Client sent a video frame - convert to image and invoke callback
+        if (host->callbacks.on_frame_received && data && len > 0) {
+          // TODO: Parse frame data and create image_t, invoke callback
+          log_debug_every(500000, "Frame received from client %u (size=%zu)", client_id, len);
+        }
+        break;
+
+      case PACKET_TYPE_AUDIO:
+        // Client sent audio data - invoke callback
+        if (host->callbacks.on_audio_received && data && len > 0) {
+          // TODO: Parse audio data, invoke callback
+          log_debug_every(1000000, "Audio received from client %u (size=%zu)", client_id, len);
+        }
+        break;
+
+      case PACKET_TYPE_STREAM_START:
+        log_info("Client %u started streaming", client_id);
+        mutex_lock(&host->clients_mutex);
+        for (int j = 0; j < host->max_clients; j++) {
+          if (host->clients[j].client_id == client_id) {
+            host->clients[j].video_active = true;
+            break;
+          }
+        }
+        mutex_unlock(&host->clients_mutex);
+        break;
+
+      case PACKET_TYPE_STREAM_STOP:
+        log_info("Client %u stopped streaming", client_id);
+        mutex_lock(&host->clients_mutex);
+        for (int j = 0; j < host->max_clients; j++) {
+          if (host->clients[j].client_id == client_id) {
+            host->clients[j].video_active = false;
+            break;
+          }
+        }
+        mutex_unlock(&host->clients_mutex);
+        break;
+
+      case PACKET_TYPE_PING:
+        // Respond with PONG
+        log_debug_every(1000000, "PING from client %u", client_id);
+        // TODO: Send PONG response
+        break;
+
+      case PACKET_TYPE_CLIENT_LEAVE:
+        log_info("Client %u requested disconnect", client_id);
+        // Mark for removal (will be handled separately to avoid deadlock)
+        break;
+
+      default:
+        log_warn("Unknown packet type %u from client %u", ptype, client_id);
+        break;
+      }
+
+      // Free packet data
+      if (data) {
+        SAFE_FREE(data);
+      }
+
+      mutex_lock(&host->clients_mutex);
+    }
+    mutex_unlock(&host->clients_mutex);
+  }
+
+  log_info("Receive loop stopped");
+  return NULL;
+}
+
 asciichat_error_t session_host_start(session_host_t *host) {
   if (!host || !host->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start: invalid host");
@@ -217,27 +534,72 @@ asciichat_error_t session_host_start(session_host_t *host) {
     return ASCIICHAT_OK; // Already running
   }
 
-  // TODO: Implement actual server start logic using existing server code
-  // This would involve:
-  // 1. Creating listen sockets
-  // 2. Binding to port
-  // 3. Starting accept thread
-  //
-  // For now, this is a stub that sets up the structure
+  // Create listen socket(s)
+  // For simplicity, we bind to IPv4 if specified, otherwise default to 0.0.0.0
+  const char *bind_address = host->ipv4_address[0] ? host->ipv4_address : "0.0.0.0";
 
-  log_info("session_host_start: stub implementation - would listen on port %d", host->port);
-
-  // Invoke error callback since this is not implemented yet
-  if (host->callbacks.on_error) {
-    host->callbacks.on_error(host, ERROR_NOT_SUPPORTED, "Server start not implemented yet (stub)", host->user_data);
+  host->socket_v4 = create_listen_socket(bind_address, host->port);
+  if (host->socket_v4 == INVALID_SOCKET_VALUE) {
+    log_error("Failed to create IPv4 listen socket");
+    if (host->callbacks.on_error) {
+      host->callbacks.on_error(host, ERROR_NETWORK_BIND, "Failed to create listen socket", host->user_data);
+    }
+    return GET_ERRNO();
   }
 
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "session_host_start: not implemented yet");
+  host->running = true;
+  log_info("Session host listening on %s:%d", bind_address, host->port);
+
+  // Spawn accept loop thread
+  host->accept_thread_running = true;
+  if (asciichat_thread_create(&host->accept_thread, accept_loop_thread, host) != 0) {
+    log_error("Failed to spawn accept loop thread");
+    host->accept_thread_running = false;
+    if (host->callbacks.on_error) {
+      host->callbacks.on_error(host, ERROR_THREAD, "Failed to spawn accept loop thread", host->user_data);
+    }
+    socket_close(host->socket_v4);
+    host->socket_v4 = INVALID_SOCKET_VALUE;
+    host->running = false;
+    return SET_ERRNO(ERROR_THREAD, "Failed to spawn accept loop thread");
+  }
+
+  // Spawn receive loop thread
+  host->receive_thread_running = true;
+  if (asciichat_thread_create(&host->receive_thread, receive_loop_thread, host) != 0) {
+    log_error("Failed to spawn receive loop thread");
+    host->receive_thread_running = false;
+    host->accept_thread_running = false;
+    asciichat_thread_join(&host->accept_thread, NULL);
+    if (host->callbacks.on_error) {
+      host->callbacks.on_error(host, ERROR_THREAD, "Failed to spawn receive loop thread", host->user_data);
+    }
+    socket_close(host->socket_v4);
+    host->socket_v4 = INVALID_SOCKET_VALUE;
+    host->running = false;
+    return SET_ERRNO(ERROR_THREAD, "Failed to spawn receive loop thread");
+  }
+
+  return ASCIICHAT_OK;
 }
 
 void session_host_stop(session_host_t *host) {
   if (!host || !host->initialized || !host->running) {
     return;
+  }
+
+  // Stop receive loop thread first (reads from client sockets)
+  if (host->receive_thread_running) {
+    host->receive_thread_running = false;
+    asciichat_thread_join(&host->receive_thread, NULL);
+    log_info("Receive loop thread joined");
+  }
+
+  // Stop accept loop thread (before closing listen socket)
+  if (host->accept_thread_running) {
+    host->accept_thread_running = false;
+    asciichat_thread_join(&host->accept_thread, NULL);
+    log_info("Accept loop thread joined");
   }
 
   // Disconnect all clients

@@ -62,8 +62,8 @@ struct session_capture_ctx {
   /** @brief Frame count for FPS calculation */
   uint64_t frame_count;
 
-  /** @brief Start time for FPS calculation */
-  struct timespec start_time;
+  /** @brief Start time for FPS calculation (nanoseconds) */
+  uint64_t start_time_ns;
 };
 
 /* ============================================================================
@@ -144,7 +144,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
 
   // Initialize adaptive sleep for frame rate limiting
   // Calculate baseline sleep time in nanoseconds from target FPS
-  uint64_t baseline_sleep_ns = 1000000000ULL / ctx->target_fps;
+  uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
   adaptive_sleep_config_t sleep_config = {
       .baseline_sleep_ns = baseline_sleep_ns,
       .min_speed_multiplier = 1.0, // Constant rate (no slowdown)
@@ -156,11 +156,11 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
 
   // Initialize FPS tracker
   char tracker_name[32];
-  (void)snprintf(tracker_name, sizeof(tracker_name), "CAPTURE_%u", ctx->target_fps);
+  snprintf(tracker_name, sizeof(tracker_name), "CAPTURE_%u", ctx->target_fps);
   fps_init(&ctx->fps_tracker, (int)ctx->target_fps, tracker_name);
 
-  // Record start time for FPS calculation
-  (void)clock_gettime(CLOCK_MONOTONIC, &ctx->start_time);
+  // Record start time for FPS calculation (nanoseconds)
+  ctx->start_time_ns = time_get_ns();
 
   ctx->initialized = true;
   return ctx;
@@ -194,9 +194,7 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
 
   if (frame) {
     // Track frame for FPS reporting
-    struct timespec now;
-    (void)clock_gettime(CLOCK_MONOTONIC, &now);
-    fps_frame(&ctx->fps_tracker, &now, "frame captured");
+    fps_frame_ns(&ctx->fps_tracker, time_get_ns(), "frame captured");
     ctx->frame_count++;
   }
 
@@ -276,12 +274,9 @@ double session_capture_get_current_fps(session_capture_ctx_t *ctx) {
     return 0.0;
   }
 
-  struct timespec now;
-  (void)clock_gettime(CLOCK_MONOTONIC, &now);
-
-  // Calculate elapsed time in seconds
-  double elapsed_sec = (double)(now.tv_sec - ctx->start_time.tv_sec) +
-                       (double)(now.tv_nsec - ctx->start_time.tv_nsec) / 1e9;
+  // Calculate elapsed time in nanoseconds then convert to seconds
+  uint64_t elapsed_ns = time_elapsed_ns(ctx->start_time_ns, time_get_ns());
+  double elapsed_sec = time_ns_to_s(elapsed_ns);
 
   if (elapsed_sec <= 0.0) {
     return 0.0;

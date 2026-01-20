@@ -46,14 +46,15 @@
  * @brief FPS tracking state
  *
  * Maintains timing information for FPS calculation and lag detection.
+ * All timing fields use nanosecond precision (uint64_t).
  * Should be zero-initialized on creation.
  */
 typedef struct {
   uint64_t frame_count;            // Frames counted since last report
-  struct timespec last_fps_report; // Last time FPS was reported
-  struct timespec last_frame_time; // Timestamp of last processed frame
+  uint64_t last_fps_report_ns;     // Last time FPS was reported (nanoseconds)
+  uint64_t last_frame_time_ns;     // Timestamp of last processed frame (nanoseconds)
   int expected_fps;                // Expected FPS (e.g., 60)
-  uint64_t report_interval_us;     // Report interval in microseconds (default 10s)
+  uint64_t report_interval_ns;     // Report interval in nanoseconds (default 10s = 10000000000ns)
   const char *tracker_name;        // Name for logging (e.g., "CLIENT", "WEBCAM", "AUDIO", "KEEPALIVE")
 } fps_t;
 
@@ -72,26 +73,37 @@ void fps_init(fps_t *tracker, int expected_fps, const char *name);
 /**
  * @brief Initialize FPS tracker with custom report interval
  *
- * Sets up the tracker with expected FPS and custom reporting interval.
+ * Sets up the tracker with expected FPS and custom reporting interval in nanoseconds.
  * Useful for different threads that may need different reporting frequencies.
  *
  * @param tracker Pointer to uninitialized fps_t (should be zero-initialized)
  * @param expected_fps Expected frame rate in FPS
  * @param name Display name for logging
- * @param report_interval_us Custom report interval in microseconds
+ * @param report_interval_ns Custom report interval in nanoseconds (e.g., 10000000000 = 10 seconds)
  */
-void fps_init_with_interval(fps_t *tracker, int expected_fps, const char *name, uint64_t report_interval_us);
+void fps_init_with_interval(fps_t *tracker, int expected_fps, const char *name, uint64_t report_interval_ns);
 
 /**
- * @brief Track a frame and detect lag conditions
+ * @brief Track a frame and detect lag conditions (nanosecond version - PRIMARY)
  *
  * Call this function when a frame is processed. Automatically detects
- * when frames arrive late and generates periodic FPS reports every report_interval_us.
+ * when frames arrive late and generates periodic FPS reports every report_interval_ns.
+ * This is the primary API that all code should use going forward.
  *
  * @param tracker FPS tracker state
- * @param current_time Timestamp of this frame (CLOCK_MONOTONIC)
+ * @param current_time_ns Timestamp of this frame in nanoseconds (from time_get_ns())
  * @param context Optional context string for lag logging (e.g., "ASCII frame received")
+ *
+ * Example usage:
+ * ```c
+ * fps_t tracker;
+ * fps_init(&tracker, 60, "RENDER");
+ *
+ * // In your frame loop
+ * uint64_t now = time_get_ns();
+ * fps_frame_ns(&tracker, now, "frame rendered");
+ * ```
  */
-void fps_frame(fps_t *tracker, const struct timespec *current_time, const char *context);
+void fps_frame_ns(fps_t *tracker, uint64_t current_time_ns, const char *context);
 
 /** @} */

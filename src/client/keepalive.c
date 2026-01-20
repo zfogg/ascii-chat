@@ -66,6 +66,7 @@
 #include "server.h"
 #include "crypto.h"
 #include "util/fps.h"
+#include "util/time.h"
 
 #include "common.h"
 #include "platform/abstraction.h"
@@ -158,7 +159,7 @@ static void *ping_thread_func(void *arg) {
   static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
   if (!fps_tracker_initialized) {
-    fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE", 10000000ULL); // 1 "frame" per 3 seconds, report every 10s
+    fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE", 10 * NS_PER_MS_INT); // 1 "frame" per 3 seconds, report every 10ms
     fps_tracker_initialized = true;
   }
 
@@ -192,9 +193,7 @@ static void *ping_thread_func(void *arg) {
     }
 
     // Track ping for FPS reporting
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-    fps_frame(&fps_tracker, &current_time, "ping sent");
+    fps_frame_ns(&fps_tracker, time_get_ns(), "ping sent");
 
     // Sleep with early wake capability for responsive shutdown
     // Break sleep into 1-second intervals to check shutdown flags

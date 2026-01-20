@@ -118,3 +118,58 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
  * @param db Database handle
  */
 void database_session_cleanup_expired(sqlite3 *db);
+
+/**
+ * @brief Update session host (discovery mode)
+ *
+ * Called when a participant announces they are hosting. Updates the
+ * session's host fields so new joiners know where to connect.
+ *
+ * @param db Database handle
+ * @param session_id Session UUID
+ * @param host_participant_id Host's participant UUID
+ * @param host_address Host's reachable address
+ * @param host_port Host's port
+ * @param connection_type How to reach host (ACIP_CONNECTION_TYPE_*)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[16],
+                                               const uint8_t host_participant_id[16], const char *host_address,
+                                               uint16_t host_port, uint8_t connection_type);
+
+/**
+ * @brief Clear session host (discovery mode - host migration)
+ *
+ * Called when the current host disconnects or fails. Clears host fields
+ * so remaining participants can negotiate a new host.
+ *
+ * @param db Database handle
+ * @param session_id Session UUID
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[16]);
+
+/**
+ * @brief Start host migration (discovery mode)
+ *
+ * Called when the current host disconnects. Marks session as in_migration
+ * and starts a collection window for HOST_LOST candidates.
+ *
+ * @param db Database handle
+ * @param session_id Session UUID
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[16]);
+
+/**
+ * @brief Check if migration window has completed
+ *
+ * Called periodically to check if migration collection window timeout has expired.
+ * Returns the session if migration is ready for host election.
+ *
+ * @param db Database handle
+ * @param session_id Session UUID
+ * @param migration_window_ms Collection window duration in milliseconds
+ * @return true if collection window has completed, false otherwise
+ */
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms);

@@ -13,6 +13,7 @@
 
 #include "network/acip/transport.h"
 #include "network/acip/messages.h"
+#include "network/acip/acds.h"
 #include "asciichat_errno.h"
 #include <stddef.h>
 
@@ -55,6 +56,13 @@ typedef struct {
   /** @brief Called when client sends discovery ping */
   void (*on_discovery_ping)(const void *payload, size_t payload_len, int client_socket, const char *client_ip,
                             void *app_ctx);
+
+  /** @brief Called when client announces they are hosting (discovery mode) */
+  void (*on_host_announcement)(const acip_host_announcement_t *announcement, int client_socket, const char *client_ip,
+                               void *app_ctx);
+
+  /** @brief Called when participant reports host has disconnected (discovery mode) */
+  void (*on_host_lost)(const acip_host_lost_t *host_lost, int client_socket, const char *client_ip, void *app_ctx);
 
   /** @brief Application context (passed to all callbacks) */
   void *app_ctx;

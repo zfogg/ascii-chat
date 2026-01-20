@@ -8,6 +8,7 @@
 #include "network/rate_limit/memory.h"
 #include "common.h"
 #include "log/logging.h"
+#include "util/time.h"
 #include "platform/abstraction.h"
 #include "uthash/uthash.h"
 #include <stdlib.h>
@@ -95,7 +96,7 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
 
   // Get current time
   uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * 1000);
+  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * NS_PER_US_INT);
 
   // Create hash key
   char key[256];
@@ -185,7 +186,7 @@ static asciichat_error_t memory_cleanup(void *backend_data, uint32_t max_age_sec
 
   // Calculate cutoff time
   uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * 1000);
+  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * NS_PER_US_INT);
 
   mutex_lock(&backend->lock);
 

@@ -19,7 +19,7 @@
 void nat_quality_init(nat_quality_t *quality) {
   if (!quality) return;
   memset(quality, 0, sizeof(nat_quality_t));
-  quality->nat_type = NAT_TYPE_SYMMETRIC; // Assume worst case
+  quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Assume worst case
 }
 
 int nat_compute_tier(const nat_quality_t *quality) {
@@ -28,7 +28,7 @@ int nat_compute_tier(const nat_quality_t *quality) {
   if (quality->lan_reachable) return 0;           // LAN - best
   if (quality->has_public_ip) return 1;           // Public IP
   if (quality->upnp_available) return 2;          // UPnP mapping
-  if (quality->nat_type <= NAT_TYPE_RESTRICTED) return 3; // STUN hole-punchable
+  if (quality->nat_type <= ACIP_NAT_TYPE_RESTRICTED) return 3; // STUN hole-punchable
   return 4;                                        // TURN relay required
 }
 
@@ -118,7 +118,7 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
     }
 
     log_info("UPnP: mapped port %u, external IP %s", quality->upnp_mapped_port, quality->public_address);
-    quality->nat_type = NAT_TYPE_FULL_CONE; // UPnP implies at least full-cone equivalent
+    quality->nat_type = ACIP_NAT_TYPE_FULL_CONE; // UPnP implies at least full-cone equivalent
   } else {
     log_debug("UPnP: not available or mapping failed");
   }
@@ -238,15 +238,15 @@ void nat_quality_from_acip(const acip_nat_quality_t *acip, nat_quality_t *out) {
 
 const char *nat_type_to_string(acip_nat_type_t type) {
   switch (type) {
-  case NAT_TYPE_OPEN:
+  case ACIP_NAT_TYPE_OPEN:
     return "Open (Public IP)";
-  case NAT_TYPE_FULL_CONE:
+  case ACIP_NAT_TYPE_FULL_CONE:
     return "Full Cone";
-  case NAT_TYPE_RESTRICTED:
+  case ACIP_NAT_TYPE_RESTRICTED:
     return "Restricted Cone";
-  case NAT_TYPE_PORT_RESTRICTED:
+  case ACIP_NAT_TYPE_PORT_RESTRICTED:
     return "Port Restricted";
-  case NAT_TYPE_SYMMETRIC:
+  case ACIP_NAT_TYPE_SYMMETRIC:
     return "Symmetric";
   default:
     return "Unknown";
