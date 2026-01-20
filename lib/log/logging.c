@@ -85,8 +85,8 @@ static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
     /* LOG_CMODE_256 */
     {"\x1b[94m", "\x1b[96m", "\x1b[92m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
     /* LOG_CMODE_TRUECOLOR */
-    {"\x1b[38;2;150;100;205m", "\x1b[38;2;30;205;255m", "\x1b[38;2;50;205;100m", "\x1b[38;2;205;185;40m",
-     "\x1b[38;2;205;30;100m", "\x1b[38;2;205;80;205m", "\x1b[0m"},
+    {"\x1b[38;2;107;127;255m", "\x1b[38;2;30;205;255m", "\x1b[38;2;144;224;112m", "\x1b[38;2;255;204;0m",
+     "\x1b[38;2;232;93;111m", "\x1b[38;2;200;160;216m", "\x1b[0m"},
 };
 
 /* Internal error macro - uses g_log directly, only used in this file */
