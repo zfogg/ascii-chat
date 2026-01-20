@@ -401,6 +401,28 @@ typedef enum {
   /** @brief Release string reservation (Client -> Discovery Server) */
   PACKET_TYPE_ACIP_STRING_RELEASE = 123,
 
+  // ============================================================================
+  // Host Negotiation & Migration Protocol (130-139)
+  // ============================================================================
+  // Used by discovery mode for dynamic host selection and failover
+
+  /** @brief NAT quality exchange (Participant <-> Participant via ACDS) */
+  PACKET_TYPE_ACIP_NAT_QUALITY = 130,
+  /** @brief Host announcement (Participant -> ACDS, "I won negotiation") */
+  PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT = 131,
+  /** @brief Host designated (ACDS -> All Participants) */
+  PACKET_TYPE_ACIP_HOST_DESIGNATED = 132,
+  /** @brief Settings sync (Initiator -> Host -> All Participants) */
+  PACKET_TYPE_ACIP_SETTINGS_SYNC = 133,
+  /** @brief Settings acknowledgment (Participant -> Initiator) */
+  PACKET_TYPE_ACIP_SETTINGS_ACK = 134,
+  /** @brief Host lost notification with NAT quality (Participant -> ACDS) */
+  PACKET_TYPE_ACIP_HOST_LOST = 135,
+  /** @brief Host migration status (ACDS -> Participant) */
+  PACKET_TYPE_ACIP_HOST_MIGRATION = 136,
+  /** @brief Participant joined notification (ACDS -> Initiator) */
+  PACKET_TYPE_ACIP_PARTICIPANT_JOINED = 137,
+
   /** @brief Discovery server ping (keepalive) */
   PACKET_TYPE_ACIP_DISCOVERY_PING = 150,
   /** @brief Generic error response (Discovery Server -> Client) */
