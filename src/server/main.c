@@ -1430,6 +1430,7 @@ int server_main(void) {
       .server_private_key = &g_server_private_key,
       .client_whitelist = g_client_whitelist,
       .num_whitelisted_clients = g_num_whitelisted_clients,
+      .session_host = NULL, // Will be created after TCP server init
   };
 
   // Configure TCP server
@@ -1555,6 +1556,33 @@ int server_main(void) {
     }
   } else if (GET_OPTION(no_mdns_advertise)) {
     log_info("mDNS service advertisement disabled via --no-mdns-advertise");
+  }
+
+  // ========================================================================
+  // Session Host Creation (for discovery mode support)
+  // ========================================================================
+  // Create session_host to track clients in a transport-agnostic way.
+  // This enables future discovery mode where participants can become hosts.
+  if (!atomic_load(&g_server_should_exit)) {
+    session_host_config_t host_config = {
+        .port = port,
+        .ipv4_address = ipv4_address,
+        .ipv6_address = ipv6_address,
+        .max_clients = GET_OPTION(max_clients),
+        .encryption_enabled = g_server_encryption_enabled,
+        .key_path = GET_OPTION(encrypt_key),
+        .password = GET_OPTION(password),
+        .callbacks = {0}, // No callbacks for now
+        .user_data = NULL,
+    };
+
+    server_ctx.session_host = session_host_create(&host_config);
+    if (!server_ctx.session_host) {
+      // Non-fatal: session_host is optional, server can work without it
+      log_warn("Failed to create session_host (discovery mode support disabled)");
+    } else {
+      log_debug("Session host created for discovery mode support");
+    }
   }
 
   // ========================================================================
@@ -2034,6 +2062,13 @@ cleanup:
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
   lock_debug_cleanup();
 #endif
+
+  // Destroy session host (before TCP server shutdown)
+  if (server_ctx.session_host) {
+    log_debug("Destroying session host");
+    session_host_destroy(server_ctx.session_host);
+    server_ctx.session_host = NULL;
+  }
 
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_shutdown(&g_tcp_server);

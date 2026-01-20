@@ -403,6 +403,20 @@ endif()
 
 # Core module was moved earlier in the dependency chain (Module 7)
 
+# -----------------------------------------------------------------------------
+# Module 11: Session Library (depends on: util, platform, core, video, audio)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-session "${SESSION_SRCS}")
+if(NOT BUILDING_OBJECT_LIBS)
+    target_link_libraries(ascii-chat-session
+        ascii-chat-util
+        ascii-chat-platform
+        ascii-chat-core
+        ascii-chat-video
+        ascii-chat-audio
+    )
+endif()
+
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
@@ -428,6 +442,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         $<TARGET_OBJECTS:ascii-chat-audio>
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
+        $<TARGET_OBJECTS:ascii-chat-session>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
@@ -464,6 +479,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         ascii-chat-audio
         ascii-chat-network
         ascii-chat-core
+        ascii-chat-session
         ascii-chat-panic
     )
 
@@ -528,6 +544,7 @@ else()
         ${AUDIO_SRCS}
         ${NETWORK_SRCS}
         ${CORE_SRCS}
+        ${SESSION_SRCS}
         ${TOOLING_PANIC_SRCS}
     )
 
@@ -961,11 +978,12 @@ if(NOT BUILDING_OBJECT_LIBS)
         "ADDLIB $<TARGET_FILE:ascii-chat-audio>"
         "ADDLIB $<TARGET_FILE:ascii-chat-network>"
         "ADDLIB $<TARGET_FILE:ascii-chat-core>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-session>"
     )
     list(APPEND _STATIC_LIB_DEPS
         ascii-chat-util ascii-chat-data-structures ascii-chat-platform
         ascii-chat-crypto ascii-chat-simd ascii-chat-video
-        ascii-chat-audio ascii-chat-network ascii-chat-core
+        ascii-chat-audio ascii-chat-network ascii-chat-core ascii-chat-session
     )
 
     # =============================================================================
@@ -1234,6 +1252,7 @@ endif()
 # Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)
 target_link_libraries(ascii-chat-lib INTERFACE
+    ascii-chat-session
     ascii-chat-simd
     ascii-chat-video
     ascii-chat-audio

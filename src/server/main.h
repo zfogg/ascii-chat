@@ -44,6 +44,7 @@
 #include "network/tcp/server.h"
 #include "audio/mixer.h"
 #include "crypto/key_types.h"
+#include "session/host.h"
 #include "stats.h"
 #include "client.h"
 
@@ -104,6 +105,9 @@ typedef struct server_context_t {
   private_key_t *server_private_key; ///< Server's private key
   public_key_t *client_whitelist;    ///< Whitelisted client public keys
   size_t num_whitelisted_clients;    ///< Number of whitelisted clients
+
+  // Session library integration
+  session_host_t *session_host; ///< Session host for discovery mode support
 } server_context_t;
 
 /**

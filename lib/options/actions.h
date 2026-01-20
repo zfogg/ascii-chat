@@ -79,3 +79,11 @@ void action_help_mirror(void);
  * Exits with code 0.
  */
 void action_help_acds(void);
+
+/**
+ * @brief Show discovery mode help and exit
+ *
+ * Displays discovery mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_discovery(void);

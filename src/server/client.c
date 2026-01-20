@@ -766,6 +766,21 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     log_error("Failed to start threads for TCP client %u", client_id_snapshot);
     return -1;
   }
+  log_debug("Successfully created render threads for client %u", client_id_snapshot);
+
+  // Register client with session_host (for discovery mode support)
+  if (server_ctx->session_host) {
+    uint32_t session_client_id = session_host_add_client(server_ctx->session_host, socket, client_ip, port);
+    if (session_client_id == 0) {
+      log_warn("Failed to register client %u with session_host", client_id_snapshot);
+    } else {
+      log_debug("Client %u registered with session_host as %u", client_id_snapshot, session_client_id);
+    }
+  }
+
+  // Broadcast server state to ALL clients AFTER the new client is fully set up
+  // This notifies all clients (including the new one) about the updated grid
+  broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
 
@@ -958,6 +973,81 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
     log_error("Failed to start threads for WebRTC client %u", client_id_snapshot);
     return -1;
   }
+  log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
+
+  // Create send thread for this client
+  snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
+  asciichat_error_t send_result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
+  if (send_result != ASCIICHAT_OK) {
+    log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,
+              asciichat_error_string(send_result));
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after send thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Created send thread for WebRTC client %u", client_id_snapshot);
+
+  // Send initial server state to the new client
+  if (send_server_state_to_client(client) != 0) {
+    log_warn("Failed to send initial server state to WebRTC client %u", client_id_snapshot);
+  } else {
+#ifdef DEBUG_NETWORK
+    log_info("Sent initial server state to WebRTC client %u", client_id_snapshot);
+#endif
+  }
+
+  // Send initial server state via ACIP transport
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  server_state_packet_t state;
+  state.connected_client_count = connected_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
+  if (packet_send_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial server state to WebRTC client %u: %s", client_id_snapshot,
+             asciichat_error_string(packet_send_result));
+  } else {
+    log_debug("Sent initial server state to WebRTC client %u: %u connected clients", client_id_snapshot,
+              state.connected_client_count);
+  }
+
+  // Create per-client rendering threads
+  log_debug("Creating render threads for WebRTC client %u", client_id_snapshot);
+  if (create_client_render_threads(server_ctx, client) != 0) {
+    log_error("Failed to create render threads for WebRTC client %u", client_id_snapshot);
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after render thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Successfully created render threads for WebRTC client %u", client_id_snapshot);
+
+  // Register client with session_host (for discovery mode support)
+  // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
+  if (server_ctx->session_host) {
+    uint32_t session_client_id =
+        session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
+    if (session_client_id == 0) {
+      log_warn("Failed to register WebRTC client %u with session_host", client_id_snapshot);
+    } else {
+      log_debug("WebRTC client %u registered with session_host as %u", client_id_snapshot, session_client_id);
+    }
+  }
+
+  // Broadcast server state to ALL clients AFTER the new client is fully set up
+  // This notifies all clients (including the new one) about the updated grid
+  broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
 
@@ -1052,6 +1142,16 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
     rwlock_wrunlock(&g_client_manager_rwlock);
     log_warn("Cannot remove client %u: not found", client_id);
     return -1;
+  }
+
+  // Unregister client from session_host (for discovery mode support)
+  if (server_ctx->session_host) {
+    asciichat_error_t session_result = session_host_remove_client(server_ctx->session_host, client_id);
+    if (session_result != ASCIICHAT_OK) {
+      log_warn("Failed to unregister client %u from session_host: %s", client_id, asciichat_error_string(session_result));
+    } else {
+      log_debug("Client %u unregistered from session_host", client_id);
+    }
   }
 
   // CRITICAL: Release write lock before joining threads

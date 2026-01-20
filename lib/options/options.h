@@ -432,10 +432,11 @@ int strtoint_safe(const char *str);
  * Determines which set of options to use when parsing command-line arguments.
  */
 typedef enum {
-  MODE_SERVER,          ///< Server mode - network server options
-  MODE_CLIENT,          ///< Client mode - network client options
-  MODE_MIRROR,          ///< Mirror mode - local webcam viewing (no network)
-  MODE_DISCOVERY_SERVER ///< Discovery server mode - session management and WebRTC signaling
+  MODE_SERVER,           ///< Server mode - network server options
+  MODE_CLIENT,           ///< Client mode - network client options
+  MODE_MIRROR,           ///< Mirror mode - local webcam viewing (no network)
+  MODE_DISCOVERY_SERVER, ///< Discovery server mode - session management and WebRTC signaling
+  MODE_DISCOVERY         ///< Discovery mode - participant that can dynamically become host
 } asciichat_mode_t;
 
 /**

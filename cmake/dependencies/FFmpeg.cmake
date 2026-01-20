@@ -189,7 +189,9 @@ endif()
 # =============================================================================
 # Fallback: Use pkg-config (dynamic linking)
 # =============================================================================
-if(NOT FFMPEG_FOUND)
+# Check if we need to run pkg-config: either not found yet, or found but no link libs set
+if(NOT FFMPEG_FOUND OR NOT FFMPEG_LINK_LIBRARIES)
+    message(STATUS "FFmpeg: Searching via pkg-config...")
     # Find pkg-config (required for finding FFmpeg)
     find_package(PkgConfig QUIET)
 

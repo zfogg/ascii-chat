@@ -310,6 +310,7 @@ set(CORE_SRCS
     lib/options/server.c
     lib/options/mirror.c
     lib/options/discovery_server.c
+    lib/options/discovery.c           # Discovery mode options (Phase 3)
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c
@@ -356,6 +357,18 @@ set(DATA_STRUCTURES_SRCS
 )
 
 # =============================================================================
+# Session Library (reusable session components for discovery mode)
+# =============================================================================
+set(SESSION_SRCS
+    lib/session/capture.c
+    lib/session/display.c
+    lib/session/settings.c
+    lib/session/audio.c
+    lib/session/participant.c
+    lib/session/host.c
+)
+
+# =============================================================================
 # Panic Instrumentation Runtime
 # =============================================================================
 set(TOOLING_PANIC_SRCS
@@ -397,6 +410,8 @@ set(APP_SRCS
     src/discovery-server/main.c
     src/discovery-server/server.c
     src/discovery-server/signaling.c
+    # Discovery mode sources (participant with dynamic host negotiation)
+    src/discovery/main.c
 )
 
 # =============================================================================

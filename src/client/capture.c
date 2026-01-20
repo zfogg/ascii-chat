@@ -88,21 +88,14 @@
 #include "capture.h"
 #include "main.h"
 #include "server.h"
-#include "video/webcam/webcam.h"
+#include "session/capture.h"
 #include "video/image.h"
-#include "media/source.h"
 #include "common.h"
-#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
-#include "util/time.h"
-#include "util/format.h"
-#include "util/image.h"
-#include "util/endian.h"
-#include "util/thread.h"
-#include "util/endian.h"
 #include "util/fps.h"
+#include "util/thread.h" // For THREAD_IS_CREATED macro
 #include "network/acip/send.h"
 #include "network/acip/client.h"
 #include <stdatomic.h>
@@ -112,18 +105,19 @@
 #include "thread_pool.h"
 
 /* ============================================================================
- * Media Source Management
+ * Session Capture Context
  * ============================================================================ */
 
 /**
- * @brief Media source handle (webcam, file, or stdin)
+ * @brief Session capture context (webcam, file, or stdin)
  *
- * Unified media source that abstracts over webcam, media files, and stdin.
+ * Unified capture context using the session library that abstracts over
+ * webcam, media files, stdin, and test pattern sources.
  * Created during initialization, destroyed during cleanup.
  *
  * @ingroup client_capture
  */
-static media_source_t *g_media_source = NULL;
+static session_capture_ctx_t *g_capture_ctx = NULL;
 
 /* ============================================================================
  * Capture Thread Management
@@ -162,114 +156,10 @@ static atomic_bool g_capture_thread_exited = false;
 /* ============================================================================
  * Frame Processing Constants
  * ============================================================================ */
-/** Target frame interval in milliseconds (30 FPS = 33ms) */
-// Use FRAME_INTERVAL_MS from common.h
-/** Maximum frame width for network transmission - reduced for bandwidth optimization */
-#define MAX_FRAME_WIDTH 480
-/** Maximum frame height for network transmission - reduced for bandwidth optimization */
-#define MAX_FRAME_HEIGHT 270
+/** Target capture FPS for network transmission (144 FPS for high-refresh displays) */
+#define CAPTURE_TARGET_FPS 144
 
-/* ============================================================================
- * Frame Processing Functions
- * ============================================================================ */
-/**
- * Calculate optimal frame dimensions for network transmission
- *
- * Implements fit-to-bounds scaling algorithm that maintains original
- * aspect ratio while ensuring frame fits within network size limits.
- * Uses floating-point arithmetic for precise aspect ratio calculations.
- *
- * Scaling Algorithm:
- * 1. Calculate original image aspect ratio (width/height)
- * 2. Compare with maximum bounds aspect ratio
- * 3. Scale by width if max bounds are wider than image
- * 4. Scale by height if max bounds are taller than image
- * 5. Return dimensions that fit within bounds
- *
- * @param original_width Original frame width from webcam
- * @param original_height Original frame height from webcam
- * @param max_width Maximum allowed width for transmission
- * @param max_height Maximum allowed height for transmission
- * @param result_width Output parameter for calculated width
- * @param result_height Output parameter for calculated height
- *
- * @ingroup client_capture
- */
-static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height, ssize_t max_width,
-                                         ssize_t max_height, ssize_t *result_width, ssize_t *result_height) {
-  // Calculate original aspect ratio
-  float img_aspect = (float)original_width / (float)original_height;
-  // Check if image needs resizing
-  if (original_width <= max_width && original_height <= max_height) {
-    // Image is already within bounds - use as-is
-    *result_width = original_width;
-    *result_height = original_height;
-    return;
-  }
-  // Determine scaling factor based on which dimension is the limiting factor
-  if ((float)max_width / (float)max_height > img_aspect) {
-    // Max box is wider than image aspect - scale by height
-    *result_height = max_height;
-    *result_width = (ssize_t)(max_height * img_aspect);
-  } else {
-    // Max box is taller than image aspect - scale by width
-    *result_width = max_width;
-    *result_height = (ssize_t)(max_width / img_aspect);
-  }
-}
-/**
- * Process and resize webcam frame for transmission
- *
- * Handles frame resizing with memory management and error handling.
- * Creates new image buffer only when resizing is required, otherwise
- * reuses original frame to minimize memory allocations.
- *
- * IMPORTANT: Caller retains ownership of input image. Caller must destroy
- * the returned image if not NULL. Do not call image_destroy() on the input
- * before calling this function - let the caller manage its lifecycle.
- *
- * @param original_image Input frame from webcam (caller owns it)
- * @param max_width Maximum allowed frame width
- * @param max_height Maximum allowed frame height
- * @return Processed image ready for transmission, or NULL on error
- *
- * @ingroup client_capture
- */
-static image_t *process_frame_for_transmission(image_t *original_image, ssize_t max_width, ssize_t max_height) {
-  if (!original_image) {
-    return NULL;
-  }
-  // Calculate optimal dimensions
-  ssize_t resized_width, resized_height;
-  calculate_optimal_dimensions(original_image->w, original_image->h, max_width, max_height, &resized_width,
-                               &resized_height);
-  // Check if resizing is needed
-  if (original_image->w == resized_width && original_image->h == resized_height) {
-    // No resizing needed - create a copy to preserve original
-    image_t *copy = image_new(original_image->w, original_image->h);
-    if (!copy) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate image copy");
-      return NULL;
-    }
-    // Copy pixel data
-    memcpy(copy->pixels, original_image->pixels, (size_t)original_image->w * original_image->h * sizeof(rgb_pixel_t));
-    return copy;
-  }
-  // Create new image for resized frame
-  image_t *resized = image_new(resized_width, resized_height);
-  if (!resized) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate resized image buffer");
-    // Do not destroy original_image - caller owns it
-    return NULL;
-  }
-
-  // Perform resizing operation
-  image_resize(original_image, resized);
-
-  // Return resized image without destroying original
-  // Caller is responsible for destroying both input and output
-  return resized;
-}
+/* Frame processing now handled by session library via session_capture_process_for_transmission() */
 /* ============================================================================
  * Capture Thread Implementation
  * ============================================================================ */
@@ -309,25 +199,9 @@ static void *webcam_capture_thread_func(void *arg) {
   static bool fps_tracker_initialized = false;
   static uint64_t capture_frame_count = 0;
   static struct timespec last_capture_frame_time = {0, 0};
-  static const uint32_t expected_capture_fps = 144;
   if (!fps_tracker_initialized) {
-    fps_init(&fps_tracker, 144, "WEBCAM_TX");
+    fps_init(&fps_tracker, CAPTURE_TARGET_FPS, "WEBCAM_TX");
     fps_tracker_initialized = true;
-  }
-
-  // Adaptive sleep for frame rate limiting at 144 FPS
-  static adaptive_sleep_state_t sleep_state = {0};
-  static bool sleep_state_initialized = false;
-  if (!sleep_state_initialized) {
-    adaptive_sleep_config_t config = {
-        .baseline_sleep_ns = 6944444, // ~144 FPS (6.944ms)
-        .min_speed_multiplier = 1.0,  // Constant rate (no slowdown)
-        .max_speed_multiplier = 1.0,  // Constant rate (no speedup)
-        .speedup_rate = 0.0,          // No adaptive behavior (constant FPS)
-        .slowdown_rate = 0.0          // No adaptive behavior (constant FPS)
-    };
-    adaptive_sleep_init(&sleep_state, &config);
-    sleep_state_initialized = true;
   }
 
   while (!should_exit() && !server_connection_is_lost()) {
@@ -338,16 +212,15 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Frame rate limiting using adaptive sleep system
-    // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
-    // Use queue_depth=0 and target_depth=0 for constant-rate producer (no backlog management)
-    adaptive_sleep_do(&sleep_state, 0, 0);
+    // Frame rate limiting using session capture adaptive sleep
+    session_capture_sleep_for_fps(g_capture_ctx);
 
-    image_t *image = media_source_read_video(g_media_source);
+    // Read frame using session capture library
+    image_t *image = session_capture_read_frame(g_capture_ctx);
 
     if (!image) {
       // Check if we've reached end of file for media sources
-      if (media_source_at_end(g_media_source)) {
+      if (session_capture_at_end(g_capture_ctx)) {
         log_debug("Media source reached end of file");
         break; // Exit capture loop - end of media
       }
@@ -356,26 +229,20 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Track frame for FPS reporting (use separate timestamp for FPS tracking)
+    // Track frame for FPS reporting
     struct timespec frame_capture_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &frame_capture_time);
     fps_frame(&fps_tracker, &frame_capture_time, "webcam frame captured");
 
-    // Process frame for network transmission
-    // process_frame_for_transmission() always returns a new image that we own
+    // Process frame for network transmission using session library
+    // session_capture_process_for_transmission() returns a new image that we own
     // NOTE: The original 'image' is owned by media_source - do NOT free it!
-    image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
+    image_t *processed_image = session_capture_process_for_transmission(g_capture_ctx, image);
     if (!processed_image) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
-      // NOTE: Do NOT free 'image' - it's owned by media_source
+      // NOTE: Do NOT free 'image' - it's owned by capture context
       continue;
     }
-
-    // NOTE: Do NOT free 'image' - it's owned by media_source and reused on next read
-    // The processed_image is a new allocation we own
-
-    // processed_image is always a new image (copy or resized) - we own it and must destroy it
-    // Serialize image data for network transmission
 
     // Check connection before sending
     if (!server_connection_is_active()) {
@@ -385,7 +252,6 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Send frame packet to server using proper packet format
-    // This handles the full image_frame_packet_t structure with all required fields
     acip_transport_t *transport = server_connection_get_transport();
     log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u via transport %p", processed_image->w,
                     processed_image->h, (void *)transport);
@@ -394,7 +260,6 @@ static void *webcam_capture_thread_func(void *arg) {
                                                           1); // pixel_format = 1 (RGB24)
 
     if (send_result != ASCIICHAT_OK) {
-      // Signal connection loss for reconnection
       log_error("Failed to send image frame: %d", send_result);
       server_connection_lost();
       image_destroy(processed_image);
@@ -405,14 +270,14 @@ static void *webcam_capture_thread_func(void *arg) {
     // FPS tracking - frame successfully captured and sent
     capture_frame_count++;
 
-    // Calculate time since last frame
+    // Calculate time since last frame for lag detection
     uint64_t frame_interval_us =
         ((uint64_t)frame_capture_time.tv_sec * 1000000 + (uint64_t)frame_capture_time.tv_nsec / 1000) -
         ((uint64_t)last_capture_frame_time.tv_sec * 1000000 + (uint64_t)last_capture_frame_time.tv_nsec / 1000);
     last_capture_frame_time = frame_capture_time;
 
-    // Expected frame interval in microseconds (6944us for 144fps)
-    uint64_t expected_interval_us = 1000000 / expected_capture_fps;
+    // Expected frame interval in microseconds
+    uint64_t expected_interval_us = 1000000 / session_capture_get_target_fps(g_capture_ctx);
     uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
 
     // Log warning if frame took too long to capture
@@ -423,14 +288,11 @@ static void *webcam_capture_thread_func(void *arg) {
                      (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
     }
 
-    // Clean up resources
+    // Clean up processed frame
     image_destroy(processed_image);
     processed_image = NULL;
 
-    // Yield to reduce CPU usage - even with frame rate limiting at 144 FPS,
-    // processing each frame (resize + compress + encrypt + send) without any
-    // sleep causes the thread to spin at 90%+ CPU constantly
-    // A 1ms yield reduces CPU from 90% to ~20% with minimal latency impact
+    // Yield to reduce CPU usage
     platform_sleep_usec(1000); // 1ms
   }
 
@@ -459,60 +321,45 @@ static void *webcam_capture_thread_func(void *arg) {
  * @ingroup client_capture
  */
 int capture_init() {
-  // Determine media source type based on options
-  media_source_type_t source_type;
-  const char *source_path = NULL;
+  // Build capture configuration from options
+  session_capture_config_t config = {0};
+  const char *media_file = GET_OPTION(media_file);
+  bool media_from_stdin = GET_OPTION(media_from_stdin);
 
-  // Check if test pattern mode is enabled
-  if (GET_OPTION(test_pattern)) {
-    source_type = MEDIA_SOURCE_TEST;
+  if (media_file[0] != '\0') {
+    // File or stdin streaming
+    config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+    config.path = media_file;
+    config.loop = GET_OPTION(media_loop) && !media_from_stdin;
+    log_debug("Using media %s: %s", media_from_stdin ? "stdin" : "file", media_file);
+  } else if (GET_OPTION(test_pattern)) {
+    // Test pattern mode
+    config.type = MEDIA_SOURCE_TEST;
+    config.path = NULL;
     log_debug("Using test pattern mode");
+  } else {
+    // Webcam mode (default)
+    static char webcam_index_str[32];
+    snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+    config.type = MEDIA_SOURCE_WEBCAM;
+    config.path = webcam_index_str;
+    log_debug("Using webcam device %u", GET_OPTION(webcam_index));
   }
-  // Check if media file is specified
-  else if (GET_OPTION(media_file)[0] != '\0') {
-    const char *media_file = GET_OPTION(media_file);
+  config.target_fps = CAPTURE_TARGET_FPS;
+  config.resize_for_network = true; // Client always resizes for network transmission
 
-    // Check if stdin input
-    if (strcmp(media_file, "-") == 0) {
-      source_type = MEDIA_SOURCE_STDIN;
-      source_path = "-";
-      log_debug("Using stdin for media input");
-    } else {
-      source_type = MEDIA_SOURCE_FILE;
-      source_path = media_file;
-      log_debug("Using media file: %s", media_file);
-    }
-  }
-  // Default to webcam
-  else {
-    source_type = MEDIA_SOURCE_WEBCAM;
-    // Get webcam index and convert to string for media_source_create
-    int webcam_index = GET_OPTION(webcam_index);
-    static char webcam_index_str[16];
-    snprintf(webcam_index_str, sizeof(webcam_index_str), "%d", webcam_index);
-    source_path = webcam_index_str;
-    log_debug("Using webcam device %d", webcam_index);
-  }
-
-  // Create media source
-  g_media_source = media_source_create(source_type, source_path);
-  if (!g_media_source) {
+  // Create capture context using session library
+  g_capture_ctx = session_capture_create(&config);
+  if (!g_capture_ctx) {
     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
-    // If so, return that error code instead of generic ERROR_MEDIA_INIT
     asciichat_error_t existing_error = GET_ERRNO();
-    log_debug("media_source_create failed, GET_ERRNO() returned: %d", existing_error);
+    log_debug("session_capture_create failed, GET_ERRNO() returned: %d", existing_error);
     if (existing_error != ASCIICHAT_OK) {
       log_debug("Returning existing error code %d", existing_error);
       return existing_error;
     }
-    SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize media source");
+    SET_ERRNO(ERROR_MEDIA_INIT, "Failed to initialize capture source");
     return -1;
-  }
-
-  // Enable loop if requested (only for file sources)
-  if (GET_OPTION(media_loop) && source_type == MEDIA_SOURCE_FILE) {
-    media_source_set_loop(g_media_source, true);
-    log_debug("Media loop enabled");
   }
 
   return 0;
@@ -599,9 +446,9 @@ bool capture_thread_exited() {
 void capture_cleanup() {
   capture_stop_thread();
 
-  // Destroy media source
-  if (g_media_source) {
-    media_source_destroy(g_media_source);
-    g_media_source = NULL;
+  // Destroy capture context
+  if (g_capture_ctx) {
+    session_capture_destroy(g_capture_ctx);
+    g_capture_ctx = NULL;
   }
 }

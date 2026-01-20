@@ -21,11 +21,12 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Mode-specific entry point
+// Mode-specific entry points
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
 #include "discovery-server/main.h"
+#include "discovery/main.h"
 
 // Common headers for version info and initialization
 #include "common.h"
@@ -99,12 +100,16 @@ static void print_usage(void) {
          ASCII_CHAT_DESCRIPTION_EMOJI_R);
   printf("\n");
   printf("USAGE:\n");
-  printf("  %s [options] <mode> [mode-options...]\n", binary_name);
+  printf("  %s [options...]                       Start a new session\n", binary_name);
+  printf("  %s <session-string> [options...]      Join an existing session\n", binary_name);
+  printf("  %s <mode> [mode-options...]           Run in a specific mode\n", binary_name);
   printf("\n");
   printf("EXAMPLES:\n");
-  printf("  %s server                    Start server on default port 27224\n", binary_name);
-  printf("  %s client                    Connect to localhost:27224\n", binary_name);
-  printf("  %s client example.com        Connect to example.com:27224\n", binary_name);
+  printf("  %s                           Start new session (share the session string)\n", binary_name);
+  printf("  %s swift-river-mountain      Join session with session string\n", binary_name);
+  printf("  %s server                    Run as dedicated server\n", binary_name);
+  printf("  %s client example.com        Connect to specific server\n", binary_name);
+  printf("  %s mirror                    Preview local webcam as ASCII\n", binary_name);
   printf("\n");
   printf("OPTIONS:\n");
   printf("  --help                       Show this help\n");
@@ -124,15 +129,27 @@ static void print_usage(void) {
   printf("MODE-OPTIONS:\n");
   printf("  %s <mode> --help             Show options for a mode\n", binary_name);
   printf("\n");
-  printf("🔗 https://ascii-chat.com\n");
-  printf("🔗 https://github.com/zfogg/ascii-chat\n");
+  printf("https://ascii-chat.com\n");
+  printf("https://github.com/zfogg/ascii-chat\n");
 }
 
 static void print_version(void) {
   printf("%s %s (%s, %s)\n", APP_NAME, VERSION, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
 }
 
+// Discovery mode is implicit (no keyword) so it has a separate descriptor
+static const mode_descriptor_t g_discovery_mode = {
+    .name = "discovery",
+    .description = "P2P session with automatic host negotiation",
+    .entry_point = discovery_main,
+};
+
 static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
+  // Discovery mode is not in the table (it's implicit)
+  if (mode == MODE_DISCOVERY) {
+    return &g_discovery_mode;
+  }
+
   for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
     switch (mode) {
     case MODE_SERVER:
@@ -198,27 +215,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  // Case: No arguments - show usage
-  if (argc == 1) {
-    print_usage();
-    return 0;
-  }
-
-  // UNIFIED OPTION INITIALIZATION
-  // This single call handles:
-  // - Mode detection from command-line arguments (including session string auto-detection)
-  // - Binary-level option parsing (--help, --version, --log-file, etc.)
-  // - Mode-specific option parsing
-  // - Configuration file loading
-  // - Post-processing and validation
-  //
-  // Session String Detection (Phase 1 ACDS):
-  // When a positional argument matches word-word-word pattern (e.g., "swift-river-mountain"),
-  // it's automatically detected as a session string by options_init(), which:
-  // 1. Sets detected_mode to MODE_CLIENT
-  // 2. Stores the session string in options.session_string
-  // 3. Triggers automatic discovery on LAN (mDNS) and/or internet (ACDS)
-  // This enables: `ascii-chat swift-river-mountain` (no explicit "client" mode needed)
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
@@ -263,6 +259,9 @@ int main(int argc, char *argv[]) {
   case MODE_DISCOVERY_SERVER:
     default_log_filename = "acds.log";
     break;
+  case MODE_DISCOVERY:
+    default_log_filename = "discovery.log";
+    break;
   default:
     default_log_filename = "ascii-chat.log";
     break;
@@ -290,7 +289,9 @@ int main(int argc, char *argv[]) {
   }
 
   // Determine if this mode uses client-like initialization (client and mirror modes)
-  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR);
+  // Discovery mode is client-like (uses terminal display, webcam, etc.)
+  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
+                                   opts->detected_mode == MODE_DISCOVERY);
 
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
   if (is_client_or_mirror_mode && opts->show_capabilities) {
