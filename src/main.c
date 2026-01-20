@@ -179,21 +179,6 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * Helper Functions for Post-Options Processing
  * ============================================================================ */
 
-static void update_log_file_updater(options_t *opts, void *context) {
-  const char *validated_path = (const char *)context;
-  SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
-}
-
-static void clear_log_file_updater(options_t *opts, void *context) {
-  (void)context;
-  opts->log_file[0] = '\0';
-}
-
-static void update_color_mode_to_none_updater(options_t *opts, void *context) {
-  (void)context;
-  opts->color_mode = COLOR_MODE_NONE;
-}
-
 /* ============================================================================
  * Main Entry Point
  * ============================================================================ */
@@ -277,12 +262,12 @@ int main(int argc, char *argv[]) {
       // Invalid log file path - warn and fall back to default
       fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
               default_log_filename);
-      options_update(clear_log_file_updater, NULL);
+      options_set_string("log_file", "");
       opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     } else {
       // Replace log_file with validated path
-      options_update(update_log_file_updater, validated_log_file);
+      options_set_string("log_file", validated_log_file);
       opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     }
@@ -314,7 +299,7 @@ int main(int argc, char *argv[]) {
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
   terminal_color_mode_t color_mode = opts->color_mode;
   if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
-    options_update(update_color_mode_to_none_updater, NULL);
+    options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }

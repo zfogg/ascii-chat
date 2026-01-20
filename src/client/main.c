@@ -335,16 +335,6 @@ static void shutdown_client() {
 }
 
 #ifndef NDEBUG
-/**
- * Helper function to enable test pattern mode (debug builds only)
- *
- * Used as callback for options_update() to enable test pattern fallback
- * when webcam is in use during development.
- */
-static void enable_test_pattern_callback(options_t *opts, void *context) {
-  (void)context; // Unused
-  opts->test_pattern = true;
-}
 #endif
 
 /**
@@ -506,7 +496,7 @@ int client_main(void) {
       log_warn("Webcam is in use - automatically falling back to test pattern mode (debug build only)");
 
       // Enable test pattern mode via RCU update
-      asciichat_error_t update_result = options_update(enable_test_pattern_callback, NULL);
+      asciichat_error_t update_result = options_set_bool("test_pattern", true);
       if (update_result != ASCIICHAT_OK) {
         log_error("Failed to update options for test pattern fallback");
         FATAL(init_result, "%s", asciichat_error_string(init_result));

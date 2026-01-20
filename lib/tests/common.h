@@ -171,49 +171,32 @@ const char *test_get_binary_path(void);
 
 #include "options/rcu.h"
 
-// Updater functions for test helpers (must be at file scope)
-static void test_set_test_pattern_updater(options_t *opts, void *ctx) {
-  opts->test_pattern = *(bool *)ctx;
-}
-
-static void test_set_webcam_flip_updater(options_t *opts, void *ctx) {
-  opts->webcam_flip = *(bool *)ctx;
-}
-
-static void test_set_width_updater(options_t *opts, void *ctx) {
-  opts->width = *(unsigned short int *)ctx;
-}
-
-static void test_set_height_updater(options_t *opts, void *ctx) {
-  opts->height = *(unsigned short int *)ctx;
-}
-
 /**
  * @brief Helper to set test_pattern option in tests
  */
 static inline void test_set_test_pattern(bool value) {
-  options_update(test_set_test_pattern_updater, &value);
+  options_set_bool("test_pattern", value);
 }
 
 /**
  * @brief Helper to set webcam_flip option in tests
  */
 static inline void test_set_webcam_flip(bool value) {
-  options_update(test_set_webcam_flip_updater, &value);
+  options_set_bool("webcam_flip", value);
 }
 
 /**
  * @brief Helper to set width option in tests
  */
 static inline void test_set_width(unsigned short int value) {
-  options_update(test_set_width_updater, &value);
+  options_set_int("width", (int)value);
 }
 
 /**
  * @brief Helper to set height option in tests
  */
 static inline void test_set_height(unsigned short int value) {
-  options_update(test_set_height_updater, &value);
+  options_set_int("height", (int)value);
 }
 
 /** @} */
