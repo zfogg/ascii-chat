@@ -75,6 +75,11 @@ else()
         endif()
 
         # Linux library search paths (Debian/Ubuntu multiarch and Arch/Fedora standard paths)
-        link_directories(/usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib /lib)
+        # Use CMAKE_LIBRARY_ARCHITECTURE for correct multiarch path on ARM/x86_64
+        if(CMAKE_LIBRARY_ARCHITECTURE)
+            link_directories(/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib /lib)
+        else()
+            link_directories(/usr/lib /lib)
+        endif()
     endif()
 endif()
