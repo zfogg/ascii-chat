@@ -88,7 +88,6 @@
 #include "network/tcp/server.h"
 #include "network/acip/acds_client.h"
 #include "network/webrtc/stun.h"
-#include "network/endpoints.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -1811,14 +1810,14 @@ int server_main(void) {
             static stun_server_t stun_servers[4] = {0};
             static int stun_count_initialized = 0;
             if (!stun_count_initialized) {
-              int count = stun_servers_parse(GET_OPTION(stun_servers), ENDPOINT_STUN_SERVERS_DEFAULT,
+              int count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                              stun_servers, 4);
               if (count > 0) {
                 stun_count_initialized = count;
               } else {
                 log_warn("Failed to parse STUN servers, using defaults");
-                stun_count_initialized = stun_servers_parse(ENDPOINT_STUN_SERVERS_DEFAULT,
-                                                           ENDPOINT_STUN_SERVERS_DEFAULT,
+                stun_count_initialized = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
+                                                           OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                                            stun_servers, 4);
               }
             }

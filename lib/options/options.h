@@ -151,7 +151,6 @@
 #include <stdio.h>
 #include "platform/terminal.h"
 #include "video/palette.h"
-#include "network/endpoints.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -230,6 +229,51 @@
 
 /** @brief Default IPv6 server address */
 #define OPT_ADDRESS6_DEFAULT "::1"
+
+/**
+ * @name Network Endpoint Defaults
+ * @brief Centralized definitions for all network service endpoints
+ * @{
+ * @ingroup options
+ */
+
+/** @brief Discovery service (ACDS) endpoint for session management */
+#define OPT_ENDPOINT_DISCOVERY_SERVICE "discovery-service.ascii-chat.com"
+
+/** @brief Primary STUN server (ascii-chat hosted) */
+#define OPT_ENDPOINT_STUN_PRIMARY "stun:stun.ascii-chat.com:3478"
+
+/** @brief Fallback STUN server (Google public STUN) */
+#define OPT_ENDPOINT_STUN_FALLBACK "stun:stun.l.google.com:19302"
+
+/** @brief Default STUN servers (comma-separated list) */
+#define OPT_ENDPOINT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_PRIMARY "," OPT_ENDPOINT_STUN_FALLBACK
+
+/** @brief Primary TURN server (ascii-chat hosted) */
+#define OPT_ENDPOINT_TURN_PRIMARY "turn:turn.ascii-chat.com:3478"
+
+/** @brief Default TURN servers (comma-separated list) */
+#define OPT_ENDPOINT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_PRIMARY
+
+/** @brief STUN server hostname only (without protocol/port) */
+#define OPT_STUN_SERVER_HOST_PRIMARY "stun.ascii-chat.com"
+
+/** @brief STUN server port for primary server */
+#define OPT_STUN_SERVER_PORT_PRIMARY 3478
+
+/** @brief Fallback STUN server hostname only */
+#define OPT_STUN_SERVER_HOST_FALLBACK "stun.l.google.com"
+
+/** @brief Fallback STUN server port */
+#define OPT_STUN_SERVER_PORT_FALLBACK 19302
+
+/** @brief TURN server hostname only */
+#define OPT_TURN_SERVER_HOST "turn.ascii-chat.com"
+
+/** @brief TURN server port */
+#define OPT_TURN_SERVER_PORT 3478
+
+/** @} */
 
 /** @brief Default maximum concurrent clients (server only) */
 #define OPT_MAX_CLIENTS_DEFAULT 9
@@ -358,10 +402,10 @@
 #define OPT_MEDIA_LOOP_DEFAULT false
 
 /** @brief Default STUN server URLs (comma-separated) */
-#define OPT_STUN_SERVERS_DEFAULT ENDPOINT_STUN_SERVERS_DEFAULT
+#define OPT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_SERVERS_DEFAULT
 
 /** @brief Default TURN server URLs (comma-separated) */
-#define OPT_TURN_SERVERS_DEFAULT ENDPOINT_TURN_SERVERS_DEFAULT
+#define OPT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_SERVERS_DEFAULT
 
 /** @brief Default TURN server username */
 #define OPT_TURN_USERNAME_DEFAULT "ascii"

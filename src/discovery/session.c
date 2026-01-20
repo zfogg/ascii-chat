@@ -13,7 +13,6 @@
 #include "network/acip/send.h"
 #include "network/packet.h"
 #include "network/webrtc/stun.h"
-#include "network/endpoints.h"
 #include "negotiate.h"
 #include "nat.h"
 #include "platform/abstraction.h"
@@ -150,13 +149,13 @@ static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
   // Extract just the hostname:port without the "stun:" prefix for nat_detect_quality
   // If custom servers are configured, use the first one; otherwise use fallback
   const char *stun_servers_option = GET_OPTION(stun_servers);
-  const char *stun_server_for_probe = ENDPOINT_STUN_FALLBACK; // Default fallback
+  const char *stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK; // Default fallback
 
   if (stun_servers_option && stun_servers_option[0] != '\0') {
     // Use the first configured server
     // nat_detect_quality expects just "host:port" without "stun:" prefix
     // For now, we'll use the fallback and rely on ACDS to provide custom servers
-    stun_server_for_probe = ENDPOINT_STUN_FALLBACK;
+    stun_server_for_probe = OPT_ENDPOINT_STUN_FALLBACK;
   }
 
   // Strip "stun:" prefix if present

@@ -40,7 +40,6 @@
 #include "network/tcp/client.h"
 #include "network/webrtc/peer_manager.h"
 #include "network/webrtc/stun.h"
-#include "network/endpoints.h"
 #include "platform/abstraction.h"
 
 #include <time.h>
@@ -512,11 +511,11 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
 
   // Configure STUN servers from options (or defaults if not set)
   stun_server_t stun_servers[4] = {0}; // Support up to 4 STUN servers
-  int stun_count = stun_servers_parse(GET_OPTION(stun_servers), ENDPOINT_STUN_SERVERS_DEFAULT,
+  int stun_count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                       stun_servers, 4);
   if (stun_count <= 0) {
     log_warn("Failed to parse STUN servers, using defaults");
-    stun_count = stun_servers_parse(ENDPOINT_STUN_SERVERS_DEFAULT, ENDPOINT_STUN_SERVERS_DEFAULT,
+    stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                     stun_servers, 4);
   }
 
@@ -765,8 +764,8 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // Store TURN server credentials from ACDS response
   // Note: ACDS response should include TURN server, username, and password
   // For now we use ascii-chat's TURN server - in production this comes from server
-  ctx->stun_turn_cfg.turn_port = TURN_SERVER_PORT; // Standard TURN port
-  SAFE_STRNCPY(ctx->stun_turn_cfg.turn_server, TURN_SERVER_HOST, sizeof(ctx->stun_turn_cfg.turn_server));
+  ctx->stun_turn_cfg.turn_port = OPT_TURN_SERVER_PORT; // Standard TURN port
+  SAFE_STRNCPY(ctx->stun_turn_cfg.turn_server, OPT_TURN_SERVER_HOST, sizeof(ctx->stun_turn_cfg.turn_server));
   SAFE_STRNCPY(ctx->stun_turn_cfg.turn_username, "client", sizeof(ctx->stun_turn_cfg.turn_username));
   SAFE_STRNCPY(ctx->stun_turn_cfg.turn_password, "ephemeral-credential", sizeof(ctx->stun_turn_cfg.turn_password));
 
@@ -779,11 +778,11 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
 
   // Configure STUN + TURN servers from options (or defaults if not set)
   stun_server_t stun_servers_turn[4] = {0}; // Support up to 4 STUN servers
-  int stun_count_turn = stun_servers_parse(GET_OPTION(stun_servers), ENDPOINT_STUN_SERVERS_DEFAULT,
+  int stun_count_turn = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                            stun_servers_turn, 4);
   if (stun_count_turn <= 0) {
     log_warn("Failed to parse STUN servers for TURN stage, using defaults");
-    stun_count_turn = stun_servers_parse(ENDPOINT_STUN_SERVERS_DEFAULT, ENDPOINT_STUN_SERVERS_DEFAULT,
+    stun_count_turn = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
                                          stun_servers_turn, 4);
   }
 
