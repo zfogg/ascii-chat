@@ -15,8 +15,8 @@ SERVER_PORT=27224
 TEST_PASSWORD="webrtc-$(date +%s)"
 
 # Fast timeouts - total ~30 seconds
-SNAPSHOT_DURATION=1  # 1 second per test
-TEST_TIMEOUT=10      # 10 seconds max per test (WebRTC needs 4-5 seconds)
+SNAPSHOT_DURATION=5  # 5 seconds per test
+TEST_TIMEOUT=15      # 15 seconds max per test (WebRTC needs 4-5 seconds)
 
 # Use actual coturn servers
 STUN_SERVERS="stun:stun.ascii-chat.com:3478"
@@ -70,6 +70,7 @@ echo "   ✓ Build complete"
 ACDS_PORT=27225
 echo "[3/5] Starting ACDS..."
 ssh -n $REMOTE_HOST "cd $REMOTE_REPO && ./build/bin/ascii-chat discovery-server --port $ACDS_PORT > /tmp/acds.log 2>&1 &" &
+sleep 1  # Give ACDS time to fully initialize before server connects
 echo "   ✓ ACDS started"
 
 # [4/5] Start server with WebRTC

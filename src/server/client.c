@@ -1243,6 +1243,9 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
 static const acip_server_callbacks_t g_acip_server_callbacks;
 
 void *client_receive_thread(void *arg) {
+  // Log IMMEDIATELY to verify thread is running AT ALL
+  log_error("RECV_THREAD_RAW: Thread function entered, arg=%p", arg);
+
   client_info_t *client = (client_info_t *)arg;
 
   // CRITICAL: Validate client pointer immediately before any access
@@ -1252,6 +1255,9 @@ void *client_receive_thread(void *arg) {
     log_error("Invalid client info in receive thread (NULL pointer)");
     return NULL;
   }
+
+  log_debug("RECV_THREAD_DEBUG: Thread started, client=%p, client_id=%u, is_tcp=%d", (void *)client,
+            atomic_load(&client->client_id), client->is_tcp_client);
 
   if (atomic_load(&client->protocol_disconnect_requested)) {
     log_debug("Receive thread for client %u exiting before start (protocol disconnect requested)",
@@ -1267,7 +1273,8 @@ void *client_receive_thread(void *arg) {
   }
 
   // Additional validation: check socket is valid
-  if (client->socket == INVALID_SOCKET_VALUE) {
+  // For TCP clients, validate socket. WebRTC clients use DataChannel (no socket)
+  if (client->is_tcp_client && client->socket == INVALID_SOCKET_VALUE) {
     log_error("Invalid client socket in receive thread");
     return NULL;
   }
@@ -1282,11 +1289,12 @@ void *client_receive_thread(void *arg) {
   bool should_exit = atomic_load(&g_server_should_exit);
   bool is_active = atomic_load(&client->active);
   socket_t sock = client->socket;
-  log_debug("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d)",
-            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE);
+  log_debug("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d), is_tcp=%d",
+            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE, client->is_tcp_client);
 
+  // For TCP clients, check socket validity. For WebRTC clients, transport is always valid when thread starts
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
-         client->socket != INVALID_SOCKET_VALUE) {
+         (!client->is_tcp_client || client->socket != INVALID_SOCKET_VALUE)) {
 
     // Use unified secure packet reception with auto-decryption
     // CRITICAL: Check client_id is still valid before accessing transport
