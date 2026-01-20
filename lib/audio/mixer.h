@@ -454,6 +454,72 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id);
  */
 void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active);
 
+/* ============================================================================
+ * Mixer Hash Table Helpers (Internal API)
+ * ============================================================================ */
+
+/** @brief Invalid index sentinel value for mixer hash table */
+#define MIXER_HASH_INVALID 0xFF
+
+/**
+ * @brief Hash client ID to index in source_id_to_index table
+ * @param client_id Client ID to hash
+ * @return Index in [0, 255]
+ * @ingroup audio
+ */
+static inline uint8_t mixer_hash_client_id(uint32_t client_id) {
+  return (uint8_t)(client_id & 0xFF);
+}
+
+/**
+ * @brief Mark a client ID as invalid in the hash table
+ * @param mixer Audio mixer
+ * @param client_id Client ID to mark invalid
+ * @ingroup audio
+ */
+static inline void mixer_hash_mark_invalid(mixer_t *mixer, uint32_t client_id) {
+  if (mixer) {
+    mixer->source_id_to_index[mixer_hash_client_id(client_id)] = MIXER_HASH_INVALID;
+  }
+}
+
+/**
+ * @brief Set a client ID to a specific slot in the hash table
+ * @param mixer Audio mixer
+ * @param client_id Client ID to map
+ * @param slot Slot index to assign
+ * @ingroup audio
+ */
+static inline void mixer_hash_set_slot(mixer_t *mixer, uint32_t client_id, uint8_t slot) {
+  if (mixer) {
+    mixer->source_id_to_index[mixer_hash_client_id(client_id)] = slot;
+  }
+}
+
+/**
+ * @brief Check if a client ID is marked invalid
+ * @param mixer Audio mixer
+ * @param client_id Client ID to check
+ * @return true if marked invalid, false otherwise
+ * @ingroup audio
+ */
+static inline bool mixer_hash_is_invalid(mixer_t *mixer, uint32_t client_id) {
+  if (!mixer) return true;
+  return mixer->source_id_to_index[mixer_hash_client_id(client_id)] == MIXER_HASH_INVALID;
+}
+
+/**
+ * @brief Get the slot for a client ID (returns MIXER_HASH_INVALID if not set)
+ * @param mixer Audio mixer
+ * @param client_id Client ID to lookup
+ * @return Slot index or MIXER_HASH_INVALID if not found
+ * @ingroup audio
+ */
+static inline uint8_t mixer_hash_get_slot(mixer_t *mixer, uint32_t client_id) {
+  if (!mixer) return MIXER_HASH_INVALID;
+  return mixer->source_id_to_index[mixer_hash_client_id(client_id)];
+}
+
 /** @} */
 
 /**

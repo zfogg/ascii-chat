@@ -237,11 +237,11 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     // Buffer is full, read and free the oldest frame before writing new one
     frame_t old_frame;
     if (ringbuffer_read(fb->rb, &old_frame)) {
-      if (old_frame.magic == FRAME_MAGIC && old_frame.data) {
-        old_frame.magic = FRAME_FREED;
+      if (IS_FRAME_VALID(&old_frame)) {
+        MARK_FRAME_FREED(&old_frame);
         // Use buffer_pool_free since data was allocated with buffer_pool_alloc
         buffer_pool_free(NULL, old_frame.data, old_frame.size);
-      } else if (old_frame.magic != FRAME_MAGIC) {
+      } else if (!IS_MAGIC_VALID(old_frame.magic, FRAME_MAGIC)) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
       }
     }
@@ -259,7 +259,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   frame_copy[frame_size] = '\0'; // Ensure null termination
 
   // Create a frame_t struct with the copy (store allocated size for proper cleanup)
-  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
+  frame_t frame = {.magic = MAGIC_FRAME_VALID, .size = frame_size + 1, .data = frame_copy};
 
   bool result = ringbuffer_write(fb->rb, &frame);
 
@@ -290,7 +290,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
 
   // Validate the frame we just read
   if (result) {
-    if (frame->magic != FRAME_MAGIC) {
+    if (!IS_MAGIC_VALID(frame->magic, FRAME_MAGIC)) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
@@ -298,7 +298,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
       return false;
     }
 
-    if (frame->magic == FRAME_FREED) {
+    if (IS_FRAME_FREED(frame)) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Reading already-freed frame!");
       frame->data = NULL;
       frame->size = 0;
@@ -332,10 +332,10 @@ void framebuffer_clear(framebuffer_t *fb) {
     // Multi-source frame buffer - read and free multi_source_frame_t
     multi_source_frame_t multi_frame;
     while (ringbuffer_read(fb->rb, &multi_frame)) {
-      if (multi_frame.magic == FRAME_MAGIC && multi_frame.data) {
-        multi_frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
+      if (IS_FRAME_VALID((frame_t *)&multi_frame)) {
+        MARK_FRAME_FREED((frame_t *)&multi_frame); // Mark as freed to detect use-after-free
         buffer_pool_free(NULL, multi_frame.data, multi_frame.size);
-      } else if (multi_frame.magic != FRAME_MAGIC && multi_frame.magic != 0) {
+      } else if (!IS_MAGIC_VALID(multi_frame.magic, FRAME_MAGIC) && multi_frame.magic != 0) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x during clear",
                   multi_frame.magic);
       }
@@ -344,10 +344,10 @@ void framebuffer_clear(framebuffer_t *fb) {
     // Single-source frame buffer - read and free frame_t
     frame_t frame;
     while (ringbuffer_read(fb->rb, &frame)) {
-      if (frame.magic == FRAME_MAGIC && frame.data) {
-        frame.magic = FRAME_FREED; // Mark as freed to detect use-after-free
+      if (IS_FRAME_VALID(&frame)) {
+        MARK_FRAME_FREED(&frame); // Mark as freed to detect use-after-free
         buffer_pool_free(NULL, frame.data, frame.size);
-      } else if (frame.magic != FRAME_MAGIC && frame.magic != 0) {
+      } else if (!IS_MAGIC_VALID(frame.magic, FRAME_MAGIC) && frame.magic != 0) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid frame magic 0x%x during clear", frame.magic);
       }
     }
@@ -393,7 +393,7 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   SAFE_MEMCPY(data_copy, frame_size, frame_data, frame_size);
 
   // Create multi-source frame
-  multi_source_frame_t multi_frame = {.magic = FRAME_MAGIC,
+  multi_source_frame_t multi_frame = {.magic = MAGIC_FRAME_VALID,
                                       .source_client_id = source_client_id,
                                       .frame_sequence = frame_sequence,
                                       .timestamp = timestamp,
@@ -427,7 +427,7 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
 
   if (result) {
     // Validate frame magic
-    if (frame->magic != FRAME_MAGIC) {
+    if (!IS_MAGIC_VALID(frame->magic, FRAME_MAGIC)) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x)", frame->magic,
                 FRAME_MAGIC);
       frame->data = NULL;
@@ -463,7 +463,7 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
 
   if (result) {
     // Validate frame magic
-    if (frame->magic != FRAME_MAGIC) {
+    if (!IS_MAGIC_VALID(frame->magic, FRAME_MAGIC)) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid multi-source frame magic 0x%x (expected 0x%x) in peek",
                 frame->magic, FRAME_MAGIC);
       frame->data = NULL;

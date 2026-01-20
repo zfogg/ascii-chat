@@ -83,6 +83,7 @@ using std::atomic_uint;
 #include <stddef.h>
 #include <stdint.h>
 #include "platform/mutex.h"
+#include "util/magic.h"
 
 /**
  * @brief Lock-free ring buffer structure
@@ -421,10 +422,10 @@ typedef struct {
  * @{
  */
 
-/** @brief Magic number indicating a valid frame (0xDEADBEEF) */
-#define FRAME_MAGIC 0xDEADBEEF
-/** @brief Magic number indicating a freed frame (0xFEEDFACE) */
-#define FRAME_FREED 0xFEEDFACE
+/** @brief Magic number indicating a valid frame (0xDEADBEEF) - Alias for backward compatibility */
+#define FRAME_MAGIC MAGIC_FRAME_VALID
+/** @brief Magic number indicating a freed frame (0xFEEDFACE) - Alias for backward compatibility */
+#define FRAME_FREED MAGIC_FRAME_FREED
 
 /** @} */
 

@@ -589,7 +589,7 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
-  client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
+  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
   // 64-byte cache-line alignment improves performance for large network buffers
   client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
   if (!client->send_buffer) {
@@ -918,7 +918,7 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
-  client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
+  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
   client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
   if (!client->send_buffer) {
     log_error("Failed to allocate send buffer for WebRTC client %u", atomic_load(&client->client_id));

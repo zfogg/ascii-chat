@@ -288,8 +288,9 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
   mixer->active_sources_mask = 0ULL; // No sources active initially
-  SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
-              sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
+  for (int i = 0; i < 256; i++) {
+    mixer->source_id_to_index[i] = MIXER_HASH_INVALID;
+  }
 
   // Allocate mix buffer BEFORE rwlock_init so cleanup path is correct
   size_t mix_buffer_size = 0;
@@ -388,8 +389,8 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
-  mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
+  mixer->active_sources_mask |= (1ULL << slot);         // Set bit for this slot
+  mixer_hash_set_slot(mixer, client_id, (uint8_t)slot); // Hash table: client_id → slot
 
   rwlock_wrunlock(&mixer->source_lock);
 
@@ -412,8 +413,8 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
-      mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
+      mixer->active_sources_mask &= ~(1ULL << i); // Clear bit for this slot
+      mixer_hash_mark_invalid(mixer, client_id);  // Mark as invalid in hash table
 
       // Reset ducking state for this source
       mixer->ducking.envelope[i] = 0.0f;
@@ -618,14 +619,14 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
+  uint8_t exclude_index = mixer_hash_get_slot(mixer, exclude_client_id);
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Validate exclude_index before using in bitshift
-  // - exclude_index == 0xFF means "not found" (sentinel value from initialization)
+  // - exclude_index == MIXER_HASH_INVALID means "not found" (sentinel value from initialization)
   // - exclude_index >= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
   // - Also verify hash table lookup actually matched the client_id (collision detection)
-  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF &&
+  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != MIXER_HASH_INVALID &&
                         mixer->source_ids[exclude_index] == exclude_client_id);
 
   if (valid_exclude) {

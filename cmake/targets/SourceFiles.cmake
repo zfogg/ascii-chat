@@ -256,6 +256,7 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/packet_parsing.c
+    lib/network/frame_validator.c
     lib/network/compression.c
     lib/network/crc32.c
     lib/network/packet_queue.c

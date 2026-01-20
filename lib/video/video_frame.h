@@ -82,6 +82,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include "platform/abstraction.h"
+#include "common/buffer_sizes.h"
 
 /* ============================================================================
  * Video Frame Constants
@@ -89,7 +90,7 @@
  */
 
 /** @brief Video frame buffer size (2MB per frame) */
-#define VIDEO_FRAME_BUFFER_SIZE (2 * 1024 * 1024)
+#define VIDEO_FRAME_BUFFER_SIZE MAX_FRAME_BUFFER_SIZE
 /** @brief Maximum number of frame buffers (double buffering) */
 #define MAX_FRAME_BUFFERS 2
 

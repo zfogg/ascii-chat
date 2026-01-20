@@ -11,6 +11,7 @@
 #include "platform/init.h"
 #include "util/format.h"
 #include "util/time.h"
+#include "util/magic.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -105,7 +106,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   if (!pool || size < BUFFER_POOL_MIN_SIZE || size > BUFFER_POOL_MAX_SINGLE_SIZE) {
     size_t total_size = sizeof(buffer_node_t) + size;
     buffer_node_t *node = SAFE_MALLOC(total_size, buffer_node_t *);
-    node->magic = BUFFER_POOL_MAGIC_FALLBACK; // Different magic for fallbacks
+    node->magic = MAGIC_BUFFER_POOL_FALLBACK; // Different magic for fallbacks
     node->_pad = 0;
     node->size = size;
     atomic_init(&node->next, NULL);
@@ -166,7 +167,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
         return SAFE_MALLOC(size, void *);
       }
 
-      node->magic = BUFFER_POOL_MAGIC;
+      node->magic = MAGIC_BUFFER_POOL_VALID;
       node->_pad = 0;
       node->size = size;
       atomic_init(&node->next, NULL);
@@ -198,13 +199,13 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
   buffer_node_t *node = node_from_data(data);
 
   // If it's a malloc fallback (has fallback magic), free the node directly
-  if (node->magic == BUFFER_POOL_MAGIC_FALLBACK) {
+  if (IS_MAGIC_VALID(node->magic, MAGIC_BUFFER_POOL_FALLBACK)) {
     SAFE_FREE(node); // Free the node (includes header + data)
     return;
   }
 
   // If it's not a pooled buffer (no valid magic), it's external - use platform free
-  if (node->magic != BUFFER_POOL_MAGIC) {
+  if (!IS_MAGIC_VALID(node->magic, MAGIC_BUFFER_POOL_VALID)) {
     free(data); // Unknown allocation, just free the data pointer
     return;
   }
