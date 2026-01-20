@@ -3,61 +3,15 @@
  * @brief Two-column layout implementation
  *
  * Implements reusable layout functions for two-column formatting with text wrapping.
+ * Uses utf8proc library for accurate UTF-8 display width calculation.
  */
 
 #include "layout.h"
 #include "log/logging.h"
+#include "util/utf8.h"
+#include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <string.h>
 #include <stdio.h>
-#include <wchar.h>
-#include <locale.h>
-
-/* ============================================================================
- * UTF-8 Display Width Calculation
- * ============================================================================ */
-
-/**
- * @brief Calculate the display width of a UTF-8 string
- *
- * Converts UTF-8 bytes to wide characters and calculates the terminal display width
- * using wcwidth() for each character. This accounts for multi-byte UTF-8 sequences
- * and wide characters (emoji, CJK, etc).
- *
- * @param str UTF-8 string to measure
- * @return Display width in columns, or 0 for invalid input
- */
-static int utf8_display_width(const char *str) {
-  if (!str)
-    return 0;
-
-  int width = 0;
-  mbstate_t state = {0};
-  const char *p = str;
-
-  while (*p) {
-    wchar_t wc;
-    size_t len = mbrtowc(&wc, p, MB_CUR_MAX, &state);
-
-    if (len == 0) {
-      // Null terminator reached
-      break;
-    } else if (len == (size_t)-1 || len == (size_t)-2) {
-      // Invalid UTF-8 sequence, stop processing
-      break;
-    } else {
-      // Get display width of this character
-      int char_width = wcwidth(wc);
-      if (char_width < 0) {
-        // Control character or unprintable - treat as 0 width
-        char_width = 0;
-      }
-      width += char_width;
-      p += len;
-    }
-  }
-
-  return width;
-}
 
 /* ============================================================================
  * Colored Segment Printing
@@ -116,9 +70,6 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   if (!text || !stream)
     return;
 
-  // Set locale to support UTF-8
-  setlocale(LC_ALL, "");
-
   // Default terminal width if not specified
   if (term_width <= 0)
     term_width = 80;
@@ -132,7 +83,6 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   const char *last_space = NULL;
   int line_display_width = 0;
   const char *p = text;
-  mbstate_t state = {0};
 
   while (*p) {
     // Check for explicit newline
@@ -162,22 +112,23 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     if (*p == ' ')
       last_space = p;
 
-    // Calculate display width of this UTF-8 character
-    wchar_t wc;
-    size_t char_len = mbrtowc(&wc, p, MB_CUR_MAX, &state);
+    // Decode UTF-8 character using utf8proc_iterate
+    utf8proc_int32_t codepoint;
+    utf8proc_ssize_t char_bytes = utf8proc_iterate((const utf8proc_uint8_t *)p, -1, &codepoint);
 
-    int char_width = 0;
-    if (char_len > 0 && char_len != (size_t)-1 && char_len != (size_t)-2) {
-      char_width = wcwidth(wc);
-      if (char_width < 0)
-        char_width = 0;  // Control characters have 0 width
-    } else {
-      // Invalid UTF-8, treat as 1 width and advance by 1 byte
-      char_len = 1;
-      char_width = 1;
+    if (char_bytes <= 0) {
+      // Invalid UTF-8 or end of string, stop
+      break;
     }
 
-    line_display_width += char_width;
+    // Get display width of this character
+    int char_display_width = utf8proc_charwidth(codepoint);
+    if (char_display_width < 0) {
+      // Control character or unprintable - treat as 0 width
+      char_display_width = 0;
+    }
+
+    line_display_width += char_display_width;
 
     // Check if we need to wrap
     if (line_display_width >= available_width && last_space && last_space > line_start) {
@@ -196,11 +147,11 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       line_start = p;
       line_display_width = 0;
       last_space = NULL;
-      memset(&state, 0, sizeof(state));  // Reset conversion state
       continue;
     }
 
-    p += char_len;
+    // Advance to next character
+    p += char_bytes;
   }
 
   // Print remaining text
@@ -222,19 +173,29 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
   if (!stream || !first_column || !second_column)
     return;
 
-  // Calculate actual display width of first column (accounts for UTF-8)
+  // Calculate actual display width of first column (accounts for UTF-8 and ANSI codes)
   int display_width = utf8_display_width(first_column);
   if (display_width < 0)
-    display_width = first_col_len;  // Fallback to byte count on invalid UTF-8
+    display_width = first_col_len;  // Fallback to provided value if available
+
+  // Determine the description column start position and wrapping threshold
+  // If first_col_len is provided (non-zero), use it as the maximum column width
+  // Otherwise, use the default LAYOUT_DESCRIPTION_START_COL
+  int description_start_col = LAYOUT_DESCRIPTION_START_COL;
+  int wrap_threshold = LAYOUT_COLUMN_WIDTH;
+  if (first_col_len > 0) {
+    description_start_col = 2 + first_col_len + 2;  // 2 for leading spaces, first_col_len for content, 2 for spacing
+    wrap_threshold = first_col_len;  // Use provided width as wrap threshold
+  }
 
   // If first column is short enough, put description on same line
-  if (display_width < LAYOUT_COLUMN_WIDTH) {
+  if (display_width <= wrap_threshold) {
     // Print first column
     fprintf(stream, "  %s", first_column);
 
     // Pad to description start column
     int current_col = 2 + display_width;  // 2 for leading spaces
-    int padding = LAYOUT_DESCRIPTION_START_COL - current_col;
+    int padding = description_start_col - current_col;
     if (padding > 0) {
       fprintf(stream, "%*s", padding, "");
     } else {
@@ -242,18 +203,18 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     }
 
     // Print description with wrapping
-    layout_print_wrapped_description(stream, second_column, LAYOUT_DESCRIPTION_START_COL, term_width);
+    layout_print_wrapped_description(stream, second_column, description_start_col, term_width);
     fprintf(stream, "\n");
   } else {
     // First column too long, put description on next line
     fprintf(stream, "  %s\n", first_column);
 
     // Print indent for description column
-    for (int i = 0; i < LAYOUT_DESCRIPTION_START_COL; i++)
+    for (int i = 0; i < description_start_col; i++)
       fprintf(stream, " ");
 
     // Print description with wrapping
-    layout_print_wrapped_description(stream, second_column, LAYOUT_DESCRIPTION_START_COL, term_width);
+    layout_print_wrapped_description(stream, second_column, description_start_col, term_width);
     fprintf(stream, "\n");
   }
 }

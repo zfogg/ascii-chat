@@ -34,6 +34,9 @@ set(UTIL_SRCS
     lib/util/image.c
     lib/util/password.c
     lib/util/fps.c
+    lib/util/utf8.c
+    # utf8proc Unicode library (includes utf8proc_data.c internally)
+    deps/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -212,7 +215,6 @@ set(VIDEO_SRCS
     lib/video/ansi_fast.c
     lib/video/ansi.c
     lib/video/palette.c
-    lib/util/utf8.c
     lib/video/webcam/webcam.c
 )
 

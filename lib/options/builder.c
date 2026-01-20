@@ -8,6 +8,7 @@
 #include "log/logging.h"
 #include "platform/abstraction.h"
 #include "asciichat_errno.h"
+#include "util/utf8.h"
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -1589,10 +1590,13 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       fprintf(stream, "  ");
       print_colored_option(stream, option_str);
 
+      // Calculate display width of option string (accounts for UTF-8)
+      int option_display_width = utf8_display_width(option_str);
+
       // If option string is short enough, put description on same line
-      if (option_len < OPTION_COLUMN_WIDTH) {
+      if (option_display_width < OPTION_COLUMN_WIDTH) {
         // Pad to column 30, then print description with wrapping
-        int current_col = 2 + option_len; // 2 for leading spaces
+        int current_col = 2 + option_display_width; // 2 for leading spaces
         int padding = DESCRIPTION_START_COL - current_col;
         if (padding > 0) {
           fprintf(stream, "%*s", padding, "");

@@ -24,6 +24,7 @@
 #include "util/ip.h"
 #include "util/parsing.h"
 #include "util/password.h"
+#include "util/utf8.h"
 #include "video/ascii.h"
 
 #ifdef _WIN32
@@ -137,7 +138,7 @@ void usage_server(FILE *desc) {
 
         // Find end of first part (look for 2+ spaces)
         while (*p && !(*p == ' ' && *(p+1) == ' ')) p++;
-        int first_len = (int)(p - first_part);
+        int first_len_bytes = (int)(p - first_part);
 
         // Skip spaces to find description
         while (*p == ' ') p++;
@@ -146,9 +147,11 @@ void usage_server(FILE *desc) {
         }
 
         // Print with color codes and layout alignment
-        fprintf(desc, "  %s%.*s%s", green, first_len, first_part, reset);
+        fprintf(desc, "  %s%.*s%s", green, first_len_bytes, first_part, reset);
+        // Calculate display width of first part (accounts for UTF-8 multi-byte chars)
+        int first_display_width = utf8_display_width_n(first_part, first_len_bytes);
         // Pad to column 30 for description alignment
-        int padding = LAYOUT_DESCRIPTION_START_COL - (2 + first_len);
+        int padding = LAYOUT_DESCRIPTION_START_COL - (2 + first_display_width);
         if (padding > 0) {
           for (int j = 0; j < padding; j++) fprintf(desc, " ");
         } else {

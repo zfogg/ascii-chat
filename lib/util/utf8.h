@@ -42,6 +42,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* ============================================================================
  * UTF-8 Decoding Functions
@@ -80,3 +81,64 @@
  * @ingroup util
  */
 int utf8_decode(const uint8_t *s, uint32_t *codepoint);
+
+/* ============================================================================
+ * UTF-8 Display Width Calculation
+ * ========================================================================== */
+
+/**
+ * @brief Calculate terminal display width of a UTF-8 string
+ * @param str UTF-8 string (must not be NULL)
+ * @return Display width in terminal columns (0 on empty or invalid input)
+ *
+ * Converts UTF-8 byte sequences to Unicode codepoints and calculates the terminal
+ * display width using utf8proc_charwidth(). Properly handles:
+ * - Multi-byte UTF-8 sequences (1-4 bytes per character)
+ * - Wide characters (CJK, emoji - typically 2 columns)
+ * - Control characters and combining marks (0 width)
+ * - Invalid UTF-8 sequences (stops processing)
+ *
+ * Terminal display width differs from byte count:
+ * - ASCII 'A' = 1 byte = 1 column
+ * - 'é' (é) = 2 bytes = 1 column
+ * - '中' (CJK) = 3 bytes = 2 columns
+ * - '😀' (emoji) = 4 bytes = 2 columns
+ *
+ * @note Uses utf8proc library for accurate Unicode character-width computation
+ * @note Returns 0 for NULL or empty string
+ * @note Invalid UTF-8 sequences stop processing (partial width returned)
+ *
+ * @par Example
+ * @code
+ * int width = utf8_display_width("Hello");      // Returns 5 (5 ASCII chars)
+ * int width = utf8_display_width("Café");       // Returns 4 (é is 1 column)
+ * int width = utf8_display_width("中国");       // Returns 4 (2 CJK chars × 2 columns)
+ * int width = utf8_display_width("😀");         // Returns 2 (emoji is 2 columns)
+ * @endcode
+ *
+ * @ingroup util
+ */
+int utf8_display_width(const char *str);
+
+/**
+ * @brief Calculate terminal display width of a UTF-8 string up to byte limit
+ * @param str UTF-8 string (must not be NULL)
+ * @param max_bytes Maximum bytes to process
+ * @return Display width in terminal columns
+ *
+ * Like utf8_display_width() but stops after processing max_bytes bytes.
+ * Useful for calculating display width of substrings or with length-limited buffers.
+ *
+ * @note Stops processing at max_bytes boundary or null terminator, whichever comes first
+ * @note Invalid UTF-8 sequences stop processing (partial width returned)
+ * @note Uses utf8proc library for accurate Unicode character-width computation
+ *
+ * @par Example
+ * @code
+ * const char *str = "Hello World";
+ * int width = utf8_display_width_n(str, 5);  // Returns 5 (width of "Hello")
+ * @endcode
+ *
+ * @ingroup util
+ */
+int utf8_display_width_n(const char *str, size_t max_bytes);
