@@ -458,16 +458,23 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
   }
 
   if (!dc->is_open) {
+    log_error("★ WEBRTC_DATACHANNEL_SEND: Channel not open! size=%zu, dc->rtc_id=%d", size, dc ? dc->rtc_id : -1);
     return SET_ERRNO(ERROR_NETWORK, "DataChannel not open");
   }
 
-  log_error("★ WEBRTC_DATACHANNEL_SEND: size=%zu, dc->rtc_id=%d", size, dc->rtc_id);
+  log_error("★ WEBRTC_DATACHANNEL_SEND: Entry - size=%zu, dc->rtc_id=%d, data=%p", size, dc->rtc_id, (void *)data);
+  log_error("★ WEBRTC_DATACHANNEL_SEND: Calling rtcSendMessage with size cast to int: %d", (int)size);
+
   int result = rtcSendMessage(dc->rtc_id, (const char *)data, (int)size);
+
+  log_error("★ WEBRTC_DATACHANNEL_SEND: rtcSendMessage returned: %d (size was %zu)", result, size);
+
   if (result < 0) {
+    log_error("★ WEBRTC_DATACHANNEL_SEND: FAILED with error code %d", result);
     return SET_ERRNO(ERROR_NETWORK, "Failed to send data (rtc error %d)", result);
   }
 
-  log_error("★ WEBRTC_DATACHANNEL_SEND: Successfully sent %zu bytes, rtcSendMessage returned %d", size, result);
+  log_error("★ WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes", size);
   return ASCIICHAT_OK;
 }
 
