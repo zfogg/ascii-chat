@@ -75,6 +75,17 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
 
         # Configure FFmpeg with minimal build (only built-in codecs, no external deps)
         message(STATUS "  Configuring FFmpeg...")
+
+        # Determine architecture-specific flags
+        if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+            # x86_64: Disable asm to avoid nasm/yasm dependency
+            set(FFMPEG_ARCH_FLAGS --disable-asm)
+            message(STATUS "  Architecture: x86_64 (disabling asm)")
+        else()
+            set(FFMPEG_ARCH_FLAGS "")
+            message(STATUS "  Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+        endif()
+
         execute_process(
             COMMAND "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
@@ -100,13 +111,14 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
                 --enable-swresample
                 --enable-zlib
                 --enable-bzlib
+                ${FFMPEG_ARCH_FLAGS}
             WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
         )
         if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_ERROR}")
+            message(FATAL_ERROR "Failed to configure FFmpeg:\nstdout: ${CONFIG_OUTPUT}\nstderr: ${CONFIG_ERROR}")
         endif()
 
         # Build FFmpeg
