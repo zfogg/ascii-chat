@@ -32,31 +32,57 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
 
-  // Get socket from transport for low-level packet reception
-  socket_t sock = transport->methods->get_socket(transport);
-  if (sock == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_NETWORK, "Transport has no valid socket");
-  }
-
   // Check if transport is connected
   if (!transport->methods->is_connected(transport)) {
     return SET_ERRNO(ERROR_NETWORK, "Transport not connected");
   }
 
-  // Receive packet with automatic decryption
   packet_envelope_t envelope;
   bool enforce_encryption = (transport->crypto_ctx != NULL);
-  packet_recv_result_t result = receive_packet_secure(sock, transport->crypto_ctx, enforce_encryption, &envelope);
 
-  // Handle receive errors
-  if (result != PACKET_RECV_SUCCESS) {
-    if (result == PACKET_RECV_EOF) {
-      return SET_ERRNO(ERROR_NETWORK, "Connection closed (EOF)");
-    } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
-      return SET_ERRNO(ERROR_CRYPTO, "Security violation: unencrypted packet when encryption required");
-    } else {
-      return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
+  // Try to get socket from transport
+  socket_t sock = transport->methods->get_socket(transport);
+
+  if (sock != INVALID_SOCKET_VALUE) {
+    // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
+    packet_recv_result_t result = receive_packet_secure(sock, transport->crypto_ctx, enforce_encryption, &envelope);
+
+    // Handle receive errors
+    if (result != PACKET_RECV_SUCCESS) {
+      if (result == PACKET_RECV_EOF) {
+        return SET_ERRNO(ERROR_NETWORK, "Connection closed (EOF)");
+      } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
+        return SET_ERRNO(ERROR_CRYPTO, "Security violation: unencrypted packet when encryption required");
+      } else {
+        return SET_ERRNO(ERROR_NETWORK, "Failed to receive packet");
+      }
     }
+  } else {
+    // Non-socket transport (WebRTC): use transport's recv() method to get complete packet
+    void *packet_data = NULL;
+    void *allocated_buffer = NULL;
+    size_t packet_len = 0;
+
+    asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
+    if (recv_result != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
+    }
+
+    // Parse packet header
+    if (packet_len < sizeof(packet_header_t)) {
+      buffer_pool_free(NULL, allocated_buffer, packet_len);
+      return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
+    }
+
+    const packet_header_t *header = (const packet_header_t *)packet_data;
+    envelope.type = NET_TO_HOST_U16(header->type);
+    envelope.len = NET_TO_HOST_U32(header->length);
+    envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
+    envelope.allocated_buffer = allocated_buffer;
+    envelope.allocated_size = packet_len;
+
+    // For WebRTC, header was already validated by transport layer, no further crypto needed
+    // since WebRTC uses DTLS for encryption on the wire
   }
 
   // Dispatch packet to appropriate ACIP handler
