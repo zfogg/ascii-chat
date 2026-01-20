@@ -76,50 +76,63 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
   (void)channel; // Unused
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)user_data;
 
+  log_error("★ WEBRTC_ON_MESSAGE: Entry len=%zu, wrtc=%p, data=%p", len, (void *)wrtc, (void *)data);
+
   if (!wrtc || !data || len == 0) {
-    log_error("Invalid DataChannel message callback parameters");
+    log_error("★ WEBRTC_ON_MESSAGE: Invalid parameters - wrtc=%p, data=%p, len=%zu", (void *)wrtc, (void *)data, len);
     return;
   }
 
-  // Allocate message structure
+  // Allocate message buffer
+  log_error("★ WEBRTC_ON_MESSAGE: About to allocate %zu bytes", len);
   webrtc_recv_msg_t msg;
   msg.data = SAFE_MALLOC(len, uint8_t *);
   if (!msg.data) {
-    log_error("Failed to allocate receive message buffer (%zu bytes)", len);
+    log_error("★ WEBRTC_ON_MESSAGE: FAILED to allocate %zu bytes - OUT OF MEMORY", len);
     return;
   }
+  log_error("★ WEBRTC_ON_MESSAGE: Allocation succeeded, buffer=%p", (void *)msg.data);
 
+  // Copy data
   memcpy(msg.data, data, len);
   msg.len = len;
+  log_error("★ WEBRTC_ON_MESSAGE: Copied %zu bytes to buffer", len);
 
-  // Push to receive queue (thread-safe)
+  // Push to receive queue
   mutex_lock(&wrtc->queue_mutex);
+  log_error("★ WEBRTC_ON_MESSAGE: Locked queue_mutex, ringbuffer size=%zu", ringbuffer_size(wrtc->recv_queue));
 
   bool success = ringbuffer_write(wrtc->recv_queue, &msg);
   if (!success) {
+    log_error("★ WEBRTC_ON_MESSAGE: ringbuffer_write FAILED for %zu bytes (queue full?), trying to drop oldest", len);
     // Queue full - drop oldest message to make room
     webrtc_recv_msg_t dropped_msg;
     if (ringbuffer_read(wrtc->recv_queue, &dropped_msg)) {
-      log_warn("Receive queue full, dropping oldest message (%zu bytes)", dropped_msg.len);
+      log_error("★ WEBRTC_ON_MESSAGE: Dropped oldest message of %zu bytes", dropped_msg.len);
       SAFE_FREE(dropped_msg.data);
     }
 
     // Try again
     success = ringbuffer_write(wrtc->recv_queue, &msg);
     if (!success) {
-      log_error("Failed to write to receive queue after drop");
+      log_error("★ WEBRTC_ON_MESSAGE: ringbuffer_write FAILED AGAIN after drop - DISCARDING %zu bytes", len);
       SAFE_FREE(msg.data);
       mutex_unlock(&wrtc->queue_mutex);
       return;
     }
+    log_error("★ WEBRTC_ON_MESSAGE: ringbuffer_write succeeded on second attempt");
+  } else {
+    log_error("★ WEBRTC_ON_MESSAGE: ringbuffer_write succeeded on first attempt");
   }
+
+  log_error("★ WEBRTC_ON_MESSAGE: Signaling queue_cond for %zu bytes, queue size now=%zu", len,
+            ringbuffer_size(wrtc->recv_queue));
 
   // Signal waiting recv() call
   cond_signal(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
 
-  log_debug_every(1000000, "WebRTC message received (%zu bytes), queue size: %zu", len,
-                  ringbuffer_size(wrtc->recv_queue));
+  log_error("★ WEBRTC_ON_MESSAGE: Exit - successfully queued %zu bytes", len);
 }
 
 /**
@@ -189,21 +202,31 @@ static void webrtc_on_close(webrtc_data_channel_t *channel, void *user_data) {
 static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *data, size_t len) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
 
+  log_error("★ WEBRTC_SEND: Called with len=%zu, wrtc=%p, data_channel=%p", len, (void *)wrtc,
+            (void *)(wrtc ? wrtc->data_channel : NULL));
+
   mutex_lock(&wrtc->state_mutex);
   bool connected = wrtc->is_connected;
   mutex_unlock(&wrtc->state_mutex);
 
+  log_error("★ WEBRTC_SEND: is_connected=%d", connected);
+
   if (!connected) {
+    log_error("★ WEBRTC_SEND: Transport NOT connected, returning ERROR_NETWORK");
     return SET_ERRNO(ERROR_NETWORK, "WebRTC transport not connected");
   }
 
   // Send via DataChannel
+  log_error("★ WEBRTC_SEND: About to call webrtc_datachannel_send with %zu bytes", len);
   asciichat_error_t result = webrtc_datachannel_send(wrtc->data_channel, data, len);
+  log_error("★ WEBRTC_SEND: webrtc_datachannel_send returned %d", result);
+
   if (result != ASCIICHAT_OK) {
+    log_error("★ WEBRTC_SEND: DataChannel send failed");
     return SET_ERRNO(ERROR_NETWORK, "Failed to send on WebRTC DataChannel");
   }
 
-  log_debug_every(1000000, "WebRTC sent %zu bytes", len);
+  log_error("★ WEBRTC_SEND: Successfully sent %zu bytes", len);
   return ASCIICHAT_OK;
 }
 
@@ -211,22 +234,28 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
                                      void **out_allocated_buffer) {
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)transport->impl_data;
 
+  log_error("★ WEBRTC_RECV: Entry");
   mutex_lock(&wrtc->queue_mutex);
 
   // Block until message arrives or connection closes
   while (ringbuffer_is_empty(wrtc->recv_queue)) {
+    log_error("★ WEBRTC_RECV: Queue empty, waiting for message...");
     mutex_lock(&wrtc->state_mutex);
     bool connected = wrtc->is_connected;
     mutex_unlock(&wrtc->state_mutex);
 
     if (!connected) {
+      log_error("★ WEBRTC_RECV: Connection closed while waiting");
       mutex_unlock(&wrtc->queue_mutex);
       return SET_ERRNO(ERROR_NETWORK, "Connection closed while waiting for data");
     }
 
     // Wait for message arrival or connection close
     cond_wait(&wrtc->queue_cond, &wrtc->queue_mutex);
+    log_error("★ WEBRTC_RECV: Woken up from cond_wait");
   }
+
+  log_error("★ WEBRTC_RECV: Queue not empty, ringbuffer_size=%zu, about to read", ringbuffer_size(wrtc->recv_queue));
 
   // Read message from queue
   webrtc_recv_msg_t msg;
@@ -234,17 +263,19 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
   mutex_unlock(&wrtc->queue_mutex);
 
   if (!success) {
+    log_error("★ WEBRTC_RECV: ringbuffer_read FAILED");
     return SET_ERRNO(ERROR_NETWORK, "Failed to read from receive queue");
   }
+
+  log_error("★ WEBRTC_RECV: Successfully read %zu bytes from queue, remaining=%zu", msg.len,
+            ringbuffer_size(wrtc->recv_queue));
 
   // Return message to caller (caller owns the buffer)
   *buffer = msg.data;
   *out_len = msg.len;
   *out_allocated_buffer = msg.data;
 
-  log_debug_every(1000000, "WebRTC received %zu bytes, queue remaining: %zu", msg.len,
-                  ringbuffer_size(wrtc->recv_queue));
-
+  log_error("★ WEBRTC_RECV: Exit - returning %zu bytes", msg.len);
   return ASCIICHAT_OK;
 }
 

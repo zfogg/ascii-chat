@@ -461,11 +461,13 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
     return SET_ERRNO(ERROR_NETWORK, "DataChannel not open");
   }
 
+  log_error("★ WEBRTC_DATACHANNEL_SEND: size=%zu, dc->rtc_id=%d", size, dc->rtc_id);
   int result = rtcSendMessage(dc->rtc_id, (const char *)data, (int)size);
   if (result < 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send data (rtc error %d)", result);
   }
 
+  log_error("★ WEBRTC_DATACHANNEL_SEND: Successfully sent %zu bytes, rtcSendMessage returned %d", size, result);
   return ASCIICHAT_OK;
 }
 
