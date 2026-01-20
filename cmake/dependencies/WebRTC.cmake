@@ -282,12 +282,18 @@ add_library(webrtc_audio_processing INTERFACE)
 
 if(APPLE)
     # macOS uses -force_load to embed all symbols from static libraries
+    # For Release builds, use static libc++; for Debug/Dev, use dynamic -lc++
+    if(ASCIICHAT_STATIC_LIBCXX_LIBS)
+        set(_webrtc_cxx_libs ${ASCIICHAT_STATIC_LIBCXX_LIBS})
+    else()
+        set(_webrtc_cxx_libs "-lc++")
+    endif()
     target_link_libraries(webrtc_audio_processing INTERFACE
         -force_load "${WEBRTC_AUDIO_PROCESS_LIB}"
         -force_load "${WEBRTC_AEC3_LIB}"
         -force_load "${WEBRTC_API_LIB}"
         -force_load "${WEBRTC_BASE_LIB}"
-        ${ASCIICHAT_STATIC_LIBCXX_LIBS}
+        ${_webrtc_cxx_libs}
     )
 elseif(WIN32)
     # Windows with Clang: Use /WHOLEARCHIVE linker flag via -Wl
