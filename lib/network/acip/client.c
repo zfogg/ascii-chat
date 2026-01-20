@@ -116,12 +116,17 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
 
 asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
                                         uint32_t height, uint32_t pixel_format) {
+  log_debug("★ ACIP_SEND_IMAGE_FRAME: Called with %ux%u, transport=%p, pixel_data=%p", width, height, (void *)transport,
+            pixel_data);
+
   if (!transport || !pixel_data) {
+    log_debug("★ ACIP_SEND_IMAGE_FRAME: Invalid params");
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or pixel_data");
   }
 
   // Calculate pixel data size (3 bytes per pixel for RGB24)
   size_t pixel_size = (size_t)width * height * 3;
+  log_debug("★ ACIP_SEND_IMAGE_FRAME: pixel_size=%zu", pixel_size);
 
   // Create image frame packet header
   image_frame_packet_t header;
@@ -135,12 +140,16 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
   // Calculate total size
   size_t total_size;
   if (checked_size_add(sizeof(header), pixel_size, &total_size) != ASCIICHAT_OK) {
+    log_debug("★ ACIP_SEND_IMAGE_FRAME: Overflow in size calculation");
     return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size overflow");
   }
+
+  log_debug("★ ACIP_SEND_IMAGE_FRAME: total_size=%zu, allocating buffer", total_size);
 
   // Allocate buffer
   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
+    log_debug("★ ACIP_SEND_IMAGE_FRAME: Failed to allocate %zu bytes", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer: %zu bytes", total_size);
   }
 
@@ -148,8 +157,11 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
   memcpy(buffer, &header, sizeof(header));
   memcpy(buffer + sizeof(header), pixel_data, pixel_size);
 
+  log_debug("★ ACIP_SEND_IMAGE_FRAME: About to send packet");
   // Send via transport
   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME, buffer, total_size);
+
+  log_debug("★ ACIP_SEND_IMAGE_FRAME: packet_send_via_transport returned %d", result);
 
   buffer_pool_free(NULL, buffer, total_size);
   return result;

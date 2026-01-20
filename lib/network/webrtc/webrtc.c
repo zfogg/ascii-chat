@@ -198,9 +198,23 @@ static void on_datachannel_open_adapter(int dc_id, void *user_data) {
 
 static void on_datachannel_message_adapter(int dc_id, const char *data, int size, void *user_data) {
   (void)dc_id; // Unused - we get data channel from user_data
+
+  // Log at libdatachannel callback level (debug level for normal operation)
+  if (size >= 20 && data) {
+    const uint8_t *pkt = (const uint8_t *)data;
+    log_debug("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
+              "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+              dc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
+              pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
+  } else {
+    log_debug("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d (no data or too small)", dc_id, size);
+  }
+
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
-  if (!dc)
+  if (!dc) {
+    log_debug("★ LIBDATACHANNEL_RX: dc=NULL, dropping message");
     return;
+  }
 
   if (dc->pc && dc->pc->config.on_datachannel_message) {
     dc->pc->config.on_datachannel_message(dc, (const uint8_t *)data, (size_t)size, dc->pc->config.user_data);
@@ -462,19 +476,27 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
     return SET_ERRNO(ERROR_NETWORK, "DataChannel not open");
   }
 
-  log_error("★ WEBRTC_DATACHANNEL_SEND: Entry - size=%zu, dc->rtc_id=%d, data=%p", size, dc->rtc_id, (void *)data);
-  log_error("★ WEBRTC_DATACHANNEL_SEND: Calling rtcSendMessage with size cast to int: %d", (int)size);
+  // Log packet details at network layer (debug level for normal operation)
+  if (size >= 20) {
+    const uint8_t *pkt = (const uint8_t *)data;
+    log_debug("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
+              "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+              dc->rtc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
+              pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
+  } else {
+    log_debug("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu (too small to log content)", dc->rtc_id, size);
+  }
 
   int result = rtcSendMessage(dc->rtc_id, (const char *)data, (int)size);
 
-  log_error("★ WEBRTC_DATACHANNEL_SEND: rtcSendMessage returned: %d (size was %zu)", result, size);
+  log_debug("★ RTCSENDMESSAGE_AFTER: dc_id=%d, rtcSendMessage returned %d for size=%zu", dc->rtc_id, result, size);
 
   if (result < 0) {
     log_error("★ WEBRTC_DATACHANNEL_SEND: FAILED with error code %d", result);
     return SET_ERRNO(ERROR_NETWORK, "Failed to send data (rtc error %d)", result);
   }
 
-  log_error("★ WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes", size);
+  log_debug("★ WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes", size);
   return ASCIICHAT_OK;
 }
 
