@@ -99,7 +99,7 @@ static void print_usage(void) {
   // ANSI color codes
   const char *BOLD = "\033[1m";
   const char *CYAN = "\033[36m";
-  const char *GREEN = "\033[32m";
+  const char *MAGENTA = "\033[35m";
   const char *YELLOW = "\033[33m";
   const char *RESET = "\033[0m";
 
@@ -107,16 +107,16 @@ static void print_usage(void) {
          ASCII_CHAT_DESCRIPTION_EMOJI_R, RESET);
   printf("\n");
   printf("%s%sUSAGE:%s\n", BOLD, CYAN, RESET);
-  printf("  %s%s%s [options...]                       Start a new session%s\n", GREEN, binary_name, RESET, RESET);
-  printf("  %s%s%s <session-string> [options...]      Join an existing session%s\n", GREEN, binary_name, RESET, RESET);
-  printf("  %s%s%s <mode> [mode-options...]           Run in a specific mode%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s [options...]                       Start a new session%s\n", binary_name, RESET);
+  printf("  %s <session-string> [options...]      Join an existing session%s\n", binary_name, RESET);
+  printf("  %s <mode> [mode-options...]           Run in a specific mode%s\n", binary_name, RESET);
   printf("\n");
   printf("%s%sEXAMPLES:%s\n", BOLD, CYAN, RESET);
-  printf("  %s%s%s                           Start new session (share the session string)%s\n", GREEN, binary_name, RESET, RESET);
-  printf("  %s%s%s swift-river-mountain      Join session with session string%s\n", GREEN, binary_name, RESET, RESET);
-  printf("  %s%s%s server                    Run as dedicated server%s\n", GREEN, binary_name, RESET, RESET);
-  printf("  %s%s%s client example.com        Connect to specific server%s\n", GREEN, binary_name, RESET, RESET);
-  printf("  %s%s%s mirror                    Preview local webcam as ASCII%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s                           Start new session (share the session string)%s\n", binary_name, RESET);
+  printf("  %s swift-river-mountain      Join session with session string%s\n", binary_name, RESET);
+  printf("  %s server                    Run as dedicated server%s\n", binary_name, RESET);
+  printf("  %s client example.com        Connect to specific server%s\n", binary_name, RESET);
+  printf("  %s mirror                    Preview local webcam as ASCII%s\n", binary_name, RESET);
   printf("\n");
   printf("%s%sOPTIONS:%s\n", BOLD, CYAN, RESET);
   printf("  %s--help%s                       Show this help\n", YELLOW, RESET);
@@ -130,11 +130,11 @@ static void print_usage(void) {
   printf("\n");
   printf("%s%sMODES:%s\n", BOLD, CYAN, RESET);
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    printf("  %s%-18s%s  %s\n", GREEN, mode->name, RESET, mode->description);
+    printf("  %s%-18s%s  %s\n", MAGENTA, mode->name, RESET, mode->description);
   }
   printf("\n");
   printf("%s%sMODE-OPTIONS:%s\n", BOLD, CYAN, RESET);
-  printf("  %s%s%s <mode> --help             Show options for a mode%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s <mode> --help             Show options for a mode%s\n", binary_name, RESET);
   printf("\n");
   printf("%shttps://ascii-chat.com%s\n", CYAN, RESET);
   printf("%shttps://github.com/zfogg/ascii-chat%s\n", CYAN, RESET);
