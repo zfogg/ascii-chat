@@ -1,10 +1,10 @@
 /**
- * @file acds.h
- * @brief ACDS (Discovery Service) mode option parsing
+ * @file discovery_server.h
+ * @brief Discovery server mode option parsing
  * @ingroup options
  *
- * ACDS-specific command-line option parsing and help text. The ACDS mode
- * runs a discovery service for session management and WebRTC signaling.
+ * Discovery server-specific command-line option parsing and help text.
+ * Runs a discovery service for session management and WebRTC signaling.
  *
  * **ACDS-Specific Options**:
  * - Network: `[address1] [address2]` positional (0-2 bind addresses), `--port`
@@ -84,9 +84,9 @@ extern ASCIICHAT_API char opt_acds_database_path[OPTIONS_BUFF_SIZE];
 extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
 
 /**
- * @brief Parse ACDS-specific command-line options
+ * @brief Parse discovery server-specific command-line options
  *
- * Parses all ACDS mode options including:
+ * Parses all discovery server mode options including:
  * - Positional arguments: 0-2 bind addresses (IPv4/IPv6)
  * - ACDS-specific flags (port, database, key)
  * - Logging flags (log-file, log-level)
@@ -153,7 +153,7 @@ extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
  * @see acds_usage()
  * @see options_init()
  */
-asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts);
+asciichat_error_t parse_discovery_server_options(int argc, char **argv, options_t *opts);
 
 #ifdef __cplusplus
 }

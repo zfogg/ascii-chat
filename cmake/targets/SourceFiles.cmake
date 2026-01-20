@@ -64,7 +64,7 @@ set(CRYPTO_SRCS
     lib/crypto/ssh/ssh_keys.c  # SSH key parsing
     # Key management (at crypto root)
     lib/crypto/https_keys.c    # GitHub/GitLab key fetching
-    lib/crypto/acds_keys.c     # ACDS server key trust management
+    lib/crypto/discovery_keys.c     # ACDS server key trust management
     lib/crypto/keys_validation.c  # Key validation utilities
     # libsodium-bcrypt-pbkdf (OpenBSD implementation)
     deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
@@ -309,7 +309,7 @@ set(CORE_SRCS
     lib/options/client.c
     lib/options/server.c
     lib/options/mirror.c
-    lib/options/acds.c
+    lib/options/discovery_server.c
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c

@@ -15,7 +15,7 @@
 #include "options/client.h"
 #include "options/server.h"
 #include "options/mirror.h"
-#include "options/acds.h"
+#include "options/discovery_server.h"
 #include "options/validation.h"
 
 #include "options/config.h"
@@ -445,7 +445,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     result = parse_mirror_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_DISCOVERY_SERVER:
-    result = parse_acds_options(mode_argc, mode_argv, &opts);
+    result = parse_discovery_server_options(mode_argc, mode_argv, &opts);
     break;
   default:
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);

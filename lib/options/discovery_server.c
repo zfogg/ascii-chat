@@ -1,16 +1,16 @@
 /**
- * @file acds.c
+ * @file discovery_server.c
  * @ingroup options
- * @brief ACDS mode option parsing and help text
+ * @brief Discovery server mode option parsing and help text
  *
- * ACDS-specific command-line argument parsing with support for:
+ * Discovery server-specific command-line argument parsing with support for:
  * - Dual-stack binding (0-2 IPv4/IPv6 addresses)
  * - Database configuration
  * - Identity key management
  * - Logging configuration
  */
 
-#include "options/acds.h"
+#include "options/discovery_server.h"
 #include "options/builder.h"
 #include "options/common.h"
 
@@ -45,7 +45,7 @@ char opt_acds_key_path[OPTIONS_BUFF_SIZE] = "";
 // ACDS Option Parsing
 // ============================================================================
 
-asciichat_error_t parse_acds_options(int argc, char **argv, options_t *opts) {
+asciichat_error_t parse_discovery_server_options(int argc, char **argv, options_t *opts) {
   const options_config_t *config = options_preset_acds("ascii-chat discovery-server", "ascii-chat discovery service");
   int remaining_argc;
   char **remaining_argv;

@@ -1,13 +1,13 @@
 /**
- * @file crypto/acds_keys.c
- * @brief ACDS Server Public Key Trust Management Implementation
+ * @file crypto/discovery_keys.c
+ * @brief Discovery Server Public Key Trust Management Implementation
  * @ingroup crypto
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
 
-#include "crypto/acds_keys.h"
+#include "crypto/discovery_keys.h"
 
 #include "asciichat_errno.h"
 #include "common.h"
@@ -135,9 +135,9 @@ static void compute_key_fingerprint(const uint8_t pubkey[32], char fingerprint_o
 // HTTPS Download and Key Loading
 // ============================================================================
 
-asciichat_error_t acds_keys_download_https(const char *url, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[32]) {
   if (!url || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_download_https");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_download_https");
   }
 
   log_debug("Downloading ACDS key from %s", url);
@@ -154,9 +154,9 @@ asciichat_error_t acds_keys_download_https(const char *url, uint8_t pubkey_out[3
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_keys_load_file(const char *file_path, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[32]) {
   if (!file_path || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_load_file");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_load_file");
   }
 
   log_debug("Loading ACDS key from file: %s", file_path);
@@ -177,9 +177,9 @@ asciichat_error_t acds_keys_load_file(const char *file_path, uint8_t pubkey_out[
 // GitHub/GitLab Fetching
 // ============================================================================
 
-asciichat_error_t acds_keys_fetch_github(const char *username, bool is_gpg, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_fetch_github(const char *username, bool is_gpg, uint8_t pubkey_out[32]) {
   if (!username || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_fetch_github");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_fetch_github");
   }
 
   log_debug("Fetching ACDS key from GitHub for user: %s", username);
@@ -202,9 +202,9 @@ asciichat_error_t acds_keys_fetch_github(const char *username, bool is_gpg, uint
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_keys_fetch_gitlab(const char *username, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_fetch_gitlab(const char *username, uint8_t pubkey_out[32]) {
   if (!username || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_fetch_gitlab");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_fetch_gitlab");
   }
 
   log_debug("Fetching ACDS key from GitLab for user: %s", username);
@@ -227,9 +227,9 @@ asciichat_error_t acds_keys_fetch_gitlab(const char *username, uint8_t pubkey_ou
 // Key Caching
 // ============================================================================
 
-asciichat_error_t acds_keys_get_cache_path(const char *acds_server, char *path_out, size_t path_size) {
+asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *path_out, size_t path_size) {
   if (!acds_server || !path_out || path_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_get_cache_path");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_get_cache_path");
   }
 
   char *config_dir = get_config_dir();
@@ -245,13 +245,13 @@ asciichat_error_t acds_keys_get_cache_path(const char *acds_server, char *path_o
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_keys_load_cached(const char *acds_server, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[32]) {
   if (!acds_server || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_load_cached");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_load_cached");
   }
 
   char cache_path[1024];
-  asciichat_error_t result = acds_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
+  asciichat_error_t result = discovery_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -262,16 +262,16 @@ asciichat_error_t acds_keys_load_cached(const char *acds_server, uint8_t pubkey_
   }
 
   // Load cached key using existing infrastructure
-  return acds_keys_load_file(cache_path, pubkey_out);
+  return discovery_keys_load_file(cache_path, pubkey_out);
 }
 
-asciichat_error_t acds_keys_save_cached(const char *acds_server, const uint8_t pubkey[32]) {
+asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[32]) {
   if (!acds_server || !pubkey) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_save_cached");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_save_cached");
   }
 
   char cache_path[1024];
-  asciichat_error_t result = acds_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
+  asciichat_error_t result = discovery_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -314,13 +314,13 @@ asciichat_error_t acds_keys_save_cached(const char *acds_server, const uint8_t p
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t acds_keys_clear_cache(const char *acds_server) {
+asciichat_error_t discovery_keys_clear_cache(const char *acds_server) {
   if (!acds_server) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_clear_cache");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_clear_cache");
   }
 
   char cache_path[1024];
-  asciichat_error_t result = acds_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
+  asciichat_error_t result = discovery_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -339,10 +339,10 @@ asciichat_error_t acds_keys_clear_cache(const char *acds_server) {
 // User Verification for Key Changes
 // ============================================================================
 
-asciichat_error_t acds_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
+asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
                                           const uint8_t new_pubkey[32]) {
   if (!acds_server || !old_pubkey || !new_pubkey) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_verify_change");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_verify_change");
   }
 
   char old_fingerprint[65], new_fingerprint[65];
@@ -381,9 +381,9 @@ asciichat_error_t acds_keys_verify_change(const char *acds_server, const uint8_t
 // Main Verification Function
 // ============================================================================
 
-asciichat_error_t acds_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]) {
+asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]) {
   if (!acds_server || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in acds_keys_verify");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_verify");
   }
 
   uint8_t new_pubkey[32];
@@ -434,19 +434,19 @@ asciichat_error_t acds_keys_verify(const char *acds_server, const char *key_spec
   // ===========================================================================
 
   uint8_t cached_pubkey[32];
-  result = acds_keys_load_cached(acds_server, cached_pubkey);
+  result = discovery_keys_load_cached(acds_server, cached_pubkey);
 
   if (result == ASCIICHAT_OK) {
     // Cached key exists - compare
     if (memcmp(cached_pubkey, new_pubkey, 32) != 0) {
       // Key changed - require user verification
-      result = acds_keys_verify_change(acds_server, cached_pubkey, new_pubkey);
+      result = discovery_keys_verify_change(acds_server, cached_pubkey, new_pubkey);
       if (result != ASCIICHAT_OK) {
         return result; // User rejected or error
       }
 
       // User accepted - update cache
-      result = acds_keys_save_cached(acds_server, new_pubkey);
+      result = discovery_keys_save_cached(acds_server, new_pubkey);
       if (result != ASCIICHAT_OK) {
         log_warn("Failed to update cached key, continuing anyway");
       }
@@ -457,7 +457,7 @@ asciichat_error_t acds_keys_verify(const char *acds_server, const char *key_spec
   } else {
     // No cached key - save it for next time
     log_info("First connection to ACDS server: %s, caching key", acds_server);
-    result = acds_keys_save_cached(acds_server, new_pubkey);
+    result = discovery_keys_save_cached(acds_server, new_pubkey);
     if (result != ASCIICHAT_OK) {
       log_warn("Failed to cache key, continuing anyway");
     }

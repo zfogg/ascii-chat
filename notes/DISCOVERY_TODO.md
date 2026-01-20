@@ -1151,7 +1151,7 @@ The `--acds-insecure` flag explicitly opts into ACDS usage **without cryptograph
 - `lib/network/webrtc/` - WebRTC integration
 - `lib/network/mdns/` - mDNS fallback
 - `lib/network/nat/` - UPnP and NAT traversal
-- `lib/options/acds.h` - ACDS-specific command-line options
+- `lib/options/discovery_server.h` - Discovery server-specific command-line options
 
 ### Testing Infrastructure
 - Use ctest with Criterion framework

@@ -1,6 +1,6 @@
 /**
- * @file crypto/acds_keys.h
- * @brief ACDS Server Public Key Trust Management
+ * @file crypto/discovery_keys.h
+ * @brief Discovery Server Public Key Trust Management
  * @ingroup crypto
  *
  * This module handles verification and trust management for ACDS server public keys.
@@ -30,18 +30,18 @@
  * @code{.c}
  * // Download and verify key from HTTPS URL
  * uint8_t pubkey[32];
- * asciichat_error_t result = acds_keys_verify("acds.example.com",
+ * asciichat_error_t result = discovery_keys_verify("acds.example.com",
  *                                             "https://acds.example.com/key.pub",
  *                                             pubkey);
  *
  * // Automatic trust for official server
- * result = acds_keys_verify("discovery.ascii-chat.com", NULL, pubkey);
+ * result = discovery_keys_verify("discovery.ascii-chat.com", NULL, pubkey);
  *
  * // Load from local file
- * result = acds_keys_verify("acds.example.com", "/path/to/key.pub", pubkey);
+ * result = discovery_keys_verify("acds.example.com", "/path/to/key.pub", pubkey);
  *
  * // GitHub key
- * result = acds_keys_verify("acds.example.com", "github:zfogg", pubkey);
+ * result = discovery_keys_verify("acds.example.com", "github:zfogg", pubkey);
  * @endcode
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -107,7 +107,7 @@ extern "C" {
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]);
 
 /**
  * @brief Download key from HTTPS URL
@@ -119,7 +119,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_verify(const char *acds_server, const 
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_download_https(const char *url, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_download_https(const char *url, uint8_t pubkey_out[32]);
 
 /**
  * @brief Load key from local file
@@ -133,7 +133,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_download_https(const char *url, uint8_
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_load_file(const char *file_path, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[32]);
 
 /**
  * @brief Fetch key from GitHub
@@ -147,7 +147,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_load_file(const char *file_path, uint8
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_fetch_github(const char *username, bool is_gpg, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_fetch_github(const char *username, bool is_gpg, uint8_t pubkey_out[32]);
 
 /**
  * @brief Fetch GPG key from GitLab
@@ -159,7 +159,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_fetch_github(const char *username, boo
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_fetch_gitlab(const char *username, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_fetch_gitlab(const char *username, uint8_t pubkey_out[32]);
 
 /**
  * @brief Get cached key path for ACDS server
@@ -172,7 +172,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_fetch_gitlab(const char *username, uin
  * @param path_size Size of output buffer
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_get_cache_path(const char *acds_server, char *path_out, size_t path_size);
+ASCIICHAT_API asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *path_out, size_t path_size);
 
 /**
  * @brief Check if cached key exists and load it
@@ -183,7 +183,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_get_cache_path(const char *acds_server
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK if cached key exists and loaded successfully, error otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_load_cached(const char *acds_server, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pubkey_out[32]);
 
 /**
  * @brief Save key to cache
@@ -194,7 +194,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_load_cached(const char *acds_server, u
  * @param pubkey Public key to cache (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_save_cached(const char *acds_server, const uint8_t pubkey[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint8_t pubkey[32]);
 
 /**
  * @brief Verify key change with user
@@ -213,7 +213,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_save_cached(const char *acds_server, c
  * @param new_pubkey New downloaded key (32 bytes)
  * @return ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if declined
  */
-ASCIICHAT_API asciichat_error_t acds_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
+ASCIICHAT_API asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
                                                         const uint8_t new_pubkey[32]);
 
 /**
@@ -225,7 +225,7 @@ ASCIICHAT_API asciichat_error_t acds_keys_verify_change(const char *acds_server,
  * @param acds_server ACDS server hostname
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t acds_keys_clear_cache(const char *acds_server);
+ASCIICHAT_API asciichat_error_t discovery_keys_clear_cache(const char *acds_server);
 
 #ifdef __cplusplus
 }
