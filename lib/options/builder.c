@@ -12,6 +12,7 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
+#include <ctype.h>
 
 // Platform-specific getopt
 #ifdef _WIN32
@@ -1299,6 +1300,56 @@ static void print_colored_segment(FILE *stream, const char *seg) {
 }
 
 /**
+ * @brief Print option string with colorized type indicators (NUM, STR, VAL)
+ * Handles coloring of type placeholders while maintaining correct length for alignment
+ */
+static void print_colored_option(FILE *stream, const char *option_str) {
+  if (!option_str || !stream) return;
+
+  bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
+  if (!use_colors) {
+    fprintf(stream, "%s", colored_string(LOG_COLOR_WARN, option_str));
+    return;
+  }
+
+  // Print the option string, colorizing type indicators (NUM, STR, VAL)
+  const char *p = option_str;
+  const char *color_code = log_level_color(LOG_COLOR_INFO);    // Green for type indicators
+  const char *warn_code = log_level_color(LOG_COLOR_WARN);     // Yellow for option name
+  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+
+  fprintf(stream, "%s", warn_code);
+
+  while (*p) {
+    // Check if we're at a type indicator
+    const char *type_start = NULL;
+    int type_len = 0;
+
+    if ((strncmp(p, "NUM", 3) == 0 && (p[3] == '\0' || p[3] == ' '))) {
+      type_start = p;
+      type_len = 3;
+    } else if ((strncmp(p, "STR", 3) == 0 && (p[3] == '\0' || p[3] == ' '))) {
+      type_start = p;
+      type_len = 3;
+    } else if ((strncmp(p, "VAL", 3) == 0 && (p[3] == '\0' || p[3] == ' '))) {
+      type_start = p;
+      type_len = 3;
+    }
+
+    if (type_start) {
+      // Switch to info color for type indicator
+      fprintf(stream, "%s%.*s%s", color_code, type_len, type_start, warn_code);
+      p += type_len;
+    } else {
+      fprintf(stream, "%c", *p);
+      p++;
+    }
+  }
+
+  fprintf(stream, "%s", reset_code);
+}
+
+/**
  * @brief Word-wrap description text to fit in terminal width
  * Wraps plain text, then applies colors to metadata labels
  */
@@ -1414,23 +1465,46 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     fprintf(stream, "%s\n\n", config->description);
   }
 
-  // Group options by group name
-  const char *current_group = NULL;
+  // Build list of unique groups in order of first appearance
   bool use_vertical_layout = (term_width < NARROW_TERMINAL_THRESHOLD);
+
+  const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
+  size_t num_unique_groups = 0;
 
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
-
-    // Skip binary-level options (they're shown in top-level help only)
-    if (desc->hide_from_mode_help) {
+    if (desc->hide_from_mode_help || !desc->group) {
       continue;
     }
 
-    // Print group header if changed
-    if (desc->group && (!current_group || strcmp(current_group, desc->group) != 0)) {
-      fprintf(stream, "\n%s:\n", colored_string(LOG_COLOR_DEBUG, desc->group));
-      current_group = desc->group;
+    // Check if this group is already in the list
+    bool group_exists = false;
+    for (size_t j = 0; j < num_unique_groups; j++) {
+      if (unique_groups[j] && strcmp(unique_groups[j], desc->group) == 0) {
+        group_exists = true;
+        break;
+      }
     }
+
+    // Add new group to list
+    if (!group_exists && num_unique_groups < config->num_descriptors) {
+      unique_groups[num_unique_groups++] = desc->group;
+    }
+  }
+
+  // Print options grouped by group name
+  for (size_t g = 0; g < num_unique_groups; g++) {
+    const char *current_group = unique_groups[g];
+    fprintf(stream, "\n%s:\n", colored_string(LOG_COLOR_DEBUG, current_group));
+
+    // Print all options in this group
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      const option_descriptor_t *desc = &config->descriptors[i];
+
+      // Skip if not in current group or if hidden
+      if (desc->hide_from_mode_help || !desc->group || strcmp(desc->group, current_group) != 0) {
+        continue;
+      }
 
     // Build option string
     char option_str[256] = "";
@@ -1472,7 +1546,10 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
     }
 
-    if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK) {
+    // Skip adding default if the description already mentions it
+    bool description_has_default = desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
+
+    if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
       desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
       switch (desc->type) {
       case OPTION_TYPE_BOOL:
@@ -1506,18 +1583,22 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     }
 
     if (desc->env_var_name) {
-      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)", desc->env_var_name);
+      // Embed ANSI color codes directly so they're preserved across wraps
+      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)",
+                           colored_string(LOG_COLOR_DEBUG, desc->env_var_name));
     }
 
     // For narrow terminals, use vertical layout
     if (use_vertical_layout) {
-      fprintf(stream, "  %s\n", colored_string(LOG_COLOR_WARN, option_str));
       fprintf(stream, "  ");
+      print_colored_option(stream, option_str);
+      fprintf(stream, "\n  ");
       print_wrapped_description(stream, desc_str, 2, term_width);
       fprintf(stream, "\n\n");
     } else {
       // Print option and description with proper alignment
-      fprintf(stream, "  %s", colored_string(LOG_COLOR_WARN, option_str));
+      fprintf(stream, "  ");
+      print_colored_option(stream, option_str);
 
       // If option string is short enough, put description on same line
       if (option_len < OPTION_COLUMN_WIDTH) {
@@ -1542,7 +1623,11 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         fprintf(stream, "\n");
       }
     }
+    }
   }
+
+  // Cleanup
+  SAFE_FREE(unique_groups);
 
   fprintf(stream, "\n");
 }
