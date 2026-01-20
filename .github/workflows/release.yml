@@ -414,10 +414,12 @@ jobs:
         run: |
           # Download official LLVM release which includes static libc++ libraries
           # Homebrew LLVM doesn't include static libs, so we need the official binaries
-          LLVM_VERSION="19.1.6"
+          # Note: LLVM 20+ dropped X64 macOS binaries, so we use different versions per arch
           if [[ "$(uname -m)" == "arm64" ]]; then
+            LLVM_VERSION="21.1.8"
             LLVM_ARCH="ARM64"
           else
+            LLVM_VERSION="19.1.6"  # Last version with X64 macOS binaries
             LLVM_ARCH="X64"
           fi
           LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
