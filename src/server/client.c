@@ -1291,34 +1291,17 @@ void *client_receive_thread(void *arg) {
 
   log_debug("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
-  // DEBUG: Check loop entry conditions
-  bool should_exit = atomic_load(&g_server_should_exit);
-  bool is_active = atomic_load(&client->active);
-  socket_t sock = client->socket;
-  log_debug("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d), is_tcp=%d",
-            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE, client->is_tcp_client);
-
-  // For TCP clients, check socket validity. For WebRTC clients, transport is always valid when thread starts
-  // Check loop entry conditions BEFORE entering loop
-  int loop_counter = 0;
-
-  log_error(
-      "RECV_BEFORE_LOOP: About to enter while loop, will_enter=%d (should_exit=%d, active=%d, is_tcp=%d, socket=%d)",
-      !atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
-          (!client->is_tcp_client || client->socket != INVALID_SOCKET_VALUE),
-      atomic_load(&g_server_should_exit), atomic_load(&client->active), client->is_tcp_client, client->socket);
-
-  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
-         (!client->is_tcp_client || client->socket != INVALID_SOCKET_VALUE)) {
-
-    loop_counter++;
-    if (loop_counter == 1) {
-      log_error("RECV_LOOP: Entering loop iteration 1, should_exit=%d, active=%d, is_tcp=%d, socket=%d",
-                atomic_load(&g_server_should_exit), atomic_load(&client->active), client->is_tcp_client,
-                client->socket);
+  // Main receive loop - processes packets from transport
+  // For TCP clients: receives from socket
+  // For WebRTC clients: receives from transport ringbuffer (via ACDS signaling)
+  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active)) {
+    // For TCP clients, check socket validity
+    // For WebRTC clients, continue even if no socket (transport handles everything)
+    if (client->is_tcp_client && client->socket == INVALID_SOCKET_VALUE) {
+      log_debug("TCP client %u has invalid socket, exiting receive thread", atomic_load(&client->client_id));
+      break;
     }
 
-    // Use unified secure packet reception with auto-decryption
     // CRITICAL: Check client_id is still valid before accessing transport
     // This prevents accessing freed memory if remove_client() has zeroed the client struct
     if (atomic_load(&client->client_id) == 0) {
