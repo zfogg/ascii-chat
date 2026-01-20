@@ -228,10 +228,10 @@ void options_builder_add_port_option(options_builder_t *b, const char *default_p
  */
 void options_builder_add_acds_group(options_builder_t *b) {
   options_builder_add_string(
-      b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-server.ascii-chat.com",
-      "ACDS discovery server address (default: discovery-server.ascii-chat.com)", "DISCOVERY", false, NULL, NULL);
+      b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-service.ascii-chat.com",
+      "ACDS discovery service address (default: discovery-service.ascii-chat.com)", "DISCOVERY", false, NULL, NULL);
 
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery server port",
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery service port",
                           "DISCOVERY", false, NULL, NULL);
 
   options_builder_add_string(
@@ -251,10 +251,10 @@ void options_builder_add_acds_group(options_builder_t *b) {
  */
 void options_builder_add_acds_network_group(options_builder_t *b) {
   options_builder_add_string(
-      b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-server.ascii-chat.com",
-      "ACDS discovery server address (default: discovery-server.ascii-chat.com)", "NETWORK", false, NULL, NULL);
+      b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-service.ascii-chat.com",
+      "ACDS discovery service address (default: discovery-service.ascii-chat.com)", "NETWORK", false, NULL, NULL);
 
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery server port",
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery service port",
                           "NETWORK", false, NULL, NULL);
 
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,

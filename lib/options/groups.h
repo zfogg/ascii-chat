@@ -95,7 +95,7 @@ typedef enum {
                                OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | \
                                OPT_GROUP_ACDS | OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)
 
-/** ACDS mode options: discovery server with network and crypto */
+/** ACDS mode options: discovery service with network and crypto */
 #define MODE_ACDS_GROUPS      (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | \
                                OPT_GROUP_WEBRTC)
 

@@ -1,7 +1,7 @@
 # =============================================================================
 # ACDS (ASCII-Chat Discovery Service) Executable Target
 # =============================================================================
-# Creates the discovery server binary that handles session management,
+# Creates the discovery service binary that handles session management,
 # WebRTC signaling, and peer discovery using the ACIP protocol over raw TCP.
 #
 # Dependencies:
@@ -12,9 +12,9 @@
 #   - build/bin/acds (or acds.exe on Windows)
 # =============================================================================
 
-message(STATUS "${BoldCyan}Building ACDS discovery server...${ColorReset}")
+message(STATUS "${BoldCyan}Building ACDS discovery service...${ColorReset}")
 
-# Create discovery server executable
+# Create discovery service executable
 add_executable(acds ${ACDS_SRCS})
 
 # Unity builds for faster compilation
@@ -59,7 +59,7 @@ add_custom_command(TARGET acds POST_BUILD
         -DTARGET_NAME=acds
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
         -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT "Discovery server build complete"
+    COMMENT "Discovery service build complete"
 )
 
 # Set output directory
@@ -73,4 +73,4 @@ install(TARGETS acds
     COMPONENT discovery_service
 )
 
-message(STATUS "${Green}ACDS discovery server target configured${ColorReset}")
+message(STATUS "${Green}ACDS discovery service target configured${ColorReset}")
