@@ -94,7 +94,6 @@ static void remove_peer_locked(webrtc_peer_manager_t *manager, peer_entry_t *pee
  * @brief DataChannel open callback - wrap in ACIP transport
  */
 static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
-  (void)dc; // Unused - peer already has reference
   peer_entry_t *peer = (peer_entry_t *)user_data;
 
   log_info("WebRTC DataChannel opened for participant");
@@ -104,6 +103,13 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
   if (!manager) {
     log_error("No manager found for peer");
     return;
+  }
+
+  // For CREATOR role (server), peer->dc is NULL because the DataChannel is received, not created
+  // Update peer->dc from the dc parameter passed to this callback
+  if (!peer->dc) {
+    peer->dc = dc;
+    log_debug("Updated peer->dc from DataChannel callback (dc=%p)", (void *)peer->dc);
   }
 
   // Create ACIP transport wrapper
@@ -482,13 +488,11 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
 
   mutex_unlock(&manager->peers_mutex);
 
-  // Create SDP offer (triggers on_local_description callback)
-  result = webrtc_create_offer(peer->pc);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(result, "Failed to create SDP offer");
-  }
+  // Note: SDP offer is automatically created by libdatachannel when rtcCreateDataChannel() is called
+  // The on_local_description callback will be triggered automatically with the offer
+  // No need to manually call webrtc_create_offer() - doing so causes "Unexpected local description" error
 
-  log_info("Initiated WebRTC connection to participant");
+  log_info("Initiated WebRTC connection to participant (offer auto-created by DataChannel)");
 
   return ASCIICHAT_OK;
 }

@@ -134,9 +134,13 @@ static void on_local_candidate_adapter(int pc_id, const char *candidate, const c
 
 static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   (void)pc_id; // Unused - we get peer connection from user_data
+  log_info("on_datachannel_adapter: pc_id=%d, dc_id=%d, user_data=%p", pc_id, dc_id, user_data);
+
   webrtc_peer_connection_t *pc = (webrtc_peer_connection_t *)user_data;
-  if (!pc)
+  if (!pc) {
+    log_error("on_datachannel_adapter: peer connection user_data is NULL!");
     return;
+  }
 
   log_info("on_datachannel_adapter: received DataChannel (dc_id=%d) from remote peer", dc_id);
 
@@ -163,6 +167,14 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
 
   log_info("Set up callbacks for incoming DataChannel (dc_id=%d, dc=%p)", dc_id, (void *)dc);
+
+  // Check if DataChannel is already open (can happen if it opened before callbacks were set)
+  // In libdatachannel, negotiated DataChannels may be open immediately when received
+  // We manually trigger the open callback if that's the case
+  if (rtcIsOpen(dc_id)) {
+    log_info("DataChannel was already open when received, manually triggering open callback");
+    on_datachannel_open_adapter(dc_id, dc);
+  }
 }
 
 static void on_datachannel_open_adapter(int dc_id, void *user_data) {
