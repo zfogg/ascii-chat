@@ -435,7 +435,7 @@ typedef enum {
   MODE_SERVER, ///< Server mode - network server options
   MODE_CLIENT, ///< Client mode - network client options
   MODE_MIRROR, ///< Mirror mode - local webcam viewing (no network)
-  MODE_ACDS    ///< Discovery service mode - session management and WebRTC signaling
+  MODE_DISCOVERY_SERVER ///< Discovery server mode - session management and WebRTC signaling
 } asciichat_mode_t;
 
 /**

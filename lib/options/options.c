@@ -71,7 +71,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
   const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-server", NULL};
-  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_ACDS};
+  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
       *out_mode = mode_values_check[i];
@@ -111,7 +111,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Try to match against known modes
   const char *const mode_names[] = {"server", "client", "mirror", "discovery-server", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_ACDS};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
@@ -350,7 +350,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     case MODE_MIRROR:
       log_filename = "mirror.log";
       break;
-    case MODE_ACDS:
+    case MODE_DISCOVERY_SERVER:
       log_filename = "acds.log";
       break;
     default:
@@ -386,7 +386,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     case MODE_MIRROR:
       log_filename = "mirror.log";
       break;
-    case MODE_ACDS:
+    case MODE_DISCOVERY_SERVER:
       log_filename = "acds.log";
       break;
     default:
@@ -415,7 +415,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "127.0.0.1");
     // address6 is now a positional argument, not an option
     opts.address6[0] = '\0';
-  } else if (detected_mode == MODE_ACDS) {
+  } else if (detected_mode == MODE_DISCOVERY_SERVER) {
     // ACDS: binds to all interfaces by default
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "0.0.0.0");
     opts.address6[0] = '\0';
@@ -444,7 +444,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   case MODE_MIRROR:
     result = parse_mirror_options(mode_argc, mode_argv, &opts);
     break;
-  case MODE_ACDS:
+  case MODE_DISCOVERY_SERVER:
     result = parse_acds_options(mode_argc, mode_argv, &opts);
     break;
   default:
@@ -472,7 +472,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Collect multiple --key flags for multi-key support (server/ACDS only)
   // This enables servers to load both SSH and GPG keys and select the right one
   // during handshake based on what the client expects
-  if (detected_mode == MODE_SERVER || detected_mode == MODE_ACDS) {
+  if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVER) {
     int num_keys = options_collect_identity_keys(&opts, argc, argv);
     if (num_keys < 0) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to collect identity keys");

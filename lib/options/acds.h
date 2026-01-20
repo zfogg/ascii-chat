@@ -135,7 +135,7 @@ extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
  * Example usage:
  * @code
  * int main(int argc, char **argv) {
- *     asciichat_error_t err = options_init(argc, argv, MODE_ACDS);
+ *     asciichat_error_t err = options_init(argc, argv, MODE_DISCOVERY_SERVER);
  *     if (err != ASCIICHAT_OK) {
  *         return 1;  // Error already printed
  *     }

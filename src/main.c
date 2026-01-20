@@ -147,7 +147,7 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
       if (strcmp(m->name, "mirror") == 0)
         return m;
       break;
-    case MODE_ACDS:
+    case MODE_DISCOVERY_SERVER:
       if (strcmp(m->name, "discovery-server") == 0)
         return m;
       break;
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
   case MODE_MIRROR:
     default_log_filename = "mirror.log";
     break;
-  case MODE_ACDS:
+  case MODE_DISCOVERY_SERVER:
     default_log_filename = "acds.log";
     break;
   default:

@@ -603,7 +603,7 @@ void usage(FILE *desc, asciichat_mode_t mode) {
   case MODE_MIRROR:
     usage_mirror(desc);
     break;
-  case MODE_ACDS:
+  case MODE_DISCOVERY_SERVER:
     usage_acds(desc);
     break;
   default:
