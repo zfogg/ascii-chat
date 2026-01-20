@@ -211,6 +211,8 @@ extern mixer_t *volatile g_audio_mixer;  ///< Global audio mixer from main.c (vo
 // client_receive_thread is implemented below
 void *client_send_thread_func(void *arg);         ///< Client packet send thread
 void broadcast_server_state_to_all_clients(void); ///< Notify all clients of state changes
+static int start_client_threads(server_context_t *server_ctx, client_info_t *client,
+                                bool is_tcp); ///< Common thread initialization
 
 /* ============================================================================
  * Client Lookup Functions
@@ -336,6 +338,114 @@ static void configure_client_socket(socket_t socket, uint32_t client_id) {
   if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &TCP_NODELAY_VALUE, sizeof(TCP_NODELAY_VALUE)) < 0) {
     log_warn("Failed to set TCP_NODELAY for client %u: %s", client_id, network_error_string());
   }
+}
+
+/**
+ * @brief Unified thread initialization for both TCP and WebRTC clients
+ *
+ * Creates all necessary threads in the correct order:
+ * 1. Receive thread (handles incoming packets)
+ * 2. Render threads (generates ASCII frames) - MUST come before send thread!
+ * 3. Send thread (transmits frames to client)
+ *
+ * This function eliminates the code duplication between add_client() and add_webrtc_client()
+ * and ensures consistent initialization order to prevent the race condition where the send
+ * thread starts reading empty frames before the render thread generates the first real frame.
+ *
+ * @param server_ctx Server context
+ * @param client Client to initialize threads for
+ * @param is_tcp true for TCP clients (uses tcp_server thread pool), false for WebRTC (uses generic threads)
+ * @return 0 on success, -1 on failure (client will be removed on failure)
+ */
+static int start_client_threads(server_context_t *server_ctx, client_info_t *client, bool is_tcp) {
+  if (!server_ctx || !client) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "server_ctx or client is NULL");
+    return -1;
+  }
+
+  uint32_t client_id = atomic_load(&client->client_id);
+  char thread_name[64];
+  asciichat_error_t result;
+
+  // Step 1: Create receive thread
+  if (is_tcp) {
+    snprintf(thread_name, sizeof(thread_name), "receive_%u", client_id);
+    result =
+        tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
+  } else {
+    snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id);
+    result = asciichat_thread_create(&client->receive_thread, client_receive_thread, client);
+  }
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to create receive thread for %s client %u: %s", is_tcp ? "TCP" : "WebRTC", client_id,
+              asciichat_error_string(result));
+    remove_client(server_ctx, client_id);
+    return -1;
+  }
+  log_debug("Created receive thread for %s client %u", is_tcp ? "TCP" : "WebRTC", client_id);
+
+  // Step 2: Create render threads BEFORE send thread
+  // This ensures the render threads generate the first frame before the send thread tries to read it
+  log_debug("Creating render threads for client %u", client_id);
+  if (create_client_render_threads(server_ctx, client) != 0) {
+    log_error("Failed to create render threads for client %u", client_id);
+    remove_client(server_ctx, client_id);
+    return -1;
+  }
+  log_debug("Successfully created render threads for client %u", client_id);
+
+  // Step 3: Create send thread AFTER render threads are running
+  if (is_tcp) {
+    snprintf(thread_name, sizeof(thread_name), "send_%u", client_id);
+    result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_send_thread_func, client, 3,
+                                     thread_name);
+  } else {
+    snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id);
+    result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
+  }
+
+  if (result != ASCIICHAT_OK) {
+    log_error("Failed to create send thread for %s client %u: %s", is_tcp ? "TCP" : "WebRTC", client_id,
+              asciichat_error_string(result));
+    remove_client(server_ctx, client_id);
+    return -1;
+  }
+  log_debug("Created send thread for %s client %u", is_tcp ? "TCP" : "WebRTC", client_id);
+
+  // Step 4: Send initial server state to the new client
+  if (send_server_state_to_client(client) != 0) {
+    log_warn("Failed to send initial server state to client %u", client_id);
+  }
+
+  // Get current client count for initial state packet
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  server_state_packet_t state;
+  state.connected_client_count = connected_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  // Send initial server state via ACIP transport
+  asciichat_error_t packet_result = acip_send_server_state(client->transport, &net_state);
+  if (packet_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial server state to client %u: %s", client_id, asciichat_error_string(packet_result));
+  } else {
+    log_debug("Sent initial server state to client %u: %u connected clients", client_id, state.connected_client_count);
+  }
+
+  // Step 5: Broadcast server state to ALL clients AFTER the new client is fully set up
+  broadcast_server_state_to_all_clients();
+
+  return 0;
 }
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
@@ -641,95 +751,15 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
               atomic_load(&client->client_id));
   }
 
-  // Start threads for this client (AFTER crypto handshake AND initial capabilities)
-  // Use tcp_server thread pool for managed cleanup with stop_id ordering:
-  //   stop_id=1: receive thread (stop first to prevent new data)
-  //   stop_id=2: render threads (stop after receive)
-  //   stop_id=3: send thread (stop last after all processing done)
-  char thread_name[64];
-  snprintf(thread_name, sizeof(thread_name), "receive_%u", atomic_load(&client->client_id));
-  asciichat_error_t recv_result =
-      tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
-  if (recv_result != ASCIICHAT_OK) {
-    // Don't destroy mutexes here - remove_client() will handle it
-    if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
-      log_error("Failed to remove client after receive thread creation failure");
-    }
-    return -1;
-  }
-
-  // Start send thread for this client (stop_id=3, stop last)
-  snprintf(thread_name, sizeof(thread_name), "send_%u", atomic_load(&client->client_id));
-  fprintf(stderr, "*** ABOUT_TO_SPAWN_SEND_THREAD client_id=%u socket=%d ***\n", atomic_load(&client->client_id),
-          client->socket);
-  fflush(stderr);
-  asciichat_error_t send_result =
-      tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_send_thread_func, client, 3, thread_name);
-  fprintf(stderr, "*** SPAWN_RESULT=%d ***\n", send_result);
-  fflush(stderr);
-  if (send_result != ASCIICHAT_OK) {
-    // tcp_server_stop_client_threads() will be called by remove_client()
-    // to clean up the receive thread we just created
-    fprintf(stderr, "*** SEND_THREAD_SPAWN_FAILED result=%d ***\n", send_result);
-    fflush(stderr);
-    if (remove_client(server_ctx, atomic_load(&client->client_id)) != 0) {
-      log_error("Failed to remove client after send thread creation failure");
-    }
-    return -1;
-  }
-
-  // Send initial server state to the new client
-  if (send_server_state_to_client(client) != 0) {
-    log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
-  } else {
-#ifdef DEBUG_NETWORK
-    log_info("Sent initial server state to client %u", atomic_load(&client->client_id));
-#endif
-  }
-
-  // Queue initial server state to the new client
-  // THREAD SAFETY: Protect read of client_count with rwlock
-  rwlock_rdlock(&g_client_manager_rwlock);
-  uint32_t connected_count = g_client_manager.client_count;
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  server_state_packet_t state;
-  state.connected_client_count = connected_count;
-  state.active_client_count = 0; // Will be updated by broadcast thread
-  memset(state.reserved, 0, sizeof(state.reserved));
-
-  // Convert to network byte order
-  server_state_packet_t net_state;
-  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
-  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
-  memset(net_state.reserved, 0, sizeof(net_state.reserved));
-
-  // Send initial server state via ACIP transport
-  asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
-  if (packet_send_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial server state to client %u: %s", atomic_load(&client->client_id),
-             asciichat_error_string(packet_send_result));
-  } else {
-    log_debug("Sent initial server state to client %u: %u connected clients", atomic_load(&client->client_id),
-              state.connected_client_count);
-  }
-
-  // NEW: Create per-client rendering threads
-  // CRITICAL: Use atomic_load for client_id to prevent data races
+  // Start all client threads in the correct order (unified path for TCP and WebRTC)
+  // This creates: receive thread -> render threads -> send thread
+  // The render threads MUST be created before send thread to avoid the race condition
+  // where send thread reads empty frames before render thread generates the first real frame
   uint32_t client_id_snapshot = atomic_load(&client->client_id);
-  log_debug("Creating render threads for client %u", client_id_snapshot);
-  if (create_client_render_threads(server_ctx, client) != 0) {
-    log_error("Failed to create render threads for client %u", client_id_snapshot);
-    if (remove_client(server_ctx, client_id_snapshot) != 0) {
-      log_error("Failed to remove client after render thread creation failure");
-    }
+  if (start_client_threads(server_ctx, client, true) != 0) {
+    log_error("Failed to start threads for TCP client %u", client_id_snapshot);
     return -1;
   }
-  log_debug("Successfully created render threads for client %u", client_id_snapshot);
-
-  // Broadcast server state to ALL clients AFTER the new client is fully set up
-  // This notifies all clients (including the new one) about the updated grid
-  broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
 
@@ -913,86 +943,15 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
   // WebRTC uses the transport abstraction which handles packet reception automatically.
   log_debug("WebRTC client %u initialized - receive thread will process capabilities", atomic_load(&client->client_id));
 
-  // Start threads for this client
-  // Note: WebRTC clients don't use tcp_server thread pool (no socket)
-  // Instead, use generic thread creation
-  char thread_name[64];
+  // Start all client threads in the correct order (unified path for TCP and WebRTC)
+  // This creates: receive thread -> render threads -> send thread
+  // The render threads MUST be created before send thread to avoid the race condition
+  // where send thread reads empty frames before render thread generates the first real frame
   uint32_t client_id_snapshot = atomic_load(&client->client_id);
-
-  // Create receive thread for WebRTC client
-  snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id_snapshot);
-  asciichat_error_t recv_result = asciichat_thread_create(&client->receive_thread, client_receive_thread, client);
-  if (recv_result != ASCIICHAT_OK) {
-    log_error("Failed to create receive thread for WebRTC client %u: %s", client_id_snapshot,
-              asciichat_error_string(recv_result));
-    if (remove_client(server_ctx, client_id_snapshot) != 0) {
-      log_error("Failed to remove WebRTC client after receive thread creation failure");
-    }
+  if (start_client_threads(server_ctx, client, false) != 0) {
+    log_error("Failed to start threads for WebRTC client %u", client_id_snapshot);
     return -1;
   }
-  log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
-
-  // Create send thread for this client
-  snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
-  asciichat_error_t send_result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
-  if (send_result != ASCIICHAT_OK) {
-    log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,
-              asciichat_error_string(send_result));
-    if (remove_client(server_ctx, client_id_snapshot) != 0) {
-      log_error("Failed to remove WebRTC client after send thread creation failure");
-    }
-    return -1;
-  }
-  log_debug("Created send thread for WebRTC client %u", client_id_snapshot);
-
-  // Send initial server state to the new client
-  if (send_server_state_to_client(client) != 0) {
-    log_warn("Failed to send initial server state to WebRTC client %u", client_id_snapshot);
-  } else {
-#ifdef DEBUG_NETWORK
-    log_info("Sent initial server state to WebRTC client %u", client_id_snapshot);
-#endif
-  }
-
-  // Send initial server state via ACIP transport
-  rwlock_rdlock(&g_client_manager_rwlock);
-  uint32_t connected_count = g_client_manager.client_count;
-  rwlock_rdunlock(&g_client_manager_rwlock);
-
-  server_state_packet_t state;
-  state.connected_client_count = connected_count;
-  state.active_client_count = 0; // Will be updated by broadcast thread
-  memset(state.reserved, 0, sizeof(state.reserved));
-
-  // Convert to network byte order
-  server_state_packet_t net_state;
-  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
-  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
-  memset(net_state.reserved, 0, sizeof(net_state.reserved));
-
-  asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
-  if (packet_send_result != ASCIICHAT_OK) {
-    log_warn("Failed to send initial server state to WebRTC client %u: %s", client_id_snapshot,
-             asciichat_error_string(packet_send_result));
-  } else {
-    log_debug("Sent initial server state to WebRTC client %u: %u connected clients", client_id_snapshot,
-              state.connected_client_count);
-  }
-
-  // Create per-client rendering threads
-  log_debug("Creating render threads for WebRTC client %u", client_id_snapshot);
-  if (create_client_render_threads(server_ctx, client) != 0) {
-    log_error("Failed to create render threads for WebRTC client %u", client_id_snapshot);
-    if (remove_client(server_ctx, client_id_snapshot) != 0) {
-      log_error("Failed to remove WebRTC client after render thread creation failure");
-    }
-    return -1;
-  }
-  log_debug("Successfully created render threads for WebRTC client %u", client_id_snapshot);
-
-  // Broadcast server state to ALL clients AFTER the new client is fully set up
-  // This notifies all clients (including the new one) about the updated grid
-  broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
 

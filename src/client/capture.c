@@ -333,6 +333,7 @@ static void *webcam_capture_thread_func(void *arg) {
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
     if (!server_connection_is_active()) {
+      log_debug_every(LOG_RATE_NORMAL, "Capture thread: waiting for connection to become active");
       platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
@@ -386,6 +387,8 @@ static void *webcam_capture_thread_func(void *arg) {
     // Send frame packet to server using proper packet format
     // This handles the full image_frame_packet_t structure with all required fields
     acip_transport_t *transport = server_connection_get_transport();
+    log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u via transport %p", processed_image->w,
+                    processed_image->h, (void *)transport);
     asciichat_error_t send_result = acip_send_image_frame(transport, (const void *)processed_image->pixels,
                                                           (uint32_t)processed_image->w, (uint32_t)processed_image->h,
                                                           1); // pixel_format = 1 (RGB24)
@@ -397,6 +400,7 @@ static void *webcam_capture_thread_func(void *arg) {
       image_destroy(processed_image);
       break;
     }
+    log_debug_every(LOG_RATE_SLOW, "Capture thread: IMAGE_FRAME sent successfully");
 
     // FPS tracking - frame successfully captured and sent
     capture_frame_count++;
