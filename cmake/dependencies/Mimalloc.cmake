@@ -151,15 +151,32 @@ if(USE_MIMALLOC)
     endif()
 
     # On Windows, prefer vcpkg; on Unix (if system not found), use FetchContent
-    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TARGET_TRIPLET AND DEFINED VCPKG_ROOT)
+    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TARGET_TRIPLET)
         # Try to find mimalloc from vcpkg
-        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include")
-        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib")
-        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib")
+        # Check both manifest mode path (CMAKE_BINARY_DIR/vcpkg_installed) and classic mode path (VCPKG_ROOT/installed)
+        set(_VCPKG_SEARCH_PATHS "")
+        if(EXISTS "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+            list(APPEND _VCPKG_SEARCH_PATHS "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+        endif()
+        if(DEFINED VCPKG_ROOT AND EXISTS "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
+            list(APPEND _VCPKG_SEARCH_PATHS "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
+        endif()
 
-        find_library(MIMALLOC_LIBRARY_RELEASE NAMES mimalloc-static mimalloc PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
-        find_library(MIMALLOC_LIBRARY_DEBUG NAMES mimalloc-static mimalloc PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
-        find_path(MIMALLOC_INCLUDE_DIR NAMES mimalloc.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+        # Find mimalloc in the available vcpkg paths
+        set(MIMALLOC_LIBRARY_RELEASE "")
+        set(MIMALLOC_LIBRARY_DEBUG "")
+        set(MIMALLOC_INCLUDE_DIR "")
+        foreach(_vcpkg_path IN LISTS _VCPKG_SEARCH_PATHS)
+            if(NOT MIMALLOC_LIBRARY_RELEASE)
+                find_library(MIMALLOC_LIBRARY_RELEASE NAMES mimalloc-static mimalloc PATHS "${_vcpkg_path}/lib" NO_DEFAULT_PATH)
+            endif()
+            if(NOT MIMALLOC_LIBRARY_DEBUG)
+                find_library(MIMALLOC_LIBRARY_DEBUG NAMES mimalloc-static mimalloc PATHS "${_vcpkg_path}/debug/lib" NO_DEFAULT_PATH)
+            endif()
+            if(NOT MIMALLOC_INCLUDE_DIR)
+                find_path(MIMALLOC_INCLUDE_DIR NAMES mimalloc.h PATHS "${_vcpkg_path}/include" NO_DEFAULT_PATH)
+            endif()
+        endforeach()
 
         if(MIMALLOC_LIBRARY_RELEASE OR MIMALLOC_LIBRARY_DEBUG)
             # Try to get version from vcpkg (version is in directory path)
@@ -244,7 +261,7 @@ if(USE_MIMALLOC)
         if(EXISTS "${_MIMALLOC_LIB_PATH}")
             message(STATUS "Detected mimalloc archive: ${_MIMALLOC_LIB_PATH}")
             # Extract version from FetchContent declaration above (v2.1.7)
-            set(MIMALLOC_VERSION "2.1.7")
+            set(MIMALLOC_VERSION "2.2.4")
             message(STATUS "Using cached ${BoldGreen}mimalloc${ColorReset}, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${_MIMALLOC_LIB_PATH}${ColorReset}")
 
             # Create an imported target for the cached library
@@ -293,7 +310,7 @@ if(USE_MIMALLOC)
             FetchContent_Declare(
                 mimalloc
                 GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
-                GIT_TAG v2.1.7  # Latest stable v2.x release
+                GIT_TAG v2.2.4  # Match vcpkg version
                 GIT_SHALLOW TRUE
                 # Use persistent cache directories (survives build/ deletion)
                 SOURCE_DIR "${MIMALLOC_SOURCE_DIR}"
@@ -442,7 +459,7 @@ if(USE_MIMALLOC)
         endif()
 
         # Update status messages based on ASAN support
-        set(MIMALLOC_VERSION "2.1.7")
+        set(MIMALLOC_VERSION "2.2.4")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             message(STATUS "Created two ${BoldGreen}mimalloc${ColorReset} targets with ${BoldCyan}AddressSanitizer${ColorReset} support:")
             message(STATUS "  - ${BoldCyan}mimalloc-static${ColorReset} → ${BoldBlue}${_MIMALLOC_OUTPUT_NAME}.a${ColorReset}: for executables (uses -fPIE from global flags)")
