@@ -151,6 +151,7 @@
 #include <stdio.h>
 #include "platform/terminal.h"
 #include "video/palette.h"
+#include "network/endpoints.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -357,10 +358,10 @@
 #define OPT_MEDIA_LOOP_DEFAULT false
 
 /** @brief Default STUN server URLs (comma-separated) */
-#define OPT_STUN_SERVERS_DEFAULT "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302"
+#define OPT_STUN_SERVERS_DEFAULT ENDPOINT_STUN_SERVERS_DEFAULT
 
 /** @brief Default TURN server URLs (comma-separated) */
-#define OPT_TURN_SERVERS_DEFAULT "turn:turn.ascii-chat.com:3478"
+#define OPT_TURN_SERVERS_DEFAULT ENDPOINT_TURN_SERVERS_DEFAULT
 
 /** @brief Default TURN server username */
 #define OPT_TURN_USERNAME_DEFAULT "ascii"

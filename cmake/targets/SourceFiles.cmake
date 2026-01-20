@@ -276,6 +276,7 @@ set(NETWORK_SRCS
     lib/network/webrtc/webrtc.c
     lib/network/webrtc/transport.c
     lib/network/webrtc/peer_manager.c
+    lib/network/webrtc/stun.c
     lib/network/webrtc/turn_credentials.c
     lib/network/webrtc/sdp.c
     lib/network/webrtc/ice.c

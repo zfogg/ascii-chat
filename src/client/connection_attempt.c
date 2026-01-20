@@ -39,6 +39,8 @@
 #include "network/acip/client.h"
 #include "network/tcp/client.h"
 #include "network/webrtc/peer_manager.h"
+#include "network/webrtc/stun.h"
+#include "network/endpoints.h"
 #include "platform/abstraction.h"
 
 #include <time.h>
@@ -508,14 +510,15 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   // Step 3: Create WebRTC peer manager with STUN servers
   // ─────────────────────────────────────────────────────────────
 
-  // Configure STUN servers (ascii-chat primary, Google fallback)
-  stun_server_t stun_server1 = {.host_len = 28};
-  SAFE_STRNCPY(stun_server1.host, "stun:stun.ascii-chat.com:3478", sizeof(stun_server1.host));
-
-  stun_server_t stun_server2 = {.host_len = 23};
-  SAFE_STRNCPY(stun_server2.host, "stun:stun.l.google.com:19302", sizeof(stun_server2.host));
-
-  stun_server_t stun_servers[] = {stun_server1, stun_server2};
+  // Configure STUN servers from options (or defaults if not set)
+  stun_server_t stun_servers[4] = {0}; // Support up to 4 STUN servers
+  int stun_count = stun_servers_parse(GET_OPTION(stun_servers), ENDPOINT_STUN_SERVERS_DEFAULT,
+                                      stun_servers, 4);
+  if (stun_count <= 0) {
+    log_warn("Failed to parse STUN servers, using defaults");
+    stun_count = stun_servers_parse(ENDPOINT_STUN_SERVERS_DEFAULT, ENDPOINT_STUN_SERVERS_DEFAULT,
+                                    stun_servers, 4);
+  }
 
   // Initialize synchronization primitives for transport_ready callback
   ctx->webrtc_transport_received = false;
@@ -523,7 +526,7 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   webrtc_peer_manager_config_t pm_config = {
       .role = WEBRTC_ROLE_JOINER, // Client joins, server creates
       .stun_servers = stun_servers,
-      .stun_count = 2,
+      .stun_count = stun_count,
       .turn_servers = NULL,
       .turn_count = 0,
       .on_transport_ready = on_webrtc_transport_ready, // Callback when DataChannel ready
@@ -762,8 +765,8 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // Store TURN server credentials from ACDS response
   // Note: ACDS response should include TURN server, username, and password
   // For now we use ascii-chat's TURN server - in production this comes from server
-  ctx->stun_turn_cfg.turn_port = 3478; // Standard TURN port
-  SAFE_STRNCPY(ctx->stun_turn_cfg.turn_server, "turn.ascii-chat.com", sizeof(ctx->stun_turn_cfg.turn_server));
+  ctx->stun_turn_cfg.turn_port = TURN_SERVER_PORT; // Standard TURN port
+  SAFE_STRNCPY(ctx->stun_turn_cfg.turn_server, TURN_SERVER_HOST, sizeof(ctx->stun_turn_cfg.turn_server));
   SAFE_STRNCPY(ctx->stun_turn_cfg.turn_username, "client", sizeof(ctx->stun_turn_cfg.turn_username));
   SAFE_STRNCPY(ctx->stun_turn_cfg.turn_password, "ephemeral-credential", sizeof(ctx->stun_turn_cfg.turn_password));
 
@@ -774,14 +777,15 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   // Step 3: Create WebRTC peer manager with TURN relay
   // ─────────────────────────────────────────────────────────────
 
-  // Configure STUN + TURN servers (ascii-chat primary, Google fallback)
-  stun_server_t stun_server1_turn = {.host_len = 28};
-  SAFE_STRNCPY(stun_server1_turn.host, "stun:stun.ascii-chat.com:3478", sizeof(stun_server1_turn.host));
-
-  stun_server_t stun_server2_turn = {.host_len = 23};
-  SAFE_STRNCPY(stun_server2_turn.host, "stun:stun.l.google.com:19302", sizeof(stun_server2_turn.host));
-
-  stun_server_t stun_servers[] = {stun_server1_turn, stun_server2_turn};
+  // Configure STUN + TURN servers from options (or defaults if not set)
+  stun_server_t stun_servers_turn[4] = {0}; // Support up to 4 STUN servers
+  int stun_count_turn = stun_servers_parse(GET_OPTION(stun_servers), ENDPOINT_STUN_SERVERS_DEFAULT,
+                                           stun_servers_turn, 4);
+  if (stun_count_turn <= 0) {
+    log_warn("Failed to parse STUN servers for TURN stage, using defaults");
+    stun_count_turn = stun_servers_parse(ENDPOINT_STUN_SERVERS_DEFAULT, ENDPOINT_STUN_SERVERS_DEFAULT,
+                                         stun_servers_turn, 4);
+  }
 
   // Build TURN URL from configuration
   char turn_url[128] = {0};
@@ -801,9 +805,9 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   ctx->webrtc_transport_received = false;
 
   webrtc_peer_manager_config_t pm_config = {
-      .role = WEBRTC_ROLE_JOINER, // Client joins, server creates
-      .stun_servers = stun_servers,
-      .stun_count = 2,
+      .role = WEBRTC_ROLE_JOINER,        // Client joins, server creates
+      .stun_servers = stun_servers_turn, // Also try STUN during TURN stage
+      .stun_count = stun_count_turn,
       .turn_servers = turn_servers,
       .turn_count = 1,
       .on_transport_ready = on_webrtc_transport_ready, // Callback when DataChannel ready

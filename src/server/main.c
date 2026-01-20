@@ -87,6 +87,8 @@
 #include "network/network.h"
 #include "network/tcp/server.h"
 #include "network/acip/acds_client.h"
+#include "network/webrtc/stun.h"
+#include "network/endpoints.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -1806,17 +1808,26 @@ int server_main(void) {
             log_debug("WebRTC library initialized successfully");
 
             // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
-            static stun_server_t stun_servers[2];
-            stun_servers[0].host_len = (uint8_t)strlen("stun:stun.ascii-chat.com:3478");
-            SAFE_STRNCPY(stun_servers[0].host, "stun:stun.ascii-chat.com:3478", sizeof(stun_servers[0].host));
-            stun_servers[1].host_len = (uint8_t)strlen("stun:stun1.l.google.com:19302");
-            SAFE_STRNCPY(stun_servers[1].host, "stun:stun1.l.google.com:19302", sizeof(stun_servers[1].host));
+            static stun_server_t stun_servers[4] = {0};
+            static int stun_count_initialized = 0;
+            if (!stun_count_initialized) {
+              int count = stun_servers_parse(GET_OPTION(stun_servers), ENDPOINT_STUN_SERVERS_DEFAULT,
+                                             stun_servers, 4);
+              if (count > 0) {
+                stun_count_initialized = count;
+              } else {
+                log_warn("Failed to parse STUN servers, using defaults");
+                stun_count_initialized = stun_servers_parse(ENDPOINT_STUN_SERVERS_DEFAULT,
+                                                           ENDPOINT_STUN_SERVERS_DEFAULT,
+                                                           stun_servers, 4);
+              }
+            }
 
             // Configure peer_manager
             webrtc_peer_manager_config_t pm_config = {
                 .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
                 .stun_servers = stun_servers,
-                .stun_count = 2,
+                .stun_count = stun_count_initialized,
                 .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
                 .turn_count = 0,
                 .on_transport_ready = on_webrtc_transport_ready,

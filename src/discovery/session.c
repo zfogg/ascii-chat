@@ -12,6 +12,8 @@
 #include "network/acip/acds.h"
 #include "network/acip/send.h"
 #include "network/packet.h"
+#include "network/webrtc/stun.h"
+#include "network/endpoints.h"
 #include "negotiate.h"
 #include "nat.h"
 #include "platform/abstraction.h"
@@ -144,9 +146,28 @@ static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
   // Initialize with defaults
   nat_quality_init(quality);
 
+  // Parse STUN servers from options (use fallback endpoint for NAT probe)
+  // Extract just the hostname:port without the "stun:" prefix for nat_detect_quality
+  // If custom servers are configured, use the first one; otherwise use fallback
+  const char *stun_servers_option = GET_OPTION(stun_servers);
+  const char *stun_server_for_probe = ENDPOINT_STUN_FALLBACK; // Default fallback
+
+  if (stun_servers_option && stun_servers_option[0] != '\0') {
+    // Use the first configured server
+    // nat_detect_quality expects just "host:port" without "stun:" prefix
+    // For now, we'll use the fallback and rely on ACDS to provide custom servers
+    stun_server_for_probe = ENDPOINT_STUN_FALLBACK;
+  }
+
+  // Strip "stun:" prefix if present
+  const char *probe_host = stun_server_for_probe;
+  if (strncmp(probe_host, "stun:", 5) == 0) {
+    probe_host = stun_server_for_probe + 5;
+  }
+
   // Run NAT detection (timeout 2 seconds)
   // This will probe STUN, check UPnP, etc.
-  asciichat_error_t result = nat_detect_quality(quality, "stun.l.google.com:19302", 0);
+  asciichat_error_t result = nat_detect_quality(quality, probe_host, 0);
   if (result != ASCIICHAT_OK) {
     log_warn("NAT detection had issues, using partial data");
     // Don't fail - we have partial data that's better than nothing
