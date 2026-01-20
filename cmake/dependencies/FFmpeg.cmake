@@ -219,14 +219,16 @@ if(NOT FFMPEG_FOUND)
         return()
     endif()
 
+    # Set FFMPEG_LINK_LIBRARIES for target_link_libraries (matches macOS static build)
+    # Use FFMPEG_LDFLAGS which includes -L path and -l flags, not just library names
+    set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LDFLAGS})
+
     message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found:")
     message(STATUS "  - libavformat: ${FFMPEG_libavformat_VERSION}")
     message(STATUS "  - libavcodec: ${FFMPEG_libavcodec_VERSION}")
     message(STATUS "  - libavutil: ${FFMPEG_libavutil_VERSION}")
     message(STATUS "  - libswscale: ${FFMPEG_libswscale_VERSION}")
     message(STATUS "  - libswresample: ${FFMPEG_libswresample_VERSION}")
-    message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
-    message(STATUS "  - FFMPEG_LDFLAGS: ${FFMPEG_LDFLAGS}")
     message(STATUS "  - FFMPEG_LINK_LIBRARIES: ${FFMPEG_LINK_LIBRARIES}")
 endif()
 
