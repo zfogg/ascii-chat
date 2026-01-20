@@ -283,38 +283,7 @@ asciichat_error_t options_update(void (*updater)(options_t *, void *), void *con
 }
 
 // ============================================================================
-// Convenience Setters
-// ============================================================================
-
-static void color_mode_updater(options_t *opts, void *context) {
-  terminal_color_mode_t *mode = (terminal_color_mode_t *)context;
-  opts->color_mode = *mode;
-}
-
-asciichat_error_t options_set_color_mode(terminal_color_mode_t mode) {
-  return options_update(color_mode_updater, &mode);
-}
-
-static void render_mode_updater(options_t *opts, void *context) {
-  render_mode_t *mode = (render_mode_t *)context;
-  opts->render_mode = *mode;
-}
-
-asciichat_error_t options_set_render_mode(render_mode_t mode) {
-  return options_update(render_mode_updater, &mode);
-}
-
-static void log_level_updater(options_t *opts, void *context) {
-  log_level_t *level = (log_level_t *)context;
-  opts->log_level = *level;
-}
-
-asciichat_error_t options_set_log_level(log_level_t level) {
-  return options_update(log_level_updater, &level);
-}
-
-// ============================================================================
-// Generic Option Setters (for fields not covered by specific setters)
+// Generic Option Setters
 // ============================================================================
 
 struct int_field_ctx {
@@ -333,6 +302,9 @@ static void int_field_updater(options_t *opts, void *context) {
   else if (strcmp(ctx->field_name, "speakers_index") == 0) opts->speakers_index = ctx->value;
   else if (strcmp(ctx->field_name, "acds_port") == 0) opts->acds_port = ctx->value;
   else if (strcmp(ctx->field_name, "fps") == 0) opts->fps = ctx->value;
+  else if (strcmp(ctx->field_name, "color_mode") == 0) opts->color_mode = (terminal_color_mode_t)ctx->value;
+  else if (strcmp(ctx->field_name, "render_mode") == 0) opts->render_mode = (render_mode_t)ctx->value;
+  else if (strcmp(ctx->field_name, "log_level") == 0) opts->log_level = (log_level_t)ctx->value;
 }
 
 asciichat_error_t options_set_int(const char *field_name, int value) {
@@ -345,7 +317,8 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
       strcmp(field_name, "max_clients") != 0 && strcmp(field_name, "compression_level") != 0 &&
       strcmp(field_name, "reconnect_attempts") != 0 && strcmp(field_name, "microphone_index") != 0 &&
       strcmp(field_name, "speakers_index") != 0 && strcmp(field_name, "acds_port") != 0 &&
-      strcmp(field_name, "fps") != 0) {
+      strcmp(field_name, "fps") != 0 && strcmp(field_name, "color_mode") != 0 &&
+      strcmp(field_name, "render_mode") != 0 && strcmp(field_name, "log_level") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }

@@ -814,36 +814,6 @@ asciichat_error_t options_set_double(const char *field_name, double value);
 asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context);
 
 /**
- * @brief Update color mode
- *
- * Thread-safe setter for color mode. Uses RCU update internally.
- *
- * @param mode New color mode
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_color_mode(terminal_color_mode_t mode);
-
-/**
- * @brief Update render mode
- *
- * Thread-safe setter for render mode. Uses RCU update internally.
- *
- * @param mode New render mode
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_render_mode(render_mode_t mode);
-
-/**
- * @brief Update log level
- *
- * Thread-safe setter for log level. Uses RCU update internally.
- *
- * @param level New log level
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_log_level(log_level_t level);
-
-/**
  * @brief Get terminal width (lock-free)
  *
  * Convenience function for common case. Equivalent to options_get()->width.
