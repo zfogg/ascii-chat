@@ -320,6 +320,7 @@ set(CORE_SRCS
     lib/options/presets.c          # Preset option configs (NEW)
     lib/options/parsers.c          # Custom enum parsers (NEW)
     lib/options/actions.c          # Action option callbacks (NEW)
+    lib/options/layout.c           # Two-column layout helpers (NEW)
     lib/version.c
     # Discovery Service core (reused by discovery-server executable and tests)
     lib/discovery/session.c
