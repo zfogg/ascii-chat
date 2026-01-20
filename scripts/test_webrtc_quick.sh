@@ -31,11 +31,12 @@ echo "Session: $SESSION_STRING"
 
 # Test WebRTC+STUN (5 second timeout)
 echo "[3/3] Testing WebRTC + STUN..."
-WEBCAM_DISABLED=1 timeout 5 ./build/bin/ascii-chat client "$SESSION_STRING" \
+timeout 5 ./build/bin/ascii-chat client "$SESSION_STRING" \
   --password "$PASSWORD" \
   --prefer-webrtc --stun-servers "stun:stun.ascii-chat.com:3478" \
   --webrtc-disable-turn \
   --acds-insecure --acds-server 135.181.27.224 --acds-port $ACDS_PORT \
+  --test-pattern \
   --snapshot --snapshot-delay 1 \
   --log-file /tmp/webrtc_test.log > /dev/null 2>&1 || true
 
