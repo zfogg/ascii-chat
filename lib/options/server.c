@@ -92,7 +92,19 @@ void usage_server(FILE *desc) {
 
   // Print USAGE header with color
   (void)fprintf(desc, "%sUSAGE:%s\n", log_level_color(LOG_COLOR_DEBUG), log_level_color(LOG_COLOR_RESET));
-  (void)fprintf(desc, "  %s [bind-address] [bind-address6] [options...]\n\n", config->program_name);
+
+  // Get color codes once to avoid rotating buffer issues
+  const char *magenta = log_level_color(LOG_COLOR_FATAL);
+  const char *green = log_level_color(LOG_COLOR_INFO);
+  const char *yellow = log_level_color(LOG_COLOR_WARN);
+  const char *reset = log_level_color(LOG_COLOR_RESET);
+
+  // Print USAGE line with colored components: binary (default), mode (magenta), args (green), options (yellow)
+  (void)fprintf(desc, "  ascii-chat %s%s%s [%sbind-address%s] [%sbind-address6%s] %s[options...]%s\n\n",
+      magenta, "server", reset,           // mode in magenta
+      green, reset,                       // bind-address args in green
+      green, reset,                       // bind-address6 args in green
+      yellow, reset);                     // [options...] in yellow
 
   // Detect terminal width for layout
   int term_width = 80;

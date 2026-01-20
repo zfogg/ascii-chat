@@ -6,6 +6,7 @@
  */
 
 #include "layout.h"
+#include "log/logging.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -21,17 +22,22 @@
 static void layout_print_colored_segment(FILE *stream, const char *seg) {
   if (!seg || !stream) return;
 
+  // Get color codes once to avoid rotating buffer issues
+  const char *magenta = log_level_color(LOG_COLOR_FATAL);
+  const char *cyan = log_level_color(LOG_COLOR_DEBUG);
+  const char *reset = log_level_color(LOG_COLOR_RESET);
+
   const char *sp = seg;
   while (*sp) {
     if (strncmp(sp, "default:", 8) == 0) {
-      fprintf(stream, "\033[35m");  // Magenta for "default:"
+      fprintf(stream, "%s", magenta);     // Magenta for "default:"
       fprintf(stream, "default:");
-      fprintf(stream, "\033[0m");   // Reset
+      fprintf(stream, "%s", reset);       // Reset
       sp += 8;
     } else if (strncmp(sp, "env:", 4) == 0) {
-      fprintf(stream, "\033[35m");  // Magenta for "env:"
+      fprintf(stream, "%s", magenta);     // Magenta for "env:"
       fprintf(stream, "env:");
-      fprintf(stream, "\033[0m");   // Reset
+      fprintf(stream, "%s", reset);       // Reset
       sp += 4;
       while (*sp == ' ') {
         fprintf(stream, " ");
@@ -42,9 +48,9 @@ static void layout_print_colored_segment(FILE *stream, const char *seg) {
       while (*sp && *sp != ')') sp++;
       if (sp > env_start) {
         // Print env var name in cyan
-        fprintf(stream, "\033[36m");  // Cyan for env var
+        fprintf(stream, "%s", cyan);      // Cyan for env var
         fprintf(stream, "%.*s", (int)(sp - env_start), env_start);
-        fprintf(stream, "\033[0m");   // Reset
+        fprintf(stream, "%s", reset);     // Reset
       }
     } else {
       fprintf(stream, "%c", *sp);
