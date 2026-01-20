@@ -70,7 +70,7 @@ set_target_properties(acds PROPERTIES
 # Install target (optional - for system-wide installation)
 install(TARGETS acds
     RUNTIME DESTINATION bin
-    COMPONENT discovery_server
+    COMPONENT discovery_service
 )
 
 message(STATUS "${Green}ACDS discovery server target configured${ColorReset}")

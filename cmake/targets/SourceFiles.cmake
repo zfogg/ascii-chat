@@ -310,7 +310,7 @@ set(CORE_SRCS
     lib/options/client.c
     lib/options/server.c
     lib/options/mirror.c
-    lib/options/discovery_server.c
+    lib/options/discovery_service.c
     lib/options/discovery.c           # Discovery mode options (Phase 3)
     lib/options/validation.c
     lib/options/levenshtein.c
@@ -322,7 +322,7 @@ set(CORE_SRCS
     lib/options/actions.c          # Action option callbacks (NEW)
     lib/options/layout.c           # Two-column layout helpers (NEW)
     lib/version.c
-    # Discovery Service core (reused by discovery-server executable and tests)
+    # Discovery Service core (reused by discovery-service executable and tests)
     lib/discovery/session.c
     lib/discovery/database.c
     lib/discovery/identity.c
@@ -413,10 +413,10 @@ set(APP_SRCS
     src/client/connection_attempt.c
     # Mirror mode sources
     src/mirror/main.c
-    # Discovery-server mode sources
-    src/discovery-server/main.c
-    src/discovery-server/server.c
-    src/discovery-server/signaling.c
+    # Discovery-service mode sources
+    src/discovery-service/main.c
+    src/discovery-service/server.c
+    src/discovery-service/signaling.c
     # Discovery mode sources (participant with dynamic host negotiation)
     src/discovery/main.c
 )

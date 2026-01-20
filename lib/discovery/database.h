@@ -14,7 +14,7 @@
 #include <sqlite3.h>
 #include "common.h"
 #include "discovery/session.h"
-#include "discovery-server/main.h"
+#include "discovery-service/main.h"
 #include "network/acip/acds.h"
 
 // ============================================================================

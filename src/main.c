@@ -25,7 +25,7 @@
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
-#include "discovery-server/main.h"
+#include "discovery-service/main.h"
 #include "discovery/main.h"
 
 // Common headers for version info and initialization
@@ -79,8 +79,8 @@ static const mode_descriptor_t g_mode_table[] = {
         .entry_point = mirror_main,
     },
     {
-        .name = "discovery-server",
-        .description = "Run discovery service for session management",
+        .name = "discovery-service",
+        .description = "Secure P2P session signalling",
         .entry_point = acds_main,
     },
     {.name = NULL, .description = NULL, .entry_point = NULL},
@@ -212,7 +212,7 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
         return m;
       break;
     case MODE_DISCOVERY_SERVER:
-      if (strcmp(m->name, "discovery-server") == 0)
+      if (strcmp(m->name, "discovery-service") == 0)
         return m;
       break;
     default:

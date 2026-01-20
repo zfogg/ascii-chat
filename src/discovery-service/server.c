@@ -12,11 +12,11 @@
  * - ACIP packet dispatch to session/signaling handlers
  */
 
-#include "discovery-server/server.h"
+#include "discovery-service/server.h"
 #include "discovery/database.h"
 #include "discovery/session.h"
 #include "discovery/nat.h"
-#include "discovery-server/signaling.h"
+#include "discovery-service/signaling.h"
 #include "network/acip/acds.h"
 #include "network/acip/acds_handlers.h"
 #include "network/acip/acds_client.h"

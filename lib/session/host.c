@@ -26,6 +26,7 @@
 #include "session/audio.h"
 #include "audio/opus_codec.h"
 #include "util/time.h"
+#include "video/ascii.h"
 
 #include <string.h>
 #include <time.h>
@@ -658,13 +659,75 @@ static void *host_render_thread(void *arg) {
 
     // VIDEO RENDERING (60 FPS = 16.7ms)
     if (time_elapsed_ns(last_video_render_ns, now_ns) >= NS_PER_MS_INT * 16) {
-      // Collect video frames from all participants (currently a placeholder)
-      // In production, this would:
-      // 1. Lock clients_mutex
-      // 2. Collect latest frame from each active client's incoming_video
-      // 3. Generate mixed ASCII frame using create_mixed_ascii_frame_for_client()
-      // 4. Broadcast to all participants via send_ascii_frame_packet()
-      log_debug_every(1000000, "Video render cycle");
+      // Collect video frames from all participants and create grid layout
+      mutex_lock(&host->clients_mutex);
+
+      // Count active participants with video
+      int active_video_count = 0;
+      for (int i = 0; i < host->max_clients; i++) {
+        if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
+          active_video_count++;
+        }
+      }
+
+      // If we have active participants, generate and broadcast grid
+      if (active_video_count > 0) {
+        // Allocate arrays for ASCII frames and sources
+        char **ascii_frames = SAFE_MALLOC(active_video_count * sizeof(char *), char **);
+        ascii_frame_source_t *sources = SAFE_MALLOC(active_video_count * sizeof(ascii_frame_source_t),
+                                                    ascii_frame_source_t *);
+
+        if (ascii_frames && sources) {
+          // Convert each incoming video frame to ASCII
+          int frame_idx = 0;
+          for (int i = 0; i < host->max_clients; i++) {
+            if (host->clients[i].active && host->clients[i].video_active &&
+                host->clients[i].incoming_video) {
+              image_t *img = host->clients[i].incoming_video;
+
+              // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
+              extern char g_default_luminance_palette[256];
+              ascii_frames[frame_idx] = ascii_convert(img, 80, 24, false, false, false, NULL,
+                                                     g_default_luminance_palette);
+              if (ascii_frames[frame_idx]) {
+                sources[frame_idx].frame_data = ascii_frames[frame_idx];
+                sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
+              } else {
+                sources[frame_idx].frame_data = "";
+                sources[frame_idx].frame_size = 1;
+              }
+              frame_idx++;
+            }
+          }
+
+          // Create grid layout from all ASCII frames
+          size_t grid_size = 0;
+          char *grid_frame = ascii_create_grid(sources, active_video_count, 80, 24, &grid_size);
+
+          if (grid_frame) {
+            // Broadcast grid to all participants
+            for (int i = 0; i < host->max_clients; i++) {
+              if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
+                packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, grid_frame, grid_size);
+              }
+            }
+            SAFE_FREE(grid_frame);
+          }
+
+          // Free ASCII frames
+          for (int i = 0; i < active_video_count; i++) {
+            if (ascii_frames[i]) {
+              SAFE_FREE(ascii_frames[i]);
+            }
+          }
+        }
+
+        SAFE_FREE(ascii_frames);
+        SAFE_FREE(sources);
+      }
+
+      mutex_unlock(&host->clients_mutex);
+      log_debug_every(1000000, "Video render cycle (%d active)", active_video_count);
       last_video_render_ns = now_ns;
     }
 

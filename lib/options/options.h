@@ -356,6 +356,18 @@
 /** @brief Default loop media flag (false = play once) */
 #define OPT_MEDIA_LOOP_DEFAULT false
 
+/** @brief Default STUN server URLs (comma-separated) */
+#define OPT_STUN_SERVERS_DEFAULT "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302"
+
+/** @brief Default TURN server URLs (comma-separated) */
+#define OPT_TURN_SERVERS_DEFAULT "turn:turn.ascii-chat.com:3478"
+
+/** @brief Default TURN server username */
+#define OPT_TURN_USERNAME_DEFAULT "ascii"
+
+/** @brief Default TURN server credential */
+#define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
+
 /** @{ @} */
 
 /**

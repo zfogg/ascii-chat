@@ -1,16 +1,16 @@
 /**
- * @file discovery_server.c
+ * @file discovery_service.c
  * @ingroup options
- * @brief Discovery server mode option parsing and help text
+ * @brief Discovery service mode option parsing and help text
  *
- * Discovery server-specific command-line argument parsing with support for:
+ * Discovery service-specific command-line argument parsing with support for:
  * - Dual-stack binding (0-2 IPv4/IPv6 addresses)
  * - Database configuration
  * - Identity key management
  * - Logging configuration
  */
 
-#include "options/discovery_server.h"
+#include "options/discovery_service.h"
 #include "options/builder.h"
 #include "options/common.h"
 #include "options/layout.h"
@@ -38,8 +38,8 @@
 // ACDS Option Parsing
 // ============================================================================
 
-asciichat_error_t parse_discovery_server_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_acds("ascii-chat discovery-server", "ascii-chat discovery service");
+asciichat_error_t parse_discovery_service_options(int argc, char **argv, options_t *opts) {
+  const options_config_t *config = options_preset_acds("ascii-chat discovery-service", "secure p2p session signalling");
   int remaining_argc;
   char **remaining_argv;
 
@@ -97,7 +97,7 @@ asciichat_error_t parse_discovery_server_options(int argc, char **argv, options_
 
 void usage_acds(FILE *desc) {
   // Get config with program name and description
-  const options_config_t *config = options_preset_acds("ascii-chat discovery-server", "ascii-chat discovery service");
+  const options_config_t *config = options_preset_acds("ascii-chat discovery-service", "secure p2p session signalling");
   if (!config) {
     (void)fprintf(desc, "Error: Failed to create options config\n");
     return;
@@ -116,8 +116,8 @@ void usage_acds(FILE *desc) {
 
   // Print USAGE line with colored components: binary (default), mode (magenta), options (yellow)
   (void)fprintf(desc, "  ascii-chat %s%s%s %s[options...]%s\n\n",
-      magenta, "discovery-server", reset_color,  // mode in magenta
-      yellow, reset_color);                       // [options...] in yellow
+      magenta, "discovery-service", reset_color,  // mode in magenta
+      yellow, reset_color);                        // [options...] in yellow
 
   // Detect terminal width for layout
   int term_width = 80;

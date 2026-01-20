@@ -15,7 +15,7 @@
 #include "options/client.h"
 #include "options/server.h"
 #include "options/mirror.h"
-#include "options/discovery_server.h"
+#include "options/discovery_service.h"
 #include "options/discovery.h"
 #include "options/validation.h"
 
@@ -71,7 +71,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-server", NULL};
+  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", NULL};
   const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
@@ -110,7 +110,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-server", NULL};
+  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", NULL};
   const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
@@ -450,7 +450,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     result = parse_mirror_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_DISCOVERY_SERVER:
-    result = parse_discovery_server_options(mode_argc, mode_argv, &opts);
+    result = parse_discovery_service_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_DISCOVERY:
     result = parse_discovery_options(mode_argc, mode_argv, &opts);

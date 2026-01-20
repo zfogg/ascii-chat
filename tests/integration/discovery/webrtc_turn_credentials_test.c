@@ -9,7 +9,7 @@
 
 #include "discovery/database.h"
 #include "discovery/session.h"
-#include "discovery-server/main.h"
+#include "discovery-service/main.h"
 #include "asciichat_errno.h"
 #include "network/acip/acds.h"
 #include "network/webrtc/turn_credentials.h"

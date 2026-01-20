@@ -16,8 +16,8 @@
 #include <sys/resource.h>
 #endif
 
-#include "discovery-server/main.h"
-#include "discovery-server/server.h"
+#include "discovery-service/main.h"
+#include "discovery-service/server.h"
 #include "discovery/identity.h"
 #include "discovery/strings.h"
 #include "common.h"
@@ -25,7 +25,7 @@
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
-#include "options/discovery_server.h"
+#include "options/discovery_service.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "util/path.h"

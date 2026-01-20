@@ -30,7 +30,7 @@
 #include "network/acip/acds.h"
 #include "options/options.h" // For MAX_IDENTITY_KEYS
 #include "thread_pool.h"
-#include "discovery-server/main.h"
+#include "discovery-service/main.h"
 #include "discovery/session.h" // For host_lost_candidate_t and MAX_PARTICIPANTS
 
 /**
