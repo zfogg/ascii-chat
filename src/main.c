@@ -263,8 +263,8 @@ static void print_usage(void) {
   layout_print_two_column_row(stdout, usage_buf, "Show options for a mode", max_col_width, term_width);
 
   printf("\n");
-  printf("%shttps://ascii-chat.com%s\n", CYAN, RESET);
-  printf("%shttps://github.com/zfogg/ascii-chat%s\n", CYAN, RESET);
+  printf("🔗 %shttps://ascii-chat.com%s\n", CYAN, RESET);
+  printf("🔗 %shttps://github.com/zfogg/ascii-chat%s\n", CYAN, RESET);
 }
 
 static void print_version(void) {
