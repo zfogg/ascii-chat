@@ -324,6 +324,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // Initialize terminal capabilities for proper color detection in help output
+  log_redetect_terminal_capabilities();
+
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
   if (strcmp(ASCII_CHAT_BUILD_TYPE, "Release") == 0) {
@@ -406,12 +409,8 @@ int main(int argc, char *argv[]) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
   caps = apply_color_mode_override(caps);
 
-  // Update the global terminal capabilities that log_level_color() uses
-  // This must be called before print_usage() so that logging colors are initialized
-  log_redetect_terminal_capabilities();
-
   // Handle --help and --version (these are detected and flagged by options_init)
-  // Must be after color detection so help text can be colored
+  // Terminal capabilities already initialized in main() at startup
   if (opts->help) {
     print_usage();
     return 0;
