@@ -170,12 +170,15 @@ image_t *media_source_read_video(media_source_t *source) {
 
   switch (source->type) {
   case MEDIA_SOURCE_WEBCAM:
-  case MEDIA_SOURCE_TEST:
     // Read from webcam
     if (source->webcam_ctx) {
       return webcam_read_context(source->webcam_ctx);
     }
     return NULL;
+
+  case MEDIA_SOURCE_TEST:
+    // Test pattern uses global webcam_read() which checks GET_OPTION(test_pattern)
+    return webcam_read();
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
