@@ -632,7 +632,7 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   b->description = description ? description : "session management and WebRTC signaling";
 
   // Action options (execute and exit)
-  options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "ACTIONS");
+  options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "GENERAL");
 
   // Network options
   // Note: Bind addresses are specified via positional arguments, not flags
@@ -706,9 +706,6 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
-
-  // Action options (execute and exit)
-  options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
 
   // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
   options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",

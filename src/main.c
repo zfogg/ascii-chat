@@ -96,41 +96,48 @@ static void print_usage(void) {
   const char *binary_name = "ascii-chat";
 #endif
 
-  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
-         ASCII_CHAT_DESCRIPTION_EMOJI_R);
+  // ANSI color codes
+  const char *BOLD = "\033[1m";
+  const char *CYAN = "\033[36m";
+  const char *GREEN = "\033[32m";
+  const char *YELLOW = "\033[33m";
+  const char *RESET = "\033[0m";
+
+  printf("%s ascii-chat - %s %s%s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
+         ASCII_CHAT_DESCRIPTION_EMOJI_R, RESET);
   printf("\n");
-  printf("USAGE:\n");
-  printf("  %s [options...]                       Start a new session\n", binary_name);
-  printf("  %s <session-string> [options...]      Join an existing session\n", binary_name);
-  printf("  %s <mode> [mode-options...]           Run in a specific mode\n", binary_name);
+  printf("%s%sUSAGE:%s\n", BOLD, CYAN, RESET);
+  printf("  %s%s%s [options...]                       Start a new session%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s%s%s <session-string> [options...]      Join an existing session%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s%s%s <mode> [mode-options...]           Run in a specific mode%s\n", GREEN, binary_name, RESET, RESET);
   printf("\n");
-  printf("EXAMPLES:\n");
-  printf("  %s                           Start new session (share the session string)\n", binary_name);
-  printf("  %s swift-river-mountain      Join session with session string\n", binary_name);
-  printf("  %s server                    Run as dedicated server\n", binary_name);
-  printf("  %s client example.com        Connect to specific server\n", binary_name);
-  printf("  %s mirror                    Preview local webcam as ASCII\n", binary_name);
+  printf("%s%sEXAMPLES:%s\n", BOLD, CYAN, RESET);
+  printf("  %s%s%s                           Start new session (share the session string)%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s%s%s swift-river-mountain      Join session with session string%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s%s%s server                    Run as dedicated server%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s%s%s client example.com        Connect to specific server%s\n", GREEN, binary_name, RESET, RESET);
+  printf("  %s%s%s mirror                    Preview local webcam as ASCII%s\n", GREEN, binary_name, RESET, RESET);
   printf("\n");
-  printf("OPTIONS:\n");
-  printf("  --help                       Show this help\n");
-  printf("  --version                    Show version information\n");
-  printf("  --config FILE                Load configuration from FILE\n");
-  printf("  --config-create [FILE]       Create default config and exit\n");
-  printf("  -L --log-file FILE           Redirect logs to FILE\n");
-  printf("  --log-level LEVEL            Set log level: dev, debug, info, warn, error, fatal\n");
-  printf("  -V --verbose                 Increase log verbosity (stackable: -VV, -VVV)\n");
-  printf("  -q --quiet                   Disable console logging (log to file only)\n");
+  printf("%s%sOPTIONS:%s\n", BOLD, CYAN, RESET);
+  printf("  %s--help%s                       Show this help\n", YELLOW, RESET);
+  printf("  %s--version%s                    Show version information\n", YELLOW, RESET);
+  printf("  %s--config FILE%s                Load configuration from FILE\n", YELLOW, RESET);
+  printf("  %s--config-create [FILE]%s       Create default config and exit\n", YELLOW, RESET);
+  printf("  %s-L --log-file FILE%s           Redirect logs to FILE\n", YELLOW, RESET);
+  printf("  %s--log-level LEVEL%s            Set log level: dev, debug, info, warn, error, fatal\n", YELLOW, RESET);
+  printf("  %s-V --verbose%s                 Increase log verbosity (stackable: -VV, -VVV)\n", YELLOW, RESET);
+  printf("  %s-q --quiet%s                   Disable console logging (log to file only)\n", YELLOW, RESET);
   printf("\n");
-  printf("MODES:\n");
+  printf("%s%sMODES:%s\n", BOLD, CYAN, RESET);
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    printf("  %-18s  %s\n", mode->name, mode->description);
+    printf("  %s%-18s%s  %s\n", GREEN, mode->name, RESET, mode->description);
   }
   printf("\n");
-  printf("MODE-OPTIONS:\n");
-  printf("  %s <mode> --help             Show options for a mode\n", binary_name);
+  printf("%s%sMODE-OPTIONS:%s\n", BOLD, CYAN, RESET);
+  printf("  %s%s%s <mode> --help             Show options for a mode%s\n", GREEN, binary_name, RESET, RESET);
   printf("\n");
-  printf("https://ascii-chat.com\n");
-  printf("https://github.com/zfogg/ascii-chat\n");
+  printf("%shttps://ascii-chat.com%s\n", CYAN, RESET);
+  printf("%shttps://github.com/zfogg/ascii-chat%s\n", CYAN, RESET);
 }
 
 static void print_version(void) {
@@ -218,17 +225,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Handle --help and --version (these are detected and flagged by options_init)
-  if (opts->help) {
-    print_usage();
-    return 0;
-  }
-
-  if (opts->version) {
-    print_version();
-    return 0;
-  }
-
   // Determine default log filename based on detected mode
   const char *default_log_filename;
   switch (opts->detected_mode) {
@@ -278,10 +274,25 @@ int main(int argc, char *argv[]) {
   bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
                                    opts->detected_mode == MODE_DISCOVERY);
 
+  // Detect terminal capabilities and apply color mode override for all output modes
+  // This must happen before --help/--version to ensure colored help text
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  caps = apply_color_mode_override(caps);
+
+  // Handle --help and --version (these are detected and flagged by options_init)
+  // Must be after color detection so help text can be colored
+  if (opts->help) {
+    print_usage();
+    return 0;
+  }
+
+  if (opts->version) {
+    print_version();
+    return 0;
+  }
+
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
   if (is_client_or_mirror_mode && opts->show_capabilities) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
-    caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
     return 0;
   }

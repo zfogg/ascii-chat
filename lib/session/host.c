@@ -153,6 +153,9 @@ struct session_host {
   /** @brief Opus decoder for decoding incoming Opus audio */
   opus_codec_t *opus_decoder;
 
+  /** @brief Opus encoder for encoding mixed audio for broadcast */
+  opus_codec_t *opus_encoder;
+
   /** @brief Context is initialized */
   bool initialized;
 };
@@ -496,22 +499,82 @@ static void *receive_loop_thread(void *arg) {
 
       // Process packet based on type
       uint32_t client_id = host->clients[i].client_id;
+      socket_t client_socket = host->clients[i].socket;
       mutex_unlock(&host->clients_mutex);
 
       switch (ptype) {
       case PACKET_TYPE_IMAGE_FRAME:
-        // Client sent a video frame - convert to image and invoke callback
-        if (host->callbacks.on_frame_received && data && len > 0) {
-          // TODO: Parse frame data and create image_t, invoke callback
-          log_debug_every(500000, "Frame received from client %u (size=%zu)", client_id, len);
+        // Client sent a video frame - parse and store in incoming buffer
+        if (data && len >= sizeof(image_frame_packet_t)) {
+          const image_frame_packet_t *frame_hdr = (const image_frame_packet_t *)data;
+          const uint8_t *pixel_data = (const uint8_t *)data + sizeof(image_frame_packet_t);
+          size_t pixel_data_size = len - sizeof(image_frame_packet_t);
+
+          // Find client and store frame in incoming_video buffer
+          mutex_lock(&host->clients_mutex);
+          for (int j = 0; j < host->max_clients; j++) {
+            if (host->clients[j].client_id == client_id && host->clients[j].incoming_video) {
+              // Store frame in the image buffer
+              image_t *img = host->clients[j].incoming_video;
+              if (img->w == (int)frame_hdr->width && img->h == (int)frame_hdr->height) {
+                // Copy pixel data (RGB format)
+                size_t expected_size = (size_t)frame_hdr->width * frame_hdr->height * 3;
+                if (pixel_data_size >= expected_size) {
+                  memcpy(img->pixels, pixel_data, expected_size);
+                  log_debug_every(500000, "Frame received from client %u (%ux%u)",
+                                 client_id, frame_hdr->width, frame_hdr->height);
+                }
+              }
+              break;
+            }
+          }
+          mutex_unlock(&host->clients_mutex);
         }
         break;
 
-      case PACKET_TYPE_AUDIO:
-        // Client sent audio data - invoke callback
-        if (host->callbacks.on_audio_received && data && len > 0) {
-          // TODO: Parse audio data, invoke callback
-          log_debug_every(1000000, "Audio received from client %u (size=%zu)", client_id, len);
+      case PACKET_TYPE_AUDIO_OPUS_BATCH:
+        // Client sent Opus-encoded audio batch
+        if (data && len > 16) {  // Must have at least header
+          const uint8_t *batch_data = (const uint8_t *)data;
+          // Parse header: sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
+          (void)batch_data[0];  // Avoid unused variable warning if we don't use sample_rate/frame_duration
+          uint32_t batch_frame_count = *(const uint32_t *)(batch_data + 8);
+
+          if (batch_frame_count > 0 && batch_frame_count <= 1000) {
+            const uint16_t *frame_sizes = (const uint16_t *)(batch_data + 16);
+            const uint8_t *opus_frames = batch_data + 16 + (batch_frame_count * sizeof(uint16_t));
+
+            // Find client and decode audio
+            mutex_lock(&host->clients_mutex);
+            for (int j = 0; j < host->max_clients; j++) {
+              if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio &&
+                  host->opus_decoder) {
+                // Decode each Opus frame and write to ringbuffer
+                const uint8_t *current_frame = opus_frames;
+                for (uint32_t k = 0; k < batch_frame_count; k++) {
+                  uint16_t frame_size = frame_sizes[k];
+                  if (frame_size > 0) {
+                    // Allocate buffer for decoded samples
+                    float decoded_samples[960];  // Max 20ms @ 48kHz
+                    int decoded_count = opus_codec_decode(host->opus_decoder, current_frame,
+                                                         (int)frame_size, decoded_samples,
+                                                         960);
+                    if (decoded_count > 0) {
+                      // Write samples to ringbuffer one at a time
+                      for (int s = 0; s < decoded_count; s++) {
+                        ringbuffer_write(host->clients[j].incoming_audio, &decoded_samples[s]);
+                      }
+                    }
+                  }
+                  current_frame += frame_size;
+                }
+                log_debug_every(1000000, "Audio batch received from client %u (%u frames)",
+                               client_id, batch_frame_count);
+                break;
+              }
+            }
+            mutex_unlock(&host->clients_mutex);
+          }
         }
         break;
 
@@ -542,7 +605,7 @@ static void *receive_loop_thread(void *arg) {
       case PACKET_TYPE_PING:
         // Respond with PONG
         log_debug_every(1000000, "PING from client %u", client_id);
-        // TODO: Send PONG response
+        packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
         break;
 
       case PACKET_TYPE_CLIENT_LEAVE:
@@ -595,18 +658,69 @@ static void *host_render_thread(void *arg) {
 
     // VIDEO RENDERING (60 FPS = 16.7ms)
     if (time_elapsed_ns(last_video_render_ns, now_ns) >= NS_PER_MS_INT * 16) {
-      // TODO: Collect video frames from all participants
-      // TODO: Generate mixed ASCII frame using create_mixed_ascii_frame_for_client()
-      // TODO: Broadcast frame to all participants via send_ascii_frame_packet()
+      // Collect video frames from all participants (currently a placeholder)
+      // In production, this would:
+      // 1. Lock clients_mutex
+      // 2. Collect latest frame from each active client's incoming_video
+      // 3. Generate mixed ASCII frame using create_mixed_ascii_frame_for_client()
+      // 4. Broadcast to all participants via send_ascii_frame_packet()
       log_debug_every(1000000, "Video render cycle");
       last_video_render_ns = now_ns;
     }
 
     // AUDIO RENDERING (100 FPS = 10ms)
     if (time_elapsed_ns(last_audio_render_ns, now_ns) >= NS_PER_MS_INT * 10) {
-      // TODO: Mix audio from all participants
-      // TODO: Encode with Opus
-      // TODO: Broadcast mixed audio via av_send_audio_opus_batch()
+      // Mix audio from all participants
+      // 1. Read samples from each participant's incoming_audio ringbuffer
+      // 2. Mix into output buffer (simple addition with clipping)
+      // 3. Encode with Opus
+      // 4. Broadcast mixed audio via av_send_audio_opus_batch()
+
+      if (host->audio_ctx && host->opus_encoder) {
+        float mixed_audio[960];  // 20ms @ 48kHz
+        memset(mixed_audio, 0, sizeof(mixed_audio));
+
+        // Lock clients mutex to safely read audio buffers
+        mutex_lock(&host->clients_mutex);
+        for (int i = 0; i < host->max_clients; i++) {
+          if (!host->clients[i].active || !host->clients[i].audio_active) {
+            continue;
+          }
+
+          if (!host->clients[i].incoming_audio) {
+            continue;
+          }
+
+          // Read audio samples one-by-one from this participant's ringbuffer
+          // ringbuffer_read() reads one element (1 float) per call
+          for (int j = 0; j < 960; j++) {
+            float sample = 0.0f;
+            if (ringbuffer_read(host->clients[i].incoming_audio, &sample)) {
+              // Successfully read a sample
+              mixed_audio[j] += sample;
+              // Clip to [-1.0, 1.0] to prevent distortion
+              if (mixed_audio[j] > 1.0f) {
+                mixed_audio[j] = 1.0f;
+              } else if (mixed_audio[j] < -1.0f) {
+                mixed_audio[j] = -1.0f;
+              }
+            }
+            // If ringbuffer is empty, sample remains 0.0f and that's fine
+          }
+        }
+        mutex_unlock(&host->clients_mutex);
+
+        // Encode to Opus
+        uint8_t opus_buffer[1000];
+        size_t opus_len = opus_codec_encode(host->opus_encoder, mixed_audio, 960, opus_buffer, sizeof(opus_buffer));
+
+        if (opus_len > 0) {
+          // Broadcast mixed audio to all participants
+          uint16_t frame_sizes[1] = { (uint16_t)opus_len };
+          av_send_audio_opus_batch(host->socket_v4, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
+        }
+      }
+
       log_debug_every(1000000, "Audio render cycle");
       last_audio_render_ns = now_ns;
     }
@@ -923,9 +1037,24 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
     return SET_ERRNO(ERROR_INVALID_STATE, "session_host_broadcast_frame: not running");
   }
 
-  // TODO: Implement actual broadcast using network packet sending
+  // Broadcast ASCII frame to all connected clients
+  size_t frame_len = strlen(frame) + 1;  // Include null terminator
+  asciichat_error_t result = ASCIICHAT_OK;
 
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "session_host_broadcast_frame: not implemented yet");
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
+      asciichat_error_t send_result = packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME,
+                                                  (const void *)frame, frame_len);
+      if (send_result != ASCIICHAT_OK) {
+        log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
+        result = send_result;  // Store error but continue broadcasting to other clients
+      }
+    }
+  }
+  mutex_unlock(&host->clients_mutex);
+
+  return result;
 }
 
 asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_id, const char *frame) {
@@ -937,11 +1066,22 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
     return SET_ERRNO(ERROR_INVALID_STATE, "session_host_send_frame: not running");
   }
 
-  // TODO: Implement actual send using network packet sending
+  // Send ASCII frame to specific client
+  size_t frame_len = strlen(frame) + 1;  // Include null terminator
 
-  (void)client_id; // Suppress unused warning until implemented
+  mutex_lock(&host->clients_mutex);
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].client_id == client_id && host->clients[i].active &&
+        host->clients[i].socket != INVALID_SOCKET_VALUE) {
+      asciichat_error_t result = packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME,
+                                             (const void *)frame, frame_len);
+      mutex_unlock(&host->clients_mutex);
+      return result;
+    }
+  }
+  mutex_unlock(&host->clients_mutex);
 
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "session_host_send_frame: not implemented yet");
+  return SET_ERRNO(ERROR_NOT_FOUND, "session_host_send_frame: client %u not found", client_id);
 }
 
 /* ============================================================================
@@ -976,6 +1116,18 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
       session_audio_destroy(host->audio_ctx);
       host->audio_ctx = NULL;
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus decoder");
+    }
+  }
+
+  // Create Opus encoder for encoding mixed audio for broadcast (48kHz, VOIP mode, 24kbps)
+  if (!host->opus_encoder) {
+    host->opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+    if (!host->opus_encoder) {
+      opus_codec_destroy(host->opus_decoder);
+      host->opus_decoder = NULL;
+      session_audio_destroy(host->audio_ctx);
+      host->audio_ctx = NULL;
+      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus encoder");
     }
   }
 
@@ -1014,6 +1166,10 @@ void session_host_stop_render(session_host_t *host) {
   if (host->opus_decoder) {
     opus_codec_destroy(host->opus_decoder);
     host->opus_decoder = NULL;
+  }
+  if (host->opus_encoder) {
+    opus_codec_destroy(host->opus_encoder);
+    host->opus_encoder = NULL;
   }
 
   log_info("Host render thread stopped");

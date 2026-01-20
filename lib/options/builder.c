@@ -1229,13 +1229,186 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Format a string with logging color codes if appropriate
+ * Uses rotating static buffers to handle multiple calls in same statement
+ */
+static const char *colored_string(log_color_t color, const char *text) {
+  #define COLORED_BUFFERS 4
+  #define COLORED_BUFFER_SIZE 256
+  static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
+  static int buffer_idx = 0;
+
+  // Check if we should use colors: TTY output and not in CLAUDECODE mode
+  bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
+
+  if (!text) {
+    return "";
+  }
+
+  if (!use_colors) {
+    // No colors, just return the text directly
+    return text;
+  }
+
+  // Use rotating buffer to handle multiple calls in same fprintf
+  char *current_buf = buffers[buffer_idx];
+  buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
+
+  const char *color_code = log_level_color(color);
+  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+
+  // Format into rotating static buffer: color_code + text + reset_code
+  snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
+  return current_buf;
+}
+
+/**
+ * @brief Print text segment with colored metadata labels
+ * Colorizes "default:" labels and "env:" labels with cyan env var names
+ */
+static void print_colored_segment(FILE *stream, const char *seg) {
+  const char *sp = seg;
+  while (*sp) {
+    if (strncmp(sp, "default:", 8) == 0) {
+      fprintf(stream, "%s", colored_string(LOG_COLOR_FATAL, "default:"));
+      sp += 8;
+    } else if (strncmp(sp, "env:", 4) == 0) {
+      fprintf(stream, "%s", colored_string(LOG_COLOR_FATAL, "env:"));
+      sp += 4;
+      while (*sp == ' ') {
+        fprintf(stream, " ");
+        sp++;
+      }
+      const char *env_start = sp;
+      while (*sp && *sp != ')') sp++;
+      if (sp > env_start) {
+        char env_name[256];
+        int len = sp - env_start;
+        if (len < (int)sizeof(env_name)) {
+          strncpy(env_name, env_start, len);
+          env_name[len] = '\0';
+          fprintf(stream, "%s", colored_string(LOG_COLOR_DEBUG, env_name));  // Cyan for env var
+        }
+      }
+    } else {
+      fputc(*sp, stream);
+      sp++;
+    }
+  }
+}
+
+/**
+ * @brief Word-wrap description text to fit in terminal width
+ * Wraps plain text, then applies colors to metadata labels
+ */
+static void print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width) {
+  if (!text || !stream)
+    return;
+
+  // Default terminal width if not specified
+  if (term_width <= 0)
+    term_width = 80;
+
+  // Available width for text after indentation
+  int available_width = term_width - indent_width;
+  if (available_width < 20)
+    available_width = 20;
+
+  const char *line_start = text;
+  const char *last_space = NULL;
+  int line_len = 0;
+  const char *p = text;
+
+  while (*p) {
+    if (*p == ' ')
+      last_space = p;
+
+    line_len++;
+
+    // Check if we need to wrap
+    if (line_len >= available_width || *p == '\n') {
+      // Find previous space if we exceeded width
+      if (*p != '\n' && line_len >= available_width && last_space && last_space > line_start) {
+        // Print text up to last space with colors applied
+        int text_len = last_space - line_start;
+        char seg[512];
+        strncpy(seg, line_start, text_len);
+        seg[text_len] = '\0';
+        print_colored_segment(stream, seg);
+
+        fprintf(stream, "\n");
+        for (int i = 0; i < indent_width; i++)
+          fprintf(stream, " ");
+        p = last_space + 1;
+        line_start = p;
+        line_len = 0;
+        last_space = NULL;
+        continue;
+      }
+
+      if (*p == '\n') {
+        // Print remaining segment with colors
+        int text_len = p - line_start;
+        if (text_len > 0) {
+          char seg[512];
+          strncpy(seg, line_start, text_len);
+          seg[text_len] = '\0';
+          print_colored_segment(stream, seg);
+        }
+
+        fprintf(stream, "\n");
+        if (*(p + 1)) {
+          for (int i = 0; i < indent_width; i++)
+            fprintf(stream, " ");
+        }
+        p++;
+        line_start = p;
+        line_len = 0;
+        last_space = NULL;
+        continue;
+      }
+    }
+
+    p++;
+  }
+
+  // Print remaining text with colors
+  if (line_start < p) {
+    char seg[512];
+    int text_len = p - line_start;
+    if (text_len < (int)sizeof(seg)) {
+      strncpy(seg, line_start, text_len);
+      seg[text_len] = '\0';
+      print_colored_segment(stream, seg);
+    }
+  }
+}
+
 void options_config_print_usage(const options_config_t *config, FILE *stream) {
   if (!config || !stream)
     return;
 
-  // Print header
+  // Detect terminal width from COLUMNS env var or use default
+  int term_width = 80;
+  const char *cols_env = SAFE_GETENV("COLUMNS");
+  if (cols_env) {
+    int cols = atoi(cols_env);
+    if (cols > 40)
+      term_width = cols;
+  }
+
+  // Column layout: options in first 28 chars, descriptions start at column 30
+  #define OPTION_COLUMN_WIDTH 28
+  #define DESCRIPTION_START_COL 30
+  #define NARROW_TERMINAL_THRESHOLD 55
+
+  // Print header with colors
   if (config->program_name) {
-    fprintf(stream, "USAGE: %s [OPTIONS]\n\n", config->program_name);
+    fprintf(stream, "%s %s %s\n\n",
+            colored_string(LOG_COLOR_DEBUG, "USAGE:"),
+            config->program_name,
+            colored_string(LOG_COLOR_INFO, "[OPTIONS]"));
   }
   if (config->description) {
     fprintf(stream, "%s\n\n", config->description);
@@ -1243,6 +1416,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
 
   // Group options by group name
   const char *current_group = NULL;
+  bool use_vertical_layout = (term_width < NARROW_TERMINAL_THRESHOLD);
 
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
@@ -1254,85 +1428,120 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
 
     // Print group header if changed
     if (desc->group && (!current_group || strcmp(current_group, desc->group) != 0)) {
-      fprintf(stream, "\n%s:\n", desc->group);
+      fprintf(stream, "\n%s:\n", colored_string(LOG_COLOR_DEBUG, desc->group));
       current_group = desc->group;
     }
 
-    // Print option
-    fprintf(stream, "  ");
+    // Build option string
+    char option_str[256] = "";
+    int option_len = 0;
+
+    // Short name and long name
     if (desc->short_name) {
-      fprintf(stream, "-%c, ", desc->short_name);
+      option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "-%c, --%s", desc->short_name, desc->long_name);
     } else {
-      fprintf(stream, "    ");
+      option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "--%s", desc->long_name);
     }
 
-    fprintf(stream, "--%s", desc->long_name);
-
-    // Print value placeholder
+    // Value placeholder
     if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-      fprintf(stream, " ");
+      option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
       switch (desc->type) {
       case OPTION_TYPE_INT:
-        fprintf(stream, "NUM");
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
         break;
       case OPTION_TYPE_STRING:
-        fprintf(stream, "STR");
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "STR");
         break;
       case OPTION_TYPE_DOUBLE:
-        fprintf(stream, "NUM");
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
         break;
       case OPTION_TYPE_CALLBACK:
-        fprintf(stream, "VAL");
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "VAL");
         break;
       default:
         break;
       }
     }
 
-    // Print description
+    // Build description string (plain text, colors applied when printing)
+    char desc_str[512] = "";
+    int desc_len = 0;
+
     if (desc->help_text) {
-      fprintf(stream, "  %s", desc->help_text);
+      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
     }
 
-    // Print default if exists
     if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK) {
-      fprintf(stream, " (default: ");
+      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
       switch (desc->type) {
       case OPTION_TYPE_BOOL:
-        fprintf(stream, "%s", *(const bool *)desc->default_value ? "true" : "false");
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                            *(const bool *)desc->default_value ? "true" : "false");
         break;
       case OPTION_TYPE_INT: {
         int int_val = 0;
         memcpy(&int_val, desc->default_value, sizeof(int));
-        fprintf(stream, "%d", int_val);
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%d", int_val);
         break;
       }
       case OPTION_TYPE_STRING:
-        fprintf(stream, "%s", *(const char *const *)desc->default_value);
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                            *(const char *const *)desc->default_value);
         break;
       case OPTION_TYPE_DOUBLE: {
         double double_val = 0.0;
         memcpy(&double_val, desc->default_value, sizeof(double));
-        fprintf(stream, "%.2f", double_val);
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%.2f", double_val);
         break;
       }
       default:
         break;
       }
-      fprintf(stream, ")");
+      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
     }
 
-    // Mark as required
     if (desc->required) {
-      fprintf(stream, " [REQUIRED]");
+      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
     }
 
-    // Print env var
     if (desc->env_var_name) {
-      fprintf(stream, " (env: %s)", desc->env_var_name);
+      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)", desc->env_var_name);
     }
 
-    fprintf(stream, "\n");
+    // For narrow terminals, use vertical layout
+    if (use_vertical_layout) {
+      fprintf(stream, "  %s\n", colored_string(LOG_COLOR_WARN, option_str));
+      fprintf(stream, "  ");
+      print_wrapped_description(stream, desc_str, 2, term_width);
+      fprintf(stream, "\n\n");
+    } else {
+      // Print option and description with proper alignment
+      fprintf(stream, "  %s", colored_string(LOG_COLOR_WARN, option_str));
+
+      // If option string is short enough, put description on same line
+      if (option_len < OPTION_COLUMN_WIDTH) {
+        // Pad to column 30, then print description with wrapping
+        int current_col = 2 + option_len; // 2 for leading spaces
+        int padding = DESCRIPTION_START_COL - current_col;
+        if (padding > 0) {
+          fprintf(stream, "%*s", padding, "");
+        } else {
+          fprintf(stream, " ");
+        }
+        // Print description with wrapping at column 30 indent
+        print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
+        fprintf(stream, "\n");
+      } else {
+        // Option string too long, put description on next line with proper indent
+        fprintf(stream, "\n");
+        // Print indent for description column
+        for (int i = 0; i < DESCRIPTION_START_COL; i++)
+          fprintf(stream, " ");
+        print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
+        fprintf(stream, "\n");
+      }
+    }
   }
 
   fprintf(stream, "\n");
