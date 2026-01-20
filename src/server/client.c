@@ -1414,9 +1414,16 @@ void *client_send_thread_func(void *arg) {
     return NULL;
   }
 
-  // Additional validation: check socket is valid
-  if (client->socket == INVALID_SOCKET_VALUE) {
-    log_error("Invalid client socket in send thread");
+  // Additional validation: check socket OR transport is valid
+  // For TCP clients: socket is valid
+  // For WebRTC clients: socket is INVALID_SOCKET_VALUE but transport is valid
+  mutex_lock(&client->send_mutex);
+  bool has_socket = (client->socket != INVALID_SOCKET_VALUE);
+  bool has_transport = (client->transport != NULL);
+  mutex_unlock(&client->send_mutex);
+
+  if (!has_socket && !has_transport) {
+    log_error("Invalid client connection in send thread (no socket or transport)");
     return NULL;
   }
 

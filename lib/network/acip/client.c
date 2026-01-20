@@ -81,6 +81,8 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
     envelope.allocated_size = packet_len;
     envelope.was_encrypted = false; // WebRTC currently doesn't support encryption in this path
 
+    log_info("WebRTC received packet: type=%u, len=%u, total_size=%zu", envelope.type, envelope.len, packet_len);
+
     // Validate packet length
     if (envelope.len != packet_len - sizeof(packet_header_t)) {
       buffer_pool_free(NULL, allocated_buffer, packet_len);
@@ -92,6 +94,12 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
   // Dispatch packet to appropriate ACIP handler
   asciichat_error_t dispatch_result =
       acip_handle_client_packet(transport, envelope.type, envelope.data, envelope.len, callbacks);
+
+  if (dispatch_result != ASCIICHAT_OK) {
+    log_error("Packet dispatch failed for type %u: error %d", envelope.type, dispatch_result);
+  } else {
+    log_debug("Packet type %u dispatched successfully", envelope.type);
+  }
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {

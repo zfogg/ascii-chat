@@ -498,8 +498,11 @@ void webrtc_close_datachannel(webrtc_data_channel_t *dc) {
     return;
   }
 
-  rtcDeleteDataChannel(dc->rtc_id);
-  log_debug("Closed DataChannel (dc_id=%d)", dc->rtc_id);
+  // Save the ID before freeing (dc might be partially freed already)
+  int dc_id = dc->rtc_id;
+
+  rtcDeleteDataChannel(dc_id);
+  log_debug("Closed DataChannel (dc_id=%d)", dc_id);
 
   SAFE_FREE(dc);
 }
