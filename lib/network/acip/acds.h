@@ -41,6 +41,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "options/options.h"
 #include "network/packet.h"
 #include "network/acip/protocol.h"
 #include "network/webrtc/stun.h"
@@ -785,11 +786,11 @@ typedef enum {
 /** @brief Session expiration time (24 hours in milliseconds) */
 #define ACIP_SESSION_EXPIRATION_MS (24ULL * 60 * 60 * 1000)
 
-/** @brief Discovery server default port */
-#define ACIP_DISCOVERY_DEFAULT_PORT 27225
+/** @brief Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h) */
+#define ACIP_DISCOVERY_DEFAULT_PORT OPT_ACDS_PORT_INT_DEFAULT
 
-/** @brief Default port for discovery mode hosts */
-#define ACIP_HOST_DEFAULT_PORT 27224
+/** @brief Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from options.h) */
+#define ACIP_HOST_DEFAULT_PORT OPT_PORT_INT_DEFAULT
 
 /** @} */
 

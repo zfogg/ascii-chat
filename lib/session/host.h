@@ -352,4 +352,37 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
 
 /** @} */
 
+/* ============================================================================
+ * Session Host Render Thread Functions
+ * @{
+ */
+
+/**
+ * @brief Start media rendering thread (video mixing and audio distribution)
+ * @param host Host handle (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Starts the render thread which collects video frames from all participants,
+ * generates mixed ASCII frames, and broadcasts them to all clients. Also handles
+ * audio mixing and distribution.
+ *
+ * @note The host must be running before starting the render thread.
+ * @note Call session_host_stop_render() to stop the thread.
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_host_start_render(session_host_t *host);
+
+/**
+ * @brief Stop media rendering thread
+ * @param host Host handle (must not be NULL)
+ *
+ * Gracefully stops the render thread and cleans up audio resources.
+ *
+ * @ingroup session
+ */
+void session_host_stop_render(session_host_t *host);
+
+/** @} */
+
 /** @} */

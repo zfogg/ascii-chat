@@ -15,6 +15,7 @@
 
 #include "participant.h"
 #include "common.h"
+#include "options/options.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "platform/thread.h"
@@ -136,7 +137,7 @@ session_participant_t *session_participant_create(const session_participant_conf
     SAFE_STRNCPY(p->address, "127.0.0.1", sizeof(p->address));
   }
 
-  p->port = config->port > 0 ? config->port : 27224;
+  p->port = config->port > 0 ? config->port : OPT_PORT_INT_DEFAULT;
   p->encryption_enabled = config->encryption_enabled;
 
   if (config->password) {

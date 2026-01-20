@@ -7,6 +7,7 @@
 #include "session.h"
 
 #include "common.h"
+#include "options/options.h"
 #include "log/logging.h"
 #include "network/acip/acds.h"
 #include "network/acip/send.h"
@@ -555,9 +556,12 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
   case DISCOVERY_STATE_STARTING_HOST: {
     // Start hosting
     if (!session->host_ctx) {
-      // Create host context
+      // Create host context with configured port
+      const char *port_str = GET_OPTION(port);
+      int host_port = (port_str && port_str[0] != '\0') ? atoi(port_str) : OPT_PORT_INT_DEFAULT;
+
       session_host_config_t hconfig = {
-          .port = 27224,  // TODO: Use configured port from options
+          .port = host_port,
           .ipv4_address = "0.0.0.0",
           .max_clients = 32,
           .encryption_enabled = true,
@@ -921,13 +925,17 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   log_info("Starting as new host after migration (participant ID: %02x%02x...)",
            session->participant_id[0], session->participant_id[1]);
 
+  // Get configured port (or use default)
+  const char *port_str = GET_OPTION(port);
+  int host_port = (port_str && port_str[0] != '\0') ? atoi(port_str) : OPT_PORT_INT_DEFAULT;
+
   // Mark ourselves as host
   session->is_host = true;
 
-  // Create host context if needed
+  // Create host context if needed with configured port
   if (!session->host_ctx) {
     session_host_config_t hconfig = {
-        .port = 27224,  // TODO: Use configured port from options
+        .port = host_port,
         .ipv4_address = "0.0.0.0",
         .max_clients = 32,
         .encryption_enabled = true,
@@ -946,7 +954,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
       return hstart;
     }
 
-    log_info("Host restarted after migration, listening on port 27224");
+    log_info("Host restarted after migration, listening on port %d", host_port);
   }
 
   // Send HOST_ANNOUNCEMENT to ACDS so other participants can reconnect
@@ -955,7 +963,7 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   memcpy(announcement.host_id, session->participant_id, 16);
   SAFE_STRNCPY(announcement.host_address, "127.0.0.1", sizeof(announcement.host_address));
   // TODO: Use actual determined host address instead of 127.0.0.1
-  announcement.host_port = 27224; // TODO: Use configured port
+  announcement.host_port = host_port;
   announcement.connection_type = ACIP_CONNECTION_TYPE_DIRECT_PUBLIC;
   // TODO: Use actual connection type based on NAT quality
 

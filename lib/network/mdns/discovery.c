@@ -564,7 +564,7 @@ void discovery_config_init_defaults(discovery_config_t *config) {
   strncpy(config->acds_server, "127.0.0.1", sizeof(config->acds_server) - 1);
 #endif
 
-  config->acds_port = 27225;
+  config->acds_port = OPT_ACDS_PORT_INT_DEFAULT;
   config->mdns_timeout_ms = 2000;
   config->acds_timeout_ms = 5000;
   config->insecure_mode = false;

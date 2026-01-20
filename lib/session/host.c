@@ -15,11 +15,17 @@
 
 #include "host.h"
 #include "common.h"
+#include "options/options.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "platform/mutex.h"
+#include "platform/thread.h"
 #include "log/logging.h"
 #include "network/packet.h"
+#include "ringbuffer.h"
+#include "session/audio.h"
+#include "audio/opus_codec.h"
+#include "util/time.h"
 
 #include <string.h>
 #include <time.h>
@@ -57,6 +63,12 @@ typedef struct {
   bool video_active;
   bool audio_active;
   uint64_t connected_at;
+
+  /** @brief Incoming video frame buffer (for host render thread) */
+  image_t *incoming_video;
+
+  /** @brief Incoming audio ringbuffer (written by receive loop, read by render thread) */
+  ringbuffer_t *incoming_audio;
 } session_host_client_t;
 
 /* ============================================================================
@@ -129,6 +141,18 @@ struct session_host {
   /** @brief Receive thread is running */
   bool receive_thread_running;
 
+  /** @brief Render thread handle (for video mixing and audio distribution) */
+  asciichat_thread_t render_thread;
+
+  /** @brief Render thread is running */
+  bool render_thread_running;
+
+  /** @brief Audio context for mixing (host only) */
+  session_audio_ctx_t *audio_ctx;
+
+  /** @brief Opus decoder for decoding incoming Opus audio */
+  opus_codec_t *opus_decoder;
+
   /** @brief Context is initialized */
   bool initialized;
 };
@@ -147,7 +171,7 @@ session_host_t *session_host_create(const session_host_config_t *config) {
   session_host_t *host = SAFE_CALLOC(1, sizeof(session_host_t), session_host_t *);
 
   // Copy configuration
-  host->port = config->port > 0 ? config->port : 27224;
+  host->port = config->port > 0 ? config->port : OPT_PORT_INT_DEFAULT;
   host->max_clients = config->max_clients > 0 ? config->max_clients : SESSION_HOST_DEFAULT_MAX_CLIENTS;
   host->encryption_enabled = config->encryption_enabled;
 
@@ -203,6 +227,16 @@ void session_host_destroy(session_host_t *host) {
     session_host_stop(host);
   }
 
+  // Clean up audio resources
+  if (host->audio_ctx) {
+    session_audio_destroy(host->audio_ctx);
+    host->audio_ctx = NULL;
+  }
+  if (host->opus_decoder) {
+    opus_codec_destroy(host->opus_decoder);
+    host->opus_decoder = NULL;
+  }
+
   // Close sockets
   if (host->socket_v4 != INVALID_SOCKET_VALUE) {
     socket_close(host->socket_v4);
@@ -213,8 +247,18 @@ void session_host_destroy(session_host_t *host) {
     host->socket_v6 = INVALID_SOCKET_VALUE;
   }
 
-  // Free client array
+  // Free client array and per-client resources
   if (host->clients) {
+    for (int i = 0; i < host->max_clients; i++) {
+      if (host->clients[i].incoming_video) {
+        image_destroy(host->clients[i].incoming_video);
+        host->clients[i].incoming_video = NULL;
+      }
+      if (host->clients[i].incoming_audio) {
+        ringbuffer_destroy(host->clients[i].incoming_audio);
+        host->clients[i].incoming_audio = NULL;
+      }
+    }
     SAFE_FREE(host->clients);
   }
 
@@ -525,6 +569,56 @@ static void *receive_loop_thread(void *arg) {
   return NULL;
 }
 
+/**
+ * @brief Host render thread - mixes media and broadcasts to participants
+ *
+ * DESIGN: Reuses patterns from server/render.c
+ * - Collects video frames from all participants (60 FPS)
+ * - Broadcasts mixed ASCII frame to all participants
+ * - Mixes audio from all participants (100 FPS)
+ * - Broadcasts mixed audio to all participants
+ */
+static void *host_render_thread(void *arg) {
+  session_host_t *host = (session_host_t *)arg;
+  if (!host) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "host_render_thread: invalid host");
+    return NULL;
+  }
+
+  log_info("Host render thread started");
+
+  uint64_t last_video_render_ns = 0;
+  uint64_t last_audio_render_ns = 0;
+
+  while (host->render_thread_running && host->running) {
+    uint64_t now_ns = time_get_ns();
+
+    // VIDEO RENDERING (60 FPS = 16.7ms)
+    if (time_elapsed_ns(last_video_render_ns, now_ns) >= NS_PER_MS_INT * 16) {
+      // TODO: Collect video frames from all participants
+      // TODO: Generate mixed ASCII frame using create_mixed_ascii_frame_for_client()
+      // TODO: Broadcast frame to all participants via send_ascii_frame_packet()
+      log_debug_every(1000000, "Video render cycle");
+      last_video_render_ns = now_ns;
+    }
+
+    // AUDIO RENDERING (100 FPS = 10ms)
+    if (time_elapsed_ns(last_audio_render_ns, now_ns) >= NS_PER_MS_INT * 10) {
+      // TODO: Mix audio from all participants
+      // TODO: Encode with Opus
+      // TODO: Broadcast mixed audio via av_send_audio_opus_batch()
+      log_debug_every(1000000, "Audio render cycle");
+      last_audio_render_ns = now_ns;
+    }
+
+    // Small sleep to prevent busy-loop
+    platform_sleep_ms(1);
+  }
+
+  log_info("Host render thread stopped");
+  return NULL;
+}
+
 asciichat_error_t session_host_start(session_host_t *host) {
   if (!host || !host->initialized) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start: invalid host");
@@ -580,6 +674,8 @@ asciichat_error_t session_host_start(session_host_t *host) {
     return SET_ERRNO(ERROR_THREAD, "Failed to spawn receive loop thread");
   }
 
+  // Spawn render thread (optional - can be started later)
+  // This thread handles video mixing and audio distribution
   return ASCIICHAT_OK;
 }
 
@@ -588,7 +684,14 @@ void session_host_stop(session_host_t *host) {
     return;
   }
 
-  // Stop receive loop thread first (reads from client sockets)
+  // Stop render thread if running
+  if (host->render_thread_running) {
+    host->render_thread_running = false;
+    asciichat_thread_join(&host->render_thread, NULL);
+    log_info("Render thread joined");
+  }
+
+  // Stop receive loop thread (reads from client sockets)
   if (host->receive_thread_running) {
     host->receive_thread_running = false;
     asciichat_thread_join(&host->receive_thread, NULL);
@@ -675,6 +778,26 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].audio_active = false;
       host->clients[i].connected_at = (uint64_t)time(NULL);
 
+      // Allocate media buffers
+      host->clients[i].incoming_video = image_new(480, 270);  // Network-optimal size (HD preview)
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10);  // ~200ms buffer @ 48kHz
+
+      if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
+        // Cleanup on allocation failure
+        if (host->clients[i].incoming_video) {
+          image_destroy(host->clients[i].incoming_video);
+          host->clients[i].incoming_video = NULL;
+        }
+        if (host->clients[i].incoming_audio) {
+          ringbuffer_destroy(host->clients[i].incoming_audio);
+          host->clients[i].incoming_audio = NULL;
+        }
+        host->clients[i].active = false;
+        mutex_unlock(&host->clients_mutex);
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate media buffers for client");
+        return 0;
+      }
+
       uint32_t client_id = host->clients[i].client_id;
       host->client_count++;
 
@@ -713,6 +836,16 @@ asciichat_error_t session_host_remove_client(session_host_t *host, uint32_t clie
       if (host->clients[i].socket != INVALID_SOCKET_VALUE) {
         socket_close(host->clients[i].socket);
         host->clients[i].socket = INVALID_SOCKET_VALUE;
+      }
+
+      // Clean up media buffers
+      if (host->clients[i].incoming_video) {
+        image_destroy(host->clients[i].incoming_video);
+        host->clients[i].incoming_video = NULL;
+      }
+      if (host->clients[i].incoming_audio) {
+        ringbuffer_destroy(host->clients[i].incoming_audio);
+        host->clients[i].incoming_audio = NULL;
       }
 
       host->clients[i].active = false;
@@ -809,4 +942,79 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   (void)client_id; // Suppress unused warning until implemented
 
   return SET_ERRNO(ERROR_NOT_SUPPORTED, "session_host_send_frame: not implemented yet");
+}
+
+/* ============================================================================
+ * Session Host Render Thread Functions
+ * ============================================================================ */
+
+asciichat_error_t session_host_start_render(session_host_t *host) {
+  if (!host || !host->initialized) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session_host_start_render: invalid host");
+  }
+
+  if (!host->running) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "session_host_start_render: not running");
+  }
+
+  if (host->render_thread_running) {
+    return ASCIICHAT_OK;  // Already running
+  }
+
+  // Create audio context for mixing (host mode = true)
+  if (!host->audio_ctx) {
+    host->audio_ctx = session_audio_create(true);
+    if (!host->audio_ctx) {
+      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create audio context");
+    }
+  }
+
+  // Create Opus decoder for decoding incoming Opus audio (48kHz)
+  if (!host->opus_decoder) {
+    host->opus_decoder = opus_codec_create_decoder(48000);
+    if (!host->opus_decoder) {
+      session_audio_destroy(host->audio_ctx);
+      host->audio_ctx = NULL;
+      return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create Opus decoder");
+    }
+  }
+
+  // Spawn render thread
+  host->render_thread_running = true;
+  if (asciichat_thread_create(&host->render_thread, host_render_thread, host) != 0) {
+    log_error("Failed to spawn render thread");
+    host->render_thread_running = false;
+    return SET_ERRNO(ERROR_THREAD, "Failed to spawn render thread");
+  }
+
+  log_info("Host render thread started");
+  return ASCIICHAT_OK;
+}
+
+void session_host_stop_render(session_host_t *host) {
+  if (!host || !host->initialized) {
+    return;
+  }
+
+  if (!host->render_thread_running) {
+    return;
+  }
+
+  // Signal thread to stop
+  host->render_thread_running = false;
+
+  // Wait for thread to complete
+  asciichat_thread_join(&host->render_thread, NULL);
+
+  // Clean up audio resources
+  if (host->audio_ctx) {
+    session_audio_destroy(host->audio_ctx);
+    host->audio_ctx = NULL;
+  }
+  if (host->opus_decoder) {
+    opus_codec_destroy(host->opus_decoder);
+    host->opus_decoder = NULL;
+  }
+
+  log_info("Host render thread stopped");
 }

@@ -71,7 +71,7 @@ void options_builder_add_logging_group(options_builder_t *b) {
                                         NULL,
                                         true); // optional_arg = true
 
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), OPT_QUIET_DEFAULT,
                            "Disable console logging (log to file only)", "LOGGING", false, NULL);
 }
 
@@ -102,7 +102,7 @@ void options_builder_add_webcam_group(options_builder_t *b) {
   options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
                            "Flip webcam horizontally", "WEBCAM", false, NULL);
 
-  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
+  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), OPT_TEST_PATTERN_DEFAULT,
                            "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
 }
 
@@ -130,16 +130,16 @@ void options_builder_add_display_group(options_builder_t *b) {
                                sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
                                "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
+  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), OPT_SHOW_CAPABILITIES_DEFAULT,
                            "Show terminal capabilities and exit", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
+  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), OPT_FORCE_UTF8_DEFAULT, "Force UTF-8 support", "DISPLAY",
                            false, NULL);
 
-  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
+  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), OPT_STRETCH_DEFAULT, "Allow aspect ratio distortion",
                            "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
+  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), OPT_STRIP_ANSI_DEFAULT, "Strip ANSI escape sequences",
                            "DISPLAY", false, NULL);
 
   options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
@@ -151,7 +151,7 @@ void options_builder_add_display_group(options_builder_t *b) {
  * Used by: client, mirror modes
  */
 void options_builder_add_snapshot_group(options_builder_t *b) {
-  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
+  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), OPT_SNAPSHOT_MODE_DEFAULT,
                            "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
 
   options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
@@ -171,7 +171,7 @@ void options_builder_add_compression_group(options_builder_t *b) {
                           OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
                           NULL);
 
-  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
+  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), OPT_NO_COMPRESS_DEFAULT, "Disable compression",
                            "PERFORMANCE", false, NULL);
 
   options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
@@ -191,7 +191,7 @@ void options_builder_add_compression_group(options_builder_t *b) {
  * Note: Server has client-keys, client has server-key
  */
 void options_builder_add_crypto_group(options_builder_t *b) {
-  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), OPT_ENCRYPT_ENABLED_DEFAULT, "Enable encryption",
                            "SECURITY", false, NULL);
 
   options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
@@ -203,7 +203,7 @@ void options_builder_add_crypto_group(options_builder_t *b) {
   options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
                              "SECURITY", false, NULL, NULL);
 
-  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
+  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), OPT_NO_ENCRYPT_DEFAULT, "Disable encryption",
                            "SECURITY", false, NULL);
 }
 
@@ -236,7 +236,7 @@ void options_builder_add_acds_group(options_builder_t *b) {
       b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-server.ascii-chat.com",
       "ACDS discovery server address (default: discovery-server.ascii-chat.com)", "DISCOVERY", false, NULL, NULL);
 
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery server port",
                           "DISCOVERY", false, NULL, NULL);
 
   options_builder_add_string(
@@ -277,7 +277,7 @@ void options_builder_add_media_group(options_builder_t *b) {
  * Used by: client, discovery modes
  */
 void options_builder_add_audio_group(options_builder_t *b) {
-  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), false, "Enable audio streaming",
+  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), OPT_AUDIO_ENABLED_DEFAULT, "Enable audio streaming",
                            "AUDIO", false, NULL);
 
   options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
@@ -287,16 +287,16 @@ void options_builder_add_audio_group(options_builder_t *b) {
   options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
                           "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
 
-  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity), 1.0,
+  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity), OPT_MICROPHONE_SENSITIVITY_DEFAULT,
                              "Microphone volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
 
-  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume), 1.0,
+  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume), OPT_SPEAKERS_VOLUME_DEFAULT,
                              "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
 
-  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled), false,
+  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled), OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT,
                            "Enable audio analysis (debug)", "AUDIO", false, NULL);
 
-  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback), false,
+  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback), OPT_AUDIO_NO_PLAYBACK_DEFAULT,
                            "Disable speaker playback (debug)", "AUDIO", false, NULL);
 }
 
@@ -636,7 +636,7 @@ const options_config_t *options_preset_acds(const char *program_name, const char
 
   // Network options
   // Note: Bind addresses are specified via positional arguments, not flags
-  options_builder_add_port_option(b, "27225", "ACDS_PORT");
+  options_builder_add_port_option(b, OPT_ACDS_PORT_DEFAULT, "ACDS_PORT");
 
   // ACDS-specific options
   options_builder_add_string(b, "key", 'k', offsetof(options_t, acds_key_path), "",
