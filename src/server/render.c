@@ -366,13 +366,10 @@ void *client_video_render_thread(void *arg) {
   // CRITICAL: Use atomic_load for client_id to prevent data races
   uint32_t thread_client_id = atomic_load(&client->client_id);
   socket_t thread_socket = client->socket;
+  bool is_webrtc = (thread_socket == INVALID_SOCKET_VALUE);
+  (void)is_webrtc; // May be unused in release builds
 
-  log_debug("Video render thread: client_id=%u", thread_client_id);
-
-  if (thread_socket == INVALID_SOCKET_VALUE) {
-    log_error("Invalid socket in video render thread for client %u", thread_client_id);
-    return NULL;
-  }
+  log_debug("Video render thread: client_id=%u, webrtc=%d", thread_client_id, is_webrtc);
 
   // Get client's desired FPS from capabilities or use default
   int client_fps = VIDEO_RENDER_FPS; // Default to 60 FPS
@@ -658,7 +655,7 @@ void *client_video_render_thread(void *arg) {
 void *client_audio_render_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
 
-  if (!client || client->socket == INVALID_SOCKET_VALUE) {
+  if (!client) {
     log_error("Invalid client info in audio render thread");
     return NULL;
   }
@@ -667,6 +664,8 @@ void *client_audio_render_thread(void *arg) {
   // CRITICAL: Use atomic_load for client_id to prevent data races
   uint32_t thread_client_id = atomic_load(&client->client_id);
   char thread_display_name[64];
+  bool is_webrtc = (client->socket == INVALID_SOCKET_VALUE);
+  (void)is_webrtc; // May be unused in release builds
 
   // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
   // We already have a stable client pointer
@@ -675,7 +674,8 @@ void *client_audio_render_thread(void *arg) {
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_debug("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
+  log_debug("Audio render thread started for client %u (%s), webrtc=%d", thread_client_id, thread_display_name,
+            is_webrtc);
 #endif
 
   // Mix buffer: up to 960 samples for adaptive reading
@@ -1112,19 +1112,8 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   // Create video rendering thread (stop_id=2, stop after receive thread)
   char thread_name[64];
   snprintf(thread_name, sizeof(thread_name), "video_render_%u", client->client_id);
-
-  asciichat_error_t video_result;
-  // For WebRTC clients: use direct thread creation (no socket)
-  // For TCP clients: use tcp_server_spawn_thread (includes socket tracking)
-  if (client->socket == INVALID_SOCKET_VALUE) {
-    // WebRTC client - use direct thread creation
-    video_result = asciichat_thread_create(&client->video_render_thread, client_video_render_thread, client);
-  } else {
-    // TCP client - use TCP server thread management
-    video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_video_render_thread, client,
-                                           2, thread_name);
-  }
-
+  asciichat_error_t video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
+                                                           client_video_render_thread, client, 2, thread_name);
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
     atomic_store(&client->video_render_thread_running, false);
@@ -1134,29 +1123,15 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
 
   // Create audio rendering thread (stop_id=2, same priority as video)
   snprintf(thread_name, sizeof(thread_name), "audio_render_%u", client->client_id);
-
-  asciichat_error_t audio_result;
-  if (client->socket == INVALID_SOCKET_VALUE) {
-    // WebRTC client - use direct thread creation
-    audio_result = asciichat_thread_create(&client->audio_render_thread, client_audio_render_thread, client);
-  } else {
-    // TCP client - use TCP server thread management
-    audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_audio_render_thread, client,
-                                           2, thread_name);
-  }
-
+  asciichat_error_t audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
+                                                           client_audio_render_thread, client, 2, thread_name);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store(&client->video_render_thread_running, false);
     // Reset audio flag since thread creation failed
     atomic_store(&client->audio_render_thread_running, false);
-
-    // For WebRTC clients: join the video thread we just created
-    // For TCP clients: tcp_server_stop_client_threads() will be called by remove_client()
-    if (client->socket == INVALID_SOCKET_VALUE) {
-      asciichat_thread_join(&client->video_render_thread, NULL);
-    }
-
+    // tcp_server_stop_client_threads() will be called by remove_client()
+    // to clean up the video thread we just created
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
