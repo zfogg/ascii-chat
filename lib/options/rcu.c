@@ -286,23 +286,6 @@ asciichat_error_t options_update(void (*updater)(options_t *, void *), void *con
 // Convenience Setters
 // ============================================================================
 
-// Helper struct for passing multiple params to updater
-struct dimensions_update_ctx {
-  int width;
-  int height;
-};
-
-static void dimensions_updater(options_t *opts, void *context) {
-  struct dimensions_update_ctx *ctx = (struct dimensions_update_ctx *)context;
-  opts->width = ctx->width;
-  opts->height = ctx->height;
-}
-
-asciichat_error_t options_set_dimensions(int width, int height) {
-  struct dimensions_update_ctx ctx = {.width = width, .height = height};
-  return options_update(dimensions_updater, &ctx);
-}
-
 static void color_mode_updater(options_t *opts, void *context) {
   terminal_color_mode_t *mode = (terminal_color_mode_t *)context;
   opts->color_mode = *mode;

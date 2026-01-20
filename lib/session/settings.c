@@ -199,9 +199,10 @@ asciichat_error_t session_settings_apply_to_options(const session_settings_t *se
 
   // Update dimensions if specified
   if (settings->width > 0 && settings->height > 0) {
-    asciichat_error_t result = options_set_dimensions((int)settings->width, (int)settings->height);
-    if (result != ASCIICHAT_OK) {
-      log_warn("Failed to apply dimension settings: %d", result);
+    asciichat_error_t width_result = options_set_int("width", (int)settings->width);
+    asciichat_error_t height_result = options_set_int("height", (int)settings->height);
+    if (width_result != ASCIICHAT_OK || height_result != ASCIICHAT_OK) {
+      log_warn("Failed to apply dimension settings: width=%d, height=%d", width_result, height_result);
     }
   }
 

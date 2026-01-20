@@ -55,7 +55,8 @@
  * });
  *
  * // Option 2: Direct field update helpers
- * options_set_dimensions(160, 60);
+ * options_set_int("width", 160);
+ * options_set_int("height", 60);
  * ```
  *
  * ### Bulk Updates (Single Allocation)

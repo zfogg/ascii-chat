@@ -226,7 +226,12 @@ static void sigwinch_handler(int sigwinch) {
   // Terminal was resized, update dimensions and recalculate aspect ratio
   // ONLY if both width and height are auto (not manually set)
   if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
-    update_dimensions_to_terminal_size((options_t *)options_get());
+    // Get terminal size and update via proper RCU setters
+    unsigned short int term_width, term_height;
+    if (get_terminal_size(&term_width, &term_height) == ASCIICHAT_OK) {
+      options_set_int("width", (int)term_width);
+      options_set_int("height", (int)term_height);
+    }
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
@@ -779,7 +784,7 @@ int client_main(void) {
                               ? discovered_address
                               : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
     const char *port_str =
-        discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : "27224");
+        discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : OPT_PORT_DEFAULT);
     int port = atoi(port_str);
 
     // Update connection context with current attempt number
@@ -792,7 +797,7 @@ int client_main(void) {
     }
     int acds_port = GET_OPTION(acds_port);
     if (acds_port <= 0 || acds_port > 65535) {
-      acds_port = 27225; // Fallback to default ACDS port
+      acds_port = OPT_ACDS_PORT_INT_DEFAULT;
     }
 
     // Attempt connection with 3-stage fallback (TCP → STUN → TURN)

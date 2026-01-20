@@ -814,17 +814,6 @@ asciichat_error_t options_set_double(const char *field_name, double value);
 asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context);
 
 /**
- * @brief Update terminal dimensions
- *
- * Thread-safe setter for width/height. Uses RCU update internally.
- *
- * @param width New terminal width in characters
- * @param height New terminal height in characters
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_dimensions(int width, int height);
-
-/**
  * @brief Update color mode
  *
  * Thread-safe setter for color mode. Uses RCU update internally.
