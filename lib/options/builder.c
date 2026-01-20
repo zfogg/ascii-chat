@@ -1454,17 +1454,6 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   #define DESCRIPTION_START_COL 30
   #define NARROW_TERMINAL_THRESHOLD 55
 
-  // Print header with colors
-  if (config->program_name) {
-    fprintf(stream, "%s %s %s\n\n",
-            colored_string(LOG_COLOR_DEBUG, "USAGE:"),
-            config->program_name,
-            colored_string(LOG_COLOR_INFO, "[OPTIONS]"));
-  }
-  if (config->description) {
-    fprintf(stream, "%s\n\n", config->description);
-  }
-
   // Build list of unique groups in order of first appearance
   bool use_vertical_layout = (term_width < NARROW_TERMINAL_THRESHOLD);
 
