@@ -340,7 +340,7 @@ asciichat_error_t discovery_keys_clear_cache(const char *acds_server) {
 // ============================================================================
 
 asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
-                                          const uint8_t new_pubkey[32]) {
+                                               const uint8_t new_pubkey[32]) {
   if (!acds_server || !old_pubkey || !new_pubkey) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_verify_change");
   }

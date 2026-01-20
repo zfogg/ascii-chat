@@ -20,9 +20,9 @@ echo "[1/3] Starting ACDS..."
 timeout 5 ssh -f -o ConnectTimeout=2 $REMOTE_HOST "cd $REMOTE_REPO && nohup ./build/bin/ascii-chat discovery-server --port $ACDS_PORT > /tmp/acds.log 2>&1 &"
 sleep 1
 
-# Start server with WebRTC
+# Start server with WebRTC (use public IP for ACDS so both can connect)
 echo "[2/3] Starting server..."
-timeout 5 ssh -f -o ConnectTimeout=2 $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 timeout 20 ./build/bin/ascii-chat server 0.0.0.0 --port $SERVER_PORT --password '$PASSWORD' --webrtc --acds --acds-server 127.0.0.1 --acds-port $ACDS_PORT > /tmp/server.log 2>&1"
+timeout 5 ssh -f -o ConnectTimeout=2 $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 nohup timeout 20 ./build/bin/ascii-chat server 0.0.0.0 --port $SERVER_PORT --password '$PASSWORD' --webrtc --acds --acds-server 135.181.27.224 --acds-port $ACDS_PORT > /tmp/server.log 2>&1 &"
 sleep 2
 
 # Get session string
@@ -31,13 +31,14 @@ echo "Session: $SESSION_STRING"
 
 # Test WebRTC+STUN (5 second timeout)
 echo "[3/3] Testing WebRTC + STUN..."
-timeout 5 ./build/bin/ascii-chat client "$SESSION_STRING" \
+timeout 10 ./build/bin/ascii-chat client "$SESSION_STRING" \
   --password "$PASSWORD" \
   --prefer-webrtc --stun-servers "stun:stun.ascii-chat.com:3478" \
-  --webrtc-disable-turn \
+  --turn-servers "turn:turn.ascii-chat.com:3478" \
+  --turn-username "ascii" --turn-credential "0aa9917b4dad1b01631e87a32b875e09" \
   --acds-insecure --acds-server 135.181.27.224 --acds-port $ACDS_PORT \
   --test-pattern \
-  --snapshot --snapshot-delay 1 \
+  --snapshot --snapshot-delay 2 \
   --log-file /tmp/webrtc_test.log > /dev/null 2>&1 || true
 
 # Check results

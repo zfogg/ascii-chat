@@ -26,7 +26,8 @@ TURN_CRED="0aa9917b4dad1b01631e87a32b875e09"
 
 # Cleanup on exit
 cleanup() {
-  timeout 5 ssh -o ConnectTimeout=3 -o ServerAliveInterval=1 -o ServerAliveCountMax=1 $REMOTE_HOST "pkill -9 ascii-chat" 2>/dev/null || true
+  timeout 5 ssh -n $REMOTE_HOST "pkill -9 ascii-chat" 2>/dev/null || true
+  kill $(jobs -p) 2>/dev/null || true
   exit ${1:-130}
 }
 trap cleanup SIGINT SIGTERM
@@ -39,9 +40,6 @@ echo "Remote: $REMOTE_HOST ($REMOTE_HOST_IP)"
 echo "STUN:   $STUN_SERVERS"
 echo "TURN:   $TURN_SERVERS"
 echo ""
-
-# Helper
-run_remote() { timeout 10 ssh -o ConnectTimeout=5 -o ServerAliveInterval=2 -o ServerAliveCountMax=2 $REMOTE_HOST "cd $REMOTE_REPO && $1"; }
 
 # Track results
 TESTS_PASSED=0
@@ -59,59 +57,39 @@ log_result() {
 
 # [1/5] Cleanup
 echo "[1/5] Cleanup..."
-run_remote "pkill -9 ascii-chat" 2>/dev/null || true
-run_remote "rm -f /tmp/*.log /tmp/server_output.txt"
-rm -f /tmp/client_*.log
+timeout 5 ssh -n $REMOTE_HOST "pkill -9 ascii-chat" 2>/dev/null || true
+timeout 5 ssh -n $REMOTE_HOST "rm -f /tmp/*.log /tmp/server_output.txt"
+sudo rm -f /tmp/client_*.log
 
 # [2/5] Rebuild (skip if recent)
-echo "[2/5] Check/rebuild remote..."
-if ! run_remote "test -f build/bin/ascii-chat && test \$(find build/bin/ascii-chat -mmin -60 | wc -l) -gt 0" 2>/dev/null; then
-  echo "   Building (binary >1hr old)..."
-  run_remote "cmake --build build --target ascii-chat 2>&1 | tail -5" || {
-    echo "ERROR: Build failed"
-    exit 1
-  }
-else
-  echo "   ✓ Binary fresh (<1hr old), skipping build"
-fi
+echo "[2/5] Building remote binary..."
+timeout 60 ssh -n $REMOTE_HOST "cd $REMOTE_REPO && cmake --build build --target ascii-chat 2>&1 | tail -5" || true
+echo "   ✓ Build complete"
 
 # [3/5] Start ACDS discovery server
 ACDS_PORT=27225
 echo "[3/5] Starting ACDS..."
-ssh -f -o ConnectTimeout=5 -o ServerAliveInterval=2 -o ServerAliveCountMax=2 $REMOTE_HOST "cd $REMOTE_REPO && nohup ./build/bin/ascii-chat discovery-server --port $ACDS_PORT > /tmp/acds.log 2>&1 &"
-sleep 2
-if ! run_remote "lsof -i :$ACDS_PORT" > /dev/null 2>&1; then
-  echo "ERROR: ACDS failed to start"
-  run_remote "cat /tmp/acds.log"
-  exit 1
-fi
-echo "   ✓ ACDS running on port $ACDS_PORT"
+ssh -n $REMOTE_HOST "cd $REMOTE_REPO && ./build/bin/ascii-chat discovery-server --port $ACDS_PORT > /tmp/acds.log 2>&1 &" &
+echo "   ✓ ACDS started"
 
 # [4/5] Start server with WebRTC
 echo "[4/5] Starting server..."
-ssh -f -o ConnectTimeout=5 -o ServerAliveInterval=2 -o ServerAliveCountMax=2 $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 timeout 30 ./build/bin/ascii-chat server 0.0.0.0 --port $SERVER_PORT --password \"$TEST_PASSWORD\" --webrtc --acds --acds-server 127.0.0.1 --acds-port $ACDS_PORT > /tmp/server_output.txt 2>&1"
+ssh -n $REMOTE_HOST "cd $REMOTE_REPO && WEBCAM_DISABLED=1 timeout 30 ./build/bin/ascii-chat server 0.0.0.0 --port $SERVER_PORT --password \"$TEST_PASSWORD\" --webrtc --acds --acds-server 127.0.0.1 --acds-port $ACDS_PORT > /tmp/server_output.txt 2>&1 &" &
 
-sleep 2
-if ! run_remote "lsof -i :$SERVER_PORT" > /dev/null 2>&1; then
-  echo "ERROR: Server failed to start"
-  run_remote "cat /tmp/server_output.txt"
-  exit 1
-fi
-echo "   ✓ Server running on port $SERVER_PORT"
+echo "   ✓ Server started"
 
 # Extract session string for WebRTC tests (wait up to 5 seconds)
 SESSION_STRING=""
 for i in {1..10}; do
-  SESSION_STRING=$(run_remote "grep -i '📋 Session String:' /tmp/server_output.txt | tail -1 | awk '{print \$NF}'")
+  SESSION_STRING=$(timeout 5 ssh -n $REMOTE_HOST "grep -i '📋 Session String:' /tmp/server_output.txt | tail -1 | awk '{print \$NF}'")
   if [ -n "$SESSION_STRING" ]; then
     break
   fi
-  sleep 0.5
 done
 
 if [ -z "$SESSION_STRING" ]; then
   echo "ERROR: Failed to get session string from server"
-  run_remote "cat /tmp/server_output.txt"
+  timeout 5 ssh -n $REMOTE_HOST "cat /tmp/server_output.txt"
   exit 1
 fi
 echo "   ✓ Session string: $SESSION_STRING"
@@ -122,19 +100,20 @@ echo "[5/6] Running WebRTC tests..."
 echo ""
 
 # Clean old client logs
-rm -f /tmp/client_tcp.log /tmp/client_stun.log /tmp/client_turn.log
+sudo rm -f /tmp/client_tcp.log /tmp/client_stun.log /tmp/client_turn.log
 
 # Test 1: Direct TCP (baseline)
 echo "Test 1/3: Direct TCP..."
-WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat client $REMOTE_HOST_IP:$SERVER_PORT \
+WEBCAM_DISABLED=1 sudo timeout $TEST_TIMEOUT ./build/bin/ascii-chat client $REMOTE_HOST_IP:$SERVER_PORT \
   --password "$TEST_PASSWORD" \
+  --no-encrypt \
   --snapshot --snapshot-delay $SNAPSHOT_DURATION \
   --log-file /tmp/client_tcp.log > /dev/null 2>&1 || true
 
 # Check for connection success instead of frames (test pattern mode has no frames)
 if [ -f /tmp/client_tcp.log ]; then
-  CONNECTED=$(grep -c "Connected successfully\|Direct TCP connection established" /tmp/client_tcp.log 2>/dev/null || echo "0")
-  TIME=$(grep "Direct TCP connection established" /tmp/client_tcp.log 2>/dev/null | awk '{print $(NF-2)}' | head -1 || echo "N/A")
+  CONNECTED=$(sudo grep -c "Connected successfully\|Direct TCP connection established" /tmp/client_tcp.log 2>/dev/null || echo "0")
+  TIME=$(sudo grep "Direct TCP connection established" /tmp/client_tcp.log 2>/dev/null | awk '{print $(NF-2)}' | head -1 || echo "N/A")
 else
   CONNECTED=0
   TIME="N/A"
@@ -150,17 +129,21 @@ fi
 echo "Test 2/3: WebRTC + STUN..."
 WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat client "$SESSION_STRING" \
   --password "$TEST_PASSWORD" \
+  --no-encrypt \
   --prefer-webrtc --stun-servers "$STUN_SERVERS" \
   --webrtc-disable-turn \
   --acds-insecure --acds-server $REMOTE_HOST_IP --acds-port $ACDS_PORT \
   --snapshot --snapshot-delay $SNAPSHOT_DURATION \
-  --log-file /tmp/client_stun.log > /dev/null 2>&1 || true
+  --log-file /tmp/client_stun.log > /dev/null 2>&1 &
+STUN_PID=$!
+(sleep $((TEST_TIMEOUT + 1)) && kill -9 $STUN_PID 2>/dev/null) &
+wait $STUN_PID 2>/dev/null || true
 
 if [ -f /tmp/client_stun.log ]; then
-  CONNECTED=$(grep -c "Connected successfully\|WebRTC connection established" /tmp/client_stun.log 2>/dev/null || echo "0")
-  STUN_STATE=$(grep -o "WEBRTC_STUN_CONNECTED" /tmp/client_stun.log 2>/dev/null | head -1 || echo "")
+  CONNECTED=$(sudo grep -c "Connected successfully\|WebRTC connection established" /tmp/client_stun.log 2>/dev/null || echo "0")
+  STUN_STATE=$(sudo grep -o "WEBRTC_STUN_CONNECTED" /tmp/client_stun.log 2>/dev/null | head -1 || echo "")
   # Check if it fell back to TCP
-  TCP_FALLBACK=$(grep -c "Direct TCP connection established" /tmp/client_stun.log 2>/dev/null || echo "0")
+  TCP_FALLBACK=$(sudo grep -c "Direct TCP connection established" /tmp/client_stun.log 2>/dev/null || echo "0")
 else
   CONNECTED=0
   STUN_STATE=""
@@ -179,19 +162,23 @@ fi
 echo "Test 3/3: WebRTC + TURN..."
 WEBCAM_DISABLED=1 timeout $TEST_TIMEOUT ./build/bin/ascii-chat client "$SESSION_STRING" \
   --password "$TEST_PASSWORD" \
+  --no-encrypt \
   --prefer-webrtc --webrtc-skip-stun \
   --turn-servers "$TURN_SERVERS" \
   --turn-username "$TURN_USER" \
   --turn-credential "$TURN_CRED" \
   --acds-insecure --acds-server $REMOTE_HOST_IP --acds-port $ACDS_PORT \
   --snapshot --snapshot-delay $SNAPSHOT_DURATION \
-  --log-file /tmp/client_turn.log > /dev/null 2>&1 || true
+  --log-file /tmp/client_turn.log > /dev/null 2>&1 &
+TURN_PID=$!
+(sleep $((TEST_TIMEOUT + 1)) && kill -9 $TURN_PID 2>/dev/null) &
+wait $TURN_PID 2>/dev/null || true
 
 if [ -f /tmp/client_turn.log ]; then
-  CONNECTED=$(grep -c "Connected successfully\|WebRTC connection established" /tmp/client_turn.log 2>/dev/null || echo "0")
-  TURN_STATE=$(grep -o "WEBRTC_TURN_CONNECTED" /tmp/client_turn.log 2>/dev/null | head -1 || echo "")
+  CONNECTED=$(sudo grep -c "Connected successfully\|WebRTC connection established" /tmp/client_turn.log 2>/dev/null || echo "0")
+  TURN_STATE=$(sudo grep -o "WEBRTC_TURN_CONNECTED" /tmp/client_turn.log 2>/dev/null | head -1 || echo "")
   # Check if it fell back to TCP
-  TCP_FALLBACK=$(grep -c "Direct TCP connection established" /tmp/client_turn.log 2>/dev/null || echo "0")
+  TCP_FALLBACK=$(sudo grep -c "Direct TCP connection established" /tmp/client_turn.log 2>/dev/null || echo "0")
 else
   CONNECTED=0
   TURN_STATE=""

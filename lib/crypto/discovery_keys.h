@@ -107,7 +107,8 @@ extern "C" {
  * @param pubkey_out Ed25519 public key output (32 bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec, uint8_t pubkey_out[32]);
+ASCIICHAT_API asciichat_error_t discovery_keys_verify(const char *acds_server, const char *key_spec,
+                                                      uint8_t pubkey_out[32]);
 
 /**
  * @brief Download key from HTTPS URL
@@ -172,7 +173,8 @@ ASCIICHAT_API asciichat_error_t discovery_keys_fetch_gitlab(const char *username
  * @param path_size Size of output buffer
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-ASCIICHAT_API asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *path_out, size_t path_size);
+ASCIICHAT_API asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *path_out,
+                                                              size_t path_size);
 
 /**
  * @brief Check if cached key exists and load it
@@ -214,7 +216,7 @@ ASCIICHAT_API asciichat_error_t discovery_keys_save_cached(const char *acds_serv
  * @return ASCIICHAT_OK if user accepts, ERROR_USER_REJECTED if declined
  */
 ASCIICHAT_API asciichat_error_t discovery_keys_verify_change(const char *acds_server, const uint8_t old_pubkey[32],
-                                                        const uint8_t new_pubkey[32]);
+                                                             const uint8_t new_pubkey[32]);
 
 /**
  * @brief Clear cached key for ACDS server
