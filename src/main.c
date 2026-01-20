@@ -35,6 +35,7 @@
 #include "common.h"
 #include "version.h"
 #include "options/options.h"
+#include "options/common.h"
 #include "options/rcu.h"
 #include "options/layout.h"
 #include "log/logging.h"
@@ -262,9 +263,7 @@ static void print_usage(void) {
   snprintf(usage_buf, sizeof(usage_buf), "%s %s<mode>%s %s--help%s", binary_name, MAGENTA, RESET, YELLOW, RESET);
   layout_print_two_column_row(stdout, usage_buf, "Show options for a mode", max_col_width, term_width);
 
-  printf("\n");
-  printf("🔗 %shttps://ascii-chat.com%s\n", CYAN, RESET);
-  printf("🔗 %shttps://github.com/zfogg/ascii-chat%s\n", CYAN, RESET);
+  print_project_links(stdout);
 }
 
 static void print_version(void) {

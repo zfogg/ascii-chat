@@ -175,6 +175,9 @@ void usage_client(FILE *desc) {
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
 
+  // Print project links
+  print_project_links(desc);
+
   // Clean up the config
   options_config_destroy(config);
 }

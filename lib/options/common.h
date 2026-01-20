@@ -490,6 +490,12 @@ void update_dimensions_for_full_height(options_t *opts);
  */
 void update_dimensions_to_terminal_size(options_t *opts);
 
+/**
+ * @brief Print project links with link emoji and colored styling
+ * @param desc Output file stream (typically stdout)
+ */
+void print_project_links(FILE *desc);
+
 // ============================================================================
 // Usage String Macros (Complete Format Strings)
 // ============================================================================

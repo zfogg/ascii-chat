@@ -93,5 +93,9 @@ void usage_discovery(FILE *desc) {
   (void)fprintf(desc, "  ascii-chat <session-string> [options...] Join existing session\n\n");
 
   options_config_print_usage(config, desc);
+
+  // Print project links
+  print_project_links(desc);
+
   options_config_destroy(config);
 }
