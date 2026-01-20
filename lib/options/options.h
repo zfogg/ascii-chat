@@ -407,11 +407,27 @@
 /** @brief Default TURN server URLs (comma-separated) */
 #define OPT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_SERVERS_DEFAULT
 
-/** @brief Default TURN server username */
+/** @brief Default TURN server username
+ *
+ * @note In production (NDEBUG), empty string - ACDS provides credentials via SESSION_JOINED
+ *       In debug builds, provides test credentials for testing without ACDS
+ */
+#ifdef NDEBUG
+#define OPT_TURN_USERNAME_DEFAULT ""
+#else
 #define OPT_TURN_USERNAME_DEFAULT "ascii"
+#endif
 
-/** @brief Default TURN server credential */
+/** @brief Default TURN server credential
+ *
+ * @note In production (NDEBUG), empty string - ACDS provides credentials via SESSION_JOINED
+ *       In debug builds, provides test credentials for testing without ACDS
+ */
+#ifdef NDEBUG
+#define OPT_TURN_CREDENTIAL_DEFAULT ""
+#else
 #define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
+#endif
 
 /** @{ @} */
 
