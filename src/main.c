@@ -33,6 +33,7 @@
 #include "version.h"
 #include "options/options.h"
 #include "options/rcu.h"
+#include "options/layout.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
@@ -89,6 +90,20 @@ static const mode_descriptor_t g_mode_table[] = {
  * Help and Usage Functions
  * ============================================================================ */
 
+/**
+ * @brief Helper to create colored option string for display
+ *
+ * Returns a string with ANSI color codes for proper coloring.
+ * Caller must use the string immediately before calling again.
+ */
+static char colored_option_buf[512];
+
+static const char *colored_option(const char *color, const char *text) {
+  const char *reset = "\033[0m";
+  snprintf(colored_option_buf, sizeof(colored_option_buf), "%s%s%s", color, text, reset);
+  return colored_option_buf;
+}
+
 static void print_usage(void) {
 #ifdef _WIN32
   const char *binary_name = "ascii-chat.exe";
@@ -103,38 +118,63 @@ static void print_usage(void) {
   const char *YELLOW = "\033[33m";
   const char *RESET = "\033[0m";
 
+  // Detect terminal width for text wrapping
+  int term_width = 80;
+  char *cols_env = getenv("COLUMNS");
+  if (cols_env) {
+    int cols = atoi(cols_env);
+    if (cols > 20 && cols < 1000)
+      term_width = cols;
+  }
+
   printf("%s ascii-chat - %s %s%s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
          ASCII_CHAT_DESCRIPTION_EMOJI_R, RESET);
   printf("\n");
   printf("%s%sUSAGE:%s\n", BOLD, CYAN, RESET);
-  printf("  %s [options...]                       Start a new session%s\n", binary_name, RESET);
-  printf("  %s <session-string> [options...]      Join an existing session%s\n", binary_name, RESET);
-  printf("  %s <mode> [mode-options...]           Run in a specific mode%s\n", binary_name, RESET);
+  char usage_buf[256];
+  snprintf(usage_buf, sizeof(usage_buf), "%s [options...]", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Start a new session", strlen(usage_buf), term_width);
+
+  snprintf(usage_buf, sizeof(usage_buf), "%s <session-string> [options...]", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Join an existing session", strlen(usage_buf), term_width);
+
+  snprintf(usage_buf, sizeof(usage_buf), "%s <mode> [mode-options...]", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Run in a specific mode", strlen(usage_buf), term_width);
+
   printf("\n");
   printf("%s%sEXAMPLES:%s\n", BOLD, CYAN, RESET);
-  printf("  %s                           Start new session (share the session string)%s\n", binary_name, RESET);
-  printf("  %s swift-river-mountain      Join session with session string%s\n", binary_name, RESET);
-  printf("  %s server                    Run as dedicated server%s\n", binary_name, RESET);
-  printf("  %s client example.com        Connect to specific server%s\n", binary_name, RESET);
-  printf("  %s mirror                    Preview local webcam as ASCII%s\n", binary_name, RESET);
+  layout_print_two_column_row(stdout, binary_name, "Start new session (share the session string)", strlen(binary_name), term_width);
+
+  snprintf(usage_buf, sizeof(usage_buf), "%s swift-river-mountain", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Join session with session string", strlen(usage_buf), term_width);
+
+  snprintf(usage_buf, sizeof(usage_buf), "%s server", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Run as dedicated server", strlen(usage_buf), term_width);
+
+  snprintf(usage_buf, sizeof(usage_buf), "%s client example.com", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Connect to specific server", strlen(usage_buf), term_width);
+
+  snprintf(usage_buf, sizeof(usage_buf), "%s mirror", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Preview local webcam as ASCII", strlen(usage_buf), term_width);
   printf("\n");
   printf("%s%sOPTIONS:%s\n", BOLD, CYAN, RESET);
-  printf("  %s--help%s                       Show this help\n", YELLOW, RESET);
-  printf("  %s--version%s                    Show version information\n", YELLOW, RESET);
-  printf("  %s--config FILE%s                Load configuration from FILE\n", YELLOW, RESET);
-  printf("  %s--config-create [FILE]%s       Create default config and exit\n", YELLOW, RESET);
-  printf("  %s-L --log-file FILE%s           Redirect logs to FILE\n", YELLOW, RESET);
-  printf("  %s--log-level LEVEL%s            Set log level: dev, debug, info, warn, error, fatal\n", YELLOW, RESET);
-  printf("  %s-V --verbose%s                 Increase log verbosity (stackable: -VV, -VVV)\n", YELLOW, RESET);
-  printf("  %s-q --quiet%s                   Disable console logging (log to file only)\n", YELLOW, RESET);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--help"), "Show this help", 6, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--version"), "Show version information", 9, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config FILE"), "Load configuration from FILE", 13, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config-create [FILE]"), "Create default config and exit", 22, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-L --log-file FILE"), "Redirect logs to FILE", 18, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--log-level LEVEL"), "Set log level: dev, debug, info, warn, error, fatal", 17, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-V --verbose"), "Increase log verbosity (stackable: -VV, -VVV)", 12, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-q --quiet"), "Disable console logging (log to file only)", 10, term_width);
   printf("\n");
   printf("%s%sMODES:%s\n", BOLD, CYAN, RESET);
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    printf("  %s%-18s%s  %s\n", MAGENTA, mode->name, RESET, mode->description);
+    layout_print_two_column_row(stdout, colored_option(MAGENTA, mode->name), mode->description, strlen(mode->name), term_width);
   }
   printf("\n");
   printf("%s%sMODE-OPTIONS:%s\n", BOLD, CYAN, RESET);
-  printf("  %s <mode> --help             Show options for a mode%s\n", binary_name, RESET);
+  snprintf(usage_buf, sizeof(usage_buf), "%s <mode> --help", binary_name);
+  layout_print_two_column_row(stdout, usage_buf, "Show options for a mode", strlen(usage_buf), term_width);
   printf("\n");
   printf("%shttps://ascii-chat.com%s\n", CYAN, RESET);
   printf("%shttps://github.com/zfogg/ascii-chat%s\n", CYAN, RESET);
