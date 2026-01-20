@@ -1299,8 +1299,24 @@ void *client_receive_thread(void *arg) {
             atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE, client->is_tcp_client);
 
   // For TCP clients, check socket validity. For WebRTC clients, transport is always valid when thread starts
+  // Check loop entry conditions BEFORE entering loop
+  int loop_counter = 0;
+
+  log_error(
+      "RECV_BEFORE_LOOP: About to enter while loop, will_enter=%d (should_exit=%d, active=%d, is_tcp=%d, socket=%d)",
+      !atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
+          (!client->is_tcp_client || client->socket != INVALID_SOCKET_VALUE),
+      atomic_load(&g_server_should_exit), atomic_load(&client->active), client->is_tcp_client, client->socket);
+
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
          (!client->is_tcp_client || client->socket != INVALID_SOCKET_VALUE)) {
+
+    loop_counter++;
+    if (loop_counter == 1) {
+      log_error("RECV_LOOP: Entering loop iteration 1, should_exit=%d, active=%d, is_tcp=%d, socket=%d",
+                atomic_load(&g_server_should_exit), atomic_load(&client->active), client->is_tcp_client,
+                client->socket);
+    }
 
     // Use unified secure packet reception with auto-decryption
     // CRITICAL: Check client_id is still valid before accessing transport
@@ -1310,10 +1326,16 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
+    // Log before attempting to receive packet
+    log_debug("RECV_LOOP_ITER: Client %u, about to call acip_server_receive_and_dispatch, transport=%p",
+              atomic_load(&client->client_id), (void *)client->transport);
+
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
+
+    log_debug("RECV_LOOP_ITER: Client %u, dispatch returned %d", atomic_load(&client->client_id), acip_result);
 
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {

@@ -28,6 +28,8 @@
 
 asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks) {
+  log_debug("ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p", (void *)transport, client_ctx);
+
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
@@ -42,6 +44,7 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
 
   // Try to get socket from transport
   socket_t sock = transport->methods->get_socket(transport);
+  log_debug("ACIP_SERVER_DISPATCH: Socket=%d (INVALID=%d)", sock, INVALID_SOCKET_VALUE);
 
   if (sock != INVALID_SOCKET_VALUE) {
     // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
@@ -63,13 +66,19 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     void *allocated_buffer = NULL;
     size_t packet_len = 0;
 
+    log_debug("ACIP_SERVER_DISPATCH: Calling transport->methods->recv() for WebRTC");
     asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
+    log_debug("ACIP_SERVER_DISPATCH: recv() returned %d, packet_len=%zu, packet_data=%p", recv_result, packet_len,
+              packet_data);
+
     if (recv_result != ASCIICHAT_OK) {
+      log_error("ACIP_SERVER_DISPATCH: recv() failed, returning error");
       return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
     }
 
     // Parse packet header
     if (packet_len < sizeof(packet_header_t)) {
+      log_error("ACIP_SERVER_DISPATCH: Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
       buffer_pool_free(NULL, allocated_buffer, packet_len);
       return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
     }
@@ -81,13 +90,17 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     envelope.allocated_buffer = allocated_buffer;
     envelope.allocated_size = packet_len;
 
+    log_debug("ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u", envelope.type, envelope.len);
+
     // For WebRTC, header was already validated by transport layer, no further crypto needed
     // since WebRTC uses DTLS for encryption on the wire
   }
 
   // Dispatch packet to appropriate ACIP handler
+  log_debug("ACIP_SERVER: About to dispatch packet type=%d, data_len=%zu", envelope.type, envelope.len);
   asciichat_error_t dispatch_result =
       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
+  log_debug("ACIP_SERVER: Dispatch completed with result=%d", dispatch_result);
 
   // Always free the allocated buffer (even if handler failed)
   if (envelope.allocated_buffer) {
