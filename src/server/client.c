@@ -374,7 +374,13 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
         tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
   } else {
     snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id);
+    log_error("═══ THREAD_CREATE: WebRTC client %u ═══", client_id);
+    log_error("  client=%p, func=%p, &receive_thread=%p", (void *)client, (void *)client_receive_thread,
+              (void *)&client->receive_thread);
+    log_error("  Pre-create: receive_thread value=%lu", (unsigned long)client->receive_thread);
     result = asciichat_thread_create(&client->receive_thread, client_receive_thread, client);
+    log_error("  Post-create: result=%d, receive_thread value=%lu", result, (unsigned long)client->receive_thread);
+    log_error("═══════════════════════════════════════");
   }
 
   if (result != ASCIICHAT_OK) {
