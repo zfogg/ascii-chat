@@ -789,29 +789,11 @@ const options_t *options_get(void);
  *
  * **Thread Safety**: Multiple writers are serialized with a mutex.
  * Readers are never blocked (lock-free reads via GET_OPTION).
- *
- * @note Use options_update() for complex multi-field updates.
  */
 asciichat_error_t options_set_int(const char *field_name, int value);
 asciichat_error_t options_set_bool(const char *field_name, bool value);
 asciichat_error_t options_set_string(const char *field_name, const char *value);
 asciichat_error_t options_set_double(const char *field_name, double value);
-
-/**
- * @brief Update options using copy-on-write (thread-safe)
- *
- * Callback-based update interface. Allocates a new options struct, copies
- * current values, calls your callback to modify the copy, then atomically
- * swaps the global pointer.
- *
- * **Thread Safety**: Multiple writers are serialized with a mutex.
- * Readers are never blocked.
- *
- * @param updater Callback function that modifies the new options struct
- * @param context User context pointer passed to callback (can be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context);
 
 /**
  * @brief Get terminal width (lock-free)
