@@ -61,24 +61,11 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   client->socket = INVALID_SOCKET_VALUE;
   client->connected = false;
 
-  // Create TCP socket
-  client->socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (client->socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to create socket: %s", socket_get_error_string());
-  }
-
-  // Set socket timeouts using platform abstraction
-  if (socket_set_timeout(client->socket, config->timeout_ms) != 0) {
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket timeouts");
-  }
-
-  // Resolve server address (supports both hostnames and IP addresses)
+  // Resolve server address (supports both hostnames and IP addresses, IPv4 and IPv6)
   struct addrinfo hints;
   struct addrinfo *result = NULL;
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;       // IPv4
+  hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM; // TCP
 
   char port_str[16];
@@ -86,24 +73,45 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
 
   int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
   if (gai_result != 0) {
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
     return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
                      gai_strerror(gai_result));
   }
 
-  // Try to connect (use first result)
-  int connect_result = connect(client->socket, result->ai_addr, result->ai_addrlen);
-  int connect_errno = errno; // Save errno before freeaddrinfo
-  freeaddrinfo(result);
+  // Try each resolved address until one succeeds
+  struct addrinfo *rp;
+  for (rp = result; rp != NULL; rp = rp->ai_next) {
+    // Create TCP socket with the address family from this result
+    client->socket = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (client->socket == INVALID_SOCKET_VALUE) {
+      continue; // Try next address
+    }
 
-  if (connect_result < 0) {
+    // Set socket timeouts using platform abstraction
+    if (socket_set_timeout(client->socket, config->timeout_ms) != 0) {
+      socket_close(client->socket);
+      client->socket = INVALID_SOCKET_VALUE;
+      continue; // Try next address
+    }
+
+    // Try to connect
+    int connect_result = connect(client->socket, rp->ai_addr, rp->ai_addrlen);
+    if (connect_result == 0) {
+      // Success!
+      freeaddrinfo(result);
+      client->connected = true;
+      log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
+      return ASCIICHAT_OK;
+    }
+
+    // Connection failed, close this socket and try next address
     socket_close(client->socket);
     client->socket = INVALID_SOCKET_VALUE;
-    errno = connect_errno; // Restore errno for socket_get_error_string()
-    return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d: %s", config->server_address, config->server_port,
-                     socket_get_error_string());
   }
+
+  // All addresses failed
+  freeaddrinfo(result);
+  return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d: all addresses exhausted", config->server_address,
+                   config->server_port);
 
   client->connected = true;
   log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
