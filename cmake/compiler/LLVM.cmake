@@ -131,6 +131,29 @@ function(configure_llvm_pre_project)
     set(LLVM_ROOT_PREFIX "${LLVM_ROOT_PREFIX}" PARENT_SCOPE)
 
     # =============================================================================
+    # Static libc++ libraries for portable macOS Release builds
+    # =============================================================================
+    # Homebrew's LLVM doesn't include static libraries. For CI builds, set
+    # ASCIICHAT_LIBCXX_STATIC_ROOT to point to official LLVM release binaries.
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        if(ASCIICHAT_LIBCXX_STATIC_ROOT)
+            set(_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
+        else()
+            set(_libcxx_root "${LLVM_ROOT_PREFIX}")
+        endif()
+        set(ASCIICHAT_STATIC_LIBCXX "${_libcxx_root}/lib/libc++.a" PARENT_SCOPE)
+        set(ASCIICHAT_STATIC_LIBCXXABI "${_libcxx_root}/lib/libc++abi.a" PARENT_SCOPE)
+        set(ASCIICHAT_STATIC_LIBUNWIND "${_libcxx_root}/lib/libunwind.a" PARENT_SCOPE)
+        set(ASCIICHAT_STATIC_LIBCXX_LIBS
+            "${_libcxx_root}/lib/libc++.a"
+            "${_libcxx_root}/lib/libc++abi.a"
+            "${_libcxx_root}/lib/libunwind.a"
+            PARENT_SCOPE
+        )
+        message(STATUS "${BoldGreen}Static libc++${ColorReset} from: ${BoldCyan}${_libcxx_root}/lib${ColorReset}")
+    endif()
+
+    # =============================================================================
     # Set LLVM Tools (ar, ranlib) before project()
     # Must happen here so archive rules use llvm-ar, not system ar
     # =============================================================================

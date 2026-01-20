@@ -89,53 +89,22 @@ if(USE_VCPKG AND VCPKG_ROOT)
 
         # Platform-specific system libraries
         if(APPLE)
-            # macOS: use Security framework for TLS, but also need OpenSSL for TURN credentials
-            if(NOT TARGET OpenSSL::Crypto)
-                find_package(OpenSSL REQUIRED)
-            endif()
-            # For static Release builds on macOS, use static libc++ to avoid runtime deps
-            if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-                # Use ASCIICHAT_LIBCXX_STATIC_ROOT if set (e.g., from official LLVM release),
-                # otherwise fall back to LLVM_ROOT_PREFIX (Homebrew, etc.)
-                if(ASCIICHAT_LIBCXX_STATIC_ROOT)
-                    set(_ldc_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
-                else()
-                    set(_ldc_libcxx_root "${LLVM_ROOT_PREFIX}")
-                endif()
-                set(_libcxx_link
-                    "${_ldc_libcxx_root}/lib/libc++.a"
-                    "${_ldc_libcxx_root}/lib/libc++abi.a"
-                    "${_ldc_libcxx_root}/lib/libunwind.a"
-                )
-            else()
-                set(_libcxx_link c++)
-            endif()
             target_link_libraries(libdatachannel INTERFACE
                 "-framework Foundation"
                 "-framework Security"
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                ${_libcxx_link}
+                ${ASCIICHAT_STATIC_LIBCXX_LIBS}
             )
         elseif(WIN32)
-            target_link_libraries(libdatachannel INTERFACE
-                ws2_32
-                iphlpapi
-                bcrypt
-            )
+            target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
         else()
-            # Linux: link with pthread and OpenSSL
-            # Skip find_package if OpenSSL targets already exist (e.g., from MuslDependencies.cmake)
-            if(NOT TARGET OpenSSL::Crypto)
-                find_package(OpenSSL REQUIRED)
-            endif()
-            target_link_libraries(libdatachannel INTERFACE
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
-                pthread
-            )
+            target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
         endif()
+
+        # OpenSSL for TURN credentials
+        if(NOT TARGET OpenSSL::Crypto)
+            find_package(OpenSSL REQUIRED)
+        endif()
+        target_link_libraries(libdatachannel INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 
         target_include_directories(libdatachannel INTERFACE ${LIBDATACHANNEL_INCLUDE_DIR})
 
@@ -477,65 +446,31 @@ endif()
 
     add_library(libdatachannel INTERFACE)
 
+    # Link static libs from source build
+    target_link_libraries(libdatachannel INTERFACE
+        "${LIBDATACHANNEL_STATIC_LIB}"
+        "${LIBJUICE_STATIC_LIB}"
+        "${LIBUSRSCTP_STATIC_LIB}"
+    )
+
+    # Platform-specific system libraries
     if(APPLE)
-        # macOS: link with necessary frameworks and OpenSSL for TURN credentials
-        if(NOT TARGET OpenSSL::Crypto)
-            find_package(OpenSSL REQUIRED)
-        endif()
-        # For static Release builds on macOS, use static libc++ to avoid runtime deps
-        if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-            # Use ASCIICHAT_LIBCXX_STATIC_ROOT if set (e.g., from official LLVM release),
-            # otherwise fall back to LLVM_ROOT_PREFIX (Homebrew, etc.)
-            if(ASCIICHAT_LIBCXX_STATIC_ROOT)
-                set(_ldc_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
-            else()
-                set(_ldc_libcxx_root "${LLVM_ROOT_PREFIX}")
-            endif()
-            set(_libcxx_link
-                "${_ldc_libcxx_root}/lib/libc++.a"
-                "${_ldc_libcxx_root}/lib/libc++abi.a"
-                "${_ldc_libcxx_root}/lib/libunwind.a"
-            )
-            message(STATUS "libdatachannel: using static libc++ from ${_ldc_libcxx_root}/lib")
-        else()
-            set(_libcxx_link c++)
-        endif()
         target_link_libraries(libdatachannel INTERFACE
-            "${LIBDATACHANNEL_STATIC_LIB}"
-            "${LIBJUICE_STATIC_LIB}"
-            "${LIBUSRSCTP_STATIC_LIB}"
             "-framework Foundation"
             "-framework Security"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-            ${_libcxx_link}
+            ${ASCIICHAT_STATIC_LIBCXX_LIBS}
         )
     elseif(WIN32)
-        # Windows: link with Winsock and other system libraries
-        target_link_libraries(libdatachannel INTERFACE
-            "${LIBDATACHANNEL_STATIC_LIB}"
-            "${LIBJUICE_STATIC_LIB}"
-            "${LIBUSRSCTP_STATIC_LIB}"
-            ws2_32
-            iphlpapi
-            bcrypt
-        )
+        target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
     else()
-        # Linux/Unix: link with pthread and OpenSSL
-        # Skip find_package if OpenSSL targets already exist (e.g., from MuslDependencies.cmake)
-        if(NOT TARGET OpenSSL::Crypto)
-            find_package(OpenSSL REQUIRED)
-        endif()
-        target_link_libraries(libdatachannel INTERFACE
-            "${LIBDATACHANNEL_STATIC_LIB}"
-            "${LIBJUICE_STATIC_LIB}"
-            "${LIBUSRSCTP_STATIC_LIB}"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-            $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
-            pthread
-        )
+        target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
     endif()
+
+    # OpenSSL for TURN credentials
+    if(NOT TARGET OpenSSL::Crypto)
+        find_package(OpenSSL REQUIRED)
+    endif()
+    target_link_libraries(libdatachannel INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 
     # Add include path for libdatachannel headers
     target_include_directories(libdatachannel
