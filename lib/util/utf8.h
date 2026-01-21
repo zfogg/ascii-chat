@@ -300,3 +300,75 @@ size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_
  * @ingroup util
  */
 int utf8_next_char_bytes(const char *str, size_t max_bytes);
+
+/**
+ * @brief Determine how many additional bytes are needed to complete a UTF-8 character
+ * @param first_byte The first byte of a potential UTF-8 sequence
+ * @return Number of continuation bytes needed (0-3), or -1 if invalid start byte
+ *
+ * Given the first byte of a UTF-8 sequence, determines how many additional
+ * bytes are needed to complete the character. Returns 0 for ASCII (1-byte chars),
+ * 1 for 2-byte sequences, 2 for 3-byte sequences, 3 for 4-byte sequences.
+ *
+ * Useful in interactive input loops where bytes arrive one at a time and
+ * you need to know when a complete UTF-8 character has been received.
+ *
+ * @par Example
+ * @code
+ * // Read multi-byte UTF-8 character interactively
+ * unsigned char first_byte = getchar();
+ * int continuation_bytes = utf8_continuation_bytes_needed(first_byte);
+ * if (continuation_bytes < 0) {
+ *     // Invalid start byte
+ *     continue;
+ * }
+ * // Read continuation_bytes more bytes
+ * for (int i = 0; i < continuation_bytes; i++) {
+ *     unsigned char next_byte = getchar();
+ *     // Validate it's a continuation byte (10xxxxxx)
+ *     if ((next_byte & 0xC0) != 0x80) {
+ *         // Invalid continuation byte
+ *         break;
+ *     }
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int utf8_continuation_bytes_needed(unsigned char first_byte);
+
+/**
+ * @brief Read continuation bytes and insert them into buffer at cursor position
+ * @param buffer Text buffer to insert bytes into
+ * @param cursor Current cursor position (modified to reflect new position)
+ * @param len Current buffer length (modified to reflect new length)
+ * @param max_len Maximum buffer size
+ * @param continuation_bytes Number of continuation bytes to read
+ * @param read_byte_fn Callback function to read next byte (should return int like getchar)
+ * @return 0 on success, -1 if EOF or buffer overflow
+ *
+ * Reads continuation_bytes bytes from input using the provided callback function,
+ * shifts existing buffer content right, and inserts each byte at the cursor position.
+ * Updates cursor and len to reflect the new state.
+ *
+ * Useful for handling multi-byte UTF-8 input in interactive prompts where bytes
+ * arrive one at a time (password input, terminal prompts, etc).
+ *
+ * @par Example
+ * @code
+ * // In interactive password input
+ * int continuation_bytes = utf8_continuation_bytes_needed((unsigned char)first_byte);
+ * if (continuation_bytes > 0) {
+ *     int result = utf8_read_and_insert_continuation_bytes(
+ *         buffer, &cursor, &len, max_len, continuation_bytes, getchar);
+ *     if (result < 0) {
+ *         // Handle EOF or overflow
+ *     }
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+int utf8_read_and_insert_continuation_bytes(char *buffer, size_t *cursor, size_t *len,
+                                             size_t max_len, int continuation_bytes,
+                                             int (*read_byte_fn)(void));
