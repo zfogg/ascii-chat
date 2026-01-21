@@ -7,6 +7,7 @@
 #include "keys_validation.h"
 #include "common.h"
 #include "asciichat_errno.h"
+#include "util/utf8.h"
 #include "crypto/crypto.h" // Includes <sodium.h>
 #include <string.h>
 #include <stdlib.h>
@@ -61,6 +62,20 @@ asciichat_error_t validate_public_key(const public_key_t *key) {
     return ERROR_CRYPTO_KEY;
   }
 
+  // Validate comment is valid UTF-8 (user-provided text in key files)
+  if (key->comment[0] != '\0') {
+    const uint8_t *p = (const uint8_t *)key->comment;
+    while (*p) {
+      uint32_t codepoint;
+      int decode_len = utf8_decode(p, &codepoint);
+      if (decode_len < 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment contains invalid UTF-8 sequence");
+        return ERROR_CRYPTO_KEY;
+      }
+      p += decode_len;
+    }
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -102,6 +117,20 @@ asciichat_error_t validate_private_key(const private_key_t *key) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment too long: %zu (maximum %d)", strlen(key->key_comment),
               MAX_COMMENT_LEN - 1);
     return ERROR_CRYPTO_KEY;
+  }
+
+  // Validate comment is valid UTF-8 (user-provided text in key files)
+  if (key->key_comment[0] != '\0') {
+    const uint8_t *p = (const uint8_t *)key->key_comment;
+    while (*p) {
+      uint32_t codepoint;
+      int decode_len = utf8_decode(p, &codepoint);
+      if (decode_len < 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment contains invalid UTF-8 sequence");
+        return ERROR_CRYPTO_KEY;
+      }
+      p += decode_len;
+    }
   }
 
   return ASCIICHAT_OK;
