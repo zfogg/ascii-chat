@@ -259,6 +259,28 @@ void options_builder_add_acds_network_group(options_builder_t *b) {
                            "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL);
 }
 
+/**
+ * @brief Add WebRTC connection strategy options to a builder
+ *
+ * Adds connection fallback and optimization flags for WebRTC/TCP selection.
+ * Used by: client, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_webrtc_strategy_group(options_builder_t *b) {
+  options_builder_add_bool(b, "prefer-webrtc", '\0', offsetof(options_t, prefer_webrtc), false,
+                           "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL);
+
+  options_builder_add_bool(b, "no-webrtc", '\0', offsetof(options_t, no_webrtc), false,
+                           "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL);
+
+  options_builder_add_bool(b, "webrtc-skip-stun", '\0', offsetof(options_t, webrtc_skip_stun), false,
+                           "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL);
+
+  options_builder_add_bool(b, "webrtc-disable-turn", '\0', offsetof(options_t, webrtc_disable_turn), false,
+                           "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL);
+}
+
 // ============================================================================
 // Media File Streaming Options Helper (Client + Mirror)
 // ============================================================================
@@ -510,17 +532,7 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_acds_network_group(b);
 
   // WebRTC Connection Strategy Options (Phase 3 fallback control)
-  options_builder_add_bool(b, "prefer-webrtc", '\0', offsetof(options_t, prefer_webrtc), false,
-                           "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL);
-
-  options_builder_add_bool(b, "no-webrtc", '\0', offsetof(options_t, no_webrtc), false,
-                           "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL);
-
-  options_builder_add_bool(b, "webrtc-skip-stun", '\0', offsetof(options_t, webrtc_skip_stun), false,
-                           "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL);
-
-  options_builder_add_bool(b, "webrtc-disable-turn", '\0', offsetof(options_t, webrtc_disable_turn), false,
-                           "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL);
+  options_builder_add_webrtc_strategy_group(b);
 
   // WebRTC Server Configuration (for testing/debugging - production uses ACDS)
   // Note: In production, ACDS provides these automatically via SESSION_JOINED response
@@ -777,6 +789,9 @@ const options_config_t *options_preset_discovery(const char *program_name, const
 
   // Compression options
   options_builder_add_compression_group(b);
+
+  // WebRTC Connection Strategy Options (Phase 3 fallback control)
+  options_builder_add_webrtc_strategy_group(b);
 
   // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",

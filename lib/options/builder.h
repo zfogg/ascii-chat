@@ -765,6 +765,16 @@ void options_builder_add_port_option(options_builder_t *b, const char *default_p
 void options_builder_add_acds_group(options_builder_t *b);
 
 /**
+ * @brief Add WebRTC connection strategy options to a builder
+ *
+ * Adds --prefer-webrtc, --no-webrtc, --webrtc-skip-stun, --webrtc-disable-turn.
+ * Used by: client, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_webrtc_strategy_group(options_builder_t *b);
+
+/**
  * @brief Add media file streaming options to a builder
  *
  * Adds --file and --loop options for media file playback.
