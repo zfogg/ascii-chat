@@ -273,3 +273,30 @@ size_t utf8_char_count(const char *str);
  * @ingroup util
  */
 size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_codepoints);
+
+/**
+ * @brief Get byte length of next UTF-8 character
+ * @param str Pointer to UTF-8 byte sequence (must not be NULL)
+ * @param max_bytes Maximum bytes to read from str
+ * @return Number of bytes in next character (1-4), or -1 if invalid UTF-8
+ *
+ * Determines how many bytes are needed for the next complete UTF-8 character.
+ * Uses utf8proc for robust UTF-8 handling.
+ *
+ * Useful for interactive text input where you need to handle multi-byte
+ * UTF-8 characters character-by-character (e.g., password prompts).
+ *
+ * @note Returns -1 for invalid UTF-8 sequences or if end of string reached
+ * @note Requires utf8proc library which is already a project dependency
+ *
+ * @par Example
+ * @code
+ * // Handle multi-byte UTF-8 in password input
+ * const char *input = "café";
+ * int bytes_in_char = utf8_next_char_bytes(input, strlen(input));
+ * // Returns 1 for 'c', 1 for 'a', 1 for 'f', 2 for 'é'
+ * @endcode
+ *
+ * @ingroup util
+ */
+int utf8_next_char_bytes(const char *str, size_t max_bytes);

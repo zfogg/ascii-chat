@@ -193,3 +193,19 @@ size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_
   }
   return count;
 }
+
+int utf8_next_char_bytes(const char *str, size_t max_bytes) {
+  if (!str || max_bytes == 0) {
+    return -1;
+  }
+
+  // Use utf8proc_iterate to get byte length of next character
+  utf8proc_int32_t codepoint;
+  utf8proc_ssize_t len = utf8proc_iterate((const utf8proc_uint8_t *)str, (utf8proc_ssize_t)max_bytes, &codepoint);
+
+  if (len <= 0) {
+    return -1; // Invalid UTF-8 or end of string
+  }
+
+  return (int)len;
+}
