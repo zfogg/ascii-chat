@@ -160,23 +160,23 @@ static void print_usage(void) {
   if (w > max_col_width)
     max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sswift-river-mountain%s", binary_name, GREEN, RESET);
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%s%s", binary_name, GREEN, "swift-river-mountain", RESET);
   w = utf8_display_width(temp_buf);
   if (w > max_col_width)
     max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sserver%s", binary_name, MAGENTA, RESET);
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%s%s", binary_name, MAGENTA, "server", RESET);
   w = utf8_display_width(temp_buf);
   if (w > max_col_width)
     max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sclient%s %s%sexample.com%s", binary_name, MAGENTA, RESET, "", GREEN,
-           RESET, "");
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%s%s %s%s%s", binary_name, MAGENTA, "client", RESET, GREEN,
+           "example.com", RESET);
   w = utf8_display_width(temp_buf);
   if (w > max_col_width)
     max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s%smirror%s", binary_name, MAGENTA, RESET);
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%s%s", binary_name, MAGENTA, "mirror", RESET);
   w = utf8_display_width(temp_buf);
   if (w > max_col_width)
     max_col_width = w;

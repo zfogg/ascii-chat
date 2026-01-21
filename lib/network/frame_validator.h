@@ -23,27 +23,25 @@
 
 /**
  * @brief Validate legacy frame format
- * @param data Packet data
  * @param len Total packet length
  * @param expected_rgb_size Expected RGB data size (width * height * 3)
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @ingroup network
  */
-asciichat_error_t frame_validate_legacy(void *data, size_t len, size_t expected_rgb_size);
+asciichat_error_t frame_validate_legacy(size_t len, size_t expected_rgb_size);
 
 /**
  * @brief Validate new frame format with optional compression
  * @param data Packet data
  * @param len Total packet length
- * @param expected_rgb_size Expected decompressed RGB size
  * @param out_compressed Output: whether data is compressed (optional)
  * @param out_data_size Output: size of compressed/uncompressed data (optional)
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @ingroup network
  */
-asciichat_error_t frame_validate_new(void *data, size_t len, size_t expected_rgb_size, bool *out_compressed,
+asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compressed,
                                      uint32_t *out_data_size);
 
 /**

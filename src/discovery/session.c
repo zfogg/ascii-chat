@@ -226,7 +226,7 @@ static asciichat_error_t send_network_quality_to_acds(discovery_session_t *sessi
  * Attempts to receive peer's NETWORK_QUALITY from ACDS.
  * Stores result in session->negotiate.peer_quality
  */
-static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session, int timeout_ms) {
+static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *session) {
   if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
     return ERROR_INVALID_PARAM;
   }
@@ -535,7 +535,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
 
     // Try to receive peer's NETWORK_QUALITY from ACDS (non-blocking with short timeout)
     if (!session->negotiate.peer_quality_received) {
-      asciichat_error_t recv_result = receive_network_quality_from_acds(session, 100); // 100ms timeout
+      asciichat_error_t recv_result = receive_network_quality_from_acds(session);
       if (recv_result == ASCIICHAT_OK) {
         // Got peer quality - proceed to election
         log_info("Received peer NETWORK_QUALITY, proceeding to host election");
@@ -1098,39 +1098,4 @@ bool discovery_session_is_future_host(const discovery_session_t *session) {
   if (!session)
     return false;
   return session->ring.am_future_host;
-}
-
-/**
- * @brief Store future host information in ring consensus state
- * @param session Session context
- * @param future_host_id Elected future host participant ID
- * @param future_host_address Address where future host will listen
- * @param future_host_port Port where future host will listen
- * @param connection_type How to connect to future host
- * @return ASCIICHAT_OK on success
- *
- * Called by host after running election to store the result locally.
- * Later, this info will be broadcast to all participants via FUTURE_HOST_ELECTED.
- */
-static asciichat_error_t store_future_host(discovery_session_t *session, const uint8_t future_host_id[16],
-                                           const char *future_host_address, uint16_t future_host_port,
-                                           uint8_t connection_type) {
-  if (!session || !future_host_id || !future_host_address) {
-    return ERROR_INVALID_PARAM;
-  }
-
-  memcpy(session->ring.future_host_id, future_host_id, 16);
-  SAFE_STRNCPY(session->ring.future_host_address, future_host_address, sizeof(session->ring.future_host_address));
-  session->ring.future_host_port = future_host_port;
-  session->ring.future_host_connection_type = connection_type;
-  session->ring.future_host_elected_round = get_current_time_ms() / 5000; // 5-minute round number
-
-  // Check if I'm the future host
-  session->ring.am_future_host = (memcmp(future_host_id, session->participant_id, 16) == 0);
-
-  log_info("Future host elected: %s:%u (id: %02x%02x..., type: %u, am_future_host: %s)",
-           session->ring.future_host_address, session->ring.future_host_port, future_host_id[0], future_host_id[1],
-           connection_type, session->ring.am_future_host ? "YES" : "NO");
-
-  return ASCIICHAT_OK;
 }

@@ -761,7 +761,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     // Use frame_validator to validate the new format frame
     bool is_compressed = false;
     uint32_t data_size_field = 0;
-    asciichat_error_t validate_result = frame_validate_new(data, len, rgb_size, &is_compressed, &data_size_field);
+    asciichat_error_t validate_result = frame_validate_new(data, len, &is_compressed, &data_size_field);
     if (validate_result != ASCIICHAT_OK) {
       disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format validation failed");
       return;
@@ -802,7 +802,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   } else {
     // Old format: [width:4][height:4][rgb_data:w*h*3]
     // Use frame_validator to validate the legacy format frame
-    asciichat_error_t validate_result = frame_validate_legacy(data, len, rgb_size);
+    asciichat_error_t validate_result = frame_validate_legacy(len, rgb_size);
     if (validate_result != ASCIICHAT_OK) {
       disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy validation failed");
       return;

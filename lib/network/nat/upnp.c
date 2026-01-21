@@ -156,10 +156,9 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
  *
  * @return ASCIICHAT_OK on success, ERROR_NETWORK_* on failure
  */
-static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, const char *description, nat_upnp_context_t *ctx) {
+static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, nat_upnp_context_t *ctx) {
 #if !defined(__APPLE__) || !defined(HAVE_MINIUPNPC)
   (void)internal_port;
-  (void)description;
   (void)ctx;
 #ifndef __APPLE__
   SET_ERRNO(ERROR_NETWORK, "NAT-PMP: Not available on this platform (Apple only)");
@@ -257,7 +256,7 @@ asciichat_error_t nat_upnp_open(uint16_t internal_port, const char *description,
   }
 
   log_info("NAT: UPnP failed, trying NAT-PMP fallback...");
-  result = natpmp_try_map_port(internal_port, description, *ctx);
+  result = natpmp_try_map_port(internal_port, *ctx);
 
   if (result == ASCIICHAT_OK) {
     log_info("NAT: ✓ NAT-PMP port mapping successful!");

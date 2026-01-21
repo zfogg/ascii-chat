@@ -22,7 +22,7 @@ asciichat_error_t frame_check_size_overflow(size_t header_size, size_t data_size
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t frame_validate_legacy(void *data, size_t len, size_t expected_rgb_size) {
+asciichat_error_t frame_validate_legacy(size_t len, size_t expected_rgb_size) {
   // Check minimum header size
   if (len < FRAME_HEADER_SIZE_LEGACY) {
     SET_ERRNO(ERROR_INVALID_FRAME, "Legacy frame header too small: %zu bytes", len);
@@ -44,7 +44,7 @@ asciichat_error_t frame_validate_legacy(void *data, size_t len, size_t expected_
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t frame_validate_new(void *data, size_t len, size_t expected_rgb_size, bool *out_compressed,
+asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compressed,
                                      uint32_t *out_data_size) {
   // Check minimum new format header size
   if (len < FRAME_HEADER_SIZE_NEW) {

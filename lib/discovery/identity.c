@@ -190,7 +190,7 @@ void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65
 
   // Convert to hex string
   for (int i = 0; i < 32; i++) {
-    sprintf(&fingerprint[i * 2], "%02x", hash[i]);
+    snprintf(&fingerprint[i * 2], 3, "%02x", hash[i]);
   }
   fingerprint[64] = '\0';
 }

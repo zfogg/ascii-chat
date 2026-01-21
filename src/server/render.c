@@ -463,69 +463,62 @@ void *client_video_render_thread(void *arg) {
     bool has_video_sources = any_clients_sending_video();
     log_debug("Video render iteration for client %u: has_video_sources=%d", thread_client_id, has_video_sources);
 
-    if (!has_video_sources) {
+    if (has_video_sources) {
+      int sources_count = 0; // Track number of video sources in this frame
+
+      log_debug("About to call create_mixed_ascii_frame_for_client for client %u", thread_client_id);
+      char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
+                                                              &frame_size, NULL, &sources_count);
+      log_debug("create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
+                (void *)ascii_frame, frame_size, sources_count);
+
+      // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
+      if (ascii_frame && frame_size > 0) {
+        log_debug("Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
+        // GRID LAYOUT CHANGE DETECTION: Store source count with frame
+        // Send thread will compare this with last sent count to detect grid changes
+        atomic_store(&client->last_rendered_grid_sources, sources_count);
+
+        // Use double-buffer system which has its own internal swap_mutex
+        // No external locking needed - the double-buffer is thread-safe by design
+        video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
+
+        if (vfb_snapshot) {
+          video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
+          if (write_frame) {
+            // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
+            if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
+              memcpy(write_frame->data, ascii_frame, frame_size);
+              write_frame->size = frame_size;
+              write_frame->capture_timestamp_us = time_ns_to_us(current_time_ns);
+
+              // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
+              video_frame_commit(vfb_snapshot);
+
+              // Log occasionally for monitoring
+              char pretty_size[64];
+              format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
+
+            } else {
+              log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
+            }
+
+            // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
+            fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
+          }
+        }
+
+        SAFE_FREE(ascii_frame);
+      } else {
+        // No frame generated (probably no video sources) - this is normal, no error logging needed
+        log_debug_every(LOG_RATE_NORMAL, "Per-client render: No video sources available for client %u",
+                        client_id_snapshot);
+      }
+    } else {
       // No video sources - skip frame generation but DON'T update last_render_time
       // This ensures the next iteration still maintains proper frame timing
-      // DON'T continue here - let the loop update last_render_time at the bottom
-      // Fall through to update last_render_time at bottom of loop
       log_debug("Skipping frame generation for client %u (no video sources)", thread_client_id);
-      goto skip_frame_generation;
     }
-
-    int sources_count = 0; // Track number of video sources in this frame
-
-    log_debug("About to call create_mixed_ascii_frame_for_client for client %u", thread_client_id);
-    char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
-                                                            &frame_size, NULL, &sources_count);
-    log_debug("create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
-              (void *)ascii_frame, frame_size, sources_count);
-
-    // Phase 2 IMPLEMENTED: Write frame to double buffer (never drops!)
-    if (ascii_frame && frame_size > 0) {
-      log_debug("Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
-      // GRID LAYOUT CHANGE DETECTION: Store source count with frame
-      // Send thread will compare this with last sent count to detect grid changes
-      atomic_store(&client->last_rendered_grid_sources, sources_count);
-
-      // Use double-buffer system which has its own internal swap_mutex
-      // No external locking needed - the double-buffer is thread-safe by design
-      video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
-
-      if (vfb_snapshot) {
-        video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
-        if (write_frame) {
-          // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
-          if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
-            memcpy(write_frame->data, ascii_frame, frame_size);
-            write_frame->size = frame_size;
-            write_frame->capture_timestamp_us = time_ns_to_us(current_time_ns);
-
-            // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
-            video_frame_commit(vfb_snapshot);
-
-            // Log occasionally for monitoring
-            char pretty_size[64];
-            format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
-
-          } else {
-            log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
-          }
-
-          // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
-          fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
-        }
-      }
-
-      SAFE_FREE(ascii_frame);
-    } else {
-      // No frame generated (probably no video sources) - this is normal, no error logging needed
-      log_debug_every(LOG_RATE_NORMAL, "Per-client render: No video sources available for client %u",
-                      client_id_snapshot);
-    }
-
-  skip_frame_generation:
-    // Adaptive sleep system handles frame timing automatically
-    // No manual timestamp tracking needed - sleep state manages timing internally
   }
 
 #ifdef DEBUG_THREADS
@@ -715,9 +708,6 @@ void *client_audio_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
-    // Capture loop start time for precise timing
-    uint64_t loop_start_time_ns = time_get_ns();
-
     log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
