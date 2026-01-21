@@ -1597,20 +1597,26 @@ int server_main(void) {
       log_plain("🔒 ACDS privacy enabled: IP disclosed only after %s verification",
                 has_password ? "password" : "identity");
     } else if (explicit_expose) {
-      // Explicit opt-in to public IP disclosure - requires confirmation
-      log_plain_stderr("");
-      log_plain_stderr("⚠️  WARNING: You are about to allow PUBLIC IP disclosure!");
-      log_plain_stderr("⚠️  Anyone with the session string will be able to see your IP address.");
-      log_plain_stderr("⚠️  This is NOT RECOMMENDED unless you understand the privacy implications.");
-      log_plain_stderr("");
+      // Explicit opt-in to public IP disclosure
+      // Only prompt if running interactively (stdin is a TTY)
+      // When stdin is not a TTY (automated/scripted), treat explicit flag as confirmation
+      bool is_interactive = platform_isatty(STDIN_FILENO);
 
-      if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
+      if (is_interactive) {
         log_plain_stderr("");
-        log_plain_stderr("❌ IP disclosure not confirmed. Server will run WITHOUT discovery service.");
-        goto skip_acds_session;
+        log_plain_stderr("⚠️  WARNING: You are about to allow PUBLIC IP disclosure!");
+        log_plain_stderr("⚠️  Anyone with the session string will be able to see your IP address.");
+        log_plain_stderr("⚠️  This is NOT RECOMMENDED unless you understand the privacy implications.");
+        log_plain_stderr("");
+
+        if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
+          log_plain_stderr("");
+          log_plain_stderr("❌ IP disclosure not confirmed. Server will run WITHOUT discovery service.");
+          goto skip_acds_session;
+        }
       }
 
-      // User confirmed - proceed with public IP disclosure
+      // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
       acds_expose_ip_flag = true;
       log_plain_stderr("");
       log_plain_stderr("⚠️  Public IP disclosure CONFIRMED");
@@ -1647,6 +1653,11 @@ int server_main(void) {
     }
 
     asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &acds_config);
+    if (acds_connect_result != ASCIICHAT_OK) {
+      log_error("Failed to connect to ACDS server at %s:%d: %s", acds_server, acds_port,
+                asciichat_error_string(acds_connect_result));
+      goto skip_acds_session;
+    }
     if (acds_connect_result == ASCIICHAT_OK) {
       // Prepare session creation parameters
       acds_session_create_params_t create_params;
@@ -1716,7 +1727,7 @@ int server_main(void) {
 
       if (create_err == ASCIICHAT_OK) {
         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
-        log_info("✨ Session created successfully on ACDS");
+        log_info("Session created: %s", session_string);
 
         // Server must join its own session so ACDS can route signaling messages
         log_debug("Server joining session as first participant for WebRTC signaling...");
