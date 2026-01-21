@@ -1787,26 +1787,35 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
+                             colored_string(LOG_COLOR_FATAL, "default:"));
         switch (desc->type) {
         case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               *(const bool *)desc->default_value ? "true" : "false");
+                               colored_string(LOG_COLOR_FATAL,
+                                            *(const bool *)desc->default_value ? "true" : "false"));
           break;
         case OPTION_TYPE_INT: {
           int int_val = 0;
           memcpy(&int_val, desc->default_value, sizeof(int));
-          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%d", int_val);
+          char int_buf[32];
+          snprintf(int_buf, sizeof(int_buf), "%d", int_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, int_buf));
           break;
         }
         case OPTION_TYPE_STRING:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               *(const char *const *)desc->default_value);
+                               colored_string(LOG_COLOR_FATAL,
+                                            *(const char *const *)desc->default_value));
           break;
         case OPTION_TYPE_DOUBLE: {
           double double_val = 0.0;
           memcpy(&double_val, desc->default_value, sizeof(double));
-          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%.2f", double_val);
+          char double_buf[32];
+          snprintf(double_buf, sizeof(double_buf), "%.2f", double_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, double_buf));
           break;
         }
         default:
@@ -1820,8 +1829,10 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       }
 
       if (desc->env_var_name) {
-        // Plain text with space after env: - print_colored_segment handles coloring
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)", desc->env_var_name);
+        // Use colored_string for env label and variable name
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                             colored_string(LOG_COLOR_DEBUG, "env:"),
+                             colored_string(LOG_COLOR_DEBUG, desc->env_var_name));
       }
 
       // Use layout function with global column width for consistent alignment
