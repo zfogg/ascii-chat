@@ -1099,7 +1099,9 @@ int protocol_start_connection() {
   // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
   // Server expects this as the first packet after crypto handshake
   log_debug("Sending client capabilities to server...");
-  if (threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height)) != ASCIICHAT_OK) {
+  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
+  log_debug("★ threaded_send_terminal_size_with_auto_detect returned %d", cap_result);
+  if (cap_result != ASCIICHAT_OK) {
     log_error("Failed to send client capabilities to server");
     return -1;
   }
@@ -1107,13 +1109,16 @@ int protocol_start_connection() {
 
   // Send STREAM_START packet with combined stream types BEFORE starting worker threads
   // This tells the server what streams to expect before any data arrives
+  log_debug("★ About to send STREAM_START packet");
   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
   }
   log_debug("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
             (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
-  if (threaded_send_stream_start_packet(stream_types) != ASCIICHAT_OK) {
+  asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
+  log_debug("★ threaded_send_stream_start_packet returned %d", stream_result);
+  if (stream_result != ASCIICHAT_OK) {
     log_error("Failed to send STREAM_START packet");
     return -1;
   }
@@ -1240,7 +1245,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   // but handle_ascii_frame_packet() expects NETWORK byte order and does conversion.
   // So we need to convert back to network order before passing.
   size_t total_len = sizeof(*header) + data_len;
-  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
     log_error("Failed to allocate buffer for ASCII frame callback");
     return;
@@ -1259,7 +1264,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   memcpy(packet + sizeof(net_header), frame_data, data_len);
 
   handle_ascii_frame_packet(packet, total_len);
-  buffer_pool_free(NULL, packet, total_len);
+  SAFE_FREE(packet);
 }
 
 /**
@@ -1316,7 +1321,7 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
   size_t msg_len = message ? strlen(message) : 0;
   size_t total_len = sizeof(*header) + msg_len;
 
-  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
     log_error("Failed to allocate buffer for error packet callback");
     return;
@@ -1328,7 +1333,7 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
   }
 
   handle_error_message_packet(packet, total_len);
-  buffer_pool_free(NULL, packet, total_len);
+  SAFE_FREE(packet);
 }
 
 /**
@@ -1373,7 +1378,7 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
   size_t msg_len = strlen(message);
   size_t total_len = sizeof(*header) + msg_len;
 
-  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
     log_error("Failed to allocate buffer for remote log callback");
     return;
@@ -1383,7 +1388,7 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
   memcpy(packet + sizeof(*header), message, msg_len);
 
   handle_remote_log_packet(packet, total_len);
-  buffer_pool_free(NULL, packet, total_len);
+  SAFE_FREE(packet);
 }
 
 /**
