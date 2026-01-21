@@ -1318,9 +1318,6 @@ void *client_receive_thread(void *arg) {
     asciichat_error_t acip_result =
         acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
 
-    log_error("RECV_DISPATCH_COMPLETED: Client %u, result=%d, active=%d, exit=%d", atomic_load(&client->client_id),
-              acip_result, atomic_load(&client->active), atomic_load(&g_server_should_exit));
-
     // Check if shutdown was requested during the network call
     if (atomic_load(&g_server_should_exit)) {
       log_error("RECV_EXIT: Server shutdown requested, breaking loop");
@@ -2205,29 +2202,29 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
     mutex_unlock(&client->client_state_mutex);
   }
 
-  // Reconstruct packet in old format for legacy handler: [width:4][height:4][rgb_data]
-  // Header from ACIP is in HOST byte order, must convert back to NETWORK byte order
-  const size_t legacy_header_size = sizeof(uint32_t) * 2;
-  size_t total_len = legacy_header_size + data_len;
+  // Store frame data directly to incoming_video_buffer (don't wait for legacy handler)
+  // This ensures frame data is available immediately for the render thread
+  if (client->incoming_video_buffer) {
+    video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+    if (frame && frame->data && data_len > 0) {
+      // Store frame data: [width:4][height:4][pixel_data]
+      uint32_t width_net = HOST_TO_NET_U32(header->width);
+      uint32_t height_net = HOST_TO_NET_U32(header->height);
+      size_t total_size = sizeof(uint32_t) * 2 + data_len;
 
-  uint8_t *full_packet = SAFE_MALLOC(total_len, uint8_t *);
-  if (!full_packet) {
-    log_error("Failed to allocate buffer for IMAGE_FRAME reconstruction");
-    return;
+      if (total_size <= 2 * 1024 * 1024) { // Max 2MB
+        memcpy(frame->data, &width_net, sizeof(uint32_t));
+        memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+        memcpy((char *)frame->data + sizeof(uint32_t) * 2, pixel_data, data_len);
+        frame->size = total_size;
+        frame->width = header->width;
+        frame->height = header->height;
+        frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+        frame->sequence_number = ++client->frames_received;
+        video_frame_commit(client->incoming_video_buffer);
+      }
+    }
   }
-
-  uint32_t width_net = HOST_TO_NET_U32(header->width);
-  uint32_t height_net = HOST_TO_NET_U32(header->height);
-
-  memcpy(full_packet, &width_net, sizeof(uint32_t));
-  memcpy(full_packet + sizeof(uint32_t), &height_net, sizeof(uint32_t));
-  if (data_len > 0) {
-    memcpy(full_packet + legacy_header_size, pixel_data, data_len);
-  }
-
-  log_debug("Reconstructed old-format packet (total_len=%zu), calling legacy handler", total_len);
-  handle_image_frame_packet(client, full_packet, total_len);
-  SAFE_FREE(full_packet);
 }
 
 static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx) {
