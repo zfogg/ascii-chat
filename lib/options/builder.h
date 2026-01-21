@@ -775,6 +775,16 @@ void options_builder_add_acds_group(options_builder_t *b);
 void options_builder_add_webrtc_strategy_group(options_builder_t *b);
 
 /**
+ * @brief Add ACDS security verification options to a builder
+ *
+ * Adds --acds-insecure and --acds-key for ACDS server verification.
+ * Used by: client, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_acds_security_group(options_builder_t *b);
+
+/**
  * @brief Add media file streaming options to a builder
  *
  * Adds --file and --loop options for media file playback.

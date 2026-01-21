@@ -281,6 +281,25 @@ void options_builder_add_webrtc_strategy_group(options_builder_t *b) {
                            "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL);
 }
 
+/**
+ * @brief Add ACDS security verification options to a builder
+ *
+ * Adds --acds-insecure and --acds-key for ACDS server verification.
+ * Used by: client, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_acds_security_group(options_builder_t *b) {
+  options_builder_add_bool(b, "acds-insecure", '\0', offsetof(options_t, acds_insecure), false,
+                           "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY",
+                           false, NULL);
+
+  options_builder_add_string(
+      b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
+      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
+      false, NULL, NULL);
+}
+
 // ============================================================================
 // Media File Streaming Options Helper (Client + Mirror)
 // ============================================================================
@@ -561,14 +580,8 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_string(b, "server-key", '\0', offsetof(options_t, server_key), "", "Expected server public key",
                              "SECURITY", false, NULL, NULL);
 
-  options_builder_add_bool(b, "acds-insecure", '\0', offsetof(options_t, acds_insecure), false,
-                           "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY",
-                           false, NULL);
-
-  options_builder_add_string(
-      b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
-      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
-      false, NULL, NULL);
+  // ACDS security verification options
+  options_builder_add_acds_security_group(b);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -786,6 +799,9 @@ const options_config_t *options_preset_discovery(const char *program_name, const
 
   // Security options
   options_builder_add_crypto_group(b);
+
+  // ACDS security verification options
+  options_builder_add_acds_security_group(b);
 
   // Compression options
   options_builder_add_compression_group(b);
