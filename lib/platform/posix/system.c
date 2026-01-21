@@ -625,9 +625,6 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     return;
   }
 
-  // Print header with color
-  log_labeled(label, LOG_COLOR_WARN, "");
-
   // Calculate frame limits
   int start = skip_frames;
   int end = count;
@@ -635,9 +632,16 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Print backtrace frames with colored frame numbers
+  // Build backtrace output in buffer for atomic stderr write
+  char buffer[8192] = {0};
+  int offset = 0;
+
+  // Add header
+  offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
+
+  // Build backtrace frames with colored frame numbers
   int frame_num = 0;
-  for (int i = start; i < end; i++) {
+  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -645,8 +649,12 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%s%d%s] %s\n",
+                       log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
   }
+
+  // Print entire backtrace in one call to avoid interleaving
+  log_plain_stderr("%s", buffer);
 }
 
 /**
