@@ -10,6 +10,7 @@
 #include "platform/abstraction.h"
 #include "asciichat_errno.h"
 #include "util/utf8.h"
+#include "util/string.h"
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -1416,39 +1417,6 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
   return ASCIICHAT_OK;
 }
 
-/**
- * @brief Format a string with logging color codes if appropriate
- * Uses rotating static buffers to handle multiple calls in same statement
- */
-const char *colored_string(log_color_t color, const char *text) {
-#define COLORED_BUFFERS 4
-#define COLORED_BUFFER_SIZE 256
-  static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
-  static int buffer_idx = 0;
-
-  // Check if we should use colors: TTY output and not in CLAUDECODE mode
-  bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
-
-  if (!text) {
-    return "";
-  }
-
-  if (!use_colors) {
-    // No colors, just return the text directly
-    return text;
-  }
-
-  // Use rotating buffer to handle multiple calls in same fprintf
-  char *current_buf = buffers[buffer_idx];
-  buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
-
-  const char *color_code = log_level_color(color);
-  const char *reset_code = log_level_color(LOG_COLOR_RESET);
-
-  // Format into rotating static buffer: color_code + text + reset_code
-  snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
-  return current_buf;
-}
 
 
 // ============================================================================

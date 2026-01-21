@@ -7,6 +7,8 @@
 #include "util/string.h"
 #include "util/utf8.h"
 #include "common.h"
+#include "platform/system.h"
+#include "log/logging.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -258,4 +260,38 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
 #else
   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
 #endif
+}
+
+// ============================================================================
+// String Formatting and Display
+// ============================================================================
+
+const char *colored_string(log_color_t color, const char *text) {
+#define COLORED_BUFFERS 4
+#define COLORED_BUFFER_SIZE 256
+  static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
+  static int buffer_idx = 0;
+
+  // Check if we should use colors: TTY output and not in CLAUDECODE mode
+  bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
+
+  if (!text) {
+    return "";
+  }
+
+  if (!use_colors) {
+    // No colors, just return the text directly
+    return text;
+  }
+
+  // Use rotating buffer to handle multiple calls in same fprintf
+  char *current_buf = buffers[buffer_idx];
+  buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
+
+  const char *color_code = log_level_color(color);
+  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+
+  // Format into rotating static buffer: color_code + text + reset_code
+  snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
+  return current_buf;
 }

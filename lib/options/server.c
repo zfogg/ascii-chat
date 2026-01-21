@@ -24,6 +24,7 @@
 #include "util/ip.h"
 #include "util/parsing.h"
 #include "util/password.h"
+#include "util/string.h"
 #include "util/utf8.h"
 #include "video/ascii.h"
 

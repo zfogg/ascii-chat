@@ -960,19 +960,3 @@ void options_builder_add_media_group(options_builder_t *b);
  * @param b Builder to add options to
  */
 void options_builder_add_audio_group(options_builder_t *b);
-
-/**
- * @brief Build a colored string for help output
- *
- * Wraps text with ANSI color codes based on terminal capabilities.
- * Uses a rotating buffer to handle multiple colored strings in the same scope.
- * Checks if stdout is a TTY and CLAUDECODE environment variable.
- *
- * @param color The log color to apply (LOG_COLOR_DEBUG, LOG_COLOR_FATAL, etc.)
- * @param text The text to color
- * @return Colored string with ANSI codes, or plain text if colors disabled
- *
- * @note The returned pointer points to a static rotating buffer.
- *       Use or copy the result before calling colored_string() again.
- */
-const char *colored_string(log_color_t color, const char *text);

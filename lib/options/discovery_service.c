@@ -22,6 +22,7 @@
 #include "options/validation.h"
 #include "util/ip.h"
 #include "util/path.h"
+#include "util/string.h"
 #include "util/utf8.h"
 #include "version.h"
 
