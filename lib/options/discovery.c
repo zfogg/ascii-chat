@@ -88,9 +88,6 @@ void usage_discovery(FILE *desc) {
   }
 
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
-  (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  ascii-chat [options...]                  Start new session\n");
-  (void)fprintf(desc, "  ascii-chat <session-string> [options...] Join existing session\n\n");
 
   options_config_print_usage(config, desc);
 

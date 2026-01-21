@@ -8,6 +8,7 @@
 #include "log/logging.h"
 #include "layout.h"
 #include "platform/abstraction.h"
+#include "platform/terminal.h"
 #include "asciichat_errno.h"
 #include "util/utf8.h"
 #include "util/string.h"
@@ -1846,6 +1847,220 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   SAFE_FREE(unique_groups);
 
   fprintf(stream, "\n");
+}
+
+/**
+ * @brief Print only the USAGE section
+ *
+ * Splits usage printing from other sections to allow custom content
+ * (like positional argument examples) to be inserted between USAGE and other sections.
+ */
+void options_config_print_usage_section(const options_config_t *config, FILE *stream) {
+  if (!config || !stream)
+    return;
+
+  // Detect terminal width from COLUMNS env var or use default
+  int term_width = 80;
+  const char *cols_env = SAFE_GETENV("COLUMNS");
+  if (cols_env) {
+    int cols = atoi(cols_env);
+    if (cols > 40)
+      term_width = cols;
+  }
+
+  // Calculate global max column width across all sections for consistent alignment
+  int max_col_width = options_config_calculate_max_col_width(config);
+
+  // Print only USAGE section
+  print_usage_section(config, stream, term_width, max_col_width);
+}
+
+/**
+ * @brief Print everything except the USAGE section
+ *
+ * Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections.
+ * Used with options_config_print_usage_section to allow custom content in between.
+ */
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width) {
+  if (!config || !stream)
+    return;
+
+  // Detect terminal width - try actual terminal size first, fallback to COLUMNS env var
+  int term_width = 80;
+  terminal_size_t term_size;
+  if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
+    term_width = term_size.cols;
+  } else {
+    const char *cols_env = SAFE_GETENV("COLUMNS");
+    if (cols_env) {
+      int cols = atoi(cols_env);
+      if (cols > 40)
+        term_width = cols;
+    }
+  }
+
+  // Calculate column width if not provided
+  if (max_col_width <= 0) {
+    max_col_width = options_config_calculate_max_col_width(config);
+  }
+
+  // Print all sections except USAGE
+  print_modes_section(config, stream, term_width, max_col_width);
+  print_mode_options_section(stream, term_width, max_col_width);
+  print_examples_section(config, stream, term_width, max_col_width);
+
+  // Build list of unique groups in order of first appearance
+  const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
+  size_t num_unique_groups = 0;
+
+  for (size_t i = 0; i < config->num_descriptors; i++) {
+    const option_descriptor_t *desc = &config->descriptors[i];
+    if (desc->hide_from_mode_help || !desc->group) {
+      continue;
+    }
+
+    // Check if this group is already in the list
+    bool group_exists = false;
+    for (size_t j = 0; j < num_unique_groups; j++) {
+      if (unique_groups[j] && strcmp(unique_groups[j], desc->group) == 0) {
+        group_exists = true;
+        break;
+      }
+    }
+    if (!group_exists && num_unique_groups < config->num_descriptors) {
+      unique_groups[num_unique_groups++] = desc->group;
+    }
+  }
+
+  // Print options grouped by category
+  for (size_t gi = 0; gi < num_unique_groups; gi++) {
+    const char *current_group = unique_groups[gi];
+    // Add newline before each group except the first
+    if (gi > 0) {
+      fprintf(stream, "\n");
+    }
+    fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, current_group));
+
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      const option_descriptor_t *desc = &config->descriptors[i];
+      if (desc->hide_from_mode_help || !desc->group || strcmp(desc->group, current_group) != 0) {
+        continue;
+      }
+
+      // Build option string (flag part)
+      char option_str[256] = "";
+      int option_len = 0;
+
+      // Short name and long name
+      if (desc->short_name) {
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "-%c, --%s", desc->short_name,
+                               desc->long_name);
+      } else {
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "--%s", desc->long_name);
+      }
+
+      // Value placeholder
+      if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
+        switch (desc->type) {
+        case OPTION_TYPE_INT:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          break;
+        case OPTION_TYPE_STRING:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "STR");
+          break;
+        case OPTION_TYPE_DOUBLE:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          break;
+        case OPTION_TYPE_CALLBACK:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "VAL");
+          break;
+        default:
+          break;
+        }
+      }
+
+      // Build colored option string using colored_string() wrapper
+      char colored_option_str[512];
+      snprintf(colored_option_str, sizeof(colored_option_str), "%s", colored_string(LOG_COLOR_WARN, option_str));
+
+      // Build description with defaults and env vars
+      char desc_str[1024] = "";
+      int desc_len = 0;
+
+      if (desc->help_text) {
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
+      }
+
+      // Skip adding default if the description already mentions it
+      bool description_has_default =
+          desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
+
+      if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
+                             colored_string(LOG_COLOR_FATAL, "default:"));
+        switch (desc->type) {
+        case OPTION_TYPE_BOOL:
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL,
+                                            *(const bool *)desc->default_value ? "true" : "false"));
+          break;
+        case OPTION_TYPE_INT: {
+          int int_val = 0;
+          memcpy(&int_val, desc->default_value, sizeof(int));
+          char int_buf[32];
+          snprintf(int_buf, sizeof(int_buf), "%d", int_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, int_buf));
+          break;
+        }
+        case OPTION_TYPE_STRING:
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL,
+                                            *(const char *const *)desc->default_value));
+          break;
+        case OPTION_TYPE_DOUBLE: {
+          double double_val = 0.0;
+          memcpy(&double_val, desc->default_value, sizeof(double));
+          char double_buf[32];
+          snprintf(double_buf, sizeof(double_buf), "%.2f", double_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, double_buf));
+          break;
+        }
+        default:
+          break;
+        }
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
+      }
+
+      if (desc->required) {
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
+      }
+
+      if (desc->env_var_name) {
+        // Color env var name grey
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)",
+                             colored_string(LOG_COLOR_GREY, desc->env_var_name));
+      }
+
+      layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
+    }
+  }
+
+  // Cleanup
+  SAFE_FREE(unique_groups);
+
+  fprintf(stream, "\n");
+}
+
+/**
+ * @brief Print everything except the USAGE section (backward compatibility wrapper)
+ *
+ * Calls options_config_print_options_sections_with_width with auto-calculation.
+ */
+void options_config_print_options_sections(const options_config_t *config, FILE *stream) {
+  options_config_print_options_sections_with_width(config, stream, 0);
 }
 
 void options_config_cleanup(const options_config_t *config, void *options_struct) {

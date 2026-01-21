@@ -106,15 +106,35 @@ void usage_client(FILE *desc) {
       term_width = cols;
   }
 
-  // Print positional argument examples with layout formatting
+  // Print USAGE section first
+  options_config_print_usage_section(config, desc);
+
+  // Print positional argument examples after USAGE section
   if (config->num_positional_args > 0) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
     if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
       // Print section heading using colored_string for consistency
       (void)fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, pos_arg->section_heading));
 
+      // Calculate max width for alignment across all examples
+      int max_col_width = 0;
       for (size_t i = 0; i < pos_arg->num_examples; i++) {
-        // Print connection address examples with proper alignment
+        const char *example = pos_arg->examples[i];
+        // Find the first part (before multiple spaces)
+        const char *p = example;
+        while (*p == ' ')
+          p++;
+        const char *first_part = p;
+        while (*p && !(*p == ' ' && *(p + 1) == ' '))
+          p++;
+        int first_len_bytes = (int)(p - first_part);
+        int col_width = utf8_display_width_n(first_part, first_len_bytes);
+        if (col_width > max_col_width)
+          max_col_width = col_width;
+      }
+
+      // Print each example using layout function for proper alignment
+      for (size_t i = 0; i < pos_arg->num_examples; i++) {
         const char *example = pos_arg->examples[i];
         // Find the first part (before multiple spaces) and description (after multiple spaces)
         const char *p = example;
@@ -140,29 +160,21 @@ void usage_client(FILE *desc) {
         // Build the first part with colored_string for consistency
         char colored_first_part[256];
         snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
-        fprintf(desc, "  %s", colored_string(LOG_COLOR_INFO, colored_first_part));
-        // Calculate display width of first part (accounts for UTF-8 multi-byte chars)
-        int first_display_width = utf8_display_width_n(first_part, first_len_bytes);
-        // Pad to column 30 for description alignment
-        int padding = LAYOUT_DESCRIPTION_START_COL - (2 + first_display_width);
-        if (padding > 0) {
-          for (int j = 0; j < padding; j++)
-            fprintf(desc, " ");
-        } else {
-          fprintf(desc, " ");
-        }
-        // Print description with wrapping using layout function
-        if (desc_start) {
-          layout_print_wrapped_description(desc, desc_start, LAYOUT_DESCRIPTION_START_COL, term_width);
-        }
-        fprintf(desc, "\n");
+        char colored_result[512];
+        snprintf(colored_result, sizeof(colored_result), "%s",
+                 colored_string(LOG_COLOR_INFO, colored_first_part));
+
+        // Use layout function for consistent alignment with rest of help
+        layout_print_two_column_row(desc, colored_result,
+                                    desc_start ? desc_start : "",
+                                    max_col_width, term_width);
       }
       (void)fprintf(desc, "\n");
     }
   }
 
-  // Generate options from builder configuration
-  options_config_print_usage(config, desc);
+  // Print everything after USAGE (MODES, MODE-OPTIONS, EXAMPLES, OPTIONS) with global max width
+  options_config_print_options_sections_with_width(config, desc, 0);
 
   // Print project links
   print_project_links(desc);

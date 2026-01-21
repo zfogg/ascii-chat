@@ -9,6 +9,8 @@
 #include "layout.h"
 #include "log/logging.h"
 #include "util/utf8.h"
+#include "video/ansi.h"
+#include "common.h"
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <string.h>
 #include <stdio.h>
@@ -18,55 +20,44 @@
  * ============================================================================ */
 
 /**
- * @brief Print text segment with colored metadata labels
+ * @brief Print text segment as-is
  *
- * Colorizes "default:" labels and "env:" labels with colored env var names.
+ * All coloring is handled by colored_string() in builder.c before passing to layout functions.
+ * This function just prints the text without any color processing.
  */
 static void layout_print_colored_segment(FILE *stream, const char *seg) {
   if (!seg || !stream)
     return;
 
-  // Get color codes once to avoid rotating buffer issues
-  const char *magenta = log_level_color(LOG_COLOR_FATAL);
-  const char *cyan = log_level_color(LOG_COLOR_DEBUG);
-  const char *reset = log_level_color(LOG_COLOR_RESET);
-
-  const char *sp = seg;
-  while (*sp) {
-    if (strncmp(sp, "default:", 8) == 0) {
-      fprintf(stream, "%s", magenta); // Magenta for "default:"
-      fprintf(stream, "default:");
-      fprintf(stream, "%s", reset); // Reset
-      sp += 8;
-    } else if (strncmp(sp, "env:", 4) == 0) {
-      fprintf(stream, "%s", magenta); // Magenta for "env:"
-      fprintf(stream, "env:");
-      fprintf(stream, "%s", reset); // Reset
-      sp += 4;
-      while (*sp == ' ') {
-        fprintf(stream, " ");
-        sp++;
-      }
-      // Find end of env var name
-      const char *env_start = sp;
-      while (*sp && *sp != ')')
-        sp++;
-      if (sp > env_start) {
-        // Print env var name in cyan
-        fprintf(stream, "%s", cyan); // Cyan for env var
-        fprintf(stream, "%.*s", (int)(sp - env_start), env_start);
-        fprintf(stream, "%s", reset); // Reset
-      }
-    } else {
-      fprintf(stream, "%c", *sp);
-      sp++;
-    }
-  }
+  // Just print the text as-is. All coloring is done in builder.c using colored_string()
+  // before passing to layout functions. Layout functions only handle positioning and wrapping.
+  fprintf(stream, "%s", seg);
 }
 
 /* ============================================================================
  * Wrapped Description Printing
  * ============================================================================ */
+
+/**
+ * @brief Calculate display width of text segment, excluding ANSI escape codes
+ *
+ * Strips ANSI codes and calculates actual display width using UTF-8 aware calculation.
+ */
+static int calculate_segment_display_width(const char *text, int len) {
+  if (!text || len <= 0)
+    return 0;
+
+  // Create a stripped version for width calculation
+  char *stripped = ansi_strip_escapes(text, len);
+  if (!stripped)
+    return 0;
+
+  // Calculate display width of stripped text
+  int width = utf8_display_width_n(stripped, strlen(stripped));
+  SAFE_FREE(stripped);
+
+  return width < 0 ? 0 : width;
+}
 
 void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width) {
   if (!text || !stream)
@@ -83,7 +74,6 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
 
   const char *line_start = text;
   const char *last_space = NULL;
-  int line_display_width = 0;
   const char *p = text;
 
   while (*p) {
@@ -105,7 +95,6 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       }
       p++;
       line_start = p;
-      line_display_width = 0;
       last_space = NULL;
       continue;
     }
@@ -123,17 +112,14 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       break;
     }
 
-    // Get display width of this character
-    int char_display_width = utf8proc_charwidth(codepoint);
-    if (char_display_width < 0) {
-      // Control character or unprintable - treat as 0 width
-      char_display_width = 0;
-    }
+    // Advance to next character first
+    p += char_bytes;
 
-    line_display_width += char_display_width;
+    // Calculate actual display width from line_start to current position (excluding ANSI codes)
+    int actual_width = calculate_segment_display_width(line_start, p - line_start);
 
     // Check if we need to wrap
-    if (line_display_width >= available_width && last_space && last_space > line_start) {
+    if (actual_width >= available_width && last_space && last_space > line_start) {
       // Print text up to last space with colors applied
       int text_len = last_space - line_start;
       char seg[512];
@@ -147,13 +133,9 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
 
       p = last_space + 1;
       line_start = p;
-      line_display_width = 0;
       last_space = NULL;
       continue;
     }
-
-    // Advance to next character
-    p += char_bytes;
   }
 
   // Print remaining text
@@ -175,10 +157,15 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
   if (!stream || !first_column || !second_column)
     return;
 
-  // Calculate actual display width of first column (accounts for UTF-8 and ANSI codes)
-  int display_width = utf8_display_width(first_column);
+  // Strip ANSI escape codes before calculating display width
+  char *stripped = ansi_strip_escapes(first_column, strlen(first_column));
+
+  // Calculate actual display width of first column (accounts for UTF-8, excluding ANSI codes)
+  int display_width = utf8_display_width(stripped ? stripped : first_column);
   if (display_width < 0)
     display_width = first_col_len; // Fallback to provided value if available
+
+  SAFE_FREE(stripped);
 
   // Determine the description column start position and wrapping threshold
   // If first_col_len is provided (non-zero), use it as the maximum column width
@@ -190,8 +177,12 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     wrap_threshold = first_col_len;                // Use provided width as wrap threshold
   }
 
-  // If first column is short enough, put description on same line
-  if (display_width <= wrap_threshold) {
+  // At narrow terminal widths, force single-column layout (description on next line)
+  // At <= 90 columns, always use single-column for readability
+  bool force_single_column = (term_width <= 90);
+
+  // If first column is short enough AND we have space for description, use same-line layout
+  if (display_width <= wrap_threshold && !force_single_column) {
     // Print first column
     fprintf(stream, "  %s", first_column);
 
@@ -208,15 +199,18 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     layout_print_wrapped_description(stream, second_column, description_start_col, term_width);
     fprintf(stream, "\n");
   } else {
-    // First column too long, put description on next line
+    // First column too long or terminal too narrow, put description on next line
     fprintf(stream, "  %s\n", first_column);
 
+    // In single-column mode, use modest indent for readability
+    int description_indent = force_single_column ? 4 : description_start_col;
+
     // Print indent for description column
-    for (int i = 0; i < description_start_col; i++)
+    for (int i = 0; i < description_indent; i++)
       fprintf(stream, " ");
 
     // Print description with wrapping
-    layout_print_wrapped_description(stream, second_column, description_start_col, term_width);
+    layout_print_wrapped_description(stream, second_column, description_indent, term_width);
     fprintf(stream, "\n");
   }
 }

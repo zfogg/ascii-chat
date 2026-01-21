@@ -815,6 +815,39 @@ int options_config_calculate_max_col_width(const options_config_t *config);
 void options_config_print_usage(const options_config_t *config, FILE *stream);
 
 /**
+ * @brief Print only the USAGE section
+ *
+ * Prints just the USAGE section. Useful for inserting other content (like positional
+ * argument examples) between USAGE and other sections.
+ *
+ * @param config Options configuration
+ * @param stream Output stream (stdout or stderr)
+ */
+void options_config_print_usage_section(const options_config_t *config, FILE *stream);
+
+/**
+ * @brief Print everything except the USAGE section
+ *
+ * Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
+ * options_config_print_usage_section to allow custom content in between.
+ *
+ * @param config Options configuration
+ * @param stream Output stream (stdout or stderr)
+ * @param max_col_width Optional pre-calculated column width (0 = auto-calculate)
+ */
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width);
+
+/**
+ * @brief Print everything except the USAGE section (backward compatibility)
+ *
+ * Wrapper for options_config_print_options_sections_with_width with auto-calculation.
+ *
+ * @param config Options configuration
+ * @param stream Output stream (stdout or stderr)
+ */
+void options_config_print_options_sections(const options_config_t *config, FILE *stream);
+
+/**
  * @brief Clean up memory owned by options struct
  *
  * Frees all auto-duplicated strings and sets pointers to NULL.

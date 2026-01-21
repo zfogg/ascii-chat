@@ -551,7 +551,6 @@ void print_project_links(FILE *desc) {
   const char *cyan = log_level_color(LOG_COLOR_DEBUG);
   const char *reset = log_level_color(LOG_COLOR_RESET);
 
-  (void)fprintf(desc, "\n");
   (void)fprintf(desc, "🔗 %shttps://ascii-chat.com%s\n", cyan, reset);
   (void)fprintf(desc, "🔗 %shttps://github.com/zfogg/ascii-chat%s\n", cyan, reset);
 }
