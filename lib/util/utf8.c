@@ -127,43 +127,6 @@ int utf8_display_width_n(const char *str, size_t max_bytes) {
   return width;
 }
 
-bool utf8_is_valid(const char *str) {
-  if (!str) {
-    return false;
-  }
-
-  const uint8_t *p = (const uint8_t *)str;
-  while (*p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      return false; // Invalid UTF-8 sequence
-    }
-    p += decode_len;
-  }
-  return true;
-}
-
-bool utf8_is_ascii_only(const char *str) {
-  if (!str) {
-    return false;
-  }
-
-  const uint8_t *p = (const uint8_t *)str;
-  while (*p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      return false; // Invalid UTF-8 sequence
-    }
-    if (codepoint > 127) {
-      return false; // Non-ASCII character found
-    }
-    p += decode_len;
-  }
-  return true;
-}
-
 size_t utf8_char_count(const char *str) {
   if (!str) {
     return -1; // SIZE_MAX
@@ -181,6 +144,35 @@ size_t utf8_char_count(const char *str) {
     p += decode_len;
   }
   return count;
+}
+
+bool utf8_is_valid(const char *str) {
+  if (!str) {
+    return false;
+  }
+  // Reuse utf8_char_count to validate without duplicating loop
+  return utf8_char_count(str) != (size_t)-1;
+}
+
+bool utf8_is_ascii_only(const char *str) {
+  if (!str) {
+    return false;
+  }
+
+  // Decode codepoints and check they're all ASCII (0-127)
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      return false; // Invalid UTF-8 sequence
+    }
+    if (codepoint > 127) {
+      return false; // Non-ASCII character found
+    }
+    p += decode_len;
+  }
+  return true;
 }
 
 size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_codepoints) {
