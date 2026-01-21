@@ -6,6 +6,7 @@
 
 #include "builder.h"
 #include "log/logging.h"
+#include "layout.h"
 #include "platform/abstraction.h"
 #include "asciichat_errno.h"
 #include "util/utf8.h"
@@ -83,6 +84,66 @@ static void ensure_positional_arg_capacity(options_builder_t *builder) {
     }
     builder->positional_args = new_positional;
     builder->positional_arg_capacity = new_capacity;
+  }
+}
+
+/**
+ * @brief Grow usage line array if needed
+ */
+static void ensure_usage_line_capacity(options_builder_t *builder) {
+  if (builder->num_usage_lines >= builder->usage_line_capacity) {
+    size_t new_capacity = builder->usage_line_capacity * 2;
+    if (new_capacity == 0)
+      new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
+
+    usage_descriptor_t *new_usage = SAFE_REALLOC(
+        builder->usage_lines, new_capacity * sizeof(usage_descriptor_t), usage_descriptor_t *);
+    if (!new_usage) {
+      log_fatal("Failed to reallocate usage_lines array");
+      return;
+    }
+    builder->usage_lines = new_usage;
+    builder->usage_line_capacity = new_capacity;
+  }
+}
+
+/**
+ * @brief Grow examples array if needed
+ */
+static void ensure_example_capacity(options_builder_t *builder) {
+  if (builder->num_examples >= builder->example_capacity) {
+    size_t new_capacity = builder->example_capacity * 2;
+    if (new_capacity == 0)
+      new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
+
+    example_descriptor_t *new_examples = SAFE_REALLOC(
+        builder->examples, new_capacity * sizeof(example_descriptor_t), example_descriptor_t *);
+    if (!new_examples) {
+      log_fatal("Failed to reallocate examples array");
+      return;
+    }
+    builder->examples = new_examples;
+    builder->example_capacity = new_capacity;
+  }
+}
+
+/**
+ * @brief Grow modes array if needed
+ */
+static void ensure_mode_capacity(options_builder_t *builder) {
+  if (builder->num_modes >= builder->mode_capacity) {
+    size_t new_capacity = builder->mode_capacity * 2;
+    if (new_capacity == 0)
+      new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
+
+    help_mode_descriptor_t *new_modes = SAFE_REALLOC(
+        builder->modes, new_capacity * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
+    if (!new_modes) {
+      log_fatal("Failed to reallocate modes array");
+      return;
+    }
+    builder->modes = new_modes;
+    builder->mode_capacity = new_capacity;
   }
 }
 
@@ -212,6 +273,15 @@ options_builder_t *options_builder_create(size_t struct_size) {
   builder->positional_args = NULL;
   builder->num_positional_args = 0;
   builder->positional_arg_capacity = 0;
+  builder->usage_lines = NULL;
+  builder->num_usage_lines = 0;
+  builder->usage_line_capacity = 0;
+  builder->examples = NULL;
+  builder->num_examples = 0;
+  builder->example_capacity = 0;
+  builder->modes = NULL;
+  builder->num_modes = 0;
+  builder->mode_capacity = 0;
   builder->struct_size = struct_size;
   builder->program_name = NULL;
   builder->description = NULL;
@@ -261,6 +331,9 @@ void options_builder_destroy(options_builder_t *builder) {
   SAFE_FREE(builder->descriptors);
   SAFE_FREE(builder->dependencies);
   SAFE_FREE(builder->positional_args);
+  SAFE_FREE(builder->usage_lines);
+  SAFE_FREE(builder->examples);
+  SAFE_FREE(builder->modes);
   SAFE_FREE(builder);
 }
 
@@ -316,6 +389,63 @@ options_config_t *options_builder_build(options_builder_t *builder) {
     config->num_positional_args = 0;
   }
 
+  // Allocate and copy usage lines
+  if (builder->num_usage_lines > 0) {
+    config->usage_lines = SAFE_MALLOC(builder->num_usage_lines * sizeof(usage_descriptor_t), usage_descriptor_t *);
+    if (!config->usage_lines) {
+      SAFE_FREE(config->descriptors);
+      SAFE_FREE(config->dependencies);
+      SAFE_FREE(config->positional_args);
+      SAFE_FREE(config);
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate usage lines");
+      return NULL;
+    }
+    memcpy(config->usage_lines, builder->usage_lines, builder->num_usage_lines * sizeof(usage_descriptor_t));
+    config->num_usage_lines = builder->num_usage_lines;
+  } else {
+    config->usage_lines = NULL;
+    config->num_usage_lines = 0;
+  }
+
+  // Allocate and copy examples
+  if (builder->num_examples > 0) {
+    config->examples = SAFE_MALLOC(builder->num_examples * sizeof(example_descriptor_t), example_descriptor_t *);
+    if (!config->examples) {
+      SAFE_FREE(config->descriptors);
+      SAFE_FREE(config->dependencies);
+      SAFE_FREE(config->positional_args);
+      SAFE_FREE(config->usage_lines);
+      SAFE_FREE(config);
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate examples");
+      return NULL;
+    }
+    memcpy(config->examples, builder->examples, builder->num_examples * sizeof(example_descriptor_t));
+    config->num_examples = builder->num_examples;
+  } else {
+    config->examples = NULL;
+    config->num_examples = 0;
+  }
+
+  // Allocate and copy modes
+  if (builder->num_modes > 0) {
+    config->modes = SAFE_MALLOC(builder->num_modes * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
+    if (!config->modes) {
+      SAFE_FREE(config->descriptors);
+      SAFE_FREE(config->dependencies);
+      SAFE_FREE(config->positional_args);
+      SAFE_FREE(config->usage_lines);
+      SAFE_FREE(config->examples);
+      SAFE_FREE(config);
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate modes");
+      return NULL;
+    }
+    memcpy(config->modes, builder->modes, builder->num_modes * sizeof(help_mode_descriptor_t));
+    config->num_modes = builder->num_modes;
+  } else {
+    config->modes = NULL;
+    config->num_modes = 0;
+  }
+
   config->struct_size = builder->struct_size;
   config->program_name = builder->program_name;
   config->description = builder->description;
@@ -335,6 +465,9 @@ void options_config_destroy(options_config_t *config) {
   SAFE_FREE(config->descriptors);
   SAFE_FREE(config->dependencies);
   SAFE_FREE(config->positional_args);
+  SAFE_FREE(config->usage_lines);
+  SAFE_FREE(config->examples);
+  SAFE_FREE(config->modes);
   SAFE_FREE(config->owned_strings);
   SAFE_FREE(config);
 }
@@ -644,6 +777,58 @@ void options_builder_add_positional(options_builder_t *builder, const char *name
                                          .parse_fn = parse_fn};
 
   builder->positional_args[builder->num_positional_args++] = pos_arg;
+}
+
+// ============================================================================
+// Programmatic Help Generation
+// ============================================================================
+
+void options_builder_add_usage(options_builder_t *builder,
+                               const char *mode,
+                               const char *positional,
+                               bool show_options,
+                               const char *description) {
+  if (!builder || !description)
+    return;
+
+  ensure_usage_line_capacity(builder);
+
+  usage_descriptor_t usage = {.mode = mode,
+                              .positional = positional,
+                              .show_options = show_options,
+                              .description = description};
+
+  builder->usage_lines[builder->num_usage_lines++] = usage;
+}
+
+void options_builder_add_example(options_builder_t *builder,
+                                 const char *mode,
+                                 const char *args,
+                                 const char *description) {
+  if (!builder || !description)
+    return;
+
+  ensure_example_capacity(builder);
+
+  example_descriptor_t example = {.mode = mode,
+                                  .args = args,
+                                  .description = description};
+
+  builder->examples[builder->num_examples++] = example;
+}
+
+void options_builder_add_mode(options_builder_t *builder,
+                              const char *name,
+                              const char *description) {
+  if (!builder || !name || !description)
+    return;
+
+  ensure_mode_capacity(builder);
+
+  help_mode_descriptor_t mode = {.name = name,
+                                 .description = description};
+
+  builder->modes[builder->num_modes++] = mode;
 }
 
 asciichat_error_t options_config_parse_positional(const options_config_t *config, int remaining_argc,
@@ -1235,7 +1420,7 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
  * @brief Format a string with logging color codes if appropriate
  * Uses rotating static buffers to handle multiple calls in same statement
  */
-static const char *colored_string(log_color_t color, const char *text) {
+const char *colored_string(log_color_t color, const char *text) {
 #define COLORED_BUFFERS 4
 #define COLORED_BUFFER_SIZE 256
   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
@@ -1265,177 +1450,261 @@ static const char *colored_string(log_color_t color, const char *text) {
   return current_buf;
 }
 
+
+// ============================================================================
+// Programmatic Section Printers for Help Output
+// ============================================================================
+
 /**
- * @brief Print text segment with colored metadata labels
- * Colorizes "default:" labels and "env:" labels with cyan env var names
+ * @brief Calculate global max column width across all help sections
+ *
+ * Calculates the maximum width needed for proper alignment across
+ * USAGE, EXAMPLES, OPTIONS, and MODES sections.
  */
-static void print_colored_segment(FILE *stream, const char *seg) {
-  const char *sp = seg;
-  while (*sp) {
-    if (strncmp(sp, "default:", 8) == 0) {
-      fprintf(stream, "%s", colored_string(LOG_COLOR_FATAL, "default:"));
-      sp += 8;
-    } else if (strncmp(sp, "env:", 4) == 0) {
-      fprintf(stream, "%s", colored_string(LOG_COLOR_FATAL, "env:"));
-      sp += 4;
-      while (*sp == ' ') {
-        fprintf(stream, " ");
-        sp++;
+int options_config_calculate_max_col_width(const options_config_t *config) {
+  if (!config)
+    return 0;
+
+  const char *MAGENTA = log_level_color(LOG_COLOR_FATAL);
+  const char *GREEN = log_level_color(LOG_COLOR_INFO);
+  const char *YELLOW = log_level_color(LOG_COLOR_WARN);
+  const char *RESET = log_level_color(LOG_COLOR_RESET);
+
+#ifdef _WIN32
+  const char *binary_name = "ascii-chat.exe";
+#else
+  const char *binary_name = "ascii-chat";
+#endif
+
+  int max_col_width = 0;
+  char temp_buf[512];
+
+  // Check USAGE entries
+  for (size_t i = 0; i < config->num_usage_lines; i++) {
+    const usage_descriptor_t *usage = &config->usage_lines[i];
+    int len = 0;
+
+    len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+
+    if (usage->mode) {
+      if (strcmp(usage->mode, "<mode>") == 0) {
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s<mode>%s", MAGENTA, RESET);
+      } else {
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", MAGENTA, usage->mode, RESET);
       }
-      const char *env_start = sp;
-      while (*sp && *sp != ')')
-        sp++;
-      if (sp > env_start) {
-        char env_name[256];
-        int len = sp - env_start;
-        if (len < (int)sizeof(env_name)) {
-          strncpy(env_name, env_start, len);
-          env_name[len] = '\0';
-          fprintf(stream, "%s", colored_string(LOG_COLOR_DEBUG, env_name)); // Cyan for env var
-        }
-      }
-    } else {
-      fputc(*sp, stream);
-      sp++;
     }
+
+    if (usage->positional) {
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", GREEN, usage->positional, RESET);
+    }
+
+    if (usage->show_options) {
+      const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", YELLOW, options_text, RESET);
+    }
+
+    int w = utf8_display_width(temp_buf);
+    if (w > max_col_width)
+      max_col_width = w;
   }
+
+  // Check EXAMPLES entries
+  for (size_t i = 0; i < config->num_examples; i++) {
+    const example_descriptor_t *example = &config->examples[i];
+    int len = 0;
+
+    len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+
+    if (example->mode) {
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", MAGENTA, example->mode, RESET);
+    }
+
+    if (example->args) {
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", GREEN, example->args, RESET);
+    }
+
+    int w = utf8_display_width(temp_buf);
+    if (w > max_col_width)
+      max_col_width = w;
+  }
+
+  // Check MODES entries
+  for (size_t i = 0; i < config->num_modes; i++) {
+    snprintf(temp_buf, sizeof(temp_buf), "%s%s%s", MAGENTA, config->modes[i].name, RESET);
+    int w = utf8_display_width(temp_buf);
+    if (w > max_col_width)
+      max_col_width = w;
+  }
+
+  // Check OPTIONS entries (from descriptors)
+  for (size_t i = 0; i < config->num_descriptors; i++) {
+    const option_descriptor_t *desc = &config->descriptors[i];
+    if (desc->hide_from_mode_help || !desc->group)
+      continue;
+
+    // Build option display string
+    if (desc->short_name && desc->short_name != '\0') {
+      snprintf(temp_buf, sizeof(temp_buf), "%s-%c, --%s%s", YELLOW, desc->short_name, desc->long_name, RESET);
+    } else {
+      snprintf(temp_buf, sizeof(temp_buf), "%s--%s%s", YELLOW, desc->long_name, RESET);
+    }
+
+    int w = utf8_display_width(temp_buf);
+    if (w > max_col_width)
+      max_col_width = w;
+  }
+
+  return max_col_width;
 }
 
 /**
- * @brief Print option string with colorized type indicators (NUM, STR, VAL)
- * Handles coloring of type placeholders while maintaining correct length for alignment
+ * @brief Print USAGE section programmatically
+ *
+ * Builds colored usage lines from components:
+ * - mode: magenta (using LOG_COLOR_FATAL)
+ * - positional: green (using LOG_COLOR_INFO)
+ * - options: yellow (using LOG_COLOR_WARN)
  */
-static void print_colored_option(FILE *stream, const char *option_str) {
-  if (!option_str || !stream)
-    return;
-
-  bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
-  if (!use_colors) {
-    fprintf(stream, "%s", colored_string(LOG_COLOR_WARN, option_str));
+static void print_usage_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width) {
+  if (!config || !stream || config->num_usage_lines == 0) {
     return;
   }
 
-  // Print the option string, colorizing type indicators (NUM, STR, VAL)
-  const char *p = option_str;
-  const char *color_code = log_level_color(LOG_COLOR_INFO); // Green for type indicators
-  const char *warn_code = log_level_color(LOG_COLOR_WARN);  // Yellow for option name
-  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+#ifdef _WIN32
+  const char *binary_name = "ascii-chat.exe";
+#else
+  const char *binary_name = "ascii-chat";
+#endif
 
-  fprintf(stream, "%s", warn_code);
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
 
-  while (*p) {
-    // Check if we're at a type indicator
-    const char *type_start = NULL;
-    int type_len = 0;
+  // Build colored syntax strings using colored_string() for all components
+  for (size_t i = 0; i < config->num_usage_lines; i++) {
+    const usage_descriptor_t *usage = &config->usage_lines[i];
+    char usage_buf[512];
+    int len = 0;
 
-    if ((strncmp(p, "NUM", 3) == 0 && (p[3] == '\0' || p[3] == ' '))) {
-      type_start = p;
-      type_len = 3;
-    } else if ((strncmp(p, "STR", 3) == 0 && (p[3] == '\0' || p[3] == ' '))) {
-      type_start = p;
-      type_len = 3;
-    } else if ((strncmp(p, "VAL", 3) == 0 && (p[3] == '\0' || p[3] == ' '))) {
-      type_start = p;
-      type_len = 3;
+    // Start with binary name
+    len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s", binary_name);
+
+    // Add mode if present (magenta color)
+    if (usage->mode) {
+      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
     }
 
-    if (type_start) {
-      // Switch to info color for type indicator
-      fprintf(stream, "%s%.*s%s", color_code, type_len, type_start, warn_code);
-      p += type_len;
-    } else {
-      fprintf(stream, "%c", *p);
-      p++;
+    // Add positional args if present (green color)
+    if (usage->positional) {
+      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
     }
+
+    // Add options suffix if requested (yellow color)
+    if (usage->show_options) {
+      const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]"
+                                                                                       : "[options...]";
+      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
+    }
+
+    // Print with layout function using global column width
+    layout_print_two_column_row(stream, usage_buf, usage->description, max_col_width, term_width);
   }
-
-  fprintf(stream, "%s", reset_code);
+  fprintf(stream, "\n");
 }
 
 /**
- * @brief Word-wrap description text to fit in terminal width
- * Wraps plain text, then applies colors to metadata labels
+ * @brief Print EXAMPLES section programmatically
+ *
+ * Builds colored example commands from components:
+ * - mode: magenta (using LOG_COLOR_FATAL)
+ * - args/flags: yellow (using LOG_COLOR_WARN)
  */
-static void print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width) {
-  if (!text || !stream)
+static void print_examples_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width) {
+  if (!config || !stream || config->num_examples == 0) {
     return;
-
-  // Default terminal width if not specified
-  if (term_width <= 0)
-    term_width = 80;
-
-  // Available width for text after indentation
-  int available_width = term_width - indent_width;
-  if (available_width < 20)
-    available_width = 20;
-
-  const char *line_start = text;
-  const char *last_space = NULL;
-  const char *p = text;
-
-  while (*p) {
-    if (*p == ' ')
-      last_space = p;
-
-    // Calculate actual display width from line_start to current position
-    // utf8_display_width_n() properly skips ANSI escape sequences
-    int line_display_width = utf8_display_width_n(line_start, p - line_start + 1);
-
-    // Check if we need to wrap
-    if (line_display_width >= available_width || *p == '\n') {
-      // Find previous space if we exceeded width
-      if (*p != '\n' && line_display_width >= available_width && last_space && last_space > line_start) {
-        // Print text up to last space with colors applied
-        int text_len = last_space - line_start;
-        char seg[512];
-        strncpy(seg, line_start, text_len);
-        seg[text_len] = '\0';
-        print_colored_segment(stream, seg);
-
-        fprintf(stream, "\n");
-        for (int i = 0; i < indent_width; i++)
-          fprintf(stream, " ");
-        p = last_space + 1;
-        line_start = p;
-        last_space = NULL;
-        continue;
-      }
-
-      if (*p == '\n') {
-        // Print remaining segment with colors
-        int text_len = p - line_start;
-        if (text_len > 0) {
-          char seg[512];
-          strncpy(seg, line_start, text_len);
-          seg[text_len] = '\0';
-          print_colored_segment(stream, seg);
-        }
-
-        fprintf(stream, "\n");
-        if (*(p + 1)) {
-          for (int i = 0; i < indent_width; i++)
-            fprintf(stream, " ");
-        }
-        p++;
-        line_start = p;
-        last_space = NULL;
-        continue;
-      }
-    }
-
-    p++;
   }
 
-  // Print remaining text with colors
-  if (line_start < p) {
-    char seg[512];
-    int text_len = p - line_start;
-    if (text_len < (int)sizeof(seg)) {
-      strncpy(seg, line_start, text_len);
-      seg[text_len] = '\0';
-      print_colored_segment(stream, seg);
+#ifdef _WIN32
+  const char *binary_name = "ascii-chat.exe";
+#else
+  const char *binary_name = "ascii-chat";
+#endif
+
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "EXAMPLES:"));
+
+  // Build colored command strings using colored_string() for all components
+  for (size_t i = 0; i < config->num_examples; i++) {
+    const example_descriptor_t *example = &config->examples[i];
+    char cmd_buf[512];
+    int len = 0;
+
+    // Start with binary name
+    len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
+
+    // Add mode if present (magenta color)
+    if (example->mode) {
+      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, example->mode));
     }
+
+    // Add args/flags if present (yellow color)
+    if (example->args) {
+      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_WARN, example->args));
+    }
+
+    // Print with layout function using global column width
+    layout_print_two_column_row(stream, cmd_buf, example->description, max_col_width, term_width);
   }
+
+  fprintf(stream, "\n");
+}
+
+/**
+ * @brief Print MODES section programmatically
+ */
+static void print_modes_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width) {
+  if (!config || !stream || config->num_modes == 0) {
+    return;
+  }
+
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODES:"));
+
+  // Print each mode with colored name using colored_string() and global column width
+  for (size_t i = 0; i < config->num_modes; i++) {
+    char mode_buf[256];
+    snprintf(mode_buf, sizeof(mode_buf), "%s", colored_string(LOG_COLOR_FATAL, config->modes[i].name));
+    layout_print_two_column_row(stream, mode_buf, config->modes[i].description, max_col_width, term_width);
+  }
+
+  fprintf(stream, "\n");
+}
+
+/**
+ * @brief Print MODE-OPTIONS section programmatically
+ */
+static void print_mode_options_section(FILE *stream, int term_width, int max_col_width) {
+#ifdef _WIN32
+  const char *binary_name = "ascii-chat.exe";
+#else
+  const char *binary_name = "ascii-chat";
+#endif
+
+  // Print section header with colored "MODE-OPTIONS:" label
+  fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS:"));
+
+  // Build colored command with components
+  char usage_buf[512];
+  int len = 0;
+
+  // Binary name (no color)
+  len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s ", binary_name);
+
+  // Mode placeholder (magenta)
+  len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s", colored_string(LOG_COLOR_FATAL, "<mode>"));
+
+  // Space and help option (yellow)
+  len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, "--help"));
+
+  layout_print_two_column_row(stream, usage_buf, "Show options for a mode", max_col_width, term_width);
+
+  fprintf(stream, "\n");
 }
 
 void options_config_print_usage(const options_config_t *config, FILE *stream) {
@@ -1451,13 +1720,16 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       term_width = cols;
   }
 
-// Column layout: options in first 28 chars, descriptions start at column 30
-#define OPTION_COLUMN_WIDTH 28
-#define DESCRIPTION_START_COL 30
-#define NARROW_TERMINAL_THRESHOLD 55
+  // Calculate global max column width across all sections for consistent alignment
+  int max_col_width = options_config_calculate_max_col_width(config);
+
+  // Print programmatically generated sections (USAGE, MODES, MODE-OPTIONS, EXAMPLES)
+  print_usage_section(config, stream, term_width, max_col_width);
+  print_modes_section(config, stream, term_width, max_col_width);
+  print_mode_options_section(stream, term_width, max_col_width);
+  print_examples_section(config, stream, term_width, max_col_width);
 
   // Build list of unique groups in order of first appearance
-  bool use_vertical_layout = (term_width < NARROW_TERMINAL_THRESHOLD);
 
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
@@ -1486,7 +1758,11 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   // Print options grouped by group name
   for (size_t g = 0; g < num_unique_groups; g++) {
     const char *current_group = unique_groups[g];
-    fprintf(stream, "\n%s:\n", colored_string(LOG_COLOR_DEBUG, current_group));
+    // Only add leading newline for groups after the first one
+    if (g > 0) {
+      fprintf(stream, "\n");
+    }
+    fprintf(stream, "%s:\n", colored_string(LOG_COLOR_DEBUG, current_group));
 
     // Print all options in this group
     for (size_t i = 0; i < config->num_descriptors; i++) {
@@ -1580,44 +1856,11 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)", desc->env_var_name);
       }
 
-      // For narrow terminals, use vertical layout
-      if (use_vertical_layout) {
-        fprintf(stream, "  ");
-        print_colored_option(stream, option_str);
-        fprintf(stream, "\n  ");
-        print_wrapped_description(stream, desc_str, 2, term_width);
-        fprintf(stream, "\n\n");
-      } else {
-        // Print option and description with proper alignment
-        fprintf(stream, "  ");
-        print_colored_option(stream, option_str);
+      // Use layout function with global column width for consistent alignment
+      char colored_option_str[512];
+      snprintf(colored_option_str, sizeof(colored_option_str), "%s", colored_string(LOG_COLOR_WARN, option_str));
 
-        // Calculate display width of option string (accounts for UTF-8)
-        int option_display_width = utf8_display_width(option_str);
-
-        // If option string is short enough, put description on same line
-        if (option_display_width < OPTION_COLUMN_WIDTH) {
-          // Pad to column 30, then print description with wrapping
-          int current_col = 2 + option_display_width; // 2 for leading spaces
-          int padding = DESCRIPTION_START_COL - current_col;
-          if (padding > 0) {
-            fprintf(stream, "%*s", padding, "");
-          } else {
-            fprintf(stream, " ");
-          }
-          // Print description with wrapping at column 30 indent
-          print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
-          fprintf(stream, "\n");
-        } else {
-          // Option string too long, put description on next line with proper indent
-          fprintf(stream, "\n");
-          // Print indent for description column
-          for (int i = 0; i < DESCRIPTION_START_COL; i++)
-            fprintf(stream, " ");
-          print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
-          fprintf(stream, "\n");
-        }
-      }
+      layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
     }
   }
 

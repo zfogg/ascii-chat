@@ -68,23 +68,23 @@ asciichat_error_t parse_discovery_service_options(int argc, char **argv, options
   }
 
   // Set default paths if not specified
-  if (opts->acds_database_path[0] == '\0') {
+  if (opts->discovery_database_path[0] == '\0') {
     char *config_dir = get_config_dir();
     if (!config_dir) {
       options_config_destroy(config);
       return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
     }
-    snprintf(opts->acds_database_path, sizeof(opts->acds_database_path), "%sacds.db", config_dir);
+    snprintf(opts->discovery_database_path, sizeof(opts->discovery_database_path), "%sdiscovery.db", config_dir);
     SAFE_FREE(config_dir);
   }
 
-  if (opts->acds_key_path[0] == '\0') {
+  if (opts->discovery_key_path[0] == '\0') {
     char *config_dir = get_config_dir();
     if (!config_dir) {
       options_config_destroy(config);
       return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for identity key path");
     }
-    snprintf(opts->acds_key_path, sizeof(opts->acds_key_path), "%sacds_identity", config_dir);
+    snprintf(opts->discovery_key_path, sizeof(opts->discovery_key_path), "%sdiscovery_identity", config_dir);
     SAFE_FREE(config_dir);
   }
 
@@ -107,19 +107,6 @@ void usage_acds(FILE *desc) {
   // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
 
-  // Print USAGE header with color
-  (void)fprintf(desc, "%sUSAGE:%s\n", log_level_color(LOG_COLOR_DEBUG), log_level_color(LOG_COLOR_RESET));
-
-  // Get color codes once to avoid rotating buffer issues
-  const char *magenta = log_level_color(LOG_COLOR_FATAL);
-  const char *yellow = log_level_color(LOG_COLOR_WARN);
-  const char *reset_color = log_level_color(LOG_COLOR_RESET);
-
-  // Print USAGE line with colored components: binary (default), mode (magenta), options (yellow)
-  (void)fprintf(desc, "  ascii-chat %s%s%s %s[options...]%s\n\n", magenta, "discovery-service",
-                reset_color,          // mode in magenta
-                yellow, reset_color); // [options...] in yellow
-
   // Detect terminal width for layout
   int term_width = 80;
   const char *cols_env = getenv("COLUMNS");
@@ -133,11 +120,8 @@ void usage_acds(FILE *desc) {
   if (config->num_positional_args > 0) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
     if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
-      (void)fprintf(desc, "%s%s:%s\n", log_level_color(LOG_COLOR_DEBUG), pos_arg->section_heading,
-                    log_level_color(LOG_COLOR_RESET));
-      // Get color codes once to avoid rotating buffer issues
-      const char *green = log_level_color(LOG_COLOR_INFO);
-      const char *reset = log_level_color(LOG_COLOR_RESET);
+      // Print section heading using colored_string for consistency
+      (void)fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, pos_arg->section_heading));
 
       for (size_t i = 0; i < pos_arg->num_examples; i++) {
         // Print bind address examples with proper alignment
@@ -163,8 +147,10 @@ void usage_acds(FILE *desc) {
           desc_start = p;
         }
 
-        // Print with color codes and layout alignment
-        fprintf(desc, "  %s%.*s%s", green, first_len_bytes, first_part, reset);
+        // Build the first part with colored_string for consistency
+        char colored_first_part[256];
+        snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
+        fprintf(desc, "  %s", colored_string(LOG_COLOR_INFO, colored_first_part));
         // Calculate display width of first part (accounts for UTF-8 multi-byte chars)
         int first_display_width = utf8_display_width_n(first_part, first_len_bytes);
         // Pad to column 30 for description alignment

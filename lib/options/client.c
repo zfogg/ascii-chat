@@ -96,22 +96,6 @@ void usage_client(FILE *desc) {
   // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
 
-  // Print USAGE header with color
-  (void)fprintf(desc, "%sUSAGE:%s\n", log_level_color(LOG_COLOR_DEBUG), log_level_color(LOG_COLOR_RESET));
-
-  // Get color codes once to avoid rotating buffer issues
-  const char *magenta = log_level_color(LOG_COLOR_FATAL);
-  const char *green_color = log_level_color(LOG_COLOR_INFO);
-  const char *yellow = log_level_color(LOG_COLOR_WARN);
-  const char *reset_color = log_level_color(LOG_COLOR_RESET);
-
-  // Print USAGE line with colored components: binary (default), mode (magenta), args (green), options (yellow)
-  (void)fprintf(desc, "  ascii-chat %s%s%s [%saddress%s][:%sport%s] %s[options...]%s\n\n", magenta, "client",
-                reset_color,              // mode in magenta
-                green_color, reset_color, // address arg in green
-                green_color, reset_color, // port arg in green
-                yellow, reset_color);     // [options...] in yellow
-
   // Detect terminal width for layout
   int term_width = 80;
   const char *cols_env = getenv("COLUMNS");
@@ -125,11 +109,8 @@ void usage_client(FILE *desc) {
   if (config->num_positional_args > 0) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
     if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
-      (void)fprintf(desc, "%s%s:%s\n", log_level_color(LOG_COLOR_DEBUG), pos_arg->section_heading,
-                    log_level_color(LOG_COLOR_RESET));
-      // Get color codes once to avoid rotating buffer issues
-      const char *green = log_level_color(LOG_COLOR_INFO);
-      const char *reset = log_level_color(LOG_COLOR_RESET);
+      // Print section heading using colored_string for consistency
+      (void)fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, pos_arg->section_heading));
 
       for (size_t i = 0; i < pos_arg->num_examples; i++) {
         // Print connection address examples with proper alignment
@@ -155,8 +136,10 @@ void usage_client(FILE *desc) {
           desc_start = p;
         }
 
-        // Print with color codes and layout alignment
-        fprintf(desc, "  %s%.*s%s", green, first_len_bytes, first_part, reset);
+        // Build the first part with colored_string for consistency
+        char colored_first_part[256];
+        snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
+        fprintf(desc, "  %s", colored_string(LOG_COLOR_INFO, colored_first_part));
         // Calculate display width of first part (accounts for UTF-8 multi-byte chars)
         int first_display_width = utf8_display_width_n(first_part, first_len_bytes);
         // Pad to column 30 for description alignment

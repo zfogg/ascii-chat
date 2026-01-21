@@ -103,6 +103,42 @@ typedef struct {
 } option_descriptor_t;
 
 /**
+ * @brief Usage line descriptor for programmatic USAGE generation
+ *
+ * Stores components separately so colors can be applied semantically:
+ * - mode: magenta
+ * - positional args: green
+ * - options: yellow
+ */
+typedef struct {
+  const char *mode;         ///< NULL or mode name (e.g., "server") or "<mode>" placeholder
+  const char *positional;   ///< NULL or positional args (e.g., "[bind-addr]", "<session-string>")
+  bool show_options;        ///< true = show "[options...]" suffix
+  const char *description;  ///< Help text for this usage pattern
+} usage_descriptor_t;
+
+/**
+ * @brief Example descriptor for programmatic EXAMPLES generation
+ *
+ * Stores command components separately for semantic coloring:
+ * - mode: magenta
+ * - args: green
+ */
+typedef struct {
+  const char *mode;         ///< NULL or mode name (e.g., "server", "client")
+  const char *args;         ///< NULL or args (e.g., "example.com", "swift-river-mountain")
+  const char *description;  ///< Help text for this example
+} example_descriptor_t;
+
+/**
+ * @brief Mode descriptor for programmatic MODES generation (for help output)
+ */
+typedef struct {
+  const char *name;         ///< Mode name (e.g., "server", "client")
+  const char *description;  ///< Mode description (e.g., "Run as multi-client video chat server")
+} help_mode_descriptor_t;
+
+/**
  * @brief Option dependency
  *
  * Describes a dependency relationship between two options.
@@ -176,6 +212,16 @@ typedef struct {
   const char *program_name; ///< For usage header
   const char *description;  ///< For usage header
 
+  // Programmatic help generation metadata
+  usage_descriptor_t *usage_lines; ///< Array of usage line descriptors
+  size_t num_usage_lines;          ///< Number of usage lines
+
+  example_descriptor_t *examples; ///< Array of example descriptors
+  size_t num_examples;            ///< Number of examples
+
+  help_mode_descriptor_t *modes; ///< Array of mode descriptors
+  size_t num_modes;              ///< Number of modes
+
   // Memory management (internal use)
   char **owned_strings;          ///< Strdup'd strings to free on cleanup
   size_t num_owned_strings;      ///< Number of owned strings
@@ -201,6 +247,18 @@ typedef struct {
   positional_arg_descriptor_t *positional_args; ///< Dynamic array of positional args
   size_t num_positional_args;                   ///< Current count
   size_t positional_arg_capacity;               ///< Allocated capacity
+
+  usage_descriptor_t *usage_lines; ///< Dynamic array of usage lines
+  size_t num_usage_lines;          ///< Current count
+  size_t usage_line_capacity;      ///< Allocated capacity
+
+  example_descriptor_t *examples; ///< Dynamic array of examples
+  size_t num_examples;            ///< Current count
+  size_t example_capacity;        ///< Allocated capacity
+
+  help_mode_descriptor_t *modes; ///< Dynamic array of modes
+  size_t num_modes;              ///< Current count
+  size_t mode_capacity;          ///< Allocated capacity
 
   size_t struct_size;       ///< Target struct size
   const char *program_name; ///< Program name for usage
@@ -534,6 +592,94 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
                                                   char **remaining_argv, void *options_struct);
 
 // ============================================================================
+// Programmatic Help Generation
+// ============================================================================
+
+/**
+ * @brief Add usage line descriptor
+ *
+ * Adds a usage line to be printed in the USAGE section. Components are colored
+ * separately during printing:
+ * - mode: magenta
+ * - positional: green
+ * - "[options...]": yellow
+ *
+ * @param builder Builder instance
+ * @param mode Mode name (NULL for binary-level, or "server", "<mode>", etc.)
+ * @param positional Positional args (NULL or "[bind-addr]", "<session-string>", etc.)
+ * @param show_options True to append "[options...]" or "[mode-options...]"
+ * @param description Help text for this usage pattern
+ *
+ * Example:
+ * ```c
+ * options_builder_add_usage(b, NULL, NULL, true,
+ *                           "Start a new session");
+ *
+ * options_builder_add_usage(b, NULL, "<session-string>", true,
+ *                           "Join an existing session");
+ *
+ * options_builder_add_usage(b, "<mode>", NULL, true,
+ *                           "Run in a specific mode");
+ * ```
+ */
+void options_builder_add_usage(options_builder_t *builder,
+                               const char *mode,
+                               const char *positional,
+                               bool show_options,
+                               const char *description);
+
+/**
+ * @brief Add example descriptor
+ *
+ * Adds an example command to be printed in the EXAMPLES section. Components
+ * are colored separately during printing:
+ * - mode: magenta
+ * - args: green
+ *
+ * @param builder Builder instance
+ * @param mode Mode name (NULL or "server", "client", "mirror", etc.)
+ * @param args Arguments (NULL or "example.com", "swift-river-mountain", etc.)
+ * @param description Help text for this example
+ *
+ * Example:
+ * ```c
+ * options_builder_add_example(b, NULL, NULL,
+ *                             "Start new session");
+ *
+ * options_builder_add_example(b, "server", NULL,
+ *                             "Run as dedicated server");
+ *
+ * options_builder_add_example(b, "client", "example.com",
+ *                             "Connect to specific server");
+ * ```
+ */
+void options_builder_add_example(options_builder_t *builder,
+                                 const char *mode,
+                                 const char *args,
+                                 const char *description);
+
+/**
+ * @brief Add mode descriptor
+ *
+ * Adds a mode to be printed in the MODES section. The mode name
+ * is colored magenta during printing.
+ *
+ * @param builder Builder instance
+ * @param name Mode name (e.g., "server", "client", "mirror")
+ * @param description Mode description
+ *
+ * Example:
+ * ```c
+ * options_builder_add_mode(b, "server", "Run as multi-client video chat server");
+ * options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
+ * options_builder_add_mode(b, "mirror", "View local webcam as ASCII art (no server)");
+ * ```
+ */
+void options_builder_add_mode(options_builder_t *builder,
+                              const char *name,
+                              const char *description);
+
+// ============================================================================
 // Preset Configurations
 // ============================================================================
 
@@ -646,6 +792,17 @@ asciichat_error_t options_config_parse(const options_config_t *config, int argc,
  */
 asciichat_error_t options_config_validate(const options_config_t *config, const void *options_struct,
                                           char **error_message);
+
+/**
+ * @brief Calculate global max column width for help output alignment
+ *
+ * Calculates the maximum width needed for proper alignment across
+ * all help sections (USAGE, EXAMPLES, OPTIONS, MODES).
+ *
+ * @param config Options configuration
+ * @return Maximum column width needed for alignment
+ */
+int options_config_calculate_max_col_width(const options_config_t *config);
 
 /**
  * @brief Print usage/help text
@@ -803,3 +960,19 @@ void options_builder_add_media_group(options_builder_t *b);
  * @param b Builder to add options to
  */
 void options_builder_add_audio_group(options_builder_t *b);
+
+/**
+ * @brief Build a colored string for help output
+ *
+ * Wraps text with ANSI color codes based on terminal capabilities.
+ * Uses a rotating buffer to handle multiple colored strings in the same scope.
+ * Checks if stdout is a TTY and CLAUDECODE environment variable.
+ *
+ * @param color The log color to apply (LOG_COLOR_DEBUG, LOG_COLOR_FATAL, etc.)
+ * @param text The text to color
+ * @return Colored string with ANSI codes, or plain text if colors disabled
+ *
+ * @note The returned pointer points to a static rotating buffer.
+ *       Use or copy the result before calling colored_string() again.
+ */
+const char *colored_string(log_color_t color, const char *text);
