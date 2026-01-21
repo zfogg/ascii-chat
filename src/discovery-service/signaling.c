@@ -9,8 +9,8 @@
  * Session validation uses SQLite database lookups.
  */
 
-#include "discovery-server/signaling.h"
-#include "discovery-server/server.h"
+#include "discovery-service/signaling.h"
+#include "discovery-service/server.h"
 #include "discovery/database.h"
 #include "discovery/session.h"
 #include "log/logging.h"

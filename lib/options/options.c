@@ -15,7 +15,8 @@
 #include "options/client.h"
 #include "options/server.h"
 #include "options/mirror.h"
-#include "options/discovery_server.h"
+#include "options/discovery_service.h"
+#include "options/discovery.h"
 #include "options/validation.h"
 
 #include "options/config.h"
@@ -70,7 +71,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
-  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-server", NULL};
+  const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", NULL};
   const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
@@ -99,10 +100,9 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     break;
   }
 
-  // If no positional argument found, show help
+  // If no positional argument found, use discovery mode (start new session)
   if (first_positional_idx == -1) {
-    // No mode specified - caller will print help and exit
-    *out_mode = MODE_SERVER; // Default
+    *out_mode = MODE_DISCOVERY;
     *out_mode_index = -1;
     return ASCIICHAT_OK;
   }
@@ -110,7 +110,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const char *positional = argv[first_positional_idx];
 
   // Try to match against known modes
-  const char *const mode_names[] = {"server", "client", "mirror", "discovery-server", NULL};
+  const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", NULL};
   const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
@@ -122,15 +122,12 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   }
 
   // Not a known mode - check if it's a session string (word-word-word pattern)
-  // Use the robust session string validator from discovery module
   if (is_session_string(positional)) {
-    // This is a session string - treat as client mode with automatic discovery
-    *out_mode = MODE_CLIENT;
+    *out_mode = MODE_DISCOVERY;
     *out_mode_index = first_positional_idx;
     if (out_session_string) {
       SAFE_STRNCPY(out_session_string, positional, 64);
     }
-    log_debug("Detected session string mode: '%s'", positional);
     return ASCIICHAT_OK;
   }
 
@@ -353,6 +350,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     case MODE_DISCOVERY_SERVER:
       log_filename = "acds.log";
       break;
+    case MODE_DISCOVERY:
+      log_filename = "discovery.log";
+      break;
     default:
       log_filename = "ascii-chat.log";
       break;
@@ -389,6 +389,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     case MODE_DISCOVERY_SERVER:
       log_filename = "acds.log";
       break;
+    case MODE_DISCOVERY:
+      log_filename = "discovery.log";
+      break;
     default:
       log_filename = "ascii-chat.log";
       break;
@@ -406,8 +409,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   opts.palette_custom[0] = '\0';
 
   // Set different default addresses for different modes
-  if (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR) {
-    // Client/Mirror: connects to localhost by default
+  if (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY) {
+    // Client/Mirror/Discovery: connects to localhost by default (discovery uses ACDS to find server)
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "localhost");
     opts.address6[0] = '\0'; // Client doesn't use address6
   } else if (detected_mode == MODE_SERVER) {
@@ -425,7 +428,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 4: Load Configuration Files
   // ========================================================================
 
-  bool is_client_or_mirror = (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR);
+  // Discovery mode is client-like (uses terminal display, webcam, etc.)
+  bool is_client_or_mirror =
+      (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY);
   asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
@@ -445,7 +450,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     result = parse_mirror_options(mode_argc, mode_argv, &opts);
     break;
   case MODE_DISCOVERY_SERVER:
-    result = parse_discovery_server_options(mode_argc, mode_argv, &opts);
+    result = parse_discovery_service_options(mode_argc, mode_argv, &opts);
+    break;
+  case MODE_DISCOVERY:
+    result = parse_discovery_options(mode_argc, mode_argv, &opts);
     break;
   default:
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);

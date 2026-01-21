@@ -21,6 +21,7 @@
 #include "network/parallel_connect.h"
 #include "platform/socket.h"
 #include "util/endian.h"
+#include "util/time.h"
 
 #include <netdb.h>
 #include <string.h>
@@ -557,37 +558,24 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], ui
 }
 
 bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds) {
-  // Get current time in milliseconds
-  struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-    log_error("clock_gettime failed");
-    return false;
-  }
-
-  uint64_t now_ms = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+  uint64_t now_ms = time_ns_to_ms(time_get_realtime_ns());
   uint64_t window_ms = (uint64_t)window_seconds * 1000;
 
-  // Check if timestamp is too far in the future (allow 60 second clock skew)
   if (timestamp_ms > now_ms + 60000) {
-    // Cast to signed before subtraction to avoid unsigned underflow
     int64_t skew = (int64_t)timestamp_ms - (int64_t)now_ms;
     log_warn("Timestamp is in the future: %llu > %llu (skew: %lld ms)", (unsigned long long)timestamp_ms,
              (unsigned long long)now_ms, (long long)skew);
     return false;
   }
 
-  // Check if timestamp is too old
-  // To avoid unsigned underflow, check if now_ms is large enough before subtracting
   uint64_t min_valid_timestamp = (now_ms >= window_ms) ? (now_ms - window_ms) : 0;
   if (timestamp_ms < min_valid_timestamp) {
-    // Cast to signed before subtraction to avoid unsigned underflow
     int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
     log_warn("Timestamp is too old: %llu < %llu (age: %lld ms, max: %u seconds)", (unsigned long long)timestamp_ms,
              (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
     return false;
   }
 
-  // Cast to signed before subtraction to avoid unsigned underflow
   int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
   log_debug("Timestamp validation passed (age: %lld ms, window: %u seconds)", (long long)age, window_seconds);
   return true;

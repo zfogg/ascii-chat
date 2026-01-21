@@ -21,17 +21,24 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Mode-specific entry point
+// Mode-specific entry points
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
-#include "discovery-server/main.h"
+#include "discovery-service/main.h"
+#include "discovery/main.h"
+
+// Utilities
+#include "util/utf8.h"
+#include "util/time.h"
 
 // Common headers for version info and initialization
 #include "common.h"
 #include "version.h"
 #include "options/options.h"
+#include "options/common.h"
 #include "options/rcu.h"
+#include "options/layout.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
@@ -77,8 +84,8 @@ static const mode_descriptor_t g_mode_table[] = {
         .entry_point = mirror_main,
     },
     {
-        .name = "discovery-server",
-        .description = "Run discovery service for session management",
+        .name = "discovery-service",
+        .description = "Secure P2P session signalling",
         .entry_point = acds_main,
     },
     {.name = NULL, .description = NULL, .entry_point = NULL},
@@ -88,6 +95,20 @@ static const mode_descriptor_t g_mode_table[] = {
  * Help and Usage Functions
  * ============================================================================ */
 
+/**
+ * @brief Helper to create colored option string for display
+ *
+ * Returns a string with ANSI color codes for proper coloring.
+ * Caller must use the string immediately before calling again.
+ */
+static char colored_option_buf[512];
+
+static const char *colored_option(const char *color, const char *text) {
+  const char *reset = "\033[0m";
+  snprintf(colored_option_buf, sizeof(colored_option_buf), "%s%s%s", color, text, reset);
+  return colored_option_buf;
+}
+
 static void print_usage(void) {
 #ifdef _WIN32
   const char *binary_name = "ascii-chat.exe";
@@ -95,44 +116,207 @@ static void print_usage(void) {
   const char *binary_name = "ascii-chat";
 #endif
 
-  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
-         ASCII_CHAT_DESCRIPTION_EMOJI_R);
-  printf("\n");
-  printf("USAGE:\n");
-  printf("  %s [options] <mode> [mode-options...]\n", binary_name);
-  printf("\n");
-  printf("EXAMPLES:\n");
-  printf("  %s server                    Start server on default port 27224\n", binary_name);
-  printf("  %s client                    Connect to localhost:27224\n", binary_name);
-  printf("  %s client example.com        Connect to example.com:27224\n", binary_name);
-  printf("\n");
-  printf("OPTIONS:\n");
-  printf("  --help                       Show this help\n");
-  printf("  --version                    Show version information\n");
-  printf("  --config FILE                Load configuration from FILE\n");
-  printf("  --config-create [FILE]       Create default config and exit\n");
-  printf("  -L --log-file FILE           Redirect logs to FILE\n");
-  printf("  --log-level LEVEL            Set log level: dev, debug, info, warn, error, fatal\n");
-  printf("  -V --verbose                 Increase log verbosity (stackable: -VV, -VVV)\n");
-  printf("  -q --quiet                   Disable console logging (log to file only)\n");
-  printf("\n");
-  printf("MODES:\n");
-  for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    printf("  %-18s  %s\n", mode->name, mode->description);
+  // Use logging colors for consistent branding
+  const char *BOLD = "\033[1m";
+  const char *CYAN = log_level_color(LOG_COLOR_DEBUG);    // Cyan for headers
+  const char *MAGENTA = log_level_color(LOG_COLOR_FATAL); // Magenta for mode names
+  const char *YELLOW = log_level_color(LOG_COLOR_WARN);   // Yellow for flags
+  const char *GREEN = log_level_color(LOG_COLOR_INFO);    // Green for positional args
+  const char *RESET = log_level_color(LOG_COLOR_RESET);
+
+  // Detect terminal width for text wrapping
+  int term_width = 80;
+  char *cols_env = getenv("COLUMNS");
+  if (cols_env) {
+    int cols = atoi(cols_env);
+    if (cols > 20 && cols < 1000)
+      term_width = cols;
   }
+
+  // Calculate maximum width across all sections for consistent column alignment
+  int max_col_width = 0;
+  char temp_buf[512];
+
+  // Check USAGE entries
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s[options...]%s", binary_name, YELLOW, RESET);
+  int w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s<session-string>%s %s[options...]%s", binary_name, GREEN, RESET, YELLOW,
+           RESET);
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s<mode>%s %s[mode-options...]%s", binary_name, MAGENTA, RESET, YELLOW,
+           RESET);
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  // Check EXAMPLES entries
+  w = utf8_display_width(binary_name);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sswift-river-mountain%s", binary_name, GREEN, RESET);
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sserver%s", binary_name, MAGENTA, RESET);
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sclient%s %s%sexample.com%s", binary_name, MAGENTA, RESET, "", GREEN,
+           RESET, "");
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%smirror%s", binary_name, MAGENTA, RESET);
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  // Check OPTIONS entries
+  w = utf8_display_width(colored_option(YELLOW, "--help"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "--version"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "--config FILE"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "--config-create [FILE]"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "-L --log-file FILE"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "--log-level LEVEL"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "-V --verbose"));
+  if (w > max_col_width)
+    max_col_width = w;
+  w = utf8_display_width(colored_option(YELLOW, "-q --quiet"));
+  if (w > max_col_width)
+    max_col_width = w;
+
+  // Check MODES entries
+  for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
+    snprintf(temp_buf, sizeof(temp_buf), "%s", colored_option(MAGENTA, mode->name));
+    w = utf8_display_width(temp_buf);
+    if (w > max_col_width)
+      max_col_width = w;
+  }
+
+  // Check MODE-OPTIONS entry
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s<mode>%s %s--help%s", binary_name, MAGENTA, RESET, YELLOW, RESET);
+  w = utf8_display_width(temp_buf);
+  if (w > max_col_width)
+    max_col_width = w;
+
+  printf("%s ascii-chat - %s %s%s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
+         ASCII_CHAT_DESCRIPTION_EMOJI_R, RESET);
   printf("\n");
-  printf("MODE-OPTIONS:\n");
-  printf("  %s <mode> --help             Show options for a mode\n", binary_name);
+  printf("%s%sUSAGE:%s\n", BOLD, CYAN, RESET);
+
+  // Usage 1: ascii-chat [options...]
+  char usage_buf[512];
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s[options...]%s", binary_name, YELLOW, RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Start a new session", max_col_width, term_width);
+
+  // Usage 2: ascii-chat <session-string> [options...]
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s<session-string>%s %s[options...]%s", binary_name, GREEN, RESET, YELLOW,
+           RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Join an existing session", max_col_width, term_width);
+
+  // Usage 3: ascii-chat <mode> [mode-options...]
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s<mode>%s %s[mode-options...]%s", binary_name, MAGENTA, RESET, YELLOW,
+           RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Run in a specific mode", max_col_width, term_width);
+
   printf("\n");
-  printf("🔗 https://ascii-chat.com\n");
-  printf("🔗 https://github.com/zfogg/ascii-chat\n");
+  printf("%s%sEXAMPLES:%s\n", BOLD, CYAN, RESET);
+
+  // Example 1: ascii-chat
+  layout_print_two_column_row(stdout, binary_name, "Start new session (share the session string)", max_col_width,
+                              term_width);
+
+  // Example 2: ascii-chat swift-river-mountain
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s", binary_name, GREEN, "swift-river-mountain", RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Join session with session string", max_col_width, term_width);
+
+  // Example 3: ascii-chat server
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s", binary_name, MAGENTA, "server", RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Run as dedicated server", max_col_width, term_width);
+
+  // Example 4: ascii-chat client example.com
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s %s%s%s", binary_name, MAGENTA, "client", RESET, GREEN,
+           "example.com", RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Connect to specific server", max_col_width, term_width);
+
+  // Example 5: ascii-chat mirror
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s", binary_name, MAGENTA, "mirror", RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Preview local webcam as ASCII", max_col_width, term_width);
+
+  printf("\n");
+  printf("%s%sOPTIONS:%s\n", BOLD, CYAN, RESET);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--help"), "Show this help", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--version"), "Show version information", max_col_width,
+                              term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config FILE"), "Load configuration from FILE",
+                              max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config-create [FILE]"),
+                              "Create default config and exit", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-L --log-file FILE"), "Redirect logs to FILE",
+                              max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--log-level LEVEL"),
+                              "Set log level: dev, debug, info, warn, error, fatal", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-V --verbose"),
+                              "Increase log verbosity (stackable: -VV, -VVV)", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-q --quiet"),
+                              "Disable console logging (log to file only)", max_col_width, term_width);
+
+  printf("\n");
+  printf("%s%sMODES:%s\n", BOLD, CYAN, RESET);
+
+  // Print all modes with consistent column width
+  for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
+    layout_print_two_column_row(stdout, colored_option(MAGENTA, mode->name), mode->description, max_col_width,
+                                term_width);
+  }
+
+  printf("\n");
+  printf("%s%sMODE-OPTIONS:%s\n", BOLD, CYAN, RESET);
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s<mode>%s %s--help%s", binary_name, MAGENTA, RESET, YELLOW, RESET);
+  layout_print_two_column_row(stdout, usage_buf, "Show options for a mode", max_col_width, term_width);
+
+  print_project_links(stdout);
 }
 
 static void print_version(void) {
   printf("%s %s (%s, %s)\n", APP_NAME, VERSION, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
 }
 
+// Discovery mode is implicit (no keyword) so it has a separate descriptor
+static const mode_descriptor_t g_discovery_mode = {
+    .name = "discovery",
+    .description = "P2P session with automatic host negotiation",
+    .entry_point = discovery_main,
+};
+
 static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
+  // Discovery mode is not in the table (it's implicit)
+  if (mode == MODE_DISCOVERY) {
+    return &g_discovery_mode;
+  }
+
   for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
     switch (mode) {
     case MODE_SERVER:
@@ -148,7 +332,7 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
         return m;
       break;
     case MODE_DISCOVERY_SERVER:
-      if (strcmp(m->name, "discovery-server") == 0)
+      if (strcmp(m->name, "discovery-service") == 0)
         return m;
       break;
     default:
@@ -162,21 +346,6 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * Helper Functions for Post-Options Processing
  * ============================================================================ */
 
-static void update_log_file_updater(options_t *opts, void *context) {
-  const char *validated_path = (const char *)context;
-  SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
-}
-
-static void clear_log_file_updater(options_t *opts, void *context) {
-  (void)context;
-  opts->log_file[0] = '\0';
-}
-
-static void update_color_mode_to_none_updater(options_t *opts, void *context) {
-  (void)context;
-  opts->color_mode = COLOR_MODE_NONE;
-}
-
 /* ============================================================================
  * Main Entry Point
  * ============================================================================ */
@@ -188,6 +357,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // Initialize terminal capabilities for proper color detection in help output
+  log_redetect_terminal_capabilities();
+
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
   if (strcmp(ASCII_CHAT_BUILD_TYPE, "Release") == 0) {
@@ -198,27 +370,6 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  // Case: No arguments - show usage
-  if (argc == 1) {
-    print_usage();
-    return 0;
-  }
-
-  // UNIFIED OPTION INITIALIZATION
-  // This single call handles:
-  // - Mode detection from command-line arguments (including session string auto-detection)
-  // - Binary-level option parsing (--help, --version, --log-file, etc.)
-  // - Mode-specific option parsing
-  // - Configuration file loading
-  // - Post-processing and validation
-  //
-  // Session String Detection (Phase 1 ACDS):
-  // When a positional argument matches word-word-word pattern (e.g., "swift-river-mountain"),
-  // it's automatically detected as a session string by options_init(), which:
-  // 1. Sets detected_mode to MODE_CLIENT
-  // 2. Stores the session string in options.session_string
-  // 3. Triggers automatic discovery on LAN (mDNS) and/or internet (ACDS)
-  // This enables: `ascii-chat swift-river-mountain` (no explicit "client" mode needed)
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
@@ -237,17 +388,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Handle --help and --version (these are detected and flagged by options_init)
-  if (opts->help) {
-    print_usage();
-    return 0;
-  }
-
-  if (opts->version) {
-    print_version();
-    return 0;
-  }
-
   // Determine default log filename based on detected mode
   const char *default_log_filename;
   switch (opts->detected_mode) {
@@ -262,6 +402,9 @@ int main(int argc, char *argv[]) {
     break;
   case MODE_DISCOVERY_SERVER:
     default_log_filename = "acds.log";
+    break;
+  case MODE_DISCOVERY:
+    default_log_filename = "discovery.log";
     break;
   default:
     default_log_filename = "ascii-chat.log";
@@ -278,27 +421,52 @@ int main(int argc, char *argv[]) {
       // Invalid log file path - warn and fall back to default
       fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
               default_log_filename);
-      options_update(clear_log_file_updater, NULL);
+      options_set_string("log_file", "");
       opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     } else {
       // Replace log_file with validated path
-      options_update(update_log_file_updater, validated_log_file);
+      options_set_string("log_file", validated_log_file);
       opts = options_get(); // Refresh pointer after update
       SAFE_FREE(validated_log_file);
     }
   }
 
   // Determine if this mode uses client-like initialization (client and mirror modes)
-  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR);
+  // Discovery mode is client-like (uses terminal display, webcam, etc.)
+  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
+                                   opts->detected_mode == MODE_DISCOVERY);
+
+  // Detect terminal capabilities and apply color mode override for all output modes
+  // This must happen before --help/--version to ensure colored help text
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  caps = apply_color_mode_override(caps);
+
+  // Handle --help and --version (these are detected and flagged by options_init)
+  // Terminal capabilities already initialized in main() at startup
+  if (opts->help) {
+    print_usage();
+    return 0;
+  }
+
+  if (opts->version) {
+    print_version();
+    return 0;
+  }
 
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
   if (is_client_or_mirror_mode && opts->show_capabilities) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
-    caps = apply_color_mode_override(caps);
     print_terminal_capabilities(&caps);
     return 0;
   }
+
+  // Initialize timer system BEFORE any subsystem that might use timing functions
+  // This must be done before asciichat_shared_init which initializes palette, buffer pool, etc.
+  if (!timer_system_init()) {
+    fprintf(stderr, "FATAL: Failed to initialize timer system\n");
+    return ERROR_PLATFORM_INIT;
+  }
+  (void)atexit(timer_system_cleanup);
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr
@@ -313,7 +481,7 @@ int main(int argc, char *argv[]) {
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
   terminal_color_mode_t color_mode = opts->color_mode;
   if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
-    options_update(update_color_mode_to_none_updater, NULL);
+    options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }

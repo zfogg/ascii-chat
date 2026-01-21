@@ -76,12 +76,26 @@ void usage_mirror(FILE *desc) {
     return;
   }
 
+  // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
-  (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  %s [options...]\n\n", config->program_name);
+
+  // Print USAGE header with color
+  (void)fprintf(desc, "%sUSAGE:%s\n", log_level_color(LOG_COLOR_DEBUG), log_level_color(LOG_COLOR_RESET));
+
+  // Get color codes once to avoid rotating buffer issues
+  const char *magenta = log_level_color(LOG_COLOR_FATAL);
+  const char *yellow = log_level_color(LOG_COLOR_WARN);
+  const char *reset_color = log_level_color(LOG_COLOR_RESET);
+
+  // Print USAGE line with colored components: binary (default), mode (magenta), options (yellow)
+  (void)fprintf(desc, "  ascii-chat %s%s%s %s[options...]%s\n\n", magenta, "mirror", reset_color, // mode in magenta
+                yellow, reset_color); // [options...] in yellow
 
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
+
+  // Print project links
+  print_project_links(desc);
 
   // Clean up the config
   options_config_destroy(config);

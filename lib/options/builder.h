@@ -585,6 +585,19 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
  */
 const options_config_t *options_preset_acds(const char *program_name, const char *description);
 
+/**
+ * @brief Get discovery mode options preset
+ *
+ * Discovery mode allows participants to join a session and dynamically become
+ * the host based on NAT quality. Combines client-like options (display, webcam,
+ * audio) with ACDS discovery options.
+ *
+ * @param program_name Optional program name (defaults to "ascii-chat discovery")
+ * @param description Optional program description
+ * @return Preset config (caller must free after use)
+ */
+const options_config_t *options_preset_discovery(const char *program_name, const char *description);
+
 // ============================================================================
 // Parsing and Validation
 // ============================================================================
@@ -654,3 +667,119 @@ void options_config_print_usage(const options_config_t *config, FILE *stream);
  * @param options_struct Options struct to clean up
  */
 void options_config_cleanup(const options_config_t *config, void *options_struct);
+
+// ============================================================================
+// Option Group Helpers
+// ============================================================================
+
+/**
+ * @brief Add binary-level logging options to a builder
+ *
+ * Adds options that are common across all modes and can be used
+ * before or after the mode name: --log-file, --log-level, -V, -q
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_logging_group(options_builder_t *b);
+
+/**
+ * @brief Add terminal dimension options to a builder
+ *
+ * Adds --width and --height options for terminal size configuration.
+ * Used by: client, mirror, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_terminal_group(options_builder_t *b);
+
+/**
+ * @brief Add webcam options to a builder
+ *
+ * Adds webcam device selection, flip, and test pattern options.
+ * Used by: client, mirror, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_webcam_group(options_builder_t *b);
+
+/**
+ * @brief Add display/rendering options to a builder
+ *
+ * Adds color mode, palette, render mode, and other display options.
+ * Used by: client, mirror, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_display_group(options_builder_t *b);
+
+/**
+ * @brief Add snapshot mode options to a builder
+ *
+ * Adds --snapshot and --snapshot-delay options for single-frame capture.
+ * Used by: client, mirror, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_snapshot_group(options_builder_t *b);
+
+/**
+ * @brief Add compression and audio encoding options to a builder
+ *
+ * Adds --compression-level, --no-compress, --encode-audio options.
+ * Used by: client, server, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_compression_group(options_builder_t *b);
+
+/**
+ * @brief Add encryption and authentication options to a builder
+ *
+ * Adds --encrypt, --key, --password, --keyfile, --no-encrypt options.
+ * Used by: client, server, discovery, acds modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_crypto_group(options_builder_t *b);
+
+/**
+ * @brief Add port option to a builder
+ *
+ * Adds -p/--port option with configurable default and env var.
+ * Used by: server, client, acds modes
+ *
+ * @param b Builder to add options to
+ * @param default_port Default port value (as string)
+ * @param env_var Environment variable name for port override
+ */
+void options_builder_add_port_option(options_builder_t *b, const char *default_port, const char *env_var);
+
+/**
+ * @brief Add ACDS discovery service options to a builder
+ *
+ * Adds --acds-server, --acds-port, --acds-key, --webrtc options.
+ * Used by: client, server, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_acds_group(options_builder_t *b);
+
+/**
+ * @brief Add media file streaming options to a builder
+ *
+ * Adds --file and --loop options for media file playback.
+ * Used by: client, mirror, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_media_group(options_builder_t *b);
+
+/**
+ * @brief Add audio streaming options to a builder
+ *
+ * Adds --audio, --microphone-index, --speakers-index, and volume options.
+ * Used by: client, discovery modes
+ *
+ * @param b Builder to add options to
+ */
+void options_builder_add_audio_group(options_builder_t *b);

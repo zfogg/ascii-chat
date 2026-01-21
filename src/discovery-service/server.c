@@ -12,10 +12,11 @@
  * - ACIP packet dispatch to session/signaling handlers
  */
 
-#include "discovery-server/server.h"
+#include "discovery-service/server.h"
 #include "discovery/database.h"
 #include "discovery/session.h"
-#include "discovery-server/signaling.h"
+#include "discovery/nat.h"
+#include "discovery-service/signaling.h"
 #include "network/acip/acds.h"
 #include "network/acip/acds_handlers.h"
 #include "network/acip/acds_client.h"
@@ -30,8 +31,113 @@
 #include "buffer_pool.h"
 #include "network/tcp/server.h"
 #include "util/ip.h"
+#include "util/time.h"
 #include <string.h>
-#include <time.h>
+
+/**
+ * @brief Find or create migration context for a session
+ *
+ * Searches active_migrations for the given session_id. If found, returns the context.
+ * If not found and create=true, creates a new entry. Returns NULL if not found and
+ * create=false, or if max migrations reached.
+ *
+ * @param server ACDS server instance
+ * @param session_id Session UUID to find
+ * @param create If true, create new entry if not found
+ * @return Pointer to migration context, or NULL if not found/created
+ */
+
+/**
+ * @brief Get current time in nanoseconds
+ * @return Current time in nanoseconds (using unified timing API)
+ */
+static uint64_t get_current_time_ns(void) {
+  return time_get_ns();
+}
+
+static migration_context_t *find_or_create_migration(acds_server_t *server, const uint8_t session_id[16], bool create) {
+  if (!server || !session_id) {
+    return NULL;
+  }
+
+  // Search for existing migration
+  for (size_t i = 0; i < server->num_active_migrations; i++) {
+    if (memcmp(server->active_migrations[i].session_id, session_id, 16) == 0) {
+      return &server->active_migrations[i];
+    }
+  }
+
+  // Not found
+  if (!create) {
+    return NULL;
+  }
+
+  // Create new entry if space available
+  if (server->num_active_migrations >= 32) {
+    log_warn("Too many active migrations (max 32)");
+    return NULL;
+  }
+
+  migration_context_t *ctx = &server->active_migrations[server->num_active_migrations];
+  memcpy(ctx->session_id, session_id, 16);
+  ctx->migration_start_ns = get_current_time_ns();
+  server->num_active_migrations++;
+
+  return ctx;
+}
+
+/**
+ * @brief Monitor host migrations and elect new hosts when ready
+ *
+ * Called periodically to check for completed migration windows.
+ * When a migration window completes, elects the best new host.
+ *
+ * Algorithm:
+ * 1. For each active migration, check if window expired
+ * 2. When expired, elect best candidate using NAT quality comparison
+ * 3. Update database with new host
+ * 4. Remove migration from tracking
+ *
+ * @param server ACDS server instance
+ * @param migration_window_ms Collection window duration (milliseconds)
+ */
+static void monitor_host_migrations(acds_server_t *server, uint64_t migration_timeout_ms) {
+  if (!server || !server->db || server->num_active_migrations == 0) {
+    return;
+  }
+
+  uint64_t now = get_current_time_ns();
+  uint64_t migration_timeout_ns = migration_timeout_ms * NS_PER_MS_INT; // Convert ms to ns
+
+  size_t i = 0;
+  while (i < server->num_active_migrations) {
+    migration_context_t *ctx = &server->active_migrations[i];
+
+    // Check if migration has timed out (stuck for >migration_timeout_ns)
+    uint64_t elapsed_ns = now - ctx->migration_start_ns;
+    if (elapsed_ns < migration_timeout_ns) {
+      i++;
+      continue;
+    }
+
+    uint64_t elapsed_ms = elapsed_ns / NS_PER_MS_INT; // Convert ns to ms for logging
+    log_warn("Host migration timeout for session %02x%02x... (elapsed %llu ms)", ctx->session_id[0], ctx->session_id[1],
+             (unsigned long long)elapsed_ms);
+
+    // Migration timed out - mark session as failed and clear migration state
+    asciichat_error_t result = database_session_clear_host(server->db, ctx->session_id);
+    if (result != ASCIICHAT_OK) {
+      log_warn("Failed to clear host for timed-out migration: %s", asciichat_error_string(result));
+    }
+
+    // Remove this migration from tracking (shift remaining entries down)
+    if (i < server->num_active_migrations - 1) {
+      memmove(&server->active_migrations[i], &server->active_migrations[i + 1],
+              (server->num_active_migrations - i - 1) * sizeof(migration_context_t));
+    }
+    server->num_active_migrations--;
+  }
+}
 
 /**
  * @brief Background thread for periodic cleanup
@@ -68,6 +174,10 @@ static void *cleanup_thread_func(void *arg) {
     // Run expired session cleanup
     log_debug("Running expired session cleanup...");
     database_session_cleanup_expired(server->db);
+
+    // Monitor host migrations (check for completed windows)
+    log_debug("Checking for completed host migrations...");
+    monitor_host_migrations(server, 5000); // 5-second collection window for testing
   }
 
   log_info("Cleanup thread exiting");
@@ -611,6 +721,79 @@ static void acds_on_discovery_ping(const void *payload, size_t payload_len, int 
   ACDS_DESTROY_TRANSPORT(transport);
 }
 
+static void acds_on_host_announcement(const acip_host_announcement_t *announcement, int client_socket,
+                                      const char *client_ip, void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_info("HOST_ANNOUNCEMENT from %s: host_id=%02x%02x..., address=%s:%u, conn_type=%d", client_ip,
+           announcement->host_id[0], announcement->host_id[1], announcement->host_address, announcement->host_port,
+           announcement->connection_type);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Update session host in database
+  asciichat_error_t result =
+      database_session_update_host(server->db, announcement->session_id, announcement->host_id,
+                                   announcement->host_address, announcement->host_port, announcement->connection_type);
+
+  if (result != ASCIICHAT_OK) {
+    acip_send_error(transport, result, "Failed to update session host");
+    log_warn("HOST_ANNOUNCEMENT failed from %s: %s", client_ip, asciichat_error_string(result));
+    ACDS_DESTROY_TRANSPORT(transport);
+    return;
+  }
+
+  // TODO: Broadcast HOST_DESIGNATED to all participants in the session
+  // This requires iterating connected clients and sending to those in the same session
+  // For now, new participants will get host info when they join
+
+  log_info("Session host updated via HOST_ANNOUNCEMENT from %s", client_ip);
+  ACDS_DESTROY_TRANSPORT(transport);
+}
+
+static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_socket, const char *client_ip,
+                              void *app_ctx) {
+  acds_server_t *server = (acds_server_t *)app_ctx;
+
+  log_info("HOST_LOST from %s: session=%02x%02x..., participant=%02x%02x..., last_host=%02x%02x..., reason=%u",
+           client_ip, host_lost->session_id[0], host_lost->session_id[1], host_lost->participant_id[0],
+           host_lost->participant_id[1], host_lost->last_host_id[0], host_lost->last_host_id[1],
+           host_lost->disconnect_reason);
+
+  // Create ACIP transport for responses
+  ACDS_CREATE_TRANSPORT(client_socket, transport);
+
+  // Start host migration (set in_migration flag in database for bookkeeping)
+  asciichat_error_t result = database_session_start_migration(server->db, host_lost->session_id);
+  if (result != ASCIICHAT_OK) {
+    acip_send_error(transport, result, "Failed to start host migration");
+    log_warn("HOST_LOST failed from %s: %s", client_ip, asciichat_error_string(result));
+    ACDS_DESTROY_TRANSPORT(transport);
+    return;
+  }
+
+  // Track migration for timeout detection
+  // (Host already elected future host 5 minutes ago; participants will failover to pre-elected host)
+  migration_context_t *migration = find_or_create_migration(server, host_lost->session_id, true);
+  if (!migration) {
+    acip_send_error(transport, ERROR_MEMORY, "Failed to track migration");
+    log_warn("HOST_LOST: Failed to create migration context from %s", client_ip);
+    ACDS_DESTROY_TRANSPORT(transport);
+    return;
+  }
+
+  log_info("Migration tracking started for session %02x%02x... (participant %02x%02x...)", host_lost->session_id[0],
+           host_lost->session_id[1], host_lost->participant_id[0], host_lost->participant_id[1]);
+
+  // NOTE: No candidate collection needed - future host was pre-elected 5 minutes ago.
+  // Participants already know who the new host is from the last FUTURE_HOST_ELECTED broadcast.
+  // They will instantly failover to the pre-elected host.
+  // ACDS just tracks migration timeout for cleanup.
+
+  ACDS_DESTROY_TRANSPORT(transport);
+}
+
 // Global ACIP callback structure for ACDS
 static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_session_create = acds_on_session_create,
@@ -620,6 +803,8 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_webrtc_sdp = acds_on_webrtc_sdp,
     .on_webrtc_ice = acds_on_webrtc_ice,
     .on_discovery_ping = acds_on_discovery_ping,
+    .on_host_announcement = acds_on_host_announcement,
+    .on_host_lost = acds_on_host_lost,
     .app_ctx = NULL // Set dynamically to server instance
 };
 

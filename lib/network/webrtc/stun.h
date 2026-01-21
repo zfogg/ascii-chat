@@ -91,6 +91,31 @@ typedef struct __attribute__((packed)) {
 
 /** @} */
 
+/**
+ * @brief Parse comma-separated STUN server URLs into stun_server_t array
+ *
+ * Parses a comma-separated string of STUN server URLs (e.g., "stun:server1:3478,stun:server2:3478")
+ * into an array of stun_server_t structs. If the input string is empty or NULL, uses the
+ * default endpoints from the options system.
+ *
+ * **Example Input Formats**:
+ * - Empty: "" (will use defaults from OPT_STUN_SERVERS_DEFAULT)
+ * - Single: "stun:stun.example.com:3478"
+ * - Multiple: "stun:server1:3478,stun:server2:19302,stun:server3:5349"
+ *
+ * @param csv_servers Comma-separated STUN server URLs (can be empty)
+ * @param default_csv Default servers to use if csv_servers is empty
+ * @param out_servers Output array of stun_server_t structs (must be pre-allocated)
+ * @param max_count Maximum number of servers to parse
+ * @return Number of servers parsed (0-max_count), or -1 on error
+ *
+ * @note Each server URL is limited to STUN_MAX_URL_LEN (64) characters
+ * @note Function gracefully stops at max_count or if a server exceeds max length
+ *
+ * @ingroup stun
+ */
+int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_server_t *out_servers, int max_count);
+
 #ifdef _WIN32
 #pragma pack(pop)
 #endif

@@ -7,6 +7,7 @@
 #include "network/rate_limit/memory.h"
 #include "network/rate_limit/sqlite.h"
 #include "log/logging.h"
+#include "util/time.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -173,9 +174,8 @@ asciichat_error_t rate_limiter_cleanup(rate_limiter_t *limiter, uint32_t max_age
  * @brief Get current time in milliseconds
  */
 uint64_t rate_limiter_get_time_ms(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+  uint64_t current_time_ns = time_get_realtime_ns();
+  return time_ns_to_ms(current_time_ns);
 }
 
 /**

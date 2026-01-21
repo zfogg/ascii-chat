@@ -42,17 +42,14 @@ static void setup_expired_key(void) {
   // Import the expired test key fixture
   // CTest runs from build directory, so we need to go up one level
   char cmd[1024];
-  const char *fixture_paths[] = {
-    "../tests/fixtures/gpg/expired-test-key.asc",  // From build dir (ctest)
-    "tests/fixtures/gpg/expired-test-key.asc",      // From repo root (direct run)
-    NULL
-  };
+  const char *fixture_paths[] = {"../tests/fixtures/gpg/expired-test-key.asc", // From build dir (ctest)
+                                 "tests/fixtures/gpg/expired-test-key.asc",    // From repo root (direct run)
+                                 NULL};
 
   int result = -1;
   for (int i = 0; fixture_paths[i] != NULL; i++) {
     if (access(fixture_paths[i], R_OK) == 0) {
-      snprintf(cmd, sizeof(cmd),
-        "gpg --batch --import '%s' >/dev/null 2>&1", fixture_paths[i]);
+      snprintf(cmd, sizeof(cmd), "gpg --batch --import '%s' >/dev/null 2>&1", fixture_paths[i]);
       result = system(cmd);
       if (result == 0) {
         break;
@@ -171,9 +168,7 @@ Test(gpg_key_expiry, nonexistent_key) {
   cr_assert_eq(is_expired, false, "Should assume not expired if key not found");
 }
 
-Test(gpg_key_expiry, check_expired_key_detected,
-     .init = setup_expired_key,
-     .fini = teardown_expired_key,
+Test(gpg_key_expiry, check_expired_key_detected, .init = setup_expired_key, .fini = teardown_expired_key,
      .timeout = 15.0) {
   bool is_expired = false; // Start with false to ensure it gets set to true
 

@@ -27,6 +27,7 @@ function(configure_include_directories)
     )
     # deps/ must use SYSTEM to ensure -isystem (not -iquote) for angle bracket includes
     # Code uses: #include <ascii-chat-deps/uthash/src/uthash.h>
+    # Also includes utf8proc: #include <ascii-chat-deps/utf8proc/utf8proc.h>
     include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/deps)
 
     # Add dependency include directories (matching pkg-config approach)

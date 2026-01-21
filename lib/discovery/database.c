@@ -11,11 +11,29 @@
 #include "discovery/strings.h"
 #include "log/logging.h"
 #include "network/webrtc/turn_credentials.h"
+#include "util/time.h"
 #include <string.h>
 #include <time.h>
+#include <inttypes.h>
 #include <sodium.h>
 
+// ============================================================================
+// SQL Query Constants (Defined Once - Compile-time string concatenation)
+// ============================================================================
+
+// Base SELECT for all session fields
+#define SELECT_SESSION_BASE                                                                                            \
+  "SELECT session_id, session_string, host_pubkey, password_hash, "                                                    \
+  "max_participants, current_participants, capabilities, has_password, "                                               \
+  "expose_ip_publicly, session_type, server_address, server_port, "                                                    \
+  "created_at, expires_at, initiator_id, host_established, "                                                           \
+  "host_participant_id, host_address, host_port, host_connection_type, "                                               \
+  "in_migration, migration_start_ms FROM sessions"
+
+// ============================================================================
 // SQL schema for creating tables
+// ============================================================================
+
 static const char *schema_sql =
     // Sessions table (extended schema with all fields)
     "CREATE TABLE IF NOT EXISTS sessions ("
@@ -32,7 +50,17 @@ static const char *schema_sql =
     "  server_address TEXT,"
     "  server_port INTEGER DEFAULT 0,"
     "  created_at INTEGER NOT NULL,"
-    "  expires_at INTEGER NOT NULL"
+    "  expires_at INTEGER NOT NULL,"
+    // Discovery mode host negotiation fields
+    "  initiator_id BLOB,"                      // First participant (for tiebreaker)
+    "  host_established INTEGER DEFAULT 0,"     // 0=negotiating, 1=host designated
+    "  host_participant_id BLOB,"               // Current host's participant_id
+    "  host_address TEXT,"                      // Host's reachable address
+    "  host_port INTEGER DEFAULT 0,"            // Host's port
+    "  host_connection_type INTEGER DEFAULT 0," // How to reach host
+    // Host migration state
+    "  in_migration INTEGER DEFAULT 0,"      // 0=not migrating, 1=collecting HOST_LOST packets
+    "  migration_start_ms INTEGER DEFAULT 0" // When migration started (ms since epoch)
     ");"
 
     // Participants table
@@ -75,9 +103,8 @@ static void generate_uuid(uint8_t uuid_out[16]) {
  * @brief Get current time in milliseconds
  */
 static uint64_t get_current_time_ms(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
-  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+  uint64_t current_time_ns = time_get_realtime_ns();
+  return time_ns_to_ms(current_time_ns);
 }
 
 /**
@@ -104,7 +131,10 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
   // 0: session_id, 1: session_string, 2: host_pubkey, 3: password_hash,
   // 4: max_participants, 5: current_participants, 6: capabilities,
   // 7: has_password, 8: expose_ip_publicly, 9: session_type,
-  // 10: server_address, 11: server_port, 12: created_at, 13: expires_at
+  // 10: server_address, 11: server_port, 12: created_at, 13: expires_at,
+  // 14: initiator_id, 15: host_established, 16: host_participant_id,
+  // 17: host_address, 18: host_port, 19: host_connection_type,
+  // 20: in_migration, 21: migration_start_ms
 
   const void *blob = sqlite3_column_blob(stmt, 0);
   if (blob) {
@@ -142,6 +172,31 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
   session->created_at = (uint64_t)sqlite3_column_int64(stmt, 12);
   session->expires_at = (uint64_t)sqlite3_column_int64(stmt, 13);
 
+  // Discovery mode host negotiation fields
+  blob = sqlite3_column_blob(stmt, 14);
+  if (blob) {
+    memcpy(session->initiator_id, blob, 16);
+  }
+
+  session->host_established = sqlite3_column_int(stmt, 15) != 0;
+
+  blob = sqlite3_column_blob(stmt, 16);
+  if (blob) {
+    memcpy(session->host_participant_id, blob, 16);
+  }
+
+  str = (const char *)sqlite3_column_text(stmt, 17);
+  if (str) {
+    SAFE_STRNCPY(session->host_address, str, sizeof(session->host_address));
+  }
+
+  session->host_port = (uint16_t)sqlite3_column_int(stmt, 18);
+  session->host_connection_type = (uint8_t)sqlite3_column_int(stmt, 19);
+
+  // Host migration state
+  session->in_migration = sqlite3_column_int(stmt, 20) != 0;
+  session->migration_start_ms = (uint64_t)sqlite3_column_int64(stmt, 21);
+
   return session;
 }
 
@@ -149,8 +204,8 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
  * @brief Load participants for a session from database
  */
 static void load_session_participants(sqlite3 *db, session_entry_t *session) {
-  const char *sql = "SELECT participant_id, identity_pubkey, joined_at "
-                    "FROM participants WHERE session_id = ?";
+  static const char *sql = "SELECT participant_id, identity_pubkey, joined_at "
+                           "FROM participants WHERE session_id = ?";
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -501,6 +556,29 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
     sqlite3_finalize(stmt);
   }
 
+  // Set initiator_id if this is the first participant (for discovery mode tiebreaker)
+  bool is_first_participant = (session->current_participants == 0);
+  bool is_zero_initiator = true;
+  for (int i = 0; i < 16; i++) {
+    if (session->initiator_id[i] != 0) {
+      is_zero_initiator = false;
+      break;
+    }
+  }
+
+  if (is_first_participant || is_zero_initiator) {
+    const char *initiator_sql = "UPDATE sessions SET initiator_id = ? WHERE session_id = ?";
+    rc = sqlite3_prepare_v2(db, initiator_sql, -1, &stmt, NULL);
+    if (rc == SQLITE_OK) {
+      sqlite3_bind_blob(stmt, 1, participant_id, 16, SQLITE_STATIC);
+      sqlite3_bind_blob(stmt, 2, session->session_id, 16, SQLITE_STATIC);
+      sqlite3_step(stmt);
+      sqlite3_finalize(stmt);
+      memcpy(session->initiator_id, participant_id, 16);
+      log_debug("Set initiator_id to new participant %02x%02x...", participant_id[0], participant_id[1]);
+    }
+  }
+
   // Commit transaction
   rc = sqlite3_exec(db, "COMMIT;", NULL, NULL, &err_msg);
   if (rc != SQLITE_OK) {
@@ -517,9 +595,20 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   memcpy(resp->participant_id, participant_id, 16);
   memcpy(resp->session_id, session->session_id, 16);
 
-  log_debug("SESSION_JOIN response: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...",
+  // Discovery mode host negotiation fields
+  memcpy(resp->initiator_id, session->initiator_id, 16);
+  resp->host_established = session->host_established ? 1 : 0;
+  if (session->host_established) {
+    memcpy(resp->host_id, session->host_participant_id, 16);
+  }
+  // peer_count = current_participants (excluding self) that need to negotiate
+  resp->peer_count = session->current_participants; // Will be incremented after this returns
+
+  log_debug("SESSION_JOIN response: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x..., "
+            "initiator=%02x%02x..., host_established=%d, peer_count=%d",
             resp->session_id[0], resp->session_id[1], resp->session_id[2], resp->session_id[3], resp->participant_id[0],
-            resp->participant_id[1], resp->participant_id[2], resp->participant_id[3]);
+            resp->participant_id[1], resp->participant_id[2], resp->participant_id[3], resp->initiator_id[0],
+            resp->initiator_id[1], resp->host_established, resp->peer_count);
 
   // IP disclosure logic
   bool reveal_ip = false;
@@ -655,10 +744,7 @@ session_entry_t *database_session_find_by_id(sqlite3 *db, const uint8_t session_
     return NULL;
   }
 
-  const char *sql = "SELECT session_id, session_string, host_pubkey, password_hash, "
-                    "max_participants, current_participants, capabilities, has_password, "
-                    "expose_ip_publicly, session_type, server_address, server_port, "
-                    "created_at, expires_at FROM sessions WHERE session_id = ?";
+  static const char sql[] = SELECT_SESSION_BASE " WHERE session_id = ?";
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -684,10 +770,7 @@ session_entry_t *database_session_find_by_string(sqlite3 *db, const char *sessio
     return NULL;
   }
 
-  const char *sql = "SELECT session_id, session_string, host_pubkey, password_hash, "
-                    "max_participants, current_participants, capabilities, has_password, "
-                    "expose_ip_publicly, session_type, server_address, server_port, "
-                    "created_at, expires_at FROM sessions WHERE session_string = ?";
+  static const char sql[] = SELECT_SESSION_BASE " WHERE session_string = ?";
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -739,4 +822,159 @@ void database_session_cleanup_expired(sqlite3 *db) {
       log_info("Cleaned up %d expired sessions", deleted);
     }
   }
+}
+
+asciichat_error_t database_session_update_host(sqlite3 *db, const uint8_t session_id[16],
+                                               const uint8_t host_participant_id[16], const char *host_address,
+                                               uint16_t host_port, uint8_t connection_type) {
+  if (!db || !session_id || !host_participant_id) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db, session_id, or host_participant_id is NULL");
+  }
+
+  const char *sql = "UPDATE sessions SET "
+                    "host_established = 1, "
+                    "host_participant_id = ?, "
+                    "host_address = ?, "
+                    "host_port = ?, "
+                    "host_connection_type = ? "
+                    "WHERE session_id = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare host update: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_blob(stmt, 1, host_participant_id, 16, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, host_address ? host_address : "", -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 3, host_port);
+  sqlite3_bind_int(stmt, 4, connection_type);
+  sqlite3_bind_blob(stmt, 5, session_id, 16, SQLITE_STATIC);
+
+  rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to update host: %s", sqlite3_errmsg(db));
+  }
+
+  int changes = sqlite3_changes(db);
+  if (changes == 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Session not found for host update");
+  }
+
+  log_info("Session host updated: participant=%02x%02x..., address=%s:%u, type=%d", host_participant_id[0],
+           host_participant_id[1], host_address ? host_address : "(none)", host_port, connection_type);
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_clear_host(sqlite3 *db, const uint8_t session_id[16]) {
+  if (!db || !session_id) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
+  }
+
+  const char *sql = "UPDATE sessions SET "
+                    "host_established = 0, "
+                    "host_participant_id = NULL, "
+                    "host_address = NULL, "
+                    "host_port = 0, "
+                    "host_connection_type = 0 "
+                    "WHERE session_id = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare host clear: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+
+  rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to clear host: %s", sqlite3_errmsg(db));
+  }
+
+  int changes = sqlite3_changes(db);
+  if (changes == 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Session not found for host clear");
+  }
+
+  log_info("Session host cleared (session=%02x%02x...) - ready for migration", session_id[0], session_id[1]);
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t session_id[16]) {
+  if (!db || !session_id) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
+  }
+
+  uint64_t now = get_current_time_ms();
+
+  const char *sql = "UPDATE sessions SET "
+                    "in_migration = 1, "
+                    "migration_start_ms = ? "
+                    "WHERE session_id = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to prepare migration start: %s", sqlite3_errmsg(db));
+  }
+
+  sqlite3_bind_int64(stmt, 1, (sqlite3_int64)now);
+  sqlite3_bind_blob(stmt, 2, session_id, 16, SQLITE_STATIC);
+
+  rc = sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  if (rc != SQLITE_DONE) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to start migration: %s", sqlite3_errmsg(db));
+  }
+
+  int changes = sqlite3_changes(db);
+  if (changes == 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Session not found for migration start");
+  }
+
+  log_info("Session migration started (session=%02x%02x..., start_ms=%" PRIu64 ")", session_id[0], session_id[1], now);
+
+  return ASCIICHAT_OK;
+}
+
+bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[16], uint64_t migration_window_ms) {
+  if (!db || !session_id) {
+    return false;
+  }
+
+  uint64_t now = get_current_time_ms();
+  const char *sql = "SELECT in_migration, migration_start_ms FROM sessions WHERE session_id = ?";
+
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+    return false;
+  }
+
+  sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
+
+  bool ready = false;
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    int in_migration = sqlite3_column_int(stmt, 0);
+    uint64_t migration_start_ms = (uint64_t)sqlite3_column_int64(stmt, 1);
+
+    if (in_migration) {
+      uint64_t elapsed = now - migration_start_ms;
+      if (elapsed >= migration_window_ms) {
+        ready = true;
+        log_debug("Migration window complete (session=%02x%02x..., elapsed=%" PRIu64 "ms, window=%" PRIu64 "ms)",
+                  session_id[0], session_id[1], elapsed, migration_window_ms);
+      }
+    }
+  }
+
+  sqlite3_finalize(stmt);
+  return ready;
 }

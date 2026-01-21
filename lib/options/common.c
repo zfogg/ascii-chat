@@ -258,89 +258,16 @@ char *read_password_from_stdin(const char *prompt) {
 // ============================================================================
 // Global Variable Definitions
 // ============================================================================
+// Removed: All opt_* global variables moved to RCU options_t struct
+// Access these via GET_OPTION(field_name) for thread-safe lock-free reads
+// Modify via options_set_*() functions for thread-safe updates
+// ============================================================================
 
-ASCIICHAT_API unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
+// These flags are used during parsing, not part of RCU options
 ASCIICHAT_API bool auto_width = true, auto_height = true;
 
 // Track if --port was explicitly set via command-line flag (for mutual exclusion validation)
 bool port_explicitly_set_via_flag = false;
-
-ASCIICHAT_API char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
-                   opt_port[OPTIONS_BUFF_SIZE] = "27224";
-
-// Server options
-ASCIICHAT_API int opt_max_clients = 10; // Maximum concurrent clients (min 1, max 32)
-
-// Network performance options
-ASCIICHAT_API int opt_compression_level = 1; // zstd compression level (min 1, max 9, default 1)
-ASCIICHAT_API bool opt_no_compress = false;  // Disable compression entirely (default: false)
-ASCIICHAT_API bool opt_encode_audio = true;  // Enable Opus audio encoding (default: true)
-
-// Client reconnection options
-ASCIICHAT_API int opt_reconnect_attempts = -1; // Number of reconnection attempts (0=off, -1=unlimited/auto)
-
-ASCIICHAT_API unsigned short int opt_webcam_index = 0;
-
-ASCIICHAT_API bool opt_webcam_flip = true;
-
-ASCIICHAT_API bool opt_test_pattern = false;   // Use test pattern instead of real webcam
-ASCIICHAT_API bool opt_no_audio_mixer = false; // Disable audio mixer (debug only)
-
-// Terminal color mode and capability options
-ASCIICHAT_API terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
-ASCIICHAT_API render_mode_t opt_render_mode = RENDER_MODE_FOREGROUND; // Foreground by default
-ASCIICHAT_API unsigned short int opt_show_capabilities = 0;           // Don't show capabilities by default
-ASCIICHAT_API unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
-
-ASCIICHAT_API unsigned short int opt_audio_enabled = 0;
-ASCIICHAT_API int opt_microphone_index = -1; // -1 means use default microphone
-ASCIICHAT_API int opt_speakers_index = -1;   // -1 means use default speakers
-ASCIICHAT_API unsigned short int opt_audio_analysis_enabled = 0;
-ASCIICHAT_API unsigned short int opt_audio_no_playback = 0; // Disable speaker playback for debugging
-
-// Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
-ASCIICHAT_API unsigned short int opt_stretch = 0;
-
-// Disable console logging when set via -q/--quiet (logs only to file)
-ASCIICHAT_API unsigned short int opt_quiet = 0;
-
-// Verbose logging level - each -V increases verbosity (decreases log level threshold)
-ASCIICHAT_API unsigned short int opt_verbose_level = 0;
-
-// Enable snapshot mode when set via --snapshot (client only - capture one frame and exit)
-ASCIICHAT_API unsigned short int opt_snapshot_mode = 0;
-
-// Snapshot delay in seconds (float) - default 3.0 for webcam warmup
-ASCIICHAT_API float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
-
-// Strip ANSI escape sequences from output
-ASCIICHAT_API unsigned short int opt_strip_ansi = 0;
-
-// Log file path for file logging (empty string means no file logging)
-ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE] = "";
-
-// Log level for console and file output
-#ifdef NDEBUG
-ASCIICHAT_API log_level_t opt_log_level = LOG_INFO;
-#else
-ASCIICHAT_API log_level_t opt_log_level = LOG_DEBUG;
-#endif
-
-// Encryption options
-ASCIICHAT_API unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
-ASCIICHAT_API char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // SSH/GPG key file from --key (file-based only)
-ASCIICHAT_API char opt_password[OPTIONS_BUFF_SIZE] = "";        // Password string from --password
-ASCIICHAT_API char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
-
-// New crypto options (Phase 2)
-ASCIICHAT_API unsigned short int opt_no_encrypt = 0;        // Disable encryption (opt-out)
-ASCIICHAT_API char opt_server_key[OPTIONS_BUFF_SIZE] = "";  // Expected server public key (client only)
-ASCIICHAT_API char opt_client_keys[OPTIONS_BUFF_SIZE] = ""; // Allowed client keys (server only)
-
-// Palette options
-ASCIICHAT_API palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
-ASCIICHAT_API char opt_palette_custom[256] = "";                  // Custom palette characters
-ASCIICHAT_API bool opt_palette_custom_set = false;                // True if custom palette was set
 
 // Default weights; must add up to 1.0
 const float weight_red = 0.2989f;
@@ -610,4 +537,21 @@ void usage(FILE *desc, asciichat_mode_t mode) {
     (void)fprintf(desc, "Unknown mode\n");
     break;
   }
+}
+
+// ============================================================================
+// Print Project Links
+// ============================================================================
+
+void print_project_links(FILE *desc) {
+  if (!desc) {
+    return;
+  }
+
+  const char *cyan = log_level_color(LOG_COLOR_DEBUG);
+  const char *reset = log_level_color(LOG_COLOR_RESET);
+
+  (void)fprintf(desc, "\n");
+  (void)fprintf(desc, "🔗 %shttps://ascii-chat.com%s\n", cyan, reset);
+  (void)fprintf(desc, "🔗 %shttps://github.com/zfogg/ascii-chat%s\n", cyan, reset);
 }

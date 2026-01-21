@@ -220,7 +220,7 @@ int client_crypto_init(void) {
   const char *encrypt_key = opts && opts->encrypt_key[0] != '\0' ? opts->encrypt_key : "";
   const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
   const char *address = opts && opts->address[0] != '\0' ? opts->address : "localhost";
-  const char *port = opts && opts->port[0] != '\0' ? opts->port : "27224";
+  const char *port = opts && opts->port[0] != '\0' ? opts->port : OPT_PORT_DEFAULT;
   const char *server_key = opts && opts->server_key[0] != '\0' ? opts->server_key : "";
 
   // Load client private key if provided via --key

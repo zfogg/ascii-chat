@@ -158,7 +158,8 @@ Test(mdns_integration, query_initialization) {
   // Test callback that counts invocations
   int callback_count = 0;
 
-  asciichat_error_t result = asciichat_mdns_query(mdns, "_ascii-chat-test._tcp.local", counting_callback, &callback_count);
+  asciichat_error_t result =
+      asciichat_mdns_query(mdns, "_ascii-chat-test._tcp.local", counting_callback, &callback_count);
 
   // Query may fail in some environments (e.g., restricted networks, containers)
   // Just verify it doesn't crash - both success and graceful failure are acceptable
@@ -227,7 +228,7 @@ Test(mdns_integration, service_with_ipv6_hostname) {
   asciichat_mdns_service_t service = {
       .name = "ipv6-test-service",
       .type = "_ascii-chat-test._tcp",
-      .host = "ipv6-host.local",  // mDNS should support IPv6 capable hosts
+      .host = "ipv6-host.local", // mDNS should support IPv6 capable hosts
       .port = 27224,
       .txt_records = NULL,
       .txt_count = 0,
@@ -276,11 +277,11 @@ Test(mdns_integration, invalid_service_types) {
 
   // Test various invalid service types
   const char *invalid_types[] = {
-      "",                     // Empty string
-      "invalid",              // Missing _tcp
-      "_tcp",                 // Missing service name
-      "._tcp",                // Missing name prefix
-      "_invalid-_-tcp",       // Invalid characters
+      "",               // Empty string
+      "invalid",        // Missing _tcp
+      "_tcp",           // Missing service name
+      "._tcp",          // Missing name prefix
+      "_invalid-_-tcp", // Invalid characters
   };
 
   // Test each invalid type

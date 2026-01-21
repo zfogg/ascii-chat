@@ -56,6 +56,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "simd/common.h"
+#include "util/time.h"
 
 // Include platform abstraction for write function mapping and deprecation suppression
 #ifndef PLATFORM_ABSTRACTION_H
@@ -573,32 +574,17 @@ char *get_lum_palette(void);
  */
 
 /**
- * @brief Sleep duration structure for frame rate limiting
- *
- * Timespec structure for frame rate limiting sleep duration.
- * Used with ascii_zzz() macro for frame rate control.
- *
- * @note Sleep duration: 500 nanoseconds (0.5 microseconds)
- * @note Used to prevent excessive terminal I/O.
- *
- * @ingroup video
- */
-static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
-                             ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};
-
-/**
  * @brief Sleep for frame rate limiting
  *
- * Sleeps for a short duration (500 nanoseconds) to limit frame rate
- * and prevent excessive terminal I/O. Uses nanosleep() for precise
- * timing control.
+ * Sleeps for a short duration (50 microseconds) to limit frame rate
+ * and prevent excessive terminal I/O. Uses time_sleep_ns() for precise
+ * nanosecond-precision timing control with the unified timing API.
  *
- * @note Sleep duration: 500 nanoseconds (very short, minimal overhead)
+ * @note Sleep duration: 50000 nanoseconds (50 microseconds)
  * @note Used between frame outputs for rate limiting.
- * @note May not be needed on all systems (depends on terminal I/O speed).
  *
  * @ingroup video
  */
-#define ascii_zzz() nanosleep((struct timespec *)&ASCII_SLEEP_START, (struct timespec *)&ASCII_SLEEP_STOP)
+#define ascii_zzz() time_sleep_ns(ASCII_SLEEP_NS)
 
 /** @} */

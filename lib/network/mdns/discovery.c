@@ -20,6 +20,7 @@
 #include "platform/mutex.h"
 #include "log/logging.h"
 #include "network/mdns/mdns.h"
+#include "util/time.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -164,15 +165,6 @@ typedef struct {
 } mdns_query_state_t;
 
 /**
- * @brief Get current time in milliseconds since epoch
- */
-static int64_t discovery_get_time_ms(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000;
-}
-
-/**
  * @brief mDNS callback for discovered services
  * Called by mDNS library when a service is discovered.
  */
@@ -189,7 +181,7 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   }
 
   // Check if timeout exceeded
-  int64_t elapsed = discovery_get_time_ms() - state->start_time_ms;
+  int64_t elapsed = (int64_t)time_ns_to_ms(time_get_ns()) - state->start_time_ms;
   if (elapsed > state->timeout_ms) {
     state->query_complete = true;
     return;
@@ -265,7 +257,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
   memset(&state, 0, sizeof(state));
   state.capacity = max_servers;
   state.timeout_ms = timeout_ms;
-  state.start_time_ms = discovery_get_time_ms();
+  state.start_time_ms = (int64_t)time_ns_to_ms(time_get_ns());
 
   // Allocate server array
   state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(discovery_tui_server_t), discovery_tui_server_t *);
@@ -301,8 +293,8 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 
   // Poll for responses until timeout
   int64_t deadline = state.start_time_ms + state.timeout_ms;
-  while (!state.query_complete && discovery_get_time_ms() < deadline) {
-    int poll_timeout = (int)(deadline - discovery_get_time_ms());
+  while (!state.query_complete && (int64_t)time_ns_to_ms(time_get_ns()) < deadline) {
+    int poll_timeout = (int)(deadline - (int64_t)time_ns_to_ms(time_get_ns()));
     if (poll_timeout < 0) {
       poll_timeout = 0;
     }
@@ -572,7 +564,7 @@ void discovery_config_init_defaults(discovery_config_t *config) {
   strncpy(config->acds_server, "127.0.0.1", sizeof(config->acds_server) - 1);
 #endif
 
-  config->acds_port = 27225;
+  config->acds_port = OPT_ACDS_PORT_INT_DEFAULT;
   config->mdns_timeout_ms = 2000;
   config->acds_timeout_ms = 5000;
   config->insecure_mode = false;

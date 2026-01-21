@@ -149,10 +149,6 @@ typedef struct client_info {
   atomic_bool video_render_thread_running;
   atomic_bool audio_render_thread_running;
 
-  // Per-client processing state
-  struct timespec last_video_render_time;
-  struct timespec last_audio_render_time;
-
   // Per-client synchronization
   mutex_t client_state_mutex;
   mutex_t send_mutex; // Protects socket writes (prevents concurrent send race)

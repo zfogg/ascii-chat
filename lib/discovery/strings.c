@@ -7,6 +7,7 @@
 #include "discovery/adjectives.h"
 #include "discovery/nouns.h"
 #include "log/logging.h"
+#include "util/utf8.h"
 #include <sodium.h>
 #include <string.h>
 #include <ctype.h>
@@ -57,6 +58,12 @@ bool acds_string_validate(const char *str) {
     return false;
   }
 
+  // Session strings must be ASCII-only (homograph attack prevention)
+  // Example: Cyrillic "а" (U+0430) looks identical to ASCII "a" but is a different character
+  if (!utf8_is_ascii_only(str)) {
+    return false;
+  }
+
   // Must not start or end with hyphen
   if (str[0] == '-' || str[len - 1] == '-') {
     return false;
@@ -72,7 +79,7 @@ bool acds_string_validate(const char *str) {
       if (i > 0 && str[i - 1] == '-') {
         return false;
       }
-    } else if (!islower(c)) {
+    } else if (!islower((unsigned char)c)) {
       // Only lowercase letters and hyphens allowed
       return false;
     }

@@ -22,6 +22,7 @@
 #include "image.h"
 #include "util/aspect_ratio.h"
 #include "util/overflow.h"
+#include "util/time.h"
 #include "video/webcam/webcam.h"
 #include "options/options.h"
 #include "simd/ascii_simd.h"
@@ -233,8 +234,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   }
 
   // PROFILING: Time image allocation and resize
-  struct timespec prof_alloc_start, prof_alloc_end, prof_resize_start, prof_resize_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_start);
+  uint64_t prof_alloc_start_ns = time_get_ns();
 
   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
   if (!resized) {
@@ -244,16 +244,15 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 
   image_clear(resized);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_end);
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_resize_start);
+  uint64_t prof_alloc_end_ns = time_get_ns();
+  uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   image_resize(original, resized);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_resize_end);
+  uint64_t prof_resize_end_ns = time_get_ns();
 
   // PROFILING: Time ASCII print
-  struct timespec prof_print_start, prof_print_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_start);
+  uint64_t prof_print_start_ns = prof_resize_end_ns;
 
   // DEBUG: Log dimensions going to renderer
   log_debug_every(LOG_RATE_SLOW,
@@ -263,18 +262,14 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   // Use the capability-aware image printing function with client's palette
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars, luminance_palette);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_end);
+  uint64_t prof_print_end_ns = time_get_ns();
 
-  uint64_t alloc_time_us = ((uint64_t)prof_alloc_end.tv_sec * 1000000 + (uint64_t)prof_alloc_end.tv_nsec / 1000) -
-                           ((uint64_t)prof_alloc_start.tv_sec * 1000000 + (uint64_t)prof_alloc_start.tv_nsec / 1000);
-  uint64_t resize_time_us = ((uint64_t)prof_resize_end.tv_sec * 1000000 + (uint64_t)prof_resize_end.tv_nsec / 1000) -
-                            ((uint64_t)prof_resize_start.tv_sec * 1000000 + (uint64_t)prof_resize_start.tv_nsec / 1000);
-  uint64_t print_time_us = ((uint64_t)prof_print_end.tv_sec * 1000000 + (uint64_t)prof_print_end.tv_nsec / 1000) -
-                           ((uint64_t)prof_print_start.tv_sec * 1000000 + (uint64_t)prof_print_start.tv_nsec / 1000);
+  uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
+  uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
+  uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
 
   // PROFILING: Time padding
-  struct timespec prof_pad_start, prof_pad_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_pad_start);
+  uint64_t prof_pad_start_ns = time_get_ns();
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII using terminal capabilities");
@@ -297,10 +292,9 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   SAFE_FREE(ascii_width_padded);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_pad_end);
+  uint64_t prof_pad_end_ns = time_get_ns();
 
-  uint64_t pad_time_us = ((uint64_t)prof_pad_end.tv_sec * 1000000 + (uint64_t)prof_pad_end.tv_nsec / 1000) -
-                         ((uint64_t)prof_pad_start.tv_sec * 1000000 + (uint64_t)prof_pad_start.tv_nsec / 1000);
+  uint64_t pad_time_us = time_ns_to_us(time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns));
   (void)alloc_time_us;
   (void)resize_time_us;
   (void)print_time_us;

@@ -403,6 +403,20 @@ endif()
 
 # Core module was moved earlier in the dependency chain (Module 7)
 
+# -----------------------------------------------------------------------------
+# Module 11: Session Library (depends on: util, platform, core, video, audio)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-session "${SESSION_SRCS}")
+if(NOT BUILDING_OBJECT_LIBS)
+    target_link_libraries(ascii-chat-session
+        ascii-chat-util
+        ascii-chat-platform
+        ascii-chat-core
+        ascii-chat-video
+        ascii-chat-audio
+    )
+endif()
+
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
@@ -428,6 +442,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         $<TARGET_OBJECTS:ascii-chat-audio>
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
+        $<TARGET_OBJECTS:ascii-chat-session>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
@@ -464,6 +479,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         ascii-chat-audio
         ascii-chat-network
         ascii-chat-core
+        ascii-chat-session
         ascii-chat-panic
     )
 
@@ -528,6 +544,7 @@ else()
         ${AUDIO_SRCS}
         ${NETWORK_SRCS}
         ${CORE_SRCS}
+        ${SESSION_SRCS}
         ${TOOLING_PANIC_SRCS}
     )
 
@@ -961,11 +978,12 @@ if(NOT BUILDING_OBJECT_LIBS)
         "ADDLIB $<TARGET_FILE:ascii-chat-audio>"
         "ADDLIB $<TARGET_FILE:ascii-chat-network>"
         "ADDLIB $<TARGET_FILE:ascii-chat-core>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-session>"
     )
     list(APPEND _STATIC_LIB_DEPS
         ascii-chat-util ascii-chat-data-structures ascii-chat-platform
         ascii-chat-crypto ascii-chat-simd ascii-chat-video
-        ascii-chat-audio ascii-chat-network ascii-chat-core
+        ascii-chat-audio ascii-chat-network ascii-chat-core ascii-chat-session
     )
 
     # =============================================================================
@@ -1007,32 +1025,53 @@ if(NOT BUILDING_OBJECT_LIBS)
 
     # Generate the MRI script content with generator expressions
     # file(GENERATE) evaluates generator expressions at generate time
-    set(_MRI_CONTENT "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a\n")
+    # For multi-config generators (Xcode, Visual Studio), use $<CONFIG> for unique paths
+    get_property(_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(_is_multi_config)
+        set(_config_subdir "$<CONFIG>/")
+    else()
+        set(_config_subdir "")
+    endif()
+
+    set(_MRI_CONTENT "CREATE ${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}lib/libasciichat.a\n")
     foreach(_cmd IN LISTS _STATIC_LIB_MRI_COMMANDS)
         string(APPEND _MRI_CONTENT "${_cmd}\n")
     endforeach()
     string(APPEND _MRI_CONTENT "SAVE\nEND\n")
 
     # file(GENERATE) evaluates generator expressions like $<TARGET_FILE:...>
+    # Using $<CONFIG> in OUTPUT path makes each config write to a unique file
     file(GENERATE
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/combine.mri"
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}combine.mri"
         CONTENT "${_MRI_CONTENT}"
     )
 
-    # Use ar MRI script to combine archives across platforms
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMENT "Combining static libraries into libasciichat.a"
-        COMMAND_EXPAND_LISTS
-    )
-
-# Create a custom target that depends on the static library file
-add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
+    if(_is_multi_config)
+        # For multi-config generators, use a single target with generator expressions
+        # The $<CONFIG> genex resolves at build time to the active configuration
+        add_custom_target(ascii-chat-static-lib-combined
+            COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/lib"
+            COMMAND ${CMAKE_AR} -M < "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/combine.mri"
+            COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            DEPENDS ${_STATIC_LIB_DEPS}
+            COMMENT "Combining static libraries into libasciichat.a"
+        )
+    else()
+        # Use ar MRI script to combine archives across platforms
+        add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+            COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+            COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+            COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+            COMMENT "Combining static libraries into libasciichat.a"
+            COMMAND_EXPAND_LISTS
+        )
+        # Create a custom target that depends on the static library file
+        add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
+    endif()
 
 # Create interface library target that wraps the combined static library
 # Includes: our code + BearSSL + WebRTC AEC3 (not available via package managers)
@@ -1040,7 +1079,7 @@ add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_
 add_library(ascii-chat-static-lib INTERFACE)
 add_dependencies(ascii-chat-static-lib ascii-chat-static-lib-combined)
 target_link_libraries(ascii-chat-static-lib INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}lib/libasciichat.a>
     $<INSTALL_INTERFACE:lib/libasciichat.a>
 )
 
@@ -1234,6 +1273,7 @@ endif()
 # Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)
 target_link_libraries(ascii-chat-lib INTERFACE
+    ascii-chat-session
     ascii-chat-simd
     ascii-chat-video
     ascii-chat-audio

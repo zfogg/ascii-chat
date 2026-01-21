@@ -90,7 +90,7 @@ typedef struct {
 } acds_config_t;
 
 /**
- * @brief ACDS (discovery-server mode) entry point
+ * @brief ACDS (discovery-service mode) entry point
  *
  * Expects options already parsed and shared initialization complete.
  * Called by main.c mode dispatcher after options_init() and asciichat_shared_init().

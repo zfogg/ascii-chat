@@ -8,6 +8,7 @@
 
 #include "../abstraction.h"
 #include "../../asciichat_errno.h"
+#include "../../util/time.h"
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
@@ -61,15 +62,12 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
 // Use pthread_tryjoin_np with polling as fallback
 #ifdef __linux__
   struct timespec timeout;
-  (void)clock_gettime(CLOCK_REALTIME, &timeout);
-  timeout.tv_sec += timeout_ms / 1000;
-  timeout.tv_nsec += (timeout_ms % 1000) * 1000000;
+  uint64_t now_ns = time_get_realtime_ns();
+  uint64_t timeout_ns = time_ms_to_ns((uint64_t)timeout_ms);
+  uint64_t deadline_ns = now_ns + timeout_ns;
 
-  // Normalize timespec
-  if (timeout.tv_nsec >= 1000000000) {
-    timeout.tv_sec++;
-    timeout.tv_nsec -= 1000000000;
-  }
+  // Convert back to timespec for pthread_timedjoin_np
+  time_ns_to_timespec(deadline_ns, &timeout);
 
   int result = pthread_timedjoin_np(*thread, retval, &timeout);
   if (result == ETIMEDOUT) {

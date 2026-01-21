@@ -29,20 +29,16 @@
  */
 
 #include "main.h"
-#include "media/source.h"
-#include "video/webcam/webcam.h"
+#include "session/capture.h"
+#include "session/display.h"
 #include "video/ascii.h"
 #include "video/image.h"
 #include "video/ansi_fast.h"
-#include "video/ansi.h"
-#include "video/rle.h"
 
 #include "platform/abstraction.h"
-#include "platform/terminal.h"
 #include "common.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
-#include "video/palette.h"
 #include "util/time.h"
 
 #include <signal.h>
@@ -107,98 +103,10 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
 }
 
 /* ============================================================================
- * Mirror Mode TTY Management
+ * Mirror Mode Display (using session library)
  * ============================================================================ */
 
-/** TTY info for mirror mode */
-static tty_info_t g_mirror_tty_info = {-1, NULL, false};
-
-/** Flag indicating if we have a valid TTY */
-static bool g_mirror_has_tty = false;
-
-/**
- * Initialize mirror mode display
- *
- * @return 0 on success, negative on error
- */
-static int mirror_display_init(void) {
-  g_mirror_tty_info = get_current_tty();
-
-  // Only use TTY output if stdout is also a TTY (respects shell redirection)
-  // This ensures `cmd > file` works by detecting stdout redirection
-  bool stdout_is_tty = platform_isatty(STDOUT_FILENO) != 0;
-  if (g_mirror_tty_info.fd >= 0 && stdout_is_tty) {
-    g_mirror_has_tty = platform_isatty(g_mirror_tty_info.fd) != 0;
-  } else {
-    g_mirror_has_tty = false;
-  }
-
-  // Initialize ASCII output
-  ascii_write_init(g_mirror_tty_info.fd, !(GET_OPTION(snapshot_mode)));
-
-  return 0;
-}
-
-/**
- * Cleanup mirror mode display
- */
-static void mirror_display_cleanup(void) {
-  ascii_write_destroy(g_mirror_tty_info.fd, true);
-
-  if (g_mirror_tty_info.owns_fd && g_mirror_tty_info.fd >= 0) {
-    platform_close(g_mirror_tty_info.fd);
-    g_mirror_tty_info.fd = -1;
-    g_mirror_tty_info.owns_fd = false;
-  }
-
-  g_mirror_has_tty = false;
-}
-
-/**
- * Write frame to terminal output
- *
- * @param frame_data ASCII frame data to display
- */
-static void mirror_write_frame(const char *frame_data) {
-  if (!frame_data) {
-    return;
-  }
-
-  size_t frame_len = strnlen(frame_data, 1024 * 1024);
-  if (frame_len == 0) {
-    return;
-  }
-
-  if (g_mirror_has_tty && g_mirror_tty_info.fd >= 0) {
-    cursor_reset(g_mirror_tty_info.fd);
-    platform_write(g_mirror_tty_info.fd, frame_data, frame_len);
-    terminal_flush(g_mirror_tty_info.fd);
-  } else {
-    // Expand RLE for pipe/file output where terminals can't interpret REP sequences
-    char *expanded = ansi_expand_rle(frame_data, frame_len);
-    const char *output_data = expanded ? expanded : frame_data;
-    size_t output_len = expanded ? strlen(expanded) : frame_len;
-
-    // Strip all ANSI escape sequences if --strip-ansi is set
-    char *stripped = NULL;
-    if (GET_OPTION(strip_ansi)) {
-      stripped = ansi_strip_escapes(output_data, output_len);
-      if (stripped) {
-        output_data = stripped;
-        output_len = strlen(stripped);
-      }
-    }
-
-    if (!GET_OPTION(snapshot_mode)) {
-      cursor_reset(STDOUT_FILENO);
-    }
-    platform_write(STDOUT_FILENO, output_data, output_len);
-    platform_write(STDOUT_FILENO, "\n", 1); // Trailing newline after frame
-    (void)fflush(stdout);
-    SAFE_FREE(stripped);
-    SAFE_FREE(expanded);
-  }
-}
+/* Display is now managed via session_display_ctx_t from lib/session/display.h */
 
 /* ============================================================================
  * Mirror Mode Main Loop
@@ -209,6 +117,8 @@ static void mirror_write_frame(const char *frame_data) {
  *
  * Initializes webcam and terminal, then continuously captures frames,
  * converts them to ASCII art, and displays them locally.
+ *
+ * Uses the session library for unified capture and display management.
  *
  * @return 0 on success, non-zero error code on failure
  */
@@ -222,116 +132,91 @@ int mirror_main(void) {
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
-  // Initialize media source (webcam, file, or stdin)
-  media_source_t *media_source = NULL;
+  // Build capture configuration from options
+  session_capture_config_t capture_config = {0};
   const char *media_file = GET_OPTION(media_file);
   bool media_from_stdin = GET_OPTION(media_from_stdin);
-  bool media_loop = GET_OPTION(media_loop);
 
   if (media_file[0] != '\0') {
     // File or stdin streaming
-    media_source_type_t type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
-    media_source = media_source_create(type, media_file);
-    if (!media_source) {
-      log_fatal("Failed to initialize media source: %s", media_file);
-      return ERROR_MEDIA_INIT;
-    }
-
-    if (media_loop && !media_from_stdin) {
-      media_source_set_loop(media_source, true);
-      log_info("Media loop enabled");
-    }
+    capture_config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+    capture_config.path = media_file;
+    capture_config.loop = GET_OPTION(media_loop) && !media_from_stdin;
   } else if (GET_OPTION(test_pattern)) {
     // Test pattern mode
-    media_source = media_source_create(MEDIA_SOURCE_TEST, NULL);
-    if (!media_source) {
-      log_fatal("Failed to initialize test pattern");
-      return ERROR_MEDIA_INIT;
-    }
+    capture_config.type = MEDIA_SOURCE_TEST;
+    capture_config.path = NULL;
   } else {
     // Webcam mode (default)
-    char webcam_index_str[32];
+    static char webcam_index_str[32];
     snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
-    media_source = media_source_create(MEDIA_SOURCE_WEBCAM, webcam_index_str);
-    if (!media_source) {
-      log_fatal("Failed to initialize webcam");
-      return ERROR_MEDIA_INIT;
-    }
+    capture_config.type = MEDIA_SOURCE_WEBCAM;
+    capture_config.path = webcam_index_str;
+  }
+  capture_config.target_fps = 60; // 60 FPS for local display
+  capture_config.resize_for_network = false;
+
+  // Create capture context
+  session_capture_ctx_t *capture = session_capture_create(&capture_config);
+  if (!capture) {
+    log_fatal("Failed to initialize capture source");
+    return ERROR_MEDIA_INIT;
   }
 
-  // Initialize display
-  if (mirror_display_init() != 0) {
+  // Build display configuration from options
+  session_display_config_t display_config = {
+      .snapshot_mode = GET_OPTION(snapshot_mode),
+      .palette_type = GET_OPTION(palette_type),
+      .custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL,
+      .color_mode = TERM_COLOR_AUTO // Will be overridden by command-line options
+  };
+
+  // Create display context
+  session_display_ctx_t *display = session_display_create(&display_config);
+  if (!display) {
     log_fatal("Failed to initialize display");
-    media_source_destroy(media_source);
+    session_capture_destroy(capture);
     return ERROR_DISPLAY;
   }
 
-  // Detect terminal capabilities
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  caps = apply_color_mode_override(caps);
+  // Get terminal capabilities and palette from display context
+  const terminal_capabilities_t *caps = session_display_get_caps(display);
+  const char *palette_chars = session_display_get_palette_chars(display);
+  const char *luminance_palette = session_display_get_luminance_palette(display);
 
   // Initialize ANSI color lookup tables based on terminal capabilities
-  if (caps.color_level == TERM_COLOR_TRUECOLOR) {
+  if (caps->color_level == TERM_COLOR_TRUECOLOR) {
     ansi_fast_init();
-  } else if (caps.color_level == TERM_COLOR_256) {
+  } else if (caps->color_level == TERM_COLOR_256) {
     ansi_fast_init_256color();
-  } else if (caps.color_level == TERM_COLOR_16) {
+  } else if (caps->color_level == TERM_COLOR_16) {
     ansi_fast_init_16color();
   }
 
-  // Initialize palette
-  char palette_chars[256] = {0};
-  size_t palette_len = 0;
-  char luminance_palette[256] = {0};
-
-  const char *custom_chars = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
-  palette_type_t palette_type = GET_OPTION(palette_type);
-  if (initialize_client_palette(palette_type, custom_chars, palette_chars, &palette_len, luminance_palette) != 0) {
-    log_fatal("Failed to initialize palette");
-    mirror_display_cleanup();
-    media_source_destroy(media_source);
-    return ERROR_INVALID_STATE;
-  }
-
-  // Adaptive sleep for frame rate limiting at 60 FPS
-  adaptive_sleep_state_t sleep_state = {0};
-  adaptive_sleep_config_t config = {
-      .baseline_sleep_ns = 16666667, // 60 FPS (16.67ms)
-      .min_speed_multiplier = 1.0,   // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0,   // Constant rate (no speedup)
-      .speedup_rate = 0.0,           // No adaptive behavior (constant FPS)
-      .slowdown_rate = 0.0           // No adaptive behavior (constant FPS)
-  };
-  adaptive_sleep_init(&sleep_state, &config);
-
   // Snapshot mode timing
-  struct timespec snapshot_start_time = {0, 0};
+  uint64_t snapshot_start_time_ns = 0;
   bool snapshot_done = false;
   if (GET_OPTION(snapshot_mode)) {
-    (void)clock_gettime(CLOCK_MONOTONIC, &snapshot_start_time);
+    snapshot_start_time_ns = time_get_ns();
   }
 
   // FPS tracking
   uint64_t frame_count = 0;
-  struct timespec fps_report_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &fps_report_time);
+  uint64_t fps_report_time_ns = time_get_ns();
 
   log_info("Mirror mode running - press Ctrl+C to exit");
   log_set_terminal_output(false);
 
   while (!mirror_should_exit()) {
-    // Frame rate limiting using adaptive sleep system
-    // Use queue_depth=0 and target_depth=0 for constant 60 FPS display
-    adaptive_sleep_do(&sleep_state, 0, 0);
+    // Frame rate limiting using session capture's adaptive sleep
+    session_capture_sleep_for_fps(capture);
 
     // Capture timestamp for snapshot mode timing
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+    uint64_t current_time_ns = time_get_ns();
 
     // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
     if (GET_OPTION(snapshot_mode) && !snapshot_done) {
-      double elapsed_sec = (double)(current_time.tv_sec - snapshot_start_time.tv_sec) +
-                           (double)(current_time.tv_nsec - snapshot_start_time.tv_nsec) / 1e9;
+      double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
 
       float snapshot_delay = GET_OPTION(snapshot_delay);
       if (elapsed_sec >= snapshot_delay) {
@@ -339,11 +224,11 @@ int mirror_main(void) {
       }
     }
 
-    // Read frame from media source
-    image_t *image = media_source_read_video(media_source);
+    // Read frame from capture source
+    image_t *image = session_capture_read_frame(capture);
     if (!image) {
       // Check if we've reached end of file for media sources
-      if (media_source_at_end(media_source)) {
+      if (session_capture_at_end(capture)) {
         log_info("Media source reached end of file");
         break; // Exit mirror loop - end of media
       }
@@ -358,22 +243,25 @@ int mirror_main(void) {
     unsigned short int width = GET_OPTION(width);
     unsigned short int height = GET_OPTION(height);
     bool preserve_aspect_ratio = !stretch;
-    char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps, preserve_aspect_ratio, stretch,
-                                                        palette_chars, luminance_palette);
+
+    // Need a mutable copy for ascii_convert_with_capabilities
+    terminal_capabilities_t caps_copy = *caps;
+    char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio,
+                                                        stretch, palette_chars, luminance_palette);
 
     if (ascii_frame) {
       // When piping/redirecting in snapshot mode, only output the final frame
       // When outputting to TTY, show live preview frames
       bool snapshot_mode = GET_OPTION(snapshot_mode);
-      bool should_write = !snapshot_mode || g_mirror_has_tty || snapshot_done;
+      bool should_write = !snapshot_mode || session_display_has_tty(display) || snapshot_done;
       if (should_write) {
-        mirror_write_frame(ascii_frame);
+        session_display_render_frame(display, ascii_frame, snapshot_done);
       }
 
       // Snapshot mode: exit after capturing the final frame
       if (snapshot_mode && snapshot_done) {
         SAFE_FREE(ascii_frame);
-        // NOTE: Do NOT free 'image' - it's owned by media_source
+        // NOTE: Do NOT free 'image' - it's owned by capture context
         break;
       }
 
@@ -381,17 +269,17 @@ int mirror_main(void) {
       frame_count++;
     }
 
-    // NOTE: Do NOT free 'image' - it's owned by media_source and reused on next read
+    // NOTE: Do NOT free 'image' - it's owned by capture context and reused on next read
 
     // FPS reporting every 5 seconds
-    uint64_t fps_elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                              ((uint64_t)fps_report_time.tv_sec * 1000000 + (uint64_t)fps_report_time.tv_nsec / 1000);
+    uint64_t fps_elapsed_ns = time_elapsed_ns(fps_report_time_ns, current_time_ns);
 
-    if (fps_elapsed_us >= 5000000) {
-      double fps = (double)frame_count / ((double)fps_elapsed_us / 1000000.0);
-      log_debug("Mirror FPS: %.1f", fps);
+    if (fps_elapsed_ns >= 5 * NS_PER_SEC_INT) {
+      double elapsed_sec = time_ns_to_s(fps_elapsed_ns);
+      double fps = (double)frame_count / elapsed_sec;
+      log_debug("Mirror FPS: %.1f (target: %u)", fps, session_capture_get_target_fps(capture));
       frame_count = 0;
-      fps_report_time = current_time;
+      fps_report_time_ns = current_time_ns;
     }
   }
 
@@ -399,8 +287,8 @@ int mirror_main(void) {
   log_set_terminal_output(true);
   log_info("Mirror mode shutting down");
 
-  mirror_display_cleanup();
-  media_source_destroy(media_source);
+  session_display_destroy(display);
+  session_capture_destroy(capture);
 
   return 0;
 }

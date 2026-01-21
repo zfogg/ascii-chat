@@ -73,9 +73,17 @@ void action_help_client(void);
 void action_help_mirror(void);
 
 /**
- * @brief Show discovery-server mode help and exit
+ * @brief Show discovery-service mode help and exit
  *
- * Displays discovery-server mode usage and options.
+ * Displays discovery-service mode usage and options.
  * Exits with code 0.
  */
 void action_help_acds(void);
+
+/**
+ * @brief Show discovery mode help and exit
+ *
+ * Displays discovery mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_discovery(void);

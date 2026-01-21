@@ -5,6 +5,7 @@
  */
 
 #include "platform/question.h"
+#include "util/utf8.h"
 #include "log/logging.h"
 
 #include <stdio.h>
@@ -185,17 +186,32 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         continue;
       }
 
-      // Insert character at cursor position
+      // Determine how many continuation bytes are needed for this character
+      int continuation_bytes = utf8_continuation_bytes_needed((unsigned char)c);
+      if (continuation_bytes < 0) {
+        // Invalid UTF-8 start byte, skip it
+        continue;
+      }
+
+      // Insert first byte (or ASCII character) at cursor position
       if (len < max_len - 1) {
-        // Shift characters right to make room
+        // Shift characters right to make room for this byte
         memmove(&buffer[cursor + 1], &buffer[cursor], len - cursor);
         buffer[cursor] = (char)c;
         len++;
         cursor++;
 
-        // Display: print from cursor-1 to end, then reposition
+        // Read continuation bytes for multi-byte UTF-8 if needed
+        if (continuation_bytes > 0) {
+          if (utf8_read_and_insert_continuation_bytes(buffer, &cursor, &len, max_len, continuation_bytes, getchar) <
+              0) {
+            result = -1;
+          }
+        }
+
+        // Display: print from cursor-continuation_bytes-1 to end, then reposition
         if (opts.mask_char) {
-          for (size_t i = cursor - 1; i < len; i++) {
+          for (size_t i = cursor - continuation_bytes - 1; i < len; i++) {
             fprintf(stderr, "%c", opts.mask_char);
           }
           // Move cursor back to correct position

@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include "common.h"
 #include "network/acip/acds.h"
-#include "discovery-server/main.h"
+#include "discovery-service/main.h"
 
 /**
  * @brief Maximum participants per session
@@ -28,6 +28,20 @@ typedef struct {
   uint8_t identity_pubkey[32]; ///< Ed25519 public key
   uint64_t joined_at;          ///< Unix timestamp (ms)
 } participant_t;
+
+/**
+ * @brief Host migration state for collecting HOST_LOST packets
+ *
+ * When host disconnects, ACDS starts a collection window to gather NAT quality
+ * info from remaining participants for re-election.
+ */
+typedef struct {
+  uint8_t participant_id[16]; ///< Participant proposing new host
+  uint8_t nat_quality_tier;   ///< NAT tier for this participant
+  uint16_t upload_kbps;       ///< Upload bandwidth
+  uint16_t rtt_to_acds_ms;    ///< Latency to ACDS
+  uint8_t connection_type;    ///< How they can be reached
+} host_lost_candidate_t;
 
 /**
  * @brief Session entry data structure
@@ -54,6 +68,19 @@ typedef struct session_entry {
   // Server connection information (where clients should connect)
   char server_address[64]; ///< IPv4/IPv6 address or hostname
   uint16_t server_port;    ///< Port number for client connection
+
+  // Discovery mode host negotiation fields
+  uint8_t initiator_id[16];        ///< First participant who created/joined the session
+  bool host_established;           ///< Whether a host has been designated (false = still negotiating)
+  uint8_t host_participant_id[16]; ///< Current host's participant_id (valid if host_established)
+  char host_address[64];           ///< Host's reachable address (valid if host_established)
+  uint16_t host_port;              ///< Host's port (valid if host_established)
+  uint8_t host_connection_type;    ///< acip_connection_type_t: how to reach host
+
+  // Host migration state (when host disconnects)
+  bool in_migration;           ///< Currently collecting HOST_LOST packets
+  uint64_t migration_start_ms; ///< When migration started (for collection window timeout)
+  host_lost_candidate_t *migration_candidates[MAX_PARTICIPANTS]; ///< Candidates received during migration
 
   participant_t *participants[MAX_PARTICIPANTS]; ///< Participant array (in-memory only)
 } session_entry_t;

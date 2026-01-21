@@ -47,27 +47,18 @@
  *
  * ### Updating Options (Copy-on-Write)
  *
- * ```c
- * // Option 1: Update via callback (recommended)
- * options_update([](options_t *new_opts) {
- *     new_opts->width = 160;
- *     new_opts->height = 60;
- * });
- *
- * // Option 2: Direct field update helpers
- * options_set_dimensions(160, 60);
- * ```
- *
- * ### Bulk Updates (Single Allocation)
+ * Use the generic setter functions for all option updates:
  *
  * ```c
- * // Efficient: Single allocation for multiple changes
- * options_update([](options_t *new_opts) {
- *     new_opts->width = 160;
- *     new_opts->height = 60;
- *     new_opts->color_mode = COLOR_MODE_TRUECOLOR;
- *     new_opts->render_mode = RENDER_MODE_HALF_BLOCK;
- * });
+ * // Single field updates
+ * options_set_int("width", 160);
+ * options_set_int("height", 60);
+ * options_set_bool("audio_enabled", true);
+ * options_set_string("log_file", "/var/log/app.log");
+ *
+ * // Multiple updates use separate setter calls (each creates one RCU update)
+ * options_set_int("width", 160);
+ * options_set_int("height", 60);
  * ```
  *
  * ## Memory Safety

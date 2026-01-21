@@ -9,6 +9,7 @@
 #include "uthash/uthash.h"
 #include "video/palette.h"
 #include "util/fnv1a.h"
+#include "util/time.h"
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
@@ -78,20 +79,14 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
 }
 
 // Cache eviction helper functions
-uint64_t get_current_time_ns(void) {
-  struct timespec now;
-  (void)clock_gettime(CLOCK_MONOTONIC, &now);
-  return now.tv_sec * 1000000000ULL + now.tv_nsec;
-}
-
 double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
                                       uint64_t current_time) {
   // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
   uint64_t age_ns = (current_time >= last_access_time) ? (current_time - last_access_time) : 0;
   uint64_t total_age_ns = (current_time >= creation_time) ? (current_time - creation_time) : 0;
 
-  uint64_t age_seconds = age_ns / 1000000000ULL;
-  uint64_t total_age_seconds = total_age_ns / 1000000000ULL;
+  uint64_t age_seconds = age_ns / NS_PER_SEC_INT;
+  uint64_t total_age_seconds = total_age_ns / NS_PER_SEC_INT;
 
   // Frequency factor: high-use palettes get protection (logarithmic scaling)
   double frequency_factor = 1.0 + log10(1.0 + access_count);
@@ -269,8 +264,8 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
 
       // Log clean eviction
       uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
-      uint64_t current_time = get_current_time_ns();
-      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
+      uint64_t current_time = time_get_ns();
+      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / NS_PER_SEC_INT;
 
       log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
                 victim_age, victim_access_count);
@@ -286,7 +281,7 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
   HASH_ADD_INT(g_utf8_cache_table, key, new_cache);
 
   // Success: add to min-heap
-  uint64_t current_time = get_current_time_ns();
+  uint64_t current_time = time_get_ns();
   double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
   utf8_heap_insert(new_cache, initial_score);
   return true;
@@ -319,7 +314,7 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
   HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
-    uint64_t current_time = get_current_time_ns();
+    uint64_t current_time = time_get_ns();
     atomic_store(&cache->last_access_time, current_time);
     uint32_t new_access_count = atomic_fetch_add(&cache->access_count, 1) + 1;
 
@@ -365,7 +360,7 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
   HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Found it! Just update access tracking and return
-    uint64_t current_time = get_current_time_ns();
+    uint64_t current_time = time_get_ns();
     atomic_store(&cache->last_access_time, current_time);
     atomic_fetch_add(&cache->access_count, 1);
     rwlock_wrunlock(&g_utf8_cache_rwlock);
@@ -392,7 +387,7 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
   cache->is_valid = true;
 
   // Initialize eviction tracking
-  uint64_t current_time = get_current_time_ns();
+  uint64_t current_time = time_get_ns();
   atomic_store(&cache->last_access_time, current_time);
   atomic_store(&cache->access_count, 1); // First access
   cache->creation_time = current_time;

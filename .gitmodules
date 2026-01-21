@@ -21,3 +21,6 @@
 [submodule "deps/ascii-chat-deps/uthash"]
 	path = deps/ascii-chat-deps/uthash
 	url = https://github.com/troydhanson/uthash.git
+[submodule "deps/ascii-chat-deps/utf8proc"]
+	path = deps/ascii-chat-deps/utf8proc
+	url = https://github.com/JuliaStrings/utf8proc.git

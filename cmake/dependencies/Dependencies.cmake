@@ -73,6 +73,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
 configure_mdns()
 
+# FFmpeg - Media file decoding (optional - enables --file support)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
+
 # =============================================================================
 # Test Dependencies
 # =============================================================================

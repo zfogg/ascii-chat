@@ -226,7 +226,12 @@ static void sigwinch_handler(int sigwinch) {
   // Terminal was resized, update dimensions and recalculate aspect ratio
   // ONLY if both width and height are auto (not manually set)
   if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
-    update_dimensions_to_terminal_size((options_t *)options_get());
+    // Get terminal size and update via proper RCU setters
+    unsigned short int term_width, term_height;
+    if (get_terminal_size(&term_width, &term_height) == ASCIICHAT_OK) {
+      options_set_int("width", (int)term_width);
+      options_set_int("height", (int)term_height);
+    }
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
@@ -330,16 +335,6 @@ static void shutdown_client() {
 }
 
 #ifndef NDEBUG
-/**
- * Helper function to enable test pattern mode (debug builds only)
- *
- * Used as callback for options_update() to enable test pattern fallback
- * when webcam is in use during development.
- */
-static void enable_test_pattern_callback(options_t *opts, void *context) {
-  (void)context; // Unused
-  opts->test_pattern = true;
-}
 #endif
 
 /**
@@ -501,7 +496,7 @@ int client_main(void) {
       log_warn("Webcam is in use - automatically falling back to test pattern mode (debug build only)");
 
       // Enable test pattern mode via RCU update
-      asciichat_error_t update_result = options_update(enable_test_pattern_callback, NULL);
+      asciichat_error_t update_result = options_set_bool("test_pattern", true);
       if (update_result != ASCIICHAT_OK) {
         log_error("Failed to update options for test pattern fallback");
         FATAL(init_result, "%s", asciichat_error_string(init_result));
@@ -778,8 +773,9 @@ int client_main(void) {
     const char *address = discovered_address
                               ? discovered_address
                               : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
-    const char *port_str =
-        discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : "27224");
+    const char *port_str = discovered_port
+                               ? discovered_port
+                               : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : OPT_PORT_DEFAULT);
     int port = atoi(port_str);
 
     // Update connection context with current attempt number
@@ -792,7 +788,7 @@ int client_main(void) {
     }
     int acds_port = GET_OPTION(acds_port);
     if (acds_port <= 0 || acds_port > 65535) {
-      acds_port = 27225; // Fallback to default ACDS port
+      acds_port = OPT_ACDS_PORT_INT_DEFAULT;
     }
 
     // Attempt connection with 3-stage fallback (TCP → STUN → TURN)

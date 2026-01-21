@@ -34,6 +34,9 @@ set(UTIL_SRCS
     lib/util/image.c
     lib/util/password.c
     lib/util/fps.c
+    lib/util/utf8.c
+    # utf8proc Unicode library (includes utf8proc_data.c internally)
+    deps/ascii-chat-deps/utf8proc/utf8proc.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -212,7 +215,6 @@ set(VIDEO_SRCS
     lib/video/ansi_fast.c
     lib/video/ansi.c
     lib/video/palette.c
-    lib/util/utf8.c
     lib/video/webcam/webcam.c
 )
 
@@ -256,6 +258,7 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/packet_parsing.c
+    lib/network/frame_validator.c
     lib/network/compression.c
     lib/network/crc32.c
     lib/network/packet_queue.c
@@ -276,6 +279,7 @@ set(NETWORK_SRCS
     lib/network/webrtc/webrtc.c
     lib/network/webrtc/transport.c
     lib/network/webrtc/peer_manager.c
+    lib/network/webrtc/stun.c
     lib/network/webrtc/turn_credentials.c
     lib/network/webrtc/sdp.c
     lib/network/webrtc/ice.c
@@ -310,7 +314,8 @@ set(CORE_SRCS
     lib/options/client.c
     lib/options/server.c
     lib/options/mirror.c
-    lib/options/discovery_server.c
+    lib/options/discovery_service.c
+    lib/options/discovery.c           # Discovery mode options (Phase 3)
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c
@@ -319,14 +324,20 @@ set(CORE_SRCS
     lib/options/presets.c          # Preset option configs (NEW)
     lib/options/parsers.c          # Custom enum parsers (NEW)
     lib/options/actions.c          # Action option callbacks (NEW)
+    lib/options/layout.c           # Two-column layout helpers (NEW)
     lib/version.c
-    # Discovery Service core (reused by discovery-server executable and tests)
+    # Discovery Service core (reused by discovery-service executable and tests)
     lib/discovery/session.c
     lib/discovery/database.c
     lib/discovery/identity.c
     lib/discovery/strings.c
     lib/discovery/adjectives.c
     lib/discovery/nouns.c
+    # Discovery client (NAT detection and host negotiation)
+    src/discovery/nat.c
+    src/discovery/negotiate.c
+    src/discovery/session.c
+    src/discovery/webrtc.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
@@ -354,6 +365,18 @@ set(DATA_STRUCTURES_SRCS
     lib/ringbuffer.c
     lib/buffer_pool.c
     lib/thread_pool.c
+)
+
+# =============================================================================
+# Session Library (reusable session components for discovery mode)
+# =============================================================================
+set(SESSION_SRCS
+    lib/session/capture.c
+    lib/session/display.c
+    lib/session/settings.c
+    lib/session/audio.c
+    lib/session/participant.c
+    lib/session/host.c
 )
 
 # =============================================================================
@@ -394,10 +417,12 @@ set(APP_SRCS
     src/client/connection_attempt.c
     # Mirror mode sources
     src/mirror/main.c
-    # Discovery-server mode sources
-    src/discovery-server/main.c
-    src/discovery-server/server.c
-    src/discovery-server/signaling.c
+    # Discovery-service mode sources
+    src/discovery-service/main.c
+    src/discovery-service/server.c
+    src/discovery-service/signaling.c
+    # Discovery mode sources (participant with dynamic host negotiation)
+    src/discovery/main.c
 )
 
 # =============================================================================

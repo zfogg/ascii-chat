@@ -433,8 +433,7 @@ void *client_video_render_thread(void *arg) {
     adaptive_sleep_do(&sleep_state, 0, 0);
 
     // Capture timestamp for FPS tracking and frame timestamps
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+    uint64_t current_time_ns = time_get_ns();
 
     // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
     should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
@@ -499,8 +498,7 @@ void *client_video_render_thread(void *arg) {
           if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
             memcpy(write_frame->data, ascii_frame, frame_size);
             write_frame->size = frame_size;
-            write_frame->capture_timestamp_us =
-                (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
+            write_frame->capture_timestamp_us = time_ns_to_us(current_time_ns);
 
             // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
             video_frame_commit(vfb_snapshot);
@@ -514,7 +512,7 @@ void *client_video_render_thread(void *arg) {
           }
 
           // FPS tracking - frame successfully generated (handles lag detection and periodic reporting)
-          fps_frame(&video_fps_tracker, &current_time, "frame rendered");
+          fps_frame_ns(&video_fps_tracker, current_time_ns, "frame rendered");
         }
       }
 
@@ -528,7 +526,6 @@ void *client_video_render_thread(void *arg) {
   skip_frame_generation:
     // Adaptive sleep system handles frame timing automatically
     // No manual timestamp tracking needed - sleep state manages timing internally
-    (void)current_time; // Suppress unused variable warning
   }
 
 #ifdef DEBUG_THREADS
@@ -699,8 +696,6 @@ void *client_audio_render_thread(void *arg) {
   // FPS tracking for audio render thread
   fps_t audio_fps_tracker = {0};
   fps_init(&audio_fps_tracker, AUDIO_RENDER_FPS, "SERVER AUDIO");
-  struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
 
   // Adaptive sleep for audio rate limiting at 100 FPS (10ms intervals, 480 samples @ 48kHz)
   adaptive_sleep_state_t audio_sleep_state = {0};
@@ -721,8 +716,7 @@ void *client_audio_render_thread(void *arg) {
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
     // Capture loop start time for precise timing
-    struct timespec loop_start_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &loop_start_time);
+    uint64_t loop_start_time_ns = time_get_ns();
 
     log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
 
@@ -765,8 +759,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Create mix excluding THIS client's audio using snapshot data
-    struct timespec mix_start_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &mix_start_time);
+    uint64_t mix_start_time_ns = time_get_ns();
 
     // ADAPTIVE READING: Read more samples when we're behind to catch up
     // Normal: 480 samples per 10ms iteration
@@ -843,14 +836,13 @@ void *client_audio_render_thread(void *arg) {
       samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_snapshot);
     }
 
-    struct timespec mix_end_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &mix_end_time);
-    uint64_t mix_time_us = ((uint64_t)mix_end_time.tv_sec * 1000000 + (uint64_t)mix_end_time.tv_nsec / 1000) -
-                           ((uint64_t)mix_start_time.tv_sec * 1000000 + (uint64_t)mix_start_time.tv_nsec / 1000);
+    uint64_t mix_end_time_ns = time_get_ns();
+    uint64_t mix_time_ns = time_elapsed_ns(mix_start_time_ns, mix_end_time_ns);
 
-    if (mix_time_us > 2000) { // Log if mixing takes > 2ms
-      log_warn_every(LOG_RATE_DEFAULT, "Slow mixer for client %u: took %lluus (%.2fms)", client_id_snapshot,
-                     mix_time_us, (float)mix_time_us / 1000.0f);
+    if (mix_time_ns > 2 * NS_PER_MS_INT) {
+      char duration_str[32];
+      format_duration_ns((double)mix_time_ns, duration_str, sizeof(duration_str));
+      log_warn_every(LOG_RATE_DEFAULT, "Slow mixer for client %u: took %s", client_id_snapshot, duration_str);
     }
 
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
@@ -867,8 +859,7 @@ void *client_audio_render_thread(void *arg) {
 
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
-    struct timespec accum_start = {0};
-    (void)clock_gettime(CLOCK_MONOTONIC, &accum_start);
+    uint64_t accum_start_ns = time_get_ns();
 
     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
     int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
@@ -881,13 +872,13 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated += samples_to_copy;
     }
 
-    struct timespec accum_end = {0};
-    (void)clock_gettime(CLOCK_MONOTONIC, &accum_end);
-    uint64_t accum_time_us = ((uint64_t)accum_end.tv_sec * 1000000 + (uint64_t)accum_end.tv_nsec / 1000) -
-                             ((uint64_t)accum_start.tv_sec * 1000000 + (uint64_t)accum_start.tv_nsec / 1000);
+    uint64_t accum_end_ns = time_get_ns();
+    uint64_t accum_time_ns = time_elapsed_ns(accum_start_ns, accum_end_ns);
 
-    if (accum_time_us > 500) {
-      log_warn_every(LOG_RATE_DEFAULT, "Slow accumulate for client %u: took %lluus", client_id_snapshot, accum_time_us);
+    if (accum_time_ns > 500 * NS_PER_US_INT) {
+      char duration_str[32];
+      format_duration_ns((double)accum_time_ns, duration_str, sizeof(duration_str));
+      log_warn_every(LOG_RATE_DEFAULT, "Slow accumulate for client %u: took %s", client_id_snapshot, duration_str);
     }
 
     // Only encode and send when we have accumulated a full Opus frame
@@ -922,20 +913,19 @@ void *client_audio_render_thread(void *arg) {
       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
       uint8_t opus_buffer[1024]; // Max Opus frame size
 
-      struct timespec opus_start_time;
-      (void)clock_gettime(CLOCK_MONOTONIC, &opus_start_time);
+      uint64_t opus_start_time_ns = time_get_ns();
 
       int opus_size =
           opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
 
-      struct timespec opus_end_time;
-      (void)clock_gettime(CLOCK_MONOTONIC, &opus_end_time);
-      uint64_t opus_time_us = ((uint64_t)opus_end_time.tv_sec * 1000000 + (uint64_t)opus_end_time.tv_nsec / 1000) -
-                              ((uint64_t)opus_start_time.tv_sec * 1000000 + (uint64_t)opus_start_time.tv_nsec / 1000);
+      uint64_t opus_end_time_ns = time_get_ns();
+      uint64_t opus_time_ns = time_elapsed_ns(opus_start_time_ns, opus_end_time_ns);
 
-      if (opus_time_us > 2000) { // Log if encoding takes > 2ms
-        log_warn_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %lluus (%.2fms), size=%d",
-                       client_id_snapshot, opus_time_us, (float)opus_time_us / 1000.0f, opus_size);
+      if (opus_time_ns > 2 * NS_PER_MS_INT) {
+        char duration_str[32];
+        format_duration_ns((double)opus_time_ns, duration_str, sizeof(duration_str));
+        log_warn_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %s, size=%d", client_id_snapshot,
+                       duration_str, opus_size);
       }
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
@@ -967,28 +957,25 @@ void *client_audio_render_thread(void *arg) {
         log_error("Failed to encode audio to Opus for client %u: opus_size=%d", client_id_snapshot, opus_size);
       } else {
         // Queue Opus-encoded audio for this specific client
-        struct timespec queue_start = {0};
-        (void)clock_gettime(CLOCK_MONOTONIC, &queue_start);
+        uint64_t queue_start_ns = time_get_ns();
 
         int result =
             packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS, opus_buffer, (size_t)opus_size, 0, true);
 
-        struct timespec queue_end = {0};
-        (void)clock_gettime(CLOCK_MONOTONIC, &queue_end);
-        uint64_t queue_time_us = ((uint64_t)queue_end.tv_sec * 1000000 + (uint64_t)queue_end.tv_nsec / 1000) -
-                                 ((uint64_t)queue_start.tv_sec * 1000000 + (uint64_t)queue_start.tv_nsec / 1000);
+        uint64_t queue_end_ns = time_get_ns();
+        uint64_t queue_time_ns = time_elapsed_ns(queue_start_ns, queue_end_ns);
 
-        if (queue_time_us > 500) {
-          log_warn_every(LOG_RATE_DEFAULT, "Slow queue for client %u: took %lluus", client_id_snapshot, queue_time_us);
+        if (queue_time_ns > 500 * NS_PER_US_INT) {
+          char duration_str[32];
+          format_duration_ns((double)queue_time_ns, duration_str, sizeof(duration_str));
+          log_warn_every(LOG_RATE_DEFAULT, "Slow queue for client %u: took %s", client_id_snapshot, duration_str);
         }
 
         if (result < 0) {
           log_debug("Failed to queue Opus audio for client %u", client_id_snapshot);
         } else {
           // FPS tracking - audio packet successfully queued (handles lag detection and periodic reporting)
-          struct timespec current_time;
-          (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-          fps_frame(&audio_fps_tracker, &current_time, "audio packet queued");
+          fps_frame_ns(&audio_fps_tracker, time_get_ns(), "audio packet queued");
         }
       }
       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt

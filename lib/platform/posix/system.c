@@ -11,6 +11,8 @@
 #include "../../common.h" // For log_error()
 #include "../../asciichat_errno.h"
 #include "../../util/ip.h"
+#include "../../util/time.h"
+#include "../../util/utf8.h"
 #include "../symbols.h" // For symbol cache
 #include <unistd.h>
 #include <fcntl.h>
@@ -114,7 +116,7 @@ uint64_t platform_get_monotonic_time_us(void) {
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
     return 0; // Fallback on error (shouldn't happen)
   }
-  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+  return time_ns_to_us(time_timespec_to_ns(&ts));
 }
 
 /**
@@ -265,10 +267,19 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
 /**
  * @brief Get environment variable value
  * @param name Environment variable name
- * @return Variable value or NULL if not found
+ * @return Variable value or NULL if not found or contains invalid UTF-8
+ *
+ * Returns NULL if the environment variable contains invalid UTF-8 sequences,
+ * helping prevent corruption from malformed environment data.
  */
 const char *platform_getenv(const char *name) {
-  return getenv(name);
+  const char *value = getenv(name);
+  if (value && !utf8_is_valid(value)) {
+    // Invalid UTF-8 detected - log warning and return NULL
+    log_warn("Environment variable '%s' contains invalid UTF-8, ignoring", name);
+    return NULL;
+  }
+  return value;
 }
 
 /**

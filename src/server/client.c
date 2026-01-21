@@ -589,7 +589,7 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
-  client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
+  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
   // 64-byte cache-line alignment improves performance for large network buffers
   client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
   if (!client->send_buffer) {
@@ -766,6 +766,21 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
     log_error("Failed to start threads for TCP client %u", client_id_snapshot);
     return -1;
   }
+  log_debug("Successfully created render threads for client %u", client_id_snapshot);
+
+  // Register client with session_host (for discovery mode support)
+  if (server_ctx->session_host) {
+    uint32_t session_client_id = session_host_add_client(server_ctx->session_host, socket, client_ip, port);
+    if (session_client_id == 0) {
+      log_warn("Failed to register client %u with session_host", client_id_snapshot);
+    } else {
+      log_debug("Client %u registered with session_host as %u", client_id_snapshot, session_client_id);
+    }
+  }
+
+  // Broadcast server state to ALL clients AFTER the new client is fully set up
+  // This notifies all clients (including the new one) about the updated grid
+  broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
 
@@ -903,7 +918,7 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
-  client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
+  client->send_buffer_size = MAX_FRAME_BUFFER_SIZE; // 2MB should handle largest frames
   client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
   if (!client->send_buffer) {
     log_error("Failed to allocate send buffer for WebRTC client %u", atomic_load(&client->client_id));
@@ -958,6 +973,81 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
     log_error("Failed to start threads for WebRTC client %u", client_id_snapshot);
     return -1;
   }
+  log_debug("Created receive thread for WebRTC client %u", client_id_snapshot);
+
+  // Create send thread for this client
+  char thread_name[64];
+  snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
+  asciichat_error_t send_result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
+  if (send_result != ASCIICHAT_OK) {
+    log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,
+              asciichat_error_string(send_result));
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after send thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Created send thread for WebRTC client %u", client_id_snapshot);
+
+  // Send initial server state to the new client
+  if (send_server_state_to_client(client) != 0) {
+    log_warn("Failed to send initial server state to WebRTC client %u", client_id_snapshot);
+  } else {
+#ifdef DEBUG_NETWORK
+    log_info("Sent initial server state to WebRTC client %u", client_id_snapshot);
+#endif
+  }
+
+  // Send initial server state via ACIP transport
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  server_state_packet_t state;
+  state.connected_client_count = connected_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  asciichat_error_t packet_send_result = acip_send_server_state(client->transport, &net_state);
+  if (packet_send_result != ASCIICHAT_OK) {
+    log_warn("Failed to send initial server state to WebRTC client %u: %s", client_id_snapshot,
+             asciichat_error_string(packet_send_result));
+  } else {
+    log_debug("Sent initial server state to WebRTC client %u: %u connected clients", client_id_snapshot,
+              state.connected_client_count);
+  }
+
+  // Create per-client rendering threads
+  log_debug("Creating render threads for WebRTC client %u", client_id_snapshot);
+  if (create_client_render_threads(server_ctx, client) != 0) {
+    log_error("Failed to create render threads for WebRTC client %u", client_id_snapshot);
+    if (remove_client(server_ctx, client_id_snapshot) != 0) {
+      log_error("Failed to remove WebRTC client after render thread creation failure");
+    }
+    return -1;
+  }
+  log_debug("Successfully created render threads for WebRTC client %u", client_id_snapshot);
+
+  // Register client with session_host (for discovery mode support)
+  // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
+  if (server_ctx->session_host) {
+    uint32_t session_client_id = session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
+    if (session_client_id == 0) {
+      log_warn("Failed to register WebRTC client %u with session_host", client_id_snapshot);
+    } else {
+      log_debug("WebRTC client %u registered with session_host as %u", client_id_snapshot, session_client_id);
+    }
+  }
+
+  // Broadcast server state to ALL clients AFTER the new client is fully set up
+  // This notifies all clients (including the new one) about the updated grid
+  broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
 
@@ -1052,6 +1142,17 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
     rwlock_wrunlock(&g_client_manager_rwlock);
     log_warn("Cannot remove client %u: not found", client_id);
     return -1;
+  }
+
+  // Unregister client from session_host (for discovery mode support)
+  if (server_ctx->session_host) {
+    asciichat_error_t session_result = session_host_remove_client(server_ctx->session_host, client_id);
+    if (session_result != ASCIICHAT_OK) {
+      log_warn("Failed to unregister client %u from session_host: %s", client_id,
+               asciichat_error_string(session_result));
+    } else {
+      log_debug("Client %u unregistered from session_host", client_id);
+    }
   }
 
   // CRITICAL: Release write lock before joining threads
@@ -1691,15 +1792,15 @@ void *client_send_thread_func(void *arg) {
 
     // Check if it's time to send a video frame (60fps rate limiting)
     // Only rate-limit the SEND operation, not frame consumption
-    struct timespec now_ts, frame_start, frame_end, step1, step2, step3, step4, step5;
-    (void)clock_gettime(CLOCK_MONOTONIC, &now_ts);
-    uint64_t current_time = (uint64_t)now_ts.tv_sec * 1000000 + (uint64_t)now_ts.tv_nsec / 1000;
-    uint64_t time_since_last_send = current_time - last_video_send_time;
-    log_debug("Send thread timing check: time_since_last=%lu us, interval=%lu us, should_send=%d", time_since_last_send,
-              video_send_interval_us, (time_since_last_send >= video_send_interval_us));
+    uint64_t current_time_ns = time_get_ns();
+    uint64_t current_time_us = time_ns_to_us(current_time_ns);
+    uint64_t time_since_last_send_us = current_time_us - last_video_send_time;
+    log_debug("Send thread timing check: time_since_last=%llu us, interval=%llu us, should_send=%d",
+              (unsigned long long)time_since_last_send_us, (unsigned long long)video_send_interval_us,
+              (time_since_last_send_us >= video_send_interval_us));
 
-    if (current_time - last_video_send_time >= video_send_interval_us) {
-      (void)clock_gettime(CLOCK_MONOTONIC, &frame_start);
+    if (current_time_us - last_video_send_time >= video_send_interval_us) {
+      uint64_t frame_start_ns = time_get_ns();
 
       // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
       // If so, send CLEAR_CONSOLE before sending the new frame
@@ -1748,10 +1849,10 @@ void *client_send_thread_func(void *arg) {
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
       uint32_t width = atomic_load(&client->width);
       uint32_t height = atomic_load(&client->height);
-      (void)clock_gettime(CLOCK_MONOTONIC, &step1);
-      (void)clock_gettime(CLOCK_MONOTONIC, &step2);
-      (void)clock_gettime(CLOCK_MONOTONIC, &step3);
-      (void)clock_gettime(CLOCK_MONOTONIC, &step4);
+      uint64_t step1_ns = time_get_ns();
+      uint64_t step2_ns = time_get_ns();
+      uint64_t step3_ns = time_get_ns();
+      uint64_t step4_ns = time_get_ns();
 
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
@@ -1767,7 +1868,7 @@ void *client_send_thread_func(void *arg) {
 
       // Network I/O happens OUTSIDE the mutex
       asciichat_error_t send_result = acip_send_ascii_frame(frame_transport, frame_data, frame->size, width, height);
-      (void)clock_gettime(CLOCK_MONOTONIC, &step5);
+      uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
         if (!atomic_load(&g_server_should_exit)) {
@@ -1780,22 +1881,16 @@ void *client_send_thread_func(void *arg) {
 
       log_debug("Send thread: Frame sent SUCCESSFULLY to client %u", client->client_id);
       sent_something = true;
-      last_video_send_time = current_time;
+      last_video_send_time = current_time_us;
 
-      (void)clock_gettime(CLOCK_MONOTONIC, &frame_end);
-      uint64_t frame_time_us = ((uint64_t)frame_end.tv_sec * 1000000 + (uint64_t)frame_end.tv_nsec / 1000) -
-                               ((uint64_t)frame_start.tv_sec * 1000000 + (uint64_t)frame_start.tv_nsec / 1000);
+      uint64_t frame_end_ns = time_get_ns();
+      uint64_t frame_time_us = time_ns_to_us(time_elapsed_ns(frame_start_ns, frame_end_ns));
       if (frame_time_us > 15000) { // Log if sending a frame takes > 15ms (encryption adds ~5-6ms)
-        uint64_t step1_us = ((uint64_t)step1.tv_sec * 1000000 + (uint64_t)step1.tv_nsec / 1000) -
-                            ((uint64_t)frame_start.tv_sec * 1000000 + (uint64_t)frame_start.tv_nsec / 1000);
-        uint64_t step2_us = ((uint64_t)step2.tv_sec * 1000000 + (uint64_t)step2.tv_nsec / 1000) -
-                            ((uint64_t)step1.tv_sec * 1000000 + (uint64_t)step1.tv_nsec / 1000);
-        uint64_t step3_us = ((uint64_t)step3.tv_sec * 1000000 + (uint64_t)step3.tv_nsec / 1000) -
-                            ((uint64_t)step2.tv_sec * 1000000 + (uint64_t)step2.tv_nsec / 1000);
-        uint64_t step4_us = ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000) -
-                            ((uint64_t)step3.tv_sec * 1000000 + (uint64_t)step3.tv_nsec / 1000);
-        uint64_t step5_us = ((uint64_t)step5.tv_sec * 1000000 + (uint64_t)step5.tv_nsec / 1000) -
-                            ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000);
+        uint64_t step1_us = time_ns_to_us(time_elapsed_ns(frame_start_ns, step1_ns));
+        uint64_t step2_us = time_ns_to_us(time_elapsed_ns(step1_ns, step2_ns));
+        uint64_t step3_us = time_ns_to_us(time_elapsed_ns(step2_ns, step3_ns));
+        uint64_t step4_us = time_ns_to_us(time_elapsed_ns(step3_ns, step4_ns));
+        uint64_t step5_us = time_ns_to_us(time_elapsed_ns(step4_ns, step5_ns));
         log_warn_every(
             LOG_RATE_DEFAULT,
             "SEND_THREAD: Frame send took %.2fms for client %u | Snapshot: %.2fms | Memcpy: %.2fms | CRC32: %.2fms | "
@@ -1839,16 +1934,13 @@ void broadcast_server_state_to_all_clients(void) {
   int snapshot_count = 0;
   int active_video_count = 0;
 
-  struct timespec lock_start, lock_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &lock_start);
+  uint64_t lock_start_ns = time_get_ns();
   rwlock_rdlock(&g_client_manager_rwlock);
-  (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
-  uint64_t lock_time_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
-                          ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
-  if (lock_time_us > 1000) { // Log if > 1ms
-    double lock_time_ms = lock_time_us / 1000.0;
+  uint64_t lock_end_ns = time_get_ns();
+  uint64_t lock_time_ns = time_elapsed_ns(lock_start_ns, lock_end_ns);
+  if (lock_time_ns > 1 * NS_PER_MS_INT) {
     char duration_str[32];
-    format_duration_ms(lock_time_ms, duration_str, sizeof(duration_str));
+    format_duration_ns((double)lock_time_ns, duration_str, sizeof(duration_str));
     log_warn("broadcast_server_state: rwlock_rdlock took %s", duration_str);
   }
 
@@ -1891,9 +1983,8 @@ void broadcast_server_state_to_all_clients(void) {
 
   // Release lock BEFORE sending (snapshot pattern)
   // Sending while holding lock blocks all client operations
-  (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
-  uint64_t lock_held_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
-                          ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
+  uint64_t lock_held_final_ns = time_get_ns();
+  uint64_t lock_held_ns = time_elapsed_ns(lock_start_ns, lock_held_final_ns);
   rwlock_rdunlock(&g_client_manager_rwlock);
 
   // Send to all clients AFTER releasing the lock
@@ -1939,8 +2030,10 @@ void broadcast_server_state_to_all_clients(void) {
     }
   }
 
-  if (lock_held_us > 1000) { // Log if held > 1ms (should be very rare now with optimized send)
-    log_warn("broadcast_server_state: rwlock held for %.2fms (includes network I/O)", lock_held_us / 1000.0);
+  if (lock_held_ns > 1 * NS_PER_MS_INT) {
+    char duration_str[32];
+    format_duration_ns((double)lock_held_ns, duration_str, sizeof(duration_str));
+    log_warn("broadcast_server_state: rwlock held for %s (includes network I/O)", duration_str);
   }
 }
 

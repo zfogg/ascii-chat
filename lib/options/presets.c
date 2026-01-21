@@ -55,7 +55,7 @@ static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
  * This ensures consistent option definitions across all modes.
  * These options can be used before OR after the mode name.
  */
-static void add_binary_logging_options(options_builder_t *b) {
+void options_builder_add_logging_group(options_builder_t *b) {
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);
 
@@ -71,7 +71,7 @@ static void add_binary_logging_options(options_builder_t *b) {
                                         NULL,
                                         true); // optional_arg = true
 
-  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), false,
+  options_builder_add_bool(b, "quiet", 'q', offsetof(options_t, quiet), OPT_QUIET_DEFAULT,
                            "Disable console logging (log to file only)", "LOGGING", false, NULL);
 }
 
@@ -83,7 +83,7 @@ static void add_binary_logging_options(options_builder_t *b) {
  * @brief Add terminal dimension options (width, height)
  * Used by: client, mirror modes
  */
-static void add_terminal_dimension_options(options_builder_t *b) {
+void options_builder_add_terminal_group(options_builder_t *b) {
   options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
                           "Terminal width in characters", "TERMINAL", false, NULL, NULL);
 
@@ -95,14 +95,14 @@ static void add_terminal_dimension_options(options_builder_t *b) {
  * @brief Add webcam options (device selection, flipping, test pattern)
  * Used by: client, mirror modes
  */
-static void add_webcam_options(options_builder_t *b) {
+void options_builder_add_webcam_group(options_builder_t *b) {
   options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
                           "Webcam device index", "WEBCAM", false, NULL, NULL);
 
   options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
                            "Flip webcam horizontally", "WEBCAM", false, NULL);
 
-  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), false,
+  options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), OPT_TEST_PATTERN_DEFAULT,
                            "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED");
 }
 
@@ -110,7 +110,7 @@ static void add_webcam_options(options_builder_t *b) {
  * @brief Add display/rendering options (color mode, palette, etc.)
  * Used by: client, mirror modes
  */
-static void add_display_options(options_builder_t *b) {
+void options_builder_add_display_group(options_builder_t *b) {
   options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
                                &(terminal_color_mode_t){TERM_COLOR_AUTO}, // Auto-detect by default
                                sizeof(terminal_color_mode_t), parse_color_mode,
@@ -130,17 +130,18 @@ static void add_display_options(options_builder_t *b) {
                                sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
                                "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), false,
-                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
+  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities),
+                           OPT_SHOW_CAPABILITIES_DEFAULT, "Show terminal capabilities and exit", "DISPLAY", false,
+                           NULL);
 
-  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), false, "Force UTF-8 support", "DISPLAY",
-                           false, NULL);
+  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), OPT_FORCE_UTF8_DEFAULT,
+                           "Force UTF-8 support", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), false, "Allow aspect ratio distortion",
-                           "DISPLAY", false, NULL);
+  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), OPT_STRETCH_DEFAULT,
+                           "Allow aspect ratio distortion", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), false, "Strip ANSI escape sequences",
-                           "DISPLAY", false, NULL);
+  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), OPT_STRIP_ANSI_DEFAULT,
+                           "Strip ANSI escape sequences", "DISPLAY", false, NULL);
 
   options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
                           "DISPLAY", false, NULL, NULL);
@@ -150,8 +151,8 @@ static void add_display_options(options_builder_t *b) {
  * @brief Add snapshot mode options (snapshot, snapshot-delay)
  * Used by: client, mirror modes
  */
-static void add_snapshot_options(options_builder_t *b) {
-  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), false,
+void options_builder_add_snapshot_group(options_builder_t *b) {
+  options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), OPT_SNAPSHOT_MODE_DEFAULT,
                            "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
 
   options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
@@ -163,22 +164,16 @@ static void add_snapshot_options(options_builder_t *b) {
 // ============================================================================
 
 /**
- * @brief Add compression and audio encoding options
+ * @brief Add compression options
  * Used by: client, server modes
  */
-static void add_compression_options(options_builder_t *b) {
+void options_builder_add_compression_group(options_builder_t *b) {
   options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
                           OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
                           NULL);
 
-  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), false, "Disable compression",
-                           "PERFORMANCE", false, NULL);
-
-  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
-                           "Enable Opus audio encoding", "PERFORMANCE", false, NULL);
-
-  options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
-                           "Disable Opus audio encoding", "PERFORMANCE", false, NULL);
+  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), OPT_NO_COMPRESS_DEFAULT,
+                           "Disable compression", "PERFORMANCE", false, NULL);
 }
 
 // ============================================================================
@@ -190,9 +185,9 @@ static void add_compression_options(options_builder_t *b) {
  * Common options used by: client, server modes
  * Note: Server has client-keys, client has server-key
  */
-static void add_crypto_common_options(options_builder_t *b) {
-  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), false, "Enable encryption",
-                           "SECURITY", false, NULL);
+void options_builder_add_crypto_group(options_builder_t *b) {
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), OPT_ENCRYPT_ENABLED_DEFAULT,
+                           "Enable encryption", "SECURITY", false, NULL);
 
   options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
                              false, "ASCII_CHAT_KEY", NULL);
@@ -200,11 +195,8 @@ static void add_crypto_common_options(options_builder_t *b) {
   options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
                              "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
 
-  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
-                             "SECURITY", false, NULL, NULL);
-
-  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), false, "Disable encryption",
-                           "SECURITY", false, NULL);
+  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), OPT_NO_ENCRYPT_DEFAULT,
+                           "Disable encryption", "SECURITY", false, NULL);
 }
 
 // ============================================================================
@@ -218,7 +210,7 @@ static void add_crypto_common_options(options_builder_t *b) {
  * @param default_port Default port value (as string)
  * @param env_var Environment variable name for port override
  */
-static void add_port_option(options_builder_t *b, const char *default_port, const char *env_var) {
+void options_builder_add_port_option(options_builder_t *b, const char *default_port, const char *env_var) {
   options_builder_add_string(b, "port", 'p', offsetof(options_t, port), default_port, "Server port", "NETWORK", false,
                              env_var, NULL);
 }
@@ -228,24 +220,103 @@ static void add_port_option(options_builder_t *b, const char *default_port, cons
 // ============================================================================
 
 /**
- * @brief Add ACDS discovery service options
- * Used by: client, server modes
+ * @brief Add ACDS options to DISCOVERY section (server/discovery modes only)
+ * Note: Client mode uses options_builder_add_acds_network_group instead
+ * Used by: server, discovery modes
  */
-static void add_acds_discovery_options(options_builder_t *b) {
-  options_builder_add_string(
-      b, "acds-server", '\0', offsetof(options_t, acds_server), "discovery-server.ascii-chat.com",
-      "ACDS discovery server address (default: discovery-server.ascii-chat.com)", "DISCOVERY", false, NULL, NULL);
+void options_builder_add_acds_group(options_builder_t *b) {
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
+                             "ACDS discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")",
+                             "DISCOVERY", false, NULL, NULL);
 
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), 27225, "ACDS discovery server port",
-                          "DISCOVERY", false, NULL, NULL);
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT,
+                          "ACDS discovery service port", "DISCOVERY", false, NULL, NULL);
 
   options_builder_add_string(
       b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
-      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
-      "DISCOVERY", false, NULL, NULL);
+      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
+      false, NULL, NULL);
 
-  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
                            "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
+}
+
+/**
+ * @brief Add ACDS connectivity options to NETWORK section (client mode)
+ * Adds ACDS server discovery and WebRTC P2P options to NETWORK.
+ * The security verification key (--acds-key) should be added separately to SECURITY.
+ * Used by: client mode
+ */
+void options_builder_add_acds_network_group(options_builder_t *b) {
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
+                             "ACDS discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "NETWORK",
+                             false, NULL, NULL);
+
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT,
+                          "ACDS discovery service port", "NETWORK", false, NULL, NULL);
+
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
+                           "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL);
+}
+
+// ============================================================================
+// Media File Streaming Options Helper (Client + Mirror)
+// ============================================================================
+
+/**
+ * @brief Add media file streaming options to a builder
+ *
+ * Adds --file and --loop options for media file playback.
+ * Used by: client, mirror, discovery modes
+ */
+void options_builder_add_media_group(options_builder_t *b) {
+  options_builder_add_string(b, "file", 'f', offsetof(options_t, media_file), "",
+                             "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL);
+
+  options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
+                           "Loop media file playback (not supported for stdin)", "MEDIA", false, NULL);
+}
+
+// ============================================================================
+// Audio Streaming Options Helper (Client only)
+// ============================================================================
+
+/**
+ * @brief Add audio streaming options to a builder
+ *
+ * Adds --audio, --microphone-index, --speakers-index, and volume options.
+ * Used by: client, discovery modes
+ */
+void options_builder_add_audio_group(options_builder_t *b) {
+  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), OPT_AUDIO_ENABLED_DEFAULT,
+                           "Enable audio streaming", "AUDIO", false, NULL);
+
+  options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
+                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, NULL,
+                          NULL);
+
+  options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
+                          "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
+
+  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity),
+                             OPT_MICROPHONE_SENSITIVITY_DEFAULT, "Microphone volume multiplier (0.0-1.0)", "AUDIO",
+                             false, NULL, NULL);
+
+  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume),
+                             OPT_SPEAKERS_VOLUME_DEFAULT, "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL,
+                             NULL);
+
+  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled),
+                           OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT, "Enable audio analysis (debug)", "AUDIO", false, NULL);
+
+  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback),
+                           OPT_AUDIO_NO_PLAYBACK_DEFAULT, "Disable speaker playback (debug)", "AUDIO", false, NULL);
+
+  options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
+                           "Enable Opus audio encoding", "AUDIO", false, NULL);
+
+  options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
+                           "Disable Opus audio encoding", "AUDIO", false, NULL);
 }
 
 // ============================================================================
@@ -297,7 +368,7 @@ const options_config_t *options_preset_binary(const char *program_name, const ch
                            "GENERAL", false, NULL);
 
   // Add logging options
-  add_binary_logging_options(b);
+  options_builder_add_logging_group(b);
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
@@ -317,21 +388,24 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   b->program_name = program_name ? program_name : "ascii-chat server";
   b->description = description ? description : "Start ascii-chat server";
 
+  // Action options (GENERAL - add first so it appears first in help)
+  options_builder_add_action(b, "help", 'h', action_help_server, "Show this help message and exit", "GENERAL");
+
   // Network options
   // Note: Server bind addresses are positional arguments only, not flags
-  add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
+  options_builder_add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
 
   options_builder_add_int(b, "max-clients", '\0', offsetof(options_t, max_clients), OPT_MAX_CLIENTS_DEFAULT,
                           "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL);
 
   // Compression and audio encoding options (shared with client)
-  add_compression_options(b);
+  options_builder_add_compression_group(b);
 
   options_builder_add_bool(b, "no-audio-mixer", '\0', offsetof(options_t, no_audio_mixer), false,
-                           "Disable audio mixer (debug)", "PERFORMANCE", false, NULL);
+                           "Disable audio mixer (debug)", "NETWORK", false, NULL);
 
   // Security options (common with client, plus server-specific client-keys)
-  add_crypto_common_options(b);
+  options_builder_add_crypto_group(b);
 
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
@@ -346,7 +420,7 @@ const options_config_t *options_preset_server(const char *program_name, const ch
                            "DISCOVERY", false, NULL);
 
   // ACDS Discovery options (shared with client)
-  add_acds_discovery_options(b);
+  options_builder_add_acds_group(b);
 
   options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), false,
                            "Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)",
@@ -355,10 +429,6 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   options_builder_add_bool(b, "no-mdns-advertise", '\0', offsetof(options_t, no_mdns_advertise), false,
                            "Disable mDNS service advertisement on local network (LAN discovery won't find this server)",
                            "DISCOVERY", false, NULL);
-
-  // Add binary-level logging options (--log-file, --log-level, -V, -q)
-  // These work before or after the mode name
-  add_binary_logging_options(b);
 
   // Dependencies
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
@@ -369,19 +439,16 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   options_builder_add_dependency_conflicts(b, "encode-audio", "no-encode-audio",
                                            "Cannot use both --encode-audio and --no-encode-audio");
 
-  // Action options (execute and exit)
-  options_builder_add_action(b, "help", 'h', action_help_server, "Show this help message and exit", "ACTIONS");
-
+  // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
-                             "ACTIONS");
+                             "WEBCAM");
 
+  // Audio options
   options_builder_add_action(b, "list-microphones", '\0', action_list_microphones,
-                             "List available microphone devices and exit", "ACTIONS");
+                             "List available microphone devices and exit", "AUDIO");
 
   options_builder_add_action(b, "list-speakers", '\0', action_list_speakers, "List available speaker devices and exit",
-                             "ACTIONS");
-
-  options_builder_add_action(b, "version", 'V', action_show_version, "Show version information and exit", "ACTIONS");
+                             "AUDIO");
 
   // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
   options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
@@ -408,9 +475,12 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   b->program_name = program_name ? program_name : "ascii-chat client";
   b->description = description ? description : "Connect to ascii-chat server";
 
+  // Action options (GENERAL - add first so it appears first in help)
+  options_builder_add_action(b, "help", 'h', action_help_client, "Show this help message and exit", "GENERAL");
+
   // Network options
   // Note: Server address and port are specified via positional argument [address][:port], not flags
-  add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
+  options_builder_add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
 
   options_builder_add_int(b, "reconnect", 'r', offsetof(options_t, reconnect_attempts), OPT_RECONNECT_ATTEMPTS_DEFAULT,
                           "Reconnection attempts (-1=infinite)", "NETWORK", false, NULL, NULL);
@@ -419,46 +489,19 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                            "Scan for ASCII-Chat servers on local network (mDNS)", "NETWORK", false, NULL);
 
   // Terminal dimensions, webcam, display, and snapshot options (shared with mirror)
-  add_terminal_dimension_options(b);
-  add_webcam_options(b);
-  add_display_options(b);
-  add_snapshot_options(b);
+  options_builder_add_terminal_group(b);
+  options_builder_add_webcam_group(b);
+  options_builder_add_display_group(b);
+  options_builder_add_snapshot_group(b);
 
-  // Media file streaming options (client only)
-  options_builder_add_string(b, "file", 'f', offsetof(options_t, media_file), "",
-                             "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL);
+  // Media file streaming options (shared with mirror)
+  options_builder_add_media_group(b);
 
-  options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
-                           "Loop media file playback (not supported for stdin)", "MEDIA", false, NULL);
+  // Audio options (client only)
+  options_builder_add_audio_group(b);
 
-  // Audio options
-  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), false, "Enable audio streaming",
-                           "AUDIO", false, NULL);
-
-  options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
-                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, NULL,
-                          NULL);
-
-  options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
-                          "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
-
-  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity), 1.0,
-                             "Microphone volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
-
-  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume), 1.0,
-                             "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
-
-  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled), false,
-                           "Enable audio analysis (debug)", "AUDIO", false, NULL);
-
-  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback), false,
-                           "Disable speaker playback (debug)", "AUDIO", false, NULL);
-
-  // Compression and audio encoding options (shared with server)
-  add_compression_options(b);
-
-  // ACDS Discovery options (shared with server)
-  add_acds_discovery_options(b);
+  // ACDS Discovery options in NETWORK section (client doesn't need separate DISCOVERY section)
+  options_builder_add_acds_network_group(b);
 
   // WebRTC Connection Strategy Options (Phase 3 fallback control)
   options_builder_add_bool(b, "prefer-webrtc", '\0', offsetof(options_t, prefer_webrtc), false,
@@ -477,22 +520,25 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   // Note: In production, ACDS provides these automatically via SESSION_JOINED response
   options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers), "",
                              "Comma-separated STUN server URLs (debug/test only - ACDS provides in production)",
-                             "WEBRTC", false, "ASCII_CHAT_STUN_SERVERS", NULL);
+                             "NETWORK", false, "ASCII_CHAT_STUN_SERVERS", NULL);
 
   options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers), "",
                              "Comma-separated TURN server URLs (debug/test only - ACDS provides in production)",
-                             "WEBRTC", false, "ASCII_CHAT_TURN_SERVERS", NULL);
+                             "NETWORK", false, "ASCII_CHAT_TURN_SERVERS", NULL);
 
   options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "",
-                             "TURN authentication username (debug/test only - ACDS provides in production)", "WEBRTC",
+                             "TURN authentication username (debug/test only - ACDS provides in production)", "NETWORK",
                              false, "ASCII_CHAT_TURN_USERNAME", NULL);
 
   options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential), "",
-                             "TURN authentication credential (debug/test only - ACDS provides in production)", "WEBRTC",
-                             false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
+                             "TURN authentication credential (debug/test only - ACDS provides in production)",
+                             "NETWORK", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
+
+  // Compression and audio encoding options (shared with server)
+  options_builder_add_compression_group(b);
 
   // Security options (common with server, plus client-specific server-key)
-  add_crypto_common_options(b);
+  options_builder_add_crypto_group(b);
 
   options_builder_add_string(b, "server-key", '\0', offsetof(options_t, server_key), "", "Expected server public key",
                              "SECURITY", false, NULL, NULL);
@@ -501,9 +547,10 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                            "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY",
                            false, NULL);
 
-  // Add binary-level logging options (--log-file, --log-level, -V, -q)
-  // These work before or after the mode name
-  add_binary_logging_options(b);
+  options_builder_add_string(
+      b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
+      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
+      false, NULL, NULL);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -517,20 +564,20 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
 
-  // Action options (execute and exit)
-  options_builder_add_action(b, "help", 'h', action_help_client, "Show this help message and exit", "ACTIONS");
-
+  // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
-                             "ACTIONS");
+                             "WEBCAM");
 
+  // Audio options
   options_builder_add_action(b, "list-microphones", '\0', action_list_microphones,
-                             "List available microphone devices and exit", "ACTIONS");
+                             "List available microphone devices and exit", "AUDIO");
 
   options_builder_add_action(b, "list-speakers", '\0', action_list_speakers, "List available speaker devices and exit",
-                             "ACTIONS");
+                             "AUDIO");
 
+  // Terminal options
   options_builder_add_action(b, "show-capabilities", '\0', action_show_capabilities,
-                             "Show terminal capabilities and exit", "ACTIONS");
+                             "Show terminal capabilities and exit", "TERMINAL");
 
   // Positional argument: [address][:port]
   options_builder_add_positional(
@@ -557,22 +604,17 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   b->program_name = program_name ? program_name : "ascii-chat mirror";
   b->description = description ? description : "Local webcam viewing (no network)";
 
+  // Action options (GENERAL - add first so it appears first in help)
+  options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "GENERAL");
+
   // Terminal dimensions, webcam, display, and snapshot options (shared with client)
-  add_terminal_dimension_options(b);
-  add_webcam_options(b);
-  add_display_options(b);
-  add_snapshot_options(b);
+  options_builder_add_terminal_group(b);
+  options_builder_add_webcam_group(b);
+  options_builder_add_display_group(b);
+  options_builder_add_snapshot_group(b);
 
-  // Media file streaming options (same as client mode)
-  options_builder_add_string(b, "file", 'f', offsetof(options_t, media_file), "",
-                             "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL);
-
-  options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
-                           "Loop media file playback (not supported for stdin)", "MEDIA", false, NULL);
-
-  // Add binary-level logging options (--log-file, --log-level, -V, -q)
-  // These work before or after the mode name
-  add_binary_logging_options(b);
+  // Media file streaming options (shared with client)
+  options_builder_add_media_group(b);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -580,14 +622,13 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
 
   options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
 
-  // Action options (execute and exit)
-  options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "ACTIONS");
-
+  // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
-                             "ACTIONS");
+                             "WEBCAM");
 
+  // Terminal options
   options_builder_add_action(b, "show-capabilities", '\0', action_show_capabilities,
-                             "Show terminal capabilities and exit", "ACTIONS");
+                             "Show terminal capabilities and exit", "TERMINAL");
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
@@ -608,32 +649,20 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   b->description = description ? description : "session management and WebRTC signaling";
 
   // Action options (execute and exit)
-  options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "ACTIONS");
+  options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "GENERAL");
 
   // Network options
   // Note: Bind addresses are specified via positional arguments, not flags
-  add_port_option(b, "27225", "ACDS_PORT");
+  options_builder_add_port_option(b, OPT_ACDS_PORT_DEFAULT, "ACDS_PORT");
 
   // ACDS-specific options
-  options_builder_add_string(b, "key", 'k', offsetof(options_t, acds_key_path), "",
-                             "Path to ACDS identity key file (default: ~/.ascii-chat/acds_identity)", "ACDS", false,
-                             "ACDS_KEY_PATH", NULL);
-
-  options_builder_add_string(b, "database", 'd', offsetof(options_t, acds_database_path), "",
-                             "Path to ACDS database file (default: ~/.ascii-chat/acds.db)", "ACDS", false,
-                             "ACDS_DATABASE_PATH", NULL);
-
-  // Logging options (binary-level, work before or after mode name)
-  // Note: ACDS uses partial logging options due to short name conflicts with identity verification options
-  options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
-                             false, "ASCII_CHAT_LOG_FILE", NULL);
-
-  options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level), &(log_level_t){LOG_INFO},
-                               sizeof(log_level_t), parse_log_level,
-                               "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
+  options_builder_add_string(
+      b, "database", 'd', offsetof(options_t, acds_database_path), "",
+      "Path to ACDS database file (default: ~/.config/ascii-chat/acds.db or %%APPDATA%%\\ascii-chat\\acds.db)",
+      "DATABASE", false, "ACDS_DATABASE_PATH", NULL);
 
   // Encryption options (shared with client and server)
-  add_crypto_common_options(b);
+  options_builder_add_crypto_group(b);
 
   // Identity verification options
   options_builder_add_bool(b, "require-server-identity", 'S', offsetof(options_t, require_server_identity), false,
@@ -653,38 +682,34 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                            NULL);
 
   // WebRTC connectivity options
-  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers),
-                             "stun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302",
-                             "Comma-separated list of STUN server URLs", "WEBRTC", false, "ASCII_CHAT_STUN_SERVERS",
+  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT,
+                             "Comma-separated list of STUN server URLs", "NETWORK", false, "ASCII_CHAT_STUN_SERVERS",
                              NULL);
 
-  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers),
-                             "turn:turn.ascii-chat.com:3478", "Comma-separated list of TURN server URLs", "WEBRTC",
-                             false, "ASCII_CHAT_TURN_SERVERS", NULL);
+  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers), OPT_TURN_SERVERS_DEFAULT,
+                             "Comma-separated list of TURN server URLs", "NETWORK", false, "ASCII_CHAT_TURN_SERVERS",
+                             NULL);
 
-  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "ascii",
-                             "Username for TURN server authentication", "WEBRTC", false, "ASCII_CHAT_TURN_USERNAME",
+  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), OPT_TURN_USERNAME_DEFAULT,
+                             "Username for TURN server authentication", "NETWORK", false, "ASCII_CHAT_TURN_USERNAME",
                              NULL);
 
   options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential),
-                             "0aa9917b4dad1b01631e87a32b875e09", "Credential/password for TURN server authentication",
-                             "WEBRTC", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
+                             OPT_TURN_CREDENTIAL_DEFAULT, "Credential/password for TURN server authentication",
+                             "NETWORK", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
 
   options_builder_add_string(b, "turn-secret", '\0', offsetof(options_t, turn_secret), "",
-                             "Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "WEBRTC", false,
+                             "Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false,
                              "ASCII_CHAT_TURN_SECRET", NULL);
 
   options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), false,
                            "Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)",
-                           "WEBRTC", false, "ASCII_CHAT_UPNP");
+                           "NETWORK", false, "ASCII_CHAT_UPNP");
 
   // Dependencies
   options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
-
-  // Action options (execute and exit)
-  options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "ACTIONS");
 
   // Positional arguments: 0-2 bind addresses (IPv4 and/or IPv6)
   options_builder_add_positional(b, "bind-address", "IPv4 or IPv6 bind address (can specify 0-2 addresses)",
@@ -692,6 +717,84 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                                  "BIND ADDRESS FORMATS", g_server_bind_address_examples,
                                  sizeof(g_server_bind_address_examples) / sizeof(g_server_bind_address_examples[0]),
                                  parse_server_bind_address);
+
+  const options_config_t *config = options_builder_build(b);
+  options_builder_destroy(b);
+  return config;
+}
+
+// ============================================================================
+// Discovery Mode Options Preset
+// ============================================================================
+
+const options_config_t *options_preset_discovery(const char *program_name, const char *description) {
+  // Note: Each call creates a new config (no static caching) since program_name/description vary
+  options_builder_t *b = options_builder_create(sizeof(options_t));
+  if (!b)
+    return NULL;
+
+  b->program_name = program_name ? program_name : "ascii-chat discovery";
+  b->description =
+      description ? description : "Discovery mode - join a session, dynamically become host based on NAT quality";
+
+  // Action options (GENERAL - add first so it appears first in help)
+  options_builder_add_action(b, "help", 'h', action_help_discovery, "Show this help message and exit", "GENERAL");
+
+  options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "GENERAL");
+
+  // Terminal dimensions, webcam, display, and snapshot options
+  options_builder_add_terminal_group(b);
+  options_builder_add_webcam_group(b);
+  options_builder_add_display_group(b);
+  options_builder_add_snapshot_group(b);
+
+  // Media file streaming options
+  options_builder_add_media_group(b);
+
+  // Audio options
+  options_builder_add_audio_group(b);
+
+  // ACDS Discovery options (required for discovery mode)
+  options_builder_add_acds_group(b);
+
+  // Security options
+  options_builder_add_crypto_group(b);
+
+  // Compression options
+  options_builder_add_compression_group(b);
+
+  // Webcam options
+  options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
+                             "WEBCAM");
+
+  // Terminal options
+  options_builder_add_action(b, "show-capabilities", '\0', action_show_capabilities,
+                             "Show terminal capabilities and exit", "TERMINAL");
+
+  // Audio options
+  options_builder_add_action(b, "list-microphones", '\0', action_list_microphones,
+                             "List available microphone devices and exit", "AUDIO");
+
+  options_builder_add_action(b, "list-speakers", '\0', action_list_speakers, "List available speaker devices and exit",
+                             "AUDIO");
+
+  // Dependencies
+  options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
+                                          "Option --snapshot-delay requires --snapshot");
+
+  options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
+
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "encrypt", "Cannot use --no-encrypt with --encrypt");
+  options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
+
+  // Positional argument: session string (word-word-word format)
+  // Discovery mode requires a session string to join
+  static const char *session_examples[] = {"swift-river-mountain      Join session 'swift-river-mountain'",
+                                           "cool-blue-sky             Join session 'cool-blue-sky'"};
+  options_builder_add_positional(b, "session", "Session string to join (word-word-word format)",
+                                 true, // Required
+                                 "SESSION STRING FORMAT", session_examples,
+                                 sizeof(session_examples) / sizeof(session_examples[0]), NULL);
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);

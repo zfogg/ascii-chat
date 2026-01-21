@@ -1,10 +1,10 @@
 /**
- * @file discovery_server.h
- * @brief Discovery server mode option parsing
+ * @file discovery_service.h
+ * @brief Discovery service mode option parsing
  * @ingroup options
  *
- * Discovery server-specific command-line option parsing and help text.
- * Runs a discovery service for session management and WebRTC signaling.
+ * Discovery service-specific command-line option parsing and help text.
+ * Runs a secure P2P session signalling service for session management and WebRTC signaling.
  *
  * **ACDS-Specific Options**:
  * - Network: `[address1] [address2]` positional (0-2 bind addresses), `--port`
@@ -52,41 +52,14 @@ extern "C" {
  *
  * @note ACDS mode only
  * @ingroup options
+ *
+ * Access via GET_OPTION(acds_port)
  */
-extern ASCIICHAT_API int opt_acds_port;
 
 /**
- * @brief SQLite database path (ACDS mode only)
+ * @brief Parse discovery service-specific command-line options
  *
- * Path to SQLite database for session storage and management.
- *
- * **Default**: `~/.config/ascii-chat/acds.db`
- *
- * **Command-line**: `--database <path>` or `-d <path>`
- *
- * @note ACDS mode only
- * @ingroup options
- */
-extern ASCIICHAT_API char opt_acds_database_path[OPTIONS_BUFF_SIZE];
-
-/**
- * @brief Ed25519 identity key path (ACDS mode only)
- *
- * Path to Ed25519 identity key for server identity.
- *
- * **Default**: `~/.config/ascii-chat/acds_identity`
- *
- * **Command-line**: `--key <path>` or `-k <path>`
- *
- * @note ACDS mode only
- * @ingroup options
- */
-extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
-
-/**
- * @brief Parse discovery server-specific command-line options
- *
- * Parses all discovery server mode options including:
+ * Parses all discovery service mode options including:
  * - Positional arguments: 0-2 bind addresses (IPv4/IPv6)
  * - ACDS-specific flags (port, database, key)
  * - Logging flags (log-file, log-level)
@@ -153,7 +126,7 @@ extern ASCIICHAT_API char opt_acds_key_path[OPTIONS_BUFF_SIZE];
  * @see acds_usage()
  * @see options_init()
  */
-asciichat_error_t parse_discovery_server_options(int argc, char **argv, options_t *opts);
+asciichat_error_t parse_discovery_service_options(int argc, char **argv, options_t *opts);
 
 #ifdef __cplusplus
 }

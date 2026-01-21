@@ -41,6 +41,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "options/options.h"
 #include "network/packet.h"
 #include "network/acip/protocol.h"
 #include "network/webrtc/stun.h"
@@ -120,12 +121,15 @@ typedef struct __attribute__((packed)) {
  * Direction: Discovery Server -> Client
  *
  * Payload structure (fixed + variable):
- * - Fixed part: acip_session_created_t (66 bytes)
+ * - Fixed part: acip_session_created_t
  * - Variable part: stun_server_t[stun_count] + turn_server_t[turn_count]
  *
  * The server responds to SESSION_CREATE with the generated session identifier,
  * session string (either auto-generated or the provided reserved string), and
  * optional STUN/TURN server information for WebRTC connectivity.
+ *
+ * The creator is assigned a participant_id and is considered the session initiator
+ * (controls session settings in discovery mode).
  *
  * @ingroup acds
  */
@@ -133,6 +137,7 @@ typedef struct __attribute__((packed)) {
   uint8_t session_string_len; ///< Length of session string (e.g., 20 for "swift-river-mountain")
   char session_string[48];    ///< Null-padded session string
   uint8_t session_id[16];     ///< UUID as bytes (not string)
+  uint8_t participant_id[16]; ///< Creator's participant ID (they are a participant too)
   uint64_t expires_at;        ///< Unix ms (created_at + 24 hours)
 
   uint8_t stun_count; ///< Number of STUN servers
@@ -225,6 +230,10 @@ typedef struct __attribute__((packed)) {
  * verification). This prevents IP address leakage to unauthenticated clients
  * who only know the session string.
  *
+ * **HOST NEGOTIATION**: When host_established == 0, the joiner must negotiate
+ * with existing peers to determine who becomes the host. When host_established == 1,
+ * the joiner can connect directly to the established host.
+ *
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
@@ -234,8 +243,17 @@ typedef struct __attribute__((packed)) {
 
   uint8_t participant_id[16]; ///< UUID for this participant (valid if success == 1)
   uint8_t session_id[16];     ///< Session UUID
+  uint8_t initiator_id[16];   ///< Who created the session (controls settings)
 
-  // Server connection information (ONLY if success == 1)
+  // Host status for discovery mode negotiation
+  uint8_t host_established; ///< 0 = no host yet (negotiate), 1 = host exists (connect directly)
+  uint8_t host_id[16];      ///< Host's participant ID (valid if host_established == 1)
+
+  // Peer information for host negotiation (only relevant if host_established == 0)
+  uint8_t peer_count; ///< Number of other participants to negotiate with
+  // Followed by: uint8_t peer_ids[peer_count][16] (variable length)
+
+  // Server connection information (ONLY if success == 1 AND host_established == 1)
   uint8_t session_type;    ///< acds_session_type_t: 0=DIRECT_TCP, 1=WEBRTC
   char server_address[64]; ///< IPv4/IPv6 address or hostname (null-terminated)
   uint16_t server_port;    ///< Port number for client connection
@@ -246,6 +264,41 @@ typedef struct __attribute__((packed)) {
   char turn_username[128]; ///< Format: "{timestamp}:{session_id}"
   char turn_password[128]; ///< Base64-encoded HMAC-SHA1(secret, username)
 } acip_session_joined_t;
+
+/**
+ * @brief PARTICIPANT_JOINED (PACKET_TYPE_ACIP_PARTICIPANT_JOINED) - New participant notification
+ *
+ * Direction: Discovery Server -> Existing Participants
+ *
+ * Sent to all existing participants when a new participant joins the session.
+ * In discovery mode, this triggers NAT quality exchange and host negotiation
+ * between the new joiner and existing participants.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];             ///< Session UUID
+  uint8_t new_participant_id[16];     ///< UUID of the new participant
+  uint8_t new_participant_pubkey[32]; ///< Ed25519 public key of new participant
+  uint8_t current_participant_count;  ///< Total participants including new one
+} acip_participant_joined_t;
+
+/**
+ * @brief PARTICIPANT_LEFT (PACKET_TYPE_ACIP_PARTICIPANT_LEFT) - Participant left notification
+ *
+ * Direction: Discovery Server -> Remaining Participants
+ *
+ * Sent to remaining participants when someone leaves the session (gracefully or timeout).
+ * If the leaving participant was the host, this triggers host migration.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];          ///< Session UUID
+  uint8_t left_participant_id[16]; ///< UUID of participant who left
+  uint8_t was_host;                ///< 1 if the leaving participant was the host
+  uint8_t remaining_count;         ///< Participants remaining in session
+} acip_participant_left_t;
 
 /**
  * @brief SESSION_LEAVE (PACKET_TYPE_ACIP_SESSION_LEAVE) - Leave session
@@ -427,6 +480,259 @@ typedef struct __attribute__((packed)) {
 /** @} */
 
 /**
+ * @name ACDS Ring Consensus Protocol (New P2P Design)
+ * @{
+ * @ingroup acds
+ *
+ * NEW ARCHITECTURE: Proactive future host election every 5 minutes.
+ * Participants form a virtual ring and rotate who collects NAT data.
+ * Every 5 minutes, a new "quorum leader" emerges with complete knowledge
+ * and elects the future host. This pre-elected host is announced to all
+ * participants so they know who will take over if current host dies.
+ *
+ * Benefits:
+ * - No election delay when host dies (future host already known)
+ * - Fresh NAT data every 5 minutes (not stale)
+ * - Automatic rotation ensures fair load (each participant gets a turn)
+ * - Ring topology enables P2P coordination without central ACDS
+ */
+
+/**
+ * @brief PARTICIPANT_LIST (PACKET_TYPE_ACIP_PARTICIPANT_LIST) - Ordered ring list
+ *
+ * Direction: ACDS -> All Participants
+ *
+ * Broadcast by ACDS after session join or when participant joins/leaves.
+ * Lists all participants in deterministic ring order (by join time or participant ID).
+ * Participants use this to determine:
+ * - My position in the ring
+ * - Who is next in ring (for NAT collection)
+ * - Who is quorum leader this round (last in rotation)
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t num_participants; ///< Number of participants in session
+  // Followed by: participant_entry_t[num_participants] (variable length)
+  // participant_entry_t {
+  //   uint8_t participant_id[16];
+  //   char address[64];
+  //   uint16_t port;
+  //   uint8_t connection_type;
+  // }
+} acip_participant_list_t;
+
+/**
+ * @brief Participant entry in ring (variable-length data following PARTICIPANT_LIST)
+ *
+ * Follows acip_participant_list_t in packet payload. Array of num_participants entries.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t participant_id[16];
+  char address[64];        ///< Participant's address (for direct connection)
+  uint16_t port;           ///< Participant's listening port
+  uint8_t connection_type; ///< acip_connection_type_t
+} acip_participant_entry_t;
+
+/**
+ * @brief RING_COLLECT (PACKET_TYPE_ACIP_RING_COLLECT) - NAT quality request
+ *
+ * Direction: Previous Participant -> Next Participant (via direct connection)
+ *
+ * Sent during ring rotation to request NAT quality from next participant.
+ * Forms the "spoke" of the ring, where one participant collects from all others.
+ *
+ * During each 5-minute round:
+ * - Participant[0] connects to Participant[1], gets NAT data
+ * - Participant[1] connects to Participant[2], gets NAT data
+ * - ... (continues around ring)
+ * - Participant[N-1] has all NAT data, runs election, announces future host
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t from_participant_id[16]; ///< Who is requesting
+  uint8_t to_participant_id[16];   ///< Who is requested
+  uint64_t round_number;           ///< Which 5-minute round (for detection of stale requests)
+} acip_ring_collect_t;
+
+/** @} */
+
+/**
+ * @name ACDS Discovery Mode Messages (Host Negotiation & Migration)
+ * @{
+ * @ingroup acds
+ */
+
+/**
+ * @brief NAT type classification for host selection
+ * @ingroup acds
+ */
+typedef enum {
+  ACIP_NAT_TYPE_OPEN = 0,            ///< No NAT (public IP)
+  ACIP_NAT_TYPE_FULL_CONE = 1,       ///< Full cone NAT (easiest to traverse)
+  ACIP_NAT_TYPE_RESTRICTED = 2,      ///< Address-restricted cone NAT
+  ACIP_NAT_TYPE_PORT_RESTRICTED = 3, ///< Port-restricted cone NAT
+  ACIP_NAT_TYPE_SYMMETRIC = 4        ///< Symmetric NAT (hardest, requires TURN)
+} acip_nat_type_t;
+
+/**
+ * @brief Connection type for host announcement
+ * @ingroup acds
+ */
+typedef enum {
+  ACIP_CONNECTION_TYPE_DIRECT_PUBLIC = 0, ///< Direct public IP connection
+  ACIP_CONNECTION_TYPE_UPNP = 1,          ///< UPnP/NAT-PMP port mapping
+  ACIP_CONNECTION_TYPE_STUN = 2,          ///< STUN hole-punching
+  ACIP_CONNECTION_TYPE_TURN = 3           ///< TURN relay (fallback)
+} acip_connection_type_t;
+
+/**
+ * @brief NETWORK_QUALITY (PACKET_TYPE_ACIP_NETWORK_QUALITY) - Unified quality metrics
+ *
+ * Direction: Participant -> Others (via ring collection, WebRTC signaling, or direct P2P)
+ *
+ * **NEW DESIGN**: Unified packet for all network quality metrics, replacing separate
+ * NAT_QUALITY, HOST_LOST NAT fields, etc. Used in three contexts:
+ *
+ * 1. **Initial Negotiation** (during host selection before session established)
+ *    - Exchanged between first two participants to determine initial host
+ *
+ * 2. **Ring Collection** (proactive, every 5 minutes)
+ *    - Quorum leader collects from all participants for future host election
+ *    - Fresh NAT data ensures optimal host selection
+ *    - Participants know future host before current host dies
+ *
+ * 3. **Migration Recovery** (if current host dies unexpectedly)
+ *    - Participants exchange fresh NETWORK_QUALITY if pre-elected future host unavailable
+ *    - Enables fallback re-election
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t participant_id[16];
+
+  // NAT detection results
+  uint8_t has_public_ip;       ///< STUN reflexive == local IP
+  uint8_t upnp_available;      ///< UPnP/NAT-PMP port mapping works
+  uint8_t upnp_mapped_port[2]; ///< Port we mapped (network byte order)
+  uint8_t stun_nat_type;       ///< acip_nat_type_t classification
+  uint8_t lan_reachable;       ///< Same subnet as peer (mDNS/ARP)
+  uint32_t stun_latency_ms;    ///< RTT to STUN server
+
+  // Bandwidth measurements (critical for host selection)
+  uint32_t upload_kbps;    ///< Upload bandwidth in Kbps (from ACDS test)
+  uint32_t download_kbps;  ///< Download bandwidth in Kbps (informational)
+  uint16_t rtt_to_acds_ms; ///< Latency to ACDS server
+  uint8_t jitter_ms;       ///< Packet timing variance (0-255ms)
+  uint8_t packet_loss_pct; ///< Packet loss percentage (0-100)
+
+  // Connection info
+  char public_address[64]; ///< Our public IP (if has_public_ip or upnp)
+  uint16_t public_port;    ///< Our public port
+
+  // ICE candidate summary
+  uint8_t ice_candidate_types; ///< Bitmask: 1=host, 2=srflx, 4=relay
+} acip_nat_quality_t;
+
+/**
+ * @brief HOST_ANNOUNCEMENT (PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT) - Host declaration
+ *
+ * Direction: Participant -> ACDS
+ *
+ * Sent by the participant who won host negotiation to announce they are
+ * starting the server. ACDS stores this and includes it in future SESSION_JOINED
+ * responses.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t host_id[16];     ///< My participant ID
+  char host_address[64];   ///< Where clients should connect
+  uint16_t host_port;      ///< Port
+  uint8_t connection_type; ///< acip_connection_type_t
+} acip_host_announcement_t;
+
+/**
+ * @brief HOST_DESIGNATED (PACKET_TYPE_ACIP_HOST_DESIGNATED) - Host assignment
+ *
+ * Direction: ACDS -> All Participants
+ *
+ * Sent by ACDS after receiving HOST_ANNOUNCEMENT to notify all participants
+ * who the host is and where to connect.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t host_id[16];
+  char host_address[64];
+  uint16_t host_port;
+  uint8_t connection_type; ///< acip_connection_type_t
+} acip_host_designated_t;
+
+/**
+ * @brief HOST_LOST (PACKET_TYPE_ACIP_HOST_LOST) - Host disconnect notification
+ *
+ * Direction: Participant -> ACDS
+ *
+ * Lightweight notification that a participant detected the host disconnected.
+ * NAT quality data is NOT included - migration participants use pre-elected
+ * future host instead of re-electing. If future host unavailable, participants
+ * can request fresh NETWORK_QUALITY exchange for re-election if needed.
+ *
+ * **NEW P2P DESIGN**: This is now just a notification for ACDS bookkeeping.
+ * Actual migration happens peer-to-peer without ACDS involvement - participants
+ * connect to pre-elected future host immediately upon detection.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t participant_id[16];  ///< Who is reporting
+  uint8_t last_host_id[16];    ///< The host that disconnected
+  uint32_t disconnect_reason;  ///< 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
+  uint64_t disconnect_time_ms; ///< When disconnect was detected (Unix ms)
+} acip_host_lost_t;
+
+/**
+ * @brief FUTURE_HOST_ELECTED (PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED) - Future host announcement
+ *
+ * Direction: Quorum Leader -> ACDS -> All Participants
+ *
+ * **NEW P2P DESIGN**: Sent proactively by quorum leader after completing
+ * ring consensus (every 5 minutes or when new participant joins). Announces
+ * to all participants who will become host if current host dies.
+ *
+ * **Key Insight**: Future host is PRE-ELECTED and stored by everyone.
+ * When current host dies, participants don't need to elect - they immediately:
+ * - Future host: starts hosting (already know they will)
+ * - Others: connect to future host (address already stored)
+ * - Total failover time: <500ms (no election!)
+ *
+ * This packet is broadcast by ACDS after receiving it from quorum leader,
+ * ensuring all participants know the migration plan before host dies.
+ *
+ * @ingroup acds
+ */
+typedef struct __attribute__((packed)) {
+  uint8_t session_id[16];
+  uint8_t future_host_id[16];   ///< Who will host if current host dies
+  char future_host_address[64]; ///< Where to connect when needed
+  uint16_t future_host_port;    ///< Port number
+  uint8_t connection_type;      ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
+  uint64_t elected_at_round;    ///< Which 5-minute round this was elected in
+} acip_future_host_elected_t;
+
+/** @} */
+
+/**
  * @name ACDS Error Handling
  * @{
  * @ingroup acds
@@ -480,8 +786,11 @@ typedef enum {
 /** @brief Session expiration time (24 hours in milliseconds) */
 #define ACIP_SESSION_EXPIRATION_MS (24ULL * 60 * 60 * 1000)
 
-/** @brief Discovery server default port */
-#define ACIP_DISCOVERY_DEFAULT_PORT 27225
+/** @brief Discovery server default port (use OPT_ACDS_PORT_INT_DEFAULT from options.h) */
+#define ACIP_DISCOVERY_DEFAULT_PORT OPT_ACDS_PORT_INT_DEFAULT
+
+/** @brief Default port for discovery mode hosts (use OPT_PORT_INT_DEFAULT from options.h) */
+#define ACIP_HOST_DEFAULT_PORT OPT_PORT_INT_DEFAULT
 
 /** @} */
 

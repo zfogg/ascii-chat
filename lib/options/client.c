@@ -16,6 +16,7 @@
 #include "options/client.h"
 #include "options/builder.h"
 #include "options/common.h"
+#include "options/layout.h"
 
 #include "asciichat_errno.h"
 #include "audio/audio.h"
@@ -29,6 +30,7 @@
 #include "util/ip.h"
 #include "util/parsing.h"
 #include "util/password.h"
+#include "util/utf8.h"
 #include "video/ascii.h"
 #include "video/webcam/webcam.h"
 
@@ -91,18 +93,85 @@ void usage_client(FILE *desc) {
     return;
   }
 
-  // Print custom address format help first
+  // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
-  (void)fprintf(desc, "USAGE:\n");
-  (void)fprintf(desc, "  %s [address][:port] [options...]\n\n", config->program_name);
 
-  // Print positional argument examples programmatically
+  // Print USAGE header with color
+  (void)fprintf(desc, "%sUSAGE:%s\n", log_level_color(LOG_COLOR_DEBUG), log_level_color(LOG_COLOR_RESET));
+
+  // Get color codes once to avoid rotating buffer issues
+  const char *magenta = log_level_color(LOG_COLOR_FATAL);
+  const char *green_color = log_level_color(LOG_COLOR_INFO);
+  const char *yellow = log_level_color(LOG_COLOR_WARN);
+  const char *reset_color = log_level_color(LOG_COLOR_RESET);
+
+  // Print USAGE line with colored components: binary (default), mode (magenta), args (green), options (yellow)
+  (void)fprintf(desc, "  ascii-chat %s%s%s [%saddress%s][:%sport%s] %s[options...]%s\n\n", magenta, "client",
+                reset_color,              // mode in magenta
+                green_color, reset_color, // address arg in green
+                green_color, reset_color, // port arg in green
+                yellow, reset_color);     // [options...] in yellow
+
+  // Detect terminal width for layout
+  int term_width = 80;
+  const char *cols_env = getenv("COLUMNS");
+  if (cols_env) {
+    int cols = atoi(cols_env);
+    if (cols > 40)
+      term_width = cols;
+  }
+
+  // Print positional argument examples with layout formatting
   if (config->num_positional_args > 0) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
     if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
-      (void)fprintf(desc, "%s:\n", pos_arg->section_heading);
+      (void)fprintf(desc, "%s%s:%s\n", log_level_color(LOG_COLOR_DEBUG), pos_arg->section_heading,
+                    log_level_color(LOG_COLOR_RESET));
+      // Get color codes once to avoid rotating buffer issues
+      const char *green = log_level_color(LOG_COLOR_INFO);
+      const char *reset = log_level_color(LOG_COLOR_RESET);
+
       for (size_t i = 0; i < pos_arg->num_examples; i++) {
-        (void)fprintf(desc, "  %s\n", pos_arg->examples[i]);
+        // Print connection address examples with proper alignment
+        const char *example = pos_arg->examples[i];
+        // Find the first part (before multiple spaces) and description (after multiple spaces)
+        const char *p = example;
+        const char *desc_start = NULL;
+
+        // Skip leading spaces
+        while (*p == ' ')
+          p++;
+        const char *first_part = p;
+
+        // Find end of first part (look for 2+ spaces)
+        while (*p && !(*p == ' ' && *(p + 1) == ' '))
+          p++;
+        int first_len_bytes = (int)(p - first_part);
+
+        // Skip spaces to find description
+        while (*p == ' ')
+          p++;
+        if (*p) {
+          desc_start = p;
+        }
+
+        // Print with color codes and layout alignment
+        fprintf(desc, "  %s%.*s%s", green, first_len_bytes, first_part, reset);
+        // Calculate display width of first part (accounts for UTF-8 multi-byte chars)
+        int first_display_width = utf8_display_width_n(first_part, first_len_bytes);
+        // Pad to column 30 for description alignment
+        int padding = LAYOUT_DESCRIPTION_START_COL - (2 + first_display_width);
+        if (padding > 0) {
+          for (int j = 0; j < padding; j++)
+            fprintf(desc, " ");
+        } else {
+          fprintf(desc, " ");
+        }
+        // Print description with wrapping using layout function
+        if (desc_start) {
+          layout_print_wrapped_description(desc, desc_start, LAYOUT_DESCRIPTION_START_COL, term_width);
+        }
+        fprintf(desc, "\n");
       }
       (void)fprintf(desc, "\n");
     }
@@ -110,6 +179,9 @@ void usage_client(FILE *desc) {
 
   // Generate options from builder configuration
   options_config_print_usage(config, desc);
+
+  // Print project links
+  print_project_links(desc);
 
   // Clean up the config
   options_config_destroy(config);

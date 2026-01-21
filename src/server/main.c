@@ -87,6 +87,7 @@
 #include "network/network.h"
 #include "network/tcp/server.h"
 #include "network/acip/acds_client.h"
+#include "network/webrtc/stun.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -1430,6 +1431,7 @@ int server_main(void) {
       .server_private_key = &g_server_private_key,
       .client_whitelist = g_client_whitelist,
       .num_whitelisted_clients = g_num_whitelisted_clients,
+      .session_host = NULL, // Will be created after TCP server init
   };
 
   // Configure TCP server
@@ -1482,9 +1484,6 @@ int server_main(void) {
   } else {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
   }
-
-  struct timespec last_stats_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock) != 0) {
@@ -1555,6 +1554,33 @@ int server_main(void) {
     }
   } else if (GET_OPTION(no_mdns_advertise)) {
     log_info("mDNS service advertisement disabled via --no-mdns-advertise");
+  }
+
+  // ========================================================================
+  // Session Host Creation (for discovery mode support)
+  // ========================================================================
+  // Create session_host to track clients in a transport-agnostic way.
+  // This enables future discovery mode where participants can become hosts.
+  if (!atomic_load(&g_server_should_exit)) {
+    session_host_config_t host_config = {
+        .port = port,
+        .ipv4_address = ipv4_address,
+        .ipv6_address = ipv6_address,
+        .max_clients = GET_OPTION(max_clients),
+        .encryption_enabled = g_server_encryption_enabled,
+        .key_path = GET_OPTION(encrypt_key),
+        .password = GET_OPTION(password),
+        .callbacks = {0}, // No callbacks for now
+        .user_data = NULL,
+    };
+
+    server_ctx.session_host = session_host_create(&host_config);
+    if (!server_ctx.session_host) {
+      // Non-fatal: session_host is optional, server can work without it
+      log_warn("Failed to create session_host (discovery mode support disabled)");
+    } else {
+      log_debug("Session host created for discovery mode support");
+    }
   }
 
   // ========================================================================
@@ -1792,17 +1818,25 @@ int server_main(void) {
             log_debug("WebRTC library initialized successfully");
 
             // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
-            static stun_server_t stun_servers[2];
-            stun_servers[0].host_len = (uint8_t)strlen("stun:stun.ascii-chat.com:3478");
-            SAFE_STRNCPY(stun_servers[0].host, "stun:stun.ascii-chat.com:3478", sizeof(stun_servers[0].host));
-            stun_servers[1].host_len = (uint8_t)strlen("stun:stun1.l.google.com:19302");
-            SAFE_STRNCPY(stun_servers[1].host, "stun:stun1.l.google.com:19302", sizeof(stun_servers[1].host));
+            static stun_server_t stun_servers[4] = {0};
+            static int stun_count_initialized = 0;
+            if (!stun_count_initialized) {
+              int count =
+                  stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+              if (count > 0) {
+                stun_count_initialized = count;
+              } else {
+                log_warn("Failed to parse STUN servers, using defaults");
+                stun_count_initialized = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
+                                                            OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+              }
+            }
 
             // Configure peer_manager
             webrtc_peer_manager_config_t pm_config = {
                 .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
                 .stun_servers = stun_servers,
-                .stun_count = 2,
+                .stun_count = stun_count_initialized,
                 .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
                 .turn_count = 0,
                 .on_transport_ready = on_webrtc_transport_ready,
@@ -2045,6 +2079,13 @@ cleanup:
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
   lock_debug_cleanup();
 #endif
+
+  // Destroy session host (before TCP server shutdown)
+  if (server_ctx.session_host) {
+    log_debug("Destroying session host");
+    session_host_destroy(server_ctx.session_host);
+    server_ctx.session_host = NULL;
+  }
 
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_shutdown(&g_tcp_server);

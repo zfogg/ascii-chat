@@ -102,6 +102,7 @@
 #include "options/rcu.h" // For RCU-based options access
 #include "network/crc32.h"
 #include "util/fps.h"
+#include "util/time.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -338,11 +339,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     fps_tracker_initialized = true;
   }
 
-  struct timespec current_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
   // Track this frame and detect lag
-  fps_frame(&fps_tracker, &current_time, "ASCII frame");
+  fps_frame_ns(&fps_tracker, time_get_ns(), "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;
@@ -397,20 +395,17 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Handle snapshot mode timing
   bool take_snapshot = false;
   if (GET_OPTION(snapshot_mode)) {
-    // Use high-resolution monotonic clock instead of time(NULL) to avoid 1-second precision issues
-    static struct timespec first_frame_time = {0};
+    static uint64_t first_frame_time_ns = 0;
     static bool first_frame_recorded = false;
     static int snapshot_frame_count = 0;
 
     snapshot_frame_count++;
-    // DEBUG: Log every frame received (even when terminal output is disabled)
     log_debug("Snapshot frame %d received", snapshot_frame_count);
 
     if (!first_frame_recorded) {
-      (void)clock_gettime(CLOCK_MONOTONIC, &first_frame_time);
+      first_frame_time_ns = time_get_ns();
       first_frame_recorded = true;
 
-      // If delay is 0, take snapshot immediately on first frame
       if (GET_OPTION(snapshot_delay) == 0) {
         log_debug("Snapshot captured immediately (delay=0)!");
         take_snapshot = true;
@@ -420,12 +415,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
                   GET_OPTION(snapshot_delay));
       }
     } else {
-      struct timespec current_time;
-      (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-      // Calculate elapsed time in seconds with microsecond precision
-      double elapsed = (double)(current_time.tv_sec - first_frame_time.tv_sec) +
-                       (double)(current_time.tv_nsec - first_frame_time.tv_nsec) / 1000000000.0;
+      uint64_t current_time_ns = time_get_ns();
+      double elapsed = time_ns_to_s(time_elapsed_ns(first_frame_time_ns, current_time_ns));
 
       if (elapsed >= GET_OPTION(snapshot_delay)) {
         char duration_str[32];
@@ -470,40 +461,23 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Client-side FPS limiting for rendering (display)
   // Server may send at 144fps for high-refresh displays, but this client renders at its requested FPS
-  static struct timespec last_render_time = {0, 0};
+  static uint64_t last_render_time_ns = 0;
 
   // Don't limit frame rate in snapshot mode - always render the final frame
   if (!take_snapshot) {
     // Get the client's desired FPS (what we told the server we can display)
-    int client_display_fps = MAX_FPS; // This respects the --fps command line flag
-    // Use microseconds for precision - avoid integer division loss
-    uint64_t render_interval_us = 1000000ULL / (uint64_t)client_display_fps;
+    int client_display_fps = MAX_FPS;
+    uint64_t render_interval_us = (NS_PER_SEC_INT / NS_PER_US_INT) / (uint64_t)client_display_fps;
 
-    struct timespec render_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &render_time);
-
-    // Calculate elapsed time since last render in microseconds (high precision)
+    uint64_t render_time_ns = time_get_ns();
     uint64_t render_elapsed_us = 0;
-    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
-      int64_t sec_diff = (int64_t)render_time.tv_sec - (int64_t)last_render_time.tv_sec;
-      int64_t nsec_diff = (int64_t)render_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
 
-      // Handle nanosecond underflow by borrowing from seconds
-      if (nsec_diff < 0) {
-        sec_diff -= 1;
-        nsec_diff += 1000000000LL; // Add 1 second worth of nanoseconds
-      }
-
-      // Convert to microseconds (now both values are properly normalized)
-      // sec_diff should be >= 0 for forward time progression
-      if (sec_diff >= 0) {
-        render_elapsed_us = (uint64_t)sec_diff * 1000000ULL + (uint64_t)(nsec_diff / 1000);
-      }
-      // If sec_diff is negative, time went backwards - treat as 0 elapsed
+    if (last_render_time_ns != 0) {
+      render_elapsed_us = time_ns_to_us(time_elapsed_ns(last_render_time_ns, render_time_ns));
     }
 
     // Skip rendering if not enough time has passed (frame rate limiting)
-    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
+    if (last_render_time_ns != 0) {
       if (render_elapsed_us > 0 && render_elapsed_us < render_interval_us) {
         // Drop this frame to maintain display FPS limit
         SAFE_FREE(frame_data);
@@ -512,7 +486,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
 
     // Update last render time
-    last_render_time = current_time;
+    last_render_time_ns = render_time_ns;
   }
 
   // DEBUG: Periodically log frame stats on client side

@@ -130,6 +130,7 @@
 #include "video/image.h"
 #include "network/compression.h"
 #include "network/packet_parsing.h"
+#include "network/frame_validator.h"
 #include "network/acip/send.h"
 #include "network/acip/server.h"
 #include "util/format.h"
@@ -742,15 +743,14 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   }
 
   // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
-  const size_t legacy_header_size = sizeof(uint32_t) * 2;
-  if (rgb_size > SIZE_MAX - legacy_header_size) {
+  if (rgb_size > SIZE_MAX - FRAME_HEADER_SIZE_LEGACY) {
     char size_str[32];
     format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
     disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %s", size_str);
     return;
   }
-  size_t old_format_size = legacy_header_size + rgb_size;
-  bool is_new_format = (len != old_format_size) && (len > sizeof(uint32_t) * 4);
+  size_t old_format_size = FRAME_HEADER_SIZE_LEGACY + rgb_size;
+  bool is_new_format = (len != old_format_size) && (len > FRAME_HEADER_SIZE_NEW);
 
   void *rgb_data = NULL;
   size_t rgb_data_size = 0;
@@ -758,39 +758,19 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
   if (is_new_format) {
     // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
-    if (len < sizeof(uint32_t) * 4) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format header too small (%zu bytes)", len);
+    // Use frame_validator to validate the new format frame
+    bool is_compressed = false;
+    uint32_t data_size_field = 0;
+    asciichat_error_t validate_result = frame_validate_new(data, len, rgb_size, &is_compressed, &data_size_field);
+    if (validate_result != ASCIICHAT_OK) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format validation failed");
       return;
     }
 
-    // Use memcpy to avoid unaligned access for compressed_flag and data_size
-    uint32_t compressed_flag_net, data_size_net;
-    memcpy(&compressed_flag_net, (char *)data + sizeof(uint32_t) * 2, sizeof(uint32_t));
-    memcpy(&data_size_net, (char *)data + sizeof(uint32_t) * 3, sizeof(uint32_t));
-    uint32_t compressed_flag = NET_TO_HOST_U32(compressed_flag_net);
-    uint32_t data_size = NET_TO_HOST_U32(data_size_net);
-    void *frame_data = (char *)data + sizeof(uint32_t) * 4;
+    uint32_t data_size = data_size_field;
+    void *frame_data = (char *)data + FRAME_HEADER_SIZE_NEW;
 
-    const size_t new_header_size = sizeof(uint32_t) * 4;
-    size_t data_size_sz = (size_t)data_size;
-    if (data_size_sz > IMAGE_MAX_PIXELS_SIZE) {
-      char size_str[32];
-      format_bytes_pretty(data_size_sz, size_str, sizeof(size_str));
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME compressed data too large: %s", size_str);
-      return;
-    }
-    if (data_size_sz > SIZE_MAX - new_header_size) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format packet size overflow");
-      return;
-    }
-    size_t expected_total = new_header_size + data_size_sz;
-    if (len != expected_total) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format length mismatch: expected %zu got %zu",
-                                     expected_total, len);
-      return;
-    }
-
-    if (compressed_flag) {
+    if (is_compressed) {
       // Decompress the data
       rgb_data = SAFE_MALLOC(rgb_size, void *);
       if (!rgb_data) {
@@ -802,7 +782,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
       asciichat_error_t decompress_result = decompress_data(frame_data, data_size, rgb_data, rgb_size);
       if (decompress_result != ASCIICHAT_OK) {
         SAFE_FREE(rgb_data);
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes: %s", data_size_sz,
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes: %s", (size_t)data_size,
                                        asciichat_error_string(decompress_result));
         return;
       }
@@ -821,12 +801,13 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     }
   } else {
     // Old format: [width:4][height:4][rgb_data:w*h*3]
-    if (len != old_format_size) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy length mismatch: expected %zu got %zu",
-                                     old_format_size, len);
+    // Use frame_validator to validate the legacy format frame
+    asciichat_error_t validate_result = frame_validate_legacy(data, len, rgb_size);
+    if (validate_result != ASCIICHAT_OK) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy validation failed");
       return;
     }
-    rgb_data = (char *)data + sizeof(uint32_t) * 2;
+    rgb_data = (char *)data + FRAME_HEADER_SIZE_LEGACY;
     rgb_data_size = rgb_size;
   }
 
@@ -836,18 +817,18 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
     if (frame && frame->data) {
       // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
-      if (rgb_data_size > SIZE_MAX - legacy_header_size) {
+      // Use frame_check_size_overflow to validate overflow before repacking
+      asciichat_error_t overflow_check = frame_check_size_overflow(FRAME_HEADER_SIZE_LEGACY, rgb_data_size);
+      if (overflow_check != ASCIICHAT_OK) {
         if (needs_free && rgb_data) {
           SAFE_FREE(rgb_data);
         }
-        char size_str[32];
-        format_bytes_pretty(rgb_data_size, size_str, sizeof(size_str));
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%s", size_str);
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking");
         return;
       }
-      size_t old_packet_size = legacy_header_size + rgb_data_size;
+      size_t old_packet_size = FRAME_HEADER_SIZE_LEGACY + rgb_data_size;
 
-      if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
+      if (old_packet_size <= MAX_FRAME_BUFFER_SIZE) { // Max frame buffer size
         uint32_t width_net = HOST_TO_NET_U32(img_width);
         uint32_t height_net = HOST_TO_NET_U32(img_height);
 

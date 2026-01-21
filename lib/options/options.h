@@ -212,8 +212,17 @@
 #define SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif
 
-/** @brief Default TCP port for client/server communication */
+/** @brief Default TCP port for client/server communication (string) */
 #define OPT_PORT_DEFAULT "27224"
+
+/** @brief Default TCP port for client/server communication (integer) */
+#define OPT_PORT_INT_DEFAULT 27224
+
+/** @brief Default ACDS discovery service port (integer) */
+#define OPT_ACDS_PORT_INT_DEFAULT 27225
+
+/** @brief Default ACDS discovery service port (string) */
+#define OPT_ACDS_PORT_DEFAULT "27225"
 
 /** @brief Default server address for client connections */
 #define OPT_ADDRESS_DEFAULT "localhost"
@@ -221,11 +230,56 @@
 /** @brief Default IPv6 server address */
 #define OPT_ADDRESS6_DEFAULT "::1"
 
+/**
+ * @name Network Endpoint Defaults
+ * @brief Centralized definitions for all network service endpoints
+ * @{
+ * @ingroup options
+ */
+
+/** @brief Discovery service (ACDS) endpoint for session management */
+#define OPT_ENDPOINT_DISCOVERY_SERVICE "discovery-service.ascii-chat.com"
+
+/** @brief Primary STUN server (ascii-chat hosted) */
+#define OPT_ENDPOINT_STUN_PRIMARY "stun:stun.ascii-chat.com:3478"
+
+/** @brief Fallback STUN server (Google public STUN) */
+#define OPT_ENDPOINT_STUN_FALLBACK "stun:stun.l.google.com:19302"
+
+/** @brief Default STUN servers (comma-separated list) */
+#define OPT_ENDPOINT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_PRIMARY "," OPT_ENDPOINT_STUN_FALLBACK
+
+/** @brief Primary TURN server (ascii-chat hosted) */
+#define OPT_ENDPOINT_TURN_PRIMARY "turn:turn.ascii-chat.com:3478"
+
+/** @brief Default TURN servers (comma-separated list) */
+#define OPT_ENDPOINT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_PRIMARY
+
+/** @brief STUN server hostname only (without protocol/port) */
+#define OPT_STUN_SERVER_HOST_PRIMARY "stun.ascii-chat.com"
+
+/** @brief STUN server port for primary server */
+#define OPT_STUN_SERVER_PORT_PRIMARY 3478
+
+/** @brief Fallback STUN server hostname only */
+#define OPT_STUN_SERVER_HOST_FALLBACK "stun.l.google.com"
+
+/** @brief Fallback STUN server port */
+#define OPT_STUN_SERVER_PORT_FALLBACK 19302
+
+/** @brief TURN server hostname only */
+#define OPT_TURN_SERVER_HOST "turn.ascii-chat.com"
+
+/** @brief TURN server port */
+#define OPT_TURN_SERVER_PORT 3478
+
+/** @} */
+
 /** @brief Default maximum concurrent clients (server only) */
 #define OPT_MAX_CLIENTS_DEFAULT 9
 
 /** @brief Default compression level (1-9) */
-#define OPT_COMPRESSION_LEVEL_DEFAULT 1
+#define OPT_COMPRESSION_LEVEL_DEFAULT 3
 
 /** @brief Default FPS (frames per second) */
 #define OPT_FPS_DEFAULT 60
@@ -257,7 +311,125 @@
 /** @brief Default audio encoding state (true = Opus encoding enabled) */
 #define OPT_ENCODE_AUDIO_DEFAULT true
 
-/** @} */
+/** @brief Default test pattern mode (false = use actual webcam) */
+#define OPT_TEST_PATTERN_DEFAULT false
+
+/** @brief Default show terminal capabilities flag */
+#define OPT_SHOW_CAPABILITIES_DEFAULT false
+
+/** @brief Default force UTF-8 support flag */
+#define OPT_FORCE_UTF8_DEFAULT false
+
+/** @brief Default allow aspect ratio distortion flag */
+#define OPT_STRETCH_DEFAULT false
+
+/** @brief Default strip ANSI escape sequences flag */
+#define OPT_STRIP_ANSI_DEFAULT false
+
+/** @brief Default snapshot mode flag (false = continuous) */
+#define OPT_SNAPSHOT_MODE_DEFAULT false
+
+/** @brief Default no compression flag (false = enable compression) */
+#define OPT_NO_COMPRESS_DEFAULT false
+
+/** @brief Default encrypt enabled flag (true = encryption required) */
+#define OPT_ENCRYPT_ENABLED_DEFAULT true
+
+/** @brief Default no encrypt flag (false = allow encryption) */
+#define OPT_NO_ENCRYPT_DEFAULT false
+
+/** @brief Default WebRTC mode flag (false = direct TCP) */
+#define OPT_WEBRTC_DEFAULT false
+
+/** @brief Default audio enabled flag (false = audio disabled) */
+#define OPT_AUDIO_ENABLED_DEFAULT false
+
+/** @brief Default audio analysis enabled flag */
+#define OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT false
+
+/** @brief Default audio playback flag (false = enable playback) */
+#define OPT_AUDIO_NO_PLAYBACK_DEFAULT false
+
+/** @brief Default help flag */
+#define OPT_HELP_DEFAULT false
+
+/** @brief Default version flag */
+#define OPT_VERSION_DEFAULT false
+
+/** @brief Default no audio mixer flag (false = enable mixer) */
+#define OPT_NO_AUDIO_MIXER_DEFAULT false
+
+/** @brief Default ACDS expose IP flag (false = private by default) */
+#define OPT_ACDS_EXPOSE_IP_DEFAULT false
+
+/** @brief Default ACDS registration flag (false = disabled) */
+#define OPT_ACDS_DEFAULT false
+
+/** @brief Default enable UPnP flag (false = UPnP disabled) */
+#define OPT_ENABLE_UPNP_DEFAULT false
+
+/** @brief Default no mDNS advertise flag (false = advertise enabled) */
+#define OPT_NO_MDNS_ADVERTISE_DEFAULT false
+
+/** @brief Default LAN discovery flag (false = discovery disabled) */
+#define OPT_LAN_DISCOVERY_DEFAULT false
+
+/** @brief Default prefer WebRTC flag (false = try direct TCP first) */
+#define OPT_PREFER_WEBRTC_DEFAULT false
+
+/** @brief Default no WebRTC flag (false = WebRTC enabled) */
+#define OPT_NO_WEBRTC_DEFAULT false
+
+/** @brief Default WebRTC skip STUN flag (false = use STUN) */
+#define OPT_WEBRTC_SKIP_STUN_DEFAULT false
+
+/** @brief Default WebRTC disable TURN flag (false = use TURN) */
+#define OPT_WEBRTC_DISABLE_TURN_DEFAULT false
+
+/** @brief Default ACDS insecure mode flag (false = verify server) */
+#define OPT_ACDS_INSECURE_DEFAULT false
+
+/** @brief Default microphone sensitivity (1.0 = normal volume) */
+#define OPT_MICROPHONE_SENSITIVITY_DEFAULT 1.0
+
+/** @brief Default speakers volume (1.0 = normal volume) */
+#define OPT_SPEAKERS_VOLUME_DEFAULT 1.0
+
+/** @brief Default quiet mode flag (false = logging enabled) */
+#define OPT_QUIET_DEFAULT false
+
+/** @brief Default loop media flag (false = play once) */
+#define OPT_MEDIA_LOOP_DEFAULT false
+
+/** @brief Default STUN server URLs (comma-separated) */
+#define OPT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_SERVERS_DEFAULT
+
+/** @brief Default TURN server URLs (comma-separated) */
+#define OPT_TURN_SERVERS_DEFAULT OPT_ENDPOINT_TURN_SERVERS_DEFAULT
+
+/** @brief Default TURN server username
+ *
+ * @note In production (NDEBUG), empty string - ACDS provides credentials via SESSION_JOINED
+ *       In debug builds, provides test credentials for testing without ACDS
+ */
+#ifdef NDEBUG
+#define OPT_TURN_USERNAME_DEFAULT ""
+#else
+#define OPT_TURN_USERNAME_DEFAULT "ascii"
+#endif
+
+/** @brief Default TURN server credential
+ *
+ * @note In production (NDEBUG), empty string - ACDS provides credentials via SESSION_JOINED
+ *       In debug builds, provides test credentials for testing without ACDS
+ */
+#ifdef NDEBUG
+#define OPT_TURN_CREDENTIAL_DEFAULT ""
+#else
+#define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
+#endif
+
+/** @{ @} */
 
 /**
  * @name Utility Functions
@@ -432,10 +604,11 @@ int strtoint_safe(const char *str);
  * Determines which set of options to use when parsing command-line arguments.
  */
 typedef enum {
-  MODE_SERVER,          ///< Server mode - network server options
-  MODE_CLIENT,          ///< Client mode - network client options
-  MODE_MIRROR,          ///< Mirror mode - local webcam viewing (no network)
-  MODE_DISCOVERY_SERVER ///< Discovery server mode - session management and WebRTC signaling
+  MODE_SERVER,           ///< Server mode - network server options
+  MODE_CLIENT,           ///< Client mode - network client options
+  MODE_MIRROR,           ///< Mirror mode - local webcam viewing (no network)
+  MODE_DISCOVERY_SERVER, ///< Discovery server mode - session management and WebRTC signaling
+  MODE_DISCOVERY         ///< Discovery mode - participant that can dynamically become host
 } asciichat_mode_t;
 
 /**
@@ -675,61 +848,25 @@ const options_t *options_get(void);
   })
 
 /**
- * @brief Update options using copy-on-write (thread-safe)
+ * @brief Set a single option field (thread-safe, RCU-based)
  *
- * Callback-based update interface. Allocates a new options struct, copies
- * current values, calls your callback to modify the copy, then atomically
- * swaps the global pointer.
+ * Convenience function for updating a single field in the options struct.
+ * Uses RCU (copy-on-write) internally for thread-safe updates.
+ *
+ * **Example:**
+ * ```c
+ * options_set_int("width", 120);
+ * options_set_bool("audio_enabled", true);
+ * options_set_string("port", "8080");
+ * ```
  *
  * **Thread Safety**: Multiple writers are serialized with a mutex.
- * Readers are never blocked.
- *
- * @param updater Callback function that modifies the new options struct
- * @param context User context pointer passed to callback (can be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
+ * Readers are never blocked (lock-free reads via GET_OPTION).
  */
-asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context);
-
-/**
- * @brief Update terminal dimensions
- *
- * Thread-safe setter for width/height. Uses RCU update internally.
- *
- * @param width New terminal width in characters
- * @param height New terminal height in characters
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_dimensions(int width, int height);
-
-/**
- * @brief Update color mode
- *
- * Thread-safe setter for color mode. Uses RCU update internally.
- *
- * @param mode New color mode
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_color_mode(terminal_color_mode_t mode);
-
-/**
- * @brief Update render mode
- *
- * Thread-safe setter for render mode. Uses RCU update internally.
- *
- * @param mode New render mode
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_render_mode(render_mode_t mode);
-
-/**
- * @brief Update log level
- *
- * Thread-safe setter for log level. Uses RCU update internally.
- *
- * @param level New log level
- * @return ASCIICHAT_OK on success, error code on failure
- */
-asciichat_error_t options_set_log_level(log_level_t level);
+asciichat_error_t options_set_int(const char *field_name, int value);
+asciichat_error_t options_set_bool(const char *field_name, bool value);
+asciichat_error_t options_set_string(const char *field_name, const char *value);
+asciichat_error_t options_set_double(const char *field_name, double value);
 
 /**
  * @brief Get terminal width (lock-free)

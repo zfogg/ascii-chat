@@ -15,6 +15,7 @@
 #include "options/server.h"
 #include "options/client.h"
 #include "options/mirror.h"
+#include "options/discovery.h"
 #include "platform/terminal.h"
 #include "version.h"
 #include "video/webcam/webcam.h"
@@ -209,6 +210,12 @@ void action_help_mirror(void) {
 
 void action_help_acds(void) {
   usage_acds(stdout);
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+void action_help_discovery(void) {
+  usage_discovery(stdout);
   (void)fflush(stdout);
   _exit(0);
 }

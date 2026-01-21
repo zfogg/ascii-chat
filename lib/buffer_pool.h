@@ -36,6 +36,7 @@ using std::atomic_size_t;
 #include <stdatomic.h>
 #endif
 #include "platform/mutex.h"
+#include "util/magic.h"
 
 /* ============================================================================
  * Configuration Constants
@@ -54,10 +55,10 @@ using std::atomic_size_t;
 /** @brief Maximum single buffer size to pool (larger allocations use malloc directly) */
 #define BUFFER_POOL_MAX_SINGLE_SIZE (4 * 1024 * 1024)
 
-/** @brief Magic value to identify pooled buffers */
-#define BUFFER_POOL_MAGIC 0xBF00B001U
-/** @brief Magic value for malloc fallback buffers (not in pool) */
-#define BUFFER_POOL_MAGIC_FALLBACK 0xBF00FA11U
+/** @brief Magic value to identify pooled buffers - Alias for backward compatibility */
+#define BUFFER_POOL_MAGIC MAGIC_BUFFER_POOL_VALID
+/** @brief Magic value for malloc fallback buffers (not in pool) - Alias for backward compatibility */
+#define BUFFER_POOL_MAGIC_FALLBACK MAGIC_BUFFER_POOL_FALLBACK
 
 /* ============================================================================
  * Data Structures

@@ -8,6 +8,7 @@
 #include "common.h"
 #include "log/logging.h"
 #include "audio/wav_writer.h"
+#include "util/time.h"
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
@@ -73,10 +74,10 @@ static uint64_t g_received_last_silence_end_sample = 0;       // When last silen
 
 // Direct packet timing tracking for stuttering detection
 #define MAX_PACKET_SAMPLES 200
-static struct timespec g_received_packet_times[MAX_PACKET_SAMPLES]; // When each packet was received
-static uint32_t g_received_packet_times_count = 0;                  // Number of packets tracked
-static uint32_t g_received_packet_sizes[MAX_PACKET_SAMPLES];        // Size of each packet in bytes
-static uint64_t g_received_total_audio_samples = 0;                 // Total decoded audio samples
+static uint64_t g_received_packet_times_ns[MAX_PACKET_SAMPLES]; // When each packet was received (nanoseconds)
+static uint32_t g_received_packet_times_count = 0;              // Number of packets tracked
+static uint32_t g_received_packet_sizes[MAX_PACKET_SAMPLES];    // Size of each packet in bytes
+static uint64_t g_received_total_audio_samples = 0;             // Total decoded audio samples
 
 // Echo detection: store recent sent samples to check if they appear in received audio
 #define ECHO_BUFFER_SIZE 48000                       // 1 second at 48kHz
@@ -119,7 +120,7 @@ int audio_analysis_init(void) {
   g_received_gap_count = 0;
   g_received_silence_start_sample = 0;
   g_received_last_silence_end_sample = 0;
-  SAFE_MEMSET(g_received_packet_times, sizeof(g_received_packet_times), 0, sizeof(g_received_packet_times));
+  SAFE_MEMSET(g_received_packet_times_ns, sizeof(g_received_packet_times_ns), 0, sizeof(g_received_packet_times_ns));
   g_received_packet_times_count = 0;
   SAFE_MEMSET(g_received_packet_sizes, sizeof(g_received_packet_sizes), 0, sizeof(g_received_packet_sizes));
   g_received_total_audio_samples = 0;
@@ -142,9 +143,7 @@ int audio_analysis_init(void) {
   g_in_beep_burst = false;
   g_beep_burst_samples = 0;
 
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  int64_t now_us = (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+  int64_t now_us = (int64_t)time_ns_to_us(time_get_ns());
 
   g_sent_stats.timestamp_start_us = now_us;
   g_received_stats.timestamp_start_us = now_us;
@@ -248,14 +247,12 @@ void audio_analysis_track_sent_packet(size_t size) {
   if (!g_analysis_enabled)
     return;
 
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  int64_t now_us = (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+  int64_t now_us = (int64_t)time_ns_to_us(time_get_ns());
 
   // Detect gaps between consecutive packets (discontinuity)
   if (g_sent_stats.packets_count > 0) {
     int64_t gap_us = now_us - g_sent_last_packet_time_us;
-    int32_t gap_ms = (int32_t)(gap_us / 1000);
+    int32_t gap_ms = (int32_t)(gap_us / NS_PER_US_INT);
 
     // Expected: ~20ms per Opus frame, flag if gap > 100ms
     if (gap_ms > 100) {
@@ -468,19 +465,18 @@ void audio_analysis_track_received_packet(size_t size) {
   if (!g_analysis_enabled)
     return;
 
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  int64_t now_us = (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+  uint64_t now_ns = time_get_ns();
+  int64_t now_us = (int64_t)time_ns_to_us(now_ns);
 
   // Track packet timing for stuttering detection
   if (g_received_packet_times_count < MAX_PACKET_SAMPLES) {
-    g_received_packet_times[g_received_packet_times_count++] = ts;
+    g_received_packet_times_ns[g_received_packet_times_count++] = now_ns;
   }
 
   // Detect gaps between consecutive packets (discontinuity)
   if (g_received_stats.packets_count > 0) {
     int64_t gap_us = now_us - g_received_last_packet_time_us;
-    int32_t gap_ms = (int32_t)(gap_us / 1000);
+    int32_t gap_ms = (int32_t)(gap_us / NS_PER_US_INT);
 
     // Expected: ~20ms per Opus frame, flag if gap > 100ms
     if (gap_ms > 100) {
@@ -519,15 +515,13 @@ void audio_analysis_print_report(void) {
     return;
   }
 
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  int64_t now_us = (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+  int64_t now_us = (int64_t)time_ns_to_us(time_get_ns());
 
   g_sent_stats.timestamp_end_us = now_us;
   g_received_stats.timestamp_end_us = now_us;
 
-  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_us - g_sent_stats.timestamp_start_us) / 1000;
-  int64_t recv_duration_ms = (g_received_stats.timestamp_end_us - g_received_stats.timestamp_start_us) / 1000;
+  int64_t sent_duration_ms = (g_sent_stats.timestamp_end_us - g_sent_stats.timestamp_start_us) / NS_PER_US_INT;
+  int64_t recv_duration_ms = (g_received_stats.timestamp_end_us - g_received_stats.timestamp_start_us) / NS_PER_US_INT;
 
   // Calculate RMS levels
   float sent_rms = 0.0f;
@@ -787,12 +781,11 @@ void audio_analysis_print_report(void) {
 
     // Calculate inter-packet arrival times
     for (uint32_t i = 1; i < g_received_packet_times_count; i++) {
-      struct timespec *prev = &g_received_packet_times[i - 1];
-      struct timespec *curr = &g_received_packet_times[i];
+      uint64_t prev_ns = g_received_packet_times_ns[i - 1];
+      uint64_t curr_ns = g_received_packet_times_ns[i];
 
-      int64_t prev_us = (int64_t)prev->tv_sec * 1000000 + prev->tv_nsec / 1000;
-      int64_t curr_us = (int64_t)curr->tv_sec * 1000000 + curr->tv_nsec / 1000;
-      uint32_t gap_ms = (uint32_t)((curr_us - prev_us) / 1000);
+      uint64_t gap_ns = time_elapsed_ns(prev_ns, curr_ns);
+      uint32_t gap_ms = (uint32_t)time_ns_to_ms(gap_ns);
 
       inter_arrival_times_ms[inter_arrival_count++] = gap_ms;
       if (gap_ms < min_interval_ms)

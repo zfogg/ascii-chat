@@ -13,6 +13,8 @@
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/ip.h"
+#include "util/time.h"
+#include "util/utf8.h"
 #include "../symbols.h"
 
 #include <dbghelp.h>
@@ -287,10 +289,11 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
 /**
  * @brief Get environment variable value
  * @param name Environment variable name
- * @return Variable value or NULL if not found
+ * @return Variable value or NULL if not found or contains invalid UTF-8
  * @note Uses thread-local static buffer to avoid memory leaks.
  *       The returned pointer is valid until the next call to platform_getenv
  *       from the same thread.
+ *       Returns NULL if the environment variable contains invalid UTF-8 sequences.
  */
 const char *platform_getenv(const char *name) {
   if (!name || name[0] == '\0') {
@@ -307,6 +310,13 @@ const char *platform_getenv(const char *name) {
     // Variable not found or error
     return NULL;
   }
+
+  // Validate UTF-8 encoding
+  if (!utf8_is_valid(buffer)) {
+    log_warn("Environment variable '%s' contains invalid UTF-8, ignoring", name);
+    return NULL;
+  }
+
   return buffer;
 }
 
@@ -1110,7 +1120,7 @@ int clock_gettime(int clk_id, struct timespec *tp) {
 
     // Convert to seconds and nanoseconds
     tp->tv_sec = (time_t)(counter.QuadPart / freq.QuadPart);
-    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart));
+    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * NS_PER_SEC_INT) / freq.QuadPart));
   }
 
   return 0;

@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 // ============================================================================
 // Global State
@@ -32,6 +33,44 @@ static struct {
     .timers = NULL,
     .initialized = false,
 };
+
+// ============================================================================
+// Core Monotonic Timing Implementation
+// ============================================================================
+
+uint64_t time_get_ns(void) {
+  // sokol_time provides monotonic clock that never goes backwards
+  // stm_ns() converts ticks to nanoseconds
+  return (uint64_t)stm_ns(stm_now());
+}
+
+uint64_t time_get_realtime_ns(void) {
+  // Get wall-clock (real-time) timestamp
+  struct timespec ts;
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+    // Fallback on error (unlikely)
+    return 0;
+  }
+  return time_timespec_to_ns(&ts);
+}
+
+void time_sleep_ns(uint64_t ns) {
+  struct timespec ts;
+  time_ns_to_timespec(ns, &ts);
+  // nanosleep may be interrupted; we don't retry on EINTR to keep it simple
+  // Callers who need precise sleep should implement retry logic
+  nanosleep(&ts, NULL);
+}
+
+uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns) {
+  // Handle wraparound (defensive - uint64_t won't wrap in practice at nanosecond resolution)
+  // but this is safe and handles any theoretical edge cases
+  if (end_ns >= start_ns) {
+    return end_ns - start_ns;
+  }
+  // Wraparound case (extremely unlikely)
+  return (UINT64_MAX - start_ns) + end_ns + 1;
+}
 
 // ============================================================================
 // Timer System Implementation

@@ -64,35 +64,54 @@ We use **two complementary methods** for NAT detection:
    - If srflx candidate IP == local IP → we have public IP
    - If only relay candidates → we're behind symmetric NAT
 
-2. **NAT_QUALITY Packet** (rich metadata)
+2. **NETWORK_QUALITY Packet** (rich metadata)
    - Explicit UPnP/NAT-PMP availability (not visible in ICE)
    - STUN latency measurements
    - LAN reachability flags (same subnet detection)
    - **Bandwidth measurements** (upload speed matters for hosting)
    - Allows deterministic host selection before ICE completes
 
-Both are used: ICE for actual connectivity, NAT_QUALITY for informed host selection.
+Both are used: ICE for actual connectivity, NETWORK_QUALITY for informed host selection.
 
-### Bandwidth Detection
+### Bandwidth Detection: Background Media Measurement
 
-Upload bandwidth is critical for hosting - a host streams video to N clients simultaneously. We measure it two ways:
+**Key Design**: Bandwidth is measured from **actual media stream**, not synthetic tests. This ensures:
+- **No connection blocking** - call starts immediately (<1 second)
+- **Realistic metrics** - measured from real video frames
+- **Continuous feedback** - network changes detected within 30-60s window
+- **Fair comparison** - both upload and download measured equally
 
-1. **ACDS Upload Test** (during session create/join)
-   - Client uploads small payload (e.g., 64KB) to ACDS
-   - ACDS measures receive rate, reports back in SESSION_CREATED/SESSION_JOINED
-   - Quick (~100ms), happens during initial handshake
-   - Provides baseline upload speed
+**How it works:**
 
-2. **Protocol Timing Statistics** (ongoing)
-   - Track packet RTT from ping/pong exchanges
-   - Measure actual throughput during NAT_QUALITY exchange
-   - Historical stats from previous sessions (if available)
-   - Detect jitter and packet loss patterns
+Every video frame carries a timestamp. When received:
+```
+Frame received @ timestamp T with sequence N and size S
+|-- Calculate RTT = (now - T)
+|-- Track frame in rolling window (30-60 seconds)
+|-- Count bytes received, frames received, RTT samples
+|-- Accumulate loss (missing sequence numbers)
+|-- Calculate jitter (variance of RTT)
+```
+
+After 30-60 seconds of media flow, each client **sends MEDIA_QUALITY_REPORT** to host with:
+- Total bytes received (upload bandwidth = bytes * 8 / duration)
+- Frames received (packet loss %)
+- RTT min/max/avg, jitter (mean absolute deviation)
+- Network quality assessment (0=poor, 1=fair, 2=good, 3=excellent)
+
+**Host-side evaluation:**
+
+Host collects MEDIA_QUALITY_REPORT from all participants every 30-60 seconds:
+1. Scores each participant: `score = quality*1000 + (upload_kbps/1000)*10 + (100-rtt_ms) + initiator_bonus`
+2. Elects best candidate as (new) host, second-best as backup
+3. Broadcasts HOST_QUALITY_UPDATE to all participants
+4. If current host is no longer best: triggers migration to new host
 
 **Why upload speed matters:**
 - Host sends video frames to ALL clients (upload-bound)
-- Client only sends their own video to host (less demanding)
-- Someone with 100Mbps down / 5Mbps up should NOT host over someone with 50Mbps down / 50Mbps up
+- Host must sustain N × frame_size Kbps (N = number of clients)
+- Someone with 100Mbps down / 5Mbps up cannot host for 5+ people
+- Network can be asymmetric: 1000 Mbps down / 10 Mbps up (fiber home)
 
 ### Priority Order (Best to Worst)
 
@@ -114,79 +133,96 @@ Upload bandwidth is critical for hosting - a host streams video to N clients sim
 
 ## Timing & Timeouts
 
-### Initial Connection Timeline
+### Initial Connection Timeline (Instant Media Start)
 
 ```
 Alice starts session                              Bob joins
     |                                                 |
     |-- Connect to ACDS ------> [50-200ms]            |
-    |-- Bandwidth test -------> [100-500ms]           |
     |-- SESSION_CREATE -------> [~10ms]               |
     |<- SESSION_CREATED -------- [~10ms]              |
+    |   (no bandwidth test!)                          |
     |                                                 |
     |   "Session: swift-river-mountain"               |
     |   [Alice waits, shows session string]           |
     |                                                 |
     |                           [Bob enters string]   |
-    |                                                 |
     |                           |-- Connect ACDS --> [50-200ms]
-    |                           |-- Bandwidth test -> [100-500ms]
     |                           |-- SESSION_JOIN ---> [~10ms]
     |                           |<- SESSION_JOINED -- [~10ms]
     |                           |   host_established: false
     |                                                 |
     |   [Both start NAT probing in parallel]          |
+    |   [NAT probing happens while exchanging signals] |
     |                                                 |
-    |-- STUN probe -----------> [50-200ms]  <-------- STUN probe --|
-    |-- UPnP probe -----------> [100-1000ms] <------- UPnP probe --|
-    |                                                 |
-    |<========= NAT_QUALITY exchange ========> [~100ms round-trip]
+    |   [Both run NETWORK_QUALITY handshake]          |
+    |<========== NETWORK_QUALITY exchange =========> [~100ms]
+    |   (exchange NAT type, UPnP capability, etc.)    |
+    |   (NOT bandwidth yet!)                          |
     |                                                 |
     |   [Both compute winner - instant]               |
     |                                                 |
     |-- HOST_ANNOUNCEMENT ----> [~10ms] (if winner)   |
     |<- HOST_DESIGNATED ------- [~10ms]               |
     |                                                 |
-    |   [Winner starts server] [~100ms]               |
-    |   [Loser connects]       [50-200ms]             |
+    |   [Winner starts server] [~50ms]                |
+    |   [Loser connects]       [~50ms]                |
     |                                                 |
-    |<=============== CALL STARTS ===================>|
+    |<=============== MEDIA STARTS ==================>|
+    |                                                 |
+    | [Background: bandwidth measurement from media]  |
+    | [After 30 seconds...]                           |
+    |                                                 |
+    | [Each sends MEDIA_QUALITY_REPORT to host]       |
+    | [Host evaluates quality and broadcasts]         |
+    | [HOST_QUALITY_UPDATE sent to all participants]  |
+    | [Backup host confirmed]                         |
 
-TOTAL: ~1.5-3.5 seconds from Bob pressing enter to call starting
+TOTAL: ~0.8-1.2 seconds from Bob pressing enter to call starting
+       + 30-60 seconds for bandwidth measurements to accumulate
 ```
 
-### Migration Timeline (Host Disconnects)
+### Migration Timeline (Instant Failover with Pre-Elected Backup)
 
 ```
-Host crashes                All participants
-    X                           |
-    |                           |
-    |   [Detect disconnect]     |
-    |   - TCP RST: immediate    |
-    |   - Timeout: up to 30s    |
-    |                           |
-    |   [Each participant independently:]
-    |   |-- STUN probe -------> [50-200ms]
-    |   |-- UPnP probe -------> [100-1000ms]
-    |   |-- Bandwidth test ---> [100-500ms]
-    |   |-- HOST_LOST --------> [~10ms]
-    |                           |
-    |   [ACDS collection window]
-    |   - Fast: all report ---> [0-1000ms]
-    |   - Slow: timeout ------> [5000ms max]
-    |                           |
-    |   [ACDS elects host]      [instant]
-    |                           |
-    |<- HOST_DESIGNATED -------- [~10ms]
-    |                           |
-    |   [Winner starts server]  [~100ms]
-    |   [Others connect]        [50-200ms]
-    |                           |
-    |<======== CALL RESUMES ===================>|
+T=0s:   Call in progress
+        Host (Alice) broadcasts HOST_QUALITY_UPDATE every 30-60s:
+        "I'm host, Bob is backup. Bob's address: 192.168.1.101:27224"
+        [All participants store backup info locally]
 
-TOTAL: ~1.5-6.5 seconds (fast path ~1.5s, timeout path ~6.5s)
-       + disconnect detection time (0-30s depending on failure mode)
+T=90s:  Alice (host) crashes
+        TCP connection drops
+            X
+
+T=90.1s: Bob detects TCP connection lost
+        "I stored backup host info: Bob = 192.168.1.101:27224"
+        "That's me! I should become host."
+        |-- Start server immediately on 192.168.1.101:27224
+        |   [~50ms to start server]
+
+T=90.1s: Carol detects TCP connection lost
+        "I stored backup host info: Bob = 192.168.1.101:27224"
+        |-- Connect to Bob at 192.168.1.101:27224
+        |   [~100ms to establish connection]
+
+T=90.1s: Dave detects TCP connection lost
+        "Connecting to backup at 192.168.1.101:27224"
+        |-- Connect to Bob
+        |   [~100ms]
+
+T=90.2s: [Optional: Send HOST_LOST notification to ACDS]
+        (informational only, no election needed)
+
+T=90.3s: Media resumes
+        [All participants successfully connected to new host Bob]
+        [No ACDS query, no negotiation, no bandwidth test delay]
+
+TOTAL: ~200-500ms from detection to call resume
+       (host detection immediate, participant reconnect ~100ms)
 ```
+
+**Key insight**: Future host is PRE-ELECTED every 30-60 seconds via HOST_QUALITY_UPDATE.
+When current host dies, everyone already knows where to connect. No ACDS election needed.
 
 ### Timeout Constants
 
@@ -194,21 +230,25 @@ TOTAL: ~1.5-6.5 seconds (fast path ~1.5s, timeout path ~6.5s)
 // Connection timeouts
 #define ACDS_CONNECT_TIMEOUT_MS      5000    // TCP connect to ACDS
 #define ACDS_HANDSHAKE_TIMEOUT_MS    3000    // Complete handshake after connect
-#define BANDWIDTH_TEST_TIMEOUT_MS    2000    // Upload test to ACDS
 
-// NAT probing timeouts
+// NAT probing timeouts (no bandwidth test - measured from media)
 #define STUN_PROBE_TIMEOUT_MS        2000    // STUN binding request
 #define UPNP_PROBE_TIMEOUT_MS        3000    // UPnP/NAT-PMP discovery + mapping
-#define NAT_QUALITY_EXCHANGE_MS      2000    // Peer NAT_QUALITY round-trip
+#define NETWORK_QUALITY_EXCHANGE_MS  2000    // Peer NETWORK_QUALITY round-trip
 
 // Session timeouts
 #define SESSION_JOIN_TIMEOUT_MS      10000   // Max time to join after SESSION_JOIN sent
 #define HOST_NEGOTIATION_TIMEOUT_MS  5000    // Max time for initial 2-party negotiation
 
+// Media quality measurement
+#define MEDIA_QUALITY_WINDOW_MS      30000   // Measurement window (30 seconds)
+#define MEDIA_QUALITY_REPORT_TIMEOUT_MS 5000 // Wait for quality reports from all
+#define HOST_ELECTION_INTERVAL_MS    30000   // Re-evaluate host every 30 seconds
+
 // Migration timeouts
-#define MIGRATION_WINDOW_MS          5000    // Candidate collection window
-#define MIGRATION_MIN_CANDIDATES     2       // Minimum to proceed
-#define HOST_STARTUP_TIMEOUT_MS      3000    // New host must be ready within this
+#define MIGRATION_DETECTION_TIMEOUT_MS 1000  // How long to wait before declaring host dead
+#define BACKUP_HOST_FALLBACK_TIMEOUT_MS 3000 // Try backup connection for 3 seconds
+#define HOST_STARTUP_TIMEOUT_MS      1000    // New host must accept connections within 1s
 
 // Keepalive / disconnect detection
 #define KEEPALIVE_INTERVAL_MS        5000    // Ping frequency
@@ -221,17 +261,25 @@ TOTAL: ~1.5-6.5 seconds (fast path ~1.5s, timeout path ~6.5s)
 | Scenario | Best Case | Typical | Worst Case |
 |----------|-----------|---------|------------|
 | Start session (to string shown) | 200ms | 500ms | 1.5s |
-| Join session (to call starts) | 1s | 2s | 5s |
-| Host migration (to call resumes) | 1.5s | 3s | 6.5s + detection |
+| Join session (to media starts) | 800ms | 1.0s | 2.0s |
+| Bandwidth measurement (quality accumulated) | 30s | 45s | 60s |
+| Host re-election (after quality measurement) | Instant | 1s | 5s |
+| Host migration (to call resumes) | 200ms | 500ms | 1.5s |
 | Disconnect detection | 0ms (RST) | 5s | 30s (timeout) |
+
+**Key improvement**: Call starts in ~1 second without bandwidth test blocking.
+Bandwidth measurements happen in background while media flows.
+Migration detection and failover is ~500ms using pre-stored backup address.
 
 ### Optimizations for Speed
 
-1. **Parallel probing**: STUN, UPnP, and bandwidth tests run concurrently
-2. **Optimistic UI**: Show "Connecting..." immediately, don't block on all probes
-3. **Cached NAT info**: Remember NAT type from previous sessions (valid ~5 min)
-4. **Fast-path migration**: If all participants report quickly, skip full 5s window
-5. **Preemptive STUN**: Start STUN probe on session join before knowing if needed
+1. **No blocking bandwidth test** - Measured from actual media stream
+2. **Parallel NAT probing** - STUN, UPnP run concurrently during handshake
+3. **Instant media start** - Call begins immediately after host negotiation
+4. **Optimistic UI** - Show media while quality measurements accumulate
+5. **Pre-elected backup** - Host_QUALITY_UPDATE sent every 30-60s with backup address
+6. **Instant failover** - Backup address already stored locally, no ACDS query on failure
+7. **Cached NAT info** - Remember NAT type from previous sessions (valid ~5 min)
 
 ## Session Flow & Order of Operations
 
@@ -267,7 +315,7 @@ Alice                          ACDS                           Bob
   |                              |                              |
   |============ ICE Candidate Gathering (parallel) ============|
   |                              |                              |
-  |<======== NAT_QUALITY exchange (via ACDS relay) ===========>|
+  |<======== NETWORK_QUALITY exchange (via ACDS relay) ===========>|
   |   Alice: {public_ip: no, upnp: yes, nat: restricted}       |
   |   Bob:   {public_ip: yes, upnp: no, nat: open}             |
   |                              |                              |
@@ -315,164 +363,332 @@ Carol                          ACDS                     Host (Bob)
 
 ### Flow: Host Disconnects (Migration)
 
-When the host disconnects, **all** remaining participants reconnect to ACDS, report their NAT/bandwidth, and ACDS elects the best new host from the entire pool.
+When the host disconnects, **remaining participants immediately know who the new host is** (pre-elected 5 minutes ago). They simply connect to the stored address/port. **ACDS is notified for bookkeeping only**.
 
-#### Migration Flow
+#### Migration Flow (Instant Failover - No Re-Election Needed!)
 
 ```
-                              ACDS                     Host (Bob, disconnects)
-Alice    Carol    Dave          |                              |
-  |        |        |           |            [Bob disconnects or crashes]
-  |        |        |           |                              X
-  |        |        |           |
-  |   [All detect TCP connection lost]
-  |        |        |           |
-  |-- HOST_LOST + NAT_QUALITY ->|
-  |   upload: 25 Mbps           |
-  |   nat: upnp                 |
-  |        |        |           |
-  |        |-- HOST_LOST ------>|
-  |        |   + NAT_QUALITY    |
-  |        |   upload: 50 Mbps  |
-  |        |   nat: public_ip   |
-  |        |        |           |
-  |        |        |-- HOST_LOST + NAT_QUALITY -->|
-  |        |        |   upload: 10 Mbps            |
-  |        |        |   nat: stun                  |
-  |        |        |           |
-  |   [ACDS waits for collection window: 5s or all known participants]
-  |        |        |           |
-  |   [ACDS computes best host from ALL candidates]
-  |   [Carol wins: public IP + highest upload bandwidth]
-  |        |        |           |
-  |<-- HOST_DESIGNATED ---------|--------- HOST_DESIGNATED -->|
-  |   host: Carol               |   host: Carol (you!)        |
-  |   addr: 1.2.3.4:27224       |   (start server)            |
-  |        |        |           |                             |
-  |        |        |<--------- HOST_DESIGNATED --------------|
-  |        |        |   host: Carol                           |
-  |        |        |   addr: 1.2.3.4:27224                   |
-  |        |        |           |
-  |   [Carol starts server + joins as participant]
-  |   [Alice and Dave connect to Carol]
-  |        |        |           |
-  |<=============== Video call resumes =======================>|
+Host (Bob, disconnects)     Alice      Carol      Dave       ACDS
+         X                    |          |          |         |
+         |                    |          |          |         |
+    [Detect TCP RST/timeout]  |          |          |         |
+         |                    |          |          |         |
+         |   [All detect TCP connection lost]         |
+         |                    |          |          |         |
+         |-- HOST_LOST ------->--------- ----------->-------> [notification only]
+         |   (just "Bob is gone")                    |
+         |                    |          |          |         |
+         | [Carol was pre-elected as future host 5 minutes ago]
+         | [All participants stored: Carol's address, port, connection type]
+         |                    |          |          |         |
+         |<==== Carol connects to new participants if NAT requires P2P ====>|
+         |      (e.g., if Carol behind symmetric NAT needing STUN/TURN)    |
+         |      [This P2P is only for NAT traversal, NOT for metrics]      |
+         |                    |          |          |         |
+         |   [Carol starts server + joins as participant]      |
+         |   [Alice and Dave connect to Carol using stored info]           |
+         |                    |          |          |         |
+         |<========== Video call resumes =====================>|
+         |                    |          |          |         |
+         |<-- HOST_DESIGNATED --------- ----------->-------> [confirmation]
+         |   (ACDS confirms, for session bookkeeping)         |
 ```
 
-#### Key Insight: Everyone Reports, ACDS Decides
+**Key Insight**: Future host already elected during last 5-minute ring consensus!
 
-Unlike initial session negotiation (where only 2 participants exist), migration considers **all** remaining participants:
+Unlike the old ACDS-centric model, migration is now **pre-determined**:
 
-1. **Each participant independently**:
-   - Detects host disconnect (TCP connection lost)
-   - Reconnects to ACDS with HOST_LOST
-   - Runs bandwidth test (64KB upload to ACDS)
-   - Runs STUN/UPnP checks to determine NAT type
-   - Sends NAT_QUALITY with results
+1. **During normal call (every 5 minutes or on new join)**:
+   - Participants send NETWORK_QUALITY to host via existing connection
+   - Host collects metrics and computes future host using `nat_compare_quality()`
+   - Host broadcasts FUTURE_HOST_ELECTED with:
+     - **Who** will be the future host
+     - **Where** to connect (address, port)
+     - **How** to connect (DIRECT_PUBLIC, UPNP, STUN, TURN)
+   - All participants store this information locally
 
-2. **ACDS collects candidates**:
-   - Tracks all HOST_LOST reports for this session
-   - Waits for collection window (5 seconds or all known participants)
-   - Has complete picture of everyone's NAT + bandwidth
+2. **When current host dies**:
+   - Participants already know the future host (stored from last broadcast)
+   - No election needed (already determined!)
+   - No metrics exchange needed (already fresh from 5-minute probes!)
+   - Immediately attempt connection using stored address/port
+   - If NAT traversal needed: establish P2P connection to new host (for NAT, not metrics)
+   - Call resumes within ~500ms (just connection establishment time)
 
-3. **ACDS elects best host**:
-   - Runs same `nat_compare_quality()` algorithm
-   - Compares ALL candidates, not just first two
-   - Picks winner with best combination of NAT tier + bandwidth
-   - Sends HOST_DESIGNATED to everyone simultaneously
+3. **ACDS MUST stay in sync with current host (critical for new joiners)**:
+   - New participants call SESSION_JOIN and ask ACDS "who is the host?"
+   - ACDS responds with current host address/port in SESSION_JOINED
+   - **Therefore**: ACDS must be updated with current host info so new participants can join
+   - Send HOST_ANNOUNCEMENT when becoming host (tells ACDS who's hosting now)
+   - ACDS stores current_host_id, current_host_address, current_host_port in session state
+   - Can detect if migration stalls (no update for 30+ seconds) and cleanup/timeout
+   - Can detect network splits (conflicting HOST_ANNOUNCEMENT claims)
 
-#### Collection Window
+**Why pre-election is better**:
+- **No stale data**: Metrics refreshed every 5 minutes (before needed)
+- **Instant failover**: No election delay when host dies (<500ms)
+- **No ACDS election delay**: Existing participants already know the plan (pre-elected 5min ago)
+- **Deterministic**: Same algorithm + same inputs = same result for all
+- **Minimal P2P**: Only needed for NAT traversal if required, not for metrics
+- **Simple**: NETWORK_QUALITY never exchanged during migration window
+- **ACDS still needed**: But only for new joiners (who is the current host?), not for failover decisions
 
-ACDS uses a hybrid timeout strategy:
+#### Network Statistics Exchange (NETWORK_QUALITY - Proactive Only)
+
+Participants exchange **live** network metrics with the HOST (not peer-to-peer), every 5 minutes or on new join:
+
+```
+Participant A              Host (B)                Participant C
+    |                          |                       |
+    |-- NETWORK_QUALITY ------->|                       |
+    |   {upload: 50 Mbps,       |                       |
+    |    nat: public_ip, ...}   |                       |
+    |                          |                       |
+    |<-- NETWORK_QUALITY --------|                       |
+    |   {upload: 25 Mbps,       |                       |
+    |    nat: upnp, ...}        |                       |
+    |                          |                       |
+    |                          |-- NETWORK_QUALITY ----->|
+    |                          |   {upload: 25 Mbps,   |
+    |                          |    nat: upnp, ...}    |
+    |                          |                       |
+    |                          |<-- NETWORK_QUALITY -----
+    |                          |   {upload: 10 Mbps,   |
+    |                          |    nat: stun, ...}    |
+    |                          |                       |
+    | [B collects all metrics, elects future host]     |
+    |<-- FUTURE_HOST_ELECTED ----|-- FUTURE_HOST_ELECTED -->|
+    |   {future_host: A,        |   {future_host: A,      |
+    |    address: ..., port: ...}    address: ..., port: ...}
+    |                          |                       |
+    | [A, B, C all store: A is future host]             |
+    | [Call continues normally]                         |
+    |                          |                       |
+    | [If B dies within 5 min, everyone already knows A is next host]
+```
+
+**Key point**: NETWORK_QUALITY is exchanged through the host during normal operation, NOT peer-to-peer. When migration happens, participants don't need to exchange metrics - they already have fresh data from the last ring consensus!
+
+#### HOST_LOST Packet (Simplified)
+
+HOST_LOST now carries **only notification** data, not NAT metrics:
 
 ```c
-#define MIGRATION_WINDOW_MS       5000   // Max wait time
-#define MIGRATION_MIN_CANDIDATES  2      // Need at least 2 to have a call
-
-// Collection ends when EITHER:
-// 1. All known participants have reported (fast path)
-// 2. MIGRATION_WINDOW_MS elapsed AND we have MIN_CANDIDATES (timeout path)
-// 3. Session had N participants, N-1 have reported (host was Nth)
+PACKET_TYPE_ACIP_HOST_LOST = 135,
+typedef struct {
+  uint8_t session_id[16];
+  uint8_t participant_id[16];      // Who is reporting
+  uint8_t last_host_id[16];        // The host that disconnected
+  uint32_t disconnect_reason;      // 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
+  uint64_t disconnect_time_ms;     // When we detected it (for ACDS bookkeeping)
+} acip_host_lost_t;
 ```
 
-#### NAT Probing During Migration
+**Note**: NAT quality data moved to **separate NETWORK_QUALITY packet** for ongoing measurements, not bundled with loss notification.
 
-Each participant determines their NAT type independently:
+#### NETWORK_QUALITY Packet (New)
+
+Participants exchange live network metrics **continuously** (useful for all phases):
+
+```c
+PACKET_TYPE_ACIP_NETWORK_QUALITY = 137,  // NEW packet type
+typedef struct {
+  uint8_t session_id[16];
+  uint8_t participant_id[16];
+
+  // NAT detection results (live, current measurements)
+  uint8_t has_public_ip;
+  uint8_t upnp_available;
+  uint8_t upnp_mapped_port[2];
+  uint8_t stun_nat_type;
+  uint8_t lan_reachable;
+  uint32_t stun_latency_ms;
+
+  // Bandwidth measurements (live)
+  uint32_t upload_kbps;
+  uint32_t download_kbps;
+  uint16_t rtt_to_peer_ms;         // Latency to measurement reference
+  uint8_t jitter_ms;
+  uint8_t packet_loss_pct;
+
+  // Connection info
+  char public_address[64];
+  uint16_t public_port;
+
+  // ICE candidate summary
+  uint8_t ice_candidate_types;
+} acip_network_stats_t;
+```
+
+#### Migration Timeline (Instant Failover from Pre-Election)
 
 ```
-Participant                    STUN Server              ACDS
-    |                              |                      |
-    |-- STUN Binding Request ----->|                      |
-    |<-- Binding Response ---------|                      |
-    |   (public IP, port)          |                      |
-    |                              |                      |
-    |-- UPnP/NAT-PMP probe ------->| (router)             |
-    |<-- Port mapping result ------|                      |
-    |                              |                      |
-    |-- Bandwidth test (64KB) ---------------------------->|
-    |<-- Bandwidth result ---------------------------------|
-    |                              |                      |
-    |-- HOST_LOST + NAT_QUALITY -------------------------->|
-    |   (all measurements included)                       |
+Last ring consensus (5 minutes ago)   All know: Carol will host at 192.168.1.100:27224
+        ^                             Store this information locally
+        |
+        v [5 minutes later]
+Host crashes
+    X                               All participants              ACDS
+    |                                   |                         |
+    |                                   |                         |
+    |   [Detect disconnect]             |                         |
+    |   - TCP RST: immediate            |                         |
+    |   - Timeout: up to 30s            |                         |
+    |                                   |                         |
+    |-- HOST_LOST ---------->----------->----------> [notification]
+    |   (just "Bob is gone")            |                         |
+    |                                   |                         |
+    | [Carol immediately knows she's the future host]            |
+    | [All know Carol's address:port (already stored!)]          |
+    |                                   |                         |
+    |   [Carol starts server]  [~100ms] |                         |
+    |                                   |                         |
+    |   [Carol sends HOST_ANNOUNCEMENT]---------> [ACDS updates to Carol as current host]
+    |   [tells ACDS: Carol is hosting at ...]                    (critical for new joiners!)
+    |                                   |                         |
+    |   [Exchange WebRTC SDP over TCP] [~50-100ms]               |
+    |<========== SDP + ICE candidates ===========>                |
+    |                                   |                         |
+    |   [WebRTC P2P negotiation]        |                         |
+    |<========== ICE candidates ===========>                      |
+    |                                   |                         |
+    |<======== CALL RESUMES (P2P media) ==================>       |
+    |                                   |                         |
+    |                                   <-- HOST_DESIGNATED ----- [confirmation to all participants]
+    |                                   (ACDS confirms, for new joiners during migration)
+
+TOTAL: ~500ms (existing participants use pre-stored address, no ACDS election!)
+       + disconnect detection time (0-30s depending on failure mode)
+
+**Critical messages during migration**:
+1. **HOST_LOST** (to ACDS): Notification that old host died
+2. **HOST_ANNOUNCEMENT** (to ACDS): New host announces address/port (allows new joiners to find them)
+3. **SDP/ICE exchange** (direct TCP, no ACDS): Direct peer-to-peer WebRTC signaling
+
+**Key optimization**: Existing participants don't need ACDS for failover - they use pre-stored future host
+address. New participants joining during migration still need ACDS to find the new host.
 ```
 
-This is **faster** than peer-to-peer probing because:
-- STUN/UPnP checks happen in parallel across all participants
-- No need to coordinate pairwise NAT traversal
-- ACDS already has connection to everyone
+**Key difference**: No election delay. Future host was pre-elected 5 minutes ago. Migration is just
+connecting to known address + SDP exchange (500ms total vs 5+ seconds with election). **But ACDS must
+be kept in sync with current host so new joiners can find it**.
 
-#### Migration State Machine
+#### Migration State Machine (Participant-Side)
 
 ```
-SESSION_ACTIVE (host exists)
+CALL_ACTIVE (connected to host)
     |
-    v [any participant reports HOST_LOST]
-SESSION_MIGRATING
-    |-- candidates[] (participants with NAT_QUALITY)
-    |-- known_participants (from previous session state)
-    |-- collection_start_time
+    v [TCP connection lost]
+MIGRATION_DETECTED
+    |-- We know the future host from last FUTURE_HOST_ELECTED broadcast
+    |-- We have stored address, port, connection type
     |
-    v [collection complete OR timeout with MIN_CANDIDATES]
-ELECTING_HOST
-    |-- run nat_compare_quality() on all candidates
-    |-- pick winner
+    v [immediately]
+IF (I'm the future host):
+    STARTING_SERVER
+    |-- Start hosting with my stored connection info
+    |-- Register as HOST_ANNOUNCED with ACDS (optional)
     |
-    v [send HOST_DESIGNATED to all]
-SESSION_ACTIVE (new host)
+    v [~100ms server startup]
+    CALL_ACTIVE (as new host)
+
+ELSE:
+    CONNECTING_TO_NEW_HOST
+    |-- Use stored future_host_address:future_host_port
+    |-- Establish connection (may need P2P for NAT traversal)
+    |-- time_until_connected (~100-200ms)
+    |
+    v [connection established]
+    CALL_ACTIVE (resumed as participant)
 ```
+
+**Key difference**: No DETECTING, EXCHANGING, or ELECTING states. We already know who the host is!
+
+#### ACDS Role (NOT for election, BUT for new joiner discovery)
+
+**What ACDS does NOT do**:
+- ❌ Does not run election (participants know pre-elected future host!)
+- ❌ Does not collect NAT quality (already done 5 minutes ago!)
+- ❌ Does not make any failover decisions (existing participants don't need it!)
+
+**What ACDS MUST do**:
+- ✅ Keep current_host in session state (updated by HOST_ANNOUNCEMENT)
+- ✅ Return current host address/port to new joiners in SESSION_JOINED response
+- ✅ Track migration state for new joiners joining during failover window
+- ✅ Detect stalled migrations (no update for 30+ seconds = cleanup)
+
+**Why ACDS is still critical**:
+When someone calls `SESSION_JOIN("swift-river-mountain")`, ACDS must answer:
+- "The current host is Carol at 192.168.1.100:27224"
+- Otherwise new participants can't find the session!
+
+#### ACDS Migration Tracking (For New Joiners + Stall Detection)
+
+ACDS tracks migration state to handle new participants joining during failover:
+
+```c
+// ACDS session state (SQLite)
+current_host_id:  uint8_t[16]      // Who is hosting RIGHT NOW (updated by HOST_ANNOUNCEMENT)
+current_host_address:  char[64]    // Host's address (for new joiners to connect)
+current_host_port:  uint16_t       // Host's port (for new joiners to connect)
+
+// Migration tracking
+in_migration:  true/false          // Is a migration in progress?
+migration_start_ms:  uint64_t       // When HOST_LOST was received
+migration_participants:  list       // Who reported HOST_LOST
+```
+
+ACDS uses this for:
+- **New joiner discovery**: Tell them who the current host is (SESSION_JOINED response)
+- **Detecting stalled migrations**: If in_migration=1 for >30s, migration failed → cleanup
+- **Handling new joiners during migration**: Tell them to wait for HOST_DESIGNATED
+- **Network split detection**: Multiple conflicting HOST_ANNOUNCEMENT claims
+- **Statistics/logs**: Track migration performance
 
 #### Edge Cases
 
-- **Only one participant left**: Session ends (can't have a call alone)
-- **No candidates after timeout**: Session ends, participants notified
-- **New joiner during migration**: Added to candidates[], included in election
-- **Elected host fails to start**: ACDS detects, re-runs election excluding them
+- **Only one participant left**: Session ends immediately (can't have a call alone)
+- **Multiple simultaneous disconnects**: Multiple participants may start new migrations
+  - All compute same result, only one succeeds in becoming host
+- **New joiner during migration**:
+  - Doesn't participate in exchange (doesn't have disconnect detection trigger)
+  - Waits for HOST_DESIGNATED confirmation
+  - Connects to elected host when ready
+- **Elected participant can't reach the others**: Uses fallback (TURN relay)
+  - Still becomes host, even if temporarily unreachable
+  - Participants retry connection with fallback mechanisms
 - **Network partition**: Participants on different sides may elect different hosts
-  - Resolved when partition heals (one session survives, others merge or end)
+  - Both may try to become host (competing servers)
+  - Resolved when partition heals (one session wins, others merge or end)
+  - Client connections fail → reconnect logic retries with other host
 
 ## ACIP Protocol Extensions
 
 ### New Packet Types
 
 ```c
-// NAT quality exchange (user-to-user, relayed via ACDS)
-PACKET_TYPE_ACIP_NAT_QUALITY = 130,
+// Network quality metrics (participant <-> participant or participant -> ACDS)
+// Used for:
+// 1. Initial negotiation: peers exchange to determine host
+// 2. Migration: peers exchange live metrics for re-negotiation
+// 3. Continuous monitoring: ongoing quality tracking (future)
+PACKET_TYPE_ACIP_NETWORK_QUALITY = 130,
 typedef struct {
   uint8_t session_id[16];
   uint8_t participant_id[16];
 
-  // NAT detection results
+  // NAT detection results (current measurements)
   uint8_t has_public_ip;          // STUN reflexive == local IP
   uint8_t upnp_available;         // UPnP/NAT-PMP port mapping works
   uint8_t upnp_mapped_port[2];    // Port we mapped (network byte order)
   uint8_t stun_nat_type;          // 0=open, 1=full-cone, 2=restricted, 3=port-restricted, 4=symmetric
-  uint8_t lan_reachable;          // Same subnet as peer (mDNS/ARP)
+  uint8_t lan_reachable;          // Same subnet (mDNS/ARP)
   uint32_t stun_latency_ms;       // RTT to STUN server
 
-  // Bandwidth measurements (critical for host selection)
-  uint32_t upload_kbps;           // Upload bandwidth in Kbps (from ACDS test)
-  uint32_t download_kbps;         // Download bandwidth in Kbps (informational)
-  uint16_t rtt_to_acds_ms;        // Latency to ACDS server
+  // Bandwidth measurements
+  uint32_t upload_kbps;           // Upload speed in Kbps
+  uint32_t download_kbps;         // Download speed in Kbps
+  uint16_t rtt_ms;                // Round-trip latency (to ACDS, peer, or reference point)
   uint8_t jitter_ms;              // Packet timing variance (0-255ms)
   uint8_t packet_loss_pct;        // Packet loss percentage (0-100)
 
@@ -480,9 +696,12 @@ typedef struct {
   char public_address[64];        // Our public IP (if has_public_ip or upnp)
   uint16_t public_port;           // Our public port
 
-  // ICE candidate summary (complements ICE gathering)
+  // ICE candidate summary
   uint8_t ice_candidate_types;    // Bitmask: 1=host, 2=srflx, 4=relay
-} acip_nat_quality_t;
+
+  // Timestamp (for staleness detection)
+  uint64_t measurement_time_ms;   // When this measurement was taken
+} acip_network_quality_t;
 
 // Host announcement (participant -> ACDS, "I won negotiation, I'm hosting")
 PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT = 131,
@@ -523,54 +742,158 @@ typedef struct {
   uint8_t status;                 // 0=applied, 1=partial, 2=rejected
 } acip_settings_ack_t;
 
-// Host lost notification with NAT quality (participant -> ACDS)
-// Combined packet: reports host loss AND provides candidacy for new host election
+// Host lost notification (participant -> ACDS)
+// Lightweight notification that host disconnected
 PACKET_TYPE_ACIP_HOST_LOST = 135,
 typedef struct {
   uint8_t session_id[16];
   uint8_t participant_id[16];     // Who is reporting
   uint8_t last_host_id[16];       // The host that disconnected
   uint32_t disconnect_reason;     // 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
-
-  // NAT quality for host election (same fields as NAT_QUALITY packet)
-  uint8_t has_public_ip;
-  uint8_t upnp_available;
-  uint8_t upnp_mapped_port[2];
-  uint8_t stun_nat_type;
-  uint8_t lan_reachable;
-  uint32_t stun_latency_ms;
-  uint32_t upload_kbps;           // From bandwidth test before sending
-  uint32_t download_kbps;
-  uint16_t rtt_to_acds_ms;
-  uint8_t jitter_ms;
-  uint8_t packet_loss_pct;
-  char public_address[64];
-  uint16_t public_port;
-  uint8_t ice_candidate_types;
+  uint64_t disconnect_time_ms;    // When detected (for ACDS bookkeeping)
 } acip_host_lost_t;
 
-// Host migration status (ACDS -> participant, "collecting candidates")
-PACKET_TYPE_ACIP_HOST_MIGRATION = 136,
+// Media quality report (participant -> host)
+// Client reports measured bandwidth, RTT, jitter, packet loss from media stream
+// Sent every 30-60 seconds after call starts (measured from actual frames received)
+PACKET_TYPE_ACIP_MEDIA_QUALITY_REPORT = 146,
 typedef struct {
   uint8_t session_id[16];
-  uint8_t migration_id[16];       // Unique ID for this migration attempt
-  uint8_t participant_id[16];     // Recipient's ID
+  uint8_t participant_id[16];
 
-  // Collection state
-  uint8_t status;                 // 0=collecting, 1=electing, 2=complete, 3=failed
-  uint8_t candidates_received;    // How many have reported so far
-  uint8_t candidates_expected;    // Total known participants (excluding old host)
-  uint16_t time_remaining_ms;     // Until collection window closes
+  // Measurement window
+  uint32_t window_duration_ms;     // How long we measured (30000-60000)
+  uint32_t frames_expected;         // Expected frame count in window (frame_rate * duration)
+  uint32_t frames_received;         // Actually received
 
-  // If status == complete:
-  uint8_t new_host_id[16];
-  char new_host_address[64];
-  uint16_t new_host_port;
-  uint8_t you_are_host;           // 1 if recipient should start server
+  // Upload metrics (what we received from host/peers)
+  uint32_t bytes_received;          // Total bytes in window
+  uint32_t upload_kbps;             // (bytes_received * 8) / window_duration_ms
+  uint8_t packet_loss_pct;          // (frames_expected - frames_received) / frames_expected
 
-  // If status == failed:
-  uint8_t failure_reason;         // 0=timeout_no_candidates, 1=only_one_left, 2=all_unreachable
-} acip_host_migration_t;
+  // RTT metrics (measured from frame timestamps)
+  uint16_t rtt_min_ms;              // Minimum RTT in window
+  uint16_t rtt_max_ms;              // Maximum RTT in window
+  uint16_t rtt_avg_ms;              // Average RTT
+  uint8_t jitter_ms;                // Peak-to-peak jitter (max_rtt - min_rtt)
+  uint8_t jitter_mad_ms;            // Mean absolute deviation jitter
+
+  // Network condition assessment
+  uint8_t network_quality;          // 0=poor, 1=fair, 2=good, 3=excellent
+
+  uint8_t reserved[32];
+} acip_media_quality_report_t;
+
+// Host quality update (host -> all participants)
+// Host announces current host, backup host, and their connection info
+// Sent every 30-60 seconds with updated metrics and host election
+PACKET_TYPE_ACIP_HOST_QUALITY_UPDATE = 147,
+typedef struct {
+  uint8_t session_id[16];
+
+  // Current host
+  uint8_t host_id[16];
+  char host_address[64];
+  uint16_t host_port;
+
+  // Backup host (for automatic failover if current host dies)
+  uint8_t backup_host_id[16];
+  char backup_host_address[64];
+  uint16_t backup_host_port;
+
+  // Metrics (for transparency and debugging)
+  uint32_t host_upload_kbps;        // Host's measured upload capacity
+  uint32_t backup_upload_kbps;      // Backup's measured upload capacity
+  uint16_t host_avg_rtt_ms;         // Host's RTT to participants
+  uint16_t backup_avg_rtt_ms;       // Backup's RTT to participants
+
+  // Timing
+  uint64_t elected_at_ns;           // When this decision was made
+  uint32_t next_reeval_in_ms;       // When next re-election will happen
+
+  // Context
+  uint8_t participant_count;        // How many are in the call
+  uint8_t worst_link_quality;       // Worst quality link (0-3 scale, limiting factor)
+
+  uint8_t reserved[32];
+} acip_host_quality_update_t;
+
+// WebRTC SDP and ICE are handled by existing packet types:
+// - PACKET_TYPE_ACIP_WEBRTC_SDP (110): Bidirectional SDP exchange
+// - PACKET_TYPE_ACIP_WEBRTC_ICE (111): Bidirectional ICE candidates
+// These were originally designed for ACDS-relayed signaling but are reused
+// for direct P2P signaling during failover (bypass ACDS, go directly to new host)
+```
+
+**Protocol Summary**:
+- **NETWORK_QUALITY** (130): NAT type/UPnP/ICE info for initial host negotiation
+  - Sent during first two participants handshake to determine who hosts
+  - Light-weight (no bandwidth data, only connectivity info)
+- **HOST_ANNOUNCEMENT** (131): Winner announces they're hosting
+  - Sent to ACDS and other participants after negotiation
+- **HOST_DESIGNATED** (132): ACDS confirms to all
+  - Broadcast confirmation of elected host
+- **SETTINGS_SYNC** (133): Initiator changes settings
+  - Session-wide settings synchronization
+- **SETTINGS_ACK** (134): Participants acknowledge settings
+  - Confirmation that settings were applied
+- **HOST_LOST** (135): Notification that host disconnected (lightweight)
+  - Informational only, sent to ACDS for logging
+  - Does NOT trigger election (backup already known)
+- **MEDIA_QUALITY_REPORT** (146): Participant reports measured bandwidth/RTT/jitter
+  - Sent to host every 30-60 seconds
+  - Measured from actual media frames (not synthetic test)
+  - Includes: upload Kbps, RTT min/max/avg, jitter, packet loss %, network quality
+  - Host collects these reports from all participants
+- **HOST_QUALITY_UPDATE** (147): Host announces host/backup and metrics
+  - Sent by host to all participants every 30-60 seconds
+  - Includes: current host address, backup host address, election metrics, re-eval interval
+  - All participants store backup address locally for instant failover
+  - Replaces FUTURE_HOST_ELECTED with richer data and more frequent updates
+- **WEBRTC_SDP** (110): Bidirectional WebRTC SDP exchange (offer/answer)
+  - Originally designed for ACDS-relayed signaling
+  - Reused for direct P2P signaling during failover
+  - Participant → new host, or bidirectional during failover negotiation
+- **WEBRTC_ICE** (111): Bidirectional ICE candidate exchange
+  - Originally designed for ACDS-relayed signaling
+  - Reused for direct P2P signaling during failover
+  - NAT traversal candidates for P2P connection
+
+### Instant Failover with Pre-Stored Backup Address
+
+**Key Insight**: Backup host address is broadcast via HOST_QUALITY_UPDATE every 30-60 seconds.
+When current host dies, participants immediately know where backup is listening (no ACDS query needed).
+
+**Failover Flow**:
+1. Host broadcasts HOST_QUALITY_UPDATE with backup address/port stored locally by all participants
+2. If current host dies (TCP connection drops), all participants instantly know:
+   - Who the backup is: backup_host_id from stored HOST_QUALITY_UPDATE
+   - Where to connect: backup_host_address:backup_host_port (already stored)
+3. Backup participant (who was elected) immediately starts listening on that address/port
+4. Other participants connect directly to backup using stored address
+5. Once connected, WebRTC SDP/ICE exchange negotiates P2P media
+6. Media resumes within ~200-500ms (no ACDS lookup, no election delay)
+
+**Advantages**:
+- **No ACDS dependency during failover**: Everyone already knows backup address
+- **Instant failover**: ~200-500ms from detection to call resume
+- **Deterministic**: No election needed, backup was pre-chosen and stored
+- **No network partition**: Pre-election means same result all sides
+- **Scales better**: No central ACDS election bottleneck
+
+**Failover Timeline**:
+```
+Host dies (T=0ms)
+  ↓
+Participants detect TCP disconnect (T=0-100ms)
+  ↓
+Backup starts listening on stored address (T=50ms)
+  ↓
+Others connect to backup (T=100-200ms)
+  ↓
+WebRTC negotiation (T=200-300ms)
+  ↓
+Media resumes (T=300-500ms)
 ```
 
 ### Modified Existing Packets
@@ -747,7 +1070,7 @@ static int discovery_start_session(void) {
   // 3. Print session string for user to share
   // 4. Wait for PARTICIPANT_JOINED notification
   // 5. Start ICE gathering + NAT detection
-  // 6. Exchange NAT_QUALITY with joiner
+  // 6. Exchange NETWORK_QUALITY with joiner
   // 7. Determine host (both sides run same algorithm)
   // 8. If we're host:
   //    a. Send HOST_ANNOUNCEMENT to ACDS
@@ -767,7 +1090,7 @@ static int discovery_join_session(const char *session_string) {
   //
   //    If host_established == false (we're the first joiner):
   //      a. Start ICE gathering + NAT detection
-  //      b. Exchange NAT_QUALITY with initiator
+  //      b. Exchange NETWORK_QUALITY with initiator
   //      c. Determine host
   //      d. If we're host: HOST_ANNOUNCEMENT, start server + participant
   //      e. If they're host: wait for HOST_DESIGNATED, connect
@@ -994,24 +1317,28 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
   - STUN NAT type classification
   - LAN reachability via mDNS/subnet check
   - ICE candidate type collection
-- [ ] **TODO 2.4.1**: Implement bandwidth testing
-  - ACDS upload test endpoint (client uploads 64KB, ACDS measures rate)
-  - Include upload_kbps in SESSION_CREATED/SESSION_JOINED response
-  - Add BANDWIDTH_TEST packet type for on-demand re-measurement
-  - Track RTT, jitter, packet loss from ping/pong timing
-- [ ] **TODO 2.4.2**: Implement protocol timing statistics
-  - Track per-connection packet timing in stats struct
-  - Calculate rolling average RTT, jitter, loss rate
-  - Store historical stats per session string (optional, for returning users)
-  - Log bandwidth decisions for debugging
-- [ ] **TODO 2.5**: Add new ACIP packet types
-  - `PACKET_TYPE_ACIP_NAT_QUALITY` (130)
-  - `PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT` (131)
-  - `PACKET_TYPE_ACIP_HOST_DESIGNATED` (132)
-  - `PACKET_TYPE_ACIP_SETTINGS_SYNC` (133)
-  - `PACKET_TYPE_ACIP_SETTINGS_ACK` (134)
-  - `PACKET_TYPE_ACIP_HOST_LOST` (135)
-  - `PACKET_TYPE_ACIP_HOST_MIGRATION` (136)
+- [ ] **TODO 2.4.1**: Implement per-frame RTT and quality tracking in participant code
+  - Track frame sequence numbers to detect loss (missing sequence = lost frame)
+  - Extract timestamp from each frame, calculate RTT = now - frame_timestamp
+  - Accumulate bytes_received, frames_received per 30-60 second window
+  - Calculate bandwidth: (bytes_received * 8) / window_duration_ms
+  - Collect RTT samples, compute min/max/avg/jitter
+  - Compute network quality assessment (0-3 scale based on loss/jitter/rtt)
+- [ ] **TODO 2.4.2**: Implement background quality reporting (every 30-60s)
+  - Create MEDIA_QUALITY_REPORT after each measurement window
+  - Send to host with accumulated bandwidth/RTT/jitter metrics
+  - Reset measurement window, start accumulating again
+  - Do NOT block call, send in background
+  - Handle gracefully if host doesn't receive report
+- [ ] **TODO 2.5**: Add new ACIP packet types (most already exist, just add two new ones)
+  - `PACKET_TYPE_ACIP_NETWORK_QUALITY` (130) - ✓ already exists (NAT info for negotiation)
+  - `PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT` (131) - ✓ already exists
+  - `PACKET_TYPE_ACIP_HOST_DESIGNATED` (132) - ✓ already exists
+  - `PACKET_TYPE_ACIP_SETTINGS_SYNC` (133) - ✓ already exists
+  - `PACKET_TYPE_ACIP_SETTINGS_ACK` (134) - ✓ already exists
+  - `PACKET_TYPE_ACIP_HOST_LOST` (135) - ✓ already exists
+  - `PACKET_TYPE_ACIP_MEDIA_QUALITY_REPORT` (146) - NEW: participant → host, bandwidth/RTT/jitter
+  - `PACKET_TYPE_ACIP_HOST_QUALITY_UPDATE` (147) - NEW: host → all, announce host/backup with metrics
 - [ ] **TODO 2.6**: Extend `acip_session_joined_t` with host info
   - `host_established` flag
   - `host_id`, `host_address`, `host_port` when established
@@ -1035,7 +1362,17 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
   - Initiator sends SETTINGS_SYNC on change
   - Host broadcasts to all participants
   - Participants apply and ACK
-- [ ] **TODO 2.12**: Update CLI to make discovery mode the default
+- [ ] **TODO 2.12**: Implement host-side quality evaluation and election
+  - Collect MEDIA_QUALITY_REPORT from all participants every 30-60s
+  - Score each participant: quality*1000 + bandwidth*10 + (100-rtt) + initiator_bonus
+  - Elect best as (new) host, second-best as backup
+  - If current host is no longer best: trigger host migration
+  - If host stays same but backup changed: just send new HOST_QUALITY_UPDATE
+  - Broadcast HOST_QUALITY_UPDATE with metrics, current host, backup host, addresses
+- [ ] **TODO 2.13**: Implement CLIENT-side backup address storage
+  - On receiving HOST_QUALITY_UPDATE: store backup_host_address, backup_host_port locally
+  - Use stored address immediately when TCP disconnect detected (no ACDS query)
+- [ ] **TODO 2.14**: Update CLI to make discovery mode the default
   - `ascii-chat` (no args) = start discovery session
   - `ascii-chat <session-string>` = join discovery session
   - `ascii-chat server` = explicit server mode (unchanged)
@@ -1055,44 +1392,58 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
 - [ ] **TODO 3.10**: Update help output to show options by group
 - [ ] **TODO 3.11**: Add tests for option group filtering
 
-### Phase 4: Host Migration & Edge Cases
+### Phase 4: Instant Failover & Polish
 
-- [ ] **TODO 4.1**: Implement host migration (all-candidate election)
-  - Participants detect host disconnect (TCP connection lost)
-  - Each participant independently: STUN probe, UPnP check, bandwidth test
-  - Send HOST_LOST + NAT_QUALITY to ACDS
-  - ACDS collects ALL candidates during collection window
-  - ACDS runs `nat_compare_quality()` on entire candidate pool
-  - ACDS sends HOST_DESIGNATED to all (winner marked with `you_are_host=1`)
-  - Winner starts server, others connect as clients
-- [ ] **TODO 4.1.1**: Add migration state to ACDS session table
-  - migration_id, migration_status, collection_start_time
-  - candidates[] array with NAT_QUALITY for each
-  - known_participant_count (to know when all have reported)
-- [ ] **TODO 4.1.2**: Implement collection window logic
-  - Start 5s timer on first HOST_LOST
-  - Fast path: elect immediately when all known participants report
-  - Timeout path: elect when timer expires AND candidates >= 2
-  - Send HOST_MIGRATION status updates during collection (optional)
-- [ ] **TODO 4.1.3**: Handle migration edge cases
-  - Only one participant left → session ends
-  - No candidates after timeout → session ends
-  - New joiner during migration → added to candidates
-  - Elected host fails to start → re-run election excluding them
-  - Participant sends HOST_LOST twice → ignore duplicate
-- [ ] **TODO 4.2**: Handle network changes mid-session
-  - Detect IP change
-  - Re-establish connection via fallback
-- [ ] **TODO 4.3**: Add session persistence
-  - Remember recent sessions
-  - Quick rejoin on disconnect
-- [ ] **TODO 4.4**: Add session security
-  - Optional password for sessions
-  - Key verification UI
-- [ ] **TODO 4.5**: Documentation
-  - Update README with discovery mode usage
-  - Update man pages
-  - Add examples
+- [ ] **TODO 4.1**: Implement instant failover using pre-stored backup address
+  - Detect host disconnect (TCP RST or timeout)
+  - Check if we are the backup (compare our ID with backup_host_id from HOST_QUALITY_UPDATE)
+  - If we're backup: start server on stored backup_host_address:backup_host_port
+  - If we're not backup: connect to stored backup address using TCP socket
+  - No ACDS query, no election, no NETWORK_QUALITY exchange needed
+  - Media resumes within ~500ms total
+- [ ] **TODO 4.2**: Send HOST_LOST notification to ACDS (optional, informational only)
+  - Notify ACDS that host died (for logging/analytics)
+  - Include participant_id, host_id, disconnect_reason, timestamp
+  - Does NOT require ACDS response or action
+  - ACDS can update in_migration flag for bookkeeping
+- [ ] **TODO 4.3**: Handle edge cases in failover
+  - Only one participant left → call ends (session becomes invalid)
+  - Backup can't listen on stored address → log error, try TURN relay
+  - New joiner during migration → use current host from ACDS (may be transitional)
+  - Network partition → both sides may try to become host
+    - Resolution: first one to establish connection wins
+    - Loser detects conflict, reconnects to winner
+  - Participant offline during migration → skipped (no impact on others)
+- [ ] **TODO 4.4**: Implement WebRTC P2P SDP/ICE exchange for failover
+  - After backup starts listening and others connect to it
+  - Exchange SDP offers/answers directly over TCP (not via ACDS)
+  - Exchange ICE candidates for NAT traversal
+  - Establish WebRTC connection for actual media flow
+  - Media can be P2P (if NAT allows) or through TURN relay (fallback)
+  - Reduces host CPU load once P2P established (no media relay needed)
+- [ ] **TODO 4.5**: Add session persistence (nice-to-have)
+  - Remember recent sessions and their bandwidth metrics
+  - Allow quick rejoin: `ascii-chat swift-river-mountain` reconnects instantly
+  - Use cached bandwidth data on rejoin
+  - Invalidate cache after session expires (24 hours)
+- [ ] **TODO 4.6**: Add session security features (nice-to-have)
+  - Optional password protection for sessions
+  - Session-specific credentials or tokens
+  - Key fingerprint verification UI
+  - Trust-on-first-use (TOFU) for session participants
+- [ ] **TODO 4.7**: Comprehensive testing
+  - Unit tests: quality scoring algorithm, backup election logic
+  - Integration test: start session → join → media flows → measurement window → re-election
+  - Integration test: host dies → backup detected → media resumes on backup
+  - Load test: 5+ participants, verify all get correct bandwidth measurements
+  - Edge case: new joiner while migration in progress
+- [ ] **TODO 4.8**: Documentation updates
+  - Update README with discovery mode examples and timings
+  - Explain instant failover model (vs old ACDS election)
+  - Document MEDIA_QUALITY_REPORT and HOST_QUALITY_UPDATE flow
+  - Add troubleshooting guide for bandwidth/migration issues
+  - Update man pages with new packet types
+  - Add architecture diagrams for clarity
 
 ## File Changes Summary
 
@@ -1125,7 +1476,9 @@ src/discovery/
 ├── negotiate.h
 ├── negotiate.c
 ├── session.h
-└── session.c
+├── session.c
+├── webrtc.h
+└── webrtc.c
 ```
 
 ### Modified Files
@@ -1139,13 +1492,18 @@ lib/options/server.c          # Use group filtering
 lib/options/client.c          # Use group filtering
 lib/options/mirror.c          # Use group filtering
 lib/options/discovery_server.c            # Use group filtering
-lib/network/acip/protocol.h   # Add new packet types (130-136, includes migration)
+lib/network/acip/protocol.h   # Add new packet types (146-147: MEDIA_QUALITY_REPORT, HOST_QUALITY_UPDATE)
 lib/network/acip/acds.h       # Add new message structures
 src/discovery-server/         # Track host per session, broadcast HOST_DESIGNATED
-src/server/main.c             # Use lib/session/host
-src/client/main.c             # Use lib/session/participant
+src/server/main.c             # Use lib/session/host, add quality tracking
+src/server/client.c           # Track per-frame metrics for quality reports
+src/client/main.c             # Use lib/session/participant, add quality measurement
+src/client/protocol.c         # Handle MEDIA_QUALITY_REPORT and HOST_QUALITY_UPDATE
 src/mirror/main.c             # Use lib/session/capture+display
-CMakeLists.txt                # Add new source files
+src/discovery-server/server.c # Updated for migration tracking
+lib/session/participant.c     # Add per-frame RTT tracking, quality window accumulation
+lib/session/host.c            # Add quality metrics collection and election logic
+CMakeLists.txt                # Add new source files (webrtc.c, media_quality metrics)
 ```
 
 ## Success Criteria
@@ -1169,11 +1527,15 @@ CMakeLists.txt                # Add new source files
    - Invalid settings rejected gracefully
 
 4. **Robustness**
-   - Host disconnect triggers automatic migration
-   - First two remaining participants renegotiate NAT
-   - Third+ participants wait, then connect to new host
+   - Host disconnect triggers automatic migration using pre-stored backup address
+   - Backup host address learned from HOST_QUALITY_UPDATE (sent every 30-60s)
+   - All participants know backup address locally, no ACDS query needed
+   - Backup participant starts server immediately on known address/port
+   - Other participants connect to backup within ~500ms total
    - Call resumes automatically (no user action required)
-   - Single participant or timeout → session ends cleanly
+   - Single participant left → session ends cleanly
+   - No ACDS dependency for failover (ACDS only receives notification)
+   - Bandwidth measurements continue in background, re-election may occur after 30-60s
 
 5. **Backward Compatibility**
    - `ascii-chat server` still works

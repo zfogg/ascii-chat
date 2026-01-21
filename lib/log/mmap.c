@@ -12,6 +12,7 @@
 #include "platform/mmap.h"
 #include "platform/system.h"
 #include "video/ansi.h"
+#include "util/time.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -50,15 +51,16 @@ static struct {
  * ============================================================================ */
 
 static void format_timestamp(char *buf, size_t buf_size) {
-  struct timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  uint64_t current_time_ns = time_get_realtime_ns();
+  time_t seconds = (time_t)(current_time_ns / NS_PER_SEC_INT);
+  uint64_t microseconds = time_ns_to_us(current_time_ns % NS_PER_SEC_INT);
 
   struct tm tm_info;
-  platform_localtime(&ts.tv_sec, &tm_info);
+  platform_localtime(&seconds, &tm_info);
 
   size_t len = strftime(buf, buf_size, "%H:%M:%S", &tm_info);
   if (len > 0 && len < buf_size - 10) {
-    snprintf(buf + len, buf_size - len, ".%06ld", ts.tv_nsec / 1000);
+    snprintf(buf + len, buf_size - len, ".%06llu", (unsigned long long)microseconds);
   }
 }
 

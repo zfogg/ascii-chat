@@ -72,6 +72,7 @@
 #include "display.h"
 #include "main.h"
 
+#include "session/display.h"
 #include "platform/abstraction.h"
 #include "platform/util.h"
 #include "options/options.h"
@@ -84,33 +85,18 @@
 #include <stdatomic.h>
 
 /* ============================================================================
- * TTY Management
+ * Session Display Context
  * ============================================================================ */
 
-/** Use tty_info_t from platform abstraction */
-
 /**
- * @brief Global TTY information structure
+ * @brief Session display context for client frame output
  *
- * Maintains information about the terminal/TTY device for interactive output.
- * Contains file descriptor, device path, and validity status. Initialized
- * during display subsystem startup.
- *
- * @note Not static because it may be accessed from other modules
- * @ingroup client_display
- */
-tty_info_t g_tty_info = {-1, NULL, false};
-
-/**
- * @brief Flag indicating if we have a valid TTY for interactive output
- *
- * Set to true if the display has detected a valid terminal/TTY for rendering.
- * When false, output may be redirected or non-interactive (pipes, files, etc.).
- * Used to determine optimal rendering strategy.
+ * Uses the session library for TTY management and frame rendering.
+ * Created during initialization, destroyed during cleanup.
  *
  * @ingroup client_display
  */
-static bool g_has_tty = false;
+static session_display_ctx_t *g_display_ctx = NULL;
 
 /**
  * @brief Atomic flag indicating if this is the first frame of the current connection
@@ -123,124 +109,9 @@ static bool g_has_tty = false;
  */
 static atomic_bool g_is_first_frame_of_connection = true;
 
-/* ============================================================================
- * TTY Detection and Initialization
- * ============================================================================ */
+/* TTY detection and terminal reset now handled by session display library */
 
-/**
- * @brief Detect and configure current TTY
- *
- * Implements multi-method TTY detection with fallback strategy:
- * 1. Check $TTY environment variable (most specific on macOS)
- * 2. Test standard file descriptors for TTY status
- * 3. Fall back to controlling terminal device
- * 4. Return invalid structure if no TTY available
- *
- * TTY Detection Priority:
- * - Environment TTY path has highest priority (explicit user preference)
- * - Standard streams checked in order: stdin, stdout, stderr
- * - Controlling terminal (/dev/tty or CON) as final fallback
- * - Windows uses CON device for console access
- *
- * @return TTY information structure with file descriptor and path
- *
- * @ingroup client_display
- */
-static tty_info_t display_get_current_tty(void) {
-  // Use the platform abstraction layer function
-  return get_current_tty();
-}
-
-/**
- * @brief Perform complete terminal reset
- *
- * Executes comprehensive terminal reset sequence for clean display state.
- * Skips terminal control operations in snapshot mode to avoid interfering
- * with clean ASCII output capture.
- *
- * Reset Operations:
- * 1. Terminal attribute reset to default state
- * 2. Screen clearing with console_clear() wrapper
- * 3. Scrollback buffer clearing for clean history
- * 4. Cursor hiding for uninterrupted frame display
- * 5. Terminal buffer flushing to ensure immediate effect
- *
- * @param fd File descriptor for terminal operations
- *
- * @ingroup client_display
- */
-static void full_terminal_reset(int fd) {
-  // Skip terminal control sequences in snapshot mode - just print raw ASCII
-  if (!GET_OPTION(snapshot_mode)) {
-    terminal_reset(fd);             // Reset using the proper TTY fd
-    console_clear(fd);              // This calls terminal_clear_screen() + terminal_cursor_home(fd)
-    terminal_clear_scrollback(fd);  // Clear scrollback using the proper TTY fd
-    terminal_hide_cursor(fd, true); // Hide cursor on the specific TTY
-    terminal_flush(fd);             // Flush the specific TTY fd
-  }
-}
-
-/* ============================================================================
- * Frame Rendering Functions
- * ============================================================================ */
-
-/**
- * @brief Write frame data to appropriate output destination
- *
- * Routes frame output based on TTY availability and snapshot mode requirements.
- * Handles cursor positioning and output synchronization for different modes.
- *
- * Output Routing Logic:
- * - **TTY Mode**: Direct terminal writing with cursor control
- * - **Redirect Mode**: stdout writing with optional cursor control
- * - **Snapshot Mode**: Raw ASCII output without cursor positioning
- * - **Error Handling**: Graceful fallback if TTY operations fail
- *
- * @param frame_data ASCII frame data to display
- * @param use_direct_tty Whether to use direct TTY output or stdout
- *
- * @ingroup client_display
- */
-static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
-  // Validate parameters
-  if (!frame_data) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "write_frame_to_output: NULL frame_data");
-    return;
-  }
-
-  // Calculate length safely to avoid potential segfault in strlen
-  size_t frame_len = strnlen(frame_data, 1024 * 1024); // Max 1MB frame
-  if (frame_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "write_frame_to_output: Empty frame data");
-    return;
-  }
-
-  if (use_direct_tty) {
-    // Direct TTY for interactive use
-    if (g_tty_info.fd >= 0) {
-      // Always position cursor for TTY output (even in snapshot mode)
-      cursor_reset(g_tty_info.fd);
-      platform_write(g_tty_info.fd, frame_data, frame_len);
-      // Flush terminal buffer to ensure immediate visibility
-      terminal_flush(g_tty_info.fd);
-    } else {
-      log_error("Failed to open TTY: %s", g_tty_info.path ? g_tty_info.path : "unknown");
-    }
-  } else {
-    // stdout for pipes/redirection/testing
-    // Skip cursor reset in snapshot mode - just print raw ASCII
-    if (!GET_OPTION(snapshot_mode)) {
-      cursor_reset(STDOUT_FILENO);
-    }
-    platform_write(STDOUT_FILENO, frame_data, frame_len);
-    // Flush stdout to ensure immediate visibility
-    (void)fflush(stdout);
-    // Only fsync if we have a valid file descriptor and not on Windows console
-    if (!platform_isatty(STDOUT_FILENO)) {
-      platform_fsync(STDOUT_FILENO);
-    }
-  }
-}
+/* Frame rendering now handled by session display library */
 
 /* ============================================================================
  * Public Interface Functions
@@ -249,31 +120,27 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
 /**
  * @brief Initialize what is necessary to display ascii frames
  *
- * Performs TTY detection, terminal configuration, and ASCII rendering
- * initialization. Must be called once during client startup.
- *
- * Initialization Steps:
- * 1. TTY detection and configuration
- * 2. Interactive mode determination
- * 3. ASCII rendering subsystem initialization
- * 4. Terminal dimension and capability setup
+ * Creates session display context for TTY management and frame rendering.
+ * Must be called once during client startup.
  *
  * @return 0 on success, negative on error
  *
  * @ingroup client_display
  */
 int display_init() {
-  // Get TTY info for direct terminal access (if needed for interactive mode)
-  g_tty_info = display_get_current_tty();
+  // Build display configuration from options
+  session_display_config_t config = {
+      .snapshot_mode = GET_OPTION(snapshot_mode),
+      .palette_type = GET_OPTION(palette_type),
+      .custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL,
+      .color_mode = TERM_COLOR_AUTO // Will be overridden by command-line options
+  };
 
-  // Determine if we should use interactive TTY output
-  // For output routing: only consider stdout status (not controlling terminal)
-  // Additional TTY validation: if stdout is redirected but we have a controlling TTY,
-  // we can still show interactive output on the terminal
-  if (g_tty_info.fd >= 0) {
-    g_has_tty = platform_isatty(g_tty_info.fd) != 0; // We have a valid controlling terminal
-    // Initialize ASCII output for this connection (only if we have a valid TTY)
-    ascii_write_init(g_tty_info.fd, false);
+  // Create display context using session library
+  g_display_ctx = session_display_create(&config);
+  if (!g_display_ctx) {
+    SET_ERRNO(ERROR_DISPLAY, "Failed to initialize display");
+    return -1;
   }
 
   return 0;
@@ -287,7 +154,7 @@ int display_init() {
  * @ingroup client_display
  */
 bool display_has_tty() {
-  return g_has_tty;
+  return session_display_has_tty(g_display_ctx);
 }
 
 /**
@@ -299,8 +166,8 @@ bool display_has_tty() {
  * @ingroup client_display
  */
 void display_full_reset() {
-  if (g_tty_info.fd >= 0 && !should_exit()) {
-    full_terminal_reset(g_tty_info.fd);
+  if (g_display_ctx && !should_exit()) {
+    session_display_reset(g_display_ctx);
   }
 }
 
@@ -335,15 +202,8 @@ void display_disable_logging_for_first_frame() {
 /**
  * Render ASCII frame to display
  *
- * Handles frame rendering with appropriate output routing based on display
- * mode and snapshot requirements. Manages TTY vs redirect output and
- * snapshot timing coordination.
- *
- * Rendering Logic:
- * - **Interactive Mode**: Render every frame to TTY
- * - **Redirect Mode**: Only render final snapshot frame
- * - **Snapshot Mode**: Render to both TTY and stdout for final frame
- * - **Format Control**: Add newline terminator for snapshot files
+ * Uses session display library for frame output routing based on display
+ * mode and snapshot requirements.
  *
  * @param frame_data ASCII frame data to render
  * @param is_snapshot_frame Whether this is the final snapshot frame
@@ -356,42 +216,20 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
     return;
   }
 
-  // For terminal: print every frame until final snapshot
-  // For non-terminal: only print the final snapshot frame
-  if (g_has_tty || (!g_has_tty && GET_OPTION(snapshot_mode) && is_snapshot_frame)) {
-    if (is_snapshot_frame) {
-      // Write the final frame to the terminal as well, not just to stdout
-      write_frame_to_output(frame_data, true);
-    }
-
-    // The real ASCII data frame write call
-    write_frame_to_output(frame_data, g_has_tty && !is_snapshot_frame);
-
-    if (GET_OPTION(snapshot_mode) && is_snapshot_frame) {
-      // A newline at the end of the snapshot of ASCII art to end the file
-      printf("\n");
-    }
-  }
+  // Use session display library for frame rendering
+  session_display_render_frame(g_display_ctx, frame_data, is_snapshot_frame);
 }
 
 /**
  * @brief Cleanup display subsystem
  *
- * Performs graceful cleanup of display resources and terminal state.
- * Restores terminal to original state and closes owned file descriptors.
+ * Destroys session display context and releases all resources.
  *
  * @ingroup client_display
  */
 void display_cleanup() {
-  // Cleanup ASCII rendering
-  ascii_write_destroy(g_tty_info.fd, true);
-
-  // Close the controlling terminal if we opened it
-  if (g_tty_info.owns_fd && g_tty_info.fd >= 0) {
-    platform_close(g_tty_info.fd);
-    g_tty_info.fd = -1;
-    g_tty_info.owns_fd = false;
+  if (g_display_ctx) {
+    session_display_destroy(g_display_ctx);
+    g_display_ctx = NULL;
   }
-
-  g_has_tty = false;
 }
