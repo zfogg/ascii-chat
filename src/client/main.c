@@ -86,6 +86,7 @@
 #include "options/rcu.h" // For RCU-based options access
 #include "buffer_pool.h"
 #include "video/palette.h"
+#include "util/time.h"
 #include "network/network.h"
 #include "network/tcp/client.h"
 #include "network/acip/acds_client.h"
@@ -395,6 +396,16 @@ static int initialize_client_systems(bool shared_init_completed) {
     // Initialize global shared buffer pool
     buffer_pool_init_global();
     (void)atexit(buffer_pool_cleanup_global);
+  }
+
+  // Initialize timer system (must be called early, before capture subsystem)
+  if (!timer_is_initialized()) {
+    if (!timer_system_init()) {
+      log_fatal("Failed to initialize timer system");
+      return ERROR_PLATFORM_INIT;
+    }
+    (void)atexit(timer_system_cleanup);
+    log_debug("Timer system initialized");
   }
 
   // Initialize WebRTC library (required for P2P DataChannel connections)
