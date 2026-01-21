@@ -1829,10 +1829,9 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       }
 
       if (desc->env_var_name) {
-        // Use colored_string for env label and variable name
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                             colored_string(LOG_COLOR_DEBUG, "env:"),
-                             colored_string(LOG_COLOR_DEBUG, desc->env_var_name));
+        // Color env var name grey
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)",
+                             colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       // Use layout function with global column width for consistent alignment
