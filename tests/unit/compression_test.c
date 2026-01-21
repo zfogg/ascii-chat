@@ -40,8 +40,8 @@ static asciichat_error_t test_send_ascii_frame_packet(socket_t sockfd, const cha
   return (result == 0) ? ASCIICHAT_OK : ERROR_NETWORK;
 }
 
-static asciichat_error_t test_send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
-                                          uint8_t format) {
+static asciichat_error_t test_send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width,
+                                                      uint16_t height, uint8_t format) {
   (void)format;
   if (!image_data || width == 0 || height == 0 || sockfd < 0) {
     return ERROR_INVALID_PARAM;
@@ -732,7 +732,7 @@ Test(compression, negative_dimensions) {
   asciichat_error_t result = send_ascii_frame_packet(sockfd, frame_data, 100);
   cr_assert_neq(result, ASCIICHAT_OK);
 
-  result = send_image_frame_packet(sockfd, frame_data, 0, 0, 0);  // Invalid dimensions
+  result = send_image_frame_packet(sockfd, frame_data, 0, 0, 0); // Invalid dimensions
   cr_assert_neq(result, ASCIICHAT_OK);
 
   SAFE_FREE(frame_data);

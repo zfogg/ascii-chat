@@ -54,10 +54,9 @@ extern "C" {
  * @note TCP transport must be connected and valid when callbacks are invoked.
  * @note Set tcp_transport to NULL to disable the callbacks.
  */
-webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(
-    acip_transport_t *tcp_transport,
-    const uint8_t session_id[16],
-    const uint8_t participant_id[16]);
+webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
+                                                                             const uint8_t session_id[16],
+                                                                             const uint8_t participant_id[16]);
 
 /**
  * @brief Set the TCP transport for direct peer-to-peer signaling

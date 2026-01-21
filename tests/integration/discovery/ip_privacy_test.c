@@ -118,8 +118,8 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   create_req.session_type = SESSION_TYPE_DIRECT_TCP;
   create_req.capabilities = 0x03;
   create_req.max_participants = 4;
-  create_req.has_password = 0;           // No password
-  create_req.expose_ip_publicly = 0;     // No explicit opt-in
+  create_req.has_password = 0;       // No password
+  create_req.expose_ip_publicly = 0; // No explicit opt-in
   SAFE_STRNCPY(create_req.server_address, "192.168.1.100", sizeof(create_req.server_address));
   create_req.server_port = 27224;
 
@@ -140,8 +140,7 @@ Test(acds_ip_privacy, no_password_no_optin_withholds_ip) {
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
   // Verify IP is WITHHELD (security control active)
-  cr_assert_eq(join_resp.server_address[0], '\0',
-               "Server address should be withheld without password or opt-in");
+  cr_assert_eq(join_resp.server_address[0], '\0', "Server address should be withheld without password or opt-in");
   cr_assert_eq(join_resp.server_port, 0, "Server port should be zero");
   cr_assert_eq(join_resp.session_type, 0, "Session type should be zero");
 
@@ -169,8 +168,8 @@ Test(acds_ip_privacy, explicit_optin_reveals_ip) {
   create_req.session_type = SESSION_TYPE_DIRECT_TCP;
   create_req.capabilities = 0x03;
   create_req.max_participants = 4;
-  create_req.has_password = 0;           // No password
-  create_req.expose_ip_publicly = 1;     // Explicit opt-in
+  create_req.has_password = 0;       // No password
+  create_req.expose_ip_publicly = 1; // Explicit opt-in
   SAFE_STRNCPY(create_req.server_address, "203.0.113.42", sizeof(create_req.server_address));
   create_req.server_port = 8080;
 
@@ -191,8 +190,7 @@ Test(acds_ip_privacy, explicit_optin_reveals_ip) {
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
   // Verify IP is revealed (explicit opt-in)
-  cr_assert_str_eq(join_resp.server_address, "203.0.113.42",
-                   "Server address should be revealed with explicit opt-in");
+  cr_assert_str_eq(join_resp.server_address, "203.0.113.42", "Server address should be revealed with explicit opt-in");
   cr_assert_eq(join_resp.server_port, 8080, "Server port should be revealed");
   cr_assert_eq(join_resp.session_type, SESSION_TYPE_DIRECT_TCP, "Session type should be revealed");
 
@@ -297,8 +295,7 @@ Test(acds_ip_privacy, webrtc_session_ip_privacy) {
   cr_assert_eq(join_resp.success, 1, "Join should be successful");
 
   // Verify IP is WITHHELD (WebRTC sessions follow same privacy rules)
-  cr_assert_eq(join_resp.server_address[0], '\0',
-               "WebRTC session IP should be withheld without password or opt-in");
+  cr_assert_eq(join_resp.server_address[0], '\0', "WebRTC session IP should be withheld without password or opt-in");
   cr_assert_eq(join_resp.server_port, 0, "Server port should be zero");
   cr_assert_eq(join_resp.session_type, 0, "Session type should be zero");
 

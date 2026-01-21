@@ -210,7 +210,8 @@ static inline uint64_t time_s_to_ns(double s) {
  * Useful for converting CLOCK_MONOTONIC or CLOCK_REALTIME readings to nanoseconds.
  */
 static inline uint64_t time_timespec_to_ns(const struct timespec *ts) {
-  if (!ts) return 0;
+  if (!ts)
+    return 0;
   return (uint64_t)ts->tv_sec * NS_PER_SEC_INT + (uint64_t)ts->tv_nsec;
 }
 
@@ -223,7 +224,8 @@ static inline uint64_t time_timespec_to_ns(const struct timespec *ts) {
  * Useful for nanosleep() or other system calls that require struct timespec.
  */
 static inline void time_ns_to_timespec(uint64_t ns, struct timespec *ts) {
-  if (!ts) return;
+  if (!ts)
+    return;
   ts->tv_sec = (time_t)(ns / NS_PER_SEC_INT);
   ts->tv_nsec = (long)(ns % NS_PER_SEC_INT);
 }

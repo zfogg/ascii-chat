@@ -23,14 +23,14 @@ extern "C" {
  * @brief Negotiation state
  */
 typedef enum {
-  NEGOTIATE_STATE_INIT,           ///< Initial state
-  NEGOTIATE_STATE_DETECTING_NAT,  ///< Running NAT detection
-  NEGOTIATE_STATE_WAITING_PEER,   ///< Waiting for peer's NAT quality
-  NEGOTIATE_STATE_COMPARING,      ///< Comparing qualities
-  NEGOTIATE_STATE_WE_HOST,        ///< We won, becoming host
-  NEGOTIATE_STATE_THEY_HOST,      ///< They won, connecting as client
-  NEGOTIATE_STATE_FAILED,         ///< Negotiation failed
-  NEGOTIATE_STATE_COMPLETE        ///< Negotiation complete
+  NEGOTIATE_STATE_INIT,          ///< Initial state
+  NEGOTIATE_STATE_DETECTING_NAT, ///< Running NAT detection
+  NEGOTIATE_STATE_WAITING_PEER,  ///< Waiting for peer's NAT quality
+  NEGOTIATE_STATE_COMPARING,     ///< Comparing qualities
+  NEGOTIATE_STATE_WE_HOST,       ///< We won, becoming host
+  NEGOTIATE_STATE_THEY_HOST,     ///< They won, connecting as client
+  NEGOTIATE_STATE_FAILED,        ///< Negotiation failed
+  NEGOTIATE_STATE_COMPLETE       ///< Negotiation complete
 } negotiate_state_t;
 
 /**
@@ -40,22 +40,22 @@ typedef struct {
   // Session info
   uint8_t session_id[16];
   uint8_t participant_id[16];
-  bool is_initiator;              ///< Did we create this session?
+  bool is_initiator; ///< Did we create this session?
 
   // NAT qualities
-  nat_quality_t our_quality;      ///< Our NAT quality
-  nat_quality_t peer_quality;     ///< Peer's NAT quality (when received)
-  bool peer_quality_received;     ///< Have we received peer's quality?
+  nat_quality_t our_quality;  ///< Our NAT quality
+  nat_quality_t peer_quality; ///< Peer's NAT quality (when received)
+  bool peer_quality_received; ///< Have we received peer's quality?
 
   // State
   negotiate_state_t state;
   asciichat_error_t error;
 
   // Result
-  bool we_are_host;               ///< True if we should become host
-  char host_address[64];          ///< Host's address (ours if we_are_host)
-  uint16_t host_port;             ///< Host's port
-  uint8_t connection_type;        ///< acip_connection_type_t
+  bool we_are_host;        ///< True if we should become host
+  char host_address[64];   ///< Host's address (ours if we_are_host)
+  uint16_t host_port;      ///< Host's port
+  uint8_t connection_type; ///< acip_connection_type_t
 } negotiate_ctx_t;
 
 /**
@@ -135,12 +135,9 @@ asciichat_error_t negotiate_get_error(const negotiate_ctx_t *ctx);
  * @note If only one participant remains, that one is elected.
  * @note If all have same quality, uses participant ID lexicographic order as tiebreaker.
  */
-asciichat_error_t negotiate_elect_future_host(
-    const acip_nat_quality_t collected_quality[],
-    const uint8_t participant_ids[][16],
-    size_t num_participants,
-    uint8_t out_future_host_id[16]
-);
+asciichat_error_t negotiate_elect_future_host(const acip_nat_quality_t collected_quality[],
+                                              const uint8_t participant_ids[][16], size_t num_participants,
+                                              uint8_t out_future_host_id[16]);
 
 #ifdef __cplusplus
 }

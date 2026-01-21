@@ -17,12 +17,15 @@
 
 void negotiate_init(negotiate_ctx_t *ctx, const uint8_t session_id[16], const uint8_t participant_id[16],
                     bool is_initiator) {
-  if (!ctx) return;
+  if (!ctx)
+    return;
 
   memset(ctx, 0, sizeof(negotiate_ctx_t));
 
-  if (session_id) memcpy(ctx->session_id, session_id, 16);
-  if (participant_id) memcpy(ctx->participant_id, participant_id, 16);
+  if (session_id)
+    memcpy(ctx->session_id, session_id, 16);
+  if (participant_id)
+    memcpy(ctx->participant_id, participant_id, 16);
 
   ctx->is_initiator = is_initiator;
   ctx->state = NEGOTIATE_STATE_INIT;
@@ -160,25 +163,26 @@ asciichat_error_t negotiate_determine_result(negotiate_ctx_t *ctx) {
 }
 
 negotiate_state_t negotiate_get_state(const negotiate_ctx_t *ctx) {
-  if (!ctx) return NEGOTIATE_STATE_FAILED;
+  if (!ctx)
+    return NEGOTIATE_STATE_FAILED;
   return ctx->state;
 }
 
 bool negotiate_is_complete(const negotiate_ctx_t *ctx) {
-  if (!ctx) return true;
+  if (!ctx)
+    return true;
   return ctx->state == NEGOTIATE_STATE_COMPLETE || ctx->state == NEGOTIATE_STATE_FAILED;
 }
 
 asciichat_error_t negotiate_get_error(const negotiate_ctx_t *ctx) {
-  if (!ctx) return ERROR_INVALID_PARAM;
+  if (!ctx)
+    return ERROR_INVALID_PARAM;
   return ctx->error;
 }
 
-asciichat_error_t negotiate_elect_future_host(
-    const acip_nat_quality_t collected_quality[],
-    const uint8_t participant_ids[][16],
-    size_t num_participants,
-    uint8_t out_future_host_id[16]) {
+asciichat_error_t negotiate_elect_future_host(const acip_nat_quality_t collected_quality[],
+                                              const uint8_t participant_ids[][16], size_t num_participants,
+                                              uint8_t out_future_host_id[16]) {
   if (!collected_quality || !participant_ids || !out_future_host_id) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return ERROR_INVALID_PARAM;
@@ -212,7 +216,8 @@ asciichat_error_t negotiate_elect_future_host(
 
     // Compare against all others
     for (size_t j = 0; j < num_participants; j++) {
-      if (i == j) continue;
+      if (i == j)
+        continue;
 
       // Compare: -1 means i wins, 1 means j wins, 0 means tie
       // Note: we_are_initiator parameter doesn't matter for multiparty comparison
@@ -226,8 +231,7 @@ asciichat_error_t negotiate_elect_future_host(
 
     // Select as winner if has more wins than current best
     // In case of tie, lexicographically smaller participant_id wins (as tiebreaker)
-    if (wins > best_wins ||
-        (wins == best_wins && memcmp(participant_ids[i], participant_ids[best_idx], 16) < 0)) {
+    if (wins > best_wins || (wins == best_wins && memcmp(participant_ids[i], participant_ids[best_idx], 16) < 0)) {
       best_wins = wins;
       best_idx = i;
     }

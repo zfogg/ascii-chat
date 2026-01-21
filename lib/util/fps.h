@@ -50,12 +50,12 @@
  * Should be zero-initialized on creation.
  */
 typedef struct {
-  uint64_t frame_count;            // Frames counted since last report
-  uint64_t last_fps_report_ns;     // Last time FPS was reported (nanoseconds)
-  uint64_t last_frame_time_ns;     // Timestamp of last processed frame (nanoseconds)
-  int expected_fps;                // Expected FPS (e.g., 60)
-  uint64_t report_interval_ns;     // Report interval in nanoseconds (default 10s = 10000000000ns)
-  const char *tracker_name;        // Name for logging (e.g., "CLIENT", "WEBCAM", "AUDIO", "KEEPALIVE")
+  uint64_t frame_count;        // Frames counted since last report
+  uint64_t last_fps_report_ns; // Last time FPS was reported (nanoseconds)
+  uint64_t last_frame_time_ns; // Timestamp of last processed frame (nanoseconds)
+  int expected_fps;            // Expected FPS (e.g., 60)
+  uint64_t report_interval_ns; // Report interval in nanoseconds (default 10s = 10000000000ns)
+  const char *tracker_name;    // Name for logging (e.g., "CLIENT", "WEBCAM", "AUDIO", "KEEPALIVE")
 } fps_t;
 
 /**

@@ -1396,7 +1396,6 @@ Test(config, inline_comments) {
   writable_opts.auto_width = 0;
   options_state_set(&writable_opts);
 
-
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with inline comments should succeed");
   const options_t *opts = options_get();

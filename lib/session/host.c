@@ -288,10 +288,11 @@ static socket_t create_listen_socket(const char *address, int port) {
   struct addrinfo hints, *result = NULL, *rp = NULL;
   char port_str[16];
 
-  if (!address) address = "0.0.0.0";
+  if (!address)
+    address = "0.0.0.0";
 
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;     // IPv4
+  hints.ai_family = AF_INET; // IPv4
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
@@ -350,7 +351,8 @@ static socket_t create_listen_socket(const char *address, int port) {
  */
 static void *accept_loop_thread(void *arg) {
   session_host_t *host = (session_host_t *)arg;
-  if (!host) return NULL;
+  if (!host)
+    return NULL;
 
   log_info("Accept loop started");
 
@@ -428,7 +430,8 @@ static void *accept_loop_thread(void *arg) {
  */
 static void *receive_loop_thread(void *arg) {
   session_host_t *host = (session_host_t *)arg;
-  if (!host) return NULL;
+  if (!host)
+    return NULL;
 
   log_info("Receive loop started");
 
@@ -522,8 +525,8 @@ static void *receive_loop_thread(void *arg) {
                 size_t expected_size = (size_t)frame_hdr->width * frame_hdr->height * 3;
                 if (pixel_data_size >= expected_size) {
                   memcpy(img->pixels, pixel_data, expected_size);
-                  log_debug_every(500000, "Frame received from client %u (%ux%u)",
-                                 client_id, frame_hdr->width, frame_hdr->height);
+                  log_debug_every(500000, "Frame received from client %u (%ux%u)", client_id, frame_hdr->width,
+                                  frame_hdr->height);
                 }
               }
               break;
@@ -535,10 +538,10 @@ static void *receive_loop_thread(void *arg) {
 
       case PACKET_TYPE_AUDIO_OPUS_BATCH:
         // Client sent Opus-encoded audio batch
-        if (data && len > 16) {  // Must have at least header
+        if (data && len > 16) { // Must have at least header
           const uint8_t *batch_data = (const uint8_t *)data;
           // Parse header: sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
-          (void)batch_data[0];  // Avoid unused variable warning if we don't use sample_rate/frame_duration
+          (void)batch_data[0]; // Avoid unused variable warning if we don't use sample_rate/frame_duration
           uint32_t batch_frame_count = *(const uint32_t *)(batch_data + 8);
 
           if (batch_frame_count > 0 && batch_frame_count <= 1000) {
@@ -548,18 +551,16 @@ static void *receive_loop_thread(void *arg) {
             // Find client and decode audio
             mutex_lock(&host->clients_mutex);
             for (int j = 0; j < host->max_clients; j++) {
-              if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio &&
-                  host->opus_decoder) {
+              if (host->clients[j].client_id == client_id && host->clients[j].incoming_audio && host->opus_decoder) {
                 // Decode each Opus frame and write to ringbuffer
                 const uint8_t *current_frame = opus_frames;
                 for (uint32_t k = 0; k < batch_frame_count; k++) {
                   uint16_t frame_size = frame_sizes[k];
                   if (frame_size > 0) {
                     // Allocate buffer for decoded samples
-                    float decoded_samples[960];  // Max 20ms @ 48kHz
-                    int decoded_count = opus_codec_decode(host->opus_decoder, current_frame,
-                                                         (int)frame_size, decoded_samples,
-                                                         960);
+                    float decoded_samples[960]; // Max 20ms @ 48kHz
+                    int decoded_count =
+                        opus_codec_decode(host->opus_decoder, current_frame, (int)frame_size, decoded_samples, 960);
                     if (decoded_count > 0) {
                       // Write samples to ringbuffer one at a time
                       for (int s = 0; s < decoded_count; s++) {
@@ -569,8 +570,8 @@ static void *receive_loop_thread(void *arg) {
                   }
                   current_frame += frame_size;
                 }
-                log_debug_every(1000000, "Audio batch received from client %u (%u frames)",
-                               client_id, batch_frame_count);
+                log_debug_every(1000000, "Audio batch received from client %u (%u frames)", client_id,
+                                batch_frame_count);
                 break;
               }
             }
@@ -674,21 +675,20 @@ static void *host_render_thread(void *arg) {
       if (active_video_count > 0) {
         // Allocate arrays for ASCII frames and sources
         char **ascii_frames = SAFE_MALLOC(active_video_count * sizeof(char *), char **);
-        ascii_frame_source_t *sources = SAFE_MALLOC(active_video_count * sizeof(ascii_frame_source_t),
-                                                    ascii_frame_source_t *);
+        ascii_frame_source_t *sources =
+            SAFE_MALLOC(active_video_count * sizeof(ascii_frame_source_t), ascii_frame_source_t *);
 
         if (ascii_frames && sources) {
           // Convert each incoming video frame to ASCII
           int frame_idx = 0;
           for (int i = 0; i < host->max_clients; i++) {
-            if (host->clients[i].active && host->clients[i].video_active &&
-                host->clients[i].incoming_video) {
+            if (host->clients[i].active && host->clients[i].video_active && host->clients[i].incoming_video) {
               image_t *img = host->clients[i].incoming_video;
 
               // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
               extern char g_default_luminance_palette[256];
-              ascii_frames[frame_idx] = ascii_convert(img, 80, 24, false, false, false, NULL,
-                                                     g_default_luminance_palette);
+              ascii_frames[frame_idx] =
+                  ascii_convert(img, 80, 24, false, false, false, NULL, g_default_luminance_palette);
               if (ascii_frames[frame_idx]) {
                 sources[frame_idx].frame_data = ascii_frames[frame_idx];
                 sources[frame_idx].frame_size = strlen(ascii_frames[frame_idx]) + 1;
@@ -740,7 +740,7 @@ static void *host_render_thread(void *arg) {
       // 4. Broadcast mixed audio via av_send_audio_opus_batch()
 
       if (host->audio_ctx && host->opus_encoder) {
-        float mixed_audio[960];  // 20ms @ 48kHz
+        float mixed_audio[960]; // 20ms @ 48kHz
         memset(mixed_audio, 0, sizeof(mixed_audio));
 
         // Lock clients mutex to safely read audio buffers
@@ -779,7 +779,7 @@ static void *host_render_thread(void *arg) {
 
         if (opus_len > 0) {
           // Broadcast mixed audio to all participants
-          uint16_t frame_sizes[1] = { (uint16_t)opus_len };
+          uint16_t frame_sizes[1] = {(uint16_t)opus_len};
           av_send_audio_opus_batch(host->socket_v4, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
         }
       }
@@ -956,8 +956,8 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].connected_at = (uint64_t)time(NULL);
 
       // Allocate media buffers
-      host->clients[i].incoming_video = image_new(480, 270);  // Network-optimal size (HD preview)
-      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10);  // ~200ms buffer @ 48kHz
+      host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
+      host->clients[i].incoming_audio = ringbuffer_create(sizeof(float), 960 * 10); // ~200ms buffer @ 48kHz
 
       if (!host->clients[i].incoming_video || !host->clients[i].incoming_audio) {
         // Cleanup on allocation failure
@@ -1101,17 +1101,17 @@ asciichat_error_t session_host_broadcast_frame(session_host_t *host, const char 
   }
 
   // Broadcast ASCII frame to all connected clients
-  size_t frame_len = strlen(frame) + 1;  // Include null terminator
+  size_t frame_len = strlen(frame) + 1; // Include null terminator
   asciichat_error_t result = ASCIICHAT_OK;
 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].active && host->clients[i].socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t send_result = packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME,
-                                                  (const void *)frame, frame_len);
+      asciichat_error_t send_result =
+          packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
       if (send_result != ASCIICHAT_OK) {
         log_warn("Failed to send ASCII frame to client %u", host->clients[i].client_id);
-        result = send_result;  // Store error but continue broadcasting to other clients
+        result = send_result; // Store error but continue broadcasting to other clients
       }
     }
   }
@@ -1130,14 +1130,14 @@ asciichat_error_t session_host_send_frame(session_host_t *host, uint32_t client_
   }
 
   // Send ASCII frame to specific client
-  size_t frame_len = strlen(frame) + 1;  // Include null terminator
+  size_t frame_len = strlen(frame) + 1; // Include null terminator
 
   mutex_lock(&host->clients_mutex);
   for (int i = 0; i < host->max_clients; i++) {
     if (host->clients[i].client_id == client_id && host->clients[i].active &&
         host->clients[i].socket != INVALID_SOCKET_VALUE) {
-      asciichat_error_t result = packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME,
-                                             (const void *)frame, frame_len);
+      asciichat_error_t result =
+          packet_send(host->clients[i].socket, PACKET_TYPE_ASCII_FRAME, (const void *)frame, frame_len);
       mutex_unlock(&host->clients_mutex);
       return result;
     }
@@ -1161,7 +1161,7 @@ asciichat_error_t session_host_start_render(session_host_t *host) {
   }
 
   if (host->render_thread_running) {
-    return ASCIICHAT_OK;  // Already running
+    return ASCIICHAT_OK; // Already running
   }
 
   // Create audio context for mixing (host mode = true)

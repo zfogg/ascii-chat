@@ -75,9 +75,9 @@ static uint64_t g_received_last_silence_end_sample = 0;       // When last silen
 // Direct packet timing tracking for stuttering detection
 #define MAX_PACKET_SAMPLES 200
 static uint64_t g_received_packet_times_ns[MAX_PACKET_SAMPLES]; // When each packet was received (nanoseconds)
-static uint32_t g_received_packet_times_count = 0;               // Number of packets tracked
-static uint32_t g_received_packet_sizes[MAX_PACKET_SAMPLES];     // Size of each packet in bytes
-static uint64_t g_received_total_audio_samples = 0;              // Total decoded audio samples
+static uint32_t g_received_packet_times_count = 0;              // Number of packets tracked
+static uint32_t g_received_packet_sizes[MAX_PACKET_SAMPLES];    // Size of each packet in bytes
+static uint64_t g_received_total_audio_samples = 0;             // Total decoded audio samples
 
 // Echo detection: store recent sent samples to check if they appear in received audio
 #define ECHO_BUFFER_SIZE 48000                       // 1 second at 48kHz

@@ -43,15 +43,15 @@ extern "C" {
  */
 typedef struct {
   // Future host information (pre-elected by host every 5 minutes)
-  uint8_t future_host_id[16];                   ///< Who will host if current host dies
-  char future_host_address[64];                 ///< Where to connect
-  uint16_t future_host_port;                    ///< Port number
-  uint8_t future_host_connection_type;          ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
-  bool am_future_host;                          ///< Am I the elected future host?
-  uint64_t future_host_elected_round;           ///< Which 5-minute round this was elected in
+  uint8_t future_host_id[16];          ///< Who will host if current host dies
+  char future_host_address[64];        ///< Where to connect
+  uint16_t future_host_port;           ///< Port number
+  uint8_t future_host_connection_type; ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
+  bool am_future_host;                 ///< Am I the elected future host?
+  uint64_t future_host_elected_round;  ///< Which 5-minute round this was elected in
 
   // Timing for next proactive election
-  uint64_t last_ring_round_ms;                  ///< When host last ran election (for 5-min timer)
+  uint64_t last_ring_round_ms; ///< When host last ran election (for 5-min timer)
 } ring_consensus_t;
 
 /**
@@ -62,35 +62,35 @@ typedef struct {
  * we already know who takes over and where to find them.
  */
 typedef enum {
-  MIGRATION_STATE_NONE,        ///< No migration in progress
-  MIGRATION_STATE_DETECTED,    ///< Host disconnect detected
-  MIGRATION_STATE_FAILOVER,    ///< Failing over to pre-elected future host
-  MIGRATION_STATE_COMPLETE     ///< Failover complete, call resumed
+  MIGRATION_STATE_NONE,     ///< No migration in progress
+  MIGRATION_STATE_DETECTED, ///< Host disconnect detected
+  MIGRATION_STATE_FAILOVER, ///< Failing over to pre-elected future host
+  MIGRATION_STATE_COMPLETE  ///< Failover complete, call resumed
 } migration_state_t;
 
 typedef struct {
-  migration_state_t state;              ///< Current migration state
-  uint64_t detection_time_ms;           ///< When host disconnect detected (Unix ms)
-  uint8_t last_host_id[16];             ///< The host that died
-  uint32_t disconnect_reason;           ///< Reason for disconnect (from HOST_LOST packet)
+  migration_state_t state;    ///< Current migration state
+  uint64_t detection_time_ms; ///< When host disconnect detected (Unix ms)
+  uint8_t last_host_id[16];   ///< The host that died
+  uint32_t disconnect_reason; ///< Reason for disconnect (from HOST_LOST packet)
 } migration_ctx_t;
 
 /**
  * @brief Discovery session state
  */
 typedef enum {
-  DISCOVERY_STATE_INIT,               ///< Initial state
-  DISCOVERY_STATE_CONNECTING_ACDS,    ///< Connecting to ACDS
-  DISCOVERY_STATE_CREATING_SESSION,   ///< Creating new session
-  DISCOVERY_STATE_JOINING_SESSION,    ///< Joining existing session
-  DISCOVERY_STATE_WAITING_PEER,       ///< Waiting for peer to join (initiator)
-  DISCOVERY_STATE_NEGOTIATING,        ///< NAT negotiation in progress
-  DISCOVERY_STATE_STARTING_HOST,      ///< Starting as host
-  DISCOVERY_STATE_CONNECTING_HOST,    ///< Connecting to host as participant
-  DISCOVERY_STATE_ACTIVE,             ///< Session active (call in progress)
-  DISCOVERY_STATE_MIGRATING,          ///< Host migration in progress
-  DISCOVERY_STATE_FAILED,             ///< Session failed
-  DISCOVERY_STATE_ENDED               ///< Session ended
+  DISCOVERY_STATE_INIT,             ///< Initial state
+  DISCOVERY_STATE_CONNECTING_ACDS,  ///< Connecting to ACDS
+  DISCOVERY_STATE_CREATING_SESSION, ///< Creating new session
+  DISCOVERY_STATE_JOINING_SESSION,  ///< Joining existing session
+  DISCOVERY_STATE_WAITING_PEER,     ///< Waiting for peer to join (initiator)
+  DISCOVERY_STATE_NEGOTIATING,      ///< NAT negotiation in progress
+  DISCOVERY_STATE_STARTING_HOST,    ///< Starting as host
+  DISCOVERY_STATE_CONNECTING_HOST,  ///< Connecting to host as participant
+  DISCOVERY_STATE_ACTIVE,           ///< Session active (call in progress)
+  DISCOVERY_STATE_MIGRATING,        ///< Host migration in progress
+  DISCOVERY_STATE_FAILED,           ///< Session failed
+  DISCOVERY_STATE_ENDED             ///< Session ended
 } discovery_state_t;
 
 /**
@@ -144,14 +144,14 @@ typedef struct {
  */
 typedef struct {
   // ACDS server
-  const char *acds_address;     ///< ACDS address (default: "127.0.0.1")
-  uint16_t acds_port;           ///< ACDS port (default: 27225)
+  const char *acds_address; ///< ACDS address (default: "127.0.0.1")
+  uint16_t acds_port;       ///< ACDS port (default: 27225)
 
   // Session to join (NULL = create new)
-  const char *session_string;   ///< Session string to join (or NULL to create)
+  const char *session_string; ///< Session string to join (or NULL to create)
 
   // Local server config (if we become host)
-  uint16_t local_port;          ///< Local port for hosting (default: 27224)
+  uint16_t local_port; ///< Local port for hosting (default: 27224)
 
   // Callbacks
   void (*on_state_change)(discovery_state_t new_state, void *user_data);
@@ -273,10 +273,7 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
  * @param disconnect_reason Reason code for disconnect
  * @return ASCIICHAT_OK on successful failover
  */
-asciichat_error_t discovery_session_handle_host_disconnect(
-    discovery_session_t *session,
-    uint32_t disconnect_reason
-);
+asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *session, uint32_t disconnect_reason);
 
 /**
  * @brief Become the host (called when elected as future host)
@@ -301,13 +298,9 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
  * @param out_connection_type Output: Connection type
  * @return ASCIICHAT_OK if future host known, error otherwise
  */
-asciichat_error_t discovery_session_get_future_host(
-    const discovery_session_t *session,
-    uint8_t out_id[16],
-    char out_address[64],
-    uint16_t *out_port,
-    uint8_t *out_connection_type
-);
+asciichat_error_t discovery_session_get_future_host(const discovery_session_t *session, uint8_t out_id[16],
+                                                    char out_address[64], uint16_t *out_port,
+                                                    uint8_t *out_connection_type);
 
 /**
  * @brief Check if we are the future host

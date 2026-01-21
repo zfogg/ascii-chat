@@ -114,8 +114,7 @@ typedef struct __attribute__((packed)) {
  *
  * @ingroup stun
  */
-int stun_servers_parse(const char *csv_servers, const char *default_csv,
-                       stun_server_t *out_servers, int max_count);
+int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_server_t *out_servers, int max_count);
 
 #ifdef _WIN32
 #pragma pack(pop)

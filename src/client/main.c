@@ -773,8 +773,9 @@ int client_main(void) {
     const char *address = discovered_address
                               ? discovered_address
                               : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
-    const char *port_str =
-        discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : OPT_PORT_DEFAULT);
+    const char *port_str = discovered_port
+                               ? discovered_port
+                               : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : OPT_PORT_DEFAULT);
     int port = atoi(port_str);
 
     // Update connection context with current attempt number

@@ -302,21 +302,20 @@ Test(crypto_https_keys, parse_ssh_keys_only_newlines) {
 
 Test(crypto_https_keys, parse_gpg_keys_valid) {
   // Use the real expired test key fixture
-  const char *response =
-      "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
-      "\n"
-      "mDMEZYluwBYJKwYBBAHaRw8BAQdA1K+SeOBdrF0l3zcEmKS9BVLQdeH28aOOlQIz\n"
-      "tcTg2AS0OkFTQ0lJIENoYXQgRXhwaXJlZCBUZXN0IEtleSA8ZXhwaXJlZC10ZXN0\n"
-      "QGFzY2lpLWNoYXQudGVzdD6IlgQTFgoAPhYhBMb2DjAmhdQ2V+U1Yn6nkbhlBrzy\n"
-      "BQJliW7AAhsDBQkAAVGABQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAAAoJEH6nkbhl\n"
-      "BrzyKxwBAJ0H9EoGF8DA9b3mdcxb4kHTVMIpKLVXWY9BsU9pJAyvAP0Vv2Ynt0Zm\n"
-      "i8PinOhyMlURPDXovyJLiQsCLPQn5M5RDbg4BGWJbsASCisGAQQBl1UBBQEBB0CI\n"
-      "uII1RMQkImsTaifKayy8+epPa9xjRxPBAtGrf86SPQMBCAeIfgQYFgoAJhYhBMb2\n"
-      "DjAmhdQ2V+U1Yn6nkbhlBrzyBQJliW7AAhsMBQkAAVGAAAoJEH6nkbhlBrzyAvMA\n"
-      "/3SmZ2S//vAl8J5VYZGk8wLadn9Zhk+C2g6U3ncvW4x2AQDchXne15q/OrtyYa2t\n"
-      "RpKdoeSdF228xgdmiwRSOe8/BQ==\n"
-      "=xv17\n"
-      "-----END PGP PUBLIC KEY BLOCK-----\n";
+  const char *response = "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
+                         "\n"
+                         "mDMEZYluwBYJKwYBBAHaRw8BAQdA1K+SeOBdrF0l3zcEmKS9BVLQdeH28aOOlQIz\n"
+                         "tcTg2AS0OkFTQ0lJIENoYXQgRXhwaXJlZCBUZXN0IEtleSA8ZXhwaXJlZC10ZXN0\n"
+                         "QGFzY2lpLWNoYXQudGVzdD6IlgQTFgoAPhYhBMb2DjAmhdQ2V+U1Yn6nkbhlBrzy\n"
+                         "BQJliW7AAhsDBQkAAVGABQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAAAoJEH6nkbhl\n"
+                         "BrzyKxwBAJ0H9EoGF8DA9b3mdcxb4kHTVMIpKLVXWY9BsU9pJAyvAP0Vv2Ynt0Zm\n"
+                         "i8PinOhyMlURPDXovyJLiQsCLPQn5M5RDbg4BGWJbsASCisGAQQBl1UBBQEBB0CI\n"
+                         "uII1RMQkImsTaifKayy8+epPa9xjRxPBAtGrf86SPQMBCAeIfgQYFgoAJhYhBMb2\n"
+                         "DjAmhdQ2V+U1Yn6nkbhlBrzyBQJliW7AAhsMBQkAAVGAAAoJEH6nkbhlBrzyAvMA\n"
+                         "/3SmZ2S//vAl8J5VYZGk8wLadn9Zhk+C2g6U3ncvW4x2AQDchXne15q/OrtyYa2t\n"
+                         "RpKdoeSdF228xgdmiwRSOe8/BQ==\n"
+                         "=xv17\n"
+                         "-----END PGP PUBLIC KEY BLOCK-----\n";
   char **keys = NULL;
   size_t num_keys = 0;
 

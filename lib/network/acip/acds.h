@@ -277,8 +277,8 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];           ///< Session UUID
-  uint8_t new_participant_id[16];   ///< UUID of the new participant
+  uint8_t session_id[16];             ///< Session UUID
+  uint8_t new_participant_id[16];     ///< UUID of the new participant
   uint8_t new_participant_pubkey[32]; ///< Ed25519 public key of new participant
   uint8_t current_participant_count;  ///< Total participants including new one
 } acip_participant_joined_t;
@@ -294,10 +294,10 @@ typedef struct __attribute__((packed)) {
  * @ingroup acds
  */
 typedef struct __attribute__((packed)) {
-  uint8_t session_id[16];         ///< Session UUID
+  uint8_t session_id[16];          ///< Session UUID
   uint8_t left_participant_id[16]; ///< UUID of participant who left
-  uint8_t was_host;               ///< 1 if the leaving participant was the host
-  uint8_t remaining_count;        ///< Participants remaining in session
+  uint8_t was_host;                ///< 1 if the leaving participant was the host
+  uint8_t remaining_count;         ///< Participants remaining in session
 } acip_participant_left_t;
 
 /**
@@ -513,7 +513,7 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[16];
-  uint8_t num_participants;                    ///< Number of participants in session
+  uint8_t num_participants; ///< Number of participants in session
   // Followed by: participant_entry_t[num_participants] (variable length)
   // participant_entry_t {
   //   uint8_t participant_id[16];
@@ -532,9 +532,9 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t participant_id[16];
-  char address[64];                            ///< Participant's address (for direct connection)
-  uint16_t port;                               ///< Participant's listening port
-  uint8_t connection_type;                     ///< acip_connection_type_t
+  char address[64];        ///< Participant's address (for direct connection)
+  uint16_t port;           ///< Participant's listening port
+  uint8_t connection_type; ///< acip_connection_type_t
 } acip_participant_entry_t;
 
 /**
@@ -555,9 +555,9 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[16];
-  uint8_t from_participant_id[16];             ///< Who is requesting
-  uint8_t to_participant_id[16];               ///< Who is requested
-  uint64_t round_number;                       ///< Which 5-minute round (for detection of stale requests)
+  uint8_t from_participant_id[16]; ///< Who is requesting
+  uint8_t to_participant_id[16];   ///< Who is requested
+  uint64_t round_number;           ///< Which 5-minute round (for detection of stale requests)
 } acip_ring_collect_t;
 
 /** @} */
@@ -618,26 +618,26 @@ typedef struct __attribute__((packed)) {
   uint8_t participant_id[16];
 
   // NAT detection results
-  uint8_t has_public_ip;          ///< STUN reflexive == local IP
-  uint8_t upnp_available;         ///< UPnP/NAT-PMP port mapping works
-  uint8_t upnp_mapped_port[2];    ///< Port we mapped (network byte order)
-  uint8_t stun_nat_type;          ///< acip_nat_type_t classification
-  uint8_t lan_reachable;          ///< Same subnet as peer (mDNS/ARP)
-  uint32_t stun_latency_ms;       ///< RTT to STUN server
+  uint8_t has_public_ip;       ///< STUN reflexive == local IP
+  uint8_t upnp_available;      ///< UPnP/NAT-PMP port mapping works
+  uint8_t upnp_mapped_port[2]; ///< Port we mapped (network byte order)
+  uint8_t stun_nat_type;       ///< acip_nat_type_t classification
+  uint8_t lan_reachable;       ///< Same subnet as peer (mDNS/ARP)
+  uint32_t stun_latency_ms;    ///< RTT to STUN server
 
   // Bandwidth measurements (critical for host selection)
-  uint32_t upload_kbps;           ///< Upload bandwidth in Kbps (from ACDS test)
-  uint32_t download_kbps;         ///< Download bandwidth in Kbps (informational)
-  uint16_t rtt_to_acds_ms;        ///< Latency to ACDS server
-  uint8_t jitter_ms;              ///< Packet timing variance (0-255ms)
-  uint8_t packet_loss_pct;        ///< Packet loss percentage (0-100)
+  uint32_t upload_kbps;    ///< Upload bandwidth in Kbps (from ACDS test)
+  uint32_t download_kbps;  ///< Download bandwidth in Kbps (informational)
+  uint16_t rtt_to_acds_ms; ///< Latency to ACDS server
+  uint8_t jitter_ms;       ///< Packet timing variance (0-255ms)
+  uint8_t packet_loss_pct; ///< Packet loss percentage (0-100)
 
   // Connection info
-  char public_address[64];        ///< Our public IP (if has_public_ip or upnp)
-  uint16_t public_port;           ///< Our public port
+  char public_address[64]; ///< Our public IP (if has_public_ip or upnp)
+  uint16_t public_port;    ///< Our public port
 
   // ICE candidate summary
-  uint8_t ice_candidate_types;    ///< Bitmask: 1=host, 2=srflx, 4=relay
+  uint8_t ice_candidate_types; ///< Bitmask: 1=host, 2=srflx, 4=relay
 } acip_nat_quality_t;
 
 /**
@@ -653,10 +653,10 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[16];
-  uint8_t host_id[16];            ///< My participant ID
-  char host_address[64];          ///< Where clients should connect
-  uint16_t host_port;             ///< Port
-  uint8_t connection_type;        ///< acip_connection_type_t
+  uint8_t host_id[16];     ///< My participant ID
+  char host_address[64];   ///< Where clients should connect
+  uint16_t host_port;      ///< Port
+  uint8_t connection_type; ///< acip_connection_type_t
 } acip_host_announcement_t;
 
 /**
@@ -674,7 +674,7 @@ typedef struct __attribute__((packed)) {
   uint8_t host_id[16];
   char host_address[64];
   uint16_t host_port;
-  uint8_t connection_type;        ///< acip_connection_type_t
+  uint8_t connection_type; ///< acip_connection_type_t
 } acip_host_designated_t;
 
 /**
@@ -695,10 +695,10 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[16];
-  uint8_t participant_id[16];      ///< Who is reporting
-  uint8_t last_host_id[16];        ///< The host that disconnected
-  uint32_t disconnect_reason;      ///< 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
-  uint64_t disconnect_time_ms;     ///< When disconnect was detected (Unix ms)
+  uint8_t participant_id[16];  ///< Who is reporting
+  uint8_t last_host_id[16];    ///< The host that disconnected
+  uint32_t disconnect_reason;  ///< 0=unknown, 1=timeout, 2=tcp_reset, 3=graceful
+  uint64_t disconnect_time_ms; ///< When disconnect was detected (Unix ms)
 } acip_host_lost_t;
 
 /**
@@ -723,11 +723,11 @@ typedef struct __attribute__((packed)) {
  */
 typedef struct __attribute__((packed)) {
   uint8_t session_id[16];
-  uint8_t future_host_id[16];      ///< Who will host if current host dies
-  char future_host_address[64];    ///< Where to connect when needed
-  uint16_t future_host_port;       ///< Port number
-  uint8_t connection_type;         ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
-  uint64_t elected_at_round;       ///< Which 5-minute round this was elected in
+  uint8_t future_host_id[16];   ///< Who will host if current host dies
+  char future_host_address[64]; ///< Where to connect when needed
+  uint16_t future_host_port;    ///< Port number
+  uint8_t connection_type;      ///< acip_connection_type_t (DIRECT, UPNP, STUN, TURN)
+  uint64_t elected_at_round;    ///< Which 5-minute round this was elected in
 } acip_future_host_elected_t;
 
 /** @} */

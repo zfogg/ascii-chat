@@ -24,4 +24,3 @@ void stop_client_render_threads(client_info_t *client);
 // Audio render rate: 480 samples per iteration, 10ms interval = 100 FPS
 // This gives 48,000 samples/sec which matches real-time playback rate
 #define AUDIO_RENDER_FPS 100 // 10ms interval for real-time rate
-

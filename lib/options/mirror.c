@@ -88,9 +88,8 @@ void usage_mirror(FILE *desc) {
   const char *reset_color = log_level_color(LOG_COLOR_RESET);
 
   // Print USAGE line with colored components: binary (default), mode (magenta), options (yellow)
-  (void)fprintf(desc, "  ascii-chat %s%s%s %s[options...]%s\n\n",
-      magenta, "mirror", reset_color,    // mode in magenta
-      yellow, reset_color);               // [options...] in yellow
+  (void)fprintf(desc, "  ascii-chat %s%s%s %s[options...]%s\n\n", magenta, "mirror", reset_color, // mode in magenta
+                yellow, reset_color); // [options...] in yellow
 
   // Generate options from builder configuration
   options_config_print_usage(config, desc);

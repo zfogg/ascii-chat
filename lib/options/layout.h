@@ -54,7 +54,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
  * @param first_col_len Length of first column text (excluding ANSI codes)
  * @param term_width Terminal width
  */
-void layout_print_two_column_row(FILE *stream, const char *first_column, const char *second_column,
-                                 int first_col_len, int term_width);
+void layout_print_two_column_row(FILE *stream, const char *first_column, const char *second_column, int first_col_len,
+                                 int term_width);
 
-#endif  // ASCII_CHAT_OPTIONS_LAYOUT_H
+#endif // ASCII_CHAT_OPTIONS_LAYOUT_H

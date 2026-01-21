@@ -50,13 +50,13 @@ int utf8_display_width(const char *str) {
     // Pattern: \x1b [ [0-9;]* m
     if (p[0] == 0x1b && p[1] == '[') {
       // Found ANSI escape sequence start
-      p += 2;  // Skip ESC[
+      p += 2; // Skip ESC[
       // Skip digits and semicolons until we find 'm'
       while (*p && *p != 'm') {
         p++;
       }
       if (*p == 'm') {
-        p++;  // Skip the 'm'
+        p++; // Skip the 'm'
       }
       continue;
     }
@@ -94,13 +94,13 @@ int utf8_display_width_n(const char *str, size_t max_bytes) {
     // Skip ANSI escape sequences (ESC [ ... m)
     if (p + 1 < end && p[0] == 0x1b && p[1] == '[') {
       // Found ANSI escape sequence start
-      p += 2;  // Skip ESC[
+      p += 2; // Skip ESC[
       // Skip digits and semicolons until we find 'm'
       while (p < end && *p && *p != 'm') {
         p++;
       }
       if (p < end && *p == 'm') {
-        p++;  // Skip the 'm'
+        p++; // Skip the 'm'
       }
       continue;
     }

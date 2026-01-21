@@ -245,7 +245,8 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 
   if (tc->expected_server_key[0] != '\0') {
     cr_assert(opts->server_key[0] != '\0', "Server key should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s", tc->description);
+    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s",
+                     tc->description);
   }
 
   if (tc->expected_client_keys[0] != '\0') {

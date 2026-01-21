@@ -22,12 +22,12 @@
 // ============================================================================
 
 // Base SELECT for all session fields
-#define SELECT_SESSION_BASE                                                                        \
-  "SELECT session_id, session_string, host_pubkey, password_hash, "                              \
-  "max_participants, current_participants, capabilities, has_password, "                         \
-  "expose_ip_publicly, session_type, server_address, server_port, "                              \
-  "created_at, expires_at, initiator_id, host_established, "                                     \
-  "host_participant_id, host_address, host_port, host_connection_type, "                        \
+#define SELECT_SESSION_BASE                                                                                            \
+  "SELECT session_id, session_string, host_pubkey, password_hash, "                                                    \
+  "max_participants, current_participants, capabilities, has_password, "                                               \
+  "expose_ip_publicly, session_type, server_address, server_port, "                                                    \
+  "created_at, expires_at, initiator_id, host_established, "                                                           \
+  "host_participant_id, host_address, host_port, host_connection_type, "                                               \
   "in_migration, migration_start_ms FROM sessions"
 
 // ============================================================================
@@ -52,14 +52,14 @@ static const char *schema_sql =
     "  created_at INTEGER NOT NULL,"
     "  expires_at INTEGER NOT NULL,"
     // Discovery mode host negotiation fields
-    "  initiator_id BLOB,"            // First participant (for tiebreaker)
-    "  host_established INTEGER DEFAULT 0," // 0=negotiating, 1=host designated
-    "  host_participant_id BLOB,"     // Current host's participant_id
-    "  host_address TEXT,"            // Host's reachable address
-    "  host_port INTEGER DEFAULT 0,"  // Host's port
+    "  initiator_id BLOB,"                      // First participant (for tiebreaker)
+    "  host_established INTEGER DEFAULT 0,"     // 0=negotiating, 1=host designated
+    "  host_participant_id BLOB,"               // Current host's participant_id
+    "  host_address TEXT,"                      // Host's reachable address
+    "  host_port INTEGER DEFAULT 0,"            // Host's port
     "  host_connection_type INTEGER DEFAULT 0," // How to reach host
     // Host migration state
-    "  in_migration INTEGER DEFAULT 0," // 0=not migrating, 1=collecting HOST_LOST packets
+    "  in_migration INTEGER DEFAULT 0,"      // 0=not migrating, 1=collecting HOST_LOST packets
     "  migration_start_ms INTEGER DEFAULT 0" // When migration started (ms since epoch)
     ");"
 
@@ -204,9 +204,8 @@ static session_entry_t *load_session_from_row(sqlite3_stmt *stmt) {
  * @brief Load participants for a session from database
  */
 static void load_session_participants(sqlite3 *db, session_entry_t *session) {
-  static const char *sql =
-      "SELECT participant_id, identity_pubkey, joined_at "
-      "FROM participants WHERE session_id = ?";
+  static const char *sql = "SELECT participant_id, identity_pubkey, joined_at "
+                           "FROM participants WHERE session_id = ?";
 
   sqlite3_stmt *stmt = NULL;
   if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {

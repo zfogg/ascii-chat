@@ -75,7 +75,7 @@ typedef struct {
  * No candidate collection or election needed here - just timeout tracking.
  */
 typedef struct {
-  uint8_t session_id[16];     ///< Session UUID
+  uint8_t session_id[16];      ///< Session UUID
   uint64_t migration_start_ns; ///< When migration started (nanoseconds since sokol_time setup)
 } migration_context_t;
 

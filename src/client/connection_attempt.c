@@ -511,12 +511,11 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
 
   // Configure STUN servers from options (or defaults if not set)
   stun_server_t stun_servers[4] = {0}; // Support up to 4 STUN servers
-  int stun_count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                      stun_servers, 4);
+  int stun_count = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
   if (stun_count <= 0) {
     log_warn("Failed to parse STUN servers, using defaults");
-    stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                    stun_servers, 4);
+    stun_count =
+        stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
   }
 
   // Initialize synchronization primitives for transport_ready callback
@@ -778,12 +777,12 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
 
   // Configure STUN + TURN servers from options (or defaults if not set)
   stun_server_t stun_servers_turn[4] = {0}; // Support up to 4 STUN servers
-  int stun_count_turn = stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                           stun_servers_turn, 4);
+  int stun_count_turn =
+      stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers_turn, 4);
   if (stun_count_turn <= 0) {
     log_warn("Failed to parse STUN servers for TURN stage, using defaults");
-    stun_count_turn = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                         stun_servers_turn, 4);
+    stun_count_turn =
+        stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers_turn, 4);
   }
 
   // Build TURN URL from configuration

@@ -22,8 +22,7 @@
  * @param max_count Maximum number of servers to parse
  * @return Number of servers parsed (0-max_count), or -1 on error
  */
-int stun_servers_parse(const char *csv_servers, const char *default_csv,
-                       stun_server_t *out_servers, int max_count) {
+int stun_servers_parse(const char *csv_servers, const char *default_csv, stun_server_t *out_servers, int max_count) {
   if (!out_servers || max_count <= 0) {
     log_warn("stun_servers_parse: Invalid output array or max_count");
     return -1;
@@ -74,8 +73,7 @@ int stun_servers_parse(const char *csv_servers, const char *default_csv,
     }
 
     if (len >= STUN_MAX_URL_LEN) {
-      log_warn("stun_servers_parse: STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN,
-               (int)len, current);
+      log_warn("stun_servers_parse: STUN server URL too long (max %d): %.*s", STUN_MAX_URL_LEN, (int)len, current);
       return -1;
     }
 

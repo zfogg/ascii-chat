@@ -82,7 +82,8 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
 }
 
 void discovery_session_destroy(discovery_session_t *session) {
-  if (!session) return;
+  if (!session)
+    return;
 
   // Close ACDS connection
   if (session->acds_socket != INVALID_SOCKET_VALUE) {
@@ -106,7 +107,8 @@ void discovery_session_destroy(discovery_session_t *session) {
 }
 
 static void set_state(discovery_session_t *session, discovery_state_t new_state) {
-  if (!session) return;
+  if (!session)
+    return;
 
   discovery_state_t old_state = session->state;
   session->state = new_state;
@@ -119,7 +121,8 @@ static void set_state(discovery_session_t *session, discovery_state_t new_state)
 }
 
 static void set_error(discovery_session_t *session, asciichat_error_t error, const char *message) {
-  if (!session) return;
+  if (!session)
+    return;
 
   session->error = error;
   set_state(session, DISCOVERY_STATE_FAILED);
@@ -140,7 +143,8 @@ static void set_error(discovery_session_t *session, asciichat_error_t error, con
  * This is non-blocking and may not have all data immediately.
  */
 static asciichat_error_t gather_nat_quality(nat_quality_t *quality) {
-  if (!quality) return ERROR_INVALID_PARAM;
+  if (!quality)
+    return ERROR_INVALID_PARAM;
 
   // Initialize with defaults
   nat_quality_init(quality);
@@ -234,21 +238,24 @@ static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *
   asciichat_error_t result = packet_receive(session->acds_socket, &ptype, &data, &len);
 
   if (result != ASCIICHAT_OK) {
-    if (data) SAFE_FREE(data);
+    if (data)
+      SAFE_FREE(data);
     return result;
   }
 
   // Check if it's a NETWORK_QUALITY packet
   if (ptype != PACKET_TYPE_ACIP_NETWORK_QUALITY) {
     log_debug("Received packet type %u (expected NETWORK_QUALITY)", ptype);
-    if (data) SAFE_FREE(data);
+    if (data)
+      SAFE_FREE(data);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   // Parse NETWORK_QUALITY
   if (len < sizeof(acip_nat_quality_t)) {
     log_error("NETWORK_QUALITY packet too small: %zu bytes", len);
-    if (data) SAFE_FREE(data);
+    if (data)
+      SAFE_FREE(data);
     return ERROR_NETWORK_SIZE;
   }
 
@@ -261,12 +268,14 @@ static asciichat_error_t receive_network_quality_from_acds(discovery_session_t *
   log_debug("Received NETWORK_QUALITY from peer (NAT tier: %d, upload: %u Kbps)",
             nat_compute_tier(&session->negotiate.peer_quality), session->negotiate.peer_quality.upload_kbps);
 
-  if (data) SAFE_FREE(data);
+  if (data)
+    SAFE_FREE(data);
   return ASCIICHAT_OK;
 }
 
 static asciichat_error_t connect_to_acds(discovery_session_t *session) {
-  if (!session) return ERROR_INVALID_PARAM;
+  if (!session)
+    return ERROR_INVALID_PARAM;
 
   set_state(session, DISCOVERY_STATE_CONNECTING_ACDS);
   log_info("Connecting to ACDS at %s:%u...", session->acds_address, session->acds_port);
@@ -274,7 +283,7 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   // Resolve hostname using getaddrinfo (supports both IP addresses and hostnames)
   struct addrinfo hints, *result = NULL;
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;      // IPv4 for now
+  hints.ai_family = AF_INET; // IPv4 for now
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
@@ -311,7 +320,8 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
 }
 
 static asciichat_error_t create_session(discovery_session_t *session) {
-  if (!session) return ERROR_INVALID_PARAM;
+  if (!session)
+    return ERROR_INVALID_PARAM;
 
   set_state(session, DISCOVERY_STATE_CREATING_SESSION);
   log_info("Creating new discovery session...");
@@ -392,7 +402,8 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 }
 
 static asciichat_error_t join_session(discovery_session_t *session) {
-  if (!session) return ERROR_INVALID_PARAM;
+  if (!session)
+    return ERROR_INVALID_PARAM;
 
   set_state(session, DISCOVERY_STATE_JOINING_SESSION);
   log_info("Joining session: %s", session->session_string);
@@ -687,7 +698,8 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
 }
 
 void discovery_session_stop(discovery_session_t *session) {
-  if (!session) return;
+  if (!session)
+    return;
 
   log_info("Stopping discovery session...");
 
@@ -705,32 +717,38 @@ void discovery_session_stop(discovery_session_t *session) {
 }
 
 discovery_state_t discovery_session_get_state(const discovery_session_t *session) {
-  if (!session) return DISCOVERY_STATE_FAILED;
+  if (!session)
+    return DISCOVERY_STATE_FAILED;
   return session->state;
 }
 
 bool discovery_session_is_active(const discovery_session_t *session) {
-  if (!session) return false;
+  if (!session)
+    return false;
   return session->state == DISCOVERY_STATE_ACTIVE;
 }
 
 const char *discovery_session_get_string(const discovery_session_t *session) {
-  if (!session || session->session_string[0] == '\0') return NULL;
+  if (!session || session->session_string[0] == '\0')
+    return NULL;
   return session->session_string;
 }
 
 bool discovery_session_is_host(const discovery_session_t *session) {
-  if (!session) return false;
+  if (!session)
+    return false;
   return session->is_host;
 }
 
 session_host_t *discovery_session_get_host(discovery_session_t *session) {
-  if (!session) return NULL;
+  if (!session)
+    return NULL;
   return session->host_ctx;
 }
 
 session_participant_t *discovery_session_get_participant(discovery_session_t *session) {
-  if (!session) return NULL;
+  if (!session)
+    return NULL;
   return session->participant_ctx;
 }
 
@@ -803,8 +821,8 @@ static asciichat_error_t discovery_session_run_election(discovery_session_t *ses
 
   packet_send(session->acds_socket, PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED, &msg, sizeof(msg));
 
-  log_info("Broadcasted FUTURE_HOST_ELECTED: participant_id=%.*s, round=%llu",
-           16, (char *)future_host_id, (unsigned long long)msg.elected_at_round);
+  log_info("Broadcasted FUTURE_HOST_ELECTED: participant_id=%.*s, round=%llu", 16, (char *)future_host_id,
+           (unsigned long long)msg.elected_at_round);
 
   return ASCIICHAT_OK;
 }
@@ -883,9 +901,7 @@ asciichat_error_t discovery_session_check_host_alive(discovery_session_t *sessio
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t discovery_session_handle_host_disconnect(
-    discovery_session_t *session,
-    uint32_t disconnect_reason) {
+asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *session, uint32_t disconnect_reason) {
   if (!session) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
     return ERROR_INVALID_PARAM;
@@ -929,8 +945,7 @@ asciichat_error_t discovery_session_handle_host_disconnect(
     return discovery_session_become_host(session);
   } else {
     // Connect to pre-elected future host (address already stored!)
-    log_info("Connecting to pre-elected future host: %s:%u",
-             session->ring.future_host_address,
+    log_info("Connecting to pre-elected future host: %s:%u", session->ring.future_host_address,
              session->ring.future_host_port);
     return discovery_session_connect_to_future_host(session);
   }
@@ -942,8 +957,8 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
     return ERROR_INVALID_PARAM;
   }
 
-  log_info("Starting as new host after migration (participant ID: %02x%02x...)",
-           session->participant_id[0], session->participant_id[1]);
+  log_info("Starting as new host after migration (participant ID: %02x%02x...)", session->participant_id[0],
+           session->participant_id[1]);
 
   // Get configured port (or use default)
   const char *port_str = GET_OPTION(port);
@@ -988,11 +1003,9 @@ asciichat_error_t discovery_session_become_host(discovery_session_t *session) {
   // TODO: Use actual connection type based on NAT quality
 
   if (session->acds_socket != INVALID_SOCKET_VALUE) {
-    packet_send(session->acds_socket, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT,
-                &announcement, sizeof(announcement));
-    log_info("Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u",
-             announcement.host_id[0], announcement.host_id[1],
-             announcement.host_address, announcement.host_port);
+    packet_send(session->acds_socket, PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, &announcement, sizeof(announcement));
+    log_info("Sent HOST_ANNOUNCEMENT to ACDS for new host %02x%02x... at %s:%u", announcement.host_id[0],
+             announcement.host_id[1], announcement.host_address, announcement.host_port);
   }
 
   // Mark migration complete
@@ -1010,9 +1023,8 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
     return ERROR_INVALID_PARAM;
   }
 
-  log_info("Reconnecting to future host: %s:%u (connection type: %u)",
-           session->ring.future_host_address, session->ring.future_host_port,
-           session->ring.future_host_connection_type);
+  log_info("Reconnecting to future host: %s:%u (connection type: %u)", session->ring.future_host_address,
+           session->ring.future_host_port, session->ring.future_host_connection_type);
 
   // Destroy old participant context if present
   if (session->participant_ctx) {
@@ -1049,8 +1061,7 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
   SAFE_STRNCPY(session->host_address, session->ring.future_host_address, sizeof(session->host_address));
   session->host_port = session->ring.future_host_port;
 
-  log_info("Updated host info to: %s:%u (id: %02x%02x...)",
-           session->host_address, session->host_port,
+  log_info("Updated host info to: %s:%u (id: %02x%02x...)", session->host_address, session->host_port,
            session->host_id[0], session->host_id[1]);
 
   // Mark migration complete (in real implementation, this would be done after successful connection)
@@ -1062,12 +1073,9 @@ asciichat_error_t discovery_session_connect_to_future_host(discovery_session_t *
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t discovery_session_get_future_host(
-    const discovery_session_t *session,
-    uint8_t out_id[16],
-    char out_address[64],
-    uint16_t *out_port,
-    uint8_t *out_connection_type) {
+asciichat_error_t discovery_session_get_future_host(const discovery_session_t *session, uint8_t out_id[16],
+                                                    char out_address[64], uint16_t *out_port,
+                                                    uint8_t *out_connection_type) {
   if (!session || !out_id || !out_address || !out_port || !out_connection_type) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters");
     return ERROR_INVALID_PARAM;
@@ -1087,7 +1095,8 @@ asciichat_error_t discovery_session_get_future_host(
 }
 
 bool discovery_session_is_future_host(const discovery_session_t *session) {
-  if (!session) return false;
+  if (!session)
+    return false;
   return session->ring.am_future_host;
 }
 
@@ -1103,19 +1112,15 @@ bool discovery_session_is_future_host(const discovery_session_t *session) {
  * Called by host after running election to store the result locally.
  * Later, this info will be broadcast to all participants via FUTURE_HOST_ELECTED.
  */
-static asciichat_error_t store_future_host(
-    discovery_session_t *session,
-    const uint8_t future_host_id[16],
-    const char *future_host_address,
-    uint16_t future_host_port,
-    uint8_t connection_type) {
+static asciichat_error_t store_future_host(discovery_session_t *session, const uint8_t future_host_id[16],
+                                           const char *future_host_address, uint16_t future_host_port,
+                                           uint8_t connection_type) {
   if (!session || !future_host_id || !future_host_address) {
     return ERROR_INVALID_PARAM;
   }
 
   memcpy(session->ring.future_host_id, future_host_id, 16);
-  SAFE_STRNCPY(session->ring.future_host_address, future_host_address,
-               sizeof(session->ring.future_host_address));
+  SAFE_STRNCPY(session->ring.future_host_address, future_host_address, sizeof(session->ring.future_host_address));
   session->ring.future_host_port = future_host_port;
   session->ring.future_host_connection_type = connection_type;
   session->ring.future_host_elected_round = get_current_time_ms() / 5000; // 5-minute round number
@@ -1124,9 +1129,8 @@ static asciichat_error_t store_future_host(
   session->ring.am_future_host = (memcmp(future_host_id, session->participant_id, 16) == 0);
 
   log_info("Future host elected: %s:%u (id: %02x%02x..., type: %u, am_future_host: %s)",
-           session->ring.future_host_address, session->ring.future_host_port,
-           future_host_id[0], future_host_id[1], connection_type,
-           session->ring.am_future_host ? "YES" : "NO");
+           session->ring.future_host_address, session->ring.future_host_port, future_host_id[0], future_host_id[1],
+           connection_type, session->ring.am_future_host ? "YES" : "NO");
 
   return ASCIICHAT_OK;
 }

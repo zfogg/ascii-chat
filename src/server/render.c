@@ -924,8 +924,8 @@ void *client_audio_render_thread(void *arg) {
       if (opus_time_ns > 2 * NS_PER_MS_INT) {
         char duration_str[32];
         format_duration_ns((double)opus_time_ns, duration_str, sizeof(duration_str));
-        log_warn_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %s, size=%d",
-                       client_id_snapshot, duration_str, opus_size);
+        log_warn_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %s, size=%d", client_id_snapshot,
+                       duration_str, opus_size);
       }
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent

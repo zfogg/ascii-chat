@@ -121,8 +121,8 @@ static void monitor_host_migrations(acds_server_t *server, uint64_t migration_ti
     }
 
     uint64_t elapsed_ms = elapsed_ns / NS_PER_MS_INT; // Convert ns to ms for logging
-    log_warn("Host migration timeout for session %02x%02x... (elapsed %llu ms)",
-             ctx->session_id[0], ctx->session_id[1], (unsigned long long)elapsed_ms);
+    log_warn("Host migration timeout for session %02x%02x... (elapsed %llu ms)", ctx->session_id[0], ctx->session_id[1],
+             (unsigned long long)elapsed_ms);
 
     // Migration timed out - mark session as failed and clear migration state
     asciichat_error_t result = database_session_clear_host(server->db, ctx->session_id);
@@ -752,7 +752,8 @@ static void acds_on_host_announcement(const acip_host_announcement_t *announceme
   ACDS_DESTROY_TRANSPORT(transport);
 }
 
-static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_socket, const char *client_ip, void *app_ctx) {
+static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_socket, const char *client_ip,
+                              void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
 
   log_info("HOST_LOST from %s: session=%02x%02x..., participant=%02x%02x..., last_host=%02x%02x..., reason=%u",
@@ -782,9 +783,8 @@ static void acds_on_host_lost(const acip_host_lost_t *host_lost, int client_sock
     return;
   }
 
-  log_info("Migration tracking started for session %02x%02x... (participant %02x%02x...)",
-           host_lost->session_id[0], host_lost->session_id[1], host_lost->participant_id[0],
-           host_lost->participant_id[1]);
+  log_info("Migration tracking started for session %02x%02x... (participant %02x%02x...)", host_lost->session_id[0],
+           host_lost->session_id[1], host_lost->participant_id[0], host_lost->participant_id[1]);
 
   // NOTE: No candidate collection needed - future host was pre-elected 5 minutes ago.
   // Participants already know who the new host is from the last FUTURE_HOST_ELECTED broadcast.

@@ -37,17 +37,15 @@ asciichat_error_t frame_validate_legacy(void *data, size_t len, size_t expected_
 
   size_t expected_total = FRAME_HEADER_SIZE_LEGACY + expected_rgb_size;
   if (len != expected_total) {
-    SET_ERRNO(ERROR_INVALID_FRAME,
-              "Legacy frame length mismatch: expected %zu got %zu",
-              expected_total, len);
+    SET_ERRNO(ERROR_INVALID_FRAME, "Legacy frame length mismatch: expected %zu got %zu", expected_total, len);
     return ERROR_INVALID_FRAME;
   }
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t frame_validate_new(void *data, size_t len, size_t expected_rgb_size,
-                                     bool *out_compressed, uint32_t *out_data_size) {
+asciichat_error_t frame_validate_new(void *data, size_t len, size_t expected_rgb_size, bool *out_compressed,
+                                     uint32_t *out_data_size) {
   // Check minimum new format header size
   if (len < FRAME_HEADER_SIZE_NEW) {
     SET_ERRNO(ERROR_INVALID_FRAME, "New frame header too small: %zu bytes", len);
@@ -75,14 +73,14 @@ asciichat_error_t frame_validate_new(void *data, size_t len, size_t expected_rgb
 
   size_t expected_total = FRAME_HEADER_SIZE_NEW + data_size_sz;
   if (len != expected_total) {
-    SET_ERRNO(ERROR_INVALID_FRAME,
-              "New frame length mismatch: expected %zu got %zu",
-              expected_total, len);
+    SET_ERRNO(ERROR_INVALID_FRAME, "New frame length mismatch: expected %zu got %zu", expected_total, len);
     return ERROR_INVALID_FRAME;
   }
 
-  if (out_compressed) *out_compressed = (compressed_flag != 0);
-  if (out_data_size) *out_data_size = data_size;
+  if (out_compressed)
+    *out_compressed = (compressed_flag != 0);
+  if (out_data_size)
+    *out_data_size = data_size;
   return ASCIICHAT_OK;
 }
 

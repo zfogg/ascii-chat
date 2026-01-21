@@ -1037,8 +1037,7 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
   // Register client with session_host (for discovery mode support)
   // WebRTC clients use INVALID_SOCKET_VALUE since they don't have a TCP socket
   if (server_ctx->session_host) {
-    uint32_t session_client_id =
-        session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
+    uint32_t session_client_id = session_host_add_client(server_ctx->session_host, INVALID_SOCKET_VALUE, client_ip, 0);
     if (session_client_id == 0) {
       log_warn("Failed to register WebRTC client %u with session_host", client_id_snapshot);
     } else {
@@ -1149,7 +1148,8 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   if (server_ctx->session_host) {
     asciichat_error_t session_result = session_host_remove_client(server_ctx->session_host, client_id);
     if (session_result != ASCIICHAT_OK) {
-      log_warn("Failed to unregister client %u from session_host: %s", client_id, asciichat_error_string(session_result));
+      log_warn("Failed to unregister client %u from session_host: %s", client_id,
+               asciichat_error_string(session_result));
     } else {
       log_debug("Client %u unregistered from session_host", client_id);
     }
@@ -1789,8 +1789,8 @@ void *client_send_thread_func(void *arg) {
     uint64_t current_time_us = time_ns_to_us(current_time_ns);
     uint64_t time_since_last_send_us = current_time_us - last_video_send_time;
     log_debug("Send thread timing check: time_since_last=%llu us, interval=%llu us, should_send=%d",
-              (unsigned long long)time_since_last_send_us,
-              (unsigned long long)video_send_interval_us, (time_since_last_send_us >= video_send_interval_us));
+              (unsigned long long)time_since_last_send_us, (unsigned long long)video_send_interval_us,
+              (time_since_last_send_us >= video_send_interval_us));
 
     if (current_time_us - last_video_send_time >= video_send_interval_us) {
       uint64_t frame_start_ns = time_get_ns();

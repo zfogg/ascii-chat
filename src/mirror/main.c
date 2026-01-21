@@ -246,8 +246,8 @@ int mirror_main(void) {
 
     // Need a mutable copy for ascii_convert_with_capabilities
     terminal_capabilities_t caps_copy = *caps;
-    char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
-                                                        palette_chars, luminance_palette);
+    char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio,
+                                                        stretch, palette_chars, luminance_palette);
 
     if (ascii_frame) {
       // When piping/redirecting in snapshot mode, only output the final frame

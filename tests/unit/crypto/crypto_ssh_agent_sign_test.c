@@ -90,8 +90,7 @@ Test(crypto_ssh_agent_sign, very_large_message) {
   asciichat_error_t result = ssh_agent_sign(&pub_key, large_message, large_size, signature);
 
   // Should fail gracefully (message too large for agent protocol)
-  cr_assert(result != ASCIICHAT_OK || result == ASCIICHAT_OK,
-            "Should handle large messages without crashing");
+  cr_assert(result != ASCIICHAT_OK || result == ASCIICHAT_OK, "Should handle large messages without crashing");
 
   SAFE_FREE(large_message);
 }
@@ -270,8 +269,7 @@ Test(crypto_ssh_agent_sign, all_zero_message) {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should handle all-zero message gracefully (either succeed or fail gracefully)
-  cr_assert(result == ASCIICHAT_OK || result != ASCIICHAT_OK,
-            "Should handle all-zero message without crashing");
+  cr_assert(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should handle all-zero message without crashing");
 }
 
 Test(crypto_ssh_agent_sign, all_ff_message) {
@@ -292,8 +290,7 @@ Test(crypto_ssh_agent_sign, all_ff_message) {
   asciichat_error_t result = ssh_agent_sign(&pub_key, message, 32, signature);
 
   // Should handle all-0xFF message gracefully
-  cr_assert(result == ASCIICHAT_OK || result != ASCIICHAT_OK,
-            "Should handle all-0xFF message without crashing");
+  cr_assert(result == ASCIICHAT_OK || result != ASCIICHAT_OK, "Should handle all-0xFF message without crashing");
 }
 
 // =============================================================================

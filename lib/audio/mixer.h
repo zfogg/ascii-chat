@@ -504,7 +504,8 @@ static inline void mixer_hash_set_slot(mixer_t *mixer, uint32_t client_id, uint8
  * @ingroup audio
  */
 static inline bool mixer_hash_is_invalid(mixer_t *mixer, uint32_t client_id) {
-  if (!mixer) return true;
+  if (!mixer)
+    return true;
   return mixer->source_id_to_index[mixer_hash_client_id(client_id)] == MIXER_HASH_INVALID;
 }
 
@@ -516,7 +517,8 @@ static inline bool mixer_hash_is_invalid(mixer_t *mixer, uint32_t client_id) {
  * @ingroup audio
  */
 static inline uint8_t mixer_hash_get_slot(mixer_t *mixer, uint32_t client_id) {
-  if (!mixer) return MIXER_HASH_INVALID;
+  if (!mixer)
+    return MIXER_HASH_INVALID;
   return mixer->source_id_to_index[mixer_hash_client_id(client_id)];
 }
 

@@ -226,7 +226,7 @@ static socket_t connect_to_server(const char *address, int port) {
   char port_str[16];
 
   memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;     // IPv4
+  hints.ai_family = AF_INET; // IPv4
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
@@ -283,7 +283,7 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
   }
 
   p->connected = true;
-  p->client_id = 0;  // Will be assigned by server
+  p->client_id = 0; // Will be assigned by server
 
   log_info("Connected to server at %s:%d", p->address, p->port);
 
@@ -493,7 +493,7 @@ static void *participant_video_capture_thread(void *arg) {
     if (processed) {
       // Send to host via IMAGE_FRAME packet
       asciichat_error_t err = send_image_frame_packet(p->socket, (const void *)processed->pixels,
-                                                       (uint16_t)processed->w, (uint16_t)processed->h, 0);
+                                                      (uint16_t)processed->w, (uint16_t)processed->h, 0);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5000000, "Failed to send video frame: %d", err);
       }
@@ -518,13 +518,14 @@ static void *participant_video_capture_thread(void *arg) {
 static void *participant_audio_capture_thread(void *arg) {
   session_participant_t *p = (session_participant_t *)arg;
   if (!p || !p->audio_capture || !p->opus_encoder) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "participant_audio_capture_thread: invalid participant, audio_capture, or opus_encoder");
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "participant_audio_capture_thread: invalid participant, audio_capture, or opus_encoder");
     return NULL;
   }
 
   log_info("Audio capture thread started");
 
-  float sample_buffer[960];  // 20ms @ 48kHz
+  float sample_buffer[960]; // 20ms @ 48kHz
   uint8_t opus_buffer[1000];
 
   while (p->audio_capture_running && p->connected) {
@@ -536,10 +537,12 @@ static void *participant_audio_capture_thread(void *arg) {
     }
 
     // Encode to Opus (lossy compression for bandwidth efficiency)
-    size_t opus_len = opus_codec_encode(p->opus_encoder, sample_buffer, (int)samples_read, opus_buffer, sizeof(opus_buffer));
+    size_t opus_len =
+        opus_codec_encode(p->opus_encoder, sample_buffer, (int)samples_read, opus_buffer, sizeof(opus_buffer));
     if (opus_len > 0) {
-      uint16_t frame_sizes[1] = { (uint16_t)opus_len };
-      asciichat_error_t err = av_send_audio_opus_batch(p->socket, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
+      uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+      asciichat_error_t err =
+          av_send_audio_opus_batch(p->socket, opus_buffer, opus_len, frame_sizes, 48000, 20, 1, NULL);
       if (err != ASCIICHAT_OK) {
         log_warn_every(5000000, "Failed to send audio packet: %d", err);
       }
@@ -568,16 +571,16 @@ asciichat_error_t session_participant_start_video_capture(session_participant_t 
   }
 
   if (p->video_capture_running) {
-    return ASCIICHAT_OK;  // Already running
+    return ASCIICHAT_OK; // Already running
   }
 
   // Create video capture context if not already created
   if (!p->video_capture) {
     session_capture_config_t config = {
-      .type = MEDIA_SOURCE_WEBCAM,
-      .path = "0",  // Default device
-      .target_fps = 60,
-      .resize_for_network = true,  // Optimize for bandwidth
+        .type = MEDIA_SOURCE_WEBCAM,
+        .path = "0", // Default device
+        .target_fps = 60,
+        .resize_for_network = true, // Optimize for bandwidth
     };
     p->video_capture = session_capture_create(&config);
     if (!p->video_capture) {
@@ -629,12 +632,12 @@ asciichat_error_t session_participant_start_audio_capture(session_participant_t 
   }
 
   if (p->audio_capture_running) {
-    return ASCIICHAT_OK;  // Already running
+    return ASCIICHAT_OK; // Already running
   }
 
   // Create audio capture context if not already created
   if (!p->audio_capture) {
-    p->audio_capture = session_audio_create(false);  // false = participant mode (no mixing)
+    p->audio_capture = session_audio_create(false); // false = participant mode (no mixing)
     if (!p->audio_capture) {
       return SET_ERRNO(ERROR_INVALID_STATE, "Failed to create audio capture context");
     }

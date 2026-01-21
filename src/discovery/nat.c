@@ -22,19 +22,25 @@
 #define BANDWIDTH_OVERRIDE_RATIO 10
 
 void nat_quality_init(nat_quality_t *quality) {
-  if (!quality) return;
+  if (!quality)
+    return;
   memset(quality, 0, sizeof(nat_quality_t));
   quality->nat_type = ACIP_NAT_TYPE_SYMMETRIC; // Assume worst case
 }
 
 int nat_compute_tier(const nat_quality_t *quality) {
-  if (!quality) return 4;
+  if (!quality)
+    return 4;
 
-  if (quality->lan_reachable) return 0;           // LAN - best
-  if (quality->has_public_ip) return 1;           // Public IP
-  if (quality->upnp_available) return 2;          // UPnP mapping
-  if (quality->nat_type <= ACIP_NAT_TYPE_RESTRICTED) return 3; // STUN hole-punchable
-  return 4;                                        // TURN relay required
+  if (quality->lan_reachable)
+    return 0; // LAN - best
+  if (quality->has_public_ip)
+    return 1; // Public IP
+  if (quality->upnp_available)
+    return 2; // UPnP mapping
+  if (quality->nat_type <= ACIP_NAT_TYPE_RESTRICTED)
+    return 3; // STUN hole-punchable
+  return 4;   // TURN relay required
 }
 
 int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs, bool we_are_initiator) {
@@ -100,8 +106,8 @@ int nat_compare_quality(const nat_quality_t *ours, const nat_quality_t *theirs, 
  * @param reflexive_port Output for reflexive port
  * @return ASCIICHAT_OK on success, error code if address not found
  */
-static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t response_len,
-                                                   char *reflexive_addr, uint16_t *reflexive_port) {
+static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t response_len, char *reflexive_addr,
+                                                 uint16_t *reflexive_port) {
   if (!response || response_len < 20 || !reflexive_addr || !reflexive_port) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid STUN response parameters");
   }
@@ -127,13 +133,12 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
       uint8_t family = current[5];
       if (family == 1) { // IPv4
         uint16_t port = ((uint16_t)current[6] << 8) | current[7];
-        uint32_t addr = ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) |
-                        ((uint32_t)current[10] << 8) | current[11];
+        uint32_t addr =
+            ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
 
         // Convert to dotted quad notation
-        snprintf(reflexive_addr, 64, "%u.%u.%u.%u",
-                (addr >> 24) & 0xFF, (addr >> 16) & 0xFF,
-                (addr >> 8) & 0xFF, addr & 0xFF);
+        snprintf(reflexive_addr, 64, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF,
+                 addr & 0xFF);
         *reflexive_port = port;
         return ASCIICHAT_OK;
       }
@@ -218,8 +223,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
 
   // Send STUN binding request
   uint64_t start_time = time_get_ns();
-  ssize_t sent = socket_sendto(sock, stun_request, sizeof(stun_request), 0,
-                               result->ai_addr, result->ai_addrlen);
+  ssize_t sent = socket_sendto(sock, stun_request, sizeof(stun_request), 0, result->ai_addr, result->ai_addrlen);
 
   if (sent < 0) {
     log_warn("Failed to send STUN request");
@@ -233,8 +237,8 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   struct sockaddr_in peer_addr;
   socklen_t peer_addr_len = sizeof(peer_addr);
 
-  ssize_t recv_len = socket_recvfrom(sock, stun_response, sizeof(stun_response), 0,
-                                      (struct sockaddr *)&peer_addr, &peer_addr_len);
+  ssize_t recv_len =
+      socket_recvfrom(sock, stun_response, sizeof(stun_response), 0, (struct sockaddr *)&peer_addr, &peer_addr_len);
 
   uint64_t end_time = time_get_ns();
   uint32_t rtt_ms = (uint32_t)(time_ns_to_ms(end_time - start_time));
@@ -250,8 +254,8 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   // Parse STUN response to extract reflexive address
   char reflexive_addr[64] = {0};
   uint16_t reflexive_port = 0;
-  asciichat_error_t parse_result = nat_parse_stun_response(stun_response, (size_t)recv_len,
-                                                            reflexive_addr, &reflexive_port);
+  asciichat_error_t parse_result =
+      nat_parse_stun_response(stun_response, (size_t)recv_len, reflexive_addr, &reflexive_port);
 
   if (parse_result != ASCIICHAT_OK) {
     log_warn("Failed to parse STUN response");
@@ -262,8 +266,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   quality->public_port = reflexive_port;
   quality->stun_latency_ms = rtt_ms;
 
-  log_info("STUN probe successful: reflexive_address=%s:%u, rtt=%u ms",
-           reflexive_addr, reflexive_port, rtt_ms);
+  log_info("STUN probe successful: reflexive_address=%s:%u, rtt=%u ms", reflexive_addr, reflexive_port, rtt_ms);
 
   return ASCIICHAT_OK;
 }
@@ -313,10 +316,8 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
 
       // If reflexive address is not private range, we have public IP
       // Private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-      if (quality->public_address[0] &&
-          strncmp(quality->public_address, "10.", 3) != 0 &&
-          strncmp(quality->public_address, "172.16.", 7) != 0 &&
-          strncmp(quality->public_address, "192.168.", 8) != 0) {
+      if (quality->public_address[0] && strncmp(quality->public_address, "10.", 3) != 0 &&
+          strncmp(quality->public_address, "172.16.", 7) != 0 && strncmp(quality->public_address, "192.168.", 8) != 0) {
         quality->has_public_ip = true;
         quality->nat_type = ACIP_NAT_TYPE_OPEN;
       } else {
@@ -334,9 +335,8 @@ asciichat_error_t nat_detect_quality(nat_quality_t *quality, const char *stun_se
   quality->has_relay_candidates = false; // Set true if TURN is available
 
   quality->detection_complete = true;
-  log_info("NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s",
-           nat_compute_tier(quality), quality->upnp_available, quality->has_public_ip,
-           nat_type_to_string(quality->nat_type));
+  log_info("NAT detection complete: tier=%d, upnp=%d, has_public_ip=%d, nat_type=%s", nat_compute_tier(quality),
+           quality->upnp_available, quality->has_public_ip, nat_type_to_string(quality->nat_type));
 
   if (upnp) {
     // Keep UPnP mapping active for the session
@@ -372,14 +372,17 @@ asciichat_error_t nat_measure_bandwidth(nat_quality_t *quality, socket_t acds_so
   return ASCIICHAT_OK;
 }
 
-void nat_quality_to_acip(const nat_quality_t *quality, const uint8_t session_id[16],
-                         const uint8_t participant_id[16], acip_nat_quality_t *out) {
-  if (!quality || !out) return;
+void nat_quality_to_acip(const nat_quality_t *quality, const uint8_t session_id[16], const uint8_t participant_id[16],
+                         acip_nat_quality_t *out) {
+  if (!quality || !out)
+    return;
 
   memset(out, 0, sizeof(acip_nat_quality_t));
 
-  if (session_id) memcpy(out->session_id, session_id, 16);
-  if (participant_id) memcpy(out->participant_id, participant_id, 16);
+  if (session_id)
+    memcpy(out->session_id, session_id, 16);
+  if (participant_id)
+    memcpy(out->participant_id, participant_id, 16);
 
   out->has_public_ip = quality->has_public_ip ? 1 : 0;
   out->upnp_available = quality->upnp_available ? 1 : 0;
@@ -399,13 +402,17 @@ void nat_quality_to_acip(const nat_quality_t *quality, const uint8_t session_id[
   out->public_port = quality->public_port;
 
   out->ice_candidate_types = 0;
-  if (quality->has_host_candidates) out->ice_candidate_types |= 1;
-  if (quality->has_srflx_candidates) out->ice_candidate_types |= 2;
-  if (quality->has_relay_candidates) out->ice_candidate_types |= 4;
+  if (quality->has_host_candidates)
+    out->ice_candidate_types |= 1;
+  if (quality->has_srflx_candidates)
+    out->ice_candidate_types |= 2;
+  if (quality->has_relay_candidates)
+    out->ice_candidate_types |= 4;
 }
 
 void nat_quality_from_acip(const acip_nat_quality_t *acip, nat_quality_t *out) {
-  if (!acip || !out) return;
+  if (!acip || !out)
+    return;
 
   nat_quality_init(out);
 

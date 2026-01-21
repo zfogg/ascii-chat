@@ -36,16 +36,14 @@
 #define IS_MAGIC_VALID(magic, expected) ((magic) == (expected))
 
 /** @brief Check if frame is valid and not freed */
-#define IS_FRAME_VALID(frame) \
-  ((frame)->magic == MAGIC_FRAME_VALID && (frame)->data != NULL)
+#define IS_FRAME_VALID(frame) ((frame)->magic == MAGIC_FRAME_VALID && (frame)->data != NULL)
 
 /** @brief Check if frame has been freed (corruption detection) */
 #define IS_FRAME_FREED(frame) ((frame)->magic == MAGIC_FRAME_FREED)
 
 /** @brief Check if buffer pool node is valid */
-#define IS_BUFFER_POOL_VALID(node) \
-  ((node)->magic == MAGIC_BUFFER_POOL_VALID || \
-   (node)->magic == MAGIC_BUFFER_POOL_FALLBACK)
+#define IS_BUFFER_POOL_VALID(node)                                                                                     \
+  ((node)->magic == MAGIC_BUFFER_POOL_VALID || (node)->magic == MAGIC_BUFFER_POOL_FALLBACK)
 
 /** @brief Mark a frame as freed */
 #define MARK_FRAME_FREED(frame) ((frame)->magic = MAGIC_FRAME_FREED)

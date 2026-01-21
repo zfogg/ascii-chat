@@ -12,7 +12,7 @@
 #include <sys/ioctl.h>
 
 #include "options/options.h"
-#include "options/rcu.h"  // For RCU-based options access
+#include "options/rcu.h" // For RCU-based options access
 #include "options/client.h"
 #include "options/server.h"
 #include "options/mirror.h"
@@ -59,8 +59,8 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
       optind = 1;                                                                                                      \
       opterr = 1;                                                                                                      \
       optopt = 0;                                                                                                      \
-      /* options_init now auto-detects mode from argv */                                                              \
-      options_init(argc, argv);                                                                                  \
+      /* options_init now auto-detects mode from argv */                                                               \
+      options_init(argc, argv);                                                                                        \
       /* Get options from RCU for assertions */                                                                        \
       const options_t *opts = options_get();                                                                           \
       (void)opts; /* Reserved for future validation */                                                                 \
@@ -182,8 +182,7 @@ Test(options, default_values) {
 }
 
 GENERATE_OPTIONS_TEST_IN_SUITE(
-    options, basic_client_options, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"),
-    true,
+    options, basic_client_options, ARGV_LIST("client", "192.168.1.1:8080", "-x", "100", "-y", "50"), true,
     {
       cr_assert_str_eq(opts->address, "192.168.1.1");
       cr_assert_str_eq(opts->port, "8080");
@@ -765,8 +764,8 @@ Test(options, complex_server_combination) {
   save_options(&backup);
 
   // NOTE: --log-file is now a global option, removed from this test
-  char *argv[] = {"server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", "--keyfile=/etc/ascii-chat/key",
-                  NULL};
+  char *argv[] = {
+      "server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", "--keyfile=/etc/ascii-chat/key", NULL};
   int argc = 6;
 
   int result = test_options_init_with_fork(argv, argc, false);
@@ -921,8 +920,7 @@ Test(options, minimum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "0.0.0.0:1", "--width=1", "--height=1", "--webcam-index=0", "--snapshot-delay=0.0",
-                  NULL};
+  char *argv[] = {"client", "0.0.0.0:1", "--width=1", "--height=1", "--webcam-index=0", "--snapshot-delay=0.0", NULL};
   int argc = 6;
 
   int result = test_options_init_with_fork(argv, argc, true);
@@ -1034,8 +1032,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_flag_values,
     // NOTE: --quiet is now a global option, removed from this test
-    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-f"),
-    true,
+    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-f"), true,
     {
       // Test all flags were set
       cr_assert_eq(opts->audio_enabled, 1);
@@ -1132,8 +1129,7 @@ GENERATE_OPTIONS_TEST(
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    test_equals_sign_syntax,
-    ARGV_LIST("client", "192.168.1.100:8080", "--width=150", "--height=75"), true,
+    test_equals_sign_syntax, ARGV_LIST("client", "192.168.1.100:8080", "--width=150", "--height=75"), true,
     {
       cr_assert_str_eq(opts->address, "192.168.1.100");
       cr_assert_str_eq(opts->port, "8080");
@@ -1243,8 +1239,7 @@ GENERATE_OPTIONS_TEST(
  * ============================================================================ */
 
 GENERATE_OPTIONS_TEST(
-    test_server_basic_options, ARGV_LIST("client", "127.0.0.1:8080", "--width=110", "--height=70"),
-    true,
+    test_server_basic_options, ARGV_LIST("client", "127.0.0.1:8080", "--width=110", "--height=70"), true,
     {
       cr_assert_str_eq(opts->address, "127.0.0.1");
       cr_assert_str_eq(opts->port, "8080");

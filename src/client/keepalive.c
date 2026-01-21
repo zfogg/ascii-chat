@@ -159,7 +159,8 @@ static void *ping_thread_func(void *arg) {
   static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
   if (!fps_tracker_initialized) {
-    fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE", 10 * NS_PER_MS_INT); // 1 "frame" per 3 seconds, report every 10ms
+    fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE",
+                           10 * NS_PER_MS_INT); // 1 "frame" per 3 seconds, report every 10ms
     fps_tracker_initialized = true;
   }
 

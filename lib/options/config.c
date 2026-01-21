@@ -5,6 +5,7 @@
  */
 
 #include "options/config.h"
+#include "common/error_codes.h"
 #include "options/options.h"
 #include "options/validation.h"
 #include "util/path.h"
@@ -152,11 +153,13 @@ static bool config_client_keys_set = false;
  */
 static const char *get_toml_string_validated(toml_datum_t datum) {
   if (datum.type != TOML_STRING) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "not a toml string");
     return NULL;
   }
 
   const char *str = datum.u.s;
   if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "no toml string");
     return NULL;
   }
 
@@ -1037,11 +1040,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
       if (config_path_expanded) {
-#ifdef _WIN32
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#else
-        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#endif
       }
     }
 
@@ -1093,13 +1092,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
   if (last_sep) {
     *last_sep = '\0';
     // Create directory (similar to known_hosts.c approach)
-#ifdef _WIN32
-    // Windows: Create directory (creates only one level)
-    int mkdir_result = _mkdir(dir_path);
-#else
-    // POSIX: Create directory with DIR_PERM_PRIVATE permissions
     int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
-#endif
     if (mkdir_result != 0 && errno != EEXIST) {
       // mkdir failed and it's not because the directory already exists
       // Verify if directory actually exists despite the error (Windows compatibility)
@@ -1231,18 +1224,18 @@ asciichat_error_t config_load_system_and_user(bool is_client, const char *user_c
   // Fallback for ASCIICHAT_INSTALL_PREFIX if paths.h hasn't been generated yet
   // (prevents defer tool compilation errors during initial builds)
 #ifndef ASCIICHAT_INSTALL_PREFIX
-#define ASCIICHAT_INSTALL_PREFIX "/usr"
+#ifdef _WIN32
+#define ASCIICHAT_INSTALL_PREFIX "C:\\Program Files\\ascii-chat"
+#else
+#define ASCIICHAT_INSTALL_PREFIX "/usr/local"
+#endif
 #endif
 
   // Build system config path: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml
   char system_config_path[1024];
-#ifdef _WIN32
-  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path), "%s\\etc\\ascii-chat\\config.toml",
+  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path),
+                "%s" PATH_SEPARATOR_STR "etc" PATH_SEPARATOR_STR "ascii-chat" PATH_SEPARATOR_STR "config.toml",
                 ASCIICHAT_INSTALL_PREFIX);
-#else
-  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path), "%s/etc/ascii-chat/config.toml",
-                ASCIICHAT_INSTALL_PREFIX);
-#endif
 
   // Load system config first (non-strict - it's optional)
   CONFIG_DEBUG("Attempting to load system config from: %s", system_config_path);

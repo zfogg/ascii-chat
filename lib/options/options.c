@@ -429,8 +429,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
 
   // Discovery mode is client-like (uses terminal display, webcam, etc.)
-  bool is_client_or_mirror = (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR ||
-                              detected_mode == MODE_DISCOVERY);
+  bool is_client_or_mirror =
+      (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY);
   asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 

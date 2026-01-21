@@ -1236,8 +1236,8 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
  * Uses rotating static buffers to handle multiple calls in same statement
  */
 static const char *colored_string(log_color_t color, const char *text) {
-  #define COLORED_BUFFERS 4
-  #define COLORED_BUFFER_SIZE 256
+#define COLORED_BUFFERS 4
+#define COLORED_BUFFER_SIZE 256
   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
   static int buffer_idx = 0;
 
@@ -1283,14 +1283,15 @@ static void print_colored_segment(FILE *stream, const char *seg) {
         sp++;
       }
       const char *env_start = sp;
-      while (*sp && *sp != ')') sp++;
+      while (*sp && *sp != ')')
+        sp++;
       if (sp > env_start) {
         char env_name[256];
         int len = sp - env_start;
         if (len < (int)sizeof(env_name)) {
           strncpy(env_name, env_start, len);
           env_name[len] = '\0';
-          fprintf(stream, "%s", colored_string(LOG_COLOR_DEBUG, env_name));  // Cyan for env var
+          fprintf(stream, "%s", colored_string(LOG_COLOR_DEBUG, env_name)); // Cyan for env var
         }
       }
     } else {
@@ -1305,7 +1306,8 @@ static void print_colored_segment(FILE *stream, const char *seg) {
  * Handles coloring of type placeholders while maintaining correct length for alignment
  */
 static void print_colored_option(FILE *stream, const char *option_str) {
-  if (!option_str || !stream) return;
+  if (!option_str || !stream)
+    return;
 
   bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
   if (!use_colors) {
@@ -1315,8 +1317,8 @@ static void print_colored_option(FILE *stream, const char *option_str) {
 
   // Print the option string, colorizing type indicators (NUM, STR, VAL)
   const char *p = option_str;
-  const char *color_code = log_level_color(LOG_COLOR_INFO);    // Green for type indicators
-  const char *warn_code = log_level_color(LOG_COLOR_WARN);     // Yellow for option name
+  const char *color_code = log_level_color(LOG_COLOR_INFO); // Green for type indicators
+  const char *warn_code = log_level_color(LOG_COLOR_WARN);  // Yellow for option name
   const char *reset_code = log_level_color(LOG_COLOR_RESET);
 
   fprintf(stream, "%s", warn_code);
@@ -1449,10 +1451,10 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       term_width = cols;
   }
 
-  // Column layout: options in first 28 chars, descriptions start at column 30
-  #define OPTION_COLUMN_WIDTH 28
-  #define DESCRIPTION_START_COL 30
-  #define NARROW_TERMINAL_THRESHOLD 55
+// Column layout: options in first 28 chars, descriptions start at column 30
+#define OPTION_COLUMN_WIDTH 28
+#define DESCRIPTION_START_COL 30
+#define NARROW_TERMINAL_THRESHOLD 55
 
   // Build list of unique groups in order of first appearance
   bool use_vertical_layout = (term_width < NARROW_TERMINAL_THRESHOLD);
@@ -1495,126 +1497,127 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         continue;
       }
 
-    // Build option string
-    char option_str[256] = "";
-    int option_len = 0;
+      // Build option string
+      char option_str[256] = "";
+      int option_len = 0;
 
-    // Short name and long name
-    if (desc->short_name) {
-      option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "-%c, --%s", desc->short_name, desc->long_name);
-    } else {
-      option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "--%s", desc->long_name);
-    }
-
-    // Value placeholder
-    if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-      option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
-      switch (desc->type) {
-      case OPTION_TYPE_INT:
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
-        break;
-      case OPTION_TYPE_STRING:
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "STR");
-        break;
-      case OPTION_TYPE_DOUBLE:
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
-        break;
-      case OPTION_TYPE_CALLBACK:
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "VAL");
-        break;
-      default:
-        break;
-      }
-    }
-
-    // Build description string (plain text, colors applied when printing)
-    char desc_str[512] = "";
-    int desc_len = 0;
-
-    if (desc->help_text) {
-      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
-    }
-
-    // Skip adding default if the description already mentions it
-    bool description_has_default = desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
-
-    if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
-      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
-      switch (desc->type) {
-      case OPTION_TYPE_BOOL:
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                            *(const bool *)desc->default_value ? "true" : "false");
-        break;
-      case OPTION_TYPE_INT: {
-        int int_val = 0;
-        memcpy(&int_val, desc->default_value, sizeof(int));
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%d", int_val);
-        break;
-      }
-      case OPTION_TYPE_STRING:
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                            *(const char *const *)desc->default_value);
-        break;
-      case OPTION_TYPE_DOUBLE: {
-        double double_val = 0.0;
-        memcpy(&double_val, desc->default_value, sizeof(double));
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%.2f", double_val);
-        break;
-      }
-      default:
-        break;
-      }
-      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
-    }
-
-    if (desc->required) {
-      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
-    }
-
-    if (desc->env_var_name) {
-      // Plain text with space after env: - print_colored_segment handles coloring
-      desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)",
-                           desc->env_var_name);
-    }
-
-    // For narrow terminals, use vertical layout
-    if (use_vertical_layout) {
-      fprintf(stream, "  ");
-      print_colored_option(stream, option_str);
-      fprintf(stream, "\n  ");
-      print_wrapped_description(stream, desc_str, 2, term_width);
-      fprintf(stream, "\n\n");
-    } else {
-      // Print option and description with proper alignment
-      fprintf(stream, "  ");
-      print_colored_option(stream, option_str);
-
-      // Calculate display width of option string (accounts for UTF-8)
-      int option_display_width = utf8_display_width(option_str);
-
-      // If option string is short enough, put description on same line
-      if (option_display_width < OPTION_COLUMN_WIDTH) {
-        // Pad to column 30, then print description with wrapping
-        int current_col = 2 + option_display_width; // 2 for leading spaces
-        int padding = DESCRIPTION_START_COL - current_col;
-        if (padding > 0) {
-          fprintf(stream, "%*s", padding, "");
-        } else {
-          fprintf(stream, " ");
-        }
-        // Print description with wrapping at column 30 indent
-        print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
-        fprintf(stream, "\n");
+      // Short name and long name
+      if (desc->short_name) {
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "-%c, --%s", desc->short_name,
+                               desc->long_name);
       } else {
-        // Option string too long, put description on next line with proper indent
-        fprintf(stream, "\n");
-        // Print indent for description column
-        for (int i = 0; i < DESCRIPTION_START_COL; i++)
-          fprintf(stream, " ");
-        print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
-        fprintf(stream, "\n");
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "--%s", desc->long_name);
       }
-    }
+
+      // Value placeholder
+      if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
+        switch (desc->type) {
+        case OPTION_TYPE_INT:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          break;
+        case OPTION_TYPE_STRING:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "STR");
+          break;
+        case OPTION_TYPE_DOUBLE:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          break;
+        case OPTION_TYPE_CALLBACK:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "VAL");
+          break;
+        default:
+          break;
+        }
+      }
+
+      // Build description string (plain text, colors applied when printing)
+      char desc_str[512] = "";
+      int desc_len = 0;
+
+      if (desc->help_text) {
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
+      }
+
+      // Skip adding default if the description already mentions it
+      bool description_has_default =
+          desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
+
+      if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
+        switch (desc->type) {
+        case OPTION_TYPE_BOOL:
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               *(const bool *)desc->default_value ? "true" : "false");
+          break;
+        case OPTION_TYPE_INT: {
+          int int_val = 0;
+          memcpy(&int_val, desc->default_value, sizeof(int));
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%d", int_val);
+          break;
+        }
+        case OPTION_TYPE_STRING:
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               *(const char *const *)desc->default_value);
+          break;
+        case OPTION_TYPE_DOUBLE: {
+          double double_val = 0.0;
+          memcpy(&double_val, desc->default_value, sizeof(double));
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%.2f", double_val);
+          break;
+        }
+        default:
+          break;
+        }
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
+      }
+
+      if (desc->required) {
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
+      }
+
+      if (desc->env_var_name) {
+        // Plain text with space after env: - print_colored_segment handles coloring
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)", desc->env_var_name);
+      }
+
+      // For narrow terminals, use vertical layout
+      if (use_vertical_layout) {
+        fprintf(stream, "  ");
+        print_colored_option(stream, option_str);
+        fprintf(stream, "\n  ");
+        print_wrapped_description(stream, desc_str, 2, term_width);
+        fprintf(stream, "\n\n");
+      } else {
+        // Print option and description with proper alignment
+        fprintf(stream, "  ");
+        print_colored_option(stream, option_str);
+
+        // Calculate display width of option string (accounts for UTF-8)
+        int option_display_width = utf8_display_width(option_str);
+
+        // If option string is short enough, put description on same line
+        if (option_display_width < OPTION_COLUMN_WIDTH) {
+          // Pad to column 30, then print description with wrapping
+          int current_col = 2 + option_display_width; // 2 for leading spaces
+          int padding = DESCRIPTION_START_COL - current_col;
+          if (padding > 0) {
+            fprintf(stream, "%*s", padding, "");
+          } else {
+            fprintf(stream, " ");
+          }
+          // Print description with wrapping at column 30 indent
+          print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
+          fprintf(stream, "\n");
+        } else {
+          // Option string too long, put description on next line with proper indent
+          fprintf(stream, "\n");
+          // Print indent for description column
+          for (int i = 0; i < DESCRIPTION_START_COL; i++)
+            fprintf(stream, " ");
+          print_wrapped_description(stream, desc_str, DESCRIPTION_START_COL, term_width);
+          fprintf(stream, "\n");
+        }
+      }
     }
   }
 

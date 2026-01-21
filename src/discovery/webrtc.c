@@ -123,15 +123,15 @@ static asciichat_error_t discovery_send_sdp(const uint8_t session_id[16], const 
 
   memcpy(sdp_msg->session_id, session_id, 16);
   memcpy(sdp_msg->sender_id, g_session_context.participant_id, 16);
-  memset(sdp_msg->recipient_id, 0, 16); // Broadcast to all
+  memset(sdp_msg->recipient_id, 0, 16);                          // Broadcast to all
   sdp_msg->sdp_type = (strcmp(sdp_type, "answer") == 0) ? 1 : 0; // 0=offer, 1=answer
   sdp_msg->sdp_len = (uint16_t)sdp_len;
   memcpy(sdp_msg_buf + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
   // Send via direct TCP transport (not ACDS)
   size_t msg_size = sizeof(acip_webrtc_sdp_t) + sdp_len;
-  asciichat_error_t result = packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_SDP,
-                                                        sdp_msg_buf, msg_size);
+  asciichat_error_t result =
+      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_SDP, sdp_msg_buf, msg_size);
 
   mutex_unlock(&g_webrtc_mutex);
 
@@ -188,7 +188,8 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const 
   // Construct packet
   // Header: acip_webrtc_ice_t (defined in network/acip/acds.h)
   // Followed by: candidate string (mid is already included in candidate string)
-  // Note: ICE candidate string format is: "candidate:..." (mid is separate in WebRTC but here we just send the candidate)
+  // Note: ICE candidate string format is: "candidate:..." (mid is separate in WebRTC but here we just send the
+  // candidate)
   uint8_t ice_msg_buf[sizeof(acip_webrtc_ice_t) + 4096];
   acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)ice_msg_buf;
 
@@ -200,8 +201,8 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const 
 
   // Send via direct TCP transport (not ACDS)
   size_t msg_size = sizeof(acip_webrtc_ice_t) + candidate_len;
-  asciichat_error_t result = packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE,
-                                                        ice_msg_buf, msg_size);
+  asciichat_error_t result =
+      packet_send_via_transport(g_tcp_transport, PACKET_TYPE_ACIP_WEBRTC_ICE, ice_msg_buf, msg_size);
 
   mutex_unlock(&g_webrtc_mutex);
 
@@ -220,8 +221,9 @@ static asciichat_error_t discovery_send_ice(const uint8_t session_id[16], const 
 // Public API
 // =============================================================================
 
-webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(
-    acip_transport_t *tcp_transport, const uint8_t session_id[16], const uint8_t participant_id[16]) {
+webrtc_signaling_callbacks_t discovery_webrtc_get_direct_signaling_callbacks(acip_transport_t *tcp_transport,
+                                                                             const uint8_t session_id[16],
+                                                                             const uint8_t participant_id[16]) {
   ensure_mutex_initialized();
   mutex_lock(&g_webrtc_mutex);
 

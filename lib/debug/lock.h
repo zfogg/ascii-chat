@@ -110,14 +110,14 @@ typedef struct lock_record lock_record_t;
  * @ingroup lock_debug
  */
 struct lock_record {
-  uint32_t key;                        ///< Hash key for uthash lookup
-  void *lock_address;                  ///< Address of the actual lock object
-  lock_type_t lock_type;               ///< Type of lock (mutex, rwlock read/write)
-  uint64_t thread_id;                  ///< Thread ID that acquired the lock
-  uint64_t acquisition_time_ns;        ///< When the lock was acquired (nanoseconds)
-  const char *file_name;               ///< Source file where lock was acquired
-  int line_number;                  ///< Line number where lock was acquired
-  const char *function_name;        ///< Function name where lock was acquired
+  uint32_t key;                 ///< Hash key for uthash lookup
+  void *lock_address;           ///< Address of the actual lock object
+  lock_type_t lock_type;        ///< Type of lock (mutex, rwlock read/write)
+  uint64_t thread_id;           ///< Thread ID that acquired the lock
+  uint64_t acquisition_time_ns; ///< When the lock was acquired (nanoseconds)
+  const char *file_name;        ///< Source file where lock was acquired
+  int line_number;              ///< Line number where lock was acquired
+  const char *function_name;    ///< Function name where lock was acquired
 
   // Backtrace information
   void *backtrace_buffer[MAX_BACKTRACE_FRAMES]; ///< Raw backtrace addresses
@@ -140,18 +140,18 @@ struct lock_record {
  * @ingroup lock_debug
  */
 typedef struct lock_usage_stats {
-  uint32_t key;                      ///< Hash key for uthash lookup
-  const char *file_name;             ///< Source file name
-  int line_number;                   ///< Source line number
-  const char *function_name;         ///< Function name
-  lock_type_t lock_type;             ///< Type of lock
-  uint64_t total_acquisitions;       ///< Total number of times this location acquired a lock
-  uint64_t total_hold_time_ns;       ///< Total time spent holding locks (nanoseconds)
-  uint64_t max_hold_time_ns;         ///< Maximum time spent holding a single lock
-  uint64_t min_hold_time_ns;         ///< Minimum time spent holding a single lock
-  uint64_t first_acquisition_ns;     ///< When this location first acquired a lock (nanoseconds)
-  uint64_t last_acquisition_ns;      ///< When this location last acquired a lock (nanoseconds)
-  UT_hash_handle hash_handle;        ///< Makes this structure hashable (uthash internal bookkeeping)
+  uint32_t key;                  ///< Hash key for uthash lookup
+  const char *file_name;         ///< Source file name
+  int line_number;               ///< Source line number
+  const char *function_name;     ///< Function name
+  lock_type_t lock_type;         ///< Type of lock
+  uint64_t total_acquisitions;   ///< Total number of times this location acquired a lock
+  uint64_t total_hold_time_ns;   ///< Total time spent holding locks (nanoseconds)
+  uint64_t max_hold_time_ns;     ///< Maximum time spent holding a single lock
+  uint64_t min_hold_time_ns;     ///< Minimum time spent holding a single lock
+  uint64_t first_acquisition_ns; ///< When this location first acquired a lock (nanoseconds)
+  uint64_t last_acquisition_ns;  ///< When this location last acquired a lock (nanoseconds)
+  UT_hash_handle hash_handle;    ///< Makes this structure hashable (uthash internal bookkeeping)
 } lock_usage_stats_t;
 
 // ============================================================================

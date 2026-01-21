@@ -101,11 +101,11 @@ void usage_server(FILE *desc) {
   const char *reset = log_level_color(LOG_COLOR_RESET);
 
   // Print USAGE line with colored components: binary (default), mode (magenta), args (green), options (yellow)
-  (void)fprintf(desc, "  ascii-chat %s%s%s [%sbind-address%s] [%sbind-address6%s] %s[options...]%s\n\n",
-      magenta, "server", reset,           // mode in magenta
-      green, reset,                       // bind-address args in green
-      green, reset,                       // bind-address6 args in green
-      yellow, reset);                     // [options...] in yellow
+  (void)fprintf(desc, "  ascii-chat %s%s%s [%sbind-address%s] [%sbind-address6%s] %s[options...]%s\n\n", magenta,
+                "server", reset, // mode in magenta
+                green, reset,    // bind-address args in green
+                green, reset,    // bind-address6 args in green
+                yellow, reset);  // [options...] in yellow
 
   // Detect terminal width for layout
   int term_width = 80;
@@ -120,7 +120,8 @@ void usage_server(FILE *desc) {
   if (config->num_positional_args > 0) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[0];
     if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
-      (void)fprintf(desc, "%s%s:%s\n", log_level_color(LOG_COLOR_DEBUG), pos_arg->section_heading, log_level_color(LOG_COLOR_RESET));
+      (void)fprintf(desc, "%s%s:%s\n", log_level_color(LOG_COLOR_DEBUG), pos_arg->section_heading,
+                    log_level_color(LOG_COLOR_RESET));
       // Get color codes once to avoid rotating buffer issues
       const char *green = log_level_color(LOG_COLOR_INFO);
       const char *reset = log_level_color(LOG_COLOR_RESET);
@@ -133,15 +134,18 @@ void usage_server(FILE *desc) {
         const char *desc_start = NULL;
 
         // Skip leading spaces
-        while (*p == ' ') p++;
+        while (*p == ' ')
+          p++;
         const char *first_part = p;
 
         // Find end of first part (look for 2+ spaces)
-        while (*p && !(*p == ' ' && *(p+1) == ' ')) p++;
+        while (*p && !(*p == ' ' && *(p + 1) == ' '))
+          p++;
         int first_len_bytes = (int)(p - first_part);
 
         // Skip spaces to find description
-        while (*p == ' ') p++;
+        while (*p == ' ')
+          p++;
         if (*p) {
           desc_start = p;
         }
@@ -153,7 +157,8 @@ void usage_server(FILE *desc) {
         // Pad to column 30 for description alignment
         int padding = LAYOUT_DESCRIPTION_START_COL - (2 + first_display_width);
         if (padding > 0) {
-          for (int j = 0; j < padding; j++) fprintf(desc, " ");
+          for (int j = 0; j < padding; j++)
+            fprintf(desc, " ");
         } else {
           fprintf(desc, " ");
         }

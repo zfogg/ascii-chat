@@ -118,10 +118,10 @@ static void print_usage(void) {
 
   // Use logging colors for consistent branding
   const char *BOLD = "\033[1m";
-  const char *CYAN = log_level_color(LOG_COLOR_DEBUG);     // Cyan for headers
-  const char *MAGENTA = log_level_color(LOG_COLOR_FATAL);  // Magenta for mode names
-  const char *YELLOW = log_level_color(LOG_COLOR_WARN);    // Yellow for flags
-  const char *GREEN = log_level_color(LOG_COLOR_INFO);     // Green for positional args
+  const char *CYAN = log_level_color(LOG_COLOR_DEBUG);    // Cyan for headers
+  const char *MAGENTA = log_level_color(LOG_COLOR_FATAL); // Magenta for mode names
+  const char *YELLOW = log_level_color(LOG_COLOR_WARN);   // Yellow for flags
+  const char *GREEN = log_level_color(LOG_COLOR_INFO);    // Green for positional args
   const char *RESET = log_level_color(LOG_COLOR_RESET);
 
   // Detect terminal width for text wrapping
@@ -140,65 +140,86 @@ static void print_usage(void) {
   // Check USAGE entries
   snprintf(temp_buf, sizeof(temp_buf), "%s %s[options...]%s", binary_name, YELLOW, RESET);
   int w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s<session-string>%s %s[options...]%s", binary_name, GREEN, RESET, YELLOW, RESET);
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s<session-string>%s %s[options...]%s", binary_name, GREEN, RESET, YELLOW,
+           RESET);
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s<mode>%s %s[mode-options...]%s", binary_name, MAGENTA, RESET, YELLOW, RESET);
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s<mode>%s %s[mode-options...]%s", binary_name, MAGENTA, RESET, YELLOW,
+           RESET);
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   // Check EXAMPLES entries
   w = utf8_display_width(binary_name);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   snprintf(temp_buf, sizeof(temp_buf), "%s %s%sswift-river-mountain%s", binary_name, GREEN, RESET);
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   snprintf(temp_buf, sizeof(temp_buf), "%s %s%sserver%s", binary_name, MAGENTA, RESET);
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
-  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sclient%s %s%sexample.com%s", binary_name, MAGENTA, RESET, "", GREEN, RESET, "");
+  snprintf(temp_buf, sizeof(temp_buf), "%s %s%sclient%s %s%sexample.com%s", binary_name, MAGENTA, RESET, "", GREEN,
+           RESET, "");
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   snprintf(temp_buf, sizeof(temp_buf), "%s %s%smirror%s", binary_name, MAGENTA, RESET);
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   // Check OPTIONS entries
   w = utf8_display_width(colored_option(YELLOW, "--help"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "--version"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "--config FILE"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "--config-create [FILE]"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "-L --log-file FILE"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "--log-level LEVEL"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "-V --verbose"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
   w = utf8_display_width(colored_option(YELLOW, "-q --quiet"));
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   // Check MODES entries
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
     snprintf(temp_buf, sizeof(temp_buf), "%s", colored_option(MAGENTA, mode->name));
     w = utf8_display_width(temp_buf);
-    if (w > max_col_width) max_col_width = w;
+    if (w > max_col_width)
+      max_col_width = w;
   }
 
   // Check MODE-OPTIONS entry
   snprintf(temp_buf, sizeof(temp_buf), "%s %s<mode>%s %s--help%s", binary_name, MAGENTA, RESET, YELLOW, RESET);
   w = utf8_display_width(temp_buf);
-  if (w > max_col_width) max_col_width = w;
+  if (w > max_col_width)
+    max_col_width = w;
 
   printf("%s ascii-chat - %s %s%s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
          ASCII_CHAT_DESCRIPTION_EMOJI_R, RESET);
@@ -211,18 +232,21 @@ static void print_usage(void) {
   layout_print_two_column_row(stdout, usage_buf, "Start a new session", max_col_width, term_width);
 
   // Usage 2: ascii-chat <session-string> [options...]
-  snprintf(usage_buf, sizeof(usage_buf), "%s %s<session-string>%s %s[options...]%s", binary_name, GREEN, RESET, YELLOW, RESET);
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s<session-string>%s %s[options...]%s", binary_name, GREEN, RESET, YELLOW,
+           RESET);
   layout_print_two_column_row(stdout, usage_buf, "Join an existing session", max_col_width, term_width);
 
   // Usage 3: ascii-chat <mode> [mode-options...]
-  snprintf(usage_buf, sizeof(usage_buf), "%s %s<mode>%s %s[mode-options...]%s", binary_name, MAGENTA, RESET, YELLOW, RESET);
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s<mode>%s %s[mode-options...]%s", binary_name, MAGENTA, RESET, YELLOW,
+           RESET);
   layout_print_two_column_row(stdout, usage_buf, "Run in a specific mode", max_col_width, term_width);
 
   printf("\n");
   printf("%s%sEXAMPLES:%s\n", BOLD, CYAN, RESET);
 
   // Example 1: ascii-chat
-  layout_print_two_column_row(stdout, binary_name, "Start new session (share the session string)", max_col_width, term_width);
+  layout_print_two_column_row(stdout, binary_name, "Start new session (share the session string)", max_col_width,
+                              term_width);
 
   // Example 2: ascii-chat swift-river-mountain
   snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s", binary_name, GREEN, "swift-river-mountain", RESET);
@@ -233,7 +257,8 @@ static void print_usage(void) {
   layout_print_two_column_row(stdout, usage_buf, "Run as dedicated server", max_col_width, term_width);
 
   // Example 4: ascii-chat client example.com
-  snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s %s%s%s", binary_name, MAGENTA, "client", RESET, GREEN, "example.com", RESET);
+  snprintf(usage_buf, sizeof(usage_buf), "%s %s%s%s %s%s%s", binary_name, MAGENTA, "client", RESET, GREEN,
+           "example.com", RESET);
   layout_print_two_column_row(stdout, usage_buf, "Connect to specific server", max_col_width, term_width);
 
   // Example 5: ascii-chat mirror
@@ -243,20 +268,28 @@ static void print_usage(void) {
   printf("\n");
   printf("%s%sOPTIONS:%s\n", BOLD, CYAN, RESET);
   layout_print_two_column_row(stdout, colored_option(YELLOW, "--help"), "Show this help", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "--version"), "Show version information", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config FILE"), "Load configuration from FILE", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config-create [FILE]"), "Create default config and exit", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "-L --log-file FILE"), "Redirect logs to FILE", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "--log-level LEVEL"), "Set log level: dev, debug, info, warn, error, fatal", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "-V --verbose"), "Increase log verbosity (stackable: -VV, -VVV)", max_col_width, term_width);
-  layout_print_two_column_row(stdout, colored_option(YELLOW, "-q --quiet"), "Disable console logging (log to file only)", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--version"), "Show version information", max_col_width,
+                              term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config FILE"), "Load configuration from FILE",
+                              max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--config-create [FILE]"),
+                              "Create default config and exit", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-L --log-file FILE"), "Redirect logs to FILE",
+                              max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "--log-level LEVEL"),
+                              "Set log level: dev, debug, info, warn, error, fatal", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-V --verbose"),
+                              "Increase log verbosity (stackable: -VV, -VVV)", max_col_width, term_width);
+  layout_print_two_column_row(stdout, colored_option(YELLOW, "-q --quiet"),
+                              "Disable console logging (log to file only)", max_col_width, term_width);
 
   printf("\n");
   printf("%s%sMODES:%s\n", BOLD, CYAN, RESET);
 
   // Print all modes with consistent column width
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    layout_print_two_column_row(stdout, colored_option(MAGENTA, mode->name), mode->description, max_col_width, term_width);
+    layout_print_two_column_row(stdout, colored_option(MAGENTA, mode->name), mode->description, max_col_width,
+                                term_width);
   }
 
   printf("\n");

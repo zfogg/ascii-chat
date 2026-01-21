@@ -197,7 +197,7 @@ Test(lan_discovery, discovery_config_structure) {
  */
 Test(lan_discovery, query_with_short_timeout) {
   discovery_tui_config_t config = {
-      .timeout_ms = 10,  // Very short timeout
+      .timeout_ms = 10, // Very short timeout
       .max_servers = 10,
       .quiet = true,
   };
@@ -215,7 +215,7 @@ Test(lan_discovery, query_with_short_timeout) {
  */
 Test(lan_discovery, query_with_long_timeout) {
   discovery_tui_config_t config = {
-      .timeout_ms = 5000,  // Longer timeout
+      .timeout_ms = 5000, // Longer timeout
       .max_servers = 20,
       .quiet = true,
   };

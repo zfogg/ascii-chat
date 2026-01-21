@@ -130,17 +130,18 @@ void options_builder_add_display_group(options_builder_t *b) {
                                sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
                                "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities), OPT_SHOW_CAPABILITIES_DEFAULT,
-                           "Show terminal capabilities and exit", "DISPLAY", false, NULL);
+  options_builder_add_bool(b, "show-capabilities", '\0', offsetof(options_t, show_capabilities),
+                           OPT_SHOW_CAPABILITIES_DEFAULT, "Show terminal capabilities and exit", "DISPLAY", false,
+                           NULL);
 
-  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), OPT_FORCE_UTF8_DEFAULT, "Force UTF-8 support", "DISPLAY",
-                           false, NULL);
+  options_builder_add_bool(b, "utf8", '\0', offsetof(options_t, force_utf8), OPT_FORCE_UTF8_DEFAULT,
+                           "Force UTF-8 support", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), OPT_STRETCH_DEFAULT, "Allow aspect ratio distortion",
-                           "DISPLAY", false, NULL);
+  options_builder_add_bool(b, "stretch", 's', offsetof(options_t, stretch), OPT_STRETCH_DEFAULT,
+                           "Allow aspect ratio distortion", "DISPLAY", false, NULL);
 
-  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), OPT_STRIP_ANSI_DEFAULT, "Strip ANSI escape sequences",
-                           "DISPLAY", false, NULL);
+  options_builder_add_bool(b, "strip-ansi", '\0', offsetof(options_t, strip_ansi), OPT_STRIP_ANSI_DEFAULT,
+                           "Strip ANSI escape sequences", "DISPLAY", false, NULL);
 
   options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
                           "DISPLAY", false, NULL, NULL);
@@ -171,8 +172,8 @@ void options_builder_add_compression_group(options_builder_t *b) {
                           OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
                           NULL);
 
-  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), OPT_NO_COMPRESS_DEFAULT, "Disable compression",
-                           "PERFORMANCE", false, NULL);
+  options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), OPT_NO_COMPRESS_DEFAULT,
+                           "Disable compression", "PERFORMANCE", false, NULL);
 }
 
 // ============================================================================
@@ -185,8 +186,8 @@ void options_builder_add_compression_group(options_builder_t *b) {
  * Note: Server has client-keys, client has server-key
  */
 void options_builder_add_crypto_group(options_builder_t *b) {
-  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), OPT_ENCRYPT_ENABLED_DEFAULT, "Enable encryption",
-                           "SECURITY", false, NULL);
+  options_builder_add_bool(b, "encrypt", 'E', offsetof(options_t, encrypt_enabled), OPT_ENCRYPT_ENABLED_DEFAULT,
+                           "Enable encryption", "SECURITY", false, NULL);
 
   options_builder_add_string(b, "key", 'K', offsetof(options_t, encrypt_key), "", "SSH/GPG key file path", "SECURITY",
                              false, "ASCII_CHAT_KEY", NULL);
@@ -194,8 +195,8 @@ void options_builder_add_crypto_group(options_builder_t *b) {
   options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
                              "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
 
-  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), OPT_NO_ENCRYPT_DEFAULT, "Disable encryption",
-                           "SECURITY", false, NULL);
+  options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), OPT_NO_ENCRYPT_DEFAULT,
+                           "Disable encryption", "SECURITY", false, NULL);
 }
 
 // ============================================================================
@@ -224,17 +225,17 @@ void options_builder_add_port_option(options_builder_t *b, const char *default_p
  * Used by: server, discovery modes
  */
 void options_builder_add_acds_group(options_builder_t *b) {
-  options_builder_add_string(
-      b, "acds-server", '\0', offsetof(options_t, acds_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
-      "ACDS discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "DISCOVERY", false, NULL, NULL);
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
+                             "ACDS discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")",
+                             "DISCOVERY", false, NULL, NULL);
 
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery service port",
-                          "DISCOVERY", false, NULL, NULL);
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT,
+                          "ACDS discovery service port", "DISCOVERY", false, NULL, NULL);
 
   options_builder_add_string(
       b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
-      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
-      "SECURITY", false, NULL, NULL);
+      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
+      false, NULL, NULL);
 
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
                            "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
@@ -247,12 +248,12 @@ void options_builder_add_acds_group(options_builder_t *b) {
  * Used by: client mode
  */
 void options_builder_add_acds_network_group(options_builder_t *b) {
-  options_builder_add_string(
-      b, "acds-server", '\0', offsetof(options_t, acds_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
-      "ACDS discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "NETWORK", false, NULL, NULL);
+  options_builder_add_string(b, "acds-server", '\0', offsetof(options_t, acds_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
+                             "ACDS discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "NETWORK",
+                             false, NULL, NULL);
 
-  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery service port",
-                          "NETWORK", false, NULL, NULL);
+  options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT,
+                          "ACDS discovery service port", "NETWORK", false, NULL, NULL);
 
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
                            "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL);
@@ -287,8 +288,8 @@ void options_builder_add_media_group(options_builder_t *b) {
  * Used by: client, discovery modes
  */
 void options_builder_add_audio_group(options_builder_t *b) {
-  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), OPT_AUDIO_ENABLED_DEFAULT, "Enable audio streaming",
-                           "AUDIO", false, NULL);
+  options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), OPT_AUDIO_ENABLED_DEFAULT,
+                           "Enable audio streaming", "AUDIO", false, NULL);
 
   options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
                           OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, NULL,
@@ -297,17 +298,19 @@ void options_builder_add_audio_group(options_builder_t *b) {
   options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
                           "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
 
-  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity), OPT_MICROPHONE_SENSITIVITY_DEFAULT,
-                             "Microphone volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
+  options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity),
+                             OPT_MICROPHONE_SENSITIVITY_DEFAULT, "Microphone volume multiplier (0.0-1.0)", "AUDIO",
+                             false, NULL, NULL);
 
-  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume), OPT_SPEAKERS_VOLUME_DEFAULT,
-                             "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL, NULL);
+  options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume),
+                             OPT_SPEAKERS_VOLUME_DEFAULT, "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL,
+                             NULL);
 
-  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled), OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT,
-                           "Enable audio analysis (debug)", "AUDIO", false, NULL);
+  options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled),
+                           OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT, "Enable audio analysis (debug)", "AUDIO", false, NULL);
 
-  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback), OPT_AUDIO_NO_PLAYBACK_DEFAULT,
-                           "Disable speaker playback (debug)", "AUDIO", false, NULL);
+  options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback),
+                           OPT_AUDIO_NO_PLAYBACK_DEFAULT, "Disable speaker playback (debug)", "AUDIO", false, NULL);
 
   options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
                            "Enable Opus audio encoding", "AUDIO", false, NULL);
@@ -528,8 +531,8 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                              false, "ASCII_CHAT_TURN_USERNAME", NULL);
 
   options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential), "",
-                             "TURN authentication credential (debug/test only - ACDS provides in production)", "NETWORK",
-                             false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
+                             "TURN authentication credential (debug/test only - ACDS provides in production)",
+                             "NETWORK", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
 
   // Compression and audio encoding options (shared with server)
   options_builder_add_compression_group(b);
@@ -544,9 +547,10 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                            "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY",
                            false, NULL);
 
-  options_builder_add_string(b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
-                             "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
-                             "SECURITY", false, NULL, NULL);
+  options_builder_add_string(
+      b, "acds-key", '\0', offsetof(options_t, acds_server_key), "",
+      "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
+      false, NULL, NULL);
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",
@@ -652,9 +656,10 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   options_builder_add_port_option(b, OPT_ACDS_PORT_DEFAULT, "ACDS_PORT");
 
   // ACDS-specific options
-  options_builder_add_string(b, "database", 'd', offsetof(options_t, acds_database_path), "",
-                             "Path to ACDS database file (default: ~/.config/ascii-chat/acds.db or %%APPDATA%%\\ascii-chat\\acds.db)",
-                             "DATABASE", false, "ACDS_DATABASE_PATH", NULL);
+  options_builder_add_string(
+      b, "database", 'd', offsetof(options_t, acds_database_path), "",
+      "Path to ACDS database file (default: ~/.config/ascii-chat/acds.db or %%APPDATA%%\\ascii-chat\\acds.db)",
+      "DATABASE", false, "ACDS_DATABASE_PATH", NULL);
 
   // Encryption options (shared with client and server)
   options_builder_add_crypto_group(b);
@@ -677,17 +682,15 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                            NULL);
 
   // WebRTC connectivity options
-  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers),
-                             OPT_STUN_SERVERS_DEFAULT,
+  options_builder_add_string(b, "stun-servers", '\0', offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT,
                              "Comma-separated list of STUN server URLs", "NETWORK", false, "ASCII_CHAT_STUN_SERVERS",
                              NULL);
 
-  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers),
-                             OPT_TURN_SERVERS_DEFAULT, "Comma-separated list of TURN server URLs", "NETWORK",
-                             false, "ASCII_CHAT_TURN_SERVERS", NULL);
+  options_builder_add_string(b, "turn-servers", '\0', offsetof(options_t, turn_servers), OPT_TURN_SERVERS_DEFAULT,
+                             "Comma-separated list of TURN server URLs", "NETWORK", false, "ASCII_CHAT_TURN_SERVERS",
+                             NULL);
 
-  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username),
-                             OPT_TURN_USERNAME_DEFAULT,
+  options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), OPT_TURN_USERNAME_DEFAULT,
                              "Username for TURN server authentication", "NETWORK", false, "ASCII_CHAT_TURN_USERNAME",
                              NULL);
 
@@ -731,8 +734,8 @@ const options_config_t *options_preset_discovery(const char *program_name, const
     return NULL;
 
   b->program_name = program_name ? program_name : "ascii-chat discovery";
-  b->description = description ? description
-                               : "Discovery mode - join a session, dynamically become host based on NAT quality";
+  b->description =
+      description ? description : "Discovery mode - join a session, dynamically become host based on NAT quality";
 
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_discovery, "Show this help message and exit", "GENERAL");
@@ -772,8 +775,8 @@ const options_config_t *options_preset_discovery(const char *program_name, const
   options_builder_add_action(b, "list-microphones", '\0', action_list_microphones,
                              "List available microphone devices and exit", "AUDIO");
 
-  options_builder_add_action(b, "list-speakers", '\0', action_list_speakers,
-                             "List available speaker devices and exit", "AUDIO");
+  options_builder_add_action(b, "list-speakers", '\0', action_list_speakers, "List available speaker devices and exit",
+                             "AUDIO");
 
   // Dependencies
   options_builder_add_dependency_requires(b, "snapshot-delay", "snapshot",

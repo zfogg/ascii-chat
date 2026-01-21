@@ -48,21 +48,21 @@
  * @ingroup options
  */
 typedef enum {
-  OPT_GROUP_NONE        = 0,          ///< No groups
-  OPT_GROUP_BINARY      = (1 << 0),   ///< Binary-level options (help, version, logging)
-  OPT_GROUP_TERMINAL    = (1 << 1),   ///< Terminal dimension options (width, height)
-  OPT_GROUP_NETWORK     = (1 << 2),   ///< Network options (address, port, reconnect)
-  OPT_GROUP_WEBCAM      = (1 << 3),   ///< Webcam options (device, flip, test pattern)
-  OPT_GROUP_DISPLAY     = (1 << 4),   ///< Display options (color mode, palette, render mode)
-  OPT_GROUP_AUDIO       = (1 << 5),   ///< Audio options (enable, devices, volume)
-  OPT_GROUP_SNAPSHOT    = (1 << 6),   ///< Snapshot mode options
-  OPT_GROUP_CRYPTO      = (1 << 7),   ///< Encryption and authentication options
-  OPT_GROUP_COMPRESSION = (1 << 8),   ///< Compression options
-  OPT_GROUP_ACDS        = (1 << 9),   ///< ACDS discovery service options
-  OPT_GROUP_MEDIA       = (1 << 10),  ///< Media file streaming options
-  OPT_GROUP_SERVER      = (1 << 11),  ///< Server-specific options (max_clients, client-keys)
-  OPT_GROUP_CLIENT      = (1 << 12),  ///< Client-specific options (reconnect, server-key)
-  OPT_GROUP_WEBRTC      = (1 << 13),  ///< WebRTC connectivity options (STUN/TURN)
+  OPT_GROUP_NONE = 0,               ///< No groups
+  OPT_GROUP_BINARY = (1 << 0),      ///< Binary-level options (help, version, logging)
+  OPT_GROUP_TERMINAL = (1 << 1),    ///< Terminal dimension options (width, height)
+  OPT_GROUP_NETWORK = (1 << 2),     ///< Network options (address, port, reconnect)
+  OPT_GROUP_WEBCAM = (1 << 3),      ///< Webcam options (device, flip, test pattern)
+  OPT_GROUP_DISPLAY = (1 << 4),     ///< Display options (color mode, palette, render mode)
+  OPT_GROUP_AUDIO = (1 << 5),       ///< Audio options (enable, devices, volume)
+  OPT_GROUP_SNAPSHOT = (1 << 6),    ///< Snapshot mode options
+  OPT_GROUP_CRYPTO = (1 << 7),      ///< Encryption and authentication options
+  OPT_GROUP_COMPRESSION = (1 << 8), ///< Compression options
+  OPT_GROUP_ACDS = (1 << 9),        ///< ACDS discovery service options
+  OPT_GROUP_MEDIA = (1 << 10),      ///< Media file streaming options
+  OPT_GROUP_SERVER = (1 << 11),     ///< Server-specific options (max_clients, client-keys)
+  OPT_GROUP_CLIENT = (1 << 12),     ///< Client-specific options (reconnect, server-key)
+  OPT_GROUP_WEBRTC = (1 << 13),     ///< WebRTC connectivity options (STUN/TURN)
 } option_group_t;
 
 /**
@@ -75,29 +75,28 @@ typedef enum {
  */
 
 /** Server mode options: network binding, crypto, compression, ACDS */
-#define MODE_SERVER_GROUPS    (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | \
-                               OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS | OPT_GROUP_SERVER | \
-                               OPT_GROUP_WEBRTC)
+#define MODE_SERVER_GROUPS                                                                                             \
+  (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+   OPT_GROUP_SERVER | OPT_GROUP_WEBRTC)
 
 /** Client mode options: display, webcam, audio, crypto, ACDS */
-#define MODE_CLIENT_GROUPS    (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | \
-                               OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_AUDIO | \
-                               OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | \
-                               OPT_GROUP_ACDS | OPT_GROUP_MEDIA | OPT_GROUP_CLIENT | OPT_GROUP_WEBRTC)
+#define MODE_CLIENT_GROUPS                                                                                             \
+  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
+   OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+   OPT_GROUP_MEDIA | OPT_GROUP_CLIENT | OPT_GROUP_WEBRTC)
 
 /** Mirror mode options: local webcam preview without networking */
-#define MODE_MIRROR_GROUPS    (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_WEBCAM | \
-                               OPT_GROUP_DISPLAY | OPT_GROUP_SNAPSHOT | OPT_GROUP_MEDIA)
+#define MODE_MIRROR_GROUPS                                                                                             \
+  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_SNAPSHOT | OPT_GROUP_MEDIA)
 
 /** Discovery mode options: participant that can become host */
-#define MODE_DISCOVERY_GROUPS (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | \
-                               OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY | OPT_GROUP_AUDIO | \
-                               OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | \
-                               OPT_GROUP_ACDS | OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)
+#define MODE_DISCOVERY_GROUPS                                                                                          \
+  (OPT_GROUP_BINARY | OPT_GROUP_TERMINAL | OPT_GROUP_NETWORK | OPT_GROUP_WEBCAM | OPT_GROUP_DISPLAY |                  \
+   OPT_GROUP_AUDIO | OPT_GROUP_SNAPSHOT | OPT_GROUP_CRYPTO | OPT_GROUP_COMPRESSION | OPT_GROUP_ACDS |                  \
+   OPT_GROUP_MEDIA | OPT_GROUP_WEBRTC)
 
 /** ACDS mode options: discovery service with network and crypto */
-#define MODE_ACDS_GROUPS      (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | \
-                               OPT_GROUP_WEBRTC)
+#define MODE_ACDS_GROUPS (OPT_GROUP_BINARY | OPT_GROUP_NETWORK | OPT_GROUP_CRYPTO | OPT_GROUP_WEBRTC)
 
 /**
  * @brief Get human-readable name for an option group
@@ -109,22 +108,38 @@ typedef enum {
  */
 static inline const char *option_group_name(option_group_t group) {
   switch (group) {
-    case OPT_GROUP_NONE:        return "NONE";
-    case OPT_GROUP_BINARY:      return "BINARY";
-    case OPT_GROUP_TERMINAL:    return "TERMINAL";
-    case OPT_GROUP_NETWORK:     return "NETWORK";
-    case OPT_GROUP_WEBCAM:      return "WEBCAM";
-    case OPT_GROUP_DISPLAY:     return "DISPLAY";
-    case OPT_GROUP_AUDIO:       return "AUDIO";
-    case OPT_GROUP_SNAPSHOT:    return "SNAPSHOT";
-    case OPT_GROUP_CRYPTO:      return "CRYPTO";
-    case OPT_GROUP_COMPRESSION: return "COMPRESSION";
-    case OPT_GROUP_ACDS:        return "ACDS";
-    case OPT_GROUP_MEDIA:       return "MEDIA";
-    case OPT_GROUP_SERVER:      return "SERVER";
-    case OPT_GROUP_CLIENT:      return "CLIENT";
-    case OPT_GROUP_WEBRTC:      return "WEBRTC";
-    default:                    return "UNKNOWN";
+  case OPT_GROUP_NONE:
+    return "NONE";
+  case OPT_GROUP_BINARY:
+    return "BINARY";
+  case OPT_GROUP_TERMINAL:
+    return "TERMINAL";
+  case OPT_GROUP_NETWORK:
+    return "NETWORK";
+  case OPT_GROUP_WEBCAM:
+    return "WEBCAM";
+  case OPT_GROUP_DISPLAY:
+    return "DISPLAY";
+  case OPT_GROUP_AUDIO:
+    return "AUDIO";
+  case OPT_GROUP_SNAPSHOT:
+    return "SNAPSHOT";
+  case OPT_GROUP_CRYPTO:
+    return "CRYPTO";
+  case OPT_GROUP_COMPRESSION:
+    return "COMPRESSION";
+  case OPT_GROUP_ACDS:
+    return "ACDS";
+  case OPT_GROUP_MEDIA:
+    return "MEDIA";
+  case OPT_GROUP_SERVER:
+    return "SERVER";
+  case OPT_GROUP_CLIENT:
+    return "CLIENT";
+  case OPT_GROUP_WEBRTC:
+    return "WEBRTC";
+  default:
+    return "UNKNOWN";
   }
 }
 
