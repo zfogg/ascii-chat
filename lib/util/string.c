@@ -5,6 +5,7 @@
  */
 
 #include "util/string.h"
+#include "util/utf8.h"
 #include "common.h"
 #include <string.h>
 #include <ctype.h>
@@ -60,39 +61,57 @@ bool validate_shell_safe(const char *str, const char *allowed_chars) {
   // ; & | $ ` \ " ' < > ( ) [ ] { } * ? ! ~ # @ space tab newline
   const char *dangerous = ";|$`\\\"'<>()[]{}*?!~#@ \t\n\r";
 
-  for (size_t i = 0; str[i] != '\0'; i++) {
-    unsigned char c = (unsigned char)str[i];
-
-    // Allow alphanumeric characters
-    if (isalnum(c)) {
-      continue;
+  // Validate input is valid UTF-8 and check each character
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      // Invalid UTF-8 sequence - reject for safety
+      return false;
     }
 
-    // Check if character is in allowed_chars list
-    if (allowed_chars) {
-      bool is_allowed = false;
-      for (size_t j = 0; allowed_chars[j] != '\0'; j++) {
-        if (c == (unsigned char)allowed_chars[j]) {
-          is_allowed = true;
+    // For non-ASCII characters (codepoint > 127), allow them by default
+    // They're not shell metacharacters in most contexts
+    // Only validate ASCII range where shell metacharacters exist
+    if (codepoint <= 127) {
+      unsigned char c = (unsigned char)codepoint;
+
+      // Allow ASCII alphanumeric characters
+      if (isalnum(c)) {
+        p += decode_len;
+        continue;
+      }
+
+      // Check if character is in allowed_chars list
+      if (allowed_chars) {
+        bool is_allowed = false;
+        for (size_t j = 0; allowed_chars[j] != '\0'; j++) {
+          if (c == (unsigned char)allowed_chars[j]) {
+            is_allowed = true;
+            break;
+          }
+        }
+        if (is_allowed) {
+          p += decode_len;
+          continue;
+        }
+      }
+
+      // Check if character is dangerous
+      bool is_dangerous = false;
+      for (size_t j = 0; dangerous[j] != '\0'; j++) {
+        if (c == (unsigned char)dangerous[j]) {
+          is_dangerous = true;
           break;
         }
       }
-      if (is_allowed) {
-        continue;
+      if (is_dangerous) {
+        return false;
       }
     }
 
-    // Check if character is dangerous
-    bool is_dangerous = false;
-    for (size_t j = 0; dangerous[j] != '\0'; j++) {
-      if (c == (unsigned char)dangerous[j]) {
-        is_dangerous = true;
-        break;
-      }
-    }
-    if (is_dangerous) {
-      return false;
-    }
+    p += decode_len;
   }
 
   return true;
