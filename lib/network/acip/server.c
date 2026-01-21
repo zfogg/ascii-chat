@@ -103,8 +103,9 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
   log_debug("ACIP_SERVER: Dispatch completed with result=%d", dispatch_result);
 
   // Always free the allocated buffer (even if handler failed)
+  // NOTE: WebRTC transport uses SAFE_MALLOC, not buffer_pool_alloc, so we use SAFE_FREE
   if (envelope.allocated_buffer) {
-    buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+    SAFE_FREE(envelope.allocated_buffer);
   }
 
   // Return handler result
