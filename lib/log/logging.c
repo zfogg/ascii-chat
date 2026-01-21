@@ -188,6 +188,40 @@ char *format_message(const char *format, va_list args) {
   return message;
 }
 
+/**
+ * @brief Truncate buffer at the last whole line before max_len
+ * @param buffer Buffer to truncate
+ * @param current_len Current length of buffer
+ * @param max_len Maximum allowed length
+ * @return New length after truncation at whole line
+ *
+ * Ensures truncation happens at line boundaries ('\n') to avoid UTF-8 issues.
+ * If no newline found, truncates at max_len to ensure safety.
+ */
+static int truncate_at_whole_line(char *buffer, int current_len, size_t max_len) {
+  if (current_len < 0 || (size_t)current_len <= max_len) {
+    return current_len;  // No truncation needed
+  }
+
+  // Search backwards from max_len position for last newline
+  int truncate_pos = (int)max_len - 1;
+  while (truncate_pos > 0 && buffer[truncate_pos] != '\n') {
+    truncate_pos--;
+  }
+
+  // If we found a newline, truncate after it
+  if (truncate_pos > 0 && buffer[truncate_pos] == '\n') {
+    truncate_pos++;  // Include the newline
+    buffer[truncate_pos] = '\0';
+    return truncate_pos;
+  }
+
+  // No newline found, truncate at max_len to be safe
+  truncate_pos = (int)max_len - 1;
+  buffer[truncate_pos] = '\0';
+  return truncate_pos;
+}
+
 /* ============================================================================
  * Logging Implementation
  * ============================================================================
@@ -729,8 +763,13 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     va_list args;
     va_start(args, fmt);
     char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
-    vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+    int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
     va_end(args);
+
+    // Truncate at whole line boundaries to avoid UTF-8 issues
+    if (msg_len > 0) {
+      msg_len = truncate_at_whole_line(msg_buffer, msg_len, sizeof(msg_buffer));
+    }
 
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
 
@@ -797,14 +836,16 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   msg_len += formatted_len;
-  if (msg_len >= (int)sizeof(log_buffer)) {
-    msg_len = sizeof(log_buffer) - 1;
-    log_buffer[msg_len] = '\0';
-  }
 
+  // Truncate at whole line boundaries to avoid UTF-8 issues
+  msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+
+  // Add newline if there's room and message doesn't already end with one
   if (msg_len > 0 && msg_len < (int)sizeof(log_buffer) - 1) {
-    log_buffer[msg_len++] = '\n';
-    log_buffer[msg_len] = '\0';
+    if (log_buffer[msg_len - 1] != '\n') {
+      log_buffer[msg_len++] = '\n';
+      log_buffer[msg_len] = '\0';
+    }
   }
 
   va_end(args);
@@ -837,9 +878,12 @@ void log_plain_msg(const char *fmt, ...) {
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
   va_end(args);
 
-  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+  if (msg_len <= 0) {
     return;
   }
+
+  // Truncate at whole line boundaries to avoid UTF-8 issues
+  msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -873,9 +917,12 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
 
-  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+  if (msg_len <= 0) {
     return;
   }
+
+  // Truncate at whole line boundaries to avoid UTF-8 issues
+  msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -949,9 +996,12 @@ void log_file_msg(const char *fmt, ...) {
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
   va_end(args);
 
-  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+  if (msg_len <= 0) {
     return;
   }
+
+  // Truncate at whole line boundaries to avoid UTF-8 issues
+  msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
 
   // Write to mmap if active, else to file
   if (log_mmap_is_active()) {
