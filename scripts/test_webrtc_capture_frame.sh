@@ -15,7 +15,7 @@ trap cleanup EXIT INT TERM
 rm -f /tmp/server.log /tmp/client_stderr.log "$FRAME_FILE"
 echo "Starting discovery server..."
 ssh sidechain "pkill -9 ascii-chat 2>/dev/null || true; sleep 1; rm -f ~/.ascii-chat/acds.db* /tmp/acds.log 2>/dev/null || true"
-ssh sidechain "nohup bash -c 'WEBCAM_DISABLED=1 timeout 120 /opt/ascii-chat/build/bin/ascii-chat discovery-server 0.0.0.0 :: --port $DISCOVERY_PORT > /tmp/acds.log 2>&1' > /dev/null 2>&1 &"
+ssh sidechain "nohup bash -c 'WEBCAM_DISABLED=1 timeout 120 /opt/ascii-chat/build/bin/ascii-chat discovery-service 0.0.0.0 :: --port $DISCOVERY_PORT > /tmp/acds.log 2>&1' > /dev/null 2>&1 &"
 sleep 5
 
 echo "Starting server..."
@@ -27,12 +27,30 @@ echo "y" | WEBCAM_DISABLED=1 timeout 25 $BIN/ascii-chat \
   --acds-expose-ip \
   --acds-server discovery-service.ascii-chat.com \
   --acds-port $DISCOVERY_PORT \
-  > /dev/null 2>&1 &
+  2>&1 &
 
-sleep 3
+sleep 5
+
+# Wait for log file to exist
+for i in {1..10}; do
+  if [ -f /tmp/server.log ]; then
+    break
+  fi
+  echo "Waiting for server log... ($i/10)"
+  sleep 1
+done
+
+if [ ! -f /tmp/server.log ]; then
+  echo "ERROR: Server log file not created"
+  ps aux | grep ascii-chat | grep -v grep
+  exit 1
+fi
+
 SESSION=$(grep -oE "Session created: [a-z-]+" /tmp/server.log | tail -1 | awk '{print $NF}')
 if [ -z "$SESSION" ]; then
   echo "ERROR: No session created"
+  echo "=== Server log contents ==="
+  cat /tmp/server.log
   exit 1
 fi
 

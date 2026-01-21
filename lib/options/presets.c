@@ -391,6 +391,9 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_server, "Show this help message and exit", "GENERAL");
 
+  // Binary-level logging options (can appear before or after mode name)
+  options_builder_add_logging_group(b);
+
   // Network options
   // Note: Server bind addresses are positional arguments only, not flags
   options_builder_add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
@@ -477,6 +480,9 @@ const options_config_t *options_preset_client(const char *program_name, const ch
 
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_client, "Show this help message and exit", "GENERAL");
+
+  // Binary-level logging options (can appear before or after mode name)
+  options_builder_add_logging_group(b);
 
   // Network options
   // Note: Server address and port are specified via positional argument [address][:port], not flags
@@ -607,6 +613,9 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "GENERAL");
 
+  // Binary-level logging options (can appear before or after mode name)
+  options_builder_add_logging_group(b);
+
   // Terminal dimensions, webcam, display, and snapshot options (shared with client)
   options_builder_add_terminal_group(b);
   options_builder_add_webcam_group(b);
@@ -650,6 +659,9 @@ const options_config_t *options_preset_acds(const char *program_name, const char
 
   // Action options (execute and exit)
   options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "GENERAL");
+
+  // Binary-level logging options (can appear before or after mode name)
+  options_builder_add_logging_group(b);
 
   // Network options
   // Note: Bind addresses are specified via positional arguments, not flags
@@ -741,6 +753,9 @@ const options_config_t *options_preset_discovery(const char *program_name, const
   options_builder_add_action(b, "help", 'h', action_help_discovery, "Show this help message and exit", "GENERAL");
 
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "GENERAL");
+
+  // Binary-level logging options (can appear before or after mode name)
+  options_builder_add_logging_group(b);
 
   // Terminal dimensions, webcam, display, and snapshot options
   options_builder_add_terminal_group(b);
