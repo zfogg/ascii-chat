@@ -114,7 +114,16 @@ int acds_main(void) {
 
   // Create config from options for server initialization
   acds_config_t config;
-  config.port = GET_OPTION(acds_port);
+  // Parse port from string option (discovery-service listens on 'port', not 'acds_port')
+  const char *port_str = GET_OPTION(port);
+  char *endptr;
+  long port_num = strtol(port_str, &endptr, 10);
+  if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
+    log_error("Invalid port: %s (must be 1-65535)", port_str);
+    return ERROR_INVALID_PARAM;
+  }
+  config.port = (int)port_num;
+
   const char *address = opts && opts->address[0] != '\0' ? opts->address : "127.0.0.1";
   const char *address6 = opts && opts->address6[0] != '\0' ? opts->address6 : "::1";
   const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "acds.log";
