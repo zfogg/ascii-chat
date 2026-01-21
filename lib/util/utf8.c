@@ -161,18 +161,16 @@ bool utf8_is_ascii_only(const char *str) {
     return false;
   }
 
-  // Decode codepoints and check they're all ASCII (0-127)
-  const uint8_t *p = (const uint8_t *)str;
+  // Fast path: Check if all bytes are in ASCII range (0x00-0x7F)
+  // ASCII characters are 0x00-0x7F (single byte, high bit clear)
+  // Multi-byte UTF-8 has continuation bytes with high bit set (10xxxxxx pattern)
+  // So if all bytes have high bit clear, it's guaranteed ASCII-only
+  const unsigned char *p = (const unsigned char *)str;
   while (*p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      return false; // Invalid UTF-8 sequence
+    if ((*p & ~0x7F) != 0) {
+      return false; // Non-ASCII byte found (high bit set)
     }
-    if (codepoint > 127) {
-      return false; // Non-ASCII character found
-    }
-    p += decode_len;
+    p++;
   }
   return true;
 }
