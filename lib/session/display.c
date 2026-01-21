@@ -12,10 +12,14 @@
 
 #include "display.h"
 #include "common.h"
+#include "log/logging.h"
+#include "options/options.h"
 #include "platform/terminal.h"
 #include "platform/abstraction.h"
+#include "video/ansi_fast.h"
 #include "video/palette.h"
 #include "video/ascii.h"
+#include "video/image.h"
 #include "asciichat_errno.h"
 
 #include <string.h>
@@ -119,9 +123,14 @@ static void write_frame_internal(session_display_ctx_t *ctx, const char *frame_d
  * ============================================================================ */
 
 session_display_ctx_t *session_display_create(const session_display_config_t *config) {
+  // Auto-create config from command-line options if NULL
+  session_display_config_t auto_config = {0};
   if (!config) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_display_create: NULL config");
-    return NULL;
+    auto_config.snapshot_mode = GET_OPTION(snapshot_mode);
+    auto_config.palette_type = GET_OPTION(palette_type);
+    auto_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+    auto_config.color_mode = TERM_COLOR_AUTO;
+    config = &auto_config;
   }
 
   // Allocate context
@@ -160,6 +169,16 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     (void)initialize_client_palette(PALETTE_STANDARD, NULL, ctx->palette_chars, &ctx->palette_len,
                                     ctx->luminance_palette);
   }
+
+  // Initialize ANSI fast lookup tables based on terminal capabilities
+  if (ctx->caps.color_level == TERM_COLOR_TRUECOLOR) {
+    ansi_fast_init();
+  } else if (ctx->caps.color_level == TERM_COLOR_256) {
+    ansi_fast_init_256color();
+  } else if (ctx->caps.color_level == TERM_COLOR_16) {
+    ansi_fast_init_16color();
+  }
+  // TERM_COLOR_MONO requires no init
 
   // Initialize ASCII output system if we have a TTY
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
@@ -235,6 +254,40 @@ int session_display_get_tty_fd(session_display_ctx_t *ctx) {
     return -1;
   }
   return ctx->tty_info.fd;
+}
+
+/* ============================================================================
+ * Session Display ASCII Conversion Functions
+ * ============================================================================ */
+
+char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image) {
+  if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session_display_convert_to_ascii: ctx is NULL");
+    return NULL;
+  }
+
+  if (!ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_STATE, "session_display_convert_to_ascii: ctx not initialized");
+    return NULL;
+  }
+
+  if (!image) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "session_display_convert_to_ascii: image is NULL");
+    return NULL;
+  }
+
+  // Get conversion parameters from command-line options
+  unsigned short int width = GET_OPTION(width);
+  unsigned short int height = GET_OPTION(height);
+  bool stretch = GET_OPTION(stretch);
+  bool preserve_aspect_ratio = !stretch;
+
+  // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
+  terminal_capabilities_t caps_copy = ctx->caps;
+
+  // Call the standard ASCII conversion using context's palette and capabilities
+  return ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
+                                         ctx->palette_chars, ctx->luminance_palette);
 }
 
 /* ============================================================================

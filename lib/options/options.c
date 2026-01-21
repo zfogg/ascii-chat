@@ -18,6 +18,7 @@
 #include "options/discovery_service.h"
 #include "options/discovery.h"
 #include "options/validation.h"
+#include "network/mdns/discovery.h"
 
 #include "options/config.h"
 #include "asciichat_errno.h"

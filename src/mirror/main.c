@@ -31,14 +31,10 @@
 #include "main.h"
 #include "session/capture.h"
 #include "session/display.h"
-#include "video/ascii.h"
-#include "video/image.h"
-#include "video/ansi_fast.h"
 
 #include "platform/abstraction.h"
 #include "common.h"
 #include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
 #include "util/time.h"
 
 #include <signal.h>
@@ -132,65 +128,20 @@ int mirror_main(void) {
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
-  // Build capture configuration from options
-  session_capture_config_t capture_config = {0};
-  const char *media_file = GET_OPTION(media_file);
-  bool media_from_stdin = GET_OPTION(media_from_stdin);
-
-  if (media_file[0] != '\0') {
-    // File or stdin streaming
-    capture_config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
-    capture_config.path = media_file;
-    capture_config.loop = GET_OPTION(media_loop) && !media_from_stdin;
-  } else if (GET_OPTION(test_pattern)) {
-    // Test pattern mode
-    capture_config.type = MEDIA_SOURCE_TEST;
-    capture_config.path = NULL;
-  } else {
-    // Webcam mode (default)
-    static char webcam_index_str[32];
-    snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
-    capture_config.type = MEDIA_SOURCE_WEBCAM;
-    capture_config.path = webcam_index_str;
-  }
-  capture_config.target_fps = 60; // 60 FPS for local display
-  capture_config.resize_for_network = false;
-
-  // Create capture context
-  session_capture_ctx_t *capture = session_capture_create(&capture_config);
+  // Create capture and display contexts from command-line options
+  // Passing NULL config auto-initializes from GET_OPTION()
+  // This handles: media files, stdin, webcam, test patterns, terminal capabilities, ANSI init
+  session_capture_ctx_t *capture = session_capture_create(NULL);
   if (!capture) {
     log_fatal("Failed to initialize capture source");
     return ERROR_MEDIA_INIT;
   }
 
-  // Build display configuration from options
-  session_display_config_t display_config = {
-      .snapshot_mode = GET_OPTION(snapshot_mode),
-      .palette_type = GET_OPTION(palette_type),
-      .custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL,
-      .color_mode = TERM_COLOR_AUTO // Will be overridden by command-line options
-  };
-
-  // Create display context
-  session_display_ctx_t *display = session_display_create(&display_config);
+  session_display_ctx_t *display = session_display_create(NULL);
   if (!display) {
     log_fatal("Failed to initialize display");
     session_capture_destroy(capture);
     return ERROR_DISPLAY;
-  }
-
-  // Get terminal capabilities and palette from display context
-  const terminal_capabilities_t *caps = session_display_get_caps(display);
-  const char *palette_chars = session_display_get_palette_chars(display);
-  const char *luminance_palette = session_display_get_luminance_palette(display);
-
-  // Initialize ANSI color lookup tables based on terminal capabilities
-  if (caps->color_level == TERM_COLOR_TRUECOLOR) {
-    ansi_fast_init();
-  } else if (caps->color_level == TERM_COLOR_256) {
-    ansi_fast_init_256color();
-  } else if (caps->color_level == TERM_COLOR_16) {
-    ansi_fast_init_16color();
   }
 
   // Snapshot mode timing
@@ -236,18 +187,9 @@ int mirror_main(void) {
       continue;
     }
 
-    // Convert image to ASCII
-    // When stretch is 0 (disabled), we preserve aspect ratio (true)
-    // When stretch is 1 (enabled), we allow stretching without aspect ratio preservation (false)
-    bool stretch = GET_OPTION(stretch);
-    unsigned short int width = GET_OPTION(width);
-    unsigned short int height = GET_OPTION(height);
-    bool preserve_aspect_ratio = !stretch;
-
-    // Need a mutable copy for ascii_convert_with_capabilities
-    terminal_capabilities_t caps_copy = *caps;
-    char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio,
-                                                        stretch, palette_chars, luminance_palette);
+    // Convert image to ASCII using display context
+    // Handles all palette, terminal caps, width, height, stretch settings
+    char *ascii_frame = session_display_convert_to_ascii(display, image);
 
     if (ascii_frame) {
       // When piping/redirecting in snapshot mode, only output the final frame

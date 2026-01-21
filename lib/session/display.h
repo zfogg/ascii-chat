@@ -48,6 +48,7 @@
 #include <stdint.h>
 #include "platform/terminal.h"
 #include "video/palette.h"
+#include "video/image.h"
 
 /* ============================================================================
  * Session Display Configuration
@@ -193,6 +194,32 @@ const char *session_display_get_luminance_palette(session_display_ctx_t *ctx);
  * @ingroup session
  */
 int session_display_get_tty_fd(session_display_ctx_t *ctx);
+
+/** @} */
+
+/* ============================================================================
+ * Session Display ASCII Conversion Functions
+ * @{
+ */
+
+/**
+ * @brief Convert an image to ASCII art using display context and command-line options
+ * @param ctx Display context (must not be NULL)
+ * @param image Image to convert (must not be NULL)
+ * @return Dynamically allocated ASCII string, or NULL on error
+ *
+ * Converts the given image to ASCII art using:
+ * - Palette and terminal capabilities from display context
+ * - Width, height, stretch, and aspect ratio settings from GET_OPTION()
+ *
+ * This completely encapsulates ASCII conversion complexity so callers
+ * don't need to manage palette, terminal capabilities, or conversion options.
+ *
+ * The returned string must be freed by caller with SAFE_FREE().
+ *
+ * @ingroup session
+ */
+char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t *image);
 
 /** @} */
 

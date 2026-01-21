@@ -12,12 +12,15 @@
 
 #include "capture.h"
 #include "common.h"
+#include "log/logging.h"
 #include "media/source.h"
+#include "options/options.h"
 #include "video/image.h"
 #include "util/time.h"
 #include "util/fps.h"
 #include "asciichat_errno.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -113,9 +116,35 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * ============================================================================ */
 
 session_capture_ctx_t *session_capture_create(const session_capture_config_t *config) {
+  // Auto-create config from command-line options if NULL
+  session_capture_config_t auto_config = {0};
   if (!config) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "session_capture_create: NULL config");
-    return NULL;
+    // Auto-initialization from GET_OPTION() only works when options have been parsed
+    // Verify by checking if we can access options (would SET_ERRNO if not)
+    const char *media_file = GET_OPTION(media_file);
+    bool media_from_stdin = GET_OPTION(media_from_stdin);
+
+    if (media_file[0] != '\0') {
+      // File or stdin streaming
+      auto_config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+      auto_config.path = media_file;
+      auto_config.loop = GET_OPTION(media_loop) && !media_from_stdin;
+    } else if (GET_OPTION(test_pattern)) {
+      // Test pattern mode
+      auto_config.type = MEDIA_SOURCE_TEST;
+      auto_config.path = NULL;
+    } else {
+      // Webcam mode (default)
+      static char webcam_index_str[32];
+      snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+      auto_config.type = MEDIA_SOURCE_WEBCAM;
+      auto_config.path = webcam_index_str;
+    }
+
+    // Default settings suitable for local display
+    auto_config.target_fps = 60;
+    auto_config.resize_for_network = false;
+    config = &auto_config;
   }
 
   // Allocate context
