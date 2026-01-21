@@ -9,6 +9,7 @@
 
 #include "utf8.h"
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
+#include <stdbool.h>
 
 int utf8_decode(const uint8_t *s, uint32_t *codepoint) {
   if (s[0] < 0x80) {
@@ -124,4 +125,79 @@ int utf8_display_width_n(const char *str, size_t max_bytes) {
   }
 
   return width;
+}
+
+bool utf8_is_valid(const char *str) {
+  if (!str) {
+    return false;
+  }
+
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      return false; // Invalid UTF-8 sequence
+    }
+    p += decode_len;
+  }
+  return true;
+}
+
+bool utf8_is_ascii_only(const char *str) {
+  if (!str) {
+    return false;
+  }
+
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      return false; // Invalid UTF-8 sequence
+    }
+    if (codepoint > 127) {
+      return false; // Non-ASCII character found
+    }
+    p += decode_len;
+  }
+  return true;
+}
+
+size_t utf8_char_count(const char *str) {
+  if (!str) {
+    return -1; // SIZE_MAX
+  }
+
+  size_t count = 0;
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      return -1; // SIZE_MAX - Invalid UTF-8
+    }
+    count++;
+    p += decode_len;
+  }
+  return count;
+}
+
+size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_codepoints) {
+  if (!str || !out_codepoints || max_codepoints == 0) {
+    return 0;
+  }
+
+  size_t count = 0;
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p && count < max_codepoints) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      return -1; // SIZE_MAX - Invalid UTF-8
+    }
+    out_codepoints[count++] = codepoint;
+    p += decode_len;
+  }
+  return count;
 }

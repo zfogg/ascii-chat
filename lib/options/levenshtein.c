@@ -16,56 +16,6 @@
 #include "util/utf8.h"
 #include "common.h"
 
-/**
- * @brief Count UTF-8 characters in a string
- * @param str String to count characters in
- * @return Number of UTF-8 characters, or SIZE_MAX on invalid UTF-8
- */
-static size_t utf8_char_count(const char *str) {
-  if (!str) {
-    return 0;
-  }
-
-  size_t count = 0;
-  const uint8_t *p = (const uint8_t *)str;
-  while (*p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      return SIZE_MAX; // Invalid UTF-8
-    }
-    count++;
-    p += decode_len;
-  }
-  return count;
-}
-
-/**
- * @brief Convert UTF-8 string to array of codepoints
- * @param str UTF-8 string
- * @param out_codepoints Allocated array to store codepoints
- * @param max_codepoints Size of output array
- * @return Number of codepoints decoded, or SIZE_MAX on invalid UTF-8
- */
-static size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_codepoints) {
-  if (!str || !out_codepoints || max_codepoints == 0) {
-    return 0;
-  }
-
-  size_t count = 0;
-  const uint8_t *p = (const uint8_t *)str;
-  while (*p && count < max_codepoints) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      return SIZE_MAX; // Invalid UTF-8
-    }
-    out_codepoints[count++] = codepoint;
-    p += decode_len;
-  }
-  return count;
-}
-
 // Returns a size_t, depicting the difference between `a` and `b`.
 // See <https://en.wikipedia.org/wiki/Levenshtein_distance> for more information.
 // Works with UTF-8 strings by comparing codepoints instead of bytes.

@@ -63,17 +63,9 @@ asciichat_error_t validate_public_key(const public_key_t *key) {
   }
 
   // Validate comment is valid UTF-8 (user-provided text in key files)
-  if (key->comment[0] != '\0') {
-    const uint8_t *p = (const uint8_t *)key->comment;
-    while (*p) {
-      uint32_t codepoint;
-      int decode_len = utf8_decode(p, &codepoint);
-      if (decode_len < 0) {
-        SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment contains invalid UTF-8 sequence");
-        return ERROR_CRYPTO_KEY;
-      }
-      p += decode_len;
-    }
+  if (key->comment[0] != '\0' && !utf8_is_valid(key->comment)) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment contains invalid UTF-8 sequence");
+    return ERROR_CRYPTO_KEY;
   }
 
   return ASCIICHAT_OK;
@@ -120,17 +112,9 @@ asciichat_error_t validate_private_key(const private_key_t *key) {
   }
 
   // Validate comment is valid UTF-8 (user-provided text in key files)
-  if (key->key_comment[0] != '\0') {
-    const uint8_t *p = (const uint8_t *)key->key_comment;
-    while (*p) {
-      uint32_t codepoint;
-      int decode_len = utf8_decode(p, &codepoint);
-      if (decode_len < 0) {
-        SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment contains invalid UTF-8 sequence");
-        return ERROR_CRYPTO_KEY;
-      }
-      p += decode_len;
-    }
+  if (key->key_comment[0] != '\0' && !utf8_is_valid(key->key_comment)) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment contains invalid UTF-8 sequence");
+    return ERROR_CRYPTO_KEY;
   }
 
   return ASCIICHAT_OK;

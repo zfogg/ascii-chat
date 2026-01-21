@@ -59,22 +59,9 @@ bool acds_string_validate(const char *str) {
   }
 
   // Session strings must be ASCII-only (homograph attack prevention)
-  // Use utf8_decode to detect non-ASCII characters that could spoof legitimate strings
   // Example: Cyrillic "а" (U+0430) looks identical to ASCII "a" but is a different character
-  const uint8_t *p = (const uint8_t *)str;
-  const uint8_t *end = p + len;
-  while (p < end && *p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      // Invalid UTF-8 sequence
-      return false;
-    }
-    if (codepoint > 127) {
-      // Non-ASCII character detected - reject to prevent homograph attacks
-      return false;
-    }
-    p += decode_len;
+  if (!utf8_is_ascii_only(str)) {
+    return false;
   }
 
   // Must not start or end with hyphen

@@ -163,17 +163,10 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
     return NULL;
   }
 
-  // Validate UTF-8 encoding
-  const uint8_t *p = (const uint8_t *)str;
-  while (*p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      // Invalid UTF-8 sequence in config file
-      log_warn("Config value contains invalid UTF-8 sequence at offset %zu", p - (const uint8_t *)str);
-      return NULL;
-    }
-    p += decode_len;
+  // Validate UTF-8 encoding using utility function
+  if (!utf8_is_valid(str)) {
+    log_warn("Config value contains invalid UTF-8 sequence");
+    return NULL;
   }
 
   return str;

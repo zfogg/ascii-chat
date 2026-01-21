@@ -61,19 +61,24 @@ bool validate_shell_safe(const char *str, const char *allowed_chars) {
   // ; & | $ ` \ " ' < > ( ) [ ] { } * ? ! ~ # @ space tab newline
   const char *dangerous = ";|$`\\\"'<>()[]{}*?!~#@ \t\n\r";
 
-  // Validate input is valid UTF-8 and check each character
+  // First pass: validate UTF-8 encoding
+  if (!utf8_is_valid(str)) {
+    return false;
+  }
+
+  // Second pass: validate each character for shell safety
+  // Convert to codepoints and check only ASCII range for dangerous characters
+  // (non-ASCII characters are allowed by default)
   const uint8_t *p = (const uint8_t *)str;
   while (*p) {
     uint32_t codepoint;
     int decode_len = utf8_decode(p, &codepoint);
     if (decode_len < 0) {
-      // Invalid UTF-8 sequence - reject for safety
-      return false;
+      return false; // Should not happen after utf8_is_valid check
     }
 
-    // For non-ASCII characters (codepoint > 127), allow them by default
-    // They're not shell metacharacters in most contexts
     // Only validate ASCII range where shell metacharacters exist
+    // Non-ASCII characters (codepoint > 127) are allowed
     if (codepoint <= 127) {
       unsigned char c = (unsigned char)codepoint;
 

@@ -287,30 +287,6 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
 }
 
 /**
- * @brief Validate that an environment variable value contains valid UTF-8
- * @param value Environment variable value to validate
- * @return true if valid UTF-8 or NULL, false if invalid UTF-8
- */
-static bool platform_getenv_validate_utf8(const char *value) {
-  if (!value) {
-    return true; // NULL is valid
-  }
-
-  // Validate UTF-8 encoding
-  const uint8_t *p = (const uint8_t *)value;
-  while (*p) {
-    uint32_t codepoint;
-    int decode_len = utf8_decode(p, &codepoint);
-    if (decode_len < 0) {
-      // Invalid UTF-8 in environment variable
-      return false;
-    }
-    p += decode_len;
-  }
-  return true;
-}
-
-/**
  * @brief Get environment variable value
  * @param name Environment variable name
  * @return Variable value or NULL if not found or contains invalid UTF-8
@@ -336,7 +312,7 @@ const char *platform_getenv(const char *name) {
   }
 
   // Validate UTF-8 encoding
-  if (!platform_getenv_validate_utf8(buffer)) {
+  if (!utf8_is_valid(buffer)) {
     log_warn("Environment variable '%s' contains invalid UTF-8, ignoring", name);
     return NULL;
   }

@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 /* ============================================================================
  * UTF-8 Decoding Functions
@@ -142,3 +143,133 @@ int utf8_display_width(const char *str);
  * @ingroup util
  */
 int utf8_display_width_n(const char *str, size_t max_bytes);
+
+/* ============================================================================
+ * UTF-8 Validation Functions
+ * ========================================================================== */
+
+/**
+ * @brief Check if a string is valid UTF-8
+ * @param str String to validate (must not be NULL)
+ * @return true if valid UTF-8, false if invalid sequences detected
+ *
+ * Scans the entire string and validates that all byte sequences conform to
+ * UTF-8 encoding rules. Returns false immediately on first invalid sequence.
+ *
+ * @note Returns true for empty string (valid)
+ * @note Returns false for NULL input (not validated)
+ * @note More efficient than decoding all codepoints if only validation is needed
+ *
+ * @par Example
+ * @code
+ * if (!utf8_is_valid(user_input)) {
+ *     log_error("Invalid UTF-8 in user input");
+ *     return false;
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool utf8_is_valid(const char *str);
+
+/**
+ * @brief Check if a string contains only ASCII characters
+ * @param str String to check (must not be NULL)
+ * @return true if all characters are ASCII (0x00-0x7F), false if any non-ASCII found
+ *
+ * Validates UTF-8 encoding and checks that all decoded codepoints are ASCII.
+ * Useful for security-sensitive strings that should only contain ASCII
+ * (e.g., session identifiers to prevent homograph attacks).
+ *
+ * Returns false if string contains invalid UTF-8 sequences.
+ *
+ * @note Empty string is considered ASCII-only (returns true)
+ * @note Returns false for NULL input (not validated)
+ * @note Prevents homograph attack vector (e.g., Cyrillic 'а' vs ASCII 'a')
+ *
+ * @par Example
+ * @code
+ * // Verify session string contains only ASCII to prevent homograph spoofing
+ * if (!utf8_is_ascii_only(session_string)) {
+ *     log_warn("Session string contains non-ASCII characters");
+ *     return false;
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool utf8_is_ascii_only(const char *str);
+
+/**
+ * @brief Count UTF-8 characters (not bytes)
+ * @param str String to count (must not be NULL)
+ * @return Number of UTF-8 characters, or SIZE_MAX if invalid UTF-8 detected
+ *
+ * Counts the number of Unicode codepoints in the string, not byte count.
+ * Properly handles multi-byte UTF-8 sequences (1-4 bytes per character).
+ *
+ * Returns SIZE_MAX if the string contains invalid UTF-8 sequences.
+ *
+ * @note Empty string has 0 characters
+ * @note Returns SIZE_MAX for NULL input or invalid UTF-8
+ * @note Slower than strlen() but necessary for correct UTF-8 processing
+ * @note Used by Levenshtein distance and other algorithms needing character counts
+ *
+ * @par Example
+ * @code
+ * // Check if password is long enough (in characters, not bytes)
+ * size_t pwd_len = utf8_char_count(password);
+ * if (pwd_len == SIZE_MAX) {
+ *     log_error("Password contains invalid UTF-8");
+ *     return false;
+ * }
+ * if (pwd_len < 8) {
+ *     return false; // Too short
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+size_t utf8_char_count(const char *str);
+
+/**
+ * @brief Convert UTF-8 string to array of Unicode codepoints
+ * @param str UTF-8 string to convert (must not be NULL)
+ * @param out_codepoints Output array for decoded codepoints (must not be NULL)
+ * @param max_codepoints Maximum number of codepoints to decode
+ * @return Number of codepoints decoded, or SIZE_MAX if invalid UTF-8 detected
+ *
+ * Decodes a UTF-8 string into an array of Unicode codepoints (32-bit values).
+ * Stops when reaching end of string, hitting max_codepoints limit, or detecting
+ * invalid UTF-8.
+ *
+ * Returns SIZE_MAX if invalid UTF-8 sequences are encountered during decoding.
+ *
+ * @note Returns 0 if str is NULL, out_codepoints is NULL, or max_codepoints is 0
+ * @note Used by fuzzy matching (Levenshtein), Unicode algorithms, and validation
+ * @note More efficient than calling utf8_decode multiple times in a loop
+ *
+ * @par Example
+ * @code
+ * // Compare two strings at codepoint level
+ * uint32_t str1_codepoints[256];
+ * uint32_t str2_codepoints[256];
+ *
+ * size_t count1 = utf8_to_codepoints("café", str1_codepoints, 256);
+ * size_t count2 = utf8_to_codepoints("cafe", str2_codepoints, 256);
+ *
+ * if (count1 == SIZE_MAX || count2 == SIZE_MAX) {
+ *     return false; // Invalid UTF-8
+ * }
+ *
+ * // Now compare at codepoint level instead of bytes
+ * for (size_t i = 0; i < count1 && i < count2; i++) {
+ *     if (str1_codepoints[i] != str2_codepoints[i]) {
+ *         // Different codepoint
+ *     }
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+size_t utf8_to_codepoints(const char *str, uint32_t *out_codepoints, size_t max_codepoints);
