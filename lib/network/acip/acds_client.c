@@ -18,18 +18,22 @@
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "network/packet.h"
+#include "network/parallel_connect.h"
 #include "platform/socket.h"
 #include "util/endian.h"
 
 #include <netdb.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
 #else
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/select.h>
+#include <fcntl.h>
 #endif
 
 // ============================================================================
@@ -71,52 +75,30 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   char port_str[16];
   snprintf(port_str, sizeof(port_str), "%d", config->server_port);
 
+  log_debug("ACDS: Resolving address '%s:%s'...", config->server_address, port_str);
   int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
   if (gai_result != 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
                      gai_strerror(gai_result));
   }
+  log_debug("ACDS: Address resolved successfully");
+  freeaddrinfo(result);
 
-  // Try each resolved address until one succeeds
-  struct addrinfo *rp;
-  for (rp = result; rp != NULL; rp = rp->ai_next) {
-    // Create TCP socket with the address family from this result
-    client->socket = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if (client->socket == INVALID_SOCKET_VALUE) {
-      continue; // Try next address
-    }
+  // Use parallel_connect to attempt IPv4 and IPv6 connections concurrently
+  parallel_connect_config_t pconn_config = {
+      .hostname = config->server_address,
+      .port = config->server_port,
+      .timeout_ms = config->timeout_ms,
+  };
 
-    // Set socket timeouts using platform abstraction
-    if (socket_set_timeout(client->socket, config->timeout_ms) != 0) {
-      socket_close(client->socket);
-      client->socket = INVALID_SOCKET_VALUE;
-      continue; // Try next address
-    }
-
-    // Try to connect
-    int connect_result = connect(client->socket, rp->ai_addr, rp->ai_addrlen);
-    if (connect_result == 0) {
-      // Success!
-      freeaddrinfo(result);
-      client->connected = true;
-      log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
-      return ASCIICHAT_OK;
-    }
-
-    // Connection failed, close this socket and try next address
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
+  asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);
+  if (pconn_result == ASCIICHAT_OK) {
+    client->connected = true;
+    log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
+    return ASCIICHAT_OK;
   }
 
-  // All addresses failed
-  freeaddrinfo(result);
-  return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d: all addresses exhausted", config->server_address,
-                   config->server_port);
-
-  client->connected = true;
-  log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
-
-  return ASCIICHAT_OK;
+  return pconn_result;
 }
 
 void acds_client_disconnect(acds_client_t *client) {

@@ -11,13 +11,15 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Clean up old logs and databases
+rm -f /tmp/server.log /tmp/client_stderr.log "$FRAME_FILE"
 echo "Starting discovery server..."
-ssh sidechain "pkill -9 ascii-chat 2>/dev/null || true; sleep 1; rm -f ~/.ascii-chat/acds.db* 2>/dev/null || true"
+ssh sidechain "pkill -9 ascii-chat 2>/dev/null || true; sleep 1; rm -f ~/.ascii-chat/acds.db* /tmp/acds.log 2>/dev/null || true"
 ssh sidechain "nohup bash -c 'WEBCAM_DISABLED=1 timeout 120 /opt/ascii-chat/build/bin/ascii-chat discovery-server 0.0.0.0 :: --port $DISCOVERY_PORT > /tmp/acds.log 2>&1' > /dev/null 2>&1 &"
 sleep 5
 
 echo "Starting server..."
-WEBCAM_DISABLED=1 timeout 15 $BIN/ascii-chat \
+echo "y" | WEBCAM_DISABLED=1 timeout 25 $BIN/ascii-chat \
   --log-file /tmp/server.log \
   server 127.0.0.1 :: \
   --port $SERVER_PORT \
@@ -27,13 +29,15 @@ WEBCAM_DISABLED=1 timeout 15 $BIN/ascii-chat \
   --acds-port $DISCOVERY_PORT \
   > /dev/null 2>&1 &
 
-SESSION=$(grep -oE "Session created: [a-z-]+" /tmp/server.log | head -1 | awk '{print $NF}')
+sleep 3
+SESSION=$(grep -oE "Session created: [a-z-]+" /tmp/server.log | tail -1 | awk '{print $NF}')
 if [ -z "$SESSION" ]; then
   echo "ERROR: No session created"
   exit 1
 fi
 
 echo "Server session: $SESSION"
+sleep 2
 echo "Capturing frame via WebRTC snapshot..."
 
 # Run client and capture frame output
