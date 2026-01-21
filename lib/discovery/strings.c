@@ -7,6 +7,7 @@
 #include "discovery/adjectives.h"
 #include "discovery/nouns.h"
 #include "log/logging.h"
+#include "util/utf8.h"
 #include <sodium.h>
 #include <string.h>
 #include <ctype.h>
@@ -57,6 +58,25 @@ bool acds_string_validate(const char *str) {
     return false;
   }
 
+  // Session strings must be ASCII-only (homograph attack prevention)
+  // Use utf8_decode to detect non-ASCII characters that could spoof legitimate strings
+  // Example: Cyrillic "а" (U+0430) looks identical to ASCII "a" but is a different character
+  const uint8_t *p = (const uint8_t *)str;
+  const uint8_t *end = p + len;
+  while (p < end && *p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      // Invalid UTF-8 sequence
+      return false;
+    }
+    if (codepoint > 127) {
+      // Non-ASCII character detected - reject to prevent homograph attacks
+      return false;
+    }
+    p += decode_len;
+  }
+
   // Must not start or end with hyphen
   if (str[0] == '-' || str[len - 1] == '-') {
     return false;
@@ -72,7 +92,7 @@ bool acds_string_validate(const char *str) {
       if (i > 0 && str[i - 1] == '-') {
         return false;
       }
-    } else if (!islower(c)) {
+    } else if (!islower((unsigned char)c)) {
       // Only lowercase letters and hyphens allowed
       return false;
     }
