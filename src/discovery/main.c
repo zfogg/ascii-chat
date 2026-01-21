@@ -35,6 +35,7 @@
 #include "session.h"
 #include "session/capture.h"
 #include "session/display.h"
+#include "session/render.h"
 
 #include <stdatomic.h>
 #include <stdio.h>
@@ -155,6 +156,41 @@ static void on_discovery_error(asciichat_error_t error, const char *message, voi
   discovery_signal_exit();
 }
 
+/**
+ * @brief Exit condition callback for render loop (participant mode)
+ *
+ * Called by render loop to check if it should exit. Also processes
+ * discovery session events to keep negotiation responsive.
+ *
+ * @param user_data Pointer to discovery_session_t
+ * @return true if render loop should exit
+ */
+static bool discovery_participant_render_should_exit(void *user_data) {
+  discovery_session_t *discovery = (discovery_session_t *)user_data;
+
+  // Check global exit flag first
+  if (discovery_should_exit()) {
+    return true;
+  }
+
+  // Process discovery session events (keep NAT negotiation responsive)
+  // 50ms timeout for responsiveness
+  asciichat_error_t result = discovery_session_process(discovery, 50);
+  if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
+    log_error("Discovery session process failed: %d", result);
+    discovery_signal_exit();
+    return true;
+  }
+
+  // Exit if session is no longer active
+  if (!discovery_session_is_active(discovery)) {
+    // Still negotiating - continue loop
+    return false;
+  }
+
+  return false;
+}
+
 /* ============================================================================
  * Main Discovery Mode Loop
  * ============================================================================ */
@@ -231,7 +267,7 @@ int discovery_main(void) {
   log_info("Discovery mode running - press Ctrl+C to exit");
   log_set_terminal_output(false);
 
-  // Main loop: process discovery events and handle media
+  // Main loop: wait for session to become active, then handle media based on role
   while (!discovery_should_exit()) {
     // Process discovery session events (state transitions, negotiations, etc)
     result = discovery_session_process(discovery, 50); // 50ms timeout for responsiveness
@@ -246,31 +282,48 @@ int discovery_main(void) {
     }
 
     // ★ Insight ─────────────────────────────────────
-    // Discovery session now provides either host_ctx or participant_ctx
-    // based on the negotiated role. This follows lib/session patterns
-    // to avoid duplicating network protocol code.
+    // Once session is active, we know our role (host or participant).
+    // We use the unified render loop from lib/session for media handling,
+    // passing discovery session processing as part of the exit callback.
+    // This keeps all render loop logic in one place while staying responsive
+    // to discovery session events.
     // ─────────────────────────────────────────────────
 
-    // Session is active - handle media based on role
-    // NOTE: The actual media handling (capture, display, rendering)
-    // is abstracted in session_host_t and session_participant_t,
-    // which internally manage WebRTC and network protocol details.
-    // We just need to drive the main loop.
+    // Session is active - determine our role and handle media
+    bool we_are_host = discovery_session_is_host(discovery);
 
-    // For now, just display a status message
-    // (Actual frame rendering/display happens in host/participant contexts)
-    static bool printed_status = false;
-    if (!printed_status) {
-      if (discovery_session_is_host(discovery)) {
-        log_info("Hosting session - rendering and broadcasting");
-      } else {
-        log_info("Participant in session - displaying host's frames");
+    if (we_are_host) {
+      // HOST ROLE: Render mixed frames and broadcast to participants
+      // NOTE: This is handled by session_host_t which manages WebRTC and mixing.
+      // For now, just log status (session_host integration pending).
+      log_info("Hosting session - rendering and broadcasting");
+
+      // Placeholder: In future, use session_host_render_loop() or similar
+      // For now, continue processing events until shutdown
+      while (!discovery_should_exit() && discovery_session_is_active(discovery)) {
+        discovery_session_process(discovery, 50);
+        platform_sleep_ms(10);
       }
-      printed_status = true;
+    } else {
+      // PARTICIPANT ROLE: Capture local media and display host's frames
+      // Use the unified render loop that handles capture, ASCII conversion, and display
+      log_info("Participant in session - displaying host's frames");
+
+      // Run the unified render loop with discovery session event processing
+      // Synchronous mode: pass capture context, discovery as user_data
+      // The exit callback integrates discovery processing to keep it responsive
+      result = session_render_loop(capture, display, discovery_participant_render_should_exit,
+                                   NULL,       // No custom capture callback
+                                   NULL,       // No custom sleep callback
+                                   discovery); // Pass discovery session as user_data
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Render loop failed with error code: %d", result);
+      }
     }
 
-    // Brief sleep to avoid busy loop
-    platform_sleep_ms(10);
+    // Session handling complete
+    break;
   }
 
   // Cleanup

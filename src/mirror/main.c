@@ -31,6 +31,7 @@
 #include "main.h"
 #include "session/capture.h"
 #include "session/display.h"
+#include "session/render.h"
 
 #include "platform/abstraction.h"
 #include "common.h"
@@ -98,6 +99,17 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
   return true;
 }
 
+/**
+ * Exit condition callback for render loop
+ *
+ * @param user_data Unused (NULL)
+ * @return true if render loop should exit
+ */
+static bool mirror_render_should_exit(void *user_data) {
+  (void)user_data; // Unused parameter
+  return mirror_should_exit();
+}
+
 /* ============================================================================
  * Mirror Mode Display (using session library)
  * ============================================================================ */
@@ -144,85 +156,18 @@ int mirror_main(void) {
     return ERROR_DISPLAY;
   }
 
-  // Snapshot mode timing
-  uint64_t snapshot_start_time_ns = 0;
-  bool snapshot_done = false;
-  if (GET_OPTION(snapshot_mode)) {
-    snapshot_start_time_ns = time_get_ns();
-  }
-
-  // FPS tracking
-  uint64_t frame_count = 0;
-  uint64_t fps_report_time_ns = time_get_ns();
-
   log_info("Mirror mode running - press Ctrl+C to exit");
   log_set_terminal_output(false);
 
-  while (!mirror_should_exit()) {
-    // Frame rate limiting using session capture's adaptive sleep
-    session_capture_sleep_for_fps(capture);
+  // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
+  // Synchronous mode: pass capture context, NULL for callbacks
+  asciichat_error_t result = session_render_loop(capture, display, mirror_render_should_exit,
+                                                 NULL,  // No custom capture callback
+                                                 NULL,  // No custom sleep callback
+                                                 NULL); // No user_data needed
 
-    // Capture timestamp for snapshot mode timing
-    uint64_t current_time_ns = time_get_ns();
-
-    // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
-    if (GET_OPTION(snapshot_mode) && !snapshot_done) {
-      double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
-
-      float snapshot_delay = GET_OPTION(snapshot_delay);
-      if (elapsed_sec >= snapshot_delay) {
-        snapshot_done = true;
-      }
-    }
-
-    // Read frame from capture source
-    image_t *image = session_capture_read_frame(capture);
-    if (!image) {
-      // Check if we've reached end of file for media sources
-      if (session_capture_at_end(capture)) {
-        log_info("Media source reached end of file");
-        break; // Exit mirror loop - end of media
-      }
-      platform_sleep_usec(10000); // 10ms delay before retry
-      continue;
-    }
-
-    // Convert image to ASCII using display context
-    // Handles all palette, terminal caps, width, height, stretch settings
-    char *ascii_frame = session_display_convert_to_ascii(display, image);
-
-    if (ascii_frame) {
-      // When piping/redirecting in snapshot mode, only output the final frame
-      // When outputting to TTY, show live preview frames
-      bool snapshot_mode = GET_OPTION(snapshot_mode);
-      bool should_write = !snapshot_mode || session_display_has_tty(display) || snapshot_done;
-      if (should_write) {
-        session_display_render_frame(display, ascii_frame, snapshot_done);
-      }
-
-      // Snapshot mode: exit after capturing the final frame
-      if (snapshot_mode && snapshot_done) {
-        SAFE_FREE(ascii_frame);
-        // NOTE: Do NOT free 'image' - it's owned by capture context
-        break;
-      }
-
-      SAFE_FREE(ascii_frame);
-      frame_count++;
-    }
-
-    // NOTE: Do NOT free 'image' - it's owned by capture context and reused on next read
-
-    // FPS reporting every 5 seconds
-    uint64_t fps_elapsed_ns = time_elapsed_ns(fps_report_time_ns, current_time_ns);
-
-    if (fps_elapsed_ns >= 5 * NS_PER_SEC_INT) {
-      double elapsed_sec = time_ns_to_s(fps_elapsed_ns);
-      double fps = (double)frame_count / elapsed_sec;
-      log_debug("Mirror FPS: %.1f (target: %u)", fps, session_capture_get_target_fps(capture));
-      frame_count = 0;
-      fps_report_time_ns = current_time_ns;
-    }
+  if (result != ASCIICHAT_OK) {
+    log_error("Render loop failed with error code: %d", result);
   }
 
   // Cleanup
