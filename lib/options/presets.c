@@ -194,9 +194,6 @@ void options_builder_add_crypto_group(options_builder_t *b) {
   options_builder_add_string(b, "password", '\0', offsetof(options_t, password), "",
                              "Shared password for authentication", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL);
 
-  options_builder_add_string(b, "keyfile", 'F', offsetof(options_t, encrypt_keyfile), "", "Alternative key file path",
-                             "SECURITY", false, NULL, NULL);
-
   options_builder_add_bool(b, "no-encrypt", '\0', offsetof(options_t, no_encrypt), OPT_NO_ENCRYPT_DEFAULT, "Disable encryption",
                            "SECURITY", false, NULL);
 }
@@ -239,7 +236,7 @@ void options_builder_add_acds_group(options_builder_t *b) {
       "ACDS server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
       "SECURITY", false, NULL, NULL);
 
-  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
                            "Use WebRTC P2P mode (default: Direct TCP)", "DISCOVERY", false, NULL);
 }
 
@@ -257,7 +254,7 @@ void options_builder_add_acds_network_group(options_builder_t *b) {
   options_builder_add_int(b, "acds-port", '\0', offsetof(options_t, acds_port), OPT_ACDS_PORT_INT_DEFAULT, "ACDS discovery service port",
                           "NETWORK", false, NULL, NULL);
 
-  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), false,
+  options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
                            "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL);
 }
 

@@ -279,7 +279,7 @@
 #define OPT_MAX_CLIENTS_DEFAULT 9
 
 /** @brief Default compression level (1-9) */
-#define OPT_COMPRESSION_LEVEL_DEFAULT 1
+#define OPT_COMPRESSION_LEVEL_DEFAULT 3
 
 /** @brief Default FPS (frames per second) */
 #define OPT_FPS_DEFAULT 60
@@ -332,8 +332,8 @@
 /** @brief Default no compression flag (false = enable compression) */
 #define OPT_NO_COMPRESS_DEFAULT false
 
-/** @brief Default encrypt enabled flag (false = encryption optional) */
-#define OPT_ENCRYPT_ENABLED_DEFAULT false
+/** @brief Default encrypt enabled flag (true = encryption required) */
+#define OPT_ENCRYPT_ENABLED_DEFAULT true
 
 /** @brief Default no encrypt flag (false = allow encryption) */
 #define OPT_NO_ENCRYPT_DEFAULT false
