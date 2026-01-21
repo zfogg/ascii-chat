@@ -155,8 +155,14 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   adaptive_sleep_init(&ctx->sleep_state, &sleep_config);
 
   // Initialize FPS tracker
-  char tracker_name[32];
-  snprintf(tracker_name, sizeof(tracker_name), "CAPTURE_%u", ctx->target_fps);
+  // Note: Must allocate tracker_name on heap since fps_init stores a pointer to it
+  char *tracker_name = SAFE_MALLOC(32, char *);
+  if (!tracker_name) {
+    media_source_destroy(ctx->source);
+    SAFE_FREE(ctx);
+    return NULL;
+  }
+  snprintf(tracker_name, 32, "CAPTURE_%u", ctx->target_fps);
   fps_init(&ctx->fps_tracker, (int)ctx->target_fps, tracker_name);
 
   // Record start time for FPS calculation (nanoseconds)
@@ -175,6 +181,12 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
   if (ctx->source) {
     media_source_destroy(ctx->source);
     ctx->source = NULL;
+  }
+
+  // Free FPS tracker name (allocated in session_capture_create)
+  if (ctx->fps_tracker.tracker_name) {
+    char *temp = (char *)ctx->fps_tracker.tracker_name;
+    SAFE_FREE(temp);
   }
 
   ctx->initialized = false;
