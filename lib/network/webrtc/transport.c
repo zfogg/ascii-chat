@@ -32,6 +32,7 @@
 #include "network/webrtc/webrtc.h"
 #include "log/logging.h"
 #include "ringbuffer.h"
+#include "buffer_pool.h"
 #include "platform/mutex.h"
 #include "platform/cond.h"
 #include <string.h>
@@ -83,10 +84,10 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     return;
   }
 
-  // Allocate message buffer
+  // Allocate message buffer using buffer pool (will be freed by acip_client_receive_and_dispatch)
   log_error("★ WEBRTC_ON_MESSAGE: About to allocate %zu bytes", len);
   webrtc_recv_msg_t msg;
-  msg.data = SAFE_MALLOC(len, uint8_t *);
+  msg.data = buffer_pool_alloc(NULL, len);
   if (!msg.data) {
     log_error("★ WEBRTC_ON_MESSAGE: FAILED to allocate %zu bytes - OUT OF MEMORY", len);
     return;
@@ -109,14 +110,14 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     webrtc_recv_msg_t dropped_msg;
     if (ringbuffer_read(wrtc->recv_queue, &dropped_msg)) {
       log_error("★ WEBRTC_ON_MESSAGE: Dropped oldest message of %zu bytes", dropped_msg.len);
-      SAFE_FREE(dropped_msg.data);
+      buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
     }
 
     // Try again
     success = ringbuffer_write(wrtc->recv_queue, &msg);
     if (!success) {
       log_error("★ WEBRTC_ON_MESSAGE: ringbuffer_write FAILED AGAIN after drop - DISCARDING %zu bytes", len);
-      SAFE_FREE(msg.data);
+      buffer_pool_free(NULL, msg.data, len);
       mutex_unlock(&wrtc->queue_mutex);
       return;
     }
