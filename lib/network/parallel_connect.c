@@ -86,34 +86,54 @@ static void *attempt_connection_thread(void *arg) {
     log_debug("PCONN: [%s] Connected immediately", attempt->family_name);
     attempt->connected = true;
   } else if (is_in_progress) {
-    // Wait with select()
-    fd_set writefds;
-    FD_ZERO(&writefds);
-    FD_SET(attempt->socket, &writefds);
+    // Wait with select() using short timeouts so we can check for winner and exit early
+    uint32_t elapsed_ms = 0;
+    uint32_t check_interval_ms = 100; // Check every 100ms if winner found
 
-    struct timeval tv;
-    tv.tv_sec = attempt->timeout_ms / 1000;
-    tv.tv_usec = (attempt->timeout_ms % 1000) * 1000;
+    while (elapsed_ms < attempt->timeout_ms) {
+      // Check if winner was already found (allow loser to exit early)
+      mutex_lock(attempt->lock);
+      bool should_exit = *attempt->winner_found;
+      mutex_unlock(attempt->lock);
 
-    log_debug("PCONN: [%s] Waiting for connection with select", attempt->family_name);
-    int select_result = select((int)attempt->socket + 1, NULL, &writefds, NULL, &tv);
-
-    if (select_result > 0) {
-      // Check if connection actually succeeded
-      int so_error = 0;
-      socklen_t len = sizeof(so_error);
-      getsockopt(attempt->socket, SOL_SOCKET, SO_ERROR, (char *)&so_error, &len);
-
-      if (so_error == 0) {
-        log_debug("PCONN: [%s] Connection succeeded", attempt->family_name);
-        attempt->connected = true;
-      } else {
-        log_debug("PCONN: [%s] Connection failed: %d", attempt->family_name, so_error);
+      if (should_exit) {
+        log_debug("PCONN: [%s] Winner already found, exiting early", attempt->family_name);
+        break;
       }
-    } else if (select_result == 0) {
-      log_debug("PCONN: [%s] Select timeout", attempt->family_name);
-    } else {
-      log_debug("PCONN: [%s] Select error", attempt->family_name);
+
+      fd_set writefds;
+      FD_ZERO(&writefds);
+      FD_SET(attempt->socket, &writefds);
+
+      struct timeval tv;
+      tv.tv_sec = check_interval_ms / 1000;
+      tv.tv_usec = (check_interval_ms % 1000) * 1000;
+
+      int select_result = select((int)attempt->socket + 1, NULL, &writefds, NULL, &tv);
+
+      if (select_result > 0) {
+        // Check if connection actually succeeded
+        int so_error = 0;
+        socklen_t len = sizeof(so_error);
+        getsockopt(attempt->socket, SOL_SOCKET, SO_ERROR, (char *)&so_error, &len);
+
+        if (so_error == 0) {
+          log_debug("PCONN: [%s] Connection succeeded", attempt->family_name);
+          attempt->connected = true;
+        } else {
+          log_debug("PCONN: [%s] Connection failed: %d", attempt->family_name, so_error);
+        }
+        break;
+      } else if (select_result < 0) {
+        log_debug("PCONN: [%s] Select error", attempt->family_name);
+        break;
+      }
+
+      elapsed_ms += check_interval_ms;
+    }
+
+    if (elapsed_ms >= attempt->timeout_ms && !attempt->connected) {
+      log_debug("PCONN: [%s] Connection timeout after %dms", attempt->family_name, attempt->timeout_ms);
     }
   } else {
     log_debug("PCONN: [%s] Connect failed immediately: %d", attempt->family_name, connect_error);
@@ -261,7 +281,8 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   }
   mutex_unlock(&lock);
 
-  // Join threads
+  // Join threads (must wait for both to complete before returning)
+  // The threads access shared state on our stack, so we cannot return until they're done
   if (asciichat_thread_is_initialized(&ipv4_thread)) {
     asciichat_thread_join(&ipv4_thread, NULL);
   }
