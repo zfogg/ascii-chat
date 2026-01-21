@@ -30,6 +30,7 @@
 
 // Utilities
 #include "util/utf8.h"
+#include "util/time.h"
 
 // Common headers for version info and initialization
 #include "common.h"
@@ -425,6 +426,14 @@ int main(int argc, char *argv[]) {
     print_terminal_capabilities(&caps);
     return 0;
   }
+
+  // Initialize timer system BEFORE any subsystem that might use timing functions
+  // This must be done before asciichat_shared_init which initializes palette, buffer pool, etc.
+  if (!timer_system_init()) {
+    fprintf(stderr, "FATAL: Failed to initialize timer system\n");
+    return ERROR_PLATFORM_INIT;
+  }
+  (void)atexit(timer_system_cleanup);
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr

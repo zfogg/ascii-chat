@@ -1369,19 +1369,20 @@ static void print_wrapped_description(FILE *stream, const char *text, int indent
 
   const char *line_start = text;
   const char *last_space = NULL;
-  int line_len = 0;
   const char *p = text;
 
   while (*p) {
     if (*p == ' ')
       last_space = p;
 
-    line_len++;
+    // Calculate actual display width from line_start to current position
+    // utf8_display_width_n() properly skips ANSI escape sequences
+    int line_display_width = utf8_display_width_n(line_start, p - line_start + 1);
 
     // Check if we need to wrap
-    if (line_len >= available_width || *p == '\n') {
+    if (line_display_width >= available_width || *p == '\n') {
       // Find previous space if we exceeded width
-      if (*p != '\n' && line_len >= available_width && last_space && last_space > line_start) {
+      if (*p != '\n' && line_display_width >= available_width && last_space && last_space > line_start) {
         // Print text up to last space with colors applied
         int text_len = last_space - line_start;
         char seg[512];
@@ -1394,7 +1395,6 @@ static void print_wrapped_description(FILE *stream, const char *text, int indent
           fprintf(stream, " ");
         p = last_space + 1;
         line_start = p;
-        line_len = 0;
         last_space = NULL;
         continue;
       }
@@ -1416,7 +1416,6 @@ static void print_wrapped_description(FILE *stream, const char *text, int indent
         }
         p++;
         line_start = p;
-        line_len = 0;
         last_space = NULL;
         continue;
       }
@@ -1573,9 +1572,9 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     }
 
     if (desc->env_var_name) {
-      // Embed ANSI color codes directly so they're preserved across wraps
+      // Plain text with space after env: - print_colored_segment handles coloring
       desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (env: %s)",
-                           colored_string(LOG_COLOR_DEBUG, desc->env_var_name));
+                           desc->env_var_name);
     }
 
     // For narrow terminals, use vertical layout
