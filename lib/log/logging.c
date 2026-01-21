@@ -11,6 +11,7 @@
 #include "platform/system.h"
 #include "util/path.h"
 #include "util/time.h"
+#include "util/utf8.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -220,6 +221,26 @@ static int truncate_at_whole_line(char *buffer, int current_len, size_t max_len)
   truncate_pos = (int)max_len - 1;
   buffer[truncate_pos] = '\0';
   return truncate_pos;
+}
+
+/**
+ * @brief Validate UTF-8 in formatted message and warn if invalid
+ * @param message Formatted message to validate
+ * @param source Source context for warning (e.g., "leveled log message", "plain text log")
+ *
+ * If invalid UTF-8 is detected, logs a warning with context and the corrupted data via fprintf.
+ */
+static void validate_log_message_utf8(const char *message, const char *source) {
+  if (!message || !source) {
+    return;
+  }
+
+  if (!utf8_is_valid(message)) {
+    // Log warning with context
+    log_warn("Invalid UTF-8 detected in %s", source);
+    // Also output the bad data to stderr via fprintf for debugging
+    safe_fprintf(stderr, "[DEBUG] Invalid UTF-8 data: %s\n", message);
+  }
 }
 
 /* ============================================================================
@@ -771,6 +792,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       msg_len = truncate_at_whole_line(msg_buffer, msg_len, sizeof(msg_buffer));
     }
 
+    // Validate UTF-8 in formatted message
+    validate_log_message_utf8(msg_buffer, "mmap log message");
+
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
 
     // Terminal output (check with atomic loads)
@@ -850,6 +874,9 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   va_end(args);
 
+  // Validate UTF-8 in formatted message
+  validate_log_message_utf8(log_buffer, "leveled log message");
+
   // Write to file (atomic write syscall)
   int file_fd = atomic_load(&g_log.file);
   if (file_fd >= 0 && file_fd != STDERR_FILENO) {
@@ -884,6 +911,9 @@ void log_plain_msg(const char *fmt, ...) {
 
   // Truncate at whole line boundaries to avoid UTF-8 issues
   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+
+  // Validate UTF-8 in formatted message
+  validate_log_message_utf8(log_buffer, "plain text log");
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -923,6 +953,9 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
 
   // Truncate at whole line boundaries to avoid UTF-8 issues
   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+
+  // Validate UTF-8 in formatted message
+  validate_log_message_utf8(log_buffer, "stderr log");
 
   // Write to mmap if active
   if (log_mmap_is_active()) {
@@ -1002,6 +1035,9 @@ void log_file_msg(const char *fmt, ...) {
 
   // Truncate at whole line boundaries to avoid UTF-8 issues
   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+
+  // Validate UTF-8 in formatted message
+  validate_log_message_utf8(log_buffer, "file-only log");
 
   // Write to mmap if active, else to file
   if (log_mmap_is_active()) {
