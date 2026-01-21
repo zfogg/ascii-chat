@@ -8,6 +8,7 @@
 #include "options/options.h"
 #include "options/validation.h"
 #include "util/path.h"
+#include "util/utf8.h"
 #include "common.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
@@ -141,17 +142,38 @@ static bool config_client_keys_set = false;
  */
 
 /**
- * @brief Extract string value from TOML datum
- * @param datum TOML datum structure
- * @return Pointer to string value, or NULL if not a string type
+ * @brief Validate and return a TOML string value
+ * @param datum TOML datum to extract string from
+ * @return String value if valid UTF-8, NULL otherwise
  *
+ * Validates that the TOML string value contains valid UTF-8.
+ * Rejects invalid UTF-8 sequences for security and robustness.
  * @ingroup config
  */
-static const char *get_toml_string(toml_datum_t datum) {
-  if (datum.type == TOML_STRING) {
-    return datum.u.s;
+static const char *get_toml_string_validated(toml_datum_t datum) {
+  if (datum.type != TOML_STRING) {
+    return NULL;
   }
-  return NULL;
+
+  const char *str = datum.u.s;
+  if (!str) {
+    return NULL;
+  }
+
+  // Validate UTF-8 encoding
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      // Invalid UTF-8 sequence in config file
+      log_warn("Config value contains invalid UTF-8 sequence at offset %zu", p - (const uint8_t *)str);
+      return NULL;
+    }
+    p += decode_len;
+  }
+
+  return str;
 }
 
 /** @} */
@@ -189,13 +211,13 @@ static void apply_network_config(toml_datum_t toptab, bool is_client, options_t 
   if (is_client) {
     // Client: Get connect address from client.address or network.address (legacy)
     toml_datum_t address = toml_seek(toptab, "client.address");
-    const char *address_str = get_toml_string(address);
+    const char *address_str = get_toml_string_validated(address);
     if (!address_str || strlen(address_str) == 0) {
       // Fallback to legacy network.address
       toml_datum_t network = toml_seek(toptab, "network");
       if (network.type == TOML_TABLE) {
         address = toml_seek(toptab, "network.address");
-        address_str = get_toml_string(address);
+        address_str = get_toml_string_validated(address);
       }
     }
     if (address_str && strlen(address_str) > 0 && !config_address_set) {
@@ -215,7 +237,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client, options_t 
     if (server.type == TOML_TABLE) {
       // IPv4 bind address - seek from the server table, not root
       toml_datum_t bind_ipv4 = toml_get(server, "bind_ipv4");
-      const char *ipv4_str = get_toml_string(bind_ipv4);
+      const char *ipv4_str = get_toml_string_validated(bind_ipv4);
       if (ipv4_str && strlen(ipv4_str) > 0 && !config_address_set) {
         char parsed_addr[OPTIONS_BUFF_SIZE];
         char error_msg[256];
@@ -231,7 +253,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client, options_t 
 
       // IPv6 bind address - seek from the server table, not root
       toml_datum_t bind_ipv6 = toml_get(server, "bind_ipv6");
-      const char *ipv6_str = get_toml_string(bind_ipv6);
+      const char *ipv6_str = get_toml_string_validated(bind_ipv6);
       if (ipv6_str && strlen(ipv6_str) > 0 && !config_address6_set) {
         char parsed_addr[OPTIONS_BUFF_SIZE];
         char error_msg[256];
@@ -251,7 +273,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client, options_t 
       toml_datum_t network = toml_seek(toptab, "network");
       if (network.type == TOML_TABLE) {
         toml_datum_t address = toml_get(network, "address");
-        const char *address_str = get_toml_string(address);
+        const char *address_str = get_toml_string_validated(address);
         if (address_str && strlen(address_str) > 0) {
           char parsed_addr[OPTIONS_BUFF_SIZE];
           char error_msg[256];
@@ -405,7 +427,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *
 
   // Color mode
   toml_datum_t color_mode = toml_seek(toptab, "client.color_mode");
-  const char *color_mode_str = get_toml_string(color_mode);
+  const char *color_mode_str = get_toml_string_validated(color_mode);
   if (color_mode_str && !config_color_mode_set) {
     char error_msg[256];
     int mode = validate_opt_color_mode(color_mode_str, error_msg, sizeof(error_msg));
@@ -419,7 +441,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *
 
   // Render mode
   toml_datum_t render_mode = toml_seek(toptab, "client.render_mode");
-  const char *render_mode_str = get_toml_string(render_mode);
+  const char *render_mode_str = get_toml_string_validated(render_mode);
   if (render_mode_str && !config_render_mode_set) {
     char error_msg[256];
     int mode = validate_opt_render_mode(render_mode_str, error_msg, sizeof(error_msg));
@@ -594,7 +616,7 @@ static void apply_palette_config_from_toml(toml_datum_t toptab, options_t *opts)
 
   // Palette type
   toml_datum_t palette_type = toml_seek(toptab, "palette.type");
-  const char *palette_type_str = get_toml_string(palette_type);
+  const char *palette_type_str = get_toml_string_validated(palette_type);
   if (palette_type_str && !config_palette_set) {
     char error_msg[256];
     int type = validate_opt_palette(palette_type_str, error_msg, sizeof(error_msg));
@@ -608,7 +630,7 @@ static void apply_palette_config_from_toml(toml_datum_t toptab, options_t *opts)
 
   // Palette chars (custom palette)
   toml_datum_t palette_chars = toml_seek(toptab, "palette.chars");
-  const char *palette_chars_str = get_toml_string(palette_chars);
+  const char *palette_chars_str = get_toml_string_validated(palette_chars);
   if (palette_chars_str && !config_palette_chars_set) {
     if (strlen(palette_chars_str) < sizeof(opts->palette_custom)) {
       SAFE_STRNCPY(opts->palette_custom, palette_chars_str, sizeof(opts->palette_custom));
@@ -660,7 +682,7 @@ static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client
 
   // Key
   toml_datum_t key = toml_seek(toptab, "crypto.key");
-  const char *key_str = get_toml_string(key);
+  const char *key_str = get_toml_string_validated(key);
   if (key_str && strlen(key_str) > 0 && !config_encrypt_key_set) {
     if (path_looks_like_path(key_str)) {
       char *normalized_key = NULL;
@@ -681,7 +703,7 @@ static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client
   // Password (WARNING: storing passwords in config file is insecure!)
   // We only load it if explicitly set, but warn user
   toml_datum_t password = toml_seek(toptab, "crypto.password");
-  const char *password_str = get_toml_string(password);
+  const char *password_str = get_toml_string_validated(password);
   if (password_str && strlen(password_str) > 0 && !config_password_set) {
     char error_msg[256];
     if (validate_opt_password(password_str, error_msg, sizeof(error_msg)) == 0) {
@@ -696,7 +718,7 @@ static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client
 
   // Keyfile
   toml_datum_t keyfile = toml_seek(toptab, "crypto.keyfile");
-  const char *keyfile_str = get_toml_string(keyfile);
+  const char *keyfile_str = get_toml_string_validated(keyfile);
   if (keyfile_str && strlen(keyfile_str) > 0 && !config_encrypt_keyfile_set) {
     if (path_looks_like_path(keyfile_str)) {
       char *normalized_keyfile = NULL;
@@ -728,7 +750,7 @@ static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client
   // Server key (client only)
   if (is_client) {
     toml_datum_t server_key = toml_seek(toptab, "crypto.server_key");
-    const char *server_key_str = get_toml_string(server_key);
+    const char *server_key_str = get_toml_string_validated(server_key);
     if (server_key_str && strlen(server_key_str) > 0 && !config_server_key_set) {
       if (path_looks_like_path(server_key_str)) {
         char *normalized_server_key = NULL;
@@ -750,7 +772,7 @@ static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client
   // Client keys (server only)
   if (!is_client) {
     toml_datum_t client_keys = toml_seek(toptab, "crypto.client_keys");
-    const char *client_keys_str = get_toml_string(client_keys);
+    const char *client_keys_str = get_toml_string_validated(client_keys);
     if (client_keys_str && strlen(client_keys_str) > 0 && !config_client_keys_set) {
       if (path_looks_like_path(client_keys_str)) {
         char *normalized_client_keys = NULL;
@@ -792,7 +814,7 @@ static asciichat_error_t apply_log_config(toml_datum_t toptab, options_t *opts) 
     log_file = toml_seek(toptab, "logging.log_file");
   }
 
-  const char *log_file_str = get_toml_string(log_file);
+  const char *log_file_str = get_toml_string_validated(log_file);
   if (log_file_str && strlen(log_file_str) > 0 && !config_log_file_set) {
     char *normalized_log = NULL;
     asciichat_error_t log_result = path_validate_user_path(log_file_str, PATH_ROLE_LOG_FILE, &normalized_log);
