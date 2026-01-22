@@ -321,6 +321,7 @@ set(CORE_SRCS
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c
+    lib/options/schema.c          # Config schema metadata (NEW)
     lib/options/rcu.c
     lib/options/builder.c         # Options builder API (NEW)
     lib/options/presets.c          # Preset option configs (NEW)

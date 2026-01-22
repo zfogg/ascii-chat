@@ -33,7 +33,7 @@ the server sends back.
 Displays your local webcam as ASCII art without any network connection.
 Perfect for testing webcam, palette settings, and terminal rendering.
 .TP
-.B discovery-server
+.B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections

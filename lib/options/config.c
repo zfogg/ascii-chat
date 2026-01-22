@@ -8,6 +8,8 @@
 #include "common/error_codes.h"
 #include "options/options.h"
 #include "options/validation.h"
+#include "options/schema.h"
+#include "options/rcu.h"
 #include "util/path.h"
 #include "util/utf8.h"
 #include "common.h"
@@ -16,6 +18,7 @@
 #include "platform/question.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
+#include "video/palette.h"
 #include "version.h"
 #include "tooling/defer/defer.h"
 
@@ -175,11 +178,402 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
 /** @} */
 
 /**
- * @name Internal Configuration Application Functions
+ * @name Schema-Based Configuration Parser
+ * @{
+ */
+
+/**
+ * @brief Apply configuration from TOML using schema metadata
+ * @param toptab Root TOML table
+ * @param is_client True for client mode, false for server mode
+ * @param opts Options structure to populate
+ * @param strict If true, return error on first validation failure
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Generic schema-driven parser that:
+ * 1. Iterates through all options in schema
+ * 2. Checks if option applies to current mode
+ * 3. Looks up TOML value
+ * 4. Validates and converts type
+ * 5. Writes to options_t using field_offset
+ *
+ * Handles special cases:
+ * - Legacy network.address fallback
+ * - palette.chars auto-setting palette_type
+ * - Path normalization for keys/log files
+ * - Type coercion (int/string, float/string)
+ */
+static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client, options_t *opts, bool strict) {
+  size_t metadata_count = 0;
+  const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
+  asciichat_error_t first_error = ASCIICHAT_OK;
+
+  // Track which options were set to avoid duplicates (e.g., log_file vs logging.log_file)
+  // Use a simple array on the stack - metadata_count is small (< 50)
+  bool option_set_flags[64] = {0}; // Max expected options
+  if (metadata_count > 64) {
+    CONFIG_WARN("Too many options in schema (%zu), some may be skipped", metadata_count);
+  }
+
+  for (size_t i = 0; i < metadata_count; i++) {
+    const config_option_metadata_t *meta = &metadata[i];
+
+    // Skip if not applicable to current mode
+    if ((is_client && meta->is_server_only) || (!is_client && meta->is_client_only)) {
+      continue;
+    }
+
+    // Skip if already set (avoid processing duplicates like log_file vs logging.log_file)
+    if (option_set_flags[i]) {
+      continue;
+    }
+
+    // Look up TOML value
+    toml_datum_t datum = toml_seek(toptab, meta->toml_key);
+    if (datum.type == TOML_UNKNOWN) {
+      continue; // Option not present in config
+    }
+
+    // Extract value based on type
+    char value_str[512] = {0};
+    bool has_value = false;
+    int int_val = 0;
+    bool bool_val = false;
+    double double_val = 0.0;
+
+    switch (meta->type) {
+    case OPTION_TYPE_STRING: {
+      // String options can come as TOML_STRING or TOML_INT64 (e.g., port as integer)
+      if (datum.type == TOML_STRING) {
+        const char *str = get_toml_string_validated(datum);
+        if (str && strlen(str) > 0) {
+          SAFE_STRNCPY(value_str, str, sizeof(value_str));
+          has_value = true;
+        }
+      } else if (datum.type == TOML_INT64) {
+        // Convert integer to string (e.g., port = 7777)
+        SAFE_SNPRINTF(value_str, sizeof(value_str), "%lld", (long long)datum.u.int64);
+        has_value = true;
+      }
+      break;
+    }
+    case OPTION_TYPE_INT: {
+      if (datum.type == TOML_INT64) {
+        int_val = (int)datum.u.int64;
+        has_value = true;
+        // Convert to string for validation
+        SAFE_SNPRINTF(value_str, sizeof(value_str), "%d", int_val);
+      } else if (datum.type == TOML_STRING) {
+        const char *str = get_toml_string_validated(datum);
+        if (str) {
+          SAFE_STRNCPY(value_str, str, sizeof(value_str));
+          has_value = true;
+        }
+      }
+      break;
+    }
+    case OPTION_TYPE_BOOL: {
+      if (datum.type == TOML_BOOLEAN) {
+        bool_val = datum.u.boolean;
+        has_value = true;
+      }
+      break;
+    }
+    case OPTION_TYPE_FLOAT:
+    case OPTION_TYPE_DOUBLE: {
+      if (datum.type == TOML_FP64) {
+        double_val = datum.u.fp64;
+        has_value = true;
+        // Convert to string for validation
+        SAFE_SNPRINTF(value_str, sizeof(value_str), "%.10g", double_val);
+      } else if (datum.type == TOML_STRING) {
+        const char *str = get_toml_string_validated(datum);
+        if (str) {
+          SAFE_STRNCPY(value_str, str, sizeof(value_str));
+          has_value = true;
+        }
+      }
+      break;
+    }
+    case OPTION_TYPE_ENUM: {
+      const char *str = get_toml_string_validated(datum);
+      if (str) {
+        SAFE_STRNCPY(value_str, str, sizeof(value_str));
+        has_value = true;
+      }
+      break;
+    }
+    }
+
+    if (!has_value) {
+      continue;
+    }
+
+    // Special handling for palette.chars (auto-sets palette_type to CUSTOM)
+    if (strcmp(meta->toml_key, "palette.chars") == 0) {
+      const char *chars_str = get_toml_string_validated(datum);
+      if (chars_str && strlen(chars_str) > 0) {
+        if (strlen(chars_str) < sizeof(opts->palette_custom)) {
+          SAFE_STRNCPY(opts->palette_custom, chars_str, sizeof(opts->palette_custom));
+          opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
+          opts->palette_custom_set = true;
+          opts->palette_type = PALETTE_CUSTOM;
+          option_set_flags[i] = true;
+        } else {
+          CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(chars_str),
+                      sizeof(opts->palette_custom) - 1);
+          if (strict) {
+            return SET_ERRNO(ERROR_CONFIG, "palette.chars too long");
+          }
+        }
+      }
+      continue;
+    }
+
+    // Validate if validator exists
+    char error_msg[256] = {0};
+    char parsed_buffer[OPTIONS_BUFF_SIZE] = {0};
+    int parsed_int = 0;
+    float parsed_float = 0.0f;
+    double parsed_double = 0.0;
+    void *parsed_value = NULL;
+
+    // Set parsed_value pointer based on type
+    switch (meta->type) {
+    case OPTION_TYPE_STRING:
+      parsed_value = parsed_buffer;
+      break;
+    case OPTION_TYPE_INT:
+    case OPTION_TYPE_ENUM:
+      parsed_value = &parsed_int;
+      break;
+    case OPTION_TYPE_FLOAT:
+      parsed_value = &parsed_float;
+      break;
+    case OPTION_TYPE_DOUBLE:
+      // Double validators may write to float*, so use parsed_float for validation
+      // then cast to double when writing
+      parsed_value = &parsed_float;
+      break;
+    case OPTION_TYPE_BOOL:
+      parsed_value = NULL; // Bool doesn't need validation
+      break;
+    }
+
+    if (meta->validate_fn && parsed_value) {
+      int validate_result = meta->validate_fn(value_str, opts, is_client, parsed_value, error_msg, sizeof(error_msg));
+      if (validate_result != 0) {
+        CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str,
+                    strlen(error_msg) > 0 ? error_msg : "validation failed");
+        if (strict) {
+          if (first_error == ASCIICHAT_OK) {
+            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s: %s", meta->toml_key, error_msg);
+          }
+          continue; // Continue to collect all errors, but mark first
+        }
+        continue;
+      }
+    }
+
+    // Write value to options_t using field_offset
+    char *field_ptr = ((char *)opts) + meta->field_offset;
+
+    switch (meta->type) {
+    case OPTION_TYPE_STRING: {
+      // For string types, use parsed_buffer if validator filled it (e.g., IP address normalization)
+      // Otherwise use original value_str
+      const char *final_value = (parsed_buffer[0] != '\0') ? parsed_buffer : value_str;
+
+      // Special handling for path-based options (keys, log files)
+      // Check if this is a path-based option by examining the key name
+      bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL ||
+                             strstr(meta->toml_key, "keyfile") != NULL);
+      if (is_path_option) {
+        // Check if it's a path that needs normalization
+        if (path_looks_like_path(final_value)) {
+          char *normalized = NULL;
+          path_role_t role = PATH_ROLE_CONFIG_FILE; // Default
+          if (strstr(meta->toml_key, "key") != NULL) {
+            role = (strstr(meta->toml_key, "server_key") != NULL || strstr(meta->toml_key, "client_keys") != NULL)
+                       ? PATH_ROLE_KEY_PUBLIC
+                       : PATH_ROLE_KEY_PRIVATE;
+          } else if (strstr(meta->toml_key, "log_file") != NULL) {
+            role = PATH_ROLE_LOG_FILE;
+          }
+
+          asciichat_error_t path_result = path_validate_user_path(final_value, role, &normalized);
+          if (path_result != ASCIICHAT_OK) {
+            SAFE_FREE(normalized);
+            if (strict) {
+              if (first_error == ASCIICHAT_OK) {
+                first_error = path_result;
+              }
+              continue;
+            }
+            continue;
+          }
+          SAFE_STRNCPY(field_ptr, normalized, meta->field_size);
+          SAFE_FREE(normalized);
+        } else {
+          // Not a path, just an identifier (e.g., "gpg:keyid", "github:user")
+          SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+        }
+
+        // Auto-enable encryption for crypto.key, crypto.password, crypto.keyfile
+        if (strstr(meta->toml_key, "crypto.key") != NULL || strstr(meta->toml_key, "crypto.password") != NULL ||
+            strstr(meta->toml_key, "crypto.keyfile") != NULL) {
+          opts->encrypt_enabled = 1;
+        }
+      } else {
+        SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+      }
+      break;
+    }
+    case OPTION_TYPE_INT: {
+      // Use validator result if available, otherwise use original parsed value
+      int final_int_val = int_val; // Default to original value
+      if (meta->validate_fn) {
+        // Validator returned parsed value in parsed_value (int*)
+        final_int_val = parsed_int;
+      }
+      // Handle unsigned short int fields (webcam_index)
+      if (meta->field_size == sizeof(unsigned short int)) {
+        *(unsigned short int *)field_ptr = (unsigned short int)final_int_val;
+      } else {
+        *(int *)field_ptr = final_int_val;
+      }
+      break;
+    }
+    case OPTION_TYPE_BOOL: {
+      // Handle unsigned short int bool fields (common in options_t)
+      if (meta->field_size == sizeof(unsigned short int)) {
+        *(unsigned short int *)field_ptr = bool_val ? 1 : 0;
+      } else {
+        *(bool *)field_ptr = bool_val;
+      }
+      break;
+    }
+    case OPTION_TYPE_FLOAT: {
+      float float_val = (float)double_val;
+      if (meta->validate_fn) {
+        float_val = parsed_float;
+      }
+      *(float *)field_ptr = float_val;
+      break;
+    }
+    case OPTION_TYPE_DOUBLE: {
+      // Use validator result if available, otherwise use original TOML value
+      double final_double_val = double_val; // Default to original TOML value
+      if (meta->validate_fn) {
+        // Validator wrote to parsed_float, cast to double
+        final_double_val = (double)parsed_float;
+      }
+      *(double *)field_ptr = final_double_val;
+      break;
+    }
+    case OPTION_TYPE_ENUM: {
+      // Enums always need validation (they come as strings)
+      if (meta->validate_fn) {
+        int enum_val = parsed_int;
+        // Enums are stored as their underlying int type
+        if (meta->field_size == sizeof(terminal_color_mode_t)) {
+          *(terminal_color_mode_t *)field_ptr = (terminal_color_mode_t)enum_val;
+        } else if (meta->field_size == sizeof(render_mode_t)) {
+          *(render_mode_t *)field_ptr = (render_mode_t)enum_val;
+        } else if (meta->field_size == sizeof(palette_type_t)) {
+          *(palette_type_t *)field_ptr = (palette_type_t)enum_val;
+        } else {
+          *(int *)field_ptr = enum_val;
+        }
+      } else {
+        // No validator for enum - this shouldn't happen, but handle gracefully
+        CONFIG_WARN("Enum option %s has no validator (skipping)", meta->toml_key);
+      }
+      break;
+    }
+    }
+
+    option_set_flags[i] = true;
+
+    // Special handling: sync FPS to global variable for backward compatibility
+    if (strcmp(meta->toml_key, "client.fps") == 0) {
+      extern int g_max_fps; // From common.c
+      g_max_fps = opts->fps;
+    }
+  }
+
+  // Handle legacy network.address fallback for client
+  if (is_client) {
+    toml_datum_t client_addr = toml_seek(toptab, "client.address");
+    if (client_addr.type == TOML_UNKNOWN) {
+      // Try legacy network.address
+      toml_datum_t network_addr = toml_seek(toptab, "network.address");
+      const char *addr_str = get_toml_string_validated(network_addr);
+      if (addr_str && strlen(addr_str) > 0) {
+        char parsed_addr[OPTIONS_BUFF_SIZE];
+        char error_msg[256];
+        if (validate_opt_ip_address(addr_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
+                                    sizeof(error_msg)) == 0) {
+          SAFE_STRNCPY(opts->address, parsed_addr, sizeof(opts->address));
+        } else {
+          CONFIG_WARN("%s (skipping network.address)", error_msg);
+          if (strict && first_error == ASCIICHAT_OK) {
+            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid network.address: %s", error_msg);
+          }
+        }
+      }
+    }
+  }
+
+  // Handle legacy network.address fallback for server (if bind_ipv4/bind_ipv6 not set)
+  if (!is_client) {
+    toml_datum_t bind_ipv4 = toml_seek(toptab, "server.bind_ipv4");
+    toml_datum_t bind_ipv6 = toml_seek(toptab, "server.bind_ipv6");
+    if (bind_ipv4.type == TOML_UNKNOWN && bind_ipv6.type == TOML_UNKNOWN) {
+      // Try legacy network.address
+      toml_datum_t network_addr = toml_seek(toptab, "network.address");
+      const char *addr_str = get_toml_string_validated(network_addr);
+      if (addr_str && strlen(addr_str) > 0) {
+        char parsed_addr[OPTIONS_BUFF_SIZE];
+        char error_msg[256];
+        if (validate_opt_ip_address(addr_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
+                                    sizeof(error_msg)) == 0) {
+          SAFE_STRNCPY(opts->address, parsed_addr, sizeof(opts->address));
+        } else {
+          CONFIG_WARN("%s (skipping network.address)", error_msg);
+          if (strict && first_error == ASCIICHAT_OK) {
+            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid network.address: %s", error_msg);
+          }
+        }
+      }
+    }
+  }
+
+  // Handle special crypto.no_encrypt logic
+  toml_datum_t no_encrypt = toml_seek(toptab, "crypto.no_encrypt");
+  if (no_encrypt.type == TOML_BOOLEAN && no_encrypt.u.boolean) {
+    opts->no_encrypt = 1;
+    opts->encrypt_enabled = 0;
+  }
+
+  // Handle password warning
+  toml_datum_t password = toml_seek(toptab, "crypto.password");
+  const char *password_str = get_toml_string_validated(password);
+  if (password_str && strlen(password_str) > 0) {
+    CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
+  }
+
+  return first_error;
+}
+
+/** @} */
+
+/**
+ * @name Internal Configuration Application Functions (Legacy - kept for reference)
  * @{
  *
- * These functions apply configuration values from TOML sections to global
- * options, with validation and error handling.
+ * These functions are kept for reference but are now replaced by config_apply_schema().
+ * They may be removed in a future cleanup.
  */
 
 /**
@@ -908,7 +1302,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
 
   // Determine display path for error messages (before any early returns)
   const char *display_path = config_path ? config_path : config_path_expanded;
-  
+
   // Log that we're attempting to load config (before logging is initialized, use stderr)
   if (config_path) {
     (void)fprintf(stderr, "Loading configuration from: %s\n", display_path);
@@ -954,19 +1348,12 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     return ASCIICHAT_OK; // Non-fatal error
   }
 
-  // Apply configuration from each section
-  apply_network_config(result.toptab, is_client, opts);
-  apply_client_config(result.toptab, is_client, opts);
-  apply_audio_config(result.toptab, is_client, opts);
-  apply_palette_config_from_toml(result.toptab, opts);
-  asciichat_error_t crypto_result = apply_crypto_config(result.toptab, is_client, opts);
-  if (crypto_result != ASCIICHAT_OK) {
-    return crypto_result;
+  // Apply configuration using schema-driven parser
+  asciichat_error_t schema_result = config_apply_schema(result.toptab, is_client, opts, strict);
+  if (schema_result != ASCIICHAT_OK && strict) {
+    return schema_result;
   }
-  asciichat_error_t log_result = apply_log_config(result.toptab, opts);
-  if (log_result != ASCIICHAT_OK) {
-    return log_result;
-  }
+  // In non-strict mode, continue even if some options failed validation
 
   // Reset all config flags for next call
   config_address_set = false;
@@ -998,11 +1385,20 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   config_client_keys_set = false;
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
-  
+
   // Log successful config load (use stderr since logging may not be initialized yet)
   (void)fprintf(stderr, "Loaded configuration from: %s\n", display_path);
   (void)fflush(stderr);
-  
+
+  // Update RCU system with modified options (for test compatibility)
+  // In real usage, options_state_set is called later after CLI parsing
+  asciichat_error_t rcu_result = options_state_set(opts);
+  if (rcu_result != ASCIICHAT_OK) {
+    // Non-fatal - RCU might not be initialized yet in some test scenarios
+    // But log as warning so tests can see if this is the issue
+    CONFIG_WARN("Failed to update RCU options state: %d (values may not be persisted)", rcu_result);
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -1128,97 +1524,161 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
   (void)fprintf(f, "# delete and regenerate this file with: ascii-chat --config-create\n");
   (void)fprintf(f, "#\n\n");
 
-  // Write network section with defaults
-  (void)fprintf(f, "[network]\n");
-  (void)fprintf(f, "# Port number (1-65535, shared between server and client)\n");
-  (void)fprintf(f, "#port = %s\n\n", opts->port);
+  // Get all options from schema
+  size_t metadata_count = 0;
+  const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
 
-  // Write server section with bind addresses
-  (void)fprintf(f, "[server]\n");
-  (void)fprintf(f, "# IPv4 bind address (default: 127.0.0.1)\n");
-  (void)fprintf(f, "#bind_ipv4 = \"127.0.0.1\"\n");
-  (void)fprintf(f, "# IPv6 bind address (default: ::1 for IPv6-only, or :: for dual-stack)\n");
-  (void)fprintf(f, "#bind_ipv6 = \"::1\"\n");
-  (void)fprintf(f, "# Legacy bind address (fallback if bind_ipv4/bind_ipv6 not set)\n");
-  (void)fprintf(f, "#address = \"::\"\n\n");
+  // Build list of unique categories in order of first appearance
+  const char *categories[16] = {0}; // Max expected categories
+  size_t category_count = 0;
 
-  // Write client section with defaults
-  (void)fprintf(f, "[client]\n");
-  (void)fprintf(f, "# Server address to connect to\n");
-  (void)fprintf(f, "#address = \"%s\"\n", opts->address);
-  (void)fprintf(f, "# Alternative: set via network.address (legacy)\n");
-  (void)fprintf(f, "#network.address = \"%s\"\n\n", opts->address);
-  (void)fprintf(f, "# Terminal width in characters (0 = auto-detect)\n");
-  (void)fprintf(f, "#width = %hu\n", opts->width);
-  (void)fprintf(f, "# Terminal height in characters (0 = auto-detect)\n");
-  (void)fprintf(f, "#height = %hu\n", opts->height);
-  (void)fprintf(f, "# Webcam device index (0 = first webcam)\n");
-  (void)fprintf(f, "#webcam_index = %hu\n", opts->webcam_index);
-  (void)fprintf(f, "# Flip webcam image horizontally\n");
-  (void)fprintf(f, "#webcam_flip = %s\n", opts->webcam_flip ? "true" : "false");
-  (void)fprintf(f, "# Color mode: \"none\", \"16\", \"256\", \"truecolor\" (or \"auto\" for auto-detect)\n");
-  (void)fprintf(f, "#color_mode = \"auto\"\n");
-  (void)fprintf(f, "# Render mode: \"foreground\", \"background\", \"half-block\"\n");
-  (void)fprintf(f, "#render_mode = \"foreground\"\n");
-  (void)fprintf(f, "# Frames per second (1-144, default: 30 for Windows, 60 for Unix)\n");
-#if defined(_WIN32)
-  (void)fprintf(f, "#fps = 30\n");
-#else
-  (void)fprintf(f, "#fps = 60\n");
-#endif
-  (void)fprintf(f, "# Stretch video to terminal size (without preserving aspect ratio)\n");
-  (void)fprintf(f, "#stretch = %s\n", opts->stretch ? "true" : "false");
-  (void)fprintf(f, "# Quiet mode (disable console logging)\n");
-  (void)fprintf(f, "#quiet = %s\n", opts->quiet ? "true" : "false");
-  (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
-  (void)fprintf(f, "#snapshot_mode = %s\n", opts->snapshot_mode ? "true" : "false");
-  (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
-  (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opts->snapshot_delay);
-  (void)fprintf(f, "# Use test pattern instead of real webcam\n");
-  (void)fprintf(f, "#test_pattern = %s\n", opts->test_pattern ? "true" : "false");
-  (void)fprintf(f, "# Show terminal capabilities and exit\n");
-  (void)fprintf(f, "#show_capabilities = %s\n", opts->show_capabilities ? "true" : "false");
-  (void)fprintf(f, "# Force UTF-8 support\n");
-  (void)fprintf(f, "#force_utf8 = %s\n\n", opts->force_utf8 ? "true" : "false");
+  for (size_t i = 0; i < metadata_count && category_count < 16; i++) {
+    const char *category = metadata[i].category;
+    if (!category) {
+      continue;
+    }
 
-  // Write audio section (client only)
-  (void)fprintf(f, "[audio]\n");
-  (void)fprintf(f, "# Enable audio streaming\n");
-  (void)fprintf(f, "#enabled = %s\n", opts->audio_enabled ? "true" : "false");
-  (void)fprintf(f, "# Microphone device index (-1 = use default)\n");
-  (void)fprintf(f, "#microphone_index = %d\n", opts->microphone_index);
-  (void)fprintf(f, "# Speakers device index (-1 = use default)\n");
-  (void)fprintf(f, "#speakers_index = %d\n\n", opts->speakers_index);
+    // Check if category already in list
+    bool found = false;
+    for (size_t j = 0; j < category_count; j++) {
+      if (categories[j] && strcmp(categories[j], category) == 0) {
+        found = true;
+        break;
+      }
+    }
 
-  // Write palette section
-  (void)fprintf(f, "[palette]\n");
-  (void)fprintf(f, "# Palette type: \"blocks\", \"half-blocks\", \"chars\", \"custom\"\n");
-  (void)fprintf(f, "#type = \"half-blocks\"\n");
-  (void)fprintf(f, "# Custom palette characters (only used if type = \"custom\")\n");
-  (void)fprintf(f, "#chars = \"   ...',;:clodxkO0KXNWM\"\n\n");
+    if (!found) {
+      categories[category_count++] = category;
+    }
+  }
 
-  // Write crypto section
-  (void)fprintf(f, "[crypto]\n");
-  (void)fprintf(f, "# Enable encryption\n");
-  (void)fprintf(f, "#encrypt_enabled = %s\n", opts->encrypt_enabled ? "true" : "false");
-  (void)fprintf(f, "# Encryption key identifier (e.g., \"gpg:keyid\" or \"github:username\")\n");
-  (void)fprintf(f, "#key = \"%s\"\n", opts->encrypt_key);
-  (void)fprintf(f, "# Password for encryption (WARNING: storing passwords in config files is insecure!)\n");
-  (void)fprintf(f, "# Use CLI --password or environment variables instead.\n");
-  (void)fprintf(f, "#password = \"%s\"\n", opts->password);
-  (void)fprintf(f, "# Key file path\n");
-  (void)fprintf(f, "#keyfile = \"%s\"\n", opts->encrypt_keyfile);
-  (void)fprintf(f, "# Disable encryption (opt-out)\n");
-  (void)fprintf(f, "#no_encrypt = %s\n", opts->no_encrypt ? "true" : "false");
-  (void)fprintf(f, "# Server public key (client only)\n");
-  (void)fprintf(f, "#server_key = \"%s\"\n", opts->server_key);
-  (void)fprintf(f, "# Client keys directory (server only)\n");
-  (void)fprintf(f, "#client_keys = \"%s\"\n\n", opts->client_keys);
+  // Write each section dynamically from schema
+  for (size_t cat_idx = 0; cat_idx < category_count; cat_idx++) {
+    const char *category = categories[cat_idx];
+    if (!category) {
+      continue;
+    }
 
-  // Write logging section
-  (void)fprintf(f, "[logging]\n");
-  (void)fprintf(f, "# Log file path (empty string = no file logging)\n");
-  (void)fprintf(f, "#log_file = \"%s\"\n", opts->log_file);
+    // Get all options for this category
+    size_t cat_option_count = 0;
+    const config_option_metadata_t **cat_options = config_schema_get_by_category(category, &cat_option_count);
+
+    if (!cat_options || cat_option_count == 0) {
+      continue;
+    }
+
+    // Write section header
+    (void)fprintf(f, "[%s]\n", category);
+
+    // Track which options we've written (to avoid duplicates like log_file vs logging.log_file)
+    bool written_flags[64] = {0}; // Max options per category
+
+    // Write each option in this category
+    for (size_t opt_idx = 0; opt_idx < cat_option_count && opt_idx < 64; opt_idx++) {
+      const config_option_metadata_t *meta = cat_options[opt_idx];
+      if (!meta || !meta->toml_key) {
+        continue;
+      }
+
+      // Skip if already written (duplicate)
+      if (written_flags[opt_idx]) {
+        continue;
+      }
+
+      // Extract key name from TOML key (e.g., "network.port" -> "port", "client.width" -> "width")
+      const char *key_name = meta->toml_key;
+      const char *dot = strrchr(meta->toml_key, '.');
+      if (dot) {
+        key_name = dot + 1;
+      }
+
+      // Skip if this is a duplicate of another option (e.g., logging.log_file vs log_file)
+      // Check if we've already written an option with the same field_offset
+      bool is_duplicate = false;
+      for (size_t j = 0; j < opt_idx; j++) {
+        if (cat_options[j] && cat_options[j]->field_offset == meta->field_offset) {
+          is_duplicate = true;
+          break;
+        }
+      }
+      if (is_duplicate) {
+        continue;
+      }
+
+      // Get field pointer
+      const char *field_ptr = ((const char *)opts) + meta->field_offset;
+
+      // Write description comment if available
+      if (meta->description && strlen(meta->description) > 0) {
+        (void)fprintf(f, "# %s\n", meta->description);
+      }
+
+      // Format and write the option value based on type
+      switch (meta->type) {
+      case OPTION_TYPE_STRING: {
+        const char *str_value = (const char *)field_ptr;
+        if (str_value && strlen(str_value) > 0) {
+          (void)fprintf(f, "#%s = \"%s\"\n", key_name, str_value);
+        } else {
+          (void)fprintf(f, "#%s = \"\"\n", key_name);
+        }
+        break;
+      }
+      case OPTION_TYPE_INT: {
+        int int_value = 0;
+        if (meta->field_size == sizeof(unsigned short int)) {
+          int_value = *(unsigned short int *)field_ptr;
+        } else {
+          int_value = *(int *)field_ptr;
+        }
+        (void)fprintf(f, "#%s = %d\n", key_name, int_value);
+        break;
+      }
+      case OPTION_TYPE_BOOL: {
+        bool bool_value = false;
+        if (meta->field_size == sizeof(unsigned short int)) {
+          bool_value = *(unsigned short int *)field_ptr != 0;
+        } else {
+          bool_value = *(bool *)field_ptr;
+        }
+        (void)fprintf(f, "#%s = %s\n", key_name, bool_value ? "true" : "false");
+        break;
+      }
+      case OPTION_TYPE_FLOAT: {
+        float float_value = *(float *)field_ptr;
+        (void)fprintf(f, "#%s = %.1f\n", key_name, (double)float_value);
+        break;
+      }
+      case OPTION_TYPE_DOUBLE: {
+        double double_value = *(double *)field_ptr;
+        (void)fprintf(f, "#%s = %.1f\n", key_name, double_value);
+        break;
+      }
+      case OPTION_TYPE_ENUM: {
+        // Enums are stored as their underlying int type
+        int enum_value = 0;
+        if (meta->field_size == sizeof(terminal_color_mode_t)) {
+          enum_value = *(terminal_color_mode_t *)field_ptr;
+        } else if (meta->field_size == sizeof(render_mode_t)) {
+          enum_value = *(render_mode_t *)field_ptr;
+        } else if (meta->field_size == sizeof(palette_type_t)) {
+          enum_value = *(palette_type_t *)field_ptr;
+        } else {
+          enum_value = *(int *)field_ptr;
+        }
+        // For enums, write as string representation (will be commented out, user can uncomment)
+        // The actual enum-to-string conversion would require enum helpers, so just write the int
+        (void)fprintf(f, "#%s = %d  # (enum value, see --help for valid options)\n", key_name, enum_value);
+        break;
+      }
+      }
+
+      written_flags[opt_idx] = true;
+    }
+
+    // Add blank line between sections
+    (void)fprintf(f, "\n");
+  }
 
   return ASCIICHAT_OK;
 }

@@ -332,7 +332,7 @@ void action_create_config(void) {
   // For now, use default path (can be extended to read from argv if needed)
   options_t opts = {0};
   char config_path[PLATFORM_MAX_PATH_LENGTH] = {0};
-  
+
   // Try to get config path from options (if --config was set)
   // For --config-create, we'll use default path unless extended
   char *config_dir = get_config_dir();
