@@ -98,6 +98,7 @@ void usage_discovery(FILE *desc) {
     return;
   }
 
+  // For discovery mode, show BINARY options FIRST, then mode-specific options
   // Print program name and description (color mode name magenta)
   const char *space = strchr(config->program_name, ' ');
   if (space) {
@@ -112,7 +113,9 @@ void usage_discovery(FILE *desc) {
   print_project_links(desc);
   (void)fprintf(desc, "\n");
 
-  options_config_print_usage(config, desc);
+  // Print binary-level options first for discovery mode
+  options_print_help_for_mode(config, (asciichat_mode_t)-1, config->program_name, config->description, desc);
 
+  // Clean up
   options_config_destroy(config);
 }

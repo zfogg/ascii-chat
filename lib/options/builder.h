@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include "common.h"
+#include "options/options.h" // For option_mode_bitmask_t
 
 /**
  * @brief Option value types
@@ -101,6 +102,9 @@ typedef struct {
 
   // Optional argument support (for OPTION_TYPE_CALLBACK)
   bool optional_arg; ///< If true, argument is optional (for callbacks like --verbose)
+
+  // Mode applicability
+  option_mode_bitmask_t mode_bitmask; ///< Which modes this option applies to
 } option_descriptor_t;
 
 /**
@@ -454,6 +458,17 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
  */
 void options_builder_add_action(options_builder_t *builder, const char *long_name, char short_name,
                                 void (*action_fn)(void), const char *help_text, const char *group);
+
+/**
+ * @brief Set mode bitmask on the last added option descriptor
+ *
+ * Sets the mode_bitmask field on the most recently added option descriptor.
+ * This allows setting mode applicability after adding an option.
+ *
+ * @param builder Options builder
+ * @param mode_bitmask Bitmask indicating which modes this option applies to
+ */
+void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bitmask_t mode_bitmask);
 
 /**
  * @brief Add full option descriptor (advanced)
@@ -825,11 +840,14 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
  * Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
  * options_config_print_usage_section to allow custom content in between.
  *
- * @param config Options configuration
+ * @param config Options configuration (should be unified preset with all options)
  * @param stream Output stream (stdout or stderr)
  * @param max_col_width Optional pre-calculated column width (0 = auto-calculate)
+ * @param mode Optional mode to filter by (if MODE_SERVER, MODE_CLIENT, etc., filters by mode_bitmask)
+ *             If NULL or invalid, shows all options (for binary-level help)
  */
-void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width);
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width,
+                                                       asciichat_mode_t mode);
 
 /**
  * @brief Print everything except the USAGE section (backward compatibility)
@@ -838,8 +856,24 @@ void options_config_print_options_sections_with_width(const options_config_t *co
  *
  * @param config Options configuration
  * @param stream Output stream (stdout or stderr)
+ * @param mode Optional mode to filter by (if provided, filters by mode_bitmask)
  */
-void options_config_print_options_sections(const options_config_t *config, FILE *stream);
+void options_config_print_options_sections(const options_config_t *config, FILE *stream, asciichat_mode_t mode);
+
+/**
+ * @brief Print help for a specific mode or binary level (unified function)
+ *
+ * This is the single unified function for all help output (binary level and all modes).
+ * It handles all layout logic, terminal detection, and section printing.
+ *
+ * @param config Options config with all options
+ * @param mode Mode to show help for (-1 for binary-level help)
+ * @param program_name Full program name (e.g., "ascii-chat server")
+ * @param description Brief description
+ * @param desc Output file stream
+ */
+void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode,
+                                 const char *program_name, const char *description, FILE *desc);
 
 /**
  * @brief Clean up memory owned by options struct

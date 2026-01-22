@@ -325,6 +325,7 @@ set(CORE_SRCS
     lib/options/rcu.c
     lib/options/builder.c         # Options builder API (NEW)
     lib/options/presets.c          # Preset option configs (NEW)
+    lib/options/registry.c         # Central options registry (NEW)
     lib/options/parsers.c          # Custom enum parsers (NEW)
     lib/options/actions.c          # Action option callbacks (NEW)
     lib/options/layout.c           # Two-column layout helpers (NEW)

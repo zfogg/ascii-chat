@@ -618,6 +618,23 @@ typedef enum {
 } asciichat_mode_t;
 
 /**
+ * @brief Option mode bitmask
+ *
+ * Indicates which modes an option applies to. Options can apply to multiple
+ * modes by combining bitmasks with bitwise OR.
+ */
+typedef enum {
+  OPTION_MODE_NONE = 0,                                     ///< No modes (invalid)
+  OPTION_MODE_SERVER = (1 << MODE_SERVER),                  ///< Server mode (bit 0)
+  OPTION_MODE_CLIENT = (1 << MODE_CLIENT),                  ///< Client mode (bit 1)
+  OPTION_MODE_MIRROR = (1 << MODE_MIRROR),                  ///< Mirror mode (bit 2)
+  OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVER), ///< Discovery server mode (bit 3)
+  OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),            ///< Discovery mode (bit 4)
+  OPTION_MODE_BINARY = 0x100,                               ///< Binary-level options (parsed before mode detection)
+  OPTION_MODE_ALL = 0x1F | 0x100                            ///< All modes + binary
+} option_mode_bitmask_t;
+
+/**
  * @brief Consolidated options structure
  *
  * All options from the scattered extern globals are now in a single struct.

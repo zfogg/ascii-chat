@@ -140,7 +140,8 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
  * - Type coercion (int/string, float/string)
  * - crypto.no_encrypt special logic
  */
-static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client, options_t *opts, bool strict) {
+static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode_t detected_mode, options_t *opts,
+                                             bool strict) {
   size_t metadata_count = 0;
   const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
   asciichat_error_t first_error = ASCIICHAT_OK;
@@ -155,8 +156,22 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
   for (size_t i = 0; i < metadata_count; i++) {
     const config_option_metadata_t *meta = &metadata[i];
 
-    // Skip if not applicable to current mode
-    if ((is_client && meta->is_server_only) || (!is_client && meta->is_client_only)) {
+    // Skip if not applicable to current mode - validate using mode_bitmask
+    bool applies_to_mode = false;
+    if (meta->mode_bitmask & OPTION_MODE_BINARY) {
+      // Binary options are always valid
+      applies_to_mode = true;
+    } else if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
+      // Check if option applies to detected mode
+      option_mode_bitmask_t mode_bit = (1 << detected_mode);
+      applies_to_mode = (meta->mode_bitmask & mode_bit) != 0;
+    }
+
+    if (!applies_to_mode) {
+      // Option doesn't apply to this mode - skip it
+      if (strict) {
+        CONFIG_WARN("Option '%s' is not valid for mode %d (skipping)", meta->toml_key, detected_mode);
+      }
       continue;
     }
 
@@ -524,7 +539,9 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict, options_t *opts) {
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
+                                        options_t *opts) {
+  // detected_mode is used in config_apply_schema for bitmask validation
   char *config_path_expanded = NULL;
   defer(SAFE_FREE(config_path_expanded));
 
@@ -621,8 +638,8 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     return ASCIICHAT_OK; // Non-fatal error
   }
 
-  // Apply configuration using schema-driven parser
-  asciichat_error_t schema_result = config_apply_schema(result.toptab, is_client, opts, strict);
+  // Apply configuration using schema-driven parser with bitmask validation
+  asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
   if (schema_result != ASCIICHAT_OK && strict) {
     return schema_result;
   }
@@ -893,7 +910,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict,
+asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, const char *user_config_path, bool strict,
                                               options_t *opts) {
   // Fallback for ASCIICHAT_INSTALL_PREFIX if paths.h hasn't been generated yet
   // (prevents defer tool compilation errors during initial builds)
@@ -913,7 +930,7 @@ asciichat_error_t config_load_system_and_user(bool is_client, const char *user_c
 
   // Load system config first (non-strict - it's optional)
   CONFIG_DEBUG("Attempting to load system config from: %s", system_config_path);
-  asciichat_error_t system_result = config_load_and_apply(is_client, system_config_path, false, opts);
+  asciichat_error_t system_result = config_load_and_apply(detected_mode, system_config_path, false, opts);
   if (system_result == ASCIICHAT_OK) {
     CONFIG_DEBUG("System config loaded successfully");
   } else {
@@ -925,7 +942,7 @@ asciichat_error_t config_load_system_and_user(bool is_client, const char *user_c
   // Load user config second (with user-specified strictness)
   // User config values will override system config values
   CONFIG_DEBUG("Loading user config (strict=%s)", strict ? "true" : "false");
-  asciichat_error_t user_result = config_load_and_apply(is_client, user_config_path, strict, opts);
+  asciichat_error_t user_result = config_load_and_apply(detected_mode, user_config_path, strict, opts);
 
   // Return user config result - errors in user config should be reported
   return user_result;

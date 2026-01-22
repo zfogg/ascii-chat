@@ -9,7 +9,16 @@
 #include "builder.h"
 
 /**
- * @brief Create binary-level options preset
+ * @brief Build unified options config with ALL options (binary + all modes)
+ *
+ * This is the single source of truth for all options. Each option has a
+ * mode_bitmask indicating which modes it applies to. The config includes
+ * all options, and validation happens after parsing based on detected mode.
+ */
+const options_config_t *options_preset_unified(const char *program_name, const char *description);
+
+/**
+ * @brief Create binary-level options preset (DEPRECATED - use options_preset_unified)
  */
 const options_config_t *options_preset_binary(const char *program_name, const char *description);
 

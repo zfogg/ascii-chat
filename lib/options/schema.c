@@ -509,33 +509,9 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     meta->validate_fn = desc->validate;
     meta->description = desc->help_text;
 
-    // Determine mode restrictions by checking which configs contain this option (by offset)
-    bool found_in_configs[5] = {false}; // Track which configs contain this option
-    // Config order: server, client, mirror, acds, discovery
-
-    for (size_t cfg_idx = 0; cfg_idx < num_configs && cfg_idx < 5; cfg_idx++) {
-      const options_config_t *config = configs[cfg_idx];
-      if (!config) {
-        continue;
-      }
-
-      for (size_t j = 0; j < config->num_descriptors; j++) {
-        if (config->descriptors[j].offset == desc->offset) {
-          found_in_configs[cfg_idx] = true;
-          break;
-        }
-      }
-    }
-
-    // Determine restrictions:
-    // - Client-only: appears in client/mirror/discovery (indices 1,2,4) but NOT in server/acds (indices 0,3)
-    // - Server-only: appears in server/acds (indices 0,3) but NOT in client/mirror/discovery (indices 1,2,4)
-    bool in_client_modes = (num_configs > 1 && found_in_configs[1]) || (num_configs > 2 && found_in_configs[2]) ||
-                           (num_configs > 4 && found_in_configs[4]);
-    bool in_server_modes = (num_configs > 0 && found_in_configs[0]) || (num_configs > 3 && found_in_configs[3]);
-
-    meta->is_client_only = in_client_modes && !in_server_modes;
-    meta->is_server_only = in_server_modes && !in_client_modes;
+    // Set mode_bitmask from option descriptor
+    // The descriptor should have mode_bitmask set from the registry
+    meta->mode_bitmask = desc->mode_bitmask;
 
     // Initialize constraints
     memset(&meta->constraints, 0, sizeof(meta->constraints));

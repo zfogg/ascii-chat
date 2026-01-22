@@ -89,26 +89,8 @@ void usage_mirror(FILE *desc) {
     return;
   }
 
-  // Print program name and description (color mode name magenta)
-  const char *space = strchr(config->program_name, ' ');
-  if (space) {
-    int binary_len = space - config->program_name;
-    (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, config->program_name,
-                  colored_string(LOG_COLOR_FATAL, space + 1), config->description);
-  } else {
-    (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
-  }
-
-  // Print project links
-  print_project_links(desc);
-  (void)fprintf(desc, "\n");
-
-  // Print USAGE section first
-  options_config_print_usage_section(config, desc);
-
-  // Print everything after USAGE (EXAMPLES, OPTIONS) with global max width
-  // Note: MODE-OPTIONS only appears in binary-level help, not mode-specific help
-  options_config_print_options_sections_with_width(config, desc, 0);
+  // Use unified help printing function
+  options_print_help_for_mode(config, MODE_MIRROR, config->program_name, config->description, desc);
 
   // Clean up the config
   options_config_destroy(config);

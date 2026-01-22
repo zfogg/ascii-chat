@@ -58,9 +58,8 @@ typedef struct {
   // Validation - uses builder's validate function directly
   builder_validate_fn_t validate_fn; ///< Builder's validation function (can be NULL for simple types)
 
-  // Mode restrictions
-  bool is_client_only; ///< Only used in client mode
-  bool is_server_only; ///< Only used in server mode
+  // Mode applicability bitmask
+  option_mode_bitmask_t mode_bitmask; ///< Which modes this option applies to
 
   // Documentation
   const char *description; ///< Description for docs/help generation

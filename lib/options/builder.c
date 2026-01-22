@@ -36,6 +36,41 @@
 // ============================================================================
 
 /**
+ * @brief Check if an option applies to a specific mode using bitmask
+ * @param desc Option descriptor
+ * @param mode Mode to check (use invalid value like -1 for binary help)
+ * @param for_binary_help If true, show binary options; if false, hide them
+ * @return true if option should be shown for this mode
+ */
+static bool option_applies_to_mode(const option_descriptor_t *desc, asciichat_mode_t mode, bool for_binary_help) {
+  if (!desc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Descriptor is NULL");
+    return false;
+  }
+
+  // Binary options: show only in binary help, hide in mode-specific help
+  if (desc->mode_bitmask & OPTION_MODE_BINARY) {
+    return for_binary_help && !desc->hide_from_binary_help;
+  }
+
+  // For binary help, don't show mode-specific options
+  if (for_binary_help) {
+    return false;
+  }
+
+  // Mode-specific options: check if bitmask matches mode
+  // Validate mode is in valid range
+  if (mode < 0 || mode > MODE_DISCOVERY) {
+    return false;
+  }
+  option_mode_bitmask_t mode_bit = (1 << mode);
+  bool applies = (desc->mode_bitmask & mode_bit) != 0;
+
+  // Also respect legacy hide flags for backward compatibility
+  return applies && !desc->hide_from_mode_help;
+}
+
+/**
  * @brief Grow descriptor array if needed
  */
 static void ensure_descriptor_capacity(options_builder_t *builder) {
@@ -500,6 +535,7 @@ void options_builder_add_bool(options_builder_t *builder, const char *long_name,
                               .default_value = &default_vals[default_value ? 1 : 0],
                               .required = required,
                               .env_var_name = env_var_name,
+                              .mode_bitmask = OPTION_MODE_NONE,
                               .validate = NULL,
                               .parse_fn = NULL,
                               .owns_memory = false};
@@ -534,7 +570,8 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
                               .env_var_name = env_var_name,
                               .validate = validate,
                               .parse_fn = NULL,
-                              .owns_memory = false};
+                              .owns_memory = false,
+                              .mode_bitmask = OPTION_MODE_NONE};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -558,20 +595,19 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
     default_ptr = &defaults[num_defaults++];
   }
 
-  option_descriptor_t desc = {
-      .long_name = long_name,
-      .short_name = short_name,
-      .type = OPTION_TYPE_STRING,
-      .offset = offset,
-      .help_text = help_text,
-      .group = group,
-      .default_value = default_ptr,
-      .required = required,
-      .env_var_name = env_var_name,
-      .validate = validate,
-      .parse_fn = NULL,
-      .owns_memory = true // Strings are always owned
-  };
+  option_descriptor_t desc = {.long_name = long_name,
+                              .short_name = short_name,
+                              .type = OPTION_TYPE_STRING,
+                              .offset = offset,
+                              .help_text = help_text,
+                              .group = group,
+                              .default_value = default_ptr,
+                              .required = required,
+                              .env_var_name = env_var_name,
+                              .validate = validate,
+                              .parse_fn = NULL,
+                              .owns_memory = true, // Strings are always owned
+                              .mode_bitmask = OPTION_MODE_NONE};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -602,7 +638,8 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
                               .env_var_name = env_var_name,
                               .validate = validate,
                               .parse_fn = NULL,
-                              .owns_memory = false};
+                              .owns_memory = false,
+                              .mode_bitmask = OPTION_MODE_NONE};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -626,7 +663,8 @@ void options_builder_add_callback(options_builder_t *builder, const char *long_n
                               .validate = NULL,
                               .parse_fn = parse_fn,
                               .owns_memory = false,
-                              .optional_arg = false};
+                              .optional_arg = false,
+                              .mode_bitmask = OPTION_MODE_NONE};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -667,7 +705,8 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
                               .validate = NULL,
                               .parse_fn = parse_fn,
                               .owns_memory = false,
-                              .optional_arg = optional_arg};
+                              .optional_arg = optional_arg,
+                              .mode_bitmask = OPTION_MODE_NONE};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
@@ -690,7 +729,8 @@ void options_builder_add_action(options_builder_t *builder, const char *long_nam
                               .action_fn = action_fn,
                               .owns_memory = false,
                               .hide_from_mode_help = false,
-                              .hide_from_binary_help = false};
+                              .hide_from_binary_help = false,
+                              .mode_bitmask = OPTION_MODE_NONE};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 
@@ -702,11 +742,22 @@ void options_builder_add_action(options_builder_t *builder, const char *long_nam
 }
 
 void options_builder_add_descriptor(options_builder_t *builder, const option_descriptor_t *descriptor) {
-  if (!builder || !descriptor)
+  if (!builder || !descriptor) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder is NULL or descriptor is NULL");
     return;
+  }
+  return;
 
   ensure_descriptor_capacity(builder);
   builder->descriptors[builder->num_descriptors++] = *descriptor;
+}
+
+void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bitmask_t mode_bitmask) {
+  if (!builder || builder->num_descriptors == 0) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Builder is NULL or has no descriptors");
+    return;
+  }
+  builder->descriptors[builder->num_descriptors - 1].mode_bitmask = mode_bitmask;
 }
 
 // ============================================================================
@@ -1776,9 +1827,15 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
 
+  // Determine if this is binary-level help (no mode specified)
+  // Use invalid mode value (-1) to indicate binary help
+  bool for_binary_help = true;       // options_config_print_usage is for binary-level help
+  asciichat_mode_t binary_mode = -1; // Invalid mode sentinel for binary help
+
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
-    if (desc->hide_from_mode_help || !desc->group) {
+    // Filter by mode_bitmask - for binary help, show binary options
+    if (!option_applies_to_mode(desc, binary_mode, for_binary_help) || !desc->group) {
       continue;
     }
 
@@ -1810,8 +1867,10 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
     for (size_t i = 0; i < config->num_descriptors; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
-      // Skip if not in current group or if hidden
-      if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group ||
+      // Skip if not in current group or if doesn't apply to mode
+      // Use invalid mode sentinel for binary help
+      asciichat_mode_t binary_mode = -1;
+      if (!option_applies_to_mode(desc, binary_mode, for_binary_help) || !desc->group ||
           strcmp(desc->group, current_group) != 0) {
         continue;
       }
@@ -1964,9 +2023,13 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
  * Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections.
  * Used with options_config_print_usage_section to allow custom content in between.
  */
-void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width) {
-  if (!config || !stream)
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width,
+                                                      asciichat_mode_t mode) {
+  if (!config || !stream) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Config or stream is NULL");
     return;
+  }
+  return;
 
   // Detect terminal width - try actual terminal size first, fallback to COLUMNS env var
   int term_width = 80;
@@ -1987,8 +2050,15 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     max_col_width = options_config_calculate_max_col_width(config);
   }
 
+  // Determine if this is binary-level help
+  // Binary help shows all binary options, mode help shows only mode-specific options
+  // Use invalid mode value to indicate binary help
+  bool for_binary_help = (mode < 0 || mode > MODE_DISCOVERY);
+
   // Print all sections except USAGE (MODE-OPTIONS only appears in binary-level help, not mode-specific help)
-  print_modes_section(config, stream, term_width, max_col_width);
+  if (for_binary_help) {
+    print_modes_section(config, stream, term_width, max_col_width);
+  }
   print_examples_section(config, stream, term_width, max_col_width);
 
   // Build list of unique groups in order of first appearance
@@ -1997,7 +2067,8 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
-    if (desc->hide_from_mode_help || !desc->group) {
+    // Filter by mode_bitmask instead of hide_from_mode_help
+    if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group) {
       continue;
     }
 
@@ -2148,8 +2219,190 @@ void options_config_print_options_sections_with_width(const options_config_t *co
  *
  * Calls options_config_print_options_sections_with_width with auto-calculation.
  */
-void options_config_print_options_sections(const options_config_t *config, FILE *stream) {
-  options_config_print_options_sections_with_width(config, stream, 0);
+void options_config_print_options_sections(const options_config_t *config, FILE *stream, asciichat_mode_t mode) {
+  options_config_print_options_sections_with_width(config, stream, 0, mode);
+}
+
+// ============================================================================
+// Unified Help Printing Function
+// ============================================================================
+
+/**
+ * @brief Print help for a specific mode or binary level
+ *
+ * This is the single unified function for all help output (binary level and all modes).
+ * It handles common layout logic, terminal detection, and section printing.
+ *
+ * @param config Options config with all options (binary + all modes)
+ * @param mode Mode to show help for (use -1 for binary-level help)
+ * @param program_name Full program name with mode (e.g., "ascii-chat server")
+ * @param description Brief description of the mode/binary
+ * @param desc Output file stream (usually stdout)
+ */
+void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name,
+                                 const char *description, FILE *desc) {
+  if (!config || !desc) {
+    if (desc) {
+      fprintf(desc, "Error: Failed to create options config\n");
+    } else {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Config or desc is NULL");
+    }
+    return;
+  }
+
+  // Print program name and description (color mode name magenta if it's a mode-specific help)
+  if (program_name) {
+    const char *space = strchr(program_name, ' ');
+    if (space && mode >= 0) {
+      // Mode-specific help: color the mode name
+      int binary_len = space - program_name;
+      (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, program_name, colored_string(LOG_COLOR_FATAL, space + 1),
+                    description);
+    } else {
+      // Binary-level help
+      (void)fprintf(desc, "%s - %s\n\n", program_name, description);
+    }
+  }
+
+  // Print project links
+  print_project_links(desc);
+  (void)fprintf(desc, "\n");
+
+  // Detect terminal width
+  int term_width = 80;
+  terminal_size_t term_size;
+  if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
+    term_width = term_size.cols;
+  } else {
+    const char *cols_env = SAFE_GETENV("COLUMNS");
+    if (cols_env) {
+      int cols = atoi(cols_env);
+      if (cols > 40)
+        term_width = cols;
+    }
+  }
+
+  // Calculate global max column width
+  int global_max_col_width = 0;
+
+  // Include USAGE line widths in max calculation
+  if (config->num_usage_lines > 0) {
+    for (size_t i = 0; i < config->num_usage_lines; i++) {
+      const usage_descriptor_t *usage = &config->usage_lines[i];
+      int est_width = strlen("ascii-chat");
+      if (usage->mode)
+        est_width += strlen(usage->mode) + 1;
+      if (usage->positional)
+        est_width += strlen(usage->positional) + 1;
+      if (usage->show_options)
+        est_width += 20;
+      if (est_width > global_max_col_width)
+        global_max_col_width = est_width;
+    }
+  }
+
+  // Include positional argument examples widths in max calculation
+  if (config->num_positional_args > 0) {
+    for (size_t pa_idx = 0; pa_idx < config->num_positional_args; pa_idx++) {
+      const positional_arg_descriptor_t *pos_arg = &config->positional_args[pa_idx];
+      if (pos_arg->examples) {
+        for (size_t i = 0; i < pos_arg->num_examples; i++) {
+          const char *example = pos_arg->examples[i];
+          const char *p = example;
+          while (*p == ' ')
+            p++;
+          const char *first_part = p;
+          while (*p && !(*p == ' ' && *(p + 1) == ' '))
+            p++;
+          int first_len_bytes = (int)(p - first_part);
+          int col_width = utf8_display_width_n(first_part, first_len_bytes);
+          if (col_width > global_max_col_width)
+            global_max_col_width = col_width;
+        }
+      }
+    }
+  }
+
+  // Include option descriptor widths in max calculation
+  int options_max_col_width = options_config_calculate_max_col_width(config);
+  if (options_max_col_width > global_max_col_width)
+    global_max_col_width = options_max_col_width;
+
+  // Ensure minimum width
+  if (global_max_col_width < 20)
+    global_max_col_width = 20;
+
+  // Print USAGE section
+  fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
+  if (config->num_usage_lines > 0) {
+    for (size_t i = 0; i < config->num_usage_lines; i++) {
+      const usage_descriptor_t *usage = &config->usage_lines[i];
+      char usage_buf[512];
+      int len = 0;
+
+      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "ascii-chat");
+
+      if (usage->mode) {
+        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
+      }
+
+      if (usage->positional) {
+        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                        colored_string(LOG_COLOR_INFO, usage->positional));
+      }
+
+      if (usage->show_options) {
+        const char *options_text =
+            (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
+      }
+
+      layout_print_two_column_row(desc, usage_buf, usage->description, global_max_col_width, term_width);
+    }
+  }
+  fprintf(desc, "\n");
+
+  // Print positional argument examples
+  if (config->num_positional_args > 0) {
+    for (size_t pa_idx = 0; pa_idx < config->num_positional_args; pa_idx++) {
+      const positional_arg_descriptor_t *pos_arg = &config->positional_args[pa_idx];
+      if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
+        (void)fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, pos_arg->section_heading));
+
+        for (size_t i = 0; i < pos_arg->num_examples; i++) {
+          const char *example = pos_arg->examples[i];
+          const char *p = example;
+          const char *desc_start = NULL;
+
+          while (*p == ' ')
+            p++;
+          const char *first_part = p;
+
+          while (*p && !(*p == ' ' && *(p + 1) == ' '))
+            p++;
+          int first_len_bytes = (int)(p - first_part);
+
+          while (*p == ' ')
+            p++;
+          if (*p) {
+            desc_start = p;
+          }
+
+          char colored_first_part[256];
+          snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
+          char colored_result[512];
+          snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
+
+          layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", global_max_col_width,
+                                      term_width);
+        }
+        (void)fprintf(desc, "\n");
+      }
+    }
+  }
+
+  // Print options sections (with mode-specific filtering)
+  options_config_print_options_sections_with_width(config, desc, global_max_col_width, mode);
 }
 
 void options_config_cleanup(const options_config_t *config, void *options_struct) {

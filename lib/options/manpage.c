@@ -9,6 +9,7 @@
 #include "log/logging.h"
 #include "util/string.h"
 #include "version.h"
+#include "options/options.h" // For asciichat_mode_t and option_mode_bitmask_t
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -395,8 +396,15 @@ static void write_options_section(FILE *f, const options_config_t *config) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Skip if not in current group or if hidden
-      if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group ||
-          strcmp(desc->group, current_group) != 0) {
+      // Filter by mode_bitmask instead of hide flags
+      bool is_binary_option = (desc->mode_bitmask & OPTION_MODE_BINARY) != 0;
+      bool applies_to_mode = false;
+      if (is_binary_option) {
+        applies_to_mode = !desc->hide_from_binary_help;
+      } else {
+        applies_to_mode = !desc->hide_from_mode_help;
+      }
+      if (!applies_to_mode || !desc->group || strcmp(desc->group, current_group) != 0) {
         continue;
       }
 

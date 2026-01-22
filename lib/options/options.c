@@ -130,7 +130,7 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
 
 /**
  * @brief Check if a CLI flag/option is mirror-mode specific
- * 
+ *
  * Queries the mirror mode config to determine if a given option
  * is unique to mirror mode (not in server/client/discovery modes).
  * This allows mode detection via options like -f or -u without
@@ -146,25 +146,25 @@ static bool is_mirror_mode_option(const char *opt_name, char short_name) {
   if (!mirror_config) {
     return false;
   }
-  
+
   // Check if this option exists in mirror config
   bool found = false;
   for (size_t i = 0; i < mirror_config->num_descriptors; i++) {
     const option_descriptor_t *desc = &mirror_config->descriptors[i];
-    
+
     // Check by long name
     if (opt_name && desc->long_name && strcmp(opt_name, desc->long_name) == 0) {
       found = true;
       break;
     }
-    
+
     // Check by short name
     if (short_name != '\0' && desc->short_name == short_name) {
       found = true;
       break;
     }
   }
-  
+
   options_config_destroy(mirror_config);
   return found;
 }
@@ -235,7 +235,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
         // Extract option name (without leading dashes)
         const char *opt_name = argv[i];
         char short_name = '\0';
-        
+
         if (opt_name[0] == '-') {
           if (opt_name[1] == '-') {
             // Long option: skip "--"
@@ -246,7 +246,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
             opt_name = opt_name + 1;
           }
         }
-        
+
         // Check if this option is mirror-specific by querying mirror config
         if (is_mirror_mode_option(opt_name, short_name)) {
           has_mirror_specific_option = true;
@@ -803,7 +803,7 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Save detected_mode before creating new opts struct
   asciichat_mode_t saved_detected_mode = opts.detected_mode;
-  
+
   // Initialize all defaults using options_t_new()
   opts = options_t_new();
 
@@ -941,11 +941,8 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Discovery mode is client-like (uses terminal display, webcam, etc.)
-  bool is_client_or_mirror =
-      (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY);
-
-  asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, config_path_to_load, false, &opts);
+  // Load config files - now uses detected_mode directly for bitmask validation
+  asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // ========================================================================
