@@ -1,10 +1,85 @@
 /**
  * @file registry.h
- * @brief Central options registry with mode bitmasks
+ * @brief Central registry of all command-line options with mode applicability
  * @ingroup options
  *
- * This module provides a unified registry of all command-line options defined
- * exactly once with mode bitmasks indicating which modes each option applies to.
+ * This module defines the single source of truth for all command-line options
+ * that can be used across all modes (server, client, mirror, discovery service, etc.).
+ *
+ * **Philosophy**:
+ *
+ * - **Single Definition**: Each option defined exactly once with all metadata
+ * - **Mode Bitmasks**: Each option includes `mode_bitmask` indicating which modes it applies to
+ * - **Automatic Filtering**: Registry functions automatically filter by mode
+ * - **Immutable After Load**: Once loaded, registry is read-only (no runtime modifications)
+ * - **Shared with Builder**: Registry options added to builder via `options_registry_add_all_to_builder()`
+ *
+ * **Architecture**:
+ *
+ * The registry is defined in `registry.c` as a static array of `option_descriptor_t`
+ * structures. Each descriptor includes:
+ *
+ * - **Identification**: Long name (e.g., "port"), short name (e.g., 'p')
+ * - **Type**: BOOL, INT, STRING, DOUBLE, CALLBACK, ACTION
+ * - **Storage**: Offset into `options_t` struct (via `offsetof()`)
+ * - **Documentation**: Help text, group name, visibility flags
+ * - **Defaults**: Default value pointer, required flag, env var fallback
+ * - **Validation**: Custom validator function for this option
+ * - **Parsing**: Custom parser for OPTION_TYPE_CALLBACK
+ * - **Mode**: Bitmask indicating which modes this option applies to
+ *
+ * **Mode Bitmasks**:
+ *
+ * Each option includes a `mode_bitmask` that controls where it appears:
+ *
+ * ```c
+ * .mode_bitmask = OPTION_MODE_CLIENT | OPTION_MODE_MIRROR  // Client and mirror modes only
+ * .mode_bitmask = OPTION_MODE_SERVER                        // Server mode only
+ * .mode_bitmask = OPTION_MODE_BINARY | OPTION_MODE_CLIENT   // Binary + client modes
+ * .mode_bitmask = OPTION_MODE_ALL                           // All modes
+ * ```
+ *
+ * **Usage Pattern**:
+ *
+ * ```c
+ * // Get all options for a specific mode
+ * size_t num_opts;
+ * const option_descriptor_t *opts = options_registry_get_for_mode(
+ *     MODE_CLIENT, &num_opts);
+ * for (size_t i = 0; i < num_opts; i++) {
+ *     printf("%s: %s\\n", opts[i].long_name, opts[i].help_text);
+ * }
+ *
+ * // Look up individual options
+ * const option_descriptor_t *port_opt = options_registry_find_by_name("port");
+ * if (port_opt && (port_opt->mode_bitmask & OPTION_MODE_SERVER)) {
+ *     // Port option available in server mode
+ * }
+ *
+ * // Add all registry options to builder
+ * options_builder_t *builder = options_builder_create("myapp");
+ * options_registry_add_all_to_builder(builder);
+ * ```
+ *
+ * **Adding New Options**:
+ *
+ * To add a new option:
+ *
+ * 1. **Add field to `options_t`** in `options.h`
+ * 2. **Add default constant** (e.g., `OPT_MY_OPTION_DEFAULT`)
+ * 3. **Add registry entry** in `registry.c` with:
+ *    - Long and short names
+ *    - Type and storage offset
+ *    - Default value and validation
+ *    - Help text and group
+ *    - Mode bitmask(s)
+ *
+ * **Registry Lookup Functions**:
+ *
+ * - `options_registry_add_all_to_builder()`: Populate builder with all registry options
+ * - `options_registry_find_by_name()`: Find option by long name (e.g., "port")
+ * - `options_registry_find_by_short()`: Find option by short name (e.g., 'p')
+ * - `options_registry_get_for_mode()`: Get all options for a specific mode
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
