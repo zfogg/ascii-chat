@@ -582,19 +582,23 @@ void debug_memory_report(void) {
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
           const char *file_location = strip_project_path(curr->file);
 
-          // Determine color based on unit (MB=red, KB=yellow, B=magenta)
-          log_color_t size_color = LOG_COLOR_FATAL; // Default to magenta for bytes
-          if (strstr(pretty_size, "MB")) {
-            size_color = LOG_COLOR_ERROR; // Red for megabytes
+          // Determine color based on unit (1 MB and over=red, KB=yellow, B=light blue)
+          log_color_t size_color = LOG_COLOR_DEBUG; // Default to light blue for bytes
+          if (strstr(pretty_size, "MB") || strstr(pretty_size, "GB") || strstr(pretty_size, "TB") || strstr(pretty_size, "PB") ||
+              strstr(pretty_size, "EB")) {
+            size_color = LOG_COLOR_ERROR; // Red for 1 MB and over (MB, GB, TB, PB, EB)
           } else if (strstr(pretty_size, "KB")) {
             size_color = LOG_COLOR_WARN; // Yellow for kilobytes
           } else if (strstr(pretty_size, " B")) {
-            size_color = LOG_COLOR_FATAL; // Magenta for bytes
+            size_color = LOG_COLOR_DEBUG; // Light blue for bytes
           }
 
-          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%d - %s\n",
-                                                 colored_string(LOG_COLOR_GREY, file_location), curr->line,
-                                                 colored_string(size_color, pretty_size)));
+          char line_str[32];
+          (void)snprintf(line_str, sizeof(line_str), "%d", curr->line);
+          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%s - %s\n",
+              colored_string(LOG_COLOR_GREY, file_location),
+              colored_string(LOG_COLOR_FATAL, line_str),
+              colored_string(size_color, pretty_size)));
           curr = curr->next;
         }
 
