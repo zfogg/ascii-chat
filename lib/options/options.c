@@ -151,7 +151,9 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   }
 
   // Find the first non-option argument (potential mode or session string)
+  // Also detect mirror-specific options to infer mode if no positional arg found
   int first_positional_idx = -1;
+  bool has_mirror_specific_option = false;
   for (int i = 1; i < argc; i++) {
     // Skip options and their arguments
     if (argv[i][0] == '-') {
@@ -187,6 +189,26 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
             i++; // Skip optional argument
           }
         }
+      } else {
+        // Check if this is a mirror-specific option (-f/--file or -u/--url)
+        const char *opt_name = argv[i];
+        if (opt_name[0] == '-') {
+          opt_name = opt_name + (opt_name[1] == '-' ? 2 : 1); // Skip - or --
+        }
+        
+        if (strcmp(opt_name, "file") == 0 || strcmp(argv[i], "-f") == 0 ||
+            strcmp(opt_name, "url") == 0 || strcmp(argv[i], "-u") == 0) {
+          has_mirror_specific_option = true;
+          // Skip the argument if this option takes one
+          if (i + 1 < argc && argv[i + 1][0] != '-') {
+            i++; // Skip required argument
+          }
+        } else {
+          // Other mode-specific option - skip argument if it takes one
+          if (i + 1 < argc && argv[i + 1][0] != '-') {
+            i++; // Skip potential argument
+          }
+        }
       }
       continue;
     }
@@ -196,8 +218,15 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     break;
   }
 
-  // If no positional argument found, use discovery mode (start new session)
+  // If no positional argument found, check for mirror-specific options
   if (first_positional_idx == -1) {
+    if (has_mirror_specific_option) {
+      // User specified mirror-specific option (-f or -u) without explicit mode keyword
+      *out_mode = MODE_MIRROR;
+      *out_mode_index = -1;
+      return ASCIICHAT_OK;
+    }
+    // Otherwise default to discovery mode (start new session)
     *out_mode = MODE_DISCOVERY;
     *out_mode_index = -1;
     return ASCIICHAT_OK;
@@ -721,8 +750,14 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 3: Set Mode-Specific Defaults
   // ========================================================================
 
+  // Save detected_mode before creating new opts struct
+  asciichat_mode_t saved_detected_mode = opts.detected_mode;
+  
   // Initialize all defaults using options_t_new()
   opts = options_t_new();
+
+  // Restore detected_mode (was zeroed by options_t_new)
+  opts.detected_mode = saved_detected_mode;
 
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
