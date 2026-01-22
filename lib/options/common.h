@@ -207,6 +207,30 @@ bool validate_fps_opt(const char *value_str, int *out_fps);
 bool validate_webcam_index(const char *value_str, unsigned short int *out_index);
 
 /**
+ * @brief Validate options and report errors to stderr
+ *
+ * Calls options_config_validate() and handles error message display and cleanup.
+ * Validates all option dependencies, conflicts, and custom validators.
+ *
+ * @param config Options configuration (opaque pointer, defined in builder.h)
+ * @param opts Options struct to validate
+ * @return ASCIICHAT_OK if valid, error code otherwise
+ *
+ * @note Prints error message to stderr if validation fails
+ * @note Frees error message internally
+ *
+ * Example:
+ * @code
+ * asciichat_error_t result = validate_options_and_report(config, opts);
+ * if (result != ASCIICHAT_OK) {
+ *     options_config_destroy(config);
+ *     return result;
+ * }
+ * @endcode
+ */
+asciichat_error_t validate_options_and_report(const void *config, const void *opts);
+
+/**
  * @brief Detect default SSH key path for the current user
  *
  * Checks if ~/.ssh/id_ed25519 exists and is a regular file. Only supports Ed25519

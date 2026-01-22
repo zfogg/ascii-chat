@@ -14,6 +14,7 @@
 #include "log/logging.h"
 #include "options/levenshtein.h"
 #include "options/validation.h"
+#include "options/builder.h"
 #include "platform/terminal.h"
 #include "util/parsing.h"
 #include "util/password.h"
@@ -538,6 +539,28 @@ void usage(FILE *desc, asciichat_mode_t mode) {
     (void)fprintf(desc, "Unknown mode\n");
     break;
   }
+}
+
+// ============================================================================
+// Options Validation Helper
+// ============================================================================
+
+asciichat_error_t validate_options_and_report(const void *config, const void *opts) {
+  if (!config || !opts) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options is NULL");
+  }
+
+  char *error_message = NULL;
+  // Cast opaque config pointer to actual type
+  const options_config_t *config_typed = (const options_config_t *)config;
+  asciichat_error_t result = options_config_validate(config_typed, opts, &error_message);
+  if (result != ASCIICHAT_OK) {
+    if (error_message) {
+      (void)fprintf(stderr, "Error: %s\n", error_message);
+      free(error_message);
+    }
+  }
+  return result;
 }
 
 // ============================================================================

@@ -59,13 +59,8 @@ asciichat_error_t parse_discovery_service_options(int argc, char **argv, options
   }
 
   // Validate options (check dependencies, conflicts, etc.)
-  char *error_message = NULL;
-  result = options_config_validate(config, opts, &error_message);
+  result = validate_options_and_report(config, opts);
   if (result != ASCIICHAT_OK) {
-    if (error_message) {
-      (void)fprintf(stderr, "Error: %s\n", error_message);
-      free(error_message);
-    }
     options_config_destroy(config);
     return result;
   }
