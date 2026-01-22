@@ -754,7 +754,7 @@ const options_config_t *options_preset_server(const char *program_name, const ch
                                  parse_server_bind_address);
 
   // Usage examples for server help
-  options_builder_add_usage(b, "server", "[bind-address...]", true,
+  options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
                             "Start server (can specify 0-2 bind addresses for IPv4/IPv6)");
 
   // Examples for server help
@@ -1082,8 +1082,8 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                                  parse_server_bind_address);
 
   // Usage examples for discovery-service help
-  options_builder_add_usage(b, "discovery-service", "[bind-address]", true,
-                            "Start discovery service (secure session signalling and WebRTC coordination)");
+  options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
+                            "Start discovery service (can specify 0-2 bind addresses for IPv4/IPv6)");
 
   // Examples for discovery-service help
   options_builder_add_example(b, "discovery-service", NULL, "Start on localhost");

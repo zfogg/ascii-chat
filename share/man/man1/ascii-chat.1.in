@@ -33,29 +33,13 @@ the server sends back.
 Displays your local webcam as ASCII art without any network connection.
 Perfect for testing webcam, palette settings, and terminal rendering.
 .TP
-.B discovery-server
+.B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
 aren't possible.
 .\" MANUAL-END: DESCRIPTION
 .\" MANUAL-START: CONFIGURATION
-.\" MANUAL-END: DESCRIPTION
-.\" MANUAL-START: CONFIGURATION
-.\" MANUAL-END: DESCRIPTION
-.\" MANUAL-START: CONFIGURATION
-.\" MANUAL-END: DESCRIPTION
-.\" MANUAL-START: CONFIGURATION
-.\" MANUAL-END: DESCRIPTION
-.\" MANUAL-START: CONFIGURATION
-.\" MANUAL-END: DESCRIPTION
-.\" AUTO-START: USAGE
-.\" This section is auto-generated. Manual edits will be lost.
-.\" AUTO-START: USAGE
-.\" This section is auto-generated. Manual edits will be lost.
-.\" MANUAL-END: DESCRIPTION
-.\" AUTO-START: USAGE
-.\" This section is auto-generated. Manual edits will be lost.
 .\" AUTO-START: USAGE
 .\" This section is auto-generated. Manual edits will be lost.
 .SH USAGE
@@ -66,8 +50,20 @@ Start a new session (share the session string)
 .B ascii-chat <session-string> [options...]
 Join an existing session
 .TP
-.B ascii-chat <mode> [options...]
+.B ascii-chat [options...]
 Run in a specific mode
+.TP
+.B ascii-chat server [bind-address] [bind-address] [mode-options...]
+Start server (can specify 0-2 bind addresses for IPv4/IPv6)
+.TP
+.B ascii-chat client [address] [mode-options...]
+Connect to server (defaults to localhost:27224)
+.TP
+.B ascii-chat mirror [mode-options...]
+View local webcam or media file as ASCII art
+.TP
+.B ascii-chat discovery-service [bind-address] [bind-address] [mode-options...]
+Start discovery service (can specify 0-2 bind addresses for IPv4/IPv6)
 
 .\" AUTO-END: USAGE
 .\" AUTO-START: OPTIONS
@@ -76,296 +72,241 @@ Run in a specific mode
 .SS GENERAL
 .TP
 .B \-\-help
-Show this help
-.IP "(default: false)" 4
+Show this help (default: false)
 .TP
 .B \-\-version
-Show version information
-.IP "(default: false)" 4
+Show version information (default: false)
 .SS CONFIGURATION
+.TP
+.B \-\-config \fISTR\fR
+Load configuration from FILE (default: )
 .TP
 .B \-\-create-man-page-template
 Generate man page template from options builder (preserves manual content) [output.1]
+.TP
+.B \-\-config-create
+Create default configuration file and exit
 .SS LOGGING
 .TP
 .B \-L, \-\-log-file \fISTR\fR
-Redirect logs to FILE
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_LOG_FILE\fR" 4
+Redirect logs to FILE (default: )
+Env: \fBASCII_CHAT_LOG_FILE\fR
 .TP
 .B \-\-log-level \fIVAL\fR
-Set log level: dev, debug, info, warn, error, fatal
-.IP "(default: )" 4
+Set log level: dev, debug, info, warn, error, fatal (default: )
 .TP
 .B \-V, \-\-verbose \fIVAL\fR
-Increase log verbosity (stackable: -VV, -VVV, or --verbose)
-.IP "(default: )" 4
+Increase log verbosity (stackable: -VV, -VVV, or --verbose) (default: )
 .TP
 .B \-q, \-\-quiet
-Disable console logging (log to file only)
-.IP "(default: false)" 4
+Disable console logging (log to file only) (default: false)
 .SS NETWORK
 .TP
 .B \-\-prefer-webrtc
-Try WebRTC before Direct TCP (useful when Direct TCP fails)
-.IP "(default: false)" 4
+Try WebRTC before Direct TCP (useful when Direct TCP fails) (default: false)
 .TP
 .B \-\-no-webrtc
-Disable WebRTC, use Direct TCP only
-.IP "(default: false)" 4
+Disable WebRTC, use Direct TCP only (default: false)
 .TP
 .B \-\-webrtc-skip-stun
-Skip WebRTC+STUN stage, go straight to TURN relay
-.IP "(default: false)" 4
+Skip WebRTC+STUN stage, go straight to TURN relay (default: false)
 .TP
 .B \-\-webrtc-disable-turn
-Disable WebRTC+TURN relay, use STUN only
-.IP "(default: false)" 4
+Disable WebRTC+TURN relay, use STUN only (default: false)
 .TP
 .B \-p, \-\-port \fISTR\fR
-Server port
-.IP "(default: 27224)" 4
-.IP "Env: \fBASCII_CHAT_PORT\fR" 4
+Server port (default: 27224)
+Env: \fBASCII_CHAT_PORT\fR
 .TP
 .B \-\-max-clients \fINUM\fR
-Maximum concurrent clients
-.IP "(default: 9)" 4
-.IP "Env: \fBASCII_CHAT_MAX_CLIENTS\fR" 4
+Maximum concurrent clients (default: 9)
+Env: \fBASCII_CHAT_MAX_CLIENTS\fR
 .TP
 .B \-\-no-audio-mixer
-Disable audio mixer (debug)
-.IP "(default: false)" 4
+Disable audio mixer (debug) (default: false)
 .TP
 .B \-\-discovery
-Enable discovery service registration (requires --key or --password or --discovery-expose-ip)
-.IP "(default: false)" 4
+Enable discovery service registration (requires --key or --password or --discovery-expose-ip) (default: false)
 .TP
 .B \-\-discovery-server \fISTR\fR
-Discovery service address
-.IP "(default: discovery-service.ascii-chat.com)" 4
+Discovery service address (default: discovery-service.ascii-chat.com)
 .TP
 .B \-\-discovery-port \fINUM\fR
-Discovery service port
-.IP "(default: 27225)" 4
+Discovery service port (default: 27225)
 .TP
 .B \-\-upnp
-Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_UPNP\fR" 4
+Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users) (default: false)
+Env: \fBASCII_CHAT_UPNP\fR
 .TP
 .B \-\-no-mdns-advertise
-Disable mDNS service advertisement on local network (LAN discovery won't find this server)
-.IP "(default: false)" 4
+Disable mDNS service advertisement on local network (LAN discovery won't find this server) (default: false)
 .TP
 .B \-\-stun-servers \fISTR\fR
-Comma-separated STUN server URLs (debug/test only - ACDS provides in production)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_STUN_SERVERS\fR" 4
+Comma-separated STUN server URLs (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_STUN_SERVERS\fR
 .TP
 .B \-\-turn-servers \fISTR\fR
-Comma-separated TURN server URLs (debug/test only - ACDS provides in production)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_TURN_SERVERS\fR" 4
+Comma-separated TURN server URLs (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_TURN_SERVERS\fR
 .TP
 .B \-\-turn-username \fISTR\fR
-TURN authentication username (debug/test only - ACDS provides in production)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_TURN_USERNAME\fR" 4
+TURN authentication username (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_TURN_USERNAME\fR
 .TP
 .B \-\-turn-credential \fISTR\fR
-TURN authentication credential (debug/test only - ACDS provides in production)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_TURN_CREDENTIAL\fR" 4
+TURN authentication credential (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_TURN_CREDENTIAL\fR
 .SS PERFORMANCE
 .TP
 .B \-\-compression-level \fINUM\fR
-zstd compression level (1-9)
-.IP "(default: 3)" 4
-.IP "Env: \fBASCII_CHAT_COMPRESSION_LEVEL\fR" 4
+zstd compression level (1-9) (default: 3)
+Env: \fBASCII_CHAT_COMPRESSION_LEVEL\fR
 .TP
 .B \-\-no-compress
-Disable compression
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_NO_COMPRESS\fR" 4
+Disable compression (default: false)
+Env: \fBASCII_CHAT_NO_COMPRESS\fR
 .SS SECURITY
 .TP
 .B \-E, \-\-encrypt
-Enable encryption
-.IP "(default: true)" 4
+Enable encryption (default: true)
 .TP
 .B \-K, \-\-key \fISTR\fR
-SSH/GPG key file path
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_KEY\fR" 4
+SSH/GPG key file path (default: )
+Env: \fBASCII_CHAT_KEY\fR
 .TP
 .B \-\-password \fISTR\fR
-Shared password for authentication
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_PASSWORD\fR" 4
+Shared password for authentication (default: )
+Env: \fBASCII_CHAT_PASSWORD\fR
 .TP
 .B \-\-no-encrypt
-Disable encryption
-.IP "(default: false)" 4
+Disable encryption (default: false)
 .TP
 .B \-\-client-keys \fISTR\fR
-Allowed client keys whitelist
-.IP "(default: )" 4
+Allowed client keys whitelist (default: )
 .TP
 .B \-\-discovery-expose-ip
-Explicitly allow public IP disclosure in discovery sessions (opt-in only)
-.IP "(default: false)" 4
+Explicitly allow public IP disclosure in discovery sessions (opt-in only) (default: false)
 .TP
 .B \-\-discovery-service-key \fISTR\fR
-Discovery service public key for verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)
-.IP "(default: )" 4
+Discovery service public key for verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user) (default: )
 .SS TERMINAL
 .TP
 .B \-x, \-\-width \fINUM\fR
-Terminal width in characters
-.IP "(default: 110)" 4
-.IP "Env: \fBASCII_CHAT_WIDTH\fR" 4
+Terminal width in characters (default: 110)
+Env: \fBASCII_CHAT_WIDTH\fR
 .TP
 .B \-y, \-\-height \fINUM\fR
-Terminal height in characters
-.IP "(default: 70)" 4
-.IP "Env: \fBASCII_CHAT_HEIGHT\fR" 4
+Terminal height in characters (default: 70)
+Env: \fBASCII_CHAT_HEIGHT\fR
 .SS WEBCAM
 .TP
 .B \-c, \-\-webcam-index \fINUM\fR
-Webcam device index
-.IP "(default: 0)" 4
-.IP "Env: \fBASCII_CHAT_WEBCAM_INDEX\fR" 4
+Webcam device index (default: 0)
+Env: \fBASCII_CHAT_WEBCAM_INDEX\fR
 .TP
 .B \-g, \-\-webcam-flip
-Flip webcam horizontally
-.IP "(default: true)" 4
+Flip webcam horizontally (default: true)
 .TP
 .B \-\-test-pattern
-Use test pattern instead of webcam
-.IP "(default: false)" 4
-.IP "Env: \fBWEBCAM_DISABLED\fR" 4
+Use test pattern instead of webcam (default: false)
+Env: \fBWEBCAM_DISABLED\fR
 .SS DISPLAY
 .TP
 .B \-\-color-mode \fIVAL\fR
-Terminal color level (auto, none, 16, 256, truecolor)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_COLOR_MODE\fR" 4
+Terminal color level (auto, none, 16, 256, truecolor) (default: )
+Env: \fBASCII_CHAT_COLOR_MODE\fR
 .TP
 .B \-M, \-\-render-mode \fIVAL\fR
-Render mode (foreground, background, half-block)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_RENDER_MODE\fR" 4
+Render mode (foreground, background, half-block) (default: )
+Env: \fBASCII_CHAT_RENDER_MODE\fR
 .TP
 .B \-P, \-\-palette \fIVAL\fR
-ASCII palette type (standard, blocks, digital, minimal, cool, custom)
-.IP "(default: )" 4
-.IP "Env: \fBASCII_CHAT_PALETTE\fR" 4
+ASCII palette type (standard, blocks, digital, minimal, cool, custom) (default: )
+Env: \fBASCII_CHAT_PALETTE\fR
 .TP
 .B \-C, \-\-palette-chars \fIVAL\fR
-Custom palette characters (implies --palette=custom)
-.IP "(default: )" 4
+Custom palette characters (implies --palette=custom) (default: )
 .TP
 .B \-\-show-capabilities
-Show terminal capabilities and exit
-.IP "(default: false)" 4
+Show terminal capabilities and exit (default: false)
 .TP
 .B \-\-utf8
-Force UTF-8 support
-.IP "(default: false)" 4
+Force UTF-8 support (default: false)
 .TP
 .B \-s, \-\-stretch
-Allow aspect ratio distortion
-.IP "(default: false)" 4
+Allow aspect ratio distortion (default: false)
 .TP
 .B \-\-strip-ansi
-Strip ANSI escape sequences
-.IP "(default: false)" 4
+Strip ANSI escape sequences (default: false)
 .TP
 .B \-\-fps \fINUM\fR
-Target framerate (1-144, default: 60)
-.IP "(default: 0)" 4
-.IP "Env: \fBASCII_CHAT_FPS\fR" 4
+Target framerate (1-144, default: 60) (default: 0)
+Env: \fBASCII_CHAT_FPS\fR
 .SS SNAPSHOT
 .TP
 .B \-S, \-\-snapshot
-Snapshot mode (one frame and exit)
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_SNAPSHOT\fR" 4
+Snapshot mode (one frame and exit) (default: false)
+Env: \fBASCII_CHAT_SNAPSHOT\fR
 .TP
 .B \-D, \-\-snapshot-delay \fINUM\fR
-Snapshot delay in seconds
-.IP "(default: 4.00)" 4
-.IP "Env: \fBASCII_CHAT_SNAPSHOT_DELAY\fR" 4
+Snapshot delay in seconds (default: 4.00)
+Env: \fBASCII_CHAT_SNAPSHOT_DELAY\fR
 .SS MEDIA
 .TP
 .B \-f, \-\-file \fISTR\fR
-Stream from media file or stdin (use '-' for stdin)
-.IP "(default: )" 4
+Stream from media file or stdin (use '-' for stdin) (default: )
 .TP
 .B \-u, \-\-url \fISTR\fR
-Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file
-.IP "(default: )" 4
+Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file (default: )
 .TP
 .B \-l, \-\-loop
-Loop media file playback (not supported for network URLs)
-.IP "(default: false)" 4
+Loop media file playback (not supported for network URLs) (default: false)
 .TP
 .B \-s, \-\-seek \fIVAL\fR
-Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)
-.IP "(default: )" 4
+Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms) (default: )
 .TP
 .B \-\-cookies-from-browser \fIVAL\fR
 Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). Use without argument to default to chrome.
 .TP
 .B \-\-no-cookies-from-browser
-Explicitly disable reading cookies from browser
-.IP "(default: false)" 4
+Explicitly disable reading cookies from browser (default: false)
 .SS AUDIO
 .TP
 .B \-A, \-\-audio
-Enable audio streaming
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_AUDIO\fR" 4
+Enable audio streaming (default: false)
+Env: \fBASCII_CHAT_AUDIO\fR
 .TP
 .B \-\-microphone-index \fINUM\fR
-Microphone device index (-1=default)
-.IP "(default: -1)" 4
-.IP "Env: \fBASCII_CHAT_MICROPHONE_INDEX\fR" 4
+Microphone device index (-1=default) (default: -1)
+Env: \fBASCII_CHAT_MICROPHONE_INDEX\fR
 .TP
 .B \-\-speakers-index \fINUM\fR
-Speakers device index (-1=default)
-.IP "(default: -1)" 4
-.IP "Env: \fBASCII_CHAT_SPEAKERS_INDEX\fR" 4
+Speakers device index (-1=default) (default: -1)
+Env: \fBASCII_CHAT_SPEAKERS_INDEX\fR
 .TP
 .B \-\-microphone-sensitivity \fINUM\fR
-Microphone volume multiplier (0.0-1.0)
-.IP "(default: 1.00)" 4
-.IP "Env: \fBASCII_CHAT_MICROPHONE_SENSITIVITY\fR" 4
+Microphone volume multiplier (0.0-1.0) (default: 1.00)
+Env: \fBASCII_CHAT_MICROPHONE_SENSITIVITY\fR
 .TP
 .B \-\-speakers-volume \fINUM\fR
-Speaker volume multiplier (0.0-1.0)
-.IP "(default: 1.00)" 4
-.IP "Env: \fBASCII_CHAT_SPEAKERS_VOLUME\fR" 4
+Speaker volume multiplier (0.0-1.0) (default: 1.00)
+Env: \fBASCII_CHAT_SPEAKERS_VOLUME\fR
 .TP
 .B \-\-audio-analysis
-Enable audio analysis (debug)
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_AUDIO_ANALYSIS\fR" 4
+Enable audio analysis (debug) (default: false)
+Env: \fBASCII_CHAT_AUDIO_ANALYSIS\fR
 .TP
 .B \-\-no-audio-playback
-Disable speaker playback (debug)
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_NO_AUDIO_PLAYBACK\fR" 4
+Disable speaker playback (debug) (default: false)
+Env: \fBASCII_CHAT_NO_AUDIO_PLAYBACK\fR
 .TP
 .B \-\-encode-audio
-Enable Opus audio encoding
-.IP "(default: true)" 4
-.IP "Env: \fBASCII_CHAT_ENCODE_AUDIO\fR" 4
+Enable Opus audio encoding (default: true)
+Env: \fBASCII_CHAT_ENCODE_AUDIO\fR
 .TP
 .B \-\-no-encode-audio
-Disable Opus audio encoding
-.IP "(default: false)" 4
-.IP "Env: \fBASCII_CHAT_NO_ENCODE_AUDIO\fR" 4
+Disable Opus audio encoding (default: false)
+Env: \fBASCII_CHAT_NO_ENCODE_AUDIO\fR
 
 .\" AUTO-END: OPTIONS
 .\" AUTO-START: EXAMPLES
@@ -388,7 +329,6 @@ Connect to specific server
 Preview local webcam as ASCII
 
 .\" AUTO-END: EXAMPLES
-.\" MANUAL-START: PALETTES
 .SH PALETTES
 Built-in ASCII character palettes for different visual styles.
 Characters are ordered from darkest (leftmost) to brightest (rightmost).
@@ -424,9 +364,6 @@ User-defined palette via \fB\-\-palette\-chars\fR option.
 Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
 .\" MANUAL-END: PALETTES
 .\" MANUAL-START: RENDER MODES
-.\" MANUAL-END: PALETTES
-.\" MANUAL-START: RENDER MODES
-.\" MANUAL-END: PALETTES
 .SH RENDER MODES
 Three rendering modes control how colors are applied:
 .TP
@@ -443,9 +380,6 @@ Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
 resolution. Each character cell displays two pixels (top and bottom halves).
 Requires UTF-8 support (\fB\-\-utf8\fR).
 .\" MANUAL-END: RENDER MODES
-.\" MANUAL-START: CONFIGURATION
-.\" MANUAL-END: RENDER MODES
-.\" MANUAL-START: CONFIGURATION
 .SH CONFIGURATION
 Configuration can be stored in a TOML file at the default location
 (see FILES section) or specified via \fB\-\-config\fR.
@@ -483,17 +417,6 @@ Use \fB\-\-password\fR interactively or environment variables instead.
 Secure your config file permissions if it contains sensitive data.
 .\" MANUAL-END: CONFIGURATION
 .\" MANUAL-START: LIMITS
-.\" MANUAL-END: CONFIGURATION
-.\" MANUAL-START: LIMITS
-.\" MANUAL-END: CONFIGURATION
-.\" MANUAL-START: LIMITS
-.\" MANUAL-END: CONFIGURATION
-.\" MANUAL-START: LIMITS
-.\" MANUAL-END: CONFIGURATION
-.\" MANUAL-START: LIMITS
-.\" MANUAL-END: CONFIGURATION
-.\" MANUAL-START: LIMITS
-.\" MANUAL-END: CONFIGURATION
 .SH LIMITS
 .TP
 .B Maximum Clients
@@ -508,172 +431,106 @@ The grid size adjusts based on the number of connected clients.
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
 .\" MANUAL-START: FILES
-.\" MANUAL-END: LIMITS
-.\" MANUAL-START: FILES
-.\" MANUAL-END: LIMITS
-.\" MANUAL-START: FILES
-.\" MANUAL-END: LIMITS
-.\" MANUAL-START: FILES
-.\" MANUAL-END: LIMITS
-.\" MERGE-START: ENVIRONMENT
-.\" This section merges auto-generated and manual content.
-.\" MERGE-START: ENVIRONMENT
-.\" This section merges auto-generated and manual content.
-.\" MANUAL-END: LIMITS
-.\" MERGE-START: ENVIRONMENT
-.\" This section merges auto-generated and manual content.
 .\" MERGE-START: ENVIRONMENT
 .\" This section merges auto-generated and manual content.
 .SH ENVIRONMENT
 .TP
-.B SSH_AUTH_SOCK
-Path to SSH agent socket for password-free key authentication (Unix only).
-.TP
-.B ASCII_CHAT_KEY_PASSWORD
-Passphrase for encrypted SSH or GPG keys. Prefer using ssh-agent/gpg-agent when possible.
-.TP
-.B LOG_LEVEL
-Set logging verbosity level. Accepts either numeric (0-5) or string values:
-.br
-0/DEV, 1/DEBUG, 2/INFO, 3/WARN, 4/ERROR, 5/FATAL.
-.br
-Takes precedence over \fB\-\-log\-level\fR command-line argument and build type defaults.
-.TP
-.B TERM
-Terminal type, used for auto-detecting color capabilities.
-.TP
-.B COLORTERM
-Color terminal indicator. Set to "truecolor" or "24bit" for truecolor support.
-.TP
-.B WEBCAM_DISABLED
-Automatically enables test pattern mode when set to "1", "true", "yes", or "on".
-Useful for CI/CD pipelines and testing environments without a physical webcam.
-Equivalent to passing \fB\-\-test\-pattern\fR.
-.TP
 .B ASCII_CHAT_LOG_FILE
-Set to override .B \-\-log-file (Redirect logs to FILE)
+Redirect logs to FILE
 .TP
 .B ASCII_CHAT_PORT
-Set to override .B \-\-port (Server port)
+Server port
 .TP
 .B ASCII_CHAT_MAX_CLIENTS
-Set to override .B \-\-max-clients (Maximum concurrent clients)
+Maximum concurrent clients
 .TP
 .B ASCII_CHAT_COMPRESSION_LEVEL
-Set to override .B \-\-compression-level (zstd compression level (1-9))
+zstd compression level (1-9)
 .TP
 .B ASCII_CHAT_NO_COMPRESS
-Set to override .B \-\-no-compress (Disable compression)
+Disable compression
 .TP
 .B ASCII_CHAT_KEY
-Set to override .B \-\-key (SSH/GPG key file path)
+SSH/GPG key file path
 .TP
 .B ASCII_CHAT_PASSWORD
-Set to override .B \-\-password (Shared password for authentication)
+Shared password for authentication
 .TP
 .B ASCII_CHAT_UPNP
-Set to override .B \-\-upnp (Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users))
+Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)
 .TP
 .B ASCII_CHAT_WIDTH
-Set to override .B \-\-width (Terminal width in characters)
+Terminal width in characters
 .TP
 .B ASCII_CHAT_HEIGHT
-Set to override .B \-\-height (Terminal height in characters)
+Terminal height in characters
 .TP
 .B ASCII_CHAT_WEBCAM_INDEX
-Set to override .B \-\-webcam-index (Webcam device index)
+Webcam device index
+.TP
+.B WEBCAM_DISABLED
+Use test pattern instead of webcam
 .TP
 .B ASCII_CHAT_COLOR_MODE
-Set to override .B \-\-color-mode (Terminal color level (auto, none, 16, 256, truecolor))
+Terminal color level (auto, none, 16, 256, truecolor)
 .TP
 .B ASCII_CHAT_RENDER_MODE
-Set to override .B \-\-render-mode (Render mode (foreground, background, half-block))
+Render mode (foreground, background, half-block)
 .TP
 .B ASCII_CHAT_PALETTE
-Set to override .B \-\-palette (ASCII palette type (standard, blocks, digital, minimal, cool, custom))
+ASCII palette type (standard, blocks, digital, minimal, cool, custom)
 .TP
 .B ASCII_CHAT_FPS
-Set to override .B \-\-fps (Target framerate (1-144, default: 60))
+Target framerate (1-144, default: 60)
 .TP
 .B ASCII_CHAT_SNAPSHOT
-Set to override .B \-\-snapshot (Snapshot mode (one frame and exit))
+Snapshot mode (one frame and exit)
 .TP
 .B ASCII_CHAT_SNAPSHOT_DELAY
-Set to override .B \-\-snapshot-delay (Snapshot delay in seconds)
+Snapshot delay in seconds
 .TP
 .B ASCII_CHAT_AUDIO
-Set to override .B \-\-audio (Enable audio streaming)
+Enable audio streaming
 .TP
 .B ASCII_CHAT_MICROPHONE_INDEX
-Set to override .B \-\-microphone-index (Microphone device index (-1=default))
+Microphone device index (-1=default)
 .TP
 .B ASCII_CHAT_SPEAKERS_INDEX
-Set to override .B \-\-speakers-index (Speakers device index (-1=default))
+Speakers device index (-1=default)
 .TP
 .B ASCII_CHAT_MICROPHONE_SENSITIVITY
-Set to override .B \-\-microphone-sensitivity (Microphone volume multiplier (0.0-1.0))
+Microphone volume multiplier (0.0-1.0)
 .TP
 .B ASCII_CHAT_SPEAKERS_VOLUME
-Set to override .B \-\-speakers-volume (Speaker volume multiplier (0.0-1.0))
+Speaker volume multiplier (0.0-1.0)
 .TP
 .B ASCII_CHAT_AUDIO_ANALYSIS
-Set to override .B \-\-audio-analysis (Enable audio analysis (debug))
+Enable audio analysis (debug)
 .TP
 .B ASCII_CHAT_NO_AUDIO_PLAYBACK
-Set to override .B \-\-no-audio-playback (Disable speaker playback (debug))
+Disable speaker playback (debug)
 .TP
 .B ASCII_CHAT_ENCODE_AUDIO
-Set to override .B \-\-encode-audio (Enable Opus audio encoding)
+Enable Opus audio encoding
 .TP
 .B ASCII_CHAT_NO_ENCODE_AUDIO
-Set to override .B \-\-no-encode-audio (Disable Opus audio encoding)
+Disable Opus audio encoding
 .TP
 .B ASCII_CHAT_STUN_SERVERS
-Set to override .B \-\-stun-servers (Comma-separated STUN server URLs (debug/test only - ACDS provides in production))
+Comma-separated STUN server URLs (debug/test only - ACDS provides in production)
 .TP
 .B ASCII_CHAT_TURN_SERVERS
-Set to override .B \-\-turn-servers (Comma-separated TURN server URLs (debug/test only - ACDS provides in production))
+Comma-separated TURN server URLs (debug/test only - ACDS provides in production)
 .TP
 .B ASCII_CHAT_TURN_USERNAME
-Set to override .B \-\-turn-username (TURN authentication username (debug/test only - ACDS provides in production))
+TURN authentication username (debug/test only - ACDS provides in production)
 .TP
 .B ASCII_CHAT_TURN_CREDENTIAL
-Set to override .B \-\-turn-credential (TURN authentication credential (debug/test only - ACDS provides in production))
-
-.\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: DESCRIPTION
+TURN authentication credential (debug/test only - ACDS provides in production)
 
 .\" MERGE-END: ENVIRONMENT
 
 .\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: DESCRIPTION
-
-.\" MERGE-END: ENVIRONMENT
-
-.\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: DESCRIPTION
-
-.\" MERGE-END: ENVIRONMENT
-
-.\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: DESCRIPTION
-
-.\" MERGE-END: ENVIRONMENT
-
-.\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: DESCRIPTION
-
-.\" MERGE-END: ENVIRONMENT
-
-.\" MERGE-END: ENVIRONMENT
-
-.\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: FILES
-
-.\" MERGE-END: ENVIRONMENT
-
-.\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: FILES
 .SH FILES
 .TP
 .I ~/.ssh/id_ed25519
@@ -707,15 +564,6 @@ Alternative system-wide configuration file (BSD-style path).
 Used for locally-installed configurations.
 .\" MANUAL-END: FILES
 .\" MANUAL-START: EXIT STATUS
-.\" MANUAL-END: FILES
-.\" MANUAL-START: EXIT STATUS
-.\" MANUAL-END: FILES
-.\" MANUAL-START: EXIT STATUS
-.\" MANUAL-END: FILES
-.\" MANUAL-START: EXIT STATUS
-.\" MANUAL-END: FILES
-.\" MANUAL-START: EXIT STATUS
-.\" MANUAL-END: FILES
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
 .TP
@@ -753,14 +601,6 @@ Runtime errors (thread, buffer, display, invalid state/param).
 Signal and compression errors.
 .\" MANUAL-END: EXIT STATUS
 .\" MANUAL-START: SECURITY
-.\" MANUAL-END: EXIT STATUS
-.\" MANUAL-START: SECURITY
-.\" MANUAL-END: EXIT STATUS
-.\" MANUAL-START: SECURITY
-.\" MANUAL-END: EXIT STATUS
-.\" MANUAL-START: SECURITY
-.\" MANUAL-END: EXIT STATUS
-.\" MANUAL-START: SECURITY
 .SH SECURITY
 .B ascii-chat
 supports end-to-end encryption using modern cryptographic algorithms:
@@ -786,13 +626,6 @@ with a warning. To connect anyway, remove the server entry from
 \fIknown_hosts\fR and reconnect.
 .\" MANUAL-END: SECURITY
 .\" MANUAL-START: NOTES
-.\" MANUAL-END: SECURITY
-.\" MANUAL-START: NOTES
-.\" MANUAL-END: SECURITY
-.\" MANUAL-START: NOTES
-.\" MANUAL-END: SECURITY
-.\" MANUAL-START: NOTES
-.\" MANUAL-END: SECURITY
 .SH NOTES
 .IP \(bu 2
 \fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
@@ -845,27 +678,12 @@ the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
 .\" MANUAL-END: NOTES
 .\" MANUAL-START: BUGS
-.\" MANUAL-END: NOTES
-.\" MANUAL-START: BUGS
-.\" MANUAL-END: NOTES
-.\" MANUAL-START: BUGS
-.\" MANUAL-END: NOTES
-.\" MANUAL-START: BUGS
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .\" MANUAL-END: BUGS
 .\" MANUAL-START: AUTHOR
-.\" MANUAL-END: BUGS
-.\" MANUAL-START: AUTHOR
-.\" MANUAL-END: BUGS
-.\" MANUAL-START: AUTHOR
-.\" MANUAL-END: BUGS
 .SH AUTHOR
 Zachary Fogg <me@zfo.gg>
-.\" MANUAL-END: AUTHOR
-.\" MANUAL-START: SEE ALSO
-.\" MANUAL-END: AUTHOR
-.\" MANUAL-START: SEE ALSO
 .\" MANUAL-END: AUTHOR
 .\" MANUAL-START: SEE ALSO
 .SH SEE ALSO
@@ -896,5 +714,3 @@ Releases: https://github.com/zfogg/ascii-chat/releases
 API documentation: https://zfogg.github.io/ascii-chat/
 .\" MANUAL-END: SEE ALSO
 .\" MANUAL-START: PALETTES
-.\" MANUAL-END: SEE ALSO
-.\" MANUAL-END: SEE ALSO
