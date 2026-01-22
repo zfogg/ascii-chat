@@ -26,6 +26,7 @@
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/validation.h"
+#include "util/string.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,7 +88,15 @@ void usage_discovery(FILE *desc) {
     return;
   }
 
-  (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
+  // Print program name and description (color mode name magenta)
+  const char *space = strchr(config->program_name, ' ');
+  if (space) {
+    int binary_len = space - config->program_name;
+    (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, config->program_name,
+                  colored_string(LOG_COLOR_FATAL, space + 1), config->description);
+  } else {
+    (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
+  }
 
   // Print project links
   print_project_links(desc);

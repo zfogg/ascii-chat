@@ -18,6 +18,7 @@
 #include "util/parsing.h"
 #include "util/password.h"
 #include "util/path.h"
+#include "util/string.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -548,9 +549,6 @@ void print_project_links(FILE *desc) {
     return;
   }
 
-  const char *cyan = log_level_color(LOG_COLOR_DEBUG);
-  const char *reset = log_level_color(LOG_COLOR_RESET);
-
-  (void)fprintf(desc, "🔗 %shttps://ascii-chat.com%s\n", cyan, reset);
-  (void)fprintf(desc, "🔗 %shttps://github.com/zfogg/ascii-chat%s\n", cyan, reset);
+  (void)fprintf(desc, "🔗 %s\n", colored_string(LOG_COLOR_GREY, "https://ascii-chat.com"));
+  (void)fprintf(desc, "🔗 %s\n", colored_string(LOG_COLOR_GREY, "https://github.com/zfogg/ascii-chat"));
 }
