@@ -191,7 +191,7 @@ int mirror_main(void) {
     capture_config.type = MEDIA_SOURCE_FILE;
     capture_config.path = media_url;
 
-    // Detect native FPS from URL
+    // Detect native FPS from URL (uses cache if recently extracted)
     media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
     if (temp_source) {
       double url_fps = media_source_get_video_fps(temp_source);
@@ -241,7 +241,7 @@ int mirror_main(void) {
   bool audio_available = false;
 
   if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path) {
-    // Check if file has audio stream
+    // Check if file has audio stream (uses cache if recently extracted)
     media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, capture_config.path);
     if (temp_source && media_source_has_audio(temp_source)) {
       audio_available = true;

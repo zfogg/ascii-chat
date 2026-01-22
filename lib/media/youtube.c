@@ -18,6 +18,92 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <time.h>
+
+/* ============================================================================
+ * URL Extraction Cache
+ * ============================================================================ */
+
+/**
+ * @brief Simple cache for extracted YouTube stream URLs
+ *
+ * Avoids calling yt-dlp multiple times for the same YouTube URL during
+ * initialization (FPS detection, audio probing, playback setup).
+ *
+ * Cache entry is valid for 30 seconds (typical YouTube stream URL duration).
+ */
+typedef struct {
+  char youtube_url[2048];      // Original YouTube URL
+  char stream_url[8192];       // Extracted direct stream URL
+  time_t extracted_time;       // When URL was extracted
+  bool valid;                  // Whether cache entry is valid
+} youtube_cache_entry_t;
+
+static youtube_cache_entry_t g_youtube_cache = {0};
+
+/**
+ * @brief Check if cached URL is still valid
+ *
+ * YouTube stream URLs expire after ~6 hours, but we use a shorter
+ * cache duration (30 seconds) to be safe during initialization.
+ */
+static bool youtube_cache_is_valid(void) {
+  if (!g_youtube_cache.valid) {
+    return false;
+  }
+
+  time_t now = time(NULL);
+  time_t age = now - g_youtube_cache.extracted_time;
+
+  // Cache valid for 30 seconds
+  return (age >= 0 && age < 30);
+}
+
+/**
+ * @brief Get cached stream URL if available and valid
+ */
+static bool youtube_cache_get(const char *youtube_url, char *output_url, size_t output_size) {
+  if (!youtube_cache_is_valid()) {
+    return false;
+  }
+
+  // Check if cache matches requested URL
+  if (strcmp(g_youtube_cache.youtube_url, youtube_url) != 0) {
+    return false;
+  }
+
+  // Return cached URL
+  size_t url_len = strlen(g_youtube_cache.stream_url);
+  if (url_len >= output_size) {
+    return false;
+  }
+
+  strncpy(output_url, g_youtube_cache.stream_url, output_size - 1);
+  output_url[output_size - 1] = '\0';
+
+  log_debug("Using cached YouTube stream URL (extracted %ld seconds ago)",
+            (long)(time(NULL) - g_youtube_cache.extracted_time));
+  return true;
+}
+
+/**
+ * @brief Cache extracted stream URL
+ */
+static void youtube_cache_set(const char *youtube_url, const char *stream_url) {
+  if (strlen(youtube_url) >= sizeof(g_youtube_cache.youtube_url) ||
+      strlen(stream_url) >= sizeof(g_youtube_cache.stream_url)) {
+    return; // URL too long to cache
+  }
+
+  strncpy(g_youtube_cache.youtube_url, youtube_url, sizeof(g_youtube_cache.youtube_url) - 1);
+  g_youtube_cache.youtube_url[sizeof(g_youtube_cache.youtube_url) - 1] = '\0';
+
+  strncpy(g_youtube_cache.stream_url, stream_url, sizeof(g_youtube_cache.stream_url) - 1);
+  g_youtube_cache.stream_url[sizeof(g_youtube_cache.stream_url) - 1] = '\0';
+
+  g_youtube_cache.extracted_time = time(NULL);
+  g_youtube_cache.valid = true;
+}
 
 /**
  * @brief Check if a URL is a YouTube URL
@@ -142,6 +228,11 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
+  // Check if we have a cached extraction for this URL
+  if (youtube_cache_get(youtube_url, output_url, output_size)) {
+    return ASCIICHAT_OK;
+  }
+
   // Build command to run yt-dlp and extract the URL directly
   // Try best available format (works with most videos)
   char command[2048];
@@ -205,6 +296,10 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   // Copy the URL directly (it's already properly formatted)
   strncpy(output_url, url_buffer, output_size - 1);
   output_url[output_size - 1] = '\0';
+
+  // Cache the extracted URL to avoid redundant yt-dlp calls during initialization
+  // (FPS detection, audio probing, playback setup)
+  youtube_cache_set(youtube_url, output_url);
 
   log_debug("Successfully extracted YouTube stream URL (%zu bytes)", url_size);
   return ASCIICHAT_OK;
