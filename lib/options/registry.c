@@ -379,17 +379,12 @@ static const registry_entry_t g_options_registry[] = {
     {"port", 'p', OPTION_TYPE_STRING, offsetof(options_t, port), &g_default_port, 0, "Server port", "NETWORK", false,
      "ASCII_CHAT_PORT", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"address", '\0', OPTION_TYPE_STRING, offsetof(options_t, address), "localhost", 0,
-     "Server address (client) or bind address (server)", "NETWORK", false, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"address6", '\0', OPTION_TYPE_STRING, offsetof(options_t, address6), "::1", 0, "IPv6 bind address (server only)",
-     "NETWORK", false, NULL, NULL, false, false, OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
     {"max-clients", '\0', OPTION_TYPE_INT, offsetof(options_t, max_clients), &g_default_max_clients, sizeof(int),
-     "Maximum concurrent clients (server only)", "NETWORK", false, NULL, NULL, false, false,
+     "Maximum concurrent clients (server only)", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC}, // Server and Discovery Service
     {"reconnect-attempts", '\0', OPTION_TYPE_INT, offsetof(options_t, reconnect_attempts),
      &g_default_reconnect_attempts, sizeof(int), "Number of reconnection attempts (-1=infinite, 0=none)", "NETWORK",
-     false, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
 
     // WebRTC options
     {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &g_default_webrtc, sizeof(bool),
