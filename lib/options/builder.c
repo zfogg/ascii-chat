@@ -1788,8 +1788,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
-                             colored_string(LOG_COLOR_FATAL, "default:"));
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
         switch (desc->type) {
         case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
@@ -1997,8 +1996,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && desc->type != OPTION_TYPE_CALLBACK && !description_has_default) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
-                             colored_string(LOG_COLOR_FATAL, "default:"));
+        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (default: ");
         switch (desc->type) {
         case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
