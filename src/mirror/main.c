@@ -33,10 +33,9 @@
 #include "session/display.h"
 #include "session/render.h"
 
-#include "platform/abstraction.h"
+#include "media/source.h"
 #include "common.h"
 #include "options/options.h"
-#include "util/time.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -183,6 +182,25 @@ int mirror_main(void) {
   capture_config.resize_for_network = false;
   capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
   capture_config.callback_data = NULL;
+
+  // Configure media source based on options
+  const char *media_file = GET_OPTION(media_file);
+  if (media_file && strlen(media_file) > 0) {
+    // User specified a media file or stdin
+    if (strcmp(media_file, "-") == 0) {
+      capture_config.type = MEDIA_SOURCE_STDIN;
+      capture_config.path = NULL;
+    } else {
+      capture_config.type = MEDIA_SOURCE_FILE;
+      capture_config.path = media_file;
+    }
+    capture_config.loop = GET_OPTION(media_loop);
+  } else {
+    // Default to webcam
+    capture_config.type = MEDIA_SOURCE_WEBCAM;
+    capture_config.path = NULL;
+    capture_config.loop = false;
+  }
 
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
