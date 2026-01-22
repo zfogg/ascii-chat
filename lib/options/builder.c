@@ -1758,21 +1758,25 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
                                colored_string(LOG_COLOR_WARN, long_flag));
       }
 
-      // Value placeholder
+      // Value placeholder (colored green)
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
         option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
         switch (desc->type) {
         case OPTION_TYPE_INT:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "NUM"));
           break;
         case OPTION_TYPE_STRING:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "STR");
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "STR"));
           break;
         case OPTION_TYPE_DOUBLE:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "NUM"));
           break;
         case OPTION_TYPE_CALLBACK:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "VAL");
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "VAL"));
           break;
         default:
           break;
@@ -1966,21 +1970,25 @@ void options_config_print_options_sections_with_width(const options_config_t *co
                                 colored_string(LOG_COLOR_WARN, long_flag));
       }
 
-      // Value placeholder
+      // Value placeholder (colored green)
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
         colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, " ");
         switch (desc->type) {
         case OPTION_TYPE_INT:
-          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "NUM");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "NUM"));
           break;
         case OPTION_TYPE_STRING:
-          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "STR");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "STR"));
           break;
         case OPTION_TYPE_DOUBLE:
-          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "NUM");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "NUM"));
           break;
         case OPTION_TYPE_CALLBACK:
-          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "VAL");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "VAL"));
           break;
         default:
           break;
