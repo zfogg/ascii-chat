@@ -120,6 +120,30 @@ static bool mirror_render_should_exit(void *user_data) {
   return mirror_should_exit();
 }
 
+/**
+ * Adapter function for session capture exit callback
+ * Converts from void*->bool signature to match session_capture_should_exit_fn
+ *
+ * @param user_data Unused (NULL)
+ * @return true if capture should exit
+ */
+static bool mirror_capture_should_exit_adapter(void *user_data) {
+  (void)user_data; // Unused parameter
+  return mirror_should_exit();
+}
+
+/**
+ * Adapter function for session display exit callback
+ * Converts from void*->bool signature to match session_display_should_exit_fn
+ *
+ * @param user_data Unused (NULL)
+ * @return true if display should exit
+ */
+static bool mirror_display_should_exit_adapter(void *user_data) {
+  (void)user_data; // Unused parameter
+  return mirror_should_exit();
+}
+
 /* ============================================================================
  * Mirror Mode Display (using session library)
  * ============================================================================ */
@@ -152,16 +176,29 @@ int mirror_main(void) {
   platform_signal(SIGTERM, mirror_handle_sigterm);
 #endif
 
-  // Create capture and display contexts from command-line options
-  // Passing NULL config auto-initializes from GET_OPTION()
-  // This handles: media files, stdin, webcam, test patterns, terminal capabilities, ANSI init
-  session_capture_ctx_t *capture = session_capture_create(NULL);
+  // Create capture and display contexts with exit callback for graceful shutdown
+  // This allows the capture/display initialization to be cancelled if SIGTERM arrives
+  session_capture_config_t capture_config = {0};
+  capture_config.target_fps = 60;
+  capture_config.resize_for_network = false;
+  capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
+  capture_config.callback_data = NULL;
+
+  session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
     log_fatal("Failed to initialize capture source");
     return ERROR_MEDIA_INIT;
   }
 
-  session_display_ctx_t *display = session_display_create(NULL);
+  session_display_config_t display_config = {0};
+  display_config.snapshot_mode = GET_OPTION(snapshot_mode);
+  display_config.palette_type = GET_OPTION(palette_type);
+  display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+  display_config.color_mode = TERM_COLOR_AUTO;
+  display_config.should_exit_callback = mirror_display_should_exit_adapter;
+  display_config.callback_data = NULL;
+
+  session_display_ctx_t *display = session_display_create(&display_config);
   if (!display) {
     log_fatal("Failed to initialize display");
     session_capture_destroy(capture);

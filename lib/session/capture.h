@@ -60,6 +60,17 @@
  * ============================================================================ */
 
 /**
+ * @brief Callback type to check if initialization should be cancelled
+ *
+ * Called periodically during initialization to allow graceful cancellation.
+ * Should return true if initialization should stop immediately.
+ *
+ * @param user_data Opaque pointer provided by caller
+ * @return true to cancel initialization, false to continue
+ */
+typedef bool (*session_capture_should_exit_fn)(void *user_data);
+
+/**
  * @brief Configuration for session capture context
  *
  * Specifies the media source type, path, and capture parameters.
@@ -81,6 +92,12 @@ typedef struct {
 
   /** @brief Resize frames to network-optimal dimensions (MAX_FRAME_WIDTH x MAX_FRAME_HEIGHT) */
   bool resize_for_network;
+
+  /** @brief Optional: callback to check if initialization should be cancelled (e.g., shutdown signal) */
+  session_capture_should_exit_fn should_exit_callback;
+
+  /** @brief Opaque data passed to should_exit_callback */
+  void *callback_data;
 } session_capture_config_t;
 
 /* ============================================================================

@@ -156,8 +156,9 @@ static void *cleanup_thread_func(void *arg) {
 
   while (!atomic_load(&server->shutdown)) {
     // Sleep for 5 minutes (or until shutdown)
-    for (int i = 0; i < 300 && !atomic_load(&server->shutdown); i++) {
-      platform_sleep_ms(1000); // Sleep 1 second at a time for responsive shutdown
+    // Use 100ms sleep intervals for responsive shutdown on timeout
+    for (int i = 0; i < 3000 && !atomic_load(&server->shutdown); i++) {
+      platform_sleep_ms(100); // Sleep 100ms at a time for responsive shutdown
     }
 
     if (atomic_load(&server->shutdown)) {

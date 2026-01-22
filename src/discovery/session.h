@@ -76,6 +76,17 @@ typedef struct {
 } migration_ctx_t;
 
 /**
+ * @brief Callback to check if session should exit
+ *
+ * Called periodically during blocking operations (e.g., ACDS connect, join).
+ * Should return true to gracefully cancel the current operation.
+ *
+ * @param user_data Opaque pointer provided by caller
+ * @return true to cancel operation, false to continue
+ */
+typedef bool (*discovery_should_exit_fn)(void *user_data);
+
+/**
  * @brief Discovery session state
  */
 typedef enum {
@@ -137,6 +148,10 @@ typedef struct {
   void (*on_session_ready)(const char *session_string, void *user_data);
   void (*on_error)(asciichat_error_t error, const char *message, void *user_data);
   void *callback_user_data;
+
+  // Exit callback for graceful shutdown during blocking operations
+  discovery_should_exit_fn should_exit_callback;
+  void *exit_callback_data;
 } discovery_session_t;
 
 /**
@@ -158,6 +173,10 @@ typedef struct {
   void (*on_session_ready)(const char *session_string, void *user_data);
   void (*on_error)(asciichat_error_t error, const char *message, void *user_data);
   void *callback_user_data;
+
+  // Exit callback for graceful shutdown during blocking operations
+  discovery_should_exit_fn should_exit_callback;
+  void *exit_callback_data;
 } discovery_config_t;
 
 /**

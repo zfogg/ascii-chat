@@ -292,6 +292,14 @@ int acds_main(void) {
   //   1. UPnP (works on ~90% of home routers)
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
+
+  // Check again before expensive UPnP initialization (might timeout trying to reach router)
+  if (discovery_should_exit()) {
+    log_info("Shutdown signal received before UPnP initialization");
+    result = ASCIICHAT_OK;
+    goto cleanup_resources;
+  }
+
   if (GET_OPTION(enable_upnp)) {
     asciichat_error_t upnp_result = nat_upnp_open(config.port, "ascii-chat ACDS", &g_upnp_ctx);
 
@@ -318,6 +326,7 @@ int acds_main(void) {
 
   // Initialize mDNS for LAN discovery of ACDS server
   // This allows clients on the local network to discover the discovery service itself
+
   log_debug("Initializing mDNS for ACDS LAN service discovery...");
   g_mdns_ctx = asciichat_mdns_init();
   if (!g_mdns_ctx) {

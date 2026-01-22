@@ -147,6 +147,11 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     config = &auto_config;
   }
 
+  // Check if we should exit before starting initialization
+  if (config->should_exit_callback && config->should_exit_callback(config->callback_data)) {
+    return NULL;
+  }
+
   // Allocate context
   session_capture_ctx_t *ctx = SAFE_CALLOC(1, sizeof(session_capture_ctx_t), session_capture_ctx_t *);
 

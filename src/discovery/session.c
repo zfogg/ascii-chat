@@ -74,6 +74,8 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->on_session_ready = config->on_session_ready;
   session->on_error = config->on_error;
   session->callback_user_data = config->callback_user_data;
+  session->should_exit_callback = config->should_exit_callback;
+  session->exit_callback_data = config->exit_callback_data;
 
   log_debug("Discovery session created (initiator=%d, acds=%s:%u)", session->is_initiator, session->acds_address,
             session->acds_port);
@@ -491,10 +493,20 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
 
+  // Check if we should exit before starting blocking operations
+  if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
+    return ASCIICHAT_OK; // Return success to allow clean shutdown
+  }
+
   // Connect to ACDS
   asciichat_error_t result = connect_to_acds(session);
   if (result != ASCIICHAT_OK) {
     return result;
+  }
+
+  // Check again after connection
+  if (session->should_exit_callback && session->should_exit_callback(session->exit_callback_data)) {
+    return ASCIICHAT_OK; // Return success to allow clean shutdown
   }
 
   // Create or join session
