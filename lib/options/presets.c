@@ -371,8 +371,10 @@ void options_builder_add_audio_group(options_builder_t *b) {
  */
 static const char *g_server_bind_address_examples[] = {
     "(none)                     bind to 127.0.0.1 and ::1 (localhost)",
-    "192.168.1.100              bind to IPv4 address only", "::                         bind to all IPv6 addresses",
+    "192.168.1.100              bind to IPv4 address only",
+    "::                         bind to all IPv6 addresses",
     "0.0.0.0                    bind to all IPv4 addresses",
+    "2001:db8::1                bind to specific IPv6 address only",
     "192.168.1.100 ::           bind to IPv4 and IPv6 (dual-stack)"};
 
 /**
