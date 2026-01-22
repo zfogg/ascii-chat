@@ -8,6 +8,7 @@
 #include "common.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"
+#include <version.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -15,6 +16,7 @@
 // FFmpeg includes for HTTP support
 #include <libavformat/avio.h>
 #include <libavformat/avformat.h>
+#include <libavutil/dict.h>
 
 // libytdl includes
 #include <ytdl/info.h>
@@ -34,8 +36,8 @@
 /** Maximum size for a YouTube video ID (11 characters) */
 #define YOUTUBE_VIDEO_ID_MAX 16
 
-/** Maximum size for the watch page HTML cache (1 MB) */
-#define WATCH_PAGE_MAX_SIZE (1024 * 1024)
+/** Maximum size for the watch page HTML cache (5 MB - YouTube pages can be large) */
+#define WATCH_PAGE_MAX_SIZE (5 * 1024 * 1024)
 
 /**
  * @brief Check if a URL is a YouTube URL
@@ -148,9 +150,25 @@ static size_t youtube_fetch_watch_page(const char *video_id, uint8_t *output_htm
 
   AVIOContext *io_ctx = NULL;
   size_t bytes_read = 0;
+  AVDictionary *opts = NULL;
 
-  // Open URL for reading via FFmpeg AVIO
-  int ret = avio_open(&io_ctx, watch_url, AVIO_FLAG_READ);
+  // Set HTTP headers to match ascii-chat's HTTP client
+  // Use same User-Agent as other HTTPS requests in ascii-chat
+  char user_agent[128];
+  snprintf(user_agent, sizeof(user_agent), "ascii-chat/%s", ASCII_CHAT_VERSION_STRING);
+  av_dict_set(&opts, "user_agent", user_agent, 0);
+  av_dict_set(&opts, "referer", "https://www.youtube.com/", 0);
+  av_dict_set(&opts, "accept",
+              "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+              0);
+  av_dict_set(&opts, "accept-language", "en-US,en;q=0.9", 0);
+  av_dict_set(&opts, "accept-encoding", "gzip, deflate", 0);
+  av_dict_set(&opts, "cache-control", "no-cache", 0);
+
+  // Open URL for reading via FFmpeg AVIO with options
+  int ret = avio_open2(&io_ctx, watch_url, AVIO_FLAG_READ, NULL, &opts);
+  av_dict_free(&opts);
+
   if (ret < 0) {
     log_error("Failed to open YouTube watch page URL: %s (error: %d)", watch_url, ret);
     SET_ERRNO(ERROR_YOUTUBE_NETWORK, "Failed to open HTTP connection to YouTube: %s", watch_url);
