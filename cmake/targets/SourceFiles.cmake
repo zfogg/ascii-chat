@@ -308,6 +308,7 @@ set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
     lib/log/logging.c
+    lib/log/colorize.c
     lib/log/mmap.c
     lib/options/options.c
     lib/options/common.c

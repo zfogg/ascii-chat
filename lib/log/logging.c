@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include "logging.h"
+#include "colorize.h"
 #include "log/mmap.h"
 #include "platform/terminal.h"
 #include "platform/thread.h"
@@ -722,7 +723,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Format the header using centralized formatting
   char header_buffer[512];
-  bool use_colors = isatty(fd);
+  bool use_colors = platform_isatty(fd);
 
   int header_len =
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
@@ -745,16 +746,24 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
 
   if (use_colors) {
-    const char **colors = log_get_color_array();
-    if (colors == NULL) {
+    // Format the message first so we can colorize it
+    char msg_buffer[LOG_MSG_BUFFER_SIZE];
+    int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+
+    if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
+      const char *colorized_msg = colorize_log_message(msg_buffer);
+      const char **colors = log_get_color_array();
+
+      if (colors == NULL) {
+        safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
+      } else {
+        safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
+                     colors[LOG_COLOR_RESET]);
+      }
+    } else {
       safe_fprintf(output_stream, "%s", header_buffer);
       (void)vfprintf(output_stream, fmt, args);
       safe_fprintf(output_stream, "\n");
-    } else {
-      safe_fprintf(output_stream, "%s", header_buffer);
-      safe_fprintf(output_stream, "%s", colors[LOG_COLOR_RESET]);
-      (void)vfprintf(output_stream, fmt, args);
-      safe_fprintf(output_stream, "%s\n", colors[LOG_COLOR_RESET]);
     }
   } else {
     safe_fprintf(output_stream, "%s", header_buffer);
@@ -808,7 +817,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
         output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
       }
       int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
-      bool use_colors = isatty(fd);
+      bool use_colors = platform_isatty(fd);
 
       char header_buffer[512];
       int header_len =
@@ -816,12 +825,13 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
       if (header_len > 0 && header_len < (int)sizeof(header_buffer)) {
         if (use_colors) {
+          const char *colorized_msg = colorize_log_message(msg_buffer);
           const char **colors = log_get_color_array();
           if (colors) {
-            safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], msg_buffer,
+            safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
                          colors[LOG_COLOR_RESET]);
           } else {
-            safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+            safe_fprintf(output_stream, "%s%s\n", header_buffer, colorized_msg);
           }
         } else {
           safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
@@ -937,7 +947,13 @@ void log_plain_msg(const char *fmt, ...) {
     }
   }
 
-  safe_fprintf(stdout, "%s\n", log_buffer);
+  // Apply colorization for TTY output
+  if (platform_isatty(STDOUT_FILENO)) {
+    const char *colorized_msg = colorize_log_message(log_buffer);
+    safe_fprintf(stdout, "%s\n", colorized_msg);
+  } else {
+    safe_fprintf(stdout, "%s\n", log_buffer);
+  }
   (void)fflush(stdout);
 }
 
@@ -981,10 +997,20 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
     }
   }
 
-  if (add_newline) {
-    safe_fprintf(stderr, "%s\n", log_buffer);
+  // Apply colorization for TTY output
+  if (platform_isatty(STDERR_FILENO)) {
+    const char *colorized_msg = colorize_log_message(log_buffer);
+    if (add_newline) {
+      safe_fprintf(stderr, "%s\n", colorized_msg);
+    } else {
+      safe_fprintf(stderr, "%s", colorized_msg);
+    }
   } else {
-    safe_fprintf(stderr, "%s", log_buffer);
+    if (add_newline) {
+      safe_fprintf(stderr, "%s\n", log_buffer);
+    } else {
+      safe_fprintf(stderr, "%s", log_buffer);
+    }
   }
   (void)fflush(stderr);
 }
