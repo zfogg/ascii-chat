@@ -685,12 +685,13 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
     const char *tid_color = colors[6];  // GREY: Grey for thread ID
-    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color,
-                      timestamp, reset, color, level_string, reset, tid_color, tid, reset, file_color, rel_file, reset,
-                      line_color, line, reset, func_color, func, reset, reset, newline_or_not);
+    result =
+        snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color,
+                 timestamp, reset, color, level_string, reset, tid_color, (unsigned long long)tid, reset, file_color,
+                 rel_file, reset, line_color, line, reset, func_color, func, reset, reset, newline_or_not);
   } else {
     result = snprintf(buffer, buffer_size, "[%s] [%s] [tid:%llu] %s:%d in %s(): %s", timestamp, level_strings[level],
-                      tid, rel_file, line, func, newline_or_not);
+                      (unsigned long long)tid, rel_file, line, func, newline_or_not);
   }
 #endif
 
