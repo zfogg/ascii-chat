@@ -278,7 +278,8 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(unsigned short int), "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false, NULL,
      NULL, parse_verbose_flag, false, true, OPTION_MODE_BINARY},
     {"quiet", 'q', OPTION_TYPE_BOOL, offsetof(options_t, quiet), &g_default_quiet, sizeof(bool),
-     "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY},
+     "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, NULL, NULL, false, false,
+     OPTION_MODE_BINARY},
 
     // TERMINAL GROUP (client, mirror, discovery)
     {"width", 'x', OPTION_TYPE_INT, offsetof(options_t, width), &g_default_width, sizeof(int),
@@ -293,7 +294,7 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(unsigned short int), "Webcam device index", "WEBCAM", false, "ASCII_CHAT_WEBCAM_INDEX", NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"webcam-flip", 'g', OPTION_TYPE_BOOL, offsetof(options_t, webcam_flip), &g_default_webcam_flip, sizeof(bool),
-     "Flip webcam horizontally", "WEBCAM", false, NULL, NULL, false, false,
+     "Flip webcam horizontally", "WEBCAM", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &g_default_test_pattern, sizeof(bool),
      "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED", NULL, NULL, false, false,
@@ -316,16 +317,16 @@ static const registry_entry_t g_options_registry[] = {
      "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL, NULL, parse_palette_chars, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities), &g_default_show_capabilities,
-     sizeof(bool), "Show terminal capabilities and exit", "DISPLAY", false, NULL, NULL, false, false,
+     sizeof(bool), "Show terminal capabilities and exit", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"utf8", '\0', OPTION_TYPE_BOOL, offsetof(options_t, force_utf8), &g_default_force_utf8, sizeof(bool),
-     "Force UTF-8 support", "DISPLAY", false, NULL, NULL, false, false,
+     "Force UTF-8 support", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"stretch", 's', OPTION_TYPE_BOOL, offsetof(options_t, stretch), &g_default_stretch, sizeof(bool),
-     "Allow aspect ratio distortion", "DISPLAY", false, NULL, NULL, false, false,
+     "Allow aspect ratio distortion", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"strip-ansi", '\0', OPTION_TYPE_BOOL, offsetof(options_t, strip_ansi), &g_default_strip_ansi, sizeof(bool),
-     "Strip ANSI escape sequences", "DISPLAY", false, NULL, NULL, false, false,
+     "Strip ANSI escape sequences", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"fps", '\0', OPTION_TYPE_INT, offsetof(options_t, fps), &g_default_fps, sizeof(int),
      "Target framerate (1-144, 0=use default)", "DISPLAY", false, "ASCII_CHAT_FPS", NULL, NULL, false, false,
@@ -333,7 +334,7 @@ static const registry_entry_t g_options_registry[] = {
 
     // SNAPSHOT GROUP (client, mirror, discovery)
     {"snapshot", 'S', OPTION_TYPE_BOOL, offsetof(options_t, snapshot_mode), &g_default_snapshot_mode, sizeof(bool),
-     "Snapshot mode (one frame and exit)", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT", NULL, NULL, false, false,
+     "Snapshot mode (one frame and exit)", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"snapshot-delay", 'D', OPTION_TYPE_DOUBLE, offsetof(options_t, snapshot_delay), &g_default_snapshot_delay,
      sizeof(double), "Snapshot delay in seconds", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT_DELAY", NULL, NULL, false,
@@ -344,7 +345,7 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false, "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &g_default_no_compress, sizeof(bool),
-     "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, false, false,
+     "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
 
     // SECURITY GROUP (client, server, discovery)
@@ -401,8 +402,8 @@ static const registry_entry_t g_options_registry[] = {
      "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
     {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &g_default_webrtc_skip_stun,
-     sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
     {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
      &g_default_webrtc_disable_turn, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL,
      NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
@@ -420,8 +421,8 @@ static const registry_entry_t g_options_registry[] = {
      "ACDS: Credential/password for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
     {"turn-secret", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_secret), "", 0,
-     "ACDS: Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false, NULL, NULL, NULL, false,
-     false, OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
+     "ACDS: Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
 
     // Media File Streaming Options
     {"file", 'f', OPTION_TYPE_STRING, offsetof(options_t, media_file), "", 0,
@@ -464,24 +465,24 @@ static const registry_entry_t g_options_registry[] = {
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"audio-analysis", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_analysis_enabled),
      &g_default_audio_analysis_enabled, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
-     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback), &g_default_no_audio_playback,
-     sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL, false, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &g_default_encode_audio, sizeof(bool),
-     "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, false, false,
+     "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &g_default_no_encode_audio,
-     sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, false,
+     sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // ACDS Server Specific Options
     {"discovery-database-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
-     "Path to SQLite database for discovery service", "ACDS", false, NULL, NULL, NULL, false,
-     false, OPTION_MODE_DISCOVERY_SVC},
+     "Path to SQLite database for discovery service", "ACDS", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_DISCOVERY_SVC},
     {"discovery-key-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_key_path), "", 0,
-     "Path to identity key file for discovery service", "ACDS", false, NULL, NULL, NULL, false,
-     false, OPTION_MODE_DISCOVERY_SVC},
+     "Path to identity key file for discovery service", "ACDS", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_DISCOVERY_SVC},
     {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity),
      &g_default_require_server_identity, sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity",
      "ACDS", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
