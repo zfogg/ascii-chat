@@ -313,6 +313,24 @@
 /** @brief Default render mode (foreground characters only) */
 #define OPT_RENDER_MODE_DEFAULT RENDER_MODE_FOREGROUND
 
+/** @brief Default palette type (standard ASCII art) */
+#define OPT_PALETTE_TYPE_DEFAULT PALETTE_STANDARD
+
+/** @brief Default media seek timestamp (start from beginning) */
+#define OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT 0.0
+
+/** @brief Default color mode (auto-detect) */
+#define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
+
+/** @brief Default cookies from browser (disabled) */
+#define OPT_NO_COOKIES_FROM_BROWSER_DEFAULT false
+
+/** @brief Default require-server-identity setting for ACDS */
+#define OPT_REQUIRE_SERVER_IDENTITY_DEFAULT false
+
+/** @brief Default require-client-identity setting for ACDS */
+#define OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT false
+
 /** @brief Default audio encoding state (true = Opus encoding enabled) */
 #define OPT_ENCODE_AUDIO_DEFAULT true
 

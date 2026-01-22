@@ -188,9 +188,9 @@ static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
 static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
-static const int default_color_mode_value = TERM_COLOR_AUTO;
-static const int default_render_mode_value = RENDER_MODE_FOREGROUND;
-static const int default_palette_type_value = PALETTE_STANDARD;
+static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
+static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
+static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
 static const bool default_show_capabilities_value = OPT_SHOW_CAPABILITIES_DEFAULT;
 static const bool default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
 static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
@@ -212,8 +212,8 @@ static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
 static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
 static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
 static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
-static const double default_media_seek_value = 0.0;
-static const bool default_no_cookies_value = false;
+static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
+static const bool default_no_cookies_value = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
 static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
 static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;
 static const int default_speakers_index_value = OPT_SPEAKERS_INDEX_DEFAULT;
@@ -225,8 +225,8 @@ static const bool default_encode_audio_value = OPT_ENCODE_AUDIO_DEFAULT;
 static const bool default_no_encode_audio_value = !OPT_ENCODE_AUDIO_DEFAULT;
 static const bool default_discovery_expose_ip_value = OPT_ACDS_EXPOSE_IP_DEFAULT;
 static const bool default_discovery_insecure_value = OPT_ACDS_INSECURE_DEFAULT;
-static const bool default_require_server_identity_value = false;
-static const bool default_require_client_identity_value = false;
+static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
+static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 
 /**
  * @brief Registry entry - stores option definition with mode bitmask
@@ -256,9 +256,9 @@ static const registry_entry_t g_options_registry[] = {
     // LOGGING GROUP (binary-level)
     {"log-file", 'L', OPTION_TYPE_STRING, offsetof(options_t, log_file), "", 0, "Redirect logs to FILE", "LOGGING",
      false, "ASCII_CHAT_LOG_FILE", NULL, NULL, false, false, OPTION_MODE_BINARY},
-    {"log-level", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, log_level), &default_log_level_value, sizeof(log_level_t),
-     "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL, NULL, parse_log_level, false, false,
-     OPTION_MODE_BINARY},
+    {"log-level", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, log_level), &default_log_level_value,
+     sizeof(log_level_t), "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL, NULL,
+     parse_log_level, false, false, OPTION_MODE_BINARY},
     {"verbose", 'V', OPTION_TYPE_CALLBACK, offsetof(options_t, verbose_level), 0, sizeof(unsigned short int),
      "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false, NULL, NULL, parse_verbose_flag,
      false, true, OPTION_MODE_BINARY},
@@ -281,8 +281,8 @@ static const registry_entry_t g_options_registry[] = {
     {"webcam-flip", 'g', OPTION_TYPE_BOOL, offsetof(options_t, webcam_flip), &default_webcam_flip_value, sizeof(bool),
      "Flip webcam horizontally", "WEBCAM", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &default_test_pattern_value, sizeof(bool),
-     "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED", NULL, NULL, false, false,
+    {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &default_test_pattern_value,
+     sizeof(bool), "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // DISPLAY GROUP (client, mirror, discovery)
@@ -294,15 +294,16 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(render_mode_t), "Render mode (foreground, background, half-block)", "DISPLAY", false,
      "ASCII_CHAT_RENDER_MODE", NULL, parse_render_mode, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"palette", 'P', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_type), &default_palette_type_value, sizeof(palette_type_t),
-     "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, "ASCII_CHAT_PALETTE",
-     NULL, parse_palette_type, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"palette", 'P', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_type), &default_palette_type_value,
+     sizeof(palette_type_t), "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false,
+     "ASCII_CHAT_PALETTE", NULL, parse_palette_type, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"palette-chars", 'C', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_custom), "", 0,
      "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL, NULL, parse_palette_chars, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities), &default_show_capabilities_value,
-     sizeof(bool), "Show terminal capabilities and exit", "DISPLAY", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities),
+     &default_show_capabilities_value, sizeof(bool), "Show terminal capabilities and exit", "DISPLAY", false, NULL,
+     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"utf8", '\0', OPTION_TYPE_BOOL, offsetof(options_t, force_utf8), &default_force_utf8_value, sizeof(bool),
      "Force UTF-8 support", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
@@ -325,16 +326,17 @@ static const registry_entry_t g_options_registry[] = {
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // PERFORMANCE GROUP (client, server, discovery)
-    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level), &default_compression_level_value,
-     sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false, "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level),
+     &default_compression_level_value, sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false,
+     "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &default_no_compress_value, sizeof(bool),
      "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
 
     // SECURITY GROUP (client, server, discovery)
-    {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &default_encrypt_enabled_value, sizeof(bool),
-     "Enable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
+    {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &default_encrypt_enabled_value,
+     sizeof(bool), "Enable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0, "SSH/GPG key file path", "SECURITY",
      false, "ASCII_CHAT_KEY", NULL, NULL, false, false,
@@ -351,9 +353,10 @@ static const registry_entry_t g_options_registry[] = {
     {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0, "Allowed client keys (server)",
      "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure), &default_discovery_insecure_value,
-     sizeof(bool), "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL,
-     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure),
+     &default_discovery_insecure_value, sizeof(bool),
+     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"discovery-server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
      "Discovery server public key for verification (SSH/GPG key or HTTPS URL)", "SECURITY", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
@@ -389,8 +392,8 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
-     &default_webrtc_disable_turn_value, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL,
-     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     &default_webrtc_disable_turn_value, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false,
+     NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
      "Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
@@ -418,9 +421,9 @@ static const registry_entry_t g_options_registry[] = {
     {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &default_media_loop_value, sizeof(bool),
      "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &default_media_seek_value, sizeof(double),
-     "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false, NULL, NULL,
-     parse_timestamp, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &default_media_seek_value,
+     sizeof(double), "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false, NULL,
+     NULL, parse_timestamp, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"cookies-from-browser", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, cookies_from_browser), NULL, 0,
      "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
      "Use without argument to default to chrome.",
@@ -449,12 +452,12 @@ static const registry_entry_t g_options_registry[] = {
     {"audio-analysis", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_analysis_enabled),
      &default_audio_analysis_value, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
      "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback), &default_no_audio_playback_value,
-     sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_encode_audio_value, sizeof(bool),
-     "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback),
+     &default_no_audio_playback_value, sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL,
+     NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_encode_audio_value,
+     sizeof(bool), "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, NULL, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_no_encode_audio_value,
      sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
