@@ -9,6 +9,7 @@
  * (client, server, mirror, acds) with common initialization and post-processing.
  */
 
+#include <ctype.h>
 #include "options/options.h"
 #include "options/rcu.h" // RCU-based thread-safe options
 #include "options/common.h"
@@ -92,6 +93,11 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
            strcmp(argv[i], "--config") == 0) &&
           i + 1 < argc) {
         i++; // Skip the argument
+      }
+      // -V and --verbose take optional numeric argument
+      if ((strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) && i + 1 < argc &&
+          argv[i + 1][0] != '-' && isdigit((unsigned char)argv[i + 1][0])) {
+        i++; // Skip the optional numeric argument
       }
       continue;
     }
@@ -209,6 +215,22 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         break;
       }
+      // Handle -V and --verbose (stackable verbosity)
+      if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
+        // Check if next argument is a number (optional argument)
+        if (i + 1 < search_limit && argv[i + 1][0] != '-') {
+          // Try to parse as integer count
+          char *endptr;
+          long value = strtol(argv[i + 1], &endptr, 10);
+          if (*endptr == '\0' && value >= 0 && value <= 100) {
+            opts.verbose_level = (unsigned short int)value;
+            i++; // Skip next argument
+            continue;
+          }
+        }
+        // No valid number, just increment
+        opts.verbose_level++;
+      }
     }
   }
 
@@ -270,38 +292,69 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   if (mode_index != -1) {
     // Mode found at position mode_index
-    // Build new argv: [program_name, args_before_mode..., args_after_mode...]
-    // This preserves binary-level options like --log-file that appear before mode
+    // Build new argv: [program_name, args_before_mode (no binary opts)..., args_after_mode...]
+    // Binary-level options are not passed to mode-specific parsers
 
-    // Special case: if mode_index == 0, argv[0] is the mode name (test compatibility)
-    // Use "ascii-chat" as the binary name
-    int args_before_mode = (mode_index == 0) ? 0 : (mode_index - 1);
     int args_after_mode = argc - mode_index - 1;
-    mode_argc = 1 + args_before_mode + args_after_mode;
+    // We'll calculate final argc after skipping binary options
+    int max_mode_argc = 1 + (mode_index - 1) + args_after_mode; // Worst case: no binary opts skipped
 
-    if (mode_argc > 256) {
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", mode_argc);
+    if (max_mode_argc > 256) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Too many arguments: %d", max_mode_argc);
     }
 
-    // Allocate mode_argc+1 to accommodate NULL terminator
-    char **new_mode_argv = SAFE_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
+    // Allocate max_mode_argc+1 to accommodate NULL terminator
+    char **new_mode_argv = SAFE_MALLOC((size_t)(max_mode_argc + 1) * sizeof(char *), char **);
     if (!new_mode_argv) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
     }
 
-    // Copy: [program_name, args_before_mode..., args_after_mode...]
+    // Copy: [program_name, args_before_mode (excluding binary opts)..., args_after_mode...]
     if (mode_index == 0) {
       // Mode is at argv[0], use "ascii-chat" as program name
       new_mode_argv[0] = "ascii-chat";
     } else {
       new_mode_argv[0] = argv[0];
     }
-    for (int i = 0; i < args_before_mode; i++) {
-      new_mode_argv[1 + i] = argv[1 + i]; // argv[1] to argv[mode_index-1]
+
+    // Copy args before mode, skipping binary-level options (-V, --verbose, -L, --log-file, --log-level, --config-create)
+    int new_argv_idx = 1;
+    for (int i = 1; i < mode_index; i++) {
+      // Skip binary-level only options
+      if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
+        // Check if next arg is a number (optional)
+        if (i + 1 < mode_index && argv[i + 1][0] != '-' && isdigit((unsigned char)argv[i + 1][0])) {
+          i++; // Skip the number too
+        }
+        continue;
+      }
+      if (strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0) {
+        if (i + 1 < mode_index) {
+          i++; // Skip the argument
+        }
+        continue;
+      }
+      if (strcmp(argv[i], "--log-level") == 0) {
+        if (i + 1 < mode_index) {
+          i++; // Skip the argument
+        }
+        continue;
+      }
+      if (strcmp(argv[i], "--config-create") == 0) {
+        // Optionally skip path argument
+        if (i + 1 < mode_index && argv[i + 1][0] != '-') {
+          i++; // Skip the path
+        }
+        continue;
+      }
+      // Copy this argument to mode_argv
+      new_mode_argv[new_argv_idx++] = argv[i];
     }
     for (int i = 0; i < args_after_mode; i++) {
-      new_mode_argv[1 + args_before_mode + i] = argv[mode_index + 1 + i];
+      new_mode_argv[new_argv_idx + i] = argv[mode_index + 1 + i];
     }
+    // Calculate actual argc (program + filtered args before + args after)
+    mode_argc = new_argv_idx + args_after_mode;
     new_mode_argv[mode_argc] = NULL;
 
     mode_argv = new_mode_argv;
