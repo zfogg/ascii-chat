@@ -14,11 +14,6 @@
 #include "options/rcu.h" // RCU-based thread-safe options
 #include "options/common.h"
 #include "options/parsers.h"
-#include "options/client.h"
-#include "options/server.h"
-#include "options/mirror.h"
-#include "options/discovery_service.h"
-#include "options/discovery.h"
 #include "options/validation.h"
 #include "options/manpage.h"
 #include "options/presets.h"
@@ -948,6 +943,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
   // ========================================================================
+
+  // SAVE binary-level parsed values before unified defaults overwrite them
+  log_level_t saved_log_level = opts.log_level;
+  char saved_log_file[OPTIONS_BUFF_SIZE];
+  SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
 
   // Get unified config
   const options_config_t *config = options_preset_unified(NULL, NULL);

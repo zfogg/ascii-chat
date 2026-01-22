@@ -13,9 +13,6 @@
 
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
-#include "options/client.h"
-#include "options/server.h"
-#include "options/mirror.h"
 #include "tests/common.h"
 #include "platform/terminal.h"
 #include "platform/system.h"

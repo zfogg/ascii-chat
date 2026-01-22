@@ -313,11 +313,6 @@ set(CORE_SRCS
     lib/log/mmap.c
     lib/options/options.c
     lib/options/common.c
-    lib/options/client.c
-    lib/options/server.c
-    lib/options/mirror.c
-    lib/options/discovery_service.c
-    lib/options/discovery.c           # Discovery mode options (Phase 3)
     lib/options/validation.c
     lib/options/levenshtein.c
     lib/options/config.c

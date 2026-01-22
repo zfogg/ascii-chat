@@ -25,7 +25,6 @@
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
-#include "options/discovery_service.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "util/path.h"
