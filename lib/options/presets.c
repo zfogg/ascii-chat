@@ -698,6 +698,14 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_server, "Show this help message and exit", "GENERAL");
 
+  // Logging options (binary-level, add before other options)
+  options_builder_add_logging_group(b);
+  // Mark logging options as binary-only so they don't appear in mode-specific help
+  options_builder_mark_binary_only(b, "log-file");
+  options_builder_mark_binary_only(b, "log-level");
+  options_builder_mark_binary_only(b, "verbose");
+  options_builder_mark_binary_only(b, "quiet");
+
   // Network options
   // Note: Server bind addresses are positional arguments only, not flags
   options_builder_add_port_option(b, OPT_PORT_DEFAULT, "ASCII_CHAT_PORT");
@@ -791,6 +799,14 @@ const options_config_t *options_preset_client(const char *program_name, const ch
 
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_client, "Show this help message and exit", "GENERAL");
+
+  // Logging options (binary-level, add before other options)
+  options_builder_add_logging_group(b);
+  // Mark logging options as binary-only so they don't appear in mode-specific help
+  options_builder_mark_binary_only(b, "log-file");
+  options_builder_mark_binary_only(b, "log-level");
+  options_builder_mark_binary_only(b, "verbose");
+  options_builder_mark_binary_only(b, "quiet");
 
   // Network options
   // Note: Server address and port are specified via positional argument [address][:port], not flags
@@ -1013,6 +1029,14 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   // Action options (execute and exit)
   options_builder_add_action(b, "help", 'h', action_help_acds, "Show this help message and exit", "GENERAL");
 
+  // Logging options (binary-level, add before other options)
+  options_builder_add_logging_group(b);
+  // Mark logging options as binary-only so they don't appear in mode-specific help
+  options_builder_mark_binary_only(b, "log-file");
+  options_builder_mark_binary_only(b, "log-level");
+  options_builder_mark_binary_only(b, "verbose");
+  options_builder_mark_binary_only(b, "quiet");
+
   // Network options
   // Note: Bind addresses are specified via positional arguments, not flags
   options_builder_add_port_option(b, OPT_ACDS_PORT_DEFAULT, "ACDS_PORT");
@@ -1117,6 +1141,14 @@ const options_config_t *options_preset_discovery(const char *program_name, const
   options_builder_add_action(b, "help", 'h', action_help_discovery, "Show this help message and exit", "GENERAL");
 
   options_builder_add_action(b, "version", 'v', action_show_version, "Show version information and exit", "GENERAL");
+
+  // Logging options (binary-level, add before other options)
+  options_builder_add_logging_group(b);
+  // Mark logging options as binary-only so they don't appear in mode-specific help
+  options_builder_mark_binary_only(b, "log-file");
+  options_builder_mark_binary_only(b, "log-level");
+  options_builder_mark_binary_only(b, "verbose");
+  options_builder_mark_binary_only(b, "quiet");
 
   // Terminal dimensions, webcam, display, and snapshot options
   options_builder_add_terminal_group(b);
