@@ -56,11 +56,14 @@ static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
  * These options can be used before OR after the mode name.
  */
 void options_builder_add_logging_group(options_builder_t *b) {
+  // Use static const to ensure default persists for the lifetime of the program
+  static const log_level_t default_log_level = DEFAULT_LOG_LEVEL;
+
   options_builder_add_string(b, "log-file", 'L', offsetof(options_t, log_file), "", "Redirect logs to FILE", "LOGGING",
                              false, "ASCII_CHAT_LOG_FILE", NULL);
 
   options_builder_add_callback(b, "log-level", '\0', offsetof(options_t, log_level),
-                               &(log_level_t){LOG_INFO}, // Default: info level
+                               &default_log_level, // Default level based on build type
                                sizeof(log_level_t), parse_log_level,
                                "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL);
 
@@ -741,6 +744,9 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
 
   b->program_name = program_name ? program_name : "ascii-chat mirror";
   b->description = description ? description : "Local webcam viewing (no network)";
+
+  // Logging options (add before help so help can be shown with proper logging config)
+  options_builder_add_logging_group(b);
 
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "GENERAL");

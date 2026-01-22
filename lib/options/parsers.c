@@ -231,14 +231,21 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
 }
 
 bool parse_log_level(const char *arg, void *dest, char **error_msg) {
-  if (!arg || !dest) {
+  if (!dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = strdup("Internal error: NULL destination");
     }
     return false;
   }
 
   log_level_t *log_level = (log_level_t *)dest;
+
+  // If no argument provided, use the default log level (based on build type)
+  if (!arg || arg[0] == '\0') {
+    *log_level = DEFAULT_LOG_LEVEL;
+    return true;
+  }
+
   char lower[32];
   to_lower(arg, lower, sizeof(lower));
 

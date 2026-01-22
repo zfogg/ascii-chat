@@ -76,13 +76,24 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Determine mode: synchronous (capture provided) or event-driven (callbacks provided)
   bool is_synchronous = (capture != NULL);
 
-  // Audio/video sync debug tracking
+  // Frame rate timing
   uint64_t frame_count = 0;
+  uint64_t frame_start_ns = 0;
+  uint64_t last_loop_time_ns = 0;
 
   // Main render loop - works for both synchronous and event-driven modes
   while (!should_exit(user_data)) {
-    // Frame timing
-    uint64_t current_time_ns = time_get_ns();
+    // Frame timing - measure total time to maintain target FPS
+    frame_start_ns = time_get_ns();
+    uint64_t current_time_ns = frame_start_ns;
+
+    // Log actual loop iteration time
+    if (last_loop_time_ns > 0 && frame_count % 30 == 0) {
+      uint64_t loop_time_ns = time_elapsed_ns(last_loop_time_ns, frame_start_ns);
+      double loop_time_ms = (double)loop_time_ns / 1000000.0;
+      log_info("LOOP_TIME: iteration took %.2f ms", loop_time_ms);
+    }
+    last_loop_time_ns = frame_start_ns;
 
     // Snapshot mode: check if delay has elapsed
     if (snapshot_mode && !snapshot_done) {
@@ -99,7 +110,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     if (is_synchronous) {
       // SYNCHRONOUS MODE: Use session_capture context
-      session_capture_sleep_for_fps(capture);
       image = session_capture_read_frame(capture);
 
       if (!image) {
@@ -113,16 +123,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         continue;
       }
 
-      // Debug: log audio/video positions every ~30 frames (~500ms at 60fps)
       frame_count++;
-      if (frame_count % 30 == 0) {
-        void *media_src = session_capture_get_media_source(capture);
-        if (media_src) {
-          // Get both decoder positions from media source
-          double video_pos = media_source_get_position((media_source_t *)media_src);
-          log_info_every(5000000, "A/V SYNC DEBUG: frame=%lu, video_pos=%.3f sec", frame_count, video_pos);
-        }
-      }
 
     } else {
       // EVENT-DRIVEN MODE: Use custom callbacks
@@ -163,6 +164,34 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       SAFE_FREE(ascii_frame);
+    }
+
+    // Maintain target frame rate by sleeping only for remaining time
+    if (is_synchronous && capture && !snapshot_mode) {
+      uint32_t target_fps = session_capture_get_target_fps(capture);
+      if (target_fps > 0) {
+        uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, time_get_ns());
+        uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
+
+        if (frame_elapsed_ns < frame_target_ns) {
+          uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
+          uint64_t sleep_us = sleep_ns / 1000;
+          if (sleep_us > 0) {
+            platform_sleep_usec(sleep_us);
+          }
+        }
+      }
+
+      // Debug: log actual render FPS every 30 frames
+      if (frame_count % 30 == 0) {
+        double actual_fps = session_capture_get_current_fps(capture);
+        uint32_t target_fps = session_capture_get_target_fps(capture);
+        void *media_src = session_capture_get_media_source(capture);
+        double video_pos = media_src ? media_source_get_position((media_source_t *)media_src) : -1.0;
+        log_info_every(5000000, "RENDER: frame=%lu, actual=%.1f FPS, target=%u FPS, pos=%.3f sec",
+                       frame_count, actual_fps, target_fps, video_pos);
+      }
+
     }
 
     // NOTE: Do NOT free 'image':

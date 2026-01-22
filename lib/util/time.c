@@ -204,8 +204,8 @@ double timer_stop(const char *name) {
   char duration_str[32];
   format_duration_ns(elapsed_ns, duration_str, sizeof(duration_str));
 
-  // Log the result (debug level - caller can use return value for production logging)
-  log_debug("Timer '%s': %s", name, duration_str);
+  // Log the result (dev level - only shown with --verbose)
+  log_dev("Timer '%s': %s", name, duration_str);
 
   // Remove from hashtable
   HASH_DEL(g_timer_manager.timers, timer);

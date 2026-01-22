@@ -34,6 +34,7 @@
 #include "session/render.h"
 
 #include "media/source.h"
+#include "audio/audio.h"
 #include "common.h"
 #include "options/options.h"
 
@@ -175,16 +176,14 @@ int mirror_main(void) {
   platform_signal(SIGTERM, mirror_handle_sigterm);
 #endif
 
-  // Create capture and display contexts with exit callback for graceful shutdown
-  // This allows the capture/display initialization to be cancelled if SIGTERM arrives
+  // Configure media source based on options
+  const char *media_file = GET_OPTION(media_file);
   session_capture_config_t capture_config = {0};
-  capture_config.target_fps = 60;
+  capture_config.target_fps = 60; // Default for webcam
   capture_config.resize_for_network = false;
   capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
   capture_config.callback_data = NULL;
 
-  // Configure media source based on options
-  const char *media_file = GET_OPTION(media_file);
   if (media_file && strlen(media_file) > 0) {
     // User specified a media file or stdin
     if (strcmp(media_file, "-") == 0) {
@@ -193,6 +192,17 @@ int mirror_main(void) {
     } else {
       capture_config.type = MEDIA_SOURCE_FILE;
       capture_config.path = media_file;
+
+      // Detect native FPS from file
+      media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
+      if (temp_source) {
+        double file_fps = media_source_get_video_fps(temp_source);
+        if (file_fps > 0.0) {
+          capture_config.target_fps = (uint32_t)(file_fps + 0.5);
+          log_debug("File FPS: %.1f (using %u)", file_fps, capture_config.target_fps);
+        }
+        media_source_destroy(temp_source);
+      }
     }
     capture_config.loop = GET_OPTION(media_loop);
   } else {
@@ -208,11 +218,57 @@ int mirror_main(void) {
     return ERROR_MEDIA_INIT;
   }
 
+  // Initialize audio for playback if media file has audio
+  audio_context_t *audio_ctx = NULL;
+  bool audio_available = false;
+
+  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path) {
+    // Check if file has audio stream
+    media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, capture_config.path);
+    if (temp_source && media_source_has_audio(temp_source)) {
+      audio_available = true;
+      audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
+      if (audio_ctx) {
+        *audio_ctx = (audio_context_t){0};
+        if (audio_init(audio_ctx) == ASCIICHAT_OK) {
+          // Store the media source in audio context for direct callback reading
+          audio_ctx->media_source = session_capture_get_media_source(capture);
+
+          // Disable jitter buffering for local file playback
+          if (audio_ctx->playback_buffer) {
+            audio_ctx->playback_buffer->jitter_buffer_enabled = false;
+            atomic_store(&audio_ctx->playback_buffer->jitter_buffer_filled, true);
+          }
+
+          if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
+            log_info("Audio playback initialized for media file");
+          } else {
+            log_warn("Failed to start audio duplex");
+            audio_destroy(audio_ctx);
+            SAFE_FREE(audio_ctx);
+            audio_ctx = NULL;
+            audio_available = false;
+          }
+        } else {
+          log_warn("Failed to initialize audio context");
+          SAFE_FREE(audio_ctx);
+          audio_ctx = NULL;
+          audio_available = false;
+        }
+      }
+    }
+    if (temp_source) {
+      media_source_destroy(temp_source);
+    }
+  }
+
   session_display_config_t display_config = {0};
   display_config.snapshot_mode = GET_OPTION(snapshot_mode);
   display_config.palette_type = GET_OPTION(palette_type);
   display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
   display_config.color_mode = TERM_COLOR_AUTO;
+  display_config.enable_audio_playback = audio_available;
+  display_config.audio_ctx = audio_ctx;
   display_config.should_exit_callback = mirror_display_should_exit_adapter;
   display_config.callback_data = NULL;
 
@@ -240,6 +296,13 @@ int mirror_main(void) {
   // Cleanup
   log_set_terminal_output(true);
   log_info("Mirror mode shutting down");
+
+  // Stop audio FIRST to prevent callback from accessing media_source
+  if (audio_ctx) {
+    audio_stop_duplex(audio_ctx);
+    audio_destroy(audio_ctx);
+    SAFE_FREE(audio_ctx);
+  }
 
   session_display_destroy(display);
   session_capture_destroy(capture);
