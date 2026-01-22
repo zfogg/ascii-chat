@@ -473,17 +473,17 @@ static const registry_entry_t g_options_registry[] = {
 
     // ACDS Server Specific Options
     {"discovery-database-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
-     "Path to SQLite database for discovery service", "ACDS", false, NULL, NULL, NULL, false, false,
+     "Path to SQLite database for discovery service", "DATABASE", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC},
     {"discovery-key-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_key_path), "", 0,
-     "Path to identity key file for discovery service", "ACDS", false, NULL, NULL, NULL, false, false,
+     "Path to identity key file for discovery service", "DATABASE", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC},
     {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity),
      &g_default_require_server_identity, sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity",
-     "ACDS", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
+     "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
     {"require-client-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_client_identity),
      &g_default_require_client_identity, sizeof(bool), "ACDS: require clients to provide signed Ed25519 identity",
-     "ACDS", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
+     "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
 
     // Generic placeholder to mark end of array
     {NULL, '\0', OPTION_TYPE_BOOL, 0, NULL, 0, NULL, NULL, false, NULL, NULL, NULL, false, false, OPTION_MODE_NONE}};
