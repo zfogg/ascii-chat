@@ -6,7 +6,7 @@
 #   - docs target: Generates full Doxygen API documentation (requires Doxygen)
 #
 # Prerequisites:
-#   - man1: None - uses CMake script for template substitution
+#   - man1: Requires ascii-chat binary to be built (uses --create-man-page option)
 #   - docs: Doxygen executable must be installed
 #
 # Outputs:
@@ -19,18 +19,30 @@
 # =============================================================================
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
 
-# Generate ascii-chat man page at build time, not configure time
+# Determine the executable path (handles Windows .exe extension)
+if(WIN32)
+    set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat.exe")
+else()
+    set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat")
+endif()
+
+# Generate ascii-chat man page at build time using --create-man-page option
+# This merges the template (.1.in) with manual content (.1.content) and auto-generates
+# option documentation from the options builder
 add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template..."
-    COMMAND ${CMAKE_COMMAND}
-        -DINPUT_FILE=${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in
-        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1
-        -DPROJECT_VERSION=${PROJECT_VERSION_FROM_GIT}
-        -P ${CMAKE_SOURCE_DIR}/cmake/scripts/ConfigureManPage.cmake
+    COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
+    COMMAND ${ASCII_CHAT_EXECUTABLE}
+        --create-man-page
+        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
+        > "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
     COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    DEPENDS "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-    COMMENT "Generating ascii-chat.1 from share/man/man1/ascii-chat.1.in"
+    DEPENDS
+        ascii-chat
+        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
+    COMMENT "Generating ascii-chat.1 from template and content files"
     VERBATIM
 )
 
