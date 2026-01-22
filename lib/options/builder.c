@@ -1608,9 +1608,55 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
       len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, example->mode));
     }
 
-    // Add args/flags if present (yellow color)
+    // Add args/flags if present (flags=yellow, arguments=green)
     if (example->args) {
-      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_WARN, example->args));
+      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
+
+      // Parse args to color flags and arguments separately
+      const char *p = example->args;
+      char current_token[256];
+      int token_len = 0;
+
+      while (*p) {
+        if (*p == ' ') {
+          // Flush current token if any
+          if (token_len > 0) {
+            current_token[token_len] = '\0';
+            // Color flags (start with -) yellow, arguments green
+            if (current_token[0] == '-') {
+              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                            colored_string(LOG_COLOR_WARN, current_token));
+            } else {
+              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                            colored_string(LOG_COLOR_INFO, current_token));
+            }
+            token_len = 0;
+          }
+          p++;
+          // Skip multiple spaces
+          while (*p == ' ') p++;
+        } else {
+          current_token[token_len++] = *p;
+          p++;
+        }
+      }
+
+      // Flush last token
+      if (token_len > 0) {
+        current_token[token_len] = '\0';
+        if (current_token[0] == '-') {
+          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                        colored_string(LOG_COLOR_WARN, current_token));
+        } else {
+          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                        colored_string(LOG_COLOR_INFO, current_token));
+        }
+      }
+
+      // Remove trailing space if added
+      if (len > 0 && cmd_buf[len-1] == ' ') {
+        len--;
+      }
     }
 
     // Print with layout function using global column width

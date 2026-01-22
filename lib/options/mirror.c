@@ -34,7 +34,7 @@
 // ============================================================================
 
 asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "view local webcam as ascii art");
+  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "render ascii on localhost with no network or audio");
   int remaining_argc;
   char **remaining_argv;
 
@@ -71,7 +71,7 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
 
 void usage_mirror(FILE *desc) {
   // Get config with program name and description
-  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "view local webcam as ascii art");
+  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "render ascii on localhost with no network or audio");
   if (!config) {
     (void)fprintf(desc, "Error: Failed to create options config\n");
     return;
@@ -91,7 +91,10 @@ void usage_mirror(FILE *desc) {
   print_project_links(desc);
   (void)fprintf(desc, "\n");
 
-  // Print everything after USAGE (MODES, EXAMPLES, OPTIONS) with global max width
+  // Print USAGE section first
+  options_config_print_usage_section(config, desc);
+
+  // Print everything after USAGE (EXAMPLES, OPTIONS) with global max width
   // Note: MODE-OPTIONS only appears in binary-level help, not mode-specific help
   options_config_print_options_sections_with_width(config, desc, 0);
 

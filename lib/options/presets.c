@@ -85,10 +85,10 @@ void options_builder_add_logging_group(options_builder_t *b) {
  */
 void options_builder_add_terminal_group(options_builder_t *b) {
   options_builder_add_int(b, "width", 'x', offsetof(options_t, width), OPT_WIDTH_DEFAULT,
-                          "Terminal width in characters", "TERMINAL", false, NULL, NULL);
+                          "Terminal width in characters", "TERMINAL", false, "ASCII_CHAT_WIDTH", NULL);
 
   options_builder_add_int(b, "height", 'y', offsetof(options_t, height), OPT_HEIGHT_DEFAULT,
-                          "Terminal height in characters", "TERMINAL", false, NULL, NULL);
+                          "Terminal height in characters", "TERMINAL", false, "ASCII_CHAT_HEIGHT", NULL);
 }
 
 /**
@@ -97,9 +97,9 @@ void options_builder_add_terminal_group(options_builder_t *b) {
  */
 void options_builder_add_webcam_group(options_builder_t *b) {
   options_builder_add_int(b, "webcam-index", 'c', offsetof(options_t, webcam_index), OPT_WEBCAM_INDEX_DEFAULT,
-                          "Webcam device index", "WEBCAM", false, NULL, NULL);
+                          "Webcam device index", "WEBCAM", false, "ASCII_CHAT_WEBCAM_INDEX", NULL);
 
-  options_builder_add_bool(b, "webcam-flip", 'f', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
+  options_builder_add_bool(b, "webcam-flip", 'g', offsetof(options_t, webcam_flip), OPT_WEBCAM_FLIP_DEFAULT,
                            "Flip webcam horizontally", "WEBCAM", false, NULL);
 
   options_builder_add_bool(b, "test-pattern", '\0', offsetof(options_t, test_pattern), OPT_TEST_PATTERN_DEFAULT,
@@ -114,17 +114,17 @@ void options_builder_add_display_group(options_builder_t *b) {
   options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
                                &(terminal_color_mode_t){TERM_COLOR_AUTO}, // Auto-detect by default
                                sizeof(terminal_color_mode_t), parse_color_mode,
-                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, NULL);
+                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, "ASCII_CHAT_COLOR_MODE");
 
   options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
                                &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
                                sizeof(render_mode_t), parse_render_mode,
-                               "Render mode (foreground, background, half-block)", "DISPLAY", false, NULL);
+                               "Render mode (foreground, background, half-block)", "DISPLAY", false, "ASCII_CHAT_RENDER_MODE");
 
   options_builder_add_callback(
       b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
       sizeof(palette_type_t), parse_palette_type,
-      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, NULL);
+      "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, "ASCII_CHAT_PALETTE");
 
   options_builder_add_callback(b, "palette-chars", 'C', offsetof(options_t, palette_custom), "",
                                sizeof(((options_t *)0)->palette_custom), parse_palette_chars,
@@ -144,7 +144,7 @@ void options_builder_add_display_group(options_builder_t *b) {
                            "Strip ANSI escape sequences", "DISPLAY", false, NULL);
 
   options_builder_add_int(b, "fps", '\0', offsetof(options_t, fps), 0, "Target framerate (1-144, default: 60)",
-                          "DISPLAY", false, NULL, NULL);
+                          "DISPLAY", false, "ASCII_CHAT_FPS", NULL);
 }
 
 /**
@@ -153,10 +153,10 @@ void options_builder_add_display_group(options_builder_t *b) {
  */
 void options_builder_add_snapshot_group(options_builder_t *b) {
   options_builder_add_bool(b, "snapshot", 'S', offsetof(options_t, snapshot_mode), OPT_SNAPSHOT_MODE_DEFAULT,
-                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, NULL);
+                           "Snapshot mode (one frame and exit)", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT");
 
   options_builder_add_double(b, "snapshot-delay", 'D', offsetof(options_t, snapshot_delay), SNAPSHOT_DELAY_DEFAULT,
-                             "Snapshot delay in seconds", "SNAPSHOT", false, NULL, NULL);
+                             "Snapshot delay in seconds", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT_DELAY", NULL);
 }
 
 // ============================================================================
@@ -169,11 +169,11 @@ void options_builder_add_snapshot_group(options_builder_t *b) {
  */
 void options_builder_add_compression_group(options_builder_t *b) {
   options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
-                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, NULL,
+                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, "ASCII_CHAT_COMPRESSION_LEVEL",
                           NULL);
 
   options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), OPT_NO_COMPRESS_DEFAULT,
-                           "Disable compression", "PERFORMANCE", false, NULL);
+                           "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS");
 }
 
 // ============================================================================
@@ -330,34 +330,34 @@ void options_builder_add_media_group(options_builder_t *b) {
  */
 void options_builder_add_audio_group(options_builder_t *b) {
   options_builder_add_bool(b, "audio", 'A', offsetof(options_t, audio_enabled), OPT_AUDIO_ENABLED_DEFAULT,
-                           "Enable audio streaming", "AUDIO", false, NULL);
+                           "Enable audio streaming", "AUDIO", false, "ASCII_CHAT_AUDIO");
 
   options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
-                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, NULL,
+                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX",
                           NULL);
 
   options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
-                          "Speakers device index (-1=default)", "AUDIO", false, NULL, NULL);
+                          "Speakers device index (-1=default)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL);
 
   options_builder_add_double(b, "microphone-sensitivity", '\0', offsetof(options_t, microphone_sensitivity),
                              OPT_MICROPHONE_SENSITIVITY_DEFAULT, "Microphone volume multiplier (0.0-1.0)", "AUDIO",
-                             false, NULL, NULL);
+                             false, "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL);
 
   options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume),
-                             OPT_SPEAKERS_VOLUME_DEFAULT, "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, NULL,
+                             OPT_SPEAKERS_VOLUME_DEFAULT, "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_VOLUME",
                              NULL);
 
   options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled),
-                           OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT, "Enable audio analysis (debug)", "AUDIO", false, NULL);
+                           OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT, "Enable audio analysis (debug)", "AUDIO", false, "ASCII_CHAT_AUDIO_ANALYSIS");
 
   options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback),
-                           OPT_AUDIO_NO_PLAYBACK_DEFAULT, "Disable speaker playback (debug)", "AUDIO", false, NULL);
+                           OPT_AUDIO_NO_PLAYBACK_DEFAULT, "Disable speaker playback (debug)", "AUDIO", false, "ASCII_CHAT_NO_AUDIO_PLAYBACK");
 
   options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
-                           "Enable Opus audio encoding", "AUDIO", false, NULL);
+                           "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO");
 
   options_builder_add_bool(b, "no-encode-audio", '\0', offsetof(options_t, encode_audio), !OPT_ENCODE_AUDIO_DEFAULT,
-                           "Disable Opus audio encoding", "AUDIO", false, NULL);
+                           "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO");
 }
 
 // ============================================================================
