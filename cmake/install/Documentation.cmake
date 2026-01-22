@@ -29,22 +29,38 @@ endif()
 # Generate ascii-chat man page at build time using --create-man-page option
 # This merges the template (.1.in) with manual content (.1.content) and auto-generates
 # option documentation from the options builder
-add_custom_command(
-    OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
-    COMMAND ${ASCII_CHAT_EXECUTABLE}
-        --create-man-page
-        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
-        > "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    DEPENDS
-        ascii-chat
-        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
-    COMMENT "Generating ascii-chat.1 from template and content files"
-    VERBATIM
-)
+# Note: --create-man-page writes to stdout, so we redirect output to the target file
+if(UNIX)
+    # Unix: Use sh -c for shell redirection
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
+        COMMAND sh -c "${ASCII_CHAT_EXECUTABLE} --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
+        COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        DEPENDS
+            ascii-chat
+            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
+        COMMENT "Generating ascii-chat.1 from template and content files"
+        VERBATIM
+    )
+elseif(WIN32)
+    # Windows: Use cmd /c for shell redirection
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
+        COMMAND cmd /c "\"${ASCII_CHAT_EXECUTABLE}\" --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
+        COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        DEPENDS
+            ascii-chat
+            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
+        COMMENT "Generating ascii-chat.1 from template and content files"
+        VERBATIM
+    )
+else()
+    message(FATAL_ERROR "Unsupported platform for man page generation")
+endif()
 
 # Build man pages by default for release/packaging - they're needed by CPack install
 add_custom_target(man1 ALL

@@ -94,26 +94,9 @@ Command-line arguments override config file values.
 Config file values override default values.
 .RE
 .PP
-.B Configuration Sections:
-.RS
-.IP \(bu 2
-\fB[network]\fR: port
-.IP \(bu 2
-\fB[server]\fR: bind_ipv4, bind_ipv6
-.IP \(bu 2
-\fB[client]\fR: address (default server to connect to), width, height,
-webcam_index, webcam_flip, color_mode, render_mode, fps, stretch, quiet,
-snapshot_mode, snapshot_delay, test_pattern, show_capabilities, force_utf8
-.IP \(bu 2
-\fB[audio]\fR: enabled, microphone_index, speakers_index, microphone_sensitivity, speakers_volume
-.IP \(bu 2
-\fB[palette]\fR: type, chars
-.IP \(bu 2
-\fB[crypto]\fR: encrypt_enabled, key, password, keyfile, no_encrypt,
-server_key (client), client_keys (server)
-.IP \(bu 2
-\fB[logging]\fR: log_file
-.RE
+To see a sample configuration file with all available options, run:
+.br
+\fBascii-chat --config-create /tmp/ascii-chat.toml\fR
 .PP
 .B Security Warning:
 While passwords can be stored in the config file, this is discouraged.
@@ -147,6 +130,7 @@ Passphrase for encrypted SSH or GPG keys. Prefer using ssh-agent/gpg-agent when 
 .TP
 .B LOG_LEVEL
 Set logging verbosity level. Accepts either numeric (0-5) or string values:
+.br
 0/DEV, 1/DEBUG, 2/INFO, 3/WARN, 4/ERROR, 5/FATAL.
 .\" MERGE-END: ENVIRONMENT
 

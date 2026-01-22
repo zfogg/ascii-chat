@@ -228,13 +228,20 @@ static void write_header(FILE *f, const char *program_name, const char *mode_nam
  */
 static void write_synopsis(FILE *f, const char *mode_name) {
   fprintf(f, ".SH SYNOPSIS\n");
-  fprintf(f, ".B ascii-chat\n");
 
   if (mode_name) {
+    // Mode-specific synopsis
+    fprintf(f, ".B ascii-chat\n");
     fprintf(f, ".I %s\n", mode_name);
+    fprintf(f, "[\\fIoptions\\fR]\n");
+  } else {
+    // Binary-level synopsis - show main modes
+    fprintf(f, ".B ascii-chat\n");
+    fprintf(f, "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | \\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n");
+    fprintf(f, "\n");
+    fprintf(f, ".B ascii-chat\n");
+    fprintf(f, "[\\fIoptions\\fR] \\fI<session-string>\\fR\n");
   }
-
-  fprintf(f, "[\\fIoptions\\fR]\n");
   fprintf(f, "\n");
 }
 
@@ -1064,12 +1071,58 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
       p++;
     }
 
-    // Write all content until next .SH (preserving manual env var entries)
+    // Write all content until next .SH or MERGE-END marker (preserving manual env var entries)
+    // Stop before MERGE-END so auto-generated vars can be added before the closing marker
     const char *content_start = p;
-    const char *content_end = p;
-    while (content_end < content_limit && (content_end + 3 > content_limit || strncmp(content_end, ".SH", 3) != 0)) {
-      content_end++;
+    const char *content_end = content_limit;
+    
+    // Create a null-terminated copy for strstr search
+    size_t search_len = content_limit - p;
+    char *search_buf = SAFE_MALLOC(search_len + 1, char *);
+    memcpy(search_buf, p, search_len);
+    search_buf[search_len] = '\0';
+    
+    // Find MERGE-END marker using strstr
+    const char *merge_end_pos = strstr(search_buf, "MERGE-END:");
+    if (merge_end_pos) {
+      // Calculate offset from start
+      size_t offset = merge_end_pos - search_buf;
+      content_end = p + offset;
+      // Back up to start of MERGE-END line
+      while (content_end > content_start && content_end[-1] != '\n') {
+        content_end--;
+      }
+      // Back up one more to skip the newline before MERGE-END line
+      if (content_end > content_start) {
+        content_end--;
+      }
+    } else {
+      // No MERGE-END found, check for next .SH section
+      const char *sh_pos = strstr(search_buf, ".SH");
+      if (sh_pos) {
+        size_t offset = sh_pos - search_buf;
+        content_end = p + offset;
+      }
     }
+    
+    SAFE_FREE(search_buf);
+    
+    // Trim trailing whitespace (but keep at least one newline if content ends with text)
+    // First, trim spaces/tabs
+    while (content_end > content_start && (content_end[-1] == ' ' || content_end[-1] == '\t')) {
+      content_end--;
+    }
+    // Then ensure we end with exactly one newline
+    if (content_end > content_start && content_end[-1] != '\n') {
+      // Content doesn't end with newline - this shouldn't happen, but add one
+      // Actually, don't modify content_end, we'll add newline after writing
+    } else {
+      // Trim extra newlines, but keep one
+      while (content_end > content_start + 1 && content_end[-1] == '\n' && content_end[-2] == '\n') {
+        content_end--;
+      }
+    }
+    
     if (content_end > content_start) {
       // Extract vars from this content before writing
       char *write_content_copy = SAFE_MALLOC(content_end - content_start + 1, char *);
@@ -1079,6 +1132,10 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
       SAFE_FREE(write_content_copy);
 
       fwrite(content_start, 1, content_end - content_start, f);
+      // Ensure exactly one newline after manual content (for proper spacing before auto-generated vars)
+      if (content_end == content_start || content_end[-1] != '\n') {
+        fprintf(f, "\n");
+      }
     }
   }
 
@@ -1334,29 +1391,6 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   write_usage_section(f, NULL); // Pass NULL to generate all modes
   write_section_marker(f, "AUTO", "USAGE", false);
 
-  // Write OPTIONS (AUTO)
-  const parsed_section_t *options_section = NULL;
-  if (existing_sections) {
-    options_section = find_section(existing_sections, num_existing_sections, "OPTIONS");
-  }
-
-  if (options_section && options_section->type == SECTION_TYPE_MANUAL) {
-    write_section_marker(f, "MANUAL", "OPTIONS", true);
-    fwrite(options_section->content, 1, options_section->content_len, f);
-    write_section_marker(f, "MANUAL", "OPTIONS", false);
-  } else {
-    write_section_marker(f, "AUTO", "OPTIONS", true);
-    write_options_section(f, config);
-    write_section_marker(f, "AUTO", "OPTIONS", false);
-  }
-
-  // Write POSITIONAL ARGUMENTS (AUTO)
-  if (config->num_positional_args > 0) {
-    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", true);
-    write_positional_section(f, config);
-    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", false);
-  }
-
   // Write EXAMPLES (MERGE if marked, otherwise AUTO - generate all modes)
   const parsed_section_t *examples_section = NULL;
   if (existing_sections) {
@@ -1402,6 +1436,29 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     write_section_marker(f, "AUTO", "EXAMPLES", true);
     write_examples_section_all_modes(f);
     write_section_marker(f, "AUTO", "EXAMPLES", false);
+  }
+
+  // Write OPTIONS (AUTO)
+  const parsed_section_t *options_section = NULL;
+  if (existing_sections) {
+    options_section = find_section(existing_sections, num_existing_sections, "OPTIONS");
+  }
+
+  if (options_section && options_section->type == SECTION_TYPE_MANUAL) {
+    write_section_marker(f, "MANUAL", "OPTIONS", true);
+    fwrite(options_section->content, 1, options_section->content_len, f);
+    write_section_marker(f, "MANUAL", "OPTIONS", false);
+  } else {
+    write_section_marker(f, "AUTO", "OPTIONS", true);
+    write_options_section(f, config);
+    write_section_marker(f, "AUTO", "OPTIONS", false);
+  }
+
+  // Write POSITIONAL ARGUMENTS (AUTO)
+  if (config->num_positional_args > 0) {
+    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", true);
+    write_positional_section(f, config);
+    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", false);
   }
 
   // Write PALETTES and RENDER MODES (MANUAL) - right after EXAMPLES, before ENVIRONMENT
@@ -1661,12 +1718,12 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   }
 
   // Add any sections from content file that weren't already written
-  // Sections that are already written: NAME, SYNOPSIS, DESCRIPTION, USAGE, OPTIONS, EXAMPLES,
+  // Sections that are already written: NAME, SYNOPSIS, DESCRIPTION, USAGE, EXAMPLES, OPTIONS,
   // PALETTES, RENDER MODES, CONFIGURATION, LIMITS, ENVIRONMENT, FILES, EXIT STATUS, SECURITY, NOTES, BUGS, AUTHOR, SEE
   // ALSO
   if (content_sections) {
     const char *written_section_names[] = {
-        "NAME",         "SYNOPSIS",      "DESCRIPTION", "USAGE",       "OPTIONS", "EXAMPLES",    "PALETTES",
+        "NAME",         "SYNOPSIS",      "DESCRIPTION", "USAGE",       "EXAMPLES", "OPTIONS",    "PALETTES",
         "RENDER MODES", "CONFIGURATION", "LIMITS",      "ENVIRONMENT", "FILES",   "EXIT STATUS", "SECURITY",
         "NOTES",        "BUGS",          "AUTHOR",      "SEE ALSO",    NULL};
 
