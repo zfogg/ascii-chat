@@ -35,10 +35,10 @@
  * Cache entry is valid for 30 seconds (typical YouTube stream URL duration).
  */
 typedef struct {
-  char youtube_url[2048];      // Original YouTube URL
-  char stream_url[8192];       // Extracted direct stream URL
-  time_t extracted_time;       // When URL was extracted
-  bool valid;                  // Whether cache entry is valid
+  char youtube_url[2048]; // Original YouTube URL
+  char stream_url[8192];  // Extracted direct stream URL
+  time_t extracted_time;  // When URL was extracted
+  bool valid;             // Whether cache entry is valid
 } youtube_cache_entry_t;
 
 static youtube_cache_entry_t g_youtube_cache = {0};
@@ -229,8 +229,7 @@ static bool youtube_check_ytdlp_available(void) {
  * Calls yt-dlp as subprocess with --dump-json to get video information,
  * then parses the JSON to extract the direct stream URL.
  */
-asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *output_url,
-                                              size_t output_size) {
+asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *output_url, size_t output_size) {
   if (!youtube_url || !output_url || output_size < 256) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for YouTube URL extraction");
     return ERROR_INVALID_PARAM;
@@ -238,9 +237,8 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
 
   // Check if yt-dlp is available
   if (!youtube_check_ytdlp_available()) {
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
-              "yt-dlp is not installed. Please install it with: "
-              "pip install yt-dlp (or: brew install yt-dlp on macOS)");
+    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp is not installed. Please install it with: "
+                                            "pip install yt-dlp (or: brew install yt-dlp on macOS)");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
@@ -278,7 +276,8 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     // User explicitly disabled with --no-cookies-from-browser
     cmd_ret = snprintf(command, sizeof(command),
                        "yt-dlp --quiet --no-warnings "
-                       "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+                       "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like "
+                       "Gecko) Chrome/120.0.0.0 Safari/537.36' "
                        "--no-cookies-from-browser "
                        "-f 'b' -O '%%(url)s' '%s' 2>&1",
                        youtube_url);
@@ -288,7 +287,8 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
       // Specific browser/keyring provided
       cmd_ret = snprintf(command, sizeof(command),
                          "yt-dlp --quiet --no-warnings "
-                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, "
+                         "like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                          "--cookies-from-browser '%s' "
                          "-f 'b' -O '%%(url)s' '%s' 2>&1",
                          cookies_value, youtube_url);
@@ -296,7 +296,8 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
       // No browser specified - try common browsers in order
       cmd_ret = snprintf(command, sizeof(command),
                          "yt-dlp --quiet --no-warnings "
-                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, "
+                         "like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                          "--cookies-from-browser chrome "
                          "-f 'b' -O '%%(url)s' '%s' 2>&1",
                          youtube_url);
@@ -349,7 +350,8 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     }
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
               "yt-dlp failed to extract video information. "
-              "Video may be age-restricted, geo-blocked, or private.%s", help_msg);
+              "Video may be age-restricted, geo-blocked, or private.%s",
+              help_msg);
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
@@ -367,14 +369,12 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     youtube_cache_set(youtube_url, NULL);
 
     log_debug("Invalid URL from yt-dlp: %s", url_buffer);
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
-              "yt-dlp returned invalid URL. Video may not be playable.");
+    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned invalid URL. Video may not be playable.");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
   if (url_size >= output_size) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Stream URL too long for output buffer (%zu bytes, max %zu)",
-              url_size, output_size);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Stream URL too long for output buffer (%zu bytes, max %zu)", url_size, output_size);
     return ERROR_INVALID_PARAM;
   }
 

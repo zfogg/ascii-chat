@@ -632,8 +632,8 @@ typedef struct options_state {
   // ============================================================================
   // Binary-Level Options (parsed first, before mode selection)
   // ============================================================================
-  bool help;                        ///< Show help message
-  bool version;                     ///< Show version information
+  bool help;                           ///< Show help message
+  bool version;                        ///< Show version information
   char config_file[OPTIONS_BUFF_SIZE]; ///< Config file path (--config)
 
   // ============================================================================

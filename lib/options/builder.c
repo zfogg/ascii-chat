@@ -693,7 +693,7 @@ void options_builder_add_action(options_builder_t *builder, const char *long_nam
                               .hide_from_binary_help = false};
 
   builder->descriptors[builder->num_descriptors++] = desc;
-  
+
   // Set hide_from_binary_help after adding (so we can check the option name)
   if (strcmp(long_name, "create-man-page") == 0) {
     // Always hide from help and man page (this is a development tool)
@@ -1811,7 +1811,8 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Skip if not in current group or if hidden
-      if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group || strcmp(desc->group, current_group) != 0) {
+      if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group ||
+          strcmp(desc->group, current_group) != 0) {
         continue;
       }
 

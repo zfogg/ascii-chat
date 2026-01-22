@@ -28,7 +28,6 @@ typedef enum {
   OPTION_CONTEXT_BOTH,   ///< Can appear in both CLI and config
 } option_context_t;
 
-
 /**
  * @brief Validation function from options builder
  *
@@ -48,13 +47,13 @@ typedef bool (*builder_validate_fn_t)(const void *options_struct, char **error_m
  * and storage location in options_t.
  */
 typedef struct {
-  const char *toml_key;      ///< TOML key path (e.g., "network.port", "client.address")
-  const char *cli_flag;      ///< CLI flag name (e.g., "--port") or NULL if no CLI flag
-  option_type_t type; ///< Value type (from builder)
-  option_context_t context;  ///< Where this option can appear
-  const char *category;      ///< Category name (e.g., "network", "client", "audio")
-  size_t field_offset;       ///< offsetof(options_t, field) - where to store value
-  size_t field_size;         ///< Size of field in options_t
+  const char *toml_key;     ///< TOML key path (e.g., "network.port", "client.address")
+  const char *cli_flag;     ///< CLI flag name (e.g., "--port") or NULL if no CLI flag
+  option_type_t type;       ///< Value type (from builder)
+  option_context_t context; ///< Where this option can appear
+  const char *category;     ///< Category name (e.g., "network", "client", "audio")
+  size_t field_offset;      ///< offsetof(options_t, field) - where to store value
+  size_t field_size;        ///< Size of field in options_t
 
   // Validation - uses builder's validate function directly
   builder_validate_fn_t validate_fn; ///< Builder's validation function (can be NULL for simple types)

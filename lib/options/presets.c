@@ -103,7 +103,8 @@ static bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
   // Count colons to determine format
   int colon_count = 0;
   for (const char *p = arg; *p; p++) {
-    if (*p == ':') colon_count++;
+    if (*p == ':')
+      colon_count++;
   }
 
   if (colon_count == 0) {
@@ -171,7 +172,6 @@ static bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
     return false;
   }
 }
-
 
 /**
  * @brief Add binary-level logging options to a builder
@@ -450,30 +450,30 @@ void options_builder_add_media_group(options_builder_t *b) {
   options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
                            "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL);
 
-  options_builder_add_callback(b, "seek", 's', offsetof(options_t, media_seek_timestamp),
-                               &(double){0.0},  // Default: no seeking
-                               sizeof(double), parse_timestamp,
-                               "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)",
-                               "MEDIA", false, NULL);
+  options_builder_add_callback(
+      b, "seek", 's', offsetof(options_t, media_seek_timestamp), &(double){0.0}, // Default: no seeking
+      sizeof(double), parse_timestamp, "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)",
+      "MEDIA", false, NULL);
 
-  options_builder_add_callback_optional(b, "cookies-from-browser", '\0',
-                                        offsetof(options_t, cookies_from_browser),
-                                        NULL,  // Default: empty (will use chrome as fallback)
-                                        256,   // Value size: char[256]
-                                        parse_cookies_from_browser,
-                                        "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
-                                        "Use without argument to default to chrome.",
-                                        "MEDIA", false, NULL, true);  // optional_arg=true
+  options_builder_add_callback_optional(
+      b, "cookies-from-browser", '\0', offsetof(options_t, cookies_from_browser),
+      NULL, // Default: empty (will use chrome as fallback)
+      256,  // Value size: char[256]
+      parse_cookies_from_browser,
+      "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
+      "Use without argument to default to chrome.",
+      "MEDIA", false, NULL, true); // optional_arg=true
 
   options_builder_add_bool(b, "no-cookies-from-browser", '\0', offsetof(options_t, no_cookies_from_browser), false,
-                           "Explicitly disable reading cookies from browser",
-                           "MEDIA", false, NULL);
+                           "Explicitly disable reading cookies from browser", "MEDIA", false, NULL);
 
   // Make --cookies-from-browser and --no-cookies-from-browser mutually exclusive
-  options_builder_add_dependency_conflicts(b, "cookies-from-browser", "no-cookies-from-browser",
-                                          "--cookies-from-browser and --no-cookies-from-browser are mutually exclusive");
-  options_builder_add_dependency_conflicts(b, "no-cookies-from-browser", "cookies-from-browser",
-                                          "--no-cookies-from-browser and --cookies-from-browser are mutually exclusive");
+  options_builder_add_dependency_conflicts(
+      b, "cookies-from-browser", "no-cookies-from-browser",
+      "--cookies-from-browser and --no-cookies-from-browser are mutually exclusive");
+  options_builder_add_dependency_conflicts(
+      b, "no-cookies-from-browser", "cookies-from-browser",
+      "--no-cookies-from-browser and --cookies-from-browser are mutually exclusive");
 }
 
 // ============================================================================
@@ -571,17 +571,18 @@ const options_config_t *options_preset_binary(const char *program_name, const ch
                            "GENERAL", false, NULL);
 
   // Configuration options
-  options_builder_add_string(b, "config", '\0', offsetof(options_t, config_file), "",
-                             "Load configuration from FILE", "CONFIGURATION", false, NULL, NULL);
+  options_builder_add_string(b, "config", '\0', offsetof(options_t, config_file), "", "Load configuration from FILE",
+                             "CONFIGURATION", false, NULL, NULL);
 
   // Man page generation
-  options_builder_add_action(b, "create-man-page", '\0', action_create_manpage,
+  options_builder_add_action(
+      b, "create-man-page", '\0', action_create_manpage,
 #ifndef NDEBUG
-                             "Generate man page template from options builder (preserves manual content) [template.1.in] [content.1.content]",
+      "Generate man page template from options builder (preserves manual content) [template.1.in] [content.1.content]",
 #else
-                             "Generate man page template from options builder (preserves manual content) [template.1.in] [content.1.content]",
+      "Generate man page template from options builder (preserves manual content) [template.1.in] [content.1.content]",
 #endif
-                             "CONFIGURATION");
+      "CONFIGURATION");
 
   // Config file creation
   options_builder_add_action(b, "config-create", '\0', action_create_config,
@@ -902,14 +903,12 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_example(b, "client", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
                               "Stream from YouTube URL");
 
-  options_builder_add_example(b, "client", "-f video.mp4",
-                              "Stream from local video file");
+  options_builder_add_example(b, "client", "-f video.mp4", "Stream from local video file");
 
   options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120",
                               "Connect with custom display options");
 
-  options_builder_add_example(b, "client", "--palette-chars '@%#*+=-:. '",
-                              "Use custom ASCII palette characters");
+  options_builder_add_example(b, "client", "--palette-chars '@%#*+=-:. '", "Use custom ASCII palette characters");
 
   options_builder_add_example(b, "client", "--snapshot", "Capture single frame and exit");
 
@@ -989,8 +988,7 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   options_builder_add_example(b, "mirror", "-f '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')");
 
-  options_builder_add_example(b, "mirror", "--palette-chars '@%#*+=-:. '",
-                              "View with custom ASCII palette characters");
+  options_builder_add_example(b, "mirror", "--palette-chars '@%#*+=-:. '", "View with custom ASCII palette characters");
 
   options_builder_add_example(b, "mirror", "--snapshot", "Capture single frame and exit");
 
@@ -1195,7 +1193,8 @@ const options_config_t *options_preset_discovery(const char *program_name, const
   options_builder_add_example(b, "discovery", "swift-river-mountain -f video.mp4",
                               "Join session and stream from local video file");
 
-  options_builder_add_example(b, "discovery", "swift-river-mountain --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+  options_builder_add_example(b, "discovery",
+                              "swift-river-mountain --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
                               "Join session and stream from YouTube video");
 
   options_builder_add_example(

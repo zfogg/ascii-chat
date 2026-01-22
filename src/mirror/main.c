@@ -258,7 +258,8 @@ int mirror_main(void) {
   // Check if file/URL has audio stream
   // For YouTube: use capture's media source (probe_source not reused due to FPS detection altering state)
   // For files: use probe_source if available
-  media_source_t *audio_probe_source = (is_youtube_url && capture) ? session_capture_get_media_source(capture) : probe_source;
+  media_source_t *audio_probe_source =
+      (is_youtube_url && capture) ? session_capture_get_media_source(capture) : probe_source;
   if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
     if (media_source_has_audio(audio_probe_source)) {
       audio_available = true;
