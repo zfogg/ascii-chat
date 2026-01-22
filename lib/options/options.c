@@ -13,6 +13,7 @@
 #include "options/options.h"
 #include "options/rcu.h" // RCU-based thread-safe options
 #include "options/common.h"
+#include "options/parsers.h"
 #include "options/client.h"
 #include "options/server.h"
 #include "options/mirror.h"
@@ -299,6 +300,27 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
         opts.quiet = true;
       }
+      // Handle --log-level LEVEL (set log threshold)
+      if (strcmp(argv[i], "--log-level") == 0) {
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          char *error_msg = NULL;
+          if (parse_log_level(argv[i + 1], &opts.log_level, &error_msg)) {
+            i++; // Skip the level argument
+          } else {
+            if (error_msg) {
+              fprintf(stderr, "Error parsing --log-level: %s\n", error_msg);
+              free(error_msg);
+            }
+          }
+        }
+      }
+      // Handle -L and --log-file FILE (set log file path)
+      if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
+          i++; // Skip the file argument
+        }
+      }
     }
   }
 
@@ -548,6 +570,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
 
   asciichat_error_t result = ASCIICHAT_OK;
+
+  // SAVE binary-level parsed values before mode-specific defaults overwrite them
+  log_level_t saved_log_level = opts.log_level;
+  char saved_log_file[OPTIONS_BUFF_SIZE];
+  SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
+
   switch (detected_mode) {
   case MODE_SERVER:
     result = parse_server_options(mode_argc, mode_argv, &opts);
@@ -566,6 +594,16 @@ asciichat_error_t options_init(int argc, char **argv) {
     break;
   default:
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);
+  }
+
+  // RESTORE binary-level parsed values if they were different from defaults
+  // This ensures --log-level and --log-file from the binary-level parser take precedence
+  if (saved_log_level != DEFAULT_LOG_LEVEL) {
+    opts.log_level = saved_log_level;
+  }
+  // Also restore log_file if it was explicitly set via -L or --log-file
+  if (saved_log_file[0] != '\0' && strcmp(saved_log_file, opts.log_file) != 0) {
+    SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
   }
 
   // Free the temporary mode_argv if we allocated it
@@ -633,6 +671,21 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (opts.media_file[0] != '\0' && strcmp(opts.media_file, "-") == 0) {
     opts.media_from_stdin = true;
     log_debug("Media file set to stdin");
+  }
+
+  // Validate --seek option
+  if (opts.media_seek_timestamp > 0.0) {
+    // Can't seek stdin
+    if (opts.media_from_stdin) {
+      log_error("--seek cannot be used with stdin (--file -)");
+      return ERROR_INVALID_PARAM;
+    }
+
+    // Require --file or --url
+    if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
+      log_error("--seek requires --file or --url");
+      return ERROR_INVALID_PARAM;
+    }
   }
 
   // ========================================================================
