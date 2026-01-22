@@ -581,7 +581,7 @@ const options_config_t *options_preset_server(const char *program_name, const ch
                                  parse_server_bind_address);
 
   // Usage examples for server help
-  options_builder_add_usage(b, "server", "[bind-address]", true,
+  options_builder_add_usage(b, "server", "[bind-address...]", true,
                             "Start server (can specify 0-2 bind addresses for IPv4/IPv6)");
 
   // Examples for server help
