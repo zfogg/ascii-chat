@@ -12,6 +12,7 @@
 #include "common.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"
+#include "version.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -237,15 +238,13 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   // Try best available format (works with most videos)
   char command[2048];
   // Note: %(url)s is for yt-dlp's -O option, not snprintf format string
-  // Using literal string to avoid format string warnings
-  // Try with cookies first, fall back to no cookies
-  int cmd_ret = snprintf(command, sizeof(command), "%s%s%s",
+  // Use ascii-chat version string as user-agent to avoid YouTube bot detection
+  int cmd_ret = snprintf(command, sizeof(command),
                          "yt-dlp --quiet --no-warnings "
-                         "-f 'b' -O '%(url)s' "
-                         "--cookies-from-browser firefox "
-                         "'",
-                         youtube_url,
-                         "' 2>/dev/null");
+                         "--user-agent 'ascii-chat/%s' "
+                         "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                         ASCII_CHAT_VERSION_STRING,
+                         youtube_url);
 
   if (cmd_ret < 0 || cmd_ret >= (int)sizeof(command)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "YouTube URL too long");
