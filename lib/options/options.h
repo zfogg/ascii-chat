@@ -680,8 +680,6 @@ typedef struct options_state {
   char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
                                                  ///< HTTPS URL)
   bool webrtc;                                ///< Enable WebRTC mode for discovery session (default: false, Direct TCP)
-  char discovery_key_path[OPTIONS_BUFF_SIZE]; ///< discovery identity key file path (default:
-                                              ///< ~/.ascii-chat/discovery_identity)
   char discovery_database_path[OPTIONS_BUFF_SIZE]; ///< discovery database file path (default:
                                                    ///< ~/.ascii-chat/discovery.db)
 

@@ -103,7 +103,16 @@ int acds_main(void) {
   uint8_t public_key[32];
   uint8_t secret_key[64];
 
-  const char *acds_key_path = GET_OPTION(discovery_key_path);
+  const char *acds_key_path = GET_OPTION(encrypt_key);
+  // If no key provided, use default path in config directory
+  char default_key_path[PLATFORM_MAX_PATH_LENGTH] = {0};
+  if (!acds_key_path || acds_key_path[0] == '\0') {
+    const char *config_dir = get_config_dir();
+    if (config_dir) {
+      snprintf(default_key_path, sizeof(default_key_path), "%sdiscovery_identity", config_dir);
+      acds_key_path = default_key_path;
+    }
+  }
   log_info("Loading identity key from %s", acds_key_path);
   result = acds_identity_load(acds_key_path, public_key, secret_key);
 

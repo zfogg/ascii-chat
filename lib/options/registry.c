@@ -235,7 +235,6 @@ static const int g_default_max_clients = OPT_MAX_CLIENTS_DEFAULT;
 static const int g_default_reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 
 static const char *g_default_discovery_server = OPT_ENDPOINT_DISCOVERY_SERVICE;
-static const int g_default_discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
 static const bool g_default_webrtc = OPT_WEBRTC_DEFAULT;
 static const bool g_default_discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
 static const bool g_default_discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
@@ -371,6 +370,9 @@ static const registry_entry_t g_options_registry[] = {
      &g_default_discovery_insecure, sizeof(bool),
      "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"discovery-server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
+     "Discovery server public key for verification (SSH/GPG key or HTTPS URL)", "SECURITY", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // NETWORK GROUP (general network options, various modes)
     {"port", 'p', OPTION_TYPE_STRING, offsetof(options_t, port), &g_default_port, 0, "Server port", "NETWORK", false,
@@ -401,20 +403,20 @@ static const registry_entry_t g_options_registry[] = {
      NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
-     "ACDS: Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
+     "Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
     {"turn-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_servers), OPT_TURN_SERVERS_DEFAULT, 0,
-     "ACDS: Comma-separated list of TURN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
+     "Comma-separated list of TURN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
     {"turn-username", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_username), OPT_TURN_USERNAME_DEFAULT, 0,
-     "ACDS: Username for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
+     "Username for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
     {"turn-credential", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_credential), OPT_TURN_CREDENTIAL_DEFAULT, 0,
-     "ACDS: Credential/password for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
+     "Credential/password for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
     {"turn-secret", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_secret), "", 0,
-     "ACDS: Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false, NULL, NULL, NULL,
-     false, false, OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
+     "Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false, NULL, NULL, NULL, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
 
     // Media File Streaming Options
     {"file", 'f', OPTION_TYPE_STRING, offsetof(options_t, media_file), "", 0,

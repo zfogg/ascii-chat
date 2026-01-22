@@ -451,8 +451,6 @@ static void string_field_updater(options_t *opts, void *context) {
     SAFE_STRNCPY(opts->discovery_server, ctx->value, sizeof(opts->discovery_server));
   else if (strcmp(ctx->field_name, "discovery_service_key") == 0)
     SAFE_STRNCPY(opts->discovery_service_key, ctx->value, sizeof(opts->discovery_service_key));
-  else if (strcmp(ctx->field_name, "discovery_key_path") == 0)
-    SAFE_STRNCPY(opts->discovery_key_path, ctx->value, sizeof(opts->discovery_key_path));
   else if (strcmp(ctx->field_name, "discovery_database_path") == 0)
     SAFE_STRNCPY(opts->discovery_database_path, ctx->value, sizeof(opts->discovery_database_path));
   else if (strcmp(ctx->field_name, "log_file") == 0)
@@ -491,8 +489,8 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
       strcmp(field_name, "encrypt_key") != 0 && strcmp(field_name, "password") != 0 &&
       strcmp(field_name, "encrypt_keyfile") != 0 && strcmp(field_name, "server_key") != 0 &&
       strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&
-      strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_key_path") != 0 &&
-      strcmp(field_name, "discovery_database_path") != 0 && strcmp(field_name, "log_file") != 0 &&
+      strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_database_path") != 0 &&
+      strcmp(field_name, "log_file") != 0 &&
       strcmp(field_name, "media_file") != 0 && strcmp(field_name, "palette_custom") != 0 &&
       strcmp(field_name, "stun_servers") != 0 && strcmp(field_name, "turn_servers") != 0 &&
       strcmp(field_name, "turn_username") != 0 && strcmp(field_name, "turn_credential") != 0 &&

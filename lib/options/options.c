@@ -1023,15 +1023,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       SAFE_FREE(config_dir);
     }
 
-    if (opts.discovery_key_path[0] == '\0') {
-      char *config_dir = get_config_dir();
-      if (!config_dir) {
-        options_config_destroy(config);
-        return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for identity key path");
-      }
-      snprintf(opts.discovery_key_path, sizeof(opts.discovery_key_path), "%sdiscovery_identity", config_dir);
-      SAFE_FREE(config_dir);
-    }
   }
 
   // Restore binary-level parsed values
