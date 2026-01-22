@@ -1022,7 +1022,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", config_dir);
       SAFE_FREE(config_dir);
     }
-
   }
 
   // Restore binary-level parsed values

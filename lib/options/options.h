@@ -614,7 +614,7 @@ typedef enum {
   MODE_CLIENT,           ///< Client mode - network client options
   MODE_MIRROR,           ///< Mirror mode - local webcam viewing (no network)
   MODE_DISCOVERY_SERVER, ///< Discovery server mode - session management and WebRTC signaling
-  MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
+  MODE_DISCOVERY,        ///< Discovery mode - participant that can dynamically become host
   MODE_INVALID           ///< Invalid mode
 } asciichat_mode_t;
 
@@ -679,7 +679,7 @@ typedef struct options_state {
   int discovery_port;                            ///< discovery server port (default: 27225)
   char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
                                                  ///< HTTPS URL)
-  bool webrtc;                                ///< Enable WebRTC mode for discovery session (default: false, Direct TCP)
+  bool webrtc; ///< Enable WebRTC mode for discovery session (default: false, Direct TCP)
   char discovery_database_path[OPTIONS_BUFF_SIZE]; ///< discovery database file path (default:
                                                    ///< ~/.ascii-chat/discovery.db)
 
