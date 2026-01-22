@@ -91,8 +91,9 @@ void usage_mirror(FILE *desc) {
   print_project_links(desc);
   (void)fprintf(desc, "\n");
 
-  // Generate options from builder configuration
-  options_config_print_usage(config, desc);
+  // Print everything after USAGE (MODES, EXAMPLES, OPTIONS) with global max width
+  // Note: MODE-OPTIONS only appears in binary-level help, not mode-specific help
+  options_config_print_options_sections_with_width(config, desc, 0);
 
   // Clean up the config
   options_config_destroy(config);
