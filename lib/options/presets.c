@@ -716,7 +716,8 @@ const options_config_t *options_preset_client(const char *program_name, const ch
 
   options_builder_add_example(b, "client", "example.com:8080", "Connect to remote server on custom port");
 
-  options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120", "Connect with custom display options");
+  options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120",
+                              "Connect with custom display options");
 
   options_builder_add_example(b, "client", "-f '-'",
                               "Stream media from stdin (cat file.mp4 | ascii-chat client -f '-')");
