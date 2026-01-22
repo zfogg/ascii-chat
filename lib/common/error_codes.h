@@ -127,11 +127,11 @@ typedef enum {
   ERROR_PROCESS_FAILED = 110, /**< Process execution or termination failed */
 
   /* YouTube/URL streaming errors (111-116) */
-  ERROR_YOUTUBE_INVALID_URL = 111,       /**< Invalid YouTube URL format */
-  ERROR_YOUTUBE_EXTRACT_FAILED = 112,    /**< YouTube URL extraction/parsing failed */
-  ERROR_YOUTUBE_UNPLAYABLE = 113,        /**< Video cannot be played (age-restricted, geo-blocked, etc.) */
-  ERROR_YOUTUBE_NETWORK = 114,           /**< Network error fetching YouTube watch page */
-  ERROR_YOUTUBE_NOT_SUPPORTED = 115,     /**< YouTube support not compiled in (requires libytdl) */
+  ERROR_YOUTUBE_INVALID_URL = 111,    /**< Invalid YouTube URL format */
+  ERROR_YOUTUBE_EXTRACT_FAILED = 112, /**< YouTube URL extraction/parsing failed */
+  ERROR_YOUTUBE_UNPLAYABLE = 113,     /**< Video cannot be played (age-restricted, geo-blocked, etc.) */
+  ERROR_YOUTUBE_NETWORK = 114,        /**< Network error fetching YouTube watch page */
+  ERROR_YOUTUBE_NOT_SUPPORTED = 115,  /**< YouTube support not compiled in (requires libytdl) */
 
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */

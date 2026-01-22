@@ -233,12 +233,14 @@ void options_builder_add_display_group(options_builder_t *b) {
   options_builder_add_callback(b, "color-mode", '\0', offsetof(options_t, color_mode),
                                &(terminal_color_mode_t){TERM_COLOR_AUTO}, // Auto-detect by default
                                sizeof(terminal_color_mode_t), parse_color_mode,
-                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false, "ASCII_CHAT_COLOR_MODE");
+                               "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false,
+                               "ASCII_CHAT_COLOR_MODE");
 
   options_builder_add_callback(b, "render-mode", 'M', offsetof(options_t, render_mode),
                                &(render_mode_t){RENDER_MODE_FOREGROUND}, // Default: foreground
                                sizeof(render_mode_t), parse_render_mode,
-                               "Render mode (foreground, background, half-block)", "DISPLAY", false, "ASCII_CHAT_RENDER_MODE");
+                               "Render mode (foreground, background, half-block)", "DISPLAY", false,
+                               "ASCII_CHAT_RENDER_MODE");
 
   options_builder_add_callback(
       b, "palette", 'P', offsetof(options_t, palette_type), &(palette_type_t){PALETTE_STANDARD}, // Default: standard
@@ -288,8 +290,8 @@ void options_builder_add_snapshot_group(options_builder_t *b) {
  */
 void options_builder_add_compression_group(options_builder_t *b) {
   options_builder_add_int(b, "compression-level", '\0', offsetof(options_t, compression_level),
-                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false, "ASCII_CHAT_COMPRESSION_LEVEL",
-                          NULL);
+                          OPT_COMPRESSION_LEVEL_DEFAULT, "zstd compression level (1-9)", "PERFORMANCE", false,
+                          "ASCII_CHAT_COMPRESSION_LEVEL", NULL);
 
   options_builder_add_bool(b, "no-compress", '\0', offsetof(options_t, no_compress), OPT_NO_COMPRESS_DEFAULT,
                            "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS");
@@ -434,8 +436,8 @@ void options_builder_add_media_group(options_builder_t *b) {
                              "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL);
 
   options_builder_add_string(b, "url", 'u', offsetof(options_t, media_url), "",
-                             "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file",
-                             "MEDIA", false, NULL, NULL);
+                             "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file", "MEDIA",
+                             false, NULL, NULL);
 
   options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
                            "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL);
@@ -478,8 +480,8 @@ void options_builder_add_audio_group(options_builder_t *b) {
                            "Enable audio streaming", "AUDIO", false, "ASCII_CHAT_AUDIO");
 
   options_builder_add_int(b, "microphone-index", '\0', offsetof(options_t, microphone_index),
-                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX",
-                          NULL);
+                          OPT_MICROPHONE_INDEX_DEFAULT, "Microphone device index (-1=default)", "AUDIO", false,
+                          "ASCII_CHAT_MICROPHONE_INDEX", NULL);
 
   options_builder_add_int(b, "speakers-index", '\0', offsetof(options_t, speakers_index), OPT_SPEAKERS_INDEX_DEFAULT,
                           "Speakers device index (-1=default)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL);
@@ -489,14 +491,16 @@ void options_builder_add_audio_group(options_builder_t *b) {
                              false, "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL);
 
   options_builder_add_double(b, "speakers-volume", '\0', offsetof(options_t, speakers_volume),
-                             OPT_SPEAKERS_VOLUME_DEFAULT, "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_VOLUME",
-                             NULL);
+                             OPT_SPEAKERS_VOLUME_DEFAULT, "Speaker volume multiplier (0.0-1.0)", "AUDIO", false,
+                             "ASCII_CHAT_SPEAKERS_VOLUME", NULL);
 
   options_builder_add_bool(b, "audio-analysis", '\0', offsetof(options_t, audio_analysis_enabled),
-                           OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT, "Enable audio analysis (debug)", "AUDIO", false, "ASCII_CHAT_AUDIO_ANALYSIS");
+                           OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT, "Enable audio analysis (debug)", "AUDIO", false,
+                           "ASCII_CHAT_AUDIO_ANALYSIS");
 
   options_builder_add_bool(b, "no-audio-playback", '\0', offsetof(options_t, audio_no_playback),
-                           OPT_AUDIO_NO_PLAYBACK_DEFAULT, "Disable speaker playback (debug)", "AUDIO", false, "ASCII_CHAT_NO_AUDIO_PLAYBACK");
+                           OPT_AUDIO_NO_PLAYBACK_DEFAULT, "Disable speaker playback (debug)", "AUDIO", false,
+                           "ASCII_CHAT_NO_AUDIO_PLAYBACK");
 
   options_builder_add_bool(b, "encode-audio", '\0', offsetof(options_t, encode_audio), OPT_ENCODE_AUDIO_DEFAULT,
                            "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO");
@@ -832,8 +836,8 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   // URL conflicts: --url cannot be used with --file or --loop
   options_builder_add_dependency_conflicts(b, "url", "file",
                                            "Option --url cannot be used with --file (--url takes priority)");
-  options_builder_add_dependency_conflicts(b, "url", "loop",
-                                           "Option --url cannot be used with --loop (network streams cannot be looped)");
+  options_builder_add_dependency_conflicts(
+      b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
 
   // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
@@ -929,8 +933,8 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   // URL conflicts: --url cannot be used with --file or --loop
   options_builder_add_dependency_conflicts(b, "url", "file",
                                            "Option --url cannot be used with --file (--url takes priority)");
-  options_builder_add_dependency_conflicts(b, "url", "loop",
-                                           "Option --url cannot be used with --loop (network streams cannot be looped)");
+  options_builder_add_dependency_conflicts(
+      b, "url", "loop", "Option --url cannot be used with --loop (network streams cannot be looped)");
 
   // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",

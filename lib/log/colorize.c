@@ -29,23 +29,70 @@ static bool is_known_unit(const char *str, size_t max_len) {
   // Known units: byte sizes, time units, frequency, percentage, and count descriptors
   const char *known_units[] = {
       // Byte sizes
-      "B",    "KB",   "MB",   "GB",   "TB",   "PB",   "EB",
-      "KiB",  "MiB",  "GiB",  "TiB",  "PiB",  "EiB",
+      "B",
+      "KB",
+      "MB",
+      "GB",
+      "TB",
+      "PB",
+      "EB",
+      "KiB",
+      "MiB",
+      "GiB",
+      "TiB",
+      "PiB",
+      "EiB",
       // Time
-      "ms",   "us",   "ns",   "ps",   "s",    "sec",  "second", "seconds",
-      "m",    "min",  "minute", "minutes",
-      "h",    "hr",   "hour", "hours",
+      "ms",
+      "us",
+      "ns",
+      "ps",
+      "s",
+      "sec",
+      "second",
+      "seconds",
+      "m",
+      "min",
+      "minute",
+      "minutes",
+      "h",
+      "hr",
+      "hour",
+      "hours",
       // Frequency
-      "Hz",   "kHz",  "MHz",  "GHz",
+      "Hz",
+      "kHz",
+      "MHz",
+      "GHz",
       // Percentage
       "%",
       // Count descriptors (commonly used in logs)
-      "items", "item", "entries", "entry", "packets", "packet",
-      "frames", "frame", "messages", "message",
-      "connections", "connection", "clients", "client",
-      "events", "event", "bytes", "bits",
-      "retries", "retry", "attempts", "attempt",
-      "chunks", "chunk", "blocks", "block",
+      "items",
+      "item",
+      "entries",
+      "entry",
+      "packets",
+      "packet",
+      "frames",
+      "frame",
+      "messages",
+      "message",
+      "connections",
+      "connection",
+      "clients",
+      "client",
+      "events",
+      "event",
+      "bytes",
+      "bits",
+      "retries",
+      "retry",
+      "attempts",
+      "attempt",
+      "chunks",
+      "chunk",
+      "blocks",
+      "block",
   };
 
   const size_t num_units = sizeof(known_units) / sizeof(known_units[0]);
@@ -55,8 +102,7 @@ static bool is_known_unit(const char *str, size_t max_len) {
       continue;
     }
     // Case-insensitive comparison for units
-    if (strncasecmp(str, known_units[i], unit_len) == 0 &&
-        (unit_len == max_len || !isalpha(str[unit_len]))) {
+    if (strncasecmp(str, known_units[i], unit_len) == 0 && (unit_len == max_len || !isalpha(str[unit_len]))) {
       return true;
     }
   }
@@ -264,9 +310,8 @@ static bool is_url(const char *str, size_t pos, size_t *end_pos) {
 
       // URL continues until whitespace, common punctuation, or special chars
       // Stop at: space, tab, newline, ), ], }, ", ', <, >
-      while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' &&
-             str[i] != ')' && str[i] != ']' && str[i] != '}' && str[i] != '"' &&
-             str[i] != '\'' && str[i] != '<' && str[i] != '>' && str[i] != ',') {
+      while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ')' && str[i] != ']' &&
+             str[i] != '}' && str[i] != '"' && str[i] != '\'' && str[i] != '<' && str[i] != '>' && str[i] != ',') {
         i++;
       }
 

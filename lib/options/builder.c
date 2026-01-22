@@ -1634,17 +1634,18 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
             current_token[token_len] = '\0';
             // Color flags (start with -) yellow, arguments green
             if (current_token[0] == '-') {
-              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                            colored_string(LOG_COLOR_WARN, current_token));
+              len +=
+                  snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_WARN, current_token));
             } else {
-              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                            colored_string(LOG_COLOR_INFO, current_token));
+              len +=
+                  snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_INFO, current_token));
             }
             token_len = 0;
           }
           p++;
           // Skip multiple spaces
-          while (*p == ' ') p++;
+          while (*p == ' ')
+            p++;
         } else {
           current_token[token_len++] = *p;
           p++;
@@ -1655,16 +1656,14 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
       if (token_len > 0) {
         current_token[token_len] = '\0';
         if (current_token[0] == '-') {
-          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                        colored_string(LOG_COLOR_WARN, current_token));
+          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
         } else {
-          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                        colored_string(LOG_COLOR_INFO, current_token));
+          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_INFO, current_token));
         }
       }
 
       // Remove trailing space if added
-      if (len > 0 && cmd_buf[len-1] == ' ') {
+      if (len > 0 && cmd_buf[len - 1] == ' ') {
         len--;
       }
     }

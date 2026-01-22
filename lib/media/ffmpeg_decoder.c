@@ -174,7 +174,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   // Only set this once, it's a global setting
   static bool ffmpeg_log_level_set = false;
   if (!ffmpeg_log_level_set) {
-    av_log_set_level(AV_LOG_QUIET);  // Suppress all FFmpeg logging
+    av_log_set_level(AV_LOG_QUIET); // Suppress all FFmpeg logging
     ffmpeg_log_level_set = true;
   }
 

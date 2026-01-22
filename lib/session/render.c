@@ -188,10 +188,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint32_t target_fps = session_capture_get_target_fps(capture);
         void *media_src = session_capture_get_media_source(capture);
         double video_pos = media_src ? media_source_get_position((media_source_t *)media_src) : -1.0;
-        log_info_every(5000000, "RENDER: frame=%lu, actual=%.1f FPS, target=%u FPS, pos=%.3f sec",
-                       frame_count, actual_fps, target_fps, video_pos);
+        log_info_every(5000000, "RENDER: frame=%lu, actual=%.1f FPS, target=%u FPS, pos=%.3f sec", frame_count,
+                       actual_fps, target_fps, video_pos);
       }
-
     }
 
     // NOTE: Do NOT free 'image':

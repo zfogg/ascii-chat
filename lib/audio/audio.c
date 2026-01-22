@@ -333,8 +333,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       static uint64_t audio_callback_count = 0;
       audio_callback_count++;
       if (audio_callback_count % 480 == 0) {
-        log_info_every(5000000, "A/V SYNC DEBUG: audio_callback=%lu, samples_read=%zu",
-                       audio_callback_count, samples_read);
+        log_info_every(5000000, "A/V SYNC DEBUG: audio_callback=%lu, samples_read=%zu", audio_callback_count,
+                       samples_read);
       }
     } else if (ctx->playback_buffer) {
       // Network mode: read from playback buffer with jitter buffering logic
