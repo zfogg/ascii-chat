@@ -105,6 +105,7 @@ else()
             _WIN32_WINNT=0x0A00  # Windows 10
         )
     endif()
+    set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 endif()
 
 # Ensure build directory takes precedence in rpath for Debug/Dev builds

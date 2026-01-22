@@ -99,6 +99,7 @@ function(ascii_build_tooling_runtime)
             # Link Alpine libc++ for musl builds (function defined in Musl.cmake)
             link_alpine_libcxx(ascii-panic-report)
         endif()
+        set_target_properties(ascii-panic-report PROPERTIES LINKER_LANGUAGE CXX)
     endif()
     set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
 
