@@ -51,8 +51,10 @@ options_builder_add_logging_group(options_builder_t *b) {
  */
 const options_config_t *options_preset_unified(const char *program_name, const char *description) {
   options_builder_t *b = options_builder_create(sizeof(options_t));
-  if (!b)
+  if (!b) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create options builder");
     return NULL;
+  }
 
   b->program_name = program_name ? program_name : "ascii-chat";
   b->description = description ? description : "Video chat in your terminal";
@@ -61,6 +63,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   asciichat_error_t err = options_registry_add_all_to_builder(b);
   if (err != ASCIICHAT_OK) {
     options_builder_destroy(b);
+    SET_ERRNO(err, "Failed to add all options to builder");
     return NULL;
   }
 
@@ -71,7 +74,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   if (acds_string_generate(generated_session_buffer, sizeof(generated_session_buffer)) == ASCIICHAT_OK) {
     example_session_string = strdup(generated_session_buffer);
     if (example_session_string == NULL) {
-      log_fatal("Failed to strdup generated session string for help examples. Using fallback.");
+      SET_ERRNO(ERROR_MEMORY, "Failed to strdup generated session string for help examples. Using fallback.");
       // Fallback to static if strdup fails
       example_session_string = "bright-star-river";
     }

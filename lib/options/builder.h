@@ -130,10 +130,10 @@ typedef struct {
  * - args: green
  */
 typedef struct {
-  const char *mode;        ///< NULL or mode name (e.g., "server", "client")
-  const char *args;         // Command-line arguments part of the example
+  const char *mode; ///< NULL or mode name (e.g., "server", "client")
+  const char *args; // Command-line arguments part of the example
   const char *description;
-  bool owns_args_memory;    // True if args memory should be freed by options_config_destroy
+  bool owns_args_memory; // True if args memory should be freed by options_config_destroy
 } example_descriptor_t;
 
 /**
@@ -804,7 +804,7 @@ void options_config_print_usage_section(const options_config_t *config, FILE *st
  *             If NULL or invalid, shows all options (for binary-level help)
  */
 void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width,
-                                                       asciichat_mode_t mode);
+                                                      asciichat_mode_t mode);
 
 /**
  * @brief Print everything except the USAGE section (backward compatibility)
@@ -829,8 +829,8 @@ void options_config_print_options_sections(const options_config_t *config, FILE 
  * @param description Brief description
  * @param desc Output file stream
  */
-void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode,
-                                 const char *program_name, const char *description, FILE *desc);
+void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name,
+                                 const char *description, FILE *desc);
 
 /**
  * @brief Clean up memory owned by options struct
@@ -842,139 +842,3 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
  * @param options_struct Options struct to clean up
  */
 void options_config_cleanup(const options_config_t *config, void *options_struct);
-
-// ============================================================================
-// Option Group Helpers
-// ============================================================================
-
-/**
- * @brief Add binary-level logging options to a builder
- *
- * Adds options that are common across all modes and can be used
- * before or after the mode name: --log-file, --log-level, -V, -q
- *
- * @param b Builder to add options to
- */
-void options_builder_add_logging_group(options_builder_t *b);
-
-/**
- * @brief Add terminal dimension options to a builder
- *
- * Adds --width and --height options for terminal size configuration.
- * Used by: client, mirror, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_terminal_group(options_builder_t *b);
-
-/**
- * @brief Add webcam options to a builder
- *
- * Adds webcam device selection, flip, and test pattern options.
- * Used by: client, mirror, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_webcam_group(options_builder_t *b);
-
-/**
- * @brief Add display/rendering options to a builder
- *
- * Adds color mode, palette, render mode, and other display options.
- * Used by: client, mirror, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_display_group(options_builder_t *b);
-
-/**
- * @brief Add snapshot mode options to a builder
- *
- * Adds --snapshot and --snapshot-delay options for single-frame capture.
- * Used by: client, mirror, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_snapshot_group(options_builder_t *b);
-
-/**
- * @brief Add compression and audio encoding options to a builder
- *
- * Adds --compression-level, --no-compress, --encode-audio options.
- * Used by: client, server, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_compression_group(options_builder_t *b);
-
-/**
- * @brief Add encryption and authentication options to a builder
- *
- * Adds --encrypt, --key, --password, --keyfile, --no-encrypt options.
- * Used by: client, server, discovery, acds modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_crypto_group(options_builder_t *b);
-
-/**
- * @brief Add port option to a builder
- *
- * Adds -p/--port option with configurable default and env var.
- * Used by: server, client, acds modes
- *
- * @param b Builder to add options to
- * @param default_port Default port value (as string)
- * @param env_var Environment variable name for port override
- */
-void options_builder_add_port_option(options_builder_t *b, const char *default_port, const char *env_var);
-
-/**
- * @brief Add ACDS discovery service options to a builder
- *
- * Adds --acds-server, --acds-port, --acds-key, --webrtc options.
- * Used by: client, server, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_acds_group(options_builder_t *b);
-
-/**
- * @brief Add WebRTC connection strategy options to a builder
- *
- * Adds --prefer-webrtc, --no-webrtc, --webrtc-skip-stun, --webrtc-disable-turn.
- * Used by: client, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_webrtc_strategy_group(options_builder_t *b);
-
-/**
- * @brief Add ACDS security verification options to a builder
- *
- * Adds --acds-insecure and --acds-key for ACDS server verification.
- * Used by: client, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_acds_security_group(options_builder_t *b);
-
-/**
- * @brief Add media file streaming options to a builder
- *
- * Adds --file and --loop options for media file playback.
- * Used by: client, mirror, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_media_group(options_builder_t *b);
-
-/**
- * @brief Add audio streaming options to a builder
- *
- * Adds --audio, --microphone-index, --speakers-index, and volume options.
- * Used by: client, discovery modes
- *
- * @param b Builder to add options to
- */
-void options_builder_add_audio_group(options_builder_t *b);
