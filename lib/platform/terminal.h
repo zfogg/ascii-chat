@@ -700,6 +700,30 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
  * monitoring, so a background thread is used.
  */
 
+/**
+ * @brief Check if terminal control sequences should be used for the given fd
+ * @param fd File descriptor to check (must be valid or -1)
+ * @return true if terminal control sequences should be used, false otherwise
+ *
+ * Determines whether terminal control sequences (cursor home, clear screen, etc.)
+ * should be sent to the given file descriptor. Checks:
+ * 1. File descriptor is valid (>= 0)
+ * 2. Not in snapshot mode
+ * 3. Not in TESTING environment
+ * 4. File descriptor is connected to a TTY (not piped/redirected)
+ *
+ * This is useful for deciding whether to send ANSI escape sequences to
+ * output. When piped or redirected, escape sequences should not be sent.
+ *
+ * @note Returns false if fd is invalid (-1) to be safe.
+ * @note Returns false in snapshot mode to provide clean output.
+ * @note Checks TESTING environment variable for test/CI environments.
+ * @note Primary use case: determining if output is going to a TTY.
+ *
+ * @ingroup platform
+ */
+bool terminal_should_use_control_sequences(int fd);
+
 #ifdef _WIN32
 /**
  * @brief Callback function type for terminal resize events

@@ -45,9 +45,10 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     return ERROR_INVALID_PARAM;
   }
 
-  // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
-  const char *testing_env = SAFE_GETENV("TESTING");
-  if (!GET_OPTION(snapshot_mode) && reset_terminal && testing_env == NULL) {
+  // Only apply terminal control sequences if:
+  // 1. reset_terminal is true (caller wants terminal reset)
+  // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+  if (reset_terminal && terminal_should_use_control_sequences(fd)) {
     console_clear(fd);
     cursor_reset(fd);
 
@@ -314,9 +315,8 @@ asciichat_error_t ascii_write(const char *frame) {
     return ERROR_INVALID_PARAM;
   }
 
-  // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  const char *testing_env = SAFE_GETENV("TESTING");
-  if (!GET_OPTION(snapshot_mode) && testing_env == NULL) {
+  // Only reset cursor if output is connected to a TTY (not piped/redirected)
+  if (terminal_should_use_control_sequences(STDOUT_FILENO)) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -336,8 +336,10 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
 #endif
   // console_clear(fd);
   // cursor_reset(fd);
-  // Skip cursor show in snapshot mode - leave terminal as-is
-  if (!GET_OPTION(snapshot_mode) && reset_terminal) {
+  // Only restore terminal state if:
+  // 1. reset_terminal is true (caller wants terminal restore)
+  // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+  if (reset_terminal && terminal_should_use_control_sequences(fd)) {
     // Show cursor using platform abstraction
     if (terminal_hide_cursor(fd, false) != 0) {
       log_warn("Failed to show cursor");
@@ -810,6 +812,10 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
  * Returns:
  *   A newly allocated, null-terminated string with vertical padding,
  *   or NULL if frame is NULL.
+ *
+ * NOTE: Uses plain newlines instead of ANSI escape sequences to support
+ * both TTY and piped/redirected output. TTY flicker prevention is handled
+ * by the display layer (e.g., display.c) when appropriate.
  */
 char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   if (!frame) {
@@ -826,9 +832,9 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   }
 
   // Calculate buffer size needed
-  // Each padding row needs: ESC[K (3 bytes) + newline (1 byte) = 4 bytes
+  // Each padding row needs: 1 newline character per padding row
   size_t frame_len = strlen(frame);
-  size_t top_padding_len = pad_top * 4; // ESC[K + newline per padding row
+  size_t top_padding_len = pad_top; // 1 newline per padding row
   size_t total_len = top_padding_len + frame_len;
 
   char *buffer;
@@ -836,12 +842,10 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
 
   char *position = buffer;
 
-  // Add top padding with ESC[K to clear any leftover terminal content
-  // Without ESC[K, old frame content would remain visible causing flickering
+  // Add top padding with plain newlines
+  // Use plain newlines instead of ANSI escape sequences so the output works
+  // when redirected to pipes or files, not just TTY
   for (size_t i = 0; i < pad_top; i++) {
-    *position++ = '\033';
-    *position++ = '[';
-    *position++ = 'K';
     *position++ = '\n';
   }
 

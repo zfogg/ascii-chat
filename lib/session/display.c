@@ -117,10 +117,7 @@ static void write_frame_internal(session_display_ctx_t *ctx, const char *frame_d
     (void)platform_write(ctx->tty_info.fd, frame_data, frame_len);
     (void)terminal_flush(ctx->tty_info.fd);
   } else {
-    // stdout for pipes/redirection/testing
-    if (!ctx->snapshot_mode) {
-      (void)terminal_cursor_home(STDOUT_FILENO);
-    }
+    // stdout for pipes/redirection/testing - don't send terminal control sequences
     (void)platform_write(STDOUT_FILENO, frame_data, frame_len);
     (void)fflush(stdout);
   }
