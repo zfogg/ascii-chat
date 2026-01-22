@@ -208,16 +208,22 @@ static bool is_option_set(const options_config_t *config, const void *options_st
     return value != default_val;
   }
   case OPTION_TYPE_STRING: {
-    const char *value = *(const char *const *)field;
-    const char *default_val = desc->default_value ? *(const char *const *)desc->default_value : NULL;
+    // String fields are char[SIZE] arrays, not pointers
+    const char *value = (const char *)field;
+    const char *default_val = NULL;
 
-    // Both NULL or both same pointer = not set
-    if (value == default_val)
-      return false;
-    // One NULL = different = set
-    if (!value || !default_val)
-      return true;
-    // Compare strings
+    // default_value is a pointer-to-pointer (address of a slot in the static defaults array)
+    if (desc->default_value) {
+      default_val = *(const char *const *)desc->default_value;
+    }
+
+    // Handle NULL default
+    if (!default_val) {
+      // No default specified - check if the string is non-empty
+      return (value && value[0] != '\0');
+    }
+
+    // Both are strings - compare them
     return strcmp(value, default_val) != 0;
   }
   case OPTION_TYPE_DOUBLE: {

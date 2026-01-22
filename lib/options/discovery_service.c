@@ -42,6 +42,9 @@
 
 asciichat_error_t parse_discovery_service_options(int argc, char **argv, options_t *opts) {
   const options_config_t *config = options_preset_acds("ascii-chat discovery-service", "secure p2p session signalling");
+  if (!config) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
+  }
   int remaining_argc;
   char **remaining_argv;
 
