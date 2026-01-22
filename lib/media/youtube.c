@@ -238,12 +238,12 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   // Try best available format (works with most videos)
   char command[2048];
   // Note: %(url)s is for yt-dlp's -O option, not snprintf format string
-  // Use ascii-chat version string as user-agent to avoid YouTube bot detection
+  // Use realistic Chrome user-agent to bypass YouTube bot detection
+  // (Some videos may still require authentication cookies)
   int cmd_ret = snprintf(command, sizeof(command),
                          "yt-dlp --quiet --no-warnings "
-                         "--user-agent 'ascii-chat/%s' "
+                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                          "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
-                         ASCII_CHAT_VERSION_STRING,
                          youtube_url);
 
   if (cmd_ret < 0 || cmd_ret >= (int)sizeof(command)) {
