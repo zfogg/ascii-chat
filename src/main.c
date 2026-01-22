@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "FATAL: Failed to initialize timer system\n");
     return ERROR_PLATFORM_INIT;
   }
-  (void)atexit(timer_system_cleanup);
+  // Note: timer_system_cleanup will be registered by asciichat_shared_init
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr
