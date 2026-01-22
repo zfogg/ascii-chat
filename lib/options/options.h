@@ -1,147 +1,203 @@
 /**
  * @defgroup options Options Module
  * @ingroup module_core
- * @brief ⚙️ The command-line flags available
+ * @brief ⚙️ Command-line option parsing with unified mode detection, builder API, and RCU-based thread-safe access
  *
  * @file options.h
- * @brief ⚙️ Command-line options parsing and configuration management for ascii-chat
+ * @brief ⚙️ Unified options parsing system for ascii-chat with builder pattern and lock-free access
  * @ingroup options
  * @addtogroup options
  * @{
  *
- * This header provides comprehensive functionality for parsing command-line arguments
- * and managing configuration settings for both client and server modes of ascii-chat.
- * It serves as the central configuration system, parsing user preferences and providing
- * defaults for all application settings.
+ * This module provides comprehensive command-line argument parsing, configuration management,
+ * and unified options state for ascii-chat with support for multiple modes (server, client,
+ * mirror, discovery service). The system unifies several layers:
+ *
+ * - **Builder API** (`builder.h`): Flexible option configuration with mode bitmasks
+ * - **Registry** (`registry.h`): Single definition of all options with mode applicability
+ * - **RCU Thread-Safety** (`rcu.h`): Lock-free read access to options via `GET_OPTION()` macro
+ * - **Unified State** (`options_t` struct): Single source of truth for all option values
+ *
+ * **Architecture Overview**:
+ *
+ * The options system is built in layers from bottom to top:
+ *
+ * 1. **Option Descriptors** (registry.c): Single-source-of-truth definitions of all options
+ *    with metadata (long name, short name, mode bitmask, defaults, validators, etc.)
+ *
+ * 2. **Builder Pattern** (builder.h): Flexible API for programmatically constructing option
+ *    configurations. Supports mode-specific options, dependencies, and custom validators.
+ *
+ * 3. **Presets** (presets.h): Pre-built configurations for common modes (unified, server, client,
+ *    mirror, discovery service). Use `options_preset_unified()` for the standard multi-mode setup.
+ *
+ * 4. **Unified Parsing** (options.c): Single entry point `options_init()` that:
+ *    - Detects mode from command-line arguments
+ *    - Parses binary-level options (--help, --version, --log-file)
+ *    - Parses mode-specific options
+ *    - Validates and applies defaults
+ *    - Publishes options via RCU for lock-free access
+ *
+ * 5. **RCU Thread-Safety** (rcu.h): Lock-free read access to options after initialization:
+ *    - Use `GET_OPTION(field)` macro to safely read options from any thread
+ *    - Use `options_get()` to get pointer to full options_t struct
+ *    - Use `options_set_*()` functions for thread-safe updates
  *
  * **Design Philosophy**:
  *
- * The options system follows a global configuration pattern where all options are stored
- * in global variables that can be accessed throughout the application. This design:
- * - **Simplifies access**: No need to pass configuration objects around
- * - **Single source of truth**: Options are parsed once at startup
- * - **Validation at parse time**: Invalid options are rejected immediately
- * - **Sensible defaults**: All options have reasonable default values
- * - **Mode-aware**: Different options for client vs server modes
+ * - **Single Source of Truth**: All options defined once in registry.c with mode bitmasks
+ * - **Builder Pattern Flexibility**: Clients can create custom option configs using builder API
+ * - **Unified State**: Single `options_t` struct replaces scattered global variables
+ * - **Lock-Free Reads**: RCU (Read-Copy-Update) allows lock-free option access after startup
+ * - **Mode Awareness**: Options include mode bitmask so they apply to correct modes automatically
+ * - **Sensible Defaults**: All options have OPT_*_DEFAULT values that work out-of-the-box
+ * - **Comprehensive Validation**: Options validated at parse time, cross-field validators supported
+ * - **Environment Variable Fallbacks**: Options can fall back to environment variables
  *
- * **Option Categories**:
- *
- * Options are organized into logical categories:
- * - **Terminal Dimensions**: Width, height, auto-detection
- * - **Network Configuration**: Server address, port, IPv4/IPv6
- * - **Webcam Settings**: Device index, flip, test pattern
- * - **Display Options**: Color mode, render mode, UTF-8, capabilities
- * - **Audio Configuration**: Audio enable/disable, device selection
- * - **Image Options**: Aspect ratio preservation, stretching
- * - **Output Options**: Quiet mode, snapshot mode, log file
- * - **Encryption Options**: Key files, passwords, client/server keys
- * - **Palette Configuration**: Palette type, custom characters, luminance weights
- *
- * **Option Parsing**:
- *
- * Options are parsed using the standard POSIX getopt() interface (with Windows compatibility
- * via platform/windows/getopt.h). The parser:
- * - Supports both short (`-w 80`) and long (`--width 80`) option formats
- * - Validates option values (e.g., numeric ranges, file existence)
- * - Provides helpful error messages for invalid options
- * - Prints usage information for `--help`
- * - Handles mode-specific options (client vs server)
- *
- * **Default Values**:
- *
- * All options have sensible defaults that work out-of-the-box:
- * - Terminal dimensions: Auto-detect from terminal size
- * - Network: `localhost:27224` (IPv4)
- * - Webcam: First available device (index 0)
- * - Color mode: Auto-detect terminal capabilities
- * - Encryption: Disabled by default (can be enabled with `--key` or `--password`)
- *
- * **Option Lifecycle**:
- *
- * 1. **Initialization**: Call `options_init()` at program startup
- * 2. **Parsing**: `options_init()` parses command-line arguments
- * 3. **Validation**: Options are validated and defaults applied
- * 4. **Usage**: Access option values via global variables throughout the application
- * 5. **Updates**: Some options can be updated dynamically (e.g., terminal dimensions)
- *
- * **Usage Example**:
+ * **Usage Pattern**:
  *
  * @code{.c}
  * #include "options.h"
  *
  * int main(int argc, char **argv) {
- *     // Parse command-line options
- *     asciichat_error_t err = options_init(argc, argv, true);  // is_client = true
+ *     // Initialize options (detects mode, parses args, validates)
+ *     asciichat_error_t err = options_init(argc, argv);
  *     if (err != ASCIICHAT_OK) {
- *         if (err == ERROR_USAGE) {
- *             usage(stderr, true);  // Print usage and exit
- *         }
+ *         // Could be ERROR_USAGE (invalid options) or others
  *         return 1;
  *     }
  *
- *     // Access parsed options
- *     printf("Connecting to %s:%s\n", opt_address, opt_port);
- *     printf("Terminal size: %dx%d\n", opt_width, opt_height);
- *     if (opt_encrypt_enabled) {
- *         printf("Encryption enabled\n");
- *     }
+ *     // Lock-free read access to options (works from any thread)
+ *     const char *addr = GET_OPTION(address);
+ *     int port = GET_OPTION(port);
+ *     bool audio = GET_OPTION(audio_enabled);
+ *     asciichat_mode_t mode = GET_OPTION(detected_mode);
  *
- *     // Use options throughout application
- *     // ...
+ *     // Or get full options_t pointer for multi-field access
+ *     const options_t *opts = options_get();
+ *     printf("Mode: %d, Dimensions: %dx%d\n", 
+ *            opts->detected_mode, opts->width, opts->height);
+ *
+ *     // Thread-safe updates (if needed at runtime)
+ *     options_set_int("width", 120);
+ *     options_set_bool("audio_enabled", true);
  *
  *     return 0;
  * }
  * @endcode
  *
- * **Command-Line Options**:
+ * **Option Lifecycle**:
  *
- * Common options (see `usage()` function for complete list):
- * - `--width`, `-w`: Set terminal width in characters
- * - `--height`, `-h`: Set terminal height in characters
- * - `--address`, `-a`: Bind address (server only)
- * - `--port`, `-p`: Server port (or override positional argument port for client)
- * - `--key`, `-k`: SSH key file path for encryption
- * - `--password`: Password for authentication
- * - `--palette`: Select ASCII palette
- * - `--help`: Print usage information and exit
+ * 1. **Definition**: Options defined in registry.c with metadata and mode bitmasks
+ * 2. **Builder Creation**: Use `options_preset_unified()` to create builder with presets
+ * 3. **Initialization**: Call `options_init(argc, argv)` once at program startup
+ *    - Mode detection from argv
+ *    - Binary-level option parsing
+ *    - Mode-specific parsing
+ *    - Validation and defaults
+ *    - RCU publishing
+ * 4. **Access**: Lock-free reads via `GET_OPTION()` from any thread
+ * 5. **Updates** (optional): Thread-safe runtime updates via `options_set_*()`
  *
- * **Client address syntax** (positional argument, not option flag):
- * - `ascii-chat client` → connects to localhost:27224
- * - `ascii-chat client example.com` → connects to example.com:27224
- * - `ascii-chat client 192.168.1.1:8080` → connects to 192.168.1.1:8080
- * - `ascii-chat client [::1]:8080` → connects to IPv6 [::1]:8080
+ * **Mode-Specific Behavior**:
+ *
+ * Options include a `mode_bitmask` that indicates which modes they apply to:
+ *
+ * - `OPTION_MODE_BINARY`: Parsed before mode detection (--help, --version, --log-file, etc.)
+ * - `OPTION_MODE_SERVER`: Server-only options (--max-clients, --discovery, etc.)
+ * - `OPTION_MODE_CLIENT`: Client-only options (--color, --audio, --snapshot, etc.)
+ * - `OPTION_MODE_MIRROR`: Mirror mode options (local webcam preview)
+ * - `OPTION_MODE_DISCOVERY_SVC`: Discovery service (ACDS) options
+ * - `OPTION_MODE_ALL`: Options that apply to all modes
  *
  * **Thread Safety**:
  *
- * Options are parsed once at startup in the main thread before any worker threads
- * are created. After parsing, options are effectively read-only (with some exceptions
- * for dynamic updates like terminal dimensions). Therefore, thread safety is not
- * a concern for most options. If options need to be modified at runtime, ensure
- * proper synchronization.
+ * - **Startup Phase**: Options parsed once in main thread before worker threads created
+ * - **Runtime Phase**: Options are read-only from worker threads via `GET_OPTION()`
+ * - **Lock-Free Reads**: Guaranteed safe from any thread using RCU (no locks needed)
+ * - **Runtime Updates**: Use `options_set_*()` for thread-safe field updates
+ * - **Performance**: Single atomic pointer load (~1-2ns per read)
  *
- * **Option Validation**:
+ * **Builder API for Custom Configurations**:
  *
- * The parser validates:
- * - Numeric ranges (e.g., webcam index must be >= 0)
- * - File existence (e.g., key files, log files)
- * - Format correctness (e.g., IP addresses, port numbers)
- * - Mode compatibility (some options are client-only or server-only)
+ * If you need a custom option set (not the standard unified preset), use the builder API:
  *
- * Invalid options result in `ERROR_USAGE` being returned, and usage information
- * is printed to help the user correct their command line.
+ * @code{.c}
+ * // Create empty builder
+ * options_builder_t *builder = options_builder_create("myapp");
  *
- * @note All options are stored as global variables. This is intentional for simplicity.
- * @note Options are parsed once at startup via `options_init()`.
- * @note Most options remain constant after parsing (read-only).
- * @note Some options (e.g., terminal dimensions) can be updated dynamically.
+ * // Add options from registry (filtered by mode)
+ * options_registry_add_all_to_builder(builder);
  *
- * @see options_init() for option parsing
- * @see usage() for usage information
- * @see platform/terminal.h for terminal capability detection
- * @see palette.h for palette configuration
+ * // Or add custom options
+ * option_descriptor_t my_opt = {
+ *     .long_name = "my-option",
+ *     .short_name = 'm',
+ *     .type = OPTION_TYPE_STRING,
+ *     .offset = offsetof(options_t, my_field),
+ *     .mode_bitmask = OPTION_MODE_CLIENT,
+ *     // ... other fields ...
+ * };
+ * options_builder_add_descriptor(builder, &my_opt);
+ *
+ * // Build immutable config
+ * options_config_t *config = options_builder_build(builder);
+ *
+ * // Parse command line with custom config
+ * options_t my_opts = options_t_new();
+ * options_config_parse_args(config, argc, argv, &my_opts);
+ *
+ * // Publish to RCU for lock-free access
+ * options_state_init();
+ * options_state_set(&my_opts);
+ * @endcode
+ *
+ * **Command-Line Syntax**:
+ *
+ * Supported formats:
+ * - `ascii-chat --help` - Show usage (binary-level)
+ * - `ascii-chat --version` - Show version (binary-level)
+ * - `ascii-chat server [options]` - Server mode
+ * - `ascii-chat client [address][:port] [options]` - Client mode
+ * - `ascii-chat mirror [options]` - Mirror mode (local preview)
+ * - `ascii-chat acds [options]` - Discovery service mode
+ * - `ascii-chat word-word-word [options]` - Client mode (session string)
+ *
+ * **Option Categories**:
+ *
+ * Organized by functionality for help display:
+ * - **Network Options**: address, port, max_clients, webrtc
+ * - **Discovery Service Options**: discovery, discovery_server, discovery_port
+ * - **Media Options**: webcam, test pattern, audio, compression
+ * - **Display Options**: width, height, color mode, palette, render mode
+ * - **Encryption Options**: keys, passwords, identity verification
+ * - **Debug Options**: logging, quiet, verbose, snapshots
+ *
+ * **Default Values**:
+ *
+ * All options have sensible OPT_*_DEFAULT values:
+ * - Terminal dimensions: Auto-detect or 110x70 fallback
+ * - Network: localhost:27224
+ * - Webcam: Device 0, horizontally flipped
+ * - Color mode: Auto-detect terminal capabilities
+ * - Encryption: Enabled (can be disabled with --no-encrypt)
+ *
+ * @note All options are stored in the `options_t` struct, replacing scattered globals
+ * @note Options are parsed once at startup via `options_init()`
+ * @note Most options remain constant after parsing (read-only)
+ * @note Dynamic updates possible via `options_set_*()` for specific fields
+ * @note Access via `GET_OPTION()` macro is lock-free and thread-safe
+ *
+ * @see options_init() - Main entry point for parsing
+ * @see options_get() - Get pointer to current options struct
+ * @see GET_OPTION() - Convenience macro for reading single fields
+ * @see builder.h - Builder API for custom configurations
+ * @see registry.h - Central registry of all options
+ * @see rcu.h - RCU-based thread-safe access
+ * @see presets.h - Pre-built configurations
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
+ * @date January 2026
  */
 
 #pragma once
@@ -496,131 +552,6 @@
 int strtoint_safe(const char *str);
 
 /** @} */
-
-// ============================================================================
-// Struct Definition Macros for Library Users
-// ============================================================================
-
-/**
- * @brief Binary-level options (parsed before mode selection)
- *
- * These options are common to all modes and parsed first.
- */
-#define ASCIICHAT_BINARY_OPTIONS_STRUCT                                                                                \
-  bool help;                                                                                                           \
-  bool version;                                                                                                        \
-  char log_file[OPTIONS_BUFF_SIZE];                                                                                    \
-  log_level_t log_level;                                                                                               \
-  unsigned short int quiet;                                                                                            \
-  unsigned short int verbose_level;
-
-/**
- * @brief Common options (all modes after binary parsing)
- *
- * These options extend binary options with terminal dimensions.
- */
-#define ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                \
-  ASCIICHAT_BINARY_OPTIONS_STRUCT                                                                                      \
-  int width;  /* Terminal width - must be int (not short) to match OPTION_TYPE_INT size */                             \
-  int height; /* Terminal height - must be int (not short) to match OPTION_TYPE_INT size */                            \
-  bool auto_width;                                                                                                     \
-  bool auto_height;
-
-/**
- * @brief Server mode options
- *
- * Complete set of options for server mode.
- */
-#define ASCIICHAT_SERVER_OPTIONS_STRUCT                                                                                \
-  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
-  char address[OPTIONS_BUFF_SIZE];                                                                                     \
-  char address6[OPTIONS_BUFF_SIZE];                                                                                    \
-  char port[OPTIONS_BUFF_SIZE];                                                                                        \
-  int max_clients;                                                                                                     \
-  int compression_level;                                                                                               \
-  bool no_compress;                                                                                                    \
-  bool encode_audio;                                                                                                   \
-  unsigned short int encrypt_enabled;                                                                                  \
-  char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
-  char password[OPTIONS_BUFF_SIZE];                                                                                    \
-  char encrypt_keyfile[OPTIONS_BUFF_SIZE];                                                                             \
-  unsigned short int no_encrypt;                                                                                       \
-  char client_keys[OPTIONS_BUFF_SIZE];                                                                                 \
-  char identity_keys[MAX_IDENTITY_KEYS][OPTIONS_BUFF_SIZE]; /* All identity keys (multi-key support) */                \
-  size_t num_identity_keys;                                 /* Number of identity keys loaded */                       \
-  unsigned short int require_server_verify;                                                                            \
-  bool discovery;           /* Enable discovery session registration (default: false) */                               \
-  bool discovery_expose_ip; /* Explicitly allow public IP disclosure in discovery sessions (opt-in) */                 \
-  bool discovery_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */             \
-  char discovery_server[OPTIONS_BUFF_SIZE];                                                                            \
-  int discovery_port;                                                                                                  \
-  char discovery_service_key[OPTIONS_BUFF_SIZE]; /* discovery server public key (SSH/GPG or HTTPS URL) for             \
-                                                    verification */                                                    \
-  bool webrtc;                                   /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
-
-/**
- * @brief Client mode options
- *
- * Complete set of options for client mode.
- */
-#define ASCIICHAT_CLIENT_OPTIONS_STRUCT                                                                                \
-  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
-  char address[OPTIONS_BUFF_SIZE];                                                                                     \
-  char port[OPTIONS_BUFF_SIZE];                                                                                        \
-  int reconnect_attempts;                                                                                              \
-  unsigned short int webcam_index;                                                                                     \
-  bool webcam_flip;                                                                                                    \
-  bool test_pattern;                                                                                                   \
-  terminal_color_mode_t color_mode;                                                                                    \
-  render_mode_t render_mode;                                                                                           \
-  unsigned short int show_capabilities;                                                                                \
-  unsigned short int force_utf8;                                                                                       \
-  unsigned short int audio_enabled;                                                                                    \
-  int microphone_index;                                                                                                \
-  int speakers_index;                                                                                                  \
-  unsigned short int stretch;                                                                                          \
-  unsigned short int snapshot_mode;                                                                                    \
-  double snapshot_delay;                                                                                               \
-  char server_key[OPTIONS_BUFF_SIZE];                                                                                  \
-  char encrypt_key[OPTIONS_BUFF_SIZE];                                                                                 \
-  char password[OPTIONS_BUFF_SIZE];                                                                                    \
-  char identity_keys[MAX_IDENTITY_KEYS][OPTIONS_BUFF_SIZE]; /* All identity keys (multi-key support) */                \
-  size_t num_identity_keys;                                 /* Number of identity keys loaded */                       \
-  unsigned short int require_client_verify;
-
-/**
- * @brief Mirror mode options
- *
- * Complete set of options for mirror mode (local webcam viewing).
- */
-#define ASCIICHAT_MIRROR_OPTIONS_STRUCT                                                                                \
-  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
-  unsigned short int webcam_index;                                                                                     \
-  bool webcam_flip;                                                                                                    \
-  bool test_pattern;                                                                                                   \
-  terminal_color_mode_t color_mode;                                                                                    \
-  render_mode_t render_mode;                                                                                           \
-  unsigned short int force_utf8;                                                                                       \
-  unsigned short int stretch;
-
-/**
- * @brief ACDS mode options
- *
- * Complete set of options for ACDS (discovery service) mode.
- */
-#define ASCIICHAT_ACDS_OPTIONS_STRUCT                                                                                  \
-  ASCIICHAT_COMMON_OPTIONS_STRUCT                                                                                      \
-  char address[OPTIONS_BUFF_SIZE];                                                                                     \
-  char port[OPTIONS_BUFF_SIZE];                                                                                        \
-  unsigned short int require_server_identity;                                                                          \
-  unsigned short int require_client_identity;                                                                          \
-  unsigned short int require_server_verify;                                                                            \
-  unsigned short int require_client_verify;                                                                            \
-  char stun_servers[OPTIONS_BUFF_SIZE];                                                                                \
-  char turn_servers[OPTIONS_BUFF_SIZE];                                                                                \
-  char turn_username[OPTIONS_BUFF_SIZE];                                                                               \
-  char turn_credential[OPTIONS_BUFF_SIZE];                                                                             \
-  char turn_secret[OPTIONS_BUFF_SIZE];
 
 /**
  * @brief Mode type for options parsing
@@ -1071,15 +1002,23 @@ extern unsigned short int GRAY[];
  * @brief Create a new options_t struct with all defaults set
  *
  * Initializes an options_t struct with all fields set to their default values
- * from OPT_*_DEFAULT defines. This is used internally by options_init() and
- * options_state_init() to ensure consistent default initialization.
+ * from OPT_*_DEFAULT defines. This function is used internally by options_init()
+ * to ensure consistent default initialization before command-line parsing.
  *
- * @return A new options_t struct with all defaults applied
+ * **Behavior**:
+ * - All numeric fields set to their OPT_*_DEFAULT values
+ * - All boolean fields set to their OPT_*_DEFAULT values
+ * - All string fields initialized with their default values
+ * - `detected_mode` set to MODE_INVALID (overwritten during parsing)
  *
- * @note The returned struct is allocated on the stack - caller should copy it
- * @note All string fields are initialized with their default values
- * @note All numeric fields are set to their OPT_*_DEFAULT values
- * @note All boolean fields are set to their OPT_*_DEFAULT values
+ * **Usage**: Typically called by options_init() internally. Can be used by
+ * custom code creating builder-based parsers for consistent defaults.
+ *
+ * @return A new options_t struct with all defaults applied (stack-allocated)
+ *
+ * @note Returns a stack-allocated struct (caller should use immediately or copy)
+ * @note All fields initialized to their OPT_*_DEFAULT constant values
+ * @note Does not allocate memory (all fields are static arrays or primitives)
  *
  * @ingroup options
  */
@@ -1091,67 +1030,152 @@ options_t options_t_new(void);
  * @param argv Argument vector from main()
  * @return ASCIICHAT_OK on success, ERROR_USAGE on parse errors
  *
- * Unified options initialization that handles:
- * - Mode detection from argv (or defaults to server)
- * - Binary-level option parsing (--help, --version, --log-file, etc.)
- * - Mode-specific option parsing
- * - Configuration file loading
- * - Post-processing and validation
+ * **Main Entry Point** for the options system. This function:
  *
- * The detected mode is stored in options_t->detected_mode for retrieval
- * via options_get()->detected_mode after this function returns.
+ * 1. **Mode Detection**: Analyzes argv to detect requested mode:
+ *    - Looks for mode keywords: "server", "client", "mirror", "acds", etc.
+ *    - Checks for session string pattern (word-word-word) → client mode
+ *    - Falls back to showing help if no mode specified
  *
- * **Mode Detection Priority:**
- * 1. --help or --version → handled internally, may exit(0)
- * 2. First non-option positional argument → matched against mode names
- * 3. Session string pattern (word-word-word) → treated as client mode
- * 4. No mode specified → defaults to show help and exit(0)
+ * 2. **Binary-Level Parsing**: Processes global options before mode detection:
+ *    - `--help` / `-h` → prints help and exits
+ *    - `--version` / `-v` → prints version and exits
+ *    - `--verbose` / `-V` → sets verbose level (stackable)
+ *    - `--quiet` / `-q` → sets quiet mode
+ *    - `--log-file` / `-L` → redirects logs to file
+ *    - `--log-level` → sets log verbosity level
+ *
+ * 3. **Mode-Specific Parsing**: Uses mode-specific parser for detected mode:
+ *    - Parses mode-specific options (server, client, mirror, acds)
+ *    - Each mode has different set of supported options
+ *    - Options are validated with mode bitmasks
+ *
+ * 4. **Configuration File Loading** (if --config specified):
+ *    - Loads TOML config file
+ *    - Merges config file settings with command-line options
+ *    - Command-line takes precedence over config file
+ *
+ * 5. **Validation and Defaults**:
+ *    - Applies default values to unspecified options
+ *    - Validates numeric ranges, file existence, formats
+ *    - Performs cross-field validation (dependencies, conflicts)
+ *    - Checks mode-specific constraints
+ *
+ * 6. **RCU Publishing**:
+ *    - Initializes RCU state if not already done
+ *    - Publishes options struct for lock-free thread-safe access
+ *    - After this point, `GET_OPTION()` and `options_get()` are valid
+ *
+ * **Detected Mode Storage**:
+ * The detected mode is stored in `options_t->detected_mode` and accessible via:
+ * ```c
+ * asciichat_mode_t mode = GET_OPTION(detected_mode);
+ * ```
+ *
+ * **Mode Detection Examples**:
+ * ```bash
+ * # Mode keywords (explicit)
+ * ./ascii-chat server --port 8080        # MODE_SERVER
+ * ./ascii-chat client example.com:9000   # MODE_CLIENT
+ * ./ascii-chat mirror --color            # MODE_MIRROR
+ * ./ascii-chat acds --port 27225         # MODE_DISCOVERY_SERVER
+ *
+ * # Session strings (implicit client mode)
+ * ./ascii-chat word-word-word            # MODE_CLIENT (session string)
+ *
+ * # Help/version (special handling)
+ * ./ascii-chat --help                    # Shows help, may exit(0)
+ * ./ascii-chat --version                 # Shows version, may exit(0)
+ * ```
+ *
+ * **Return Values**:
+ * - `ASCIICHAT_OK`: Parsing succeeded normally
+ * - `ERROR_USAGE`: Parse error occurred (usage info printed to stderr)
+ * - Other error codes: Unexpected errors during initialization
+ *
+ * **Special Handling for --help and --version**:
+ * These flags are handled specially and may cause early exit via exit(0).
+ * The function will still return ASCIICHAT_OK in these cases for compatibility.
+ *
+ * **Environment Variables**:
+ * Some options can fall back to environment variables:
+ * - `WEBCAM_DISABLED`: Enable test pattern when set to "1", "true", etc.
+ * - `ASCII_CHAT_KEY_PASSWORD`: Fallback for encrypted key passphrases
+ * - `SSH_AUTH_SOCK`: For SSH agent key access
+ *
+ * **Typical Usage**:
+ * ```c
+ * int main(int argc, char **argv) {
+ *     asciichat_error_t err = options_init(argc, argv);
+ *     if (err != ASCIICHAT_OK) {
+ *         // Could be ERROR_USAGE (invalid options) or other errors
+ *         // usage() already printed to stderr for ERROR_USAGE
+ *         return 1;
+ *     }
+ *
+ *     // Options now available via GET_OPTION() and options_get()
+ *     asciichat_mode_t mode = GET_OPTION(detected_mode);
+ *     const char *addr = GET_OPTION(address);
+ *     // ... application code ...
+ *
+ *     return 0;
+ * }
+ * ```
  *
  * @note Must be called once at program startup before accessing options
- * @note Global option variables are initialized by this function
- * @note Returns ERROR_USAGE for invalid options (after printing error)
- * @note --help and --version may exit directly (returns ASCIICHAT_OK if they print first)
+ * @note Should be called before creating worker threads
+ * @note Global option variables initialized by this function
+ * @note Returns ERROR_USAGE for invalid options (usage already printed)
+ * @note --help and --version may exit directly via exit(0)
+ * @note After return, options accessible via GET_OPTION() macro
  *
  * @ingroup options
  */
 asciichat_error_t options_init(int argc, char **argv);
 
 /**
- * @brief Print usage information for client, server, or mirror mode
- * @param desc File descriptor to write to (typically stdout or stderr)
- * @param mode Mode to show usage for (MODE_SERVER, MODE_CLIENT, or MODE_MIRROR)
+ * @brief Print usage information for a specific mode
+ * @param stream File stream to write to (typically stdout or stderr)
+ * @param mode Mode to show usage for (MODE_SERVER, MODE_CLIENT, MODE_MIRROR, etc.)
  *
- * Prints comprehensive usage information including:
- * - Program description and synopsis
- * - All available command-line options
- * - Option descriptions and default values
- * - Usage examples
- * - Mode-specific options (client vs server)
+ * **Generates and prints comprehensive help text** for the requested mode.
  *
- * **Usage**: Called automatically by `options_init()` for `--help`, or manually
- * by application code when `ERROR_USAGE` is returned.
+ * **Output Sections**:
+ * - Program synopsis and description
+ * - Mode-specific usage syntax
+ * - All available options with descriptions
+ * - Options grouped by category (Network, Display, Encryption, etc.)
+ * - Option defaults and possible values
+ * - Common usage examples
  *
- * **Output**: Formatted usage text including:
- * - Program name and version
- * - Synopsis with command syntax
- * - Option list with short/long forms and descriptions
- * - Examples of common usage patterns
+ * **Options Displayed**:
+ * - Shows only options applicable to the requested mode
+ * - Includes both short and long forms (e.g., `-p`, `--port`)
+ * - Shows mode bitmask to indicate applicability to other modes
+ * - Marks required options where applicable
+ * - Shows default values where available
  *
- * @par Example:
- * @code{.c}
- * if (options_init(argc, argv, true) == ERROR_USAGE) {
- *     usage(stderr, true);  // Print client usage
+ * **Typical Usage**:
+ * ```c
+ * // In error handling
+ * if (options_init(argc, argv) == ERROR_USAGE) {
+ *     asciichat_mode_t mode = GET_OPTION(detected_mode);
+ *     usage(stderr, mode);
  *     return 1;
  * }
- * @endcode
  *
- * @note Typically printed to `stderr` for error cases, `stdout` for `--help`
- * @note Output is mode-specific (different options for client vs server)
- * @note Includes all available options with descriptions
+ * // For manual help display
+ * usage(stdout, MODE_SERVER);
+ * ```
+ *
+ * @note Called automatically by options_init() for --help
+ * @note Mode must be valid (MODE_SERVER, MODE_CLIENT, etc.)
+ * @note Output formatted for 80-column terminals
+ * @note Options grouped by functionality for readability
  *
  * @ingroup options
  */
-void usage(FILE *desc, asciichat_mode_t mode);
+void usage(FILE *stream, asciichat_mode_t mode);
 
 /** @} */
 
@@ -1161,63 +1185,78 @@ void usage(FILE *desc, asciichat_mode_t mode);
  */
 
 /**
- * @brief Update dimensions for full height display
+ * @brief Update dimensions to match current terminal size
  *
- * Adjusts `opt_width` and `opt_height` to use the full terminal height while
- * maintaining the original aspect ratio. Useful for maximizing vertical space
- * usage when the terminal is resized.
+ * Queries the current terminal for its size and updates width/height in the
+ * options struct. Uses platform-specific terminal size detection APIs.
+ *
+ * **Platform Implementations**:
+ * - **POSIX** (Linux/macOS): `TIOCGWINSZ` ioctl on stdout
+ * - **Windows**: Console API `GetConsoleScreenBufferInfo`
+ * - **Fallback**: Environment variables (`$COLUMNS`, `$LINES`)
+ * - **Final Fallback**: Default constants (`OPT_WIDTH_DEFAULT`, `OPT_HEIGHT_DEFAULT`)
+ *
+ * **Usage**:
+ * - Call during terminal resize (e.g., POSIX SIGWINCH handler)
+ * - Call to refresh dimensions when window size changes
+ * - Call when auto-detect is enabled and dimensions need updating
+ *
+ * **Example**:
+ * ```c
+ * void handle_sigwinch(int sig) {
+ *     options_t *opts = (options_t *)options_get();
+ *     update_dimensions_to_terminal_size(opts);
+ *     // Redraw UI with new dimensions
+ * }
+ * ```
+ *
+ * @param opts Pointer to options_t struct to update (must not be NULL)
+ *
+ * @note Updates opts->width and opts->height directly
+ * @note Uses platform-specific APIs for accuracy
+ * @note Handles all failure modes with sensible fallbacks
+ * @note Safe to call from signal handlers (POSIX)
+ *
+ * @ingroup options
+ */
+void update_dimensions_to_terminal_size(options_t *opts);
+
+/**
+ * @brief Update dimensions to use full terminal height while maintaining aspect ratio
+ *
+ * Adjusts width and height to use the full terminal height while preserving
+ * the aspect ratio of the current dimensions. Useful for maximizing vertical
+ * space utilization.
  *
  * **Calculation**:
- * - Uses full terminal height (from terminal size detection)
- * - Calculates width to maintain aspect ratio
- * - Updates `opt_width` and `opt_height` global variables
+ * - Gets full terminal height via `update_dimensions_to_terminal_size()`
+ * - Calculates aspect ratio from current dimensions
+ * - Adjusts width to match new height while preserving ratio
+ * - Updates opts->width and opts->height
  *
- * **Usage**: Call this function when terminal is resized or when you want to
- * maximize vertical space usage while preserving aspect ratio.
+ * **Example**:
+ * - Current dimensions: 80×30 (aspect ratio 2.67)
+ * - Terminal size: 120×40
+ * - Result: 107×40 (maintains 2.67 ratio, uses full 40 height)
  *
- * **Example**: If terminal is 120×40 and original dimensions were 80×30:
- * - Original aspect ratio: 80/30 = 2.67
- * - New dimensions: 107×40 (maintains 2.67 aspect ratio, uses full height)
+ * **Usage**:
+ * ```c
+ * // User presses key to maximize vertical space
+ * options_t *opts = (options_t *)options_get();
+ * update_dimensions_for_full_height(opts);
+ * // Redraw video feed with new dimensions
+ * ```
  *
- * @note Updates global variables `opt_width` and `opt_height`
- * @note Maintains aspect ratio of current dimensions
- * @note Uses terminal size detection to get full height
+ * @param opts Pointer to options_t struct to update (must not be NULL)
+ *
+ * @note Updates opts->width and opts->height
+ * @note Queries terminal size internally
+ * @note Preserves aspect ratio of original dimensions
  * @note Useful for dynamic terminal resizing
  *
  * @ingroup options
  */
 void update_dimensions_for_full_height(options_t *opts);
-
-/**
- * @brief Update dimensions to match terminal size
- *
- * Sets `opt_width` and `opt_height` to exactly match the current terminal
- * dimensions. This function queries the terminal for its size and updates
- * the option variables accordingly.
- *
- * **Detection**: Uses platform-specific terminal size detection:
- * - **POSIX**: `TIOCGWINSZ` ioctl on stdout
- * - **Windows**: Console API `GetConsoleScreenBufferInfo`
- * - **Fallback**: Environment variables (`$COLUMNS`, `$LINES`)
- * - **Final fallback**: Default dimensions (`OPT_WIDTH_DEFAULT`, `OPT_HEIGHT_DEFAULT`)
- *
- * **Usage**: Call this function:
- * - After terminal resize (POSIX: SIGWINCH signal handler)
- * - When auto-detection is enabled and dimensions need refreshing
- * - When you want to sync dimensions with current terminal size
- *
- * **Example**: Terminal is 160×60:
- * - `opt_width` is set to 160
- * - `opt_height` is set to 60
- *
- * @note Updates global variables `opt_width` and `opt_height`
- * @note Uses platform-specific terminal size detection
- * @note Handles detection failures gracefully (uses fallbacks)
- * @note Useful for terminal resize handling
- *
- * @ingroup options
- */
-void update_dimensions_to_terminal_size(options_t *opts);
 
 // ============================================================================
 // Static Default Value Variables
