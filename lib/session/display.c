@@ -331,21 +331,16 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Output routing logic:
-  // - TTY mode: render every frame
-  // - Redirect mode with snapshot: only render final frame
-  if (ctx->has_tty || (!ctx->has_tty && ctx->snapshot_mode && is_final)) {
-    if (is_final) {
-      // Write final frame to TTY as well
-      write_frame_internal(ctx, frame_data, frame_len, true);
-    }
-
-    // Main frame write
-    write_frame_internal(ctx, frame_data, frame_len, ctx->has_tty && !is_final);
-
-    if (ctx->snapshot_mode && is_final) {
-      // Add newline at end of snapshot output
-      (void)printf("\n");
-    }
+  // - TTY mode: render every frame to TTY
+  // - Piped mode with snapshot: only render final frame to stdout
+  if (ctx->has_tty) {
+    // TTY mode: always write (every frame for interactive, or just final for snapshot)
+    write_frame_internal(ctx, frame_data, frame_len, true);
+  } else if (ctx->snapshot_mode && is_final) {
+    // Piped/redirected mode with snapshot: only write final frame to stdout
+    write_frame_internal(ctx, frame_data, frame_len, false);
+    // Add newline at end of snapshot output
+    (void)printf("\n");
   }
 }
 
