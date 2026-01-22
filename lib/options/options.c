@@ -2,11 +2,75 @@
 /**
  * @file options.c
  * @ingroup options
- * @brief ⚙️ Unified command-line argument parser with built-in mode detection
+ * @brief ⚙️ Main entry point for unified options parsing with mode detection
  *
- * Main entry point for option parsing. Detects mode from command-line arguments,
- * parses binary-level options, then dispatches to mode-specific parsers
- * (client, server, mirror, acds) with common initialization and post-processing.
+ * **Purpose**: Implements `options_init()` - the unified entry point that:
+ *
+ * 1. **Detects mode** from command-line arguments (server, client, mirror, acds, etc.)
+ * 2. **Parses binary-level options** (--help, --version, --log-file, etc.)
+ * 3. **Routes to mode-specific parsing** using preset configurations
+ * 4. **Loads configuration files** if --config specified
+ * 5. **Validates** all options with cross-field checks
+ * 6. **Publishes** options via RCU for lock-free thread-safe access
+ *
+ * **Architecture**:
+ *
+ * The parsing flow is:
+ *
+ * ```
+ * options_init(argc, argv)
+ *   ├─ Mode Detection
+ *   │  └─ Checks for --help, --version, mode keywords, session strings
+ *   ├─ Binary-Level Option Parsing
+ *   │  └─ Handles: --help, --version, --log-file, --verbose, --quiet, etc.
+ *   ├─ Get Mode-Specific Preset (unified)
+ *   │  └─ Uses options_preset_unified() from presets.h
+ *   ├─ Mode-Specific Option Parsing
+ *   │  └─ Builder parses remaining args for the detected mode
+ *   ├─ Configuration File Loading (if --config specified)
+ *   │  └─ Loads and merges TOML config file
+ *   ├─ Validation
+ *   │  └─ Applies defaults, validates ranges, cross-field checks
+ *   └─ RCU Publishing
+ *      └─ Makes options available via options_get() and GET_OPTION()
+ * ```
+ *
+ * **Key Components**:
+ *
+ * - `detect_mode_and_parse_binary_options()`: Mode detection and binary-level parsing
+ * - `options_preset_unified()`: Preset config for all modes (from presets.h)
+ * - `options_config_parse_args()`: Builder-based parsing of mode-specific options
+ * - Configuration file loading (if --config specified)
+ * - `options_state_init()` and `options_state_set()`: RCU publishing
+ *
+ * **Option Lifecycle** in `options_init()`:
+ *
+ * 1. Create default options via `options_t_new()`
+ * 2. Detect mode from argv
+ * 3. Parse binary-level options (may exit for --help, --version)
+ * 4. Get mode-specific preset from registry
+ * 5. Parse mode-specific options into options struct
+ * 6. Load config file if specified
+ * 7. Validate all options with defaults
+ * 8. Initialize RCU state
+ * 9. Publish options for lock-free access
+ *
+ * **Error Handling**:
+ *
+ * - Invalid options → ERROR_USAGE (usage already printed to stderr)
+ * - File errors → ERROR_IO or ERROR_CONFIG
+ * - Validation failures → ERROR_VALIDATION with context message
+ * - Success → ASCIICHAT_OK
+ *
+ * **Thread Safety**:
+ *
+ * - `options_init()` must be called exactly once before worker threads
+ * - After `options_init()` completes, options are read-only
+ * - Access via lock-free `GET_OPTION()` macro from worker threads
+ * - Optional updates via `options_set_*()` functions
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
  */
 
 #include <ctype.h>
