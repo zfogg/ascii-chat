@@ -876,6 +876,9 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120",
                               "Connect with custom display options");
 
+  options_builder_add_example(b, "client", "--palette-chars '@%#*+=-:. '",
+                              "Use custom ASCII palette characters");
+
   options_builder_add_example(b, "client", "--snapshot", "Capture single frame and exit");
 
   const options_config_t *config = options_builder_build(b);
@@ -898,6 +901,12 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
 
   // Logging options (add before help so help can be shown with proper logging config)
   options_builder_add_logging_group(b);
+
+  // Mark logging options as binary-only so they don't appear in mode-specific help
+  options_builder_mark_binary_only(b, "log-file");
+  options_builder_mark_binary_only(b, "log-level");
+  options_builder_mark_binary_only(b, "verbose");
+  options_builder_mark_binary_only(b, "quiet");
 
   // Action options (GENERAL - add first so it appears first in help)
   options_builder_add_action(b, "help", 'h', action_help_mirror, "Show this help message and exit", "GENERAL");
@@ -947,6 +956,9 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
 
   options_builder_add_example(b, "mirror", "-f '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')");
+
+  options_builder_add_example(b, "mirror", "--palette-chars '@%#*+=-:. '",
+                              "View with custom ASCII palette characters");
 
   options_builder_add_example(b, "mirror", "--snapshot", "Capture single frame and exit");
 
@@ -1157,6 +1169,9 @@ const options_config_t *options_preset_discovery(const char *program_name, const
   options_builder_add_example(
       b, "discovery", "swift-river-mountain -f '-'",
       "Join session and stream media from stdin (cat file.mov | ascii-chat discovery ... -f '-')");
+
+  options_builder_add_example(b, "discovery", "swift-river-mountain --palette-chars '@%#*+=-:. '",
+                              "Join session with custom ASCII palette characters");
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
