@@ -166,6 +166,7 @@ typedef struct {
 
   // Audio pipeline and device info
   void *audio_pipeline;      ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
+  void *media_source;        ///< Media source for direct audio reading in mirror mode (opaque pointer)
   double sample_rate;        ///< Actual sample rate of streams (48kHz)
   double input_device_rate;  ///< Native sample rate of input device
   double output_device_rate; ///< Native sample rate of output device

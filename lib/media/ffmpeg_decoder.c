@@ -709,6 +709,39 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, double timestamp_sec) {
+  if (!decoder) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (decoder->is_stdin) {
+    return ERROR_NOT_SUPPORTED; // Cannot seek stdin
+  }
+
+  // Flush codec buffers
+  if (decoder->video_codec_ctx) {
+    avcodec_flush_buffers(decoder->video_codec_ctx);
+  }
+  if (decoder->audio_codec_ctx) {
+    avcodec_flush_buffers(decoder->audio_codec_ctx);
+  }
+
+  // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
+  int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
+
+  // Seek to timestamp
+  if (av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD) < 0) {
+    return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to timestamp %.2f seconds", timestamp_sec);
+  }
+
+  decoder->eof_reached = false;
+  decoder->audio_buffer_offset = 0;
+  decoder->last_video_pts = -1.0;
+  decoder->last_audio_pts = -1.0;
+
+  return ASCIICHAT_OK;
+}
+
 bool ffmpeg_decoder_at_end(ffmpeg_decoder_t *decoder) {
   return decoder && decoder->eof_reached;
 }

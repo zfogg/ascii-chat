@@ -1182,3 +1182,13 @@ int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, 
 
   return client_audio_pipeline_playback(g_audio_pipeline, opus_data, (int)opus_len, output, max_samples);
 }
+
+/**
+ * @brief Get the global audio context for use by other subsystems
+ * @return Pointer to the audio context, or NULL if not initialized
+ *
+ * @ingroup client_audio
+ */
+audio_context_t *audio_get_context(void) {
+  return &g_audio_context;
+}

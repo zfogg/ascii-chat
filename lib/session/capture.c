@@ -18,6 +18,7 @@
 #include "video/image.h"
 #include "util/time.h"
 #include "util/fps.h"
+#include "audio/audio.h"
 #include "asciichat_errno.h"
 
 #include <stdio.h>
@@ -67,6 +68,21 @@ struct session_capture_ctx {
 
   /** @brief Start time for FPS calculation (nanoseconds) */
   uint64_t start_time_ns;
+
+  /** @brief Audio is enabled for capture */
+  bool audio_enabled;
+
+  /** @brief File has audio stream available */
+  bool file_has_audio;
+
+  /** @brief Using file audio (true) or microphone fallback (false) */
+  bool using_file_audio;
+
+  /** @brief Fall back to microphone if file has no audio */
+  bool audio_fallback_enabled;
+
+  /** @brief Microphone audio context for fallback (borrowed, not owned) */
+  void *mic_audio_ctx;
 };
 
 /* ============================================================================
@@ -159,6 +175,13 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->target_fps = config->target_fps > 0 ? config->target_fps : 60;
   ctx->resize_for_network = config->resize_for_network;
 
+  // Store audio configuration
+  ctx->audio_enabled = config->enable_audio;
+  ctx->audio_fallback_enabled = config->audio_fallback_to_mic;
+  ctx->mic_audio_ctx = config->mic_audio_ctx;
+  ctx->using_file_audio = false;
+  ctx->file_has_audio = false;
+
   // Create media source
   ctx->source = media_source_create(config->type, config->path);
   if (!ctx->source) {
@@ -169,6 +192,21 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     }
     SAFE_FREE(ctx);
     return NULL;
+  }
+
+  // Detect if media source has audio
+  if (ctx->audio_enabled && ctx->source) {
+    ctx->file_has_audio = media_source_has_audio(ctx->source);
+    if (ctx->file_has_audio) {
+      ctx->using_file_audio = true;
+      log_info("Audio capture enabled: using file audio");
+    } else if (ctx->audio_fallback_enabled && ctx->mic_audio_ctx) {
+      ctx->using_file_audio = false;
+      log_info("Audio capture enabled: file has no audio, using microphone fallback");
+    } else {
+      ctx->audio_enabled = false;
+      log_debug("Audio capture disabled: no file audio and no fallback configured");
+    }
   }
 
   // Enable loop if requested (only for file sources)
@@ -336,4 +374,59 @@ uint32_t session_capture_get_target_fps(session_capture_ctx_t *ctx) {
     return 0;
   }
   return ctx->target_fps;
+}
+
+bool session_capture_has_audio(session_capture_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    return false;
+  }
+  return ctx->audio_enabled;
+}
+
+size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size_t num_samples) {
+  if (!ctx || !ctx->initialized || !buffer || num_samples == 0) {
+    return 0;
+  }
+
+  if (!ctx->audio_enabled) {
+    return 0;
+  }
+
+  // If using file audio, read from media source
+  if (ctx->using_file_audio && ctx->source) {
+    return media_source_read_audio(ctx->source, buffer, num_samples);
+  }
+
+  // If using microphone fallback, read from mic context
+  if (ctx->mic_audio_ctx) {
+    // mic_audio_ctx is actually an audio_context_t pointer
+    // We need to read from its capture_buffer audio ring buffer
+    audio_context_t *audio_ctx = (audio_context_t *)ctx->mic_audio_ctx;
+    if (audio_ctx && audio_ctx->capture_buffer) {
+      return audio_ring_buffer_read(audio_ctx->capture_buffer, buffer, num_samples);
+    }
+  }
+
+  return 0;
+}
+
+bool session_capture_using_file_audio(session_capture_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    return false;
+  }
+  return ctx->using_file_audio;
+}
+
+void *session_capture_get_media_source(session_capture_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized || !ctx->source) {
+    return NULL;
+  }
+  return (void *)ctx->source;
+}
+
+asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized || !ctx->source) {
+    return ERROR_INVALID_PARAM;
+  }
+  return media_source_sync_audio_to_video(ctx->source);
 }

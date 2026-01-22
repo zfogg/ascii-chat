@@ -93,6 +93,15 @@ typedef struct {
   /** @brief Resize frames to network-optimal dimensions (MAX_FRAME_WIDTH x MAX_FRAME_HEIGHT) */
   bool resize_for_network;
 
+  /** @brief Enable audio capture from media source */
+  bool enable_audio;
+
+  /** @brief Fall back to microphone if file audio is not available */
+  bool audio_fallback_to_mic;
+
+  /** @brief Microphone audio context for fallback (borrowed, not owned) */
+  void *mic_audio_ctx;
+
   /** @brief Optional: callback to check if initialization should be cancelled (e.g., shutdown signal) */
   session_capture_should_exit_fn should_exit_callback;
 
@@ -235,6 +244,72 @@ double session_capture_get_current_fps(session_capture_ctx_t *ctx);
  * @ingroup session
  */
 uint32_t session_capture_get_target_fps(session_capture_ctx_t *ctx);
+
+/**
+ * @brief Check if capture source has audio available
+ * @param ctx Capture context (must not be NULL)
+ * @return true if audio is available, false otherwise
+ *
+ * Returns whether the capture source has audio and it is enabled.
+ *
+ * @ingroup session
+ */
+bool session_capture_has_audio(session_capture_ctx_t *ctx);
+
+/**
+ * @brief Read audio samples from capture source
+ * @param ctx Capture context (must not be NULL)
+ * @param buffer Output buffer for audio samples (must not be NULL)
+ * @param num_samples Number of samples to read
+ * @return Number of samples actually read (0 if no audio available)
+ *
+ * Reads audio samples from the media source. Audio is read from either:
+ * - File if available and enabled
+ * - Microphone if using fallback
+ *
+ * Returns 0 if audio is not enabled or available.
+ *
+ * @ingroup session
+ */
+size_t session_capture_read_audio(session_capture_ctx_t *ctx, float *buffer, size_t num_samples);
+
+/**
+ * @brief Check if currently using file audio vs microphone fallback
+ * @param ctx Capture context (must not be NULL)
+ * @return true if using file audio, false if using microphone or no audio
+ *
+ * Useful for logging and debugging which audio source is active.
+ *
+ * @ingroup session
+ */
+bool session_capture_using_file_audio(session_capture_ctx_t *ctx);
+
+/**
+ * @brief Get the underlying media source from capture context
+ * @param ctx Capture context (must not be NULL)
+ * @return Pointer to media source, or NULL if not available
+ *
+ * Used by audio playback to read audio directly from media source at callback time.
+ *
+ * @ingroup session
+ */
+void *session_capture_get_media_source(session_capture_ctx_t *ctx);
+
+/**
+ * @brief Synchronize audio decoder to video position for frame-locked playback
+ * @param ctx Capture context (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Keeps the audio decoder synchronized with the video decoder's current position.
+ * Used in mirror mode to ensure audio and video frames stay in sync.
+ *
+ * **Usage:**
+ * Call this after each session_capture_read_frame() to sync the audio decoder
+ * to the video frame's timestamp before the PortAudio callback reads audio.
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx);
 
 /** @} */
 

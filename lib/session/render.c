@@ -17,6 +17,8 @@
 #include "log/logging.h"
 #include "options/options.h"
 #include "util/time.h"
+#include "audio/audio.h"
+#include "media/source.h"
 #include "asciichat_errno.h"
 
 #include <stddef.h>
@@ -74,6 +76,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Determine mode: synchronous (capture provided) or event-driven (callbacks provided)
   bool is_synchronous = (capture != NULL);
 
+  // Audio/video sync debug tracking
+  uint64_t frame_count = 0;
+
   // Main render loop - works for both synchronous and event-driven modes
   while (!should_exit(user_data)) {
     // Frame timing
@@ -107,6 +112,18 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         platform_sleep_usec(10000); // 10ms
         continue;
       }
+
+      // Debug: log audio/video positions every ~30 frames (~500ms at 60fps)
+      frame_count++;
+      if (frame_count % 30 == 0) {
+        void *media_src = session_capture_get_media_source(capture);
+        if (media_src) {
+          // Get both decoder positions from media source
+          double video_pos = media_source_get_position((media_source_t *)media_src);
+          log_info_every(5000000, "A/V SYNC DEBUG: frame=%lu, video_pos=%.3f sec", frame_count, video_pos);
+        }
+      }
+
     } else {
       // EVENT-DRIVEN MODE: Use custom callbacks
       // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
@@ -119,6 +136,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         continue;
       }
     }
+
+    // NOTE: Audio is NOT written from render loop in mirror mode
+    // Audio timing must match PortAudio sample rate, not video frame rate
+    // The PortAudio callback reads audio on-demand directly from the media source
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings

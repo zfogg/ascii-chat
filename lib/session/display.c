@@ -20,11 +20,13 @@
 #include "video/palette.h"
 #include "video/ascii.h"
 #include "video/image.h"
+#include "audio/audio.h"
 #include "asciichat_errno.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 
 /* ============================================================================
  * Session Display Context Structure
@@ -66,6 +68,12 @@ struct session_display_ctx {
 
   /** @brief Context is fully initialized */
   bool initialized;
+
+  /** @brief Audio playback is enabled */
+  bool audio_playback_enabled;
+
+  /** @brief Audio context for playback (borrowed, not owned) */
+  void *audio_ctx;
 };
 
 /* ============================================================================
@@ -144,6 +152,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Store configuration
   ctx->snapshot_mode = config->snapshot_mode;
   ctx->palette_type = config->palette_type;
+  ctx->audio_playback_enabled = config->enable_audio_playback;
+  ctx->audio_ctx = config->audio_ctx;
   atomic_init(&ctx->first_frame, true);
 
   // Get TTY info for direct terminal access
@@ -397,4 +407,61 @@ void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible
   if (ctx->tty_info.fd >= 0) {
     (void)terminal_hide_cursor(ctx->tty_info.fd, !visible);
   }
+}
+
+bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    return false;
+  }
+  return ctx->audio_playback_enabled;
+}
+
+asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const float *buffer, size_t num_samples) {
+  if (!ctx || !ctx->initialized || !buffer || num_samples == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  if (!ctx->audio_playback_enabled || !ctx->audio_ctx) {
+    // Audio not enabled, but not an error - just skip silently
+    return ASCIICHAT_OK;
+  }
+
+  // For mirror mode with local files: write samples directly without jitter buffering
+  // The jitter buffer is designed for network scenarios with irregular packet arrivals
+  // For local playback, we just want raw samples flowing to the speakers
+  audio_context_t *audio_ctx = (audio_context_t *)ctx->audio_ctx;
+  if (audio_ctx && audio_ctx->playback_buffer) {
+    audio_ring_buffer_t *rb = audio_ctx->playback_buffer;
+
+    // Simple direct write: append samples to ring buffer without network-oriented complexity
+    uint32_t write_idx = atomic_load(&rb->write_index);
+    uint32_t read_idx = atomic_load(&rb->read_index);
+
+    // Calculate available space in ring buffer
+    uint32_t available = (read_idx - write_idx - 1) & (AUDIO_RING_BUFFER_SIZE - 1);
+
+    if ((uint32_t)num_samples > available) {
+      // Buffer full - just skip this write to avoid distortion from overwriting old audio
+      return ASCIICHAT_OK;
+    }
+
+    // Direct memcpy to ring buffer, handling wrap-around
+    uint32_t space_before_wrap = AUDIO_RING_BUFFER_SIZE - write_idx;
+    if ((uint32_t)num_samples <= space_before_wrap) {
+      memcpy(&rb->data[write_idx], buffer, num_samples * sizeof(float));
+    } else {
+      // Split write: first part to end of buffer, second part wraps to beginning
+      uint32_t first_part = space_before_wrap;
+      uint32_t second_part = num_samples - first_part;
+      memcpy(&rb->data[write_idx], buffer, first_part * sizeof(float));
+      memcpy(&rb->data[0], &buffer[first_part], second_part * sizeof(float));
+    }
+
+    // Update write index atomically
+    atomic_store(&rb->write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
+
+    return ASCIICHAT_OK;
+  }
+
+  return ASCIICHAT_OK;
 }

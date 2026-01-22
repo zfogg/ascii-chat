@@ -85,6 +85,12 @@ typedef struct {
   /** @brief Color mode override (TERM_COLOR_AUTO for auto-detection) */
   terminal_color_mode_t color_mode;
 
+  /** @brief Enable audio playback (mirror mode) */
+  bool enable_audio_playback;
+
+  /** @brief Audio context for playback (borrowed, not owned) */
+  void *audio_ctx;
+
   /** @brief Optional: callback to check if initialization should be cancelled (e.g., shutdown signal) */
   session_display_should_exit_fn should_exit_callback;
 
@@ -312,6 +318,36 @@ void session_display_cursor_home(session_display_ctx_t *ctx);
  * @ingroup session
  */
 void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible);
+
+/** @} */
+
+/* ============================================================================
+ * Session Display Audio Functions
+ * @{
+ */
+
+/**
+ * @brief Check if display has audio playback configured
+ * @param ctx Display context (must not be NULL)
+ * @return true if audio playback is available, false otherwise
+ *
+ * @ingroup session
+ */
+bool session_display_has_audio_playback(session_display_ctx_t *ctx);
+
+/**
+ * @brief Write audio samples to playback buffer
+ * @param ctx Display context (must not be NULL)
+ * @param buffer Audio samples to write (must not be NULL)
+ * @param num_samples Number of samples to write
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Writes audio samples to the playback ring buffer for playback through speakers.
+ * Used in mirror mode to play file audio or other audio sources.
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const float *buffer, size_t num_samples);
 
 /** @} */
 

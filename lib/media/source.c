@@ -390,6 +390,27 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
   }
 }
 
+asciichat_error_t media_source_sync_audio_to_video(media_source_t *source) {
+  if (!source) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Only applicable to FILE and STDIN types
+  if (source->type != MEDIA_SOURCE_FILE && source->type != MEDIA_SOURCE_STDIN) {
+    return ASCIICHAT_OK; // No-op for WEBCAM/TEST
+  }
+
+  // Get video decoder's current PTS
+  double video_pts = ffmpeg_decoder_get_position(source->video_decoder);
+
+  // If we have a valid PTS, seek audio decoder to that position
+  if (video_pts >= 0.0) {
+    return ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, video_pts);
+  }
+
+  return ASCIICHAT_OK;
+}
+
 media_source_type_t media_source_get_type(media_source_t *source) {
   return source ? source->type : MEDIA_SOURCE_TEST;
 }
@@ -435,5 +456,27 @@ double media_source_get_position(media_source_t *source) {
 
   default:
     return -1.0;
+  }
+}
+
+double media_source_get_video_fps(media_source_t *source) {
+  if (!source) {
+    return 0.0;
+  }
+
+  switch (source->type) {
+  case MEDIA_SOURCE_WEBCAM:
+  case MEDIA_SOURCE_TEST:
+    return 0.0; // Variable rate, no fixed FPS
+
+  case MEDIA_SOURCE_FILE:
+  case MEDIA_SOURCE_STDIN:
+    if (!source->video_decoder) {
+      return 0.0;
+    }
+    return ffmpeg_decoder_get_video_fps(source->video_decoder);
+
+  default:
+    return 0.0;
   }
 }

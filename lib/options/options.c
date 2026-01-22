@@ -60,6 +60,68 @@
  * 3. Session string pattern (word-word-word) → client mode
  * 4. No mode → show help and exit(0)
  */
+/**
+ * @brief Check if an option is binary-level only and whether it takes an argument
+ *
+ * @param arg The argument string (e.g., "--verbose", "-L")
+ * @param out_takes_arg OUTPUT: true if the option takes a required argument
+ * @param out_takes_optional_arg OUTPUT: true if the option takes an optional argument
+ * @return true if this is a binary-level option
+ */
+static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_arg, bool *out_takes_optional_arg) {
+  if (!arg)
+    return false;
+
+  if (out_takes_arg)
+    *out_takes_arg = false;
+  if (out_takes_optional_arg)
+    *out_takes_optional_arg = false;
+
+  // Extract option name (without leading dashes)
+  const char *opt_name = arg;
+  if (arg[0] == '-') {
+    opt_name = arg + (arg[1] == '-' ? 2 : 1); // Skip - or --
+  }
+
+  // Check option against binary-level options
+  if (strcmp(opt_name, "help") == 0 || strcmp(arg, "-h") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "version") == 0 || strcmp(arg, "-v") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "verbose") == 0 || strcmp(arg, "-V") == 0) {
+    if (out_takes_optional_arg)
+      *out_takes_optional_arg = true;
+    return true;
+  }
+  if (strcmp(opt_name, "quiet") == 0 || strcmp(arg, "-q") == 0) {
+    return true;
+  }
+  if (strcmp(opt_name, "log-file") == 0 || strcmp(arg, "-L") == 0) {
+    if (out_takes_arg)
+      *out_takes_arg = true;
+    return true;
+  }
+  if (strcmp(opt_name, "log-level") == 0) {
+    if (out_takes_arg)
+      *out_takes_arg = true;
+    return true;
+  }
+  if (strcmp(opt_name, "config") == 0) {
+    if (out_takes_arg)
+      *out_takes_arg = true;
+    return true;
+  }
+  if (strcmp(opt_name, "config-create") == 0) {
+    if (out_takes_optional_arg)
+      *out_takes_optional_arg = true;
+    return true;
+  }
+
+  return false;
+}
+
 static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode,
                                              char *out_session_string, int *out_mode_index) {
   if (out_mode == NULL || out_mode_index == NULL) {
@@ -88,16 +150,18 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   for (int i = 1; i < argc; i++) {
     // Skip options and their arguments
     if (argv[i][0] == '-') {
-      // Check if this option takes an argument
-      if ((strcmp(argv[i], "--log-file") == 0 || strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-level") == 0 ||
-           strcmp(argv[i], "--config") == 0) &&
-          i + 1 < argc) {
-        i++; // Skip the argument
-      }
-      // -V and --verbose take optional numeric argument
-      if ((strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) && i + 1 < argc &&
-          argv[i + 1][0] != '-' && isdigit((unsigned char)argv[i + 1][0])) {
-        i++; // Skip the optional numeric argument
+      bool takes_arg = false;
+      bool takes_optional_arg = false;
+
+      // Check if this is a binary-level option
+      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+        // Skip the argument if needed
+        if (takes_arg && i + 1 < argc) {
+          i++; // Skip required argument
+        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-' &&
+                   isdigit((unsigned char)argv[i + 1][0])) {
+          i++; // Skip optional numeric argument
+        }
       }
       continue;
     }
@@ -231,6 +295,10 @@ asciichat_error_t options_init(int argc, char **argv) {
         // No valid number, just increment
         opts.verbose_level++;
       }
+      // Handle -q and --quiet (disable console logging)
+      if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
+        opts.quiet = true;
+      }
     }
   }
 
@@ -317,37 +385,24 @@ asciichat_error_t options_init(int argc, char **argv) {
       new_mode_argv[0] = argv[0];
     }
 
-    // Copy args before mode, skipping binary-level options (-V, --verbose, -L, --log-file, --log-level, --config-create)
+    // Copy args before mode, skipping binary-level options
     int new_argv_idx = 1;
     for (int i = 1; i < mode_index; i++) {
-      // Skip binary-level only options
-      if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
-        // Check if next arg is a number (optional)
-        if (i + 1 < mode_index && argv[i + 1][0] != '-' && isdigit((unsigned char)argv[i + 1][0])) {
-          i++; // Skip the number too
+      bool takes_arg = false;
+      bool takes_optional_arg = false;
+
+      // Check if this is a binary-level option
+      if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
+        // Skip argument if needed
+        if (takes_arg && i + 1 < mode_index) {
+          i++; // Skip required argument
+        } else if (takes_optional_arg && i + 1 < mode_index && argv[i + 1][0] != '-' &&
+                   isdigit((unsigned char)argv[i + 1][0])) {
+          i++; // Skip optional numeric argument
         }
         continue;
       }
-      if (strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0) {
-        if (i + 1 < mode_index) {
-          i++; // Skip the argument
-        }
-        continue;
-      }
-      if (strcmp(argv[i], "--log-level") == 0) {
-        if (i + 1 < mode_index) {
-          i++; // Skip the argument
-        }
-        continue;
-      }
-      if (strcmp(argv[i], "--config-create") == 0) {
-        // Optionally skip path argument
-        if (i + 1 < mode_index && argv[i + 1][0] != '-') {
-          i++; // Skip the path
-        }
-        continue;
-      }
-      // Copy this argument to mode_argv
+      // Not a binary option, copy to mode_argv
       new_mode_argv[new_argv_idx++] = argv[i];
     }
     for (int i = 0; i < args_after_mode; i++) {

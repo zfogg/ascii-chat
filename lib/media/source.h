@@ -297,6 +297,31 @@ bool media_source_at_end(media_source_t *source);
 asciichat_error_t media_source_rewind(media_source_t *source);
 
 /**
+ * @brief Synchronize audio decoder to video position for frame-locked playback
+ * @param source Media source (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Seeks the audio decoder to match the video decoder's current position.
+ * Used to maintain audio/video sync in mirror mode when both decoders are used.
+ *
+ * **Behavior:**
+ * - Reads video decoder's current PTS via media_source_get_position()
+ * - Seeks audio decoder to that same PTS
+ * - Ensures next audio reads will be from the correct position
+ *
+ * **Usage:**
+ * After calling media_source_read_video(), call this function before the
+ * PortAudio callback reads audio samples. This keeps them synchronized.
+ *
+ * @note FILE sources only (returns OK for others)
+ * @note STDIN sources: ERROR_NOT_SUPPORTED (cannot seek stdin)
+ * @note No-op for WEBCAM/TEST sources
+ *
+ * @ingroup media
+ */
+asciichat_error_t media_source_sync_audio_to_video(media_source_t *source);
+
+/**
  * @brief Get media source type
  * @param source Media source (must not be NULL)
  * @return Media source type
@@ -343,5 +368,24 @@ double media_source_get_duration(media_source_t *source);
  * @ingroup media
  */
 double media_source_get_position(media_source_t *source);
+
+/**
+ * @brief Get video frame rate in frames per second
+ * @param source Media source (must not be NULL)
+ * @return Frame rate in FPS, or 0.0 if unknown
+ *
+ * Returns the native frame rate of the video stream.
+ *
+ * **Return values:**
+ * - Positive value: Frame rate in FPS (e.g., 30.0, 60.0)
+ * - 0.0: Frame rate unknown or not applicable
+ *
+ * @note WEBCAM sources return 0.0 (variable rate)
+ * @note TEST sources return 0.0
+ * @note FILE/STDIN sources return the video stream's fps from FFmpeg
+ *
+ * @ingroup media
+ */
+double media_source_get_video_fps(media_source_t *source);
 
 /** @} */

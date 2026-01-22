@@ -17,6 +17,7 @@
 #include "platform/init.h"  // For static_mutex_t
 #include "network/packet.h" // For audio_batch_packet_t
 #include "log/logging.h"    // For log_* macros
+#include "media/source.h"   // For media_source_read_audio()
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -287,6 +288,11 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   START_TIMER("duplex_callback");
 
   audio_context_t *ctx = (audio_context_t *)userData;
+  if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "duplex_callback: ctx is NULL");
+    return paAbort;
+  }
+
   const float *input = (const float *)inputBuffer;
   float *output = (float *)outputBuffer;
   size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
@@ -314,47 +320,57 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   static uint64_t total_samples_read_local = 0;
   static uint64_t underrun_count_local = 0;
 
-  // STEP 1: Read playback directly from network buffer → speakers (~0.5ms)
-  // PERFORMANCE FIX: Bypass worker thread for playback to eliminate underruns
-  // Worker was processing 128 samples/iteration but callback needs 960 samples/10ms
-  // Volume control is lightweight (just multiplication) so we can do it here
+  // STEP 1: Read playback from media source (mirror mode) or network buffer
+  if (output) {
+    size_t samples_read = 0;
 
-  if (output && ctx->playback_buffer) {
-    size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+    // For mirror mode with media file: read audio directly from media source
+    // This bypasses buffering and provides audio at the exact sample rate PortAudio needs
+    if (ctx->media_source) {
+      samples_read = media_source_read_audio((void *)ctx->media_source, output, num_samples);
+
+      // Debug: log audio samples read every 480 callbacks (~10 times per second at 48kHz)
+      static uint64_t audio_callback_count = 0;
+      audio_callback_count++;
+      if (audio_callback_count % 480 == 0) {
+        log_info_every(5000000, "A/V SYNC DEBUG: audio_callback=%lu, samples_read=%zu",
+                       audio_callback_count, samples_read);
+      }
+    } else if (ctx->playback_buffer) {
+      // Network mode: read from playback buffer with jitter buffering logic
+      samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+    }
+
     total_samples_read_local += samples_read;
 
     if (samples_read < num_samples) {
       // Fill remaining with silence if underrun
       SAFE_MEMSET(output + samples_read, (num_samples - samples_read) * sizeof(float), 0,
                   (num_samples - samples_read) * sizeof(float));
-      log_debug_every(1000000, "Playback underrun: got %zu/%zu samples", samples_read, num_samples);
-      underrun_count_local++;
+      if (ctx->media_source) {
+        log_debug_every(5000000, "Media playback: got %zu/%zu samples", samples_read, num_samples);
+      } else {
+        log_debug_every(1000000, "Network playback underrun: got %zu/%zu samples", samples_read, num_samples);
+        underrun_count_local++;
+      }
     }
 
-    // Apply speaker volume control (moved from worker thread)
+    // Apply speaker volume control
     if (samples_read > 0) {
       float speaker_volume = GET_OPTION(speakers_volume);
-
-      // BUG FIX: If speakers_volume is 0.0 (uninitialized), default to 1.0
-      // This was causing ALL audio to be multiplied by 0 = SILENCE!
       if (speaker_volume == 0.0f) {
         speaker_volume = 1.0f;
       }
-
       if (speaker_volume != 1.0f) {
-        // Clamp to valid range [0.0, 1.0]
         if (speaker_volume < 0.0f)
           speaker_volume = 0.0f;
         if (speaker_volume > 1.0f)
           speaker_volume = 1.0f;
-
         for (size_t i = 0; i < samples_read; i++) {
           output[i] *= speaker_volume;
         }
       }
     }
-  } else if (output) {
-    SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
   }
 
   // STEP 2: Copy raw mic samples → worker for AEC3 processing (~0.5ms)

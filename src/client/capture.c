@@ -88,6 +88,7 @@
 #include "capture.h"
 #include "main.h"
 #include "server.h"
+#include "audio.h"
 #include "session/capture.h"
 #include "video/image.h"
 #include "common.h"
@@ -349,6 +350,11 @@ int capture_init() {
   }
   config.target_fps = CAPTURE_TARGET_FPS;
   config.resize_for_network = true; // Client always resizes for network transmission
+
+  // Configure audio capture with fallback to microphone
+  config.enable_audio = true;
+  config.audio_fallback_to_mic = true;
+  config.mic_audio_ctx = audio_get_context();
 
   // Create capture context using session library
   g_capture_ctx = session_capture_create(&config);

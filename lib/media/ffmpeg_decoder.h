@@ -258,6 +258,28 @@ bool ffmpeg_decoder_has_audio(ffmpeg_decoder_t *decoder);
 asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder);
 
 /**
+ * @brief Seek to specific timestamp in media
+ * @param decoder Decoder (must not be NULL)
+ * @param timestamp_sec Seek target in seconds
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Seeks to the specified timestamp in the media file. Used for audio/video
+ * synchronization in multi-decoder scenarios.
+ *
+ * **Seek process:**
+ * 1. Flush codec buffers (avcodec_flush_buffers)
+ * 2. Seek to timestamp (av_seek_frame with AV_TIME_BASE conversion)
+ * 3. Clear decoder state
+ *
+ * @note Stdin decoders cannot seek (returns ERROR_NOT_SUPPORTED)
+ * @note Some formats may not support seeking
+ * @note Seeks approximately - may land before/after exact timestamp
+ *
+ * @ingroup media
+ */
+asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, double timestamp_sec);
+
+/**
  * @brief Check if decoder reached end of stream
  * @param decoder Decoder (must not be NULL)
  * @return true if EOF reached, false otherwise
