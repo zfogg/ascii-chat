@@ -173,17 +173,21 @@ static bool is_numeric_pattern(const char *str, size_t pos, size_t *end_pos) {
     }
   }
 
-  // Check for known units after optional spaces (e.g., "25 MB", "1024 GiB")
+  // Check for fraction format (1/2, 3/4, etc.)
+  if (str[i] == '/' && isdigit(str[i + 1])) {
+    i++;
+    while (isdigit(str[i])) {
+      i++;
+    }
+  }
+
+  // Check for known units with optional spaces (e.g., "25 MB", "1024 GiB", "69.9%")
   // Only include units if they're in the known units list to avoid colorizing random words
   size_t j = i;
   bool has_space = false;
-  while (str[j] == ' ' || str[j] == '\t') {
-    has_space = true;
-    j++;
-  }
 
-  if (has_space && (isalpha(str[j]) || str[j] == '%')) {
-    // Collect potential unit (up to 32 characters)
+  // First try: units immediately following (no space) like "69.9%"
+  if ((isalpha(str[j]) || str[j] == '%') && (j == i || !isalnum(str[j - 1]))) {
     size_t unit_start = j;
     while ((isalpha(str[j]) || str[j] == '%') && (j - unit_start) < 32) {
       j++;
@@ -192,10 +196,36 @@ static bool is_numeric_pattern(const char *str, size_t pos, size_t *end_pos) {
 
     // Check if this is a known unit
     if (is_known_unit(str + unit_start, unit_len)) {
-      // It's a known unit, include the space and unit
+      // It's a known unit immediately following, include it
       i = j;
+    } else {
+      // Not a known unit, reset j
+      j = i;
     }
-    // Otherwise, don't include - just the number (i stays as is)
+  }
+
+  // Second try: units with spaces (e.g., "25 MB")
+  if (i == j) {
+    while (str[j] == ' ' || str[j] == '\t') {
+      has_space = true;
+      j++;
+    }
+
+    if (has_space && (isalpha(str[j]) || str[j] == '%')) {
+      // Collect potential unit (up to 32 characters)
+      size_t unit_start = j;
+      while ((isalpha(str[j]) || str[j] == '%') && (j - unit_start) < 32) {
+        j++;
+      }
+      size_t unit_len = j - unit_start;
+
+      // Check if this is a known unit
+      if (is_known_unit(str + unit_start, unit_len)) {
+        // It's a known unit, include the space and unit
+        i = j;
+      }
+      // Otherwise, don't include - just the number (i stays as is)
+    }
   }
 
   *end_pos = i;
