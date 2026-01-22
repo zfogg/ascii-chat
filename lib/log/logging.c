@@ -77,17 +77,17 @@ static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "
 /* NOTE: Uses LOG_CMODE_ prefix to avoid conflict with public terminal_color_mode_t in options.h */
 typedef enum { LOG_CMODE_16 = 0, LOG_CMODE_256 = 1, LOG_CMODE_TRUECOLOR = 2, LOG_CMODE_COUNT = 3 } log_color_mode_t;
 
-#define LOG_COLOR_COUNT 7 /* DEV, DEBUG, INFO, WARN, ERROR, FATAL, RESET */
+#define LOG_COLOR_COUNT 8 /* DEV, DEBUG, INFO, WARN, ERROR, FATAL, GREY, RESET */
 
 /* 2D color array: [color_mode][log_color] */
 static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
     /* LOG_CMODE_16 */
-    {"\x1b[34m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
+    {"\x1b[34m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[90m", "\x1b[0m"},
     /* LOG_CMODE_256 */
-    {"\x1b[94m", "\x1b[96m", "\x1b[92m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
+    {"\x1b[94m", "\x1b[96m", "\x1b[92m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[90m", "\x1b[0m"},
     /* LOG_CMODE_TRUECOLOR */
-    {"\x1b[38;2;107;127;255m", "\x1b[38;2;30;205;255m", "\x1b[38;2;144;224;112m", "\x1b[38;2;255;204;0m",
-     "\x1b[38;2;232;93;111m", "\x1b[38;2;200;160;216m", "\x1b[0m"},
+    {"\x1b[38;2;107;127;255m", "\x1b[38;2;30;205;255m", "\x1b[38;2;144;224;112m", "\x1b[38;2;253;236;111m",
+     "\x1b[38;2;232;93;111m", "\x1b[38;2;200;160;216m", "\x1b[38;2;128;128;128m", "\x1b[0m"},
 };
 
 /* Internal error macro - uses g_log directly, only used in this file */

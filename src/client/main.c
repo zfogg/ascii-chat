@@ -703,17 +703,17 @@ int client_main(void) {
     }
 
     // Enable insecure mode if requested
-    if (opts_discovery && opts_discovery->acds_insecure) {
+    if (opts_discovery && opts_discovery->discovery_insecure) {
       discovery_cfg.insecure_mode = true;
       log_warn("ACDS insecure mode enabled - no server key verification");
     }
 
     // Configure ACDS connection details
-    if (opts_discovery && opts_discovery->acds_server[0] != '\0') {
-      SAFE_STRNCPY(discovery_cfg.acds_server, opts_discovery->acds_server, sizeof(discovery_cfg.acds_server));
+    if (opts_discovery && opts_discovery->discovery_server[0] != '\0') {
+      SAFE_STRNCPY(discovery_cfg.acds_server, opts_discovery->discovery_server, sizeof(discovery_cfg.acds_server));
     }
-    if (opts_discovery && opts_discovery->acds_port > 0) {
-      discovery_cfg.acds_port = (uint16_t)opts_discovery->acds_port;
+    if (opts_discovery && opts_discovery->discovery_port > 0) {
+      discovery_cfg.acds_port = (uint16_t)opts_discovery->discovery_port;
     }
 
     // Set password for session join (use pointer since it persists through discovery)
@@ -782,11 +782,11 @@ int client_main(void) {
     connection_ctx.reconnect_attempt = reconnect_attempt;
 
     // Get ACDS server configuration from CLI options (defaults: 127.0.0.1:27225)
-    const char *acds_server = GET_OPTION(acds_server);
+    const char *acds_server = GET_OPTION(discovery_server);
     if (!acds_server || acds_server[0] == '\0') {
       acds_server = "127.0.0.1"; // Fallback if option not set
     }
-    int acds_port = GET_OPTION(acds_port);
+    int acds_port = GET_OPTION(discovery_port);
     if (acds_port <= 0 || acds_port > 65535) {
       acds_port = OPT_ACDS_PORT_INT_DEFAULT;
     }

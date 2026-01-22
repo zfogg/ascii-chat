@@ -348,16 +348,16 @@ int client_crypto_init(void) {
     // Connect to ACDS server (configurable via --acds-server and --acds-port options)
     acds_client_config_t acds_config;
     acds_client_config_init_defaults(&acds_config);
-    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(acds_server), sizeof(acds_config.server_address));
-    acds_config.server_port = GET_OPTION(acds_port);
+    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
+    acds_config.server_port = GET_OPTION(discovery_port);
     acds_config.timeout_ms = 5000;
 
-    // ACDS key verification (optional in debug builds, only if --acds-key is provided)
-    if (strlen(GET_OPTION(acds_server_key)) > 0) {
+    // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
+    if (strlen(GET_OPTION(discovery_service_key)) > 0) {
       log_debug("Verifying ACDS server key for %s...", acds_config.server_address);
       uint8_t acds_pubkey[32];
       asciichat_error_t verify_result =
-          discovery_keys_verify(acds_config.server_address, GET_OPTION(acds_server_key), acds_pubkey);
+          discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
       if (verify_result != ASCIICHAT_OK) {
         log_error("ACDS key verification failed for %s", acds_config.server_address);
         return -1;

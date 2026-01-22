@@ -1602,8 +1602,8 @@ int server_main(void) {
   // This also determines the session string for mDNS (if --acds is enabled)
   char session_string[64] = {0};
 
-  // ACDS Registration (conditional on --acds flag)
-  if (GET_OPTION(acds)) {
+  // ACDS Registration (conditional on --discovery flag)
+  if (GET_OPTION(discovery)) {
     // Security Requirement Check (Issue #239):
     // Server IP must be protected by password, identity verification, or explicit opt-in
 
@@ -1612,7 +1612,7 @@ int server_main(void) {
     bool has_password = password && strlen(password) > 0;
     const char *encrypt_key = GET_OPTION(encrypt_key);
     bool has_identity = encrypt_key && strlen(encrypt_key) > 0;
-    bool explicit_expose = GET_OPTION(acds_expose_ip) != 0;
+    bool explicit_expose = GET_OPTION(discovery_expose_ip) != 0;
 
     // Validate security configuration BEFORE attempting ACDS connection
     bool acds_expose_ip_flag = false;
@@ -1660,8 +1660,8 @@ int server_main(void) {
     }
 
     // Security is configured, proceed with ACDS connection
-    const char *acds_server = GET_OPTION(acds_server);
-    uint16_t acds_port = (uint16_t)GET_OPTION(acds_port);
+    const char *acds_server = GET_OPTION(discovery_server);
+    uint16_t acds_port = (uint16_t)GET_OPTION(discovery_port);
 
     log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
 

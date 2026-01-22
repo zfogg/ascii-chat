@@ -185,8 +185,8 @@ int discovery_main(void) {
 
   // Create discovery session configuration
   discovery_config_t discovery_config = {
-      .acds_address = GET_OPTION(acds_server),
-      .acds_port = (uint16_t)GET_OPTION(acds_port),
+      .acds_address = GET_OPTION(discovery_server),
+      .acds_port = (uint16_t)GET_OPTION(discovery_port),
       .session_string = is_initiator ? NULL : session_string,
       .local_port = (uint16_t)port_int,
       .on_state_change = on_discovery_state_change,

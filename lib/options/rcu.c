@@ -307,8 +307,8 @@ static void int_field_updater(options_t *opts, void *context) {
     opts->microphone_index = ctx->value;
   else if (strcmp(ctx->field_name, "speakers_index") == 0)
     opts->speakers_index = ctx->value;
-  else if (strcmp(ctx->field_name, "acds_port") == 0)
-    opts->acds_port = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery_port") == 0)
+    opts->discovery_port = ctx->value;
   else if (strcmp(ctx->field_name, "fps") == 0)
     opts->fps = ctx->value;
   else if (strcmp(ctx->field_name, "color_mode") == 0)
@@ -328,7 +328,7 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
   if (strcmp(field_name, "width") != 0 && strcmp(field_name, "height") != 0 && strcmp(field_name, "max_clients") != 0 &&
       strcmp(field_name, "compression_level") != 0 && strcmp(field_name, "reconnect_attempts") != 0 &&
       strcmp(field_name, "microphone_index") != 0 && strcmp(field_name, "speakers_index") != 0 &&
-      strcmp(field_name, "acds_port") != 0 && strcmp(field_name, "fps") != 0 && strcmp(field_name, "color_mode") != 0 &&
+      strcmp(field_name, "discovery_port") != 0 && strcmp(field_name, "fps") != 0 && strcmp(field_name, "color_mode") != 0 &&
       strcmp(field_name, "render_mode") != 0 && strcmp(field_name, "log_level") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
     return ERROR_INVALID_PARAM;
@@ -377,12 +377,12 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->encrypt_enabled = ctx->value;
   else if (strcmp(ctx->field_name, "no_encrypt") == 0)
     opts->no_encrypt = ctx->value;
-  else if (strcmp(ctx->field_name, "acds") == 0)
-    opts->acds = ctx->value;
-  else if (strcmp(ctx->field_name, "acds_expose_ip") == 0)
-    opts->acds_expose_ip = ctx->value;
-  else if (strcmp(ctx->field_name, "acds_insecure") == 0)
-    opts->acds_insecure = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery") == 0)
+    opts->discovery = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery_expose_ip") == 0)
+    opts->discovery_expose_ip = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery_insecure") == 0)
+    opts->discovery_insecure = ctx->value;
   else if (strcmp(ctx->field_name, "webrtc") == 0)
     opts->webrtc = ctx->value;
   else if (strcmp(ctx->field_name, "lan_discovery") == 0)
@@ -434,8 +434,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "stretch") != 0 && strcmp(field_name, "snapshot_mode") != 0 &&
       strcmp(field_name, "strip_ansi") != 0 && strcmp(field_name, "quiet") != 0 &&
       strcmp(field_name, "encrypt_enabled") != 0 && strcmp(field_name, "no_encrypt") != 0 &&
-      strcmp(field_name, "acds") != 0 && strcmp(field_name, "acds_expose_ip") != 0 &&
-      strcmp(field_name, "acds_insecure") != 0 && strcmp(field_name, "webrtc") != 0 &&
+      strcmp(field_name, "discovery") != 0 && strcmp(field_name, "discovery_expose_ip") != 0 &&
+      strcmp(field_name, "discovery_insecure") != 0 && strcmp(field_name, "webrtc") != 0 &&
       strcmp(field_name, "lan_discovery") != 0 && strcmp(field_name, "no_mdns_advertise") != 0 &&
       strcmp(field_name, "prefer_webrtc") != 0 && strcmp(field_name, "no_webrtc") != 0 &&
       strcmp(field_name, "webrtc_skip_stun") != 0 && strcmp(field_name, "webrtc_disable_turn") != 0 &&
@@ -475,14 +475,14 @@ static void string_field_updater(options_t *opts, void *context) {
     SAFE_STRNCPY(opts->server_key, ctx->value, sizeof(opts->server_key));
   else if (strcmp(ctx->field_name, "client_keys") == 0)
     SAFE_STRNCPY(opts->client_keys, ctx->value, sizeof(opts->client_keys));
-  else if (strcmp(ctx->field_name, "acds_server") == 0)
-    SAFE_STRNCPY(opts->acds_server, ctx->value, sizeof(opts->acds_server));
-  else if (strcmp(ctx->field_name, "acds_server_key") == 0)
-    SAFE_STRNCPY(opts->acds_server_key, ctx->value, sizeof(opts->acds_server_key));
-  else if (strcmp(ctx->field_name, "acds_key_path") == 0)
-    SAFE_STRNCPY(opts->acds_key_path, ctx->value, sizeof(opts->acds_key_path));
-  else if (strcmp(ctx->field_name, "acds_database_path") == 0)
-    SAFE_STRNCPY(opts->acds_database_path, ctx->value, sizeof(opts->acds_database_path));
+  else if (strcmp(ctx->field_name, "discovery_server") == 0)
+    SAFE_STRNCPY(opts->discovery_server, ctx->value, sizeof(opts->discovery_server));
+  else if (strcmp(ctx->field_name, "discovery_service_key") == 0)
+    SAFE_STRNCPY(opts->discovery_service_key, ctx->value, sizeof(opts->discovery_service_key));
+  else if (strcmp(ctx->field_name, "discovery_key_path") == 0)
+    SAFE_STRNCPY(opts->discovery_key_path, ctx->value, sizeof(opts->discovery_key_path));
+  else if (strcmp(ctx->field_name, "discovery_database_path") == 0)
+    SAFE_STRNCPY(opts->discovery_database_path, ctx->value, sizeof(opts->discovery_database_path));
   else if (strcmp(ctx->field_name, "log_file") == 0)
     SAFE_STRNCPY(opts->log_file, ctx->value, sizeof(opts->log_file));
   else if (strcmp(ctx->field_name, "media_file") == 0)
@@ -518,9 +518,9 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
   if (strcmp(field_name, "address") != 0 && strcmp(field_name, "address6") != 0 && strcmp(field_name, "port") != 0 &&
       strcmp(field_name, "encrypt_key") != 0 && strcmp(field_name, "password") != 0 &&
       strcmp(field_name, "encrypt_keyfile") != 0 && strcmp(field_name, "server_key") != 0 &&
-      strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "acds_server") != 0 &&
-      strcmp(field_name, "acds_server_key") != 0 && strcmp(field_name, "acds_key_path") != 0 &&
-      strcmp(field_name, "acds_database_path") != 0 && strcmp(field_name, "log_file") != 0 &&
+      strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&
+      strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_key_path") != 0 &&
+      strcmp(field_name, "discovery_database_path") != 0 && strcmp(field_name, "log_file") != 0 &&
       strcmp(field_name, "media_file") != 0 && strcmp(field_name, "palette_custom") != 0 &&
       strcmp(field_name, "stun_servers") != 0 && strcmp(field_name, "turn_servers") != 0 &&
       strcmp(field_name, "turn_username") != 0 && strcmp(field_name, "turn_credential") != 0 &&

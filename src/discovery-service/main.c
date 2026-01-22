@@ -84,7 +84,7 @@ int acds_main(void) {
   uint8_t public_key[32];
   uint8_t secret_key[64];
 
-  const char *acds_key_path = GET_OPTION(acds_key_path);
+  const char *acds_key_path = GET_OPTION(discovery_key_path);
   log_info("Loading identity key from %s", acds_key_path);
   result = acds_identity_load(acds_key_path, public_key, secret_key);
 
@@ -129,7 +129,7 @@ int acds_main(void) {
   const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "acds.log";
   SAFE_STRNCPY(config.address, address, sizeof(config.address));
   SAFE_STRNCPY(config.address6, address6, sizeof(config.address6));
-  SAFE_STRNCPY(config.database_path, GET_OPTION(acds_database_path), sizeof(config.database_path));
+  SAFE_STRNCPY(config.database_path, GET_OPTION(discovery_database_path), sizeof(config.database_path));
   SAFE_STRNCPY(config.key_path, acds_key_path, sizeof(config.key_path));
   SAFE_STRNCPY(config.log_file, log_file, sizeof(config.log_file));
   config.log_level = GET_OPTION(log_level);
