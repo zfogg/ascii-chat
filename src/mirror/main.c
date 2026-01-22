@@ -185,21 +185,24 @@ int mirror_main(void) {
   capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
   capture_config.callback_data = NULL;
 
+  // Temporary media source for probing (FPS detection, audio detection)
+  // Reuse same source to avoid multiple YouTube yt-dlp extractions
+  media_source_t *probe_source = NULL;
+
   if (media_url && strlen(media_url) > 0) {
     // User specified a network URL (takes priority over --file)
     log_info("Using network URL: %s", media_url);
     capture_config.type = MEDIA_SOURCE_FILE;
     capture_config.path = media_url;
 
-    // Detect native FPS from URL (uses cache if recently extracted)
-    media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
-    if (temp_source) {
-      double url_fps = media_source_get_video_fps(temp_source);
+    // Create probe source once and reuse for FPS and audio detection
+    probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
+    if (probe_source) {
+      double url_fps = media_source_get_video_fps(probe_source);
       if (url_fps > 0.0) {
         capture_config.target_fps = (uint32_t)(url_fps + 0.5);
         log_debug("URL FPS: %.1f (using %u)", url_fps, capture_config.target_fps);
       }
-      media_source_destroy(temp_source);
     }
     capture_config.loop = false; // Network URLs cannot be looped
   } else if (media_file && strlen(media_file) > 0) {
@@ -211,15 +214,14 @@ int mirror_main(void) {
       capture_config.type = MEDIA_SOURCE_FILE;
       capture_config.path = media_file;
 
-      // Detect native FPS from file
-      media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
-      if (temp_source) {
-        double file_fps = media_source_get_video_fps(temp_source);
+      // Create probe source once and reuse for FPS and audio detection
+      probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
+      if (probe_source) {
+        double file_fps = media_source_get_video_fps(probe_source);
         if (file_fps > 0.0) {
           capture_config.target_fps = (uint32_t)(file_fps + 0.5);
           log_debug("File FPS: %.1f (using %u)", file_fps, capture_config.target_fps);
         }
-        media_source_destroy(temp_source);
       }
     }
     capture_config.loop = GET_OPTION(media_loop);
@@ -243,10 +245,9 @@ int mirror_main(void) {
   audio_context_t *audio_ctx = NULL;
   bool audio_available = false;
 
-  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path) {
-    // Check if file has audio stream (uses cache if recently extracted)
-    media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, capture_config.path);
-    if (temp_source && media_source_has_audio(temp_source)) {
+  // Check if file/URL has audio stream (reuse probe_source to avoid multiple yt-dlp extractions)
+  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && probe_source) {
+    if (media_source_has_audio(probe_source)) {
       audio_available = true;
       audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
       if (audio_ctx) {
@@ -281,9 +282,11 @@ int mirror_main(void) {
         }
       }
     }
-    if (temp_source) {
-      media_source_destroy(temp_source);
-    }
+  }
+
+  // Clean up probe source now that we're done probing
+  if (probe_source) {
+    media_source_destroy(probe_source);
   }
 
   session_display_config_t display_config = {0};
