@@ -1827,15 +1827,13 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
 
-  // Determine if this is binary-level help (no mode specified)
-  // Use invalid mode value (-1) to indicate binary help
-  bool for_binary_help = true;       // options_config_print_usage is for binary-level help
-  asciichat_mode_t binary_mode = -1; // Invalid mode sentinel for binary help
+  // For binary-level help, we only show binary options
+  bool for_binary_help = true;
 
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
     // Filter by mode_bitmask - for binary help, show binary options
-    if (!option_applies_to_mode(desc, binary_mode, for_binary_help) || !desc->group) {
+    if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc->group) {
       continue;
     }
 
@@ -1868,9 +1866,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Skip if not in current group or if doesn't apply to mode
-      // Use invalid mode sentinel for binary help
-      asciichat_mode_t binary_mode = -1;
-      if (!option_applies_to_mode(desc, binary_mode, for_binary_help) || !desc->group ||
+      if (!option_applies_to_mode(desc, MODE_SERVER, for_binary_help) || !desc->group ||
           strcmp(desc->group, current_group) != 0) {
         continue;
       }
