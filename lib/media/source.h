@@ -91,6 +91,15 @@ typedef enum {
  * Forward declaration of media source structure. Use media_source_create()
  * to create and media_source_destroy() to cleanup.
  *
+ * THREAD SAFETY:
+ * ==============
+ * - media_source_read_video() and media_source_read_audio() may be called
+ *   from different threads (e.g., video render thread + audio callback thread)
+ * - Both operations access the shared FFmpeg decoder
+ * - FFmpeg decoders are NOT thread-safe for concurrent operations
+ * - media_source_t uses internal synchronization to protect decoder access
+ * - Callers do NOT need external locking
+ *
  * @ingroup media
  */
 typedef struct media_source_t media_source_t;

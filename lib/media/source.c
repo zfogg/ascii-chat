@@ -8,6 +8,7 @@
 #include "video/webcam/webcam.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"
+#include "platform/abstraction.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -23,8 +24,12 @@ struct media_source_t {
   webcam_context_t *webcam_ctx;
   unsigned short int webcam_index;
 
-  // FFmpeg decoder (for FILE and STDIN types)
-  ffmpeg_decoder_t *decoder;
+  // FFmpeg decoders (for FILE and STDIN types)
+  // SEPARATE decoders for video and audio to allow independent reading at different rates
+  // (e.g., video render thread reads at 60fps, audio callback reads at sample-rate callback rate)
+  // Each decoder maintains its own stream position, avoiding interference
+  ffmpeg_decoder_t *video_decoder;
+  ffmpeg_decoder_t *audio_decoder;
 
   // Cached path (for FILE type)
   char *file_path;
@@ -92,27 +97,49 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    source->decoder = ffmpeg_decoder_create(path);
-    if (!source->decoder) {
-      log_error("Failed to open media file: %s", path);
+    // Create separate decoders for video and audio to allow independent reading
+    // Each maintains its own stream position, preventing interference between threads
+    source->video_decoder = ffmpeg_decoder_create(path);
+    if (!source->video_decoder) {
+      log_error("Failed to open media file for video: %s", path);
       SAFE_FREE(source->file_path);
       SAFE_FREE(source);
       return NULL;
     }
 
-    log_debug("Media source: File '%s'", path);
-    break;
-  }
-
-  case MEDIA_SOURCE_STDIN: {
-    source->decoder = ffmpeg_decoder_create_stdin();
-    if (!source->decoder) {
-      log_error("Failed to open stdin for media input");
+    source->audio_decoder = ffmpeg_decoder_create(path);
+    if (!source->audio_decoder) {
+      log_error("Failed to open media file for audio: %s", path);
+      ffmpeg_decoder_destroy(source->video_decoder);
+      source->video_decoder = NULL;
+      SAFE_FREE(source->file_path);
       SAFE_FREE(source);
       return NULL;
     }
 
-    log_debug("Media source: stdin");
+    log_debug("Media source: File '%s' (separate video/audio decoders)", path);
+    break;
+  }
+
+  case MEDIA_SOURCE_STDIN: {
+    // Create separate decoders for video and audio from stdin
+    source->video_decoder = ffmpeg_decoder_create_stdin();
+    if (!source->video_decoder) {
+      log_error("Failed to open stdin for video input");
+      SAFE_FREE(source);
+      return NULL;
+    }
+
+    source->audio_decoder = ffmpeg_decoder_create_stdin();
+    if (!source->audio_decoder) {
+      log_error("Failed to open stdin for audio input");
+      ffmpeg_decoder_destroy(source->video_decoder);
+      source->video_decoder = NULL;
+      SAFE_FREE(source);
+      return NULL;
+    }
+
+    log_debug("Media source: stdin (separate video/audio decoders)");
     break;
   }
 
@@ -146,9 +173,14 @@ void media_source_destroy(media_source_t *source) {
     source->webcam_ctx = NULL;
   }
 
-  if (source->decoder) {
-    ffmpeg_decoder_destroy(source->decoder);
-    source->decoder = NULL;
+  if (source->video_decoder) {
+    ffmpeg_decoder_destroy(source->video_decoder);
+    source->video_decoder = NULL;
+  }
+
+  if (source->audio_decoder) {
+    ffmpeg_decoder_destroy(source->audio_decoder);
+    source->audio_decoder = NULL;
   }
 
   if (source->file_path) {
@@ -182,19 +214,19 @@ image_t *media_source_read_video(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return NULL;
     }
 
-    image_t *frame = ffmpeg_decoder_read_video_frame(source->decoder);
+    image_t *frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
 
     // Handle EOF with loop
-    if (!frame && ffmpeg_decoder_at_end(source->decoder)) {
+    if (!frame && ffmpeg_decoder_at_end(source->video_decoder)) {
       if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
         log_debug("End of file reached, rewinding for loop");
         if (media_source_rewind(source) == ASCIICHAT_OK) {
           // Try reading again after rewind
-          frame = ffmpeg_decoder_read_video_frame(source->decoder);
+          frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
         }
       }
     }
@@ -219,7 +251,7 @@ bool media_source_has_video(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    return source->decoder && ffmpeg_decoder_has_video(source->decoder);
+    return source->video_decoder && ffmpeg_decoder_has_video(source->video_decoder);
 
   default:
     return false;
@@ -243,19 +275,19 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
-    if (!source->decoder) {
+    if (!source->audio_decoder) {
       return 0;
     }
 
-    size_t samples_read = ffmpeg_decoder_read_audio_samples(source->decoder, buffer, num_samples);
+    size_t samples_read = ffmpeg_decoder_read_audio_samples(source->audio_decoder, buffer, num_samples);
 
     // Handle EOF with loop
-    if (samples_read == 0 && ffmpeg_decoder_at_end(source->decoder)) {
+    if (samples_read == 0 && ffmpeg_decoder_at_end(source->audio_decoder)) {
       if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
         log_debug("End of file reached (audio), rewinding for loop");
         if (media_source_rewind(source) == ASCIICHAT_OK) {
           // Try reading again after rewind
-          samples_read = ffmpeg_decoder_read_audio_samples(source->decoder, buffer, num_samples);
+          samples_read = ffmpeg_decoder_read_audio_samples(source->audio_decoder, buffer, num_samples);
         }
       }
     }
@@ -280,7 +312,7 @@ bool media_source_has_audio(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    return source->decoder && ffmpeg_decoder_has_audio(source->decoder);
+    return source->audio_decoder && ffmpeg_decoder_has_audio(source->audio_decoder);
 
   default:
     return false;
@@ -315,14 +347,14 @@ bool media_source_at_end(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return true;
     }
     // If loop is enabled, we never truly reach end
     if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
       return false;
     }
-    return ffmpeg_decoder_at_end(source->decoder);
+    return ffmpeg_decoder_at_end(source->video_decoder);
 
   default:
     return true;
@@ -340,10 +372,15 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
     return ASCIICHAT_OK; // No-op for webcam
 
   case MEDIA_SOURCE_FILE:
-    if (!source->decoder) {
+    if (!source->video_decoder || !source->audio_decoder) {
       return ERROR_INVALID_PARAM;
     }
-    return ffmpeg_decoder_rewind(source->decoder);
+    // Rewind both video and audio decoders to keep them in sync
+    asciichat_error_t video_result = ffmpeg_decoder_rewind(source->video_decoder);
+    if (video_result != ASCIICHAT_OK) {
+      return video_result;
+    }
+    return ffmpeg_decoder_rewind(source->audio_decoder);
 
   case MEDIA_SOURCE_STDIN:
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
@@ -369,10 +406,10 @@ double media_source_get_duration(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return -1.0;
     }
-    return ffmpeg_decoder_get_duration(source->decoder);
+    return ffmpeg_decoder_get_duration(source->video_decoder);
 
   default:
     return -1.0;
@@ -391,10 +428,10 @@ double media_source_get_position(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return -1.0;
     }
-    return ffmpeg_decoder_get_position(source->decoder);
+    return ffmpeg_decoder_get_position(source->video_decoder);
 
   default:
     return -1.0;
