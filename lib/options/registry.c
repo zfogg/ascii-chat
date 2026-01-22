@@ -365,15 +365,12 @@ static const registry_entry_t g_options_registry[] = {
      "Expected server public key (client)", "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0, "Allowed client keys (server)",
-     "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-service-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
-     "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
      "SECURITY", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure),
      &g_default_discovery_insecure, sizeof(bool),
-     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // NETWORK GROUP (general network options, various modes)
     {"port", 'p', OPTION_TYPE_STRING, offsetof(options_t, port), &g_default_port, 0, "Server port", "NETWORK", false,
