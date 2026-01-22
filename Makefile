@@ -82,7 +82,7 @@ configure:
 
 build: configure
 	@echo "Building ascii-chat..."
-	@env MAKEFLAGS= $(CMAKE) --build "$(BUILD_DIR)"
+	@env MAKEFLAGS= $(CMAKE) --build "$(BUILD_DIR)" --target ascii-chat
 
 ninja: build
 	@cd "$(BUILD_DIR)" && ninja $(NINJA_ARGS)
