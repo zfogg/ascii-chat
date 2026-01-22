@@ -8,6 +8,7 @@
 #include "logging.h"
 #include "../util/string.h"
 #include "../platform/system.h"
+#include "../video/ansi.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
@@ -227,46 +228,6 @@ static bool is_env_var(const char *str, size_t pos, size_t *end_pos) {
 }
 
 /**
- * @brief Check if we're currently in a reset state (no active color)
- *
- * Scans the message from start to current position, tracking ANSI escape codes.
- * Returns true if the last color-affecting code was a reset.
- *
- * @param message Full message
- * @param pos Current position to check
- * @return true if currently in reset state (can apply colors)
- */
-static bool is_in_reset_state(const char *message, size_t pos) {
-  bool in_reset = true; // Start in reset state
-
-  // Scan from beginning to current position looking for ANSI codes
-  for (size_t i = 0; i < pos && message[i] != '\0'; i++) {
-    if (message[i] == '\x1b' && message[i + 1] == '[') {
-      // Found ANSI escape sequence start
-      // Look for the end marker 'm'
-      size_t j = i + 2;
-      while (message[j] != '\0' && message[j] != 'm') {
-        j++;
-      }
-
-      if (message[j] == 'm') {
-        // Extract the color code part (between [ and m)
-        // Check if it's a reset code: \x1b[0m or \x1b[m
-        if ((j == i + 3 && message[i + 2] == '0') || (j == i + 2)) {
-          // Reset code
-          in_reset = true;
-        } else {
-          // Color code (anything else)
-          in_reset = false;
-        }
-      }
-    }
-  }
-
-  return in_reset;
-}
-
-/**
  * @brief Colorize a log message for terminal output
  *
  * Uses 4 rotating static buffers like colored_string() to handle multiple
@@ -299,8 +260,8 @@ const char *colorize_log_message(const char *message) {
   for (size_t i = 0; message[i] != '\0' && out_pos < max_size - 100; i++) {
     size_t end_pos = 0;
 
-    // Check if we're in reset state before trying to colorize
-    bool can_colorize = is_in_reset_state(message, i);
+    // Check if already colorized - only colorize if NOT already colored
+    bool can_colorize = !ansi_is_already_colorized(message, i);
 
     // Try numeric pattern
     if (can_colorize && is_numeric_pattern(message, i, &end_pos)) {
