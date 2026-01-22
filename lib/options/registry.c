@@ -175,6 +175,59 @@ static bool parse_cookies_from_browser(const char *arg, void *dest, char **error
   return true;
 }
 
+// ============================================================================
+// Static Default Values for Non-String Types
+// ============================================================================
+// These small wrappers are needed because registry_entry_t uses const void * for
+// default_value. This replaces the old g_default_* approach - we now have just one
+// variable per unique default value, automatically used by all options sharing it.
+
+static const int default_log_level_value = DEFAULT_LOG_LEVEL;
+static const int default_width_value = OPT_WIDTH_DEFAULT;
+static const int default_height_value = OPT_HEIGHT_DEFAULT;
+static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
+static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
+static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
+static const int default_color_mode_value = TERM_COLOR_AUTO;
+static const int default_render_mode_value = RENDER_MODE_FOREGROUND;
+static const int default_palette_type_value = PALETTE_STANDARD;
+static const bool default_show_capabilities_value = OPT_SHOW_CAPABILITIES_DEFAULT;
+static const bool default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
+static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
+static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
+static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
+static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
+static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
+static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
+static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
+static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
+static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
+static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
+static const bool default_webrtc_value = OPT_WEBRTC_DEFAULT;
+static const bool default_enable_upnp_value = OPT_ENABLE_UPNP_DEFAULT;
+static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
+static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
+static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
+static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
+static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
+static const double default_media_seek_value = 0.0;
+static const bool default_no_cookies_value = false;
+static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
+static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;
+static const int default_speakers_index_value = OPT_SPEAKERS_INDEX_DEFAULT;
+static const float default_microphone_sensitivity_value = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
+static const float default_speakers_volume_value = OPT_SPEAKERS_VOLUME_DEFAULT;
+static const bool default_audio_analysis_value = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
+static const bool default_no_audio_playback_value = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
+static const bool default_encode_audio_value = OPT_ENCODE_AUDIO_DEFAULT;
+static const bool default_no_encode_audio_value = !OPT_ENCODE_AUDIO_DEFAULT;
+static const bool default_discovery_expose_ip_value = OPT_ACDS_EXPOSE_IP_DEFAULT;
+static const bool default_discovery_insecure_value = OPT_ACDS_INSECURE_DEFAULT;
+static const bool default_require_server_identity_value = false;
+static const bool default_require_client_identity_value = false;
+
 /**
  * @brief Registry entry - stores option definition with mode bitmask
  */
@@ -197,159 +250,90 @@ typedef struct {
 } registry_entry_t;
 
 // ============================================================================
-// Static Defaults for Registry Entries (Moved from presets.c context)
-// ============================================================================
-static const log_level_t g_default_log_level = DEFAULT_LOG_LEVEL;
-static const unsigned short int g_default_verbose = 0;
-static const bool g_default_quiet = OPT_QUIET_DEFAULT;
-
-static const int g_default_width = OPT_WIDTH_DEFAULT;
-static const int g_default_height = OPT_HEIGHT_DEFAULT;
-// static const bool g_default_auto_width = OPT_AUTO_WIDTH_DEFAULT; // auto_width is not an option
-// static const bool g_default_auto_height = OPT_AUTO_HEIGHT_DEFAULT; // auto_height is not an option
-
-static const unsigned short int g_default_webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
-static const bool g_default_webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
-static const bool g_default_test_pattern = OPT_TEST_PATTERN_DEFAULT;
-
-static const terminal_color_mode_t g_default_color_mode = TERM_COLOR_AUTO;
-static const render_mode_t g_default_render_mode = RENDER_MODE_FOREGROUND;
-static const palette_type_t g_default_palette_type = PALETTE_STANDARD;
-static const bool g_default_show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
-static const bool g_default_force_utf8 = OPT_FORCE_UTF8_DEFAULT;
-static const bool g_default_stretch = OPT_STRETCH_DEFAULT;
-static const bool g_default_strip_ansi = OPT_STRIP_ANSI_DEFAULT;
-static const int g_default_fps = 0; // 0 means use default logic (60)
-
-static const bool g_default_snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
-static const double g_default_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
-
-static const int g_default_compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-static const bool g_default_no_compress = OPT_NO_COMPRESS_DEFAULT;
-
-static const bool g_default_encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
-static const bool g_default_no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
-
-static const char *g_default_port = OPT_PORT_DEFAULT; // Server, Client, ACDS
-static const int g_default_max_clients = OPT_MAX_CLIENTS_DEFAULT;
-static const int g_default_reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-
-static const char *g_default_discovery_server = OPT_ENDPOINT_DISCOVERY_SERVICE;
-static const int g_default_discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
-static const bool g_default_webrtc = OPT_WEBRTC_DEFAULT;
-static const bool g_default_discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
-static const bool g_default_discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
-static const bool g_default_enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
-static const bool g_default_lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
-static const bool g_default_prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
-static const bool g_default_no_webrtc = OPT_NO_WEBRTC_DEFAULT;
-static const bool g_default_webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
-static const bool g_default_webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
-
-static const bool g_default_media_loop = OPT_MEDIA_LOOP_DEFAULT;
-static const double g_default_media_seek_timestamp = 0.0;
-static const char *g_default_cookies_from_browser_value = NULL; // Explicitly NULL for optional_arg to default to chrome
-static const bool g_default_no_cookies_from_browser = false;
-
-static const bool g_default_audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
-static const int g_default_microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
-static const int g_default_speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
-static const float g_default_microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
-static const float g_default_speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT;
-static const bool g_default_audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
-static const bool g_default_no_audio_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
-static const bool g_default_encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
-static const bool g_default_no_encode_audio = !OPT_ENCODE_AUDIO_DEFAULT; // For --no-encode-audio, default is true
-
-static const bool g_default_require_server_identity = false; // Default: no requirement
-static const bool g_default_require_client_identity = false; // Default: no requirement
-
-// ============================================================================
 // Complete Options Registry
 // ============================================================================
 static const registry_entry_t g_options_registry[] = {
     // LOGGING GROUP (binary-level)
     {"log-file", 'L', OPTION_TYPE_STRING, offsetof(options_t, log_file), "", 0, "Redirect logs to FILE", "LOGGING",
      false, "ASCII_CHAT_LOG_FILE", NULL, NULL, false, false, OPTION_MODE_BINARY},
-    {"log-level", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, log_level), &g_default_log_level, sizeof(log_level_t),
+    {"log-level", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, log_level), &default_log_level_value, sizeof(log_level_t),
      "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false, NULL, NULL, parse_log_level, false, false,
      OPTION_MODE_BINARY},
-    {"verbose", 'V', OPTION_TYPE_CALLBACK, offsetof(options_t, verbose_level), &g_default_verbose,
-     sizeof(unsigned short int), "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false, NULL,
-     NULL, parse_verbose_flag, false, true, OPTION_MODE_BINARY},
-    {"quiet", 'q', OPTION_TYPE_BOOL, offsetof(options_t, quiet), &g_default_quiet, sizeof(bool),
+    {"verbose", 'V', OPTION_TYPE_CALLBACK, offsetof(options_t, verbose_level), 0, sizeof(unsigned short int),
+     "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false, NULL, NULL, parse_verbose_flag,
+     false, true, OPTION_MODE_BINARY},
+    {"quiet", 'q', OPTION_TYPE_BOOL, offsetof(options_t, quiet), OPT_QUIET_DEFAULT, sizeof(bool),
      "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, NULL, NULL, false, false,
      OPTION_MODE_BINARY},
 
     // TERMINAL GROUP (client, mirror, discovery)
-    {"width", 'x', OPTION_TYPE_INT, offsetof(options_t, width), &g_default_width, sizeof(int),
+    {"width", 'x', OPTION_TYPE_INT, offsetof(options_t, width), &default_width_value, sizeof(int),
      "Terminal width in characters", "TERMINAL", false, "ASCII_CHAT_WIDTH", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"height", 'y', OPTION_TYPE_INT, offsetof(options_t, height), &g_default_height, sizeof(int),
+    {"height", 'y', OPTION_TYPE_INT, offsetof(options_t, height), &default_height_value, sizeof(int),
      "Terminal height in characters", "TERMINAL", false, "ASCII_CHAT_HEIGHT", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // WEBCAM GROUP (client, mirror, discovery)
-    {"webcam-index", 'c', OPTION_TYPE_INT, offsetof(options_t, webcam_index), &g_default_webcam_index,
+    {"webcam-index", 'c', OPTION_TYPE_INT, offsetof(options_t, webcam_index), &default_webcam_index_value,
      sizeof(unsigned short int), "Webcam device index", "WEBCAM", false, "ASCII_CHAT_WEBCAM_INDEX", NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"webcam-flip", 'g', OPTION_TYPE_BOOL, offsetof(options_t, webcam_flip), &g_default_webcam_flip, sizeof(bool),
+    {"webcam-flip", 'g', OPTION_TYPE_BOOL, offsetof(options_t, webcam_flip), &default_webcam_flip_value, sizeof(bool),
      "Flip webcam horizontally", "WEBCAM", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &g_default_test_pattern, sizeof(bool),
+    {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &default_test_pattern_value, sizeof(bool),
      "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // DISPLAY GROUP (client, mirror, discovery)
-    {"color-mode", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, color_mode), &g_default_color_mode,
+    {"color-mode", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, color_mode), &default_color_mode_value,
      sizeof(terminal_color_mode_t), "Terminal color level (auto, none, 16, 256, truecolor)", "DISPLAY", false,
      "ASCII_CHAT_COLOR_MODE", NULL, parse_color_mode, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"render-mode", 'M', OPTION_TYPE_CALLBACK, offsetof(options_t, render_mode), &g_default_render_mode,
+    {"render-mode", 'M', OPTION_TYPE_CALLBACK, offsetof(options_t, render_mode), &default_render_mode_value,
      sizeof(render_mode_t), "Render mode (foreground, background, half-block)", "DISPLAY", false,
      "ASCII_CHAT_RENDER_MODE", NULL, parse_render_mode, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"palette", 'P', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_type), &g_default_palette_type,
-     sizeof(palette_type_t), "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false,
-     "ASCII_CHAT_PALETTE", NULL, parse_palette_type, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"palette", 'P', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_type), &default_palette_type_value, sizeof(palette_type_t),
+     "ASCII palette type (standard, blocks, digital, minimal, cool, custom)", "DISPLAY", false, "ASCII_CHAT_PALETTE",
+     NULL, parse_palette_type, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"palette-chars", 'C', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_custom), "", 0,
      "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL, NULL, parse_palette_chars, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities), &g_default_show_capabilities,
+    {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities), &default_show_capabilities_value,
      sizeof(bool), "Show terminal capabilities and exit", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"utf8", '\0', OPTION_TYPE_BOOL, offsetof(options_t, force_utf8), &g_default_force_utf8, sizeof(bool),
+    {"utf8", '\0', OPTION_TYPE_BOOL, offsetof(options_t, force_utf8), &default_force_utf8_value, sizeof(bool),
      "Force UTF-8 support", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"stretch", 's', OPTION_TYPE_BOOL, offsetof(options_t, stretch), &g_default_stretch, sizeof(bool),
+    {"stretch", 's', OPTION_TYPE_BOOL, offsetof(options_t, stretch), &default_stretch_value, sizeof(bool),
      "Allow aspect ratio distortion", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"strip-ansi", '\0', OPTION_TYPE_BOOL, offsetof(options_t, strip_ansi), &g_default_strip_ansi, sizeof(bool),
+    {"strip-ansi", '\0', OPTION_TYPE_BOOL, offsetof(options_t, strip_ansi), &default_strip_ansi_value, sizeof(bool),
      "Strip ANSI escape sequences", "DISPLAY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"fps", '\0', OPTION_TYPE_INT, offsetof(options_t, fps), &g_default_fps, sizeof(int),
-     "Target framerate (1-144, 0=use default)", "DISPLAY", false, "ASCII_CHAT_FPS", NULL, NULL, false, false,
+    {"fps", '\0', OPTION_TYPE_INT, offsetof(options_t, fps), 0, sizeof(int), "Target framerate (1-144, 0=use default)",
+     "DISPLAY", false, "ASCII_CHAT_FPS", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // SNAPSHOT GROUP (client, mirror, discovery)
-    {"snapshot", 'S', OPTION_TYPE_BOOL, offsetof(options_t, snapshot_mode), &g_default_snapshot_mode, sizeof(bool),
+    {"snapshot", 'S', OPTION_TYPE_BOOL, offsetof(options_t, snapshot_mode), &default_snapshot_mode_value, sizeof(bool),
      "Snapshot mode (one frame and exit)", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"snapshot-delay", 'D', OPTION_TYPE_DOUBLE, offsetof(options_t, snapshot_delay), &g_default_snapshot_delay,
+    {"snapshot-delay", 'D', OPTION_TYPE_DOUBLE, offsetof(options_t, snapshot_delay), &default_snapshot_delay_value,
      sizeof(double), "Snapshot delay in seconds", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT_DELAY", NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // PERFORMANCE GROUP (client, server, discovery)
-    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level), &g_default_compression_level,
+    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level), &default_compression_level_value,
      sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false, "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &g_default_no_compress, sizeof(bool),
+    {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &default_no_compress_value, sizeof(bool),
      "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
 
     // SECURITY GROUP (client, server, discovery)
-    {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &g_default_encrypt_enabled, sizeof(bool),
+    {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &default_encrypt_enabled_value, sizeof(bool),
      "Enable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0, "SSH/GPG key file path", "SECURITY",
@@ -358,7 +342,7 @@ static const registry_entry_t g_options_registry[] = {
     {"password", '\0', OPTION_TYPE_STRING, offsetof(options_t, password), "", 0, "Shared password for authentication",
      "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"no-encrypt", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_encrypt), &g_default_no_encrypt, sizeof(bool),
+    {"no-encrypt", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_encrypt), &default_no_encrypt_value, sizeof(bool),
      "Disable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, server_key), "", 0,
@@ -367,46 +351,45 @@ static const registry_entry_t g_options_registry[] = {
     {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0, "Allowed client keys (server)",
      "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure),
-     &g_default_discovery_insecure, sizeof(bool),
-     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure), &default_discovery_insecure_value,
+     sizeof(bool), "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL,
+     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"discovery-server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
      "Discovery server public key for verification (SSH/GPG key or HTTPS URL)", "SECURITY", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // NETWORK GROUP (general network options, various modes)
-    {"port", 'p', OPTION_TYPE_STRING, offsetof(options_t, port), &g_default_port, 0, "Server port", "NETWORK", false,
+    {"port", 'p', OPTION_TYPE_STRING, offsetof(options_t, port), OPT_PORT_DEFAULT, 0, "Server port", "NETWORK", false,
      "ASCII_CHAT_PORT", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"max-clients", '\0', OPTION_TYPE_INT, offsetof(options_t, max_clients), &g_default_max_clients, sizeof(int),
+    {"max-clients", '\0', OPTION_TYPE_INT, offsetof(options_t, max_clients), &default_max_clients_value, sizeof(int),
      "Maximum concurrent clients (server only)", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC}, // Server and Discovery Service
     {"reconnect-attempts", '\0', OPTION_TYPE_INT, offsetof(options_t, reconnect_attempts),
-     &g_default_reconnect_attempts, sizeof(int), "Number of reconnection attempts (-1=infinite, 0=none)", "NETWORK",
+     &default_reconnect_attempts_value, sizeof(int), "Number of reconnection attempts (-1=infinite, 0=none)", "NETWORK",
      false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
 
     // WebRTC options
-    {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &g_default_webrtc, sizeof(bool),
+    {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &default_webrtc_value, sizeof(bool),
      "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"upnp", '\0', OPTION_TYPE_BOOL, offsetof(options_t, enable_upnp), &g_default_enable_upnp, sizeof(bool),
+    {"upnp", '\0', OPTION_TYPE_BOOL, offsetof(options_t, enable_upnp), &default_enable_upnp_value, sizeof(bool),
      "Enable UPnP/NAT-PMP port mapping for direct TCP", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
-    {"scan", '\0', OPTION_TYPE_BOOL, offsetof(options_t, lan_discovery), &g_default_lan_discovery, sizeof(bool),
+    {"scan", '\0', OPTION_TYPE_BOOL, offsetof(options_t, lan_discovery), &default_lan_discovery_value, sizeof(bool),
      "Scan for servers on local network via mDNS", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &g_default_prefer_webrtc,
+    {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &default_prefer_webrtc_value,
      sizeof(bool), "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_webrtc), &g_default_no_webrtc, sizeof(bool),
+    {"no-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_webrtc), &default_no_webrtc_value, sizeof(bool),
      "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &g_default_webrtc_skip_stun,
+    {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &default_webrtc_skip_stun_value,
      sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
-     &g_default_webrtc_disable_turn, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL,
+     &default_webrtc_disable_turn_value, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL,
      NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
@@ -432,48 +415,47 @@ static const registry_entry_t g_options_registry[] = {
     {"url", 'u', OPTION_TYPE_STRING, offsetof(options_t, media_url), "", 0,
      "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file", "MEDIA", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &g_default_media_loop, sizeof(bool),
+    {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &default_media_loop_value, sizeof(bool),
      "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &g_default_media_seek_timestamp,
-     sizeof(double), "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false, NULL,
-     NULL, parse_timestamp, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"cookies-from-browser", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, cookies_from_browser),
-     &g_default_cookies_from_browser_value, 0,
+    {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &default_media_seek_value, sizeof(double),
+     "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false, NULL, NULL,
+     parse_timestamp, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"cookies-from-browser", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, cookies_from_browser), NULL, 0,
      "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
      "Use without argument to default to chrome.",
      "MEDIA", false, NULL, NULL, parse_cookies_from_browser, false, true,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"no-cookies-from-browser", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_cookies_from_browser),
-     &g_default_no_cookies_from_browser, sizeof(bool), "Explicitly disable reading cookies from browser", "MEDIA",
-     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"no-cookies-from-browser", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_cookies_from_browser), false,
+     sizeof(bool), "Explicitly disable reading cookies from browser", "MEDIA", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // AUDIO GROUP (client, discovery)
-    {"audio", 'A', OPTION_TYPE_BOOL, offsetof(options_t, audio_enabled), &g_default_audio_enabled, sizeof(bool),
+    {"audio", 'A', OPTION_TYPE_BOOL, offsetof(options_t, audio_enabled), &default_audio_enabled_value, sizeof(bool),
      "Enable audio streaming", "AUDIO", false, "ASCII_CHAT_AUDIO", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"microphone-index", '\0', OPTION_TYPE_INT, offsetof(options_t, microphone_index), &g_default_microphone_index,
+    {"microphone-index", '\0', OPTION_TYPE_INT, offsetof(options_t, microphone_index), &default_microphone_index_value,
      sizeof(int), "Microphone device index (-1=default)", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX", NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"speakers-index", '\0', OPTION_TYPE_INT, offsetof(options_t, speakers_index), &g_default_speakers_index,
+    {"speakers-index", '\0', OPTION_TYPE_INT, offsetof(options_t, speakers_index), &default_speakers_index_value,
      sizeof(int), "Speakers device index (-1=default)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"microphone-sensitivity", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, microphone_sensitivity),
-     &g_default_microphone_sensitivity, sizeof(float), "Microphone volume multiplier (0.0-1.0)", "AUDIO", false,
+     &default_microphone_sensitivity_value, sizeof(float), "Microphone volume multiplier (0.0-1.0)", "AUDIO", false,
      "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"speakers-volume", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, speakers_volume), &g_default_speakers_volume,
+    {"speakers-volume", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, speakers_volume), &default_speakers_volume_value,
      sizeof(float), "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_VOLUME", NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"audio-analysis", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_analysis_enabled),
-     &g_default_audio_analysis_enabled, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
+     &default_audio_analysis_value, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
      "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback), &g_default_no_audio_playback,
+    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback), &default_no_audio_playback_value,
      sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &g_default_encode_audio, sizeof(bool),
+    {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_encode_audio_value, sizeof(bool),
      "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &g_default_no_encode_audio,
+    {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_no_encode_audio_value,
      sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
@@ -481,22 +463,22 @@ static const registry_entry_t g_options_registry[] = {
     {"database", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
      "Path to SQLite database for discovery service", "DATABASE", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-server", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_server), &g_default_discovery_server, 0,
-     "Discovery service address (for ACDS registration)", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"discovery-port", '\0', OPTION_TYPE_INT, offsetof(options_t, discovery_port), &g_default_discovery_port, sizeof(int),
-     "Discovery service port", "NETWORK", false, NULL, NULL, NULL, false, false,
+    {"discovery-server", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_server),
+     OPT_ENDPOINT_DISCOVERY_SERVICE, 0, "Discovery service address (for ACDS registration)", "NETWORK", false, NULL,
+     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"discovery-port", '\0', OPTION_TYPE_INT, offsetof(options_t, discovery_port), &default_discovery_port_value,
+     sizeof(int), "Discovery service port", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"discovery-expose-ip", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_expose_ip),
-     &g_default_discovery_expose_ip, sizeof(bool),
+     &default_discovery_expose_ip_value, sizeof(bool),
      "Allow public IP disclosure in discovery sessions (requires confirmation)", "NETWORK", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity),
-     &g_default_require_server_identity, sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity",
-     "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
-    {"require-client-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_client_identity),
-     &g_default_require_client_identity, sizeof(bool), "ACDS: require clients to provide signed Ed25519 identity",
-     "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
+    {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity), false,
+     sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity", "SECURITY", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_DISCOVERY_SVC},
+    {"require-client-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_client_identity), false,
+     sizeof(bool), "ACDS: require clients to provide signed Ed25519 identity", "SECURITY", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_DISCOVERY_SVC},
 
     // Generic placeholder to mark end of array
     {NULL, '\0', OPTION_TYPE_BOOL, 0, NULL, 0, NULL, NULL, false, NULL, NULL, NULL, false, false, OPTION_MODE_NONE}};
