@@ -43,6 +43,25 @@ static nat_upnp_context_t *g_upnp_ctx = NULL;
 static asciichat_mdns_t *g_mdns_ctx = NULL;
 
 /**
+ * @brief Atomic flag for shutdown request
+ */
+static atomic_bool g_discovery_should_exit = false;
+
+/**
+ * @brief Check if discovery mode should exit
+ */
+static bool discovery_should_exit(void) {
+  return atomic_load(&g_discovery_should_exit);
+}
+
+/**
+ * @brief Signal discovery mode to exit
+ */
+static void discovery_signal_exit(void) {
+  atomic_store(&g_discovery_should_exit, true);
+}
+
+/**
  * @brief Signal handler for clean shutdown
  */
 static void signal_handler(int sig) {
@@ -50,6 +69,7 @@ static void signal_handler(int sig) {
   if (g_server) {
     atomic_store(&g_server->tcp_server.running, false);
   }
+  discovery_signal_exit();
   // UPnP context will be cleaned up after server shutdown
 }
 
@@ -256,6 +276,12 @@ int acds_main(void) {
     return result;
   }
 
+  // Check if shutdown was requested during initialization
+  if (discovery_should_exit()) {
+    log_info("Shutdown signal received during initialization, skipping server startup");
+    return 0;
+  }
+
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)
   // =========================================================================
@@ -281,6 +307,13 @@ int acds_main(void) {
     }
   } else {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
+  }
+
+  // Check if shutdown was requested before initializing mDNS
+  if (discovery_should_exit()) {
+    log_info("Shutdown signal received before mDNS initialization");
+    result = ASCIICHAT_OK;
+    goto cleanup_resources;
   }
 
   // Initialize mDNS for LAN discovery of ACDS server
@@ -332,6 +365,7 @@ int acds_main(void) {
     log_error("Server run failed");
   }
 
+cleanup_resources:
   // Cleanup
   log_info("Shutting down discovery server...");
   acds_server_shutdown(&server);
