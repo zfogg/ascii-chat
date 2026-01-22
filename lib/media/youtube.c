@@ -280,7 +280,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                        "yt-dlp --quiet --no-warnings "
                        "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                        "--no-cookies-from-browser "
-                       "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                       "-f 'b' -O '%%(url)s' '%s' 2>&1",
                        youtube_url);
   } else {
     // User enabled --cookies-from-browser (with optional browser/keyring specification)
@@ -290,7 +290,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                          "yt-dlp --quiet --no-warnings "
                          "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                          "--cookies-from-browser '%s' "
-                         "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                         "-f 'b' -O '%%(url)s' '%s' 2>&1",
                          cookies_value, youtube_url);
     } else {
       // No browser specified - try common browsers in order
@@ -298,7 +298,7 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
                          "yt-dlp --quiet --no-warnings "
                          "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
                          "--cookies-from-browser chrome "
-                         "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                         "-f 'b' -O '%%(url)s' '%s' 2>&1",
                          youtube_url);
     }
   }
@@ -307,6 +307,9 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     SET_ERRNO(ERROR_INVALID_PARAM, "YouTube URL too long");
     return ERROR_INVALID_PARAM;
   }
+
+  // Debug: log the command being executed
+  log_debug("Executing: %s", command);
 
   // Execute yt-dlp and capture URL output
   FILE *pipe = popen(command, "r");
@@ -328,6 +331,11 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   if (pclose_ret != 0) {
     // Cache the failure so we don't retry this URL
     youtube_cache_set(youtube_url, NULL);
+
+    log_debug("yt-dlp exited with code %d", pclose_ret);
+    if (url_size > 0) {
+      log_debug("yt-dlp output: %s", url_buffer);
+    }
 
     // Provide helpful error message
     const char *help_msg = "";

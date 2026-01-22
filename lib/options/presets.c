@@ -50,6 +50,32 @@ static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
 }
 
 /**
+ * @brief Custom parser for --cookies-from-browser
+ *
+ * Allows --cookies-from-browser to work as an optional argument.
+ * When used without argument, defaults to 'chrome'.
+ * When used with argument, uses specified browser name.
+ */
+static bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
+  (void)error_msg; // Unused but required by function signature
+
+  char *browser_buf = (char *)dest;
+  const size_t max_size = 256;
+
+  if (!arg || arg[0] == '\0') {
+    // No argument provided, default to chrome
+    strncpy(browser_buf, "chrome", max_size - 1);
+    browser_buf[max_size - 1] = '\0';
+    return true;
+  }
+
+  // Copy the provided browser name
+  strncpy(browser_buf, arg, max_size - 1);
+  browser_buf[max_size - 1] = '\0';
+  return true;
+}
+
+/**
  * @brief Custom parser for --seek flag
  *
  * Accepts both "hh:mm:ss.ms" format and plain seconds format.
@@ -429,11 +455,14 @@ void options_builder_add_media_group(options_builder_t *b) {
                                "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)",
                                "MEDIA", false, NULL);
 
-  options_builder_add_string(b, "cookies-from-browser", '\0', offsetof(options_t, cookies_from_browser),
-                             "",  // Default: empty string (will use chrome as fallback)
-                             "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
-                             "Leave empty to try chrome by default.",
-                             "MEDIA", false, NULL, NULL);
+  options_builder_add_callback_optional(b, "cookies-from-browser", '\0',
+                                        offsetof(options_t, cookies_from_browser),
+                                        NULL,  // Default: empty (will use chrome as fallback)
+                                        256,   // Value size: char[256]
+                                        parse_cookies_from_browser,
+                                        "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
+                                        "Use without argument to default to chrome.",
+                                        "MEDIA", false, NULL, true);  // optional_arg=true
 
   options_builder_add_bool(b, "no-cookies-from-browser", '\0', offsetof(options_t, no_cookies_from_browser), false,
                            "Explicitly disable reading cookies from browser",
