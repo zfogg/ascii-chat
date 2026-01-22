@@ -147,8 +147,8 @@ static bool is_file_path(const char *str, size_t pos, size_t *end_pos) {
     // Could be start of relative path like "src/main.c"
     // Look ahead for slash to confirm it's a path
     size_t lookahead = pos;
-    while ((isalnum(str[lookahead]) || str[lookahead] == '_' || str[lookahead] == '-' ||
-            str[lookahead] == '.' || str[lookahead] == '/' || str[lookahead] == '\\') &&
+    while ((isalnum(str[lookahead]) || str[lookahead] == '_' || str[lookahead] == '-' || str[lookahead] == '.' ||
+            str[lookahead] == '/' || str[lookahead] == '\\') &&
            str[lookahead] != '\0') {
       if (str[lookahead] == '/' || str[lookahead] == '\\') {
         // Found a slash, this is a path
@@ -165,9 +165,8 @@ static bool is_file_path(const char *str, size_t pos, size_t *end_pos) {
   }
 
   // Collect the path characters
-  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' &&
-         str[i] != ':' && str[i] != ',' && str[i] != ')' && str[i] != ']' && str[i] != '}' &&
-         str[i] != '"' && str[i] != '\'') {
+  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ':' && str[i] != ',' &&
+         str[i] != ')' && str[i] != ']' && str[i] != '}' && str[i] != '"' && str[i] != '\'') {
     if ((str[i] == '/' || str[i] == '\\') || isalnum(str[i]) || strchr("._-~", str[i])) {
       i++;
     } else {

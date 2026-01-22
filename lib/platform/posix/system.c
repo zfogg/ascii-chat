@@ -696,8 +696,7 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
   int offset = 0;
 
   // Header with color
-  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n",
-                     colored_string(LOG_COLOR_WARN, label));
+  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n", colored_string(LOG_COLOR_WARN, label));
 
   // Calculate frame limits
   int start = skip_frames;
