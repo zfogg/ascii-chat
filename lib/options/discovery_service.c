@@ -183,13 +183,10 @@ void usage_acds(FILE *desc) {
         char colored_first_part[256];
         snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
         char colored_result[512];
-        snprintf(colored_result, sizeof(colored_result), "%s",
-                 colored_string(LOG_COLOR_INFO, colored_first_part));
+        snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
 
         // Use layout function for consistent alignment with rest of help
-        layout_print_two_column_row(desc, colored_result,
-                                    desc_start ? desc_start : "",
-                                    max_col_width, term_width);
+        layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", max_col_width, term_width);
       }
       (void)fprintf(desc, "\n");
     }

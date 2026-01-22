@@ -98,8 +98,8 @@ static void ensure_usage_line_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    usage_descriptor_t *new_usage = SAFE_REALLOC(
-        builder->usage_lines, new_capacity * sizeof(usage_descriptor_t), usage_descriptor_t *);
+    usage_descriptor_t *new_usage =
+        SAFE_REALLOC(builder->usage_lines, new_capacity * sizeof(usage_descriptor_t), usage_descriptor_t *);
     if (!new_usage) {
       log_fatal("Failed to reallocate usage_lines array");
       return;
@@ -118,8 +118,8 @@ static void ensure_example_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    example_descriptor_t *new_examples = SAFE_REALLOC(
-        builder->examples, new_capacity * sizeof(example_descriptor_t), example_descriptor_t *);
+    example_descriptor_t *new_examples =
+        SAFE_REALLOC(builder->examples, new_capacity * sizeof(example_descriptor_t), example_descriptor_t *);
     if (!new_examples) {
       log_fatal("Failed to reallocate examples array");
       return;
@@ -138,8 +138,8 @@ static void ensure_mode_capacity(options_builder_t *builder) {
     if (new_capacity == 0)
       new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
 
-    help_mode_descriptor_t *new_modes = SAFE_REALLOC(
-        builder->modes, new_capacity * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
+    help_mode_descriptor_t *new_modes =
+        SAFE_REALLOC(builder->modes, new_capacity * sizeof(help_mode_descriptor_t), help_mode_descriptor_t *);
     if (!new_modes) {
       log_fatal("Failed to reallocate modes array");
       return;
@@ -785,50 +785,38 @@ void options_builder_add_positional(options_builder_t *builder, const char *name
 // Programmatic Help Generation
 // ============================================================================
 
-void options_builder_add_usage(options_builder_t *builder,
-                               const char *mode,
-                               const char *positional,
-                               bool show_options,
+void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options,
                                const char *description) {
   if (!builder || !description)
     return;
 
   ensure_usage_line_capacity(builder);
 
-  usage_descriptor_t usage = {.mode = mode,
-                              .positional = positional,
-                              .show_options = show_options,
-                              .description = description};
+  usage_descriptor_t usage = {
+      .mode = mode, .positional = positional, .show_options = show_options, .description = description};
 
   builder->usage_lines[builder->num_usage_lines++] = usage;
 }
 
-void options_builder_add_example(options_builder_t *builder,
-                                 const char *mode,
-                                 const char *args,
+void options_builder_add_example(options_builder_t *builder, const char *mode, const char *args,
                                  const char *description) {
   if (!builder || !description)
     return;
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {.mode = mode,
-                                  .args = args,
-                                  .description = description};
+  example_descriptor_t example = {.mode = mode, .args = args, .description = description};
 
   builder->examples[builder->num_examples++] = example;
 }
 
-void options_builder_add_mode(options_builder_t *builder,
-                              const char *name,
-                              const char *description) {
+void options_builder_add_mode(options_builder_t *builder, const char *name, const char *description) {
   if (!builder || !name || !description)
     return;
 
   ensure_mode_capacity(builder);
 
-  help_mode_descriptor_t mode = {.name = name,
-                                 .description = description};
+  help_mode_descriptor_t mode = {.name = name, .description = description};
 
   builder->modes[builder->num_modes++] = mode;
 }
@@ -1418,8 +1406,6 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
   return ASCIICHAT_OK;
 }
 
-
-
 // ============================================================================
 // Programmatic Section Printers for Help Output
 // ============================================================================
@@ -1468,7 +1454,8 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     }
 
     if (usage->show_options) {
-      const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+      const char *options_text =
+          (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
       len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", YELLOW, options_text, RESET);
     }
 
@@ -1563,13 +1550,14 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
 
     // Add positional args if present (green color)
     if (usage->positional) {
-      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
+      len +=
+          snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
     }
 
     // Add options suffix if requested (yellow color)
     if (usage->show_options) {
-      const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]"
-                                                                                       : "[options...]";
+      const char *options_text =
+          (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
       len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
     }
 
@@ -1792,8 +1780,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         switch (desc->type) {
         case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL,
-                                            *(const bool *)desc->default_value ? "true" : "false"));
+                               colored_string(LOG_COLOR_FATAL, *(const bool *)desc->default_value ? "true" : "false"));
           break;
         case OPTION_TYPE_INT: {
           int int_val = 0;
@@ -1806,8 +1793,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         }
         case OPTION_TYPE_STRING:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL,
-                                            *(const char *const *)desc->default_value));
+                               colored_string(LOG_COLOR_FATAL, *(const char *const *)desc->default_value));
           break;
         case OPTION_TYPE_DOUBLE: {
           double double_val = 0.0;
@@ -2000,8 +1986,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         switch (desc->type) {
         case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL,
-                                            *(const bool *)desc->default_value ? "true" : "false"));
+                               colored_string(LOG_COLOR_FATAL, *(const bool *)desc->default_value ? "true" : "false"));
           break;
         case OPTION_TYPE_INT: {
           int int_val = 0;
@@ -2014,8 +1999,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         }
         case OPTION_TYPE_STRING:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL,
-                                            *(const char *const *)desc->default_value));
+                               colored_string(LOG_COLOR_FATAL, *(const char *const *)desc->default_value));
           break;
         case OPTION_TYPE_DOUBLE: {
           double double_val = 0.0;

@@ -111,10 +111,10 @@ typedef struct {
  * - options: yellow
  */
 typedef struct {
-  const char *mode;         ///< NULL or mode name (e.g., "server") or "<mode>" placeholder
-  const char *positional;   ///< NULL or positional args (e.g., "[bind-addr]", "<session-string>")
-  bool show_options;        ///< true = show "[options...]" suffix
-  const char *description;  ///< Help text for this usage pattern
+  const char *mode;        ///< NULL or mode name (e.g., "server") or "<mode>" placeholder
+  const char *positional;  ///< NULL or positional args (e.g., "[bind-addr]", "<session-string>")
+  bool show_options;       ///< true = show "[options...]" suffix
+  const char *description; ///< Help text for this usage pattern
 } usage_descriptor_t;
 
 /**
@@ -125,17 +125,17 @@ typedef struct {
  * - args: green
  */
 typedef struct {
-  const char *mode;         ///< NULL or mode name (e.g., "server", "client")
-  const char *args;         ///< NULL or args (e.g., "example.com", "swift-river-mountain")
-  const char *description;  ///< Help text for this example
+  const char *mode;        ///< NULL or mode name (e.g., "server", "client")
+  const char *args;        ///< NULL or args (e.g., "example.com", "swift-river-mountain")
+  const char *description; ///< Help text for this example
 } example_descriptor_t;
 
 /**
  * @brief Mode descriptor for programmatic MODES generation (for help output)
  */
 typedef struct {
-  const char *name;         ///< Mode name (e.g., "server", "client")
-  const char *description;  ///< Mode description (e.g., "Run as multi-client video chat server")
+  const char *name;        ///< Mode name (e.g., "server", "client")
+  const char *description; ///< Mode description (e.g., "Run as multi-client video chat server")
 } help_mode_descriptor_t;
 
 /**
@@ -622,10 +622,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
  *                           "Run in a specific mode");
  * ```
  */
-void options_builder_add_usage(options_builder_t *builder,
-                               const char *mode,
-                               const char *positional,
-                               bool show_options,
+void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options,
                                const char *description);
 
 /**
@@ -653,9 +650,7 @@ void options_builder_add_usage(options_builder_t *builder,
  *                             "Connect to specific server");
  * ```
  */
-void options_builder_add_example(options_builder_t *builder,
-                                 const char *mode,
-                                 const char *args,
+void options_builder_add_example(options_builder_t *builder, const char *mode, const char *args,
                                  const char *description);
 
 /**
@@ -675,9 +670,7 @@ void options_builder_add_example(options_builder_t *builder,
  * options_builder_add_mode(b, "mirror", "View local webcam as ASCII art (no server)");
  * ```
  */
-void options_builder_add_mode(options_builder_t *builder,
-                              const char *name,
-                              const char *description);
+void options_builder_add_mode(options_builder_t *builder, const char *name, const char *description);
 
 // ============================================================================
 // Preset Configurations

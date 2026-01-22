@@ -225,17 +225,17 @@ void options_builder_add_port_option(options_builder_t *b, const char *default_p
  * Used by: server, discovery modes
  */
 void options_builder_add_acds_group(options_builder_t *b) {
-  options_builder_add_string(b, "discovery-server", '\0', offsetof(options_t, discovery_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
-                             "Discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")",
-                             "NETWORK", false, NULL, NULL);
+  options_builder_add_string(
+      b, "discovery-server", '\0', offsetof(options_t, discovery_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
+      "Discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "NETWORK", false, NULL, NULL);
 
   options_builder_add_int(b, "discovery-port", '\0', offsetof(options_t, discovery_port), OPT_ACDS_PORT_INT_DEFAULT,
                           "Discovery service port", "NETWORK", false, NULL, NULL);
 
   options_builder_add_string(
       b, "discovery-service-key", '\0', offsetof(options_t, discovery_service_key), "",
-      "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
-      false, NULL, NULL);
+      "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
+      "SECURITY", false, NULL, NULL);
 
   options_builder_add_bool(b, "webrtc", '\0', offsetof(options_t, webrtc), OPT_WEBRTC_DEFAULT,
                            "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL);
@@ -248,9 +248,9 @@ void options_builder_add_acds_group(options_builder_t *b) {
  * Used by: client mode
  */
 void options_builder_add_acds_network_group(options_builder_t *b) {
-  options_builder_add_string(b, "discovery-server", '\0', offsetof(options_t, discovery_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
-                             "Discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "NETWORK",
-                             false, NULL, NULL);
+  options_builder_add_string(
+      b, "discovery-server", '\0', offsetof(options_t, discovery_server), OPT_ENDPOINT_DISCOVERY_SERVICE,
+      "Discovery service address (default: " OPT_ENDPOINT_DISCOVERY_SERVICE ")", "NETWORK", false, NULL, NULL);
 
   options_builder_add_int(b, "discovery-port", '\0', offsetof(options_t, discovery_port), OPT_ACDS_PORT_INT_DEFAULT,
                           "Discovery service port", "NETWORK", false, NULL, NULL);
@@ -296,8 +296,8 @@ void options_builder_add_acds_security_group(options_builder_t *b) {
 
   options_builder_add_string(
       b, "discovery-service-key", '\0', offsetof(options_t, discovery_service_key), "",
-      "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
-      false, NULL, NULL);
+      "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
+      "SECURITY", false, NULL, NULL);
 }
 
 // ============================================================================
@@ -429,18 +429,21 @@ const options_config_t *options_preset_binary(const char *program_name, const ch
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
   options_builder_add_bool(b, "discovery-expose-ip", '\0', offsetof(options_t, discovery_expose_ip), false,
-                           "Explicitly allow public IP disclosure in discovery sessions (opt-in only)",
-                           "SECURITY", false, NULL);
-  options_builder_add_string(b, "discovery-service-key", '\0', offsetof(options_t, discovery_service_key), "",
-                             "Discovery service public key for verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
-                             "SECURITY", false, NULL, NULL);
+                           "Explicitly allow public IP disclosure in discovery sessions (opt-in only)", "SECURITY",
+                           false, NULL);
+  options_builder_add_string(
+      b, "discovery-service-key", '\0', offsetof(options_t, discovery_service_key), "",
+      "Discovery service public key for verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)", "SECURITY",
+      false, NULL, NULL);
 
   // Discovery/ACDS options with discovery naming (all in NETWORK, no separate DISCOVERY section)
-  options_builder_add_bool(b, "discovery", '\0', offsetof(options_t, discovery), false,
-                           "Enable discovery service registration (requires --key or --password or --discovery-expose-ip)",
-                           "NETWORK", false, NULL);
-  options_builder_add_string(b, "discovery-server", '\0', offsetof(options_t, discovery_server), "discovery-service.ascii-chat.com",
-                             "Discovery service address", "NETWORK", false, NULL, NULL);
+  options_builder_add_bool(
+      b, "discovery", '\0', offsetof(options_t, discovery), false,
+      "Enable discovery service registration (requires --key or --password or --discovery-expose-ip)", "NETWORK", false,
+      NULL);
+  options_builder_add_string(b, "discovery-server", '\0', offsetof(options_t, discovery_server),
+                             "discovery-service.ascii-chat.com", "Discovery service address", "NETWORK", false, NULL,
+                             NULL);
   options_builder_add_int(b, "discovery-port", '\0', offsetof(options_t, discovery_port), 27225,
                           "Discovery service port", "NETWORK", false, NULL, NULL);
   options_builder_add_bool(b, "upnp", '\0', offsetof(options_t, enable_upnp), false,
@@ -466,37 +469,29 @@ const options_config_t *options_preset_binary(const char *program_name, const ch
                              "Comma-separated TURN server URLs (debug/test only - ACDS provides in production)",
                              "NETWORK", false, "ASCII_CHAT_TURN_SERVERS", NULL);
   options_builder_add_string(b, "turn-username", '\0', offsetof(options_t, turn_username), "",
-                             "TURN authentication username (debug/test only - ACDS provides in production)",
-                             "NETWORK", false, "ASCII_CHAT_TURN_USERNAME", NULL);
+                             "TURN authentication username (debug/test only - ACDS provides in production)", "NETWORK",
+                             false, "ASCII_CHAT_TURN_USERNAME", NULL);
   options_builder_add_string(b, "turn-credential", '\0', offsetof(options_t, turn_credential), "",
                              "TURN authentication credential (debug/test only - ACDS provides in production)",
                              "NETWORK", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL);
 
   // Usage lines for help output
-  options_builder_add_usage(b, NULL, NULL, true,
-                            "Start a new session (share the session string)");
+  options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
 
-  options_builder_add_usage(b, NULL, "<session-string>", true,
-                            "Join an existing session");
+  options_builder_add_usage(b, NULL, "<session-string>", true, "Join an existing session");
 
-  options_builder_add_usage(b, "<mode>", NULL, true,
-                            "Run in a specific mode");
+  options_builder_add_usage(b, "<mode>", NULL, true, "Run in a specific mode");
 
   // Examples for help output
-  options_builder_add_example(b, NULL, NULL,
-                              "Start new session (share the session string)");
+  options_builder_add_example(b, NULL, NULL, "Start new session (share the session string)");
 
-  options_builder_add_example(b, NULL, "swift-river-mountain",
-                              "Join session with session string");
+  options_builder_add_example(b, NULL, "swift-river-mountain", "Join session with session string");
 
-  options_builder_add_example(b, "server", NULL,
-                              "Run as dedicated server");
+  options_builder_add_example(b, "server", NULL, "Run as dedicated server");
 
-  options_builder_add_example(b, "client", "example.com",
-                              "Connect to specific server");
+  options_builder_add_example(b, "client", "example.com", "Connect to specific server");
 
-  options_builder_add_example(b, "mirror", NULL,
-                              "Preview local webcam as ASCII");
+  options_builder_add_example(b, "mirror", NULL, "Preview local webcam as ASCII");
 
   // Modes for help output
   options_builder_add_mode(b, "server", "Run as multi-client video chat server");
@@ -544,14 +539,16 @@ const options_config_t *options_preset_server(const char *program_name, const ch
   options_builder_add_string(b, "client-keys", '\0', offsetof(options_t, client_keys), "",
                              "Allowed client keys whitelist", "SECURITY", false, NULL, NULL);
 
-  options_builder_add_bool(b, "discovery-expose-ip", '\0', offsetof(options_t, discovery_expose_ip), false,
-                           "Explicitly allow public IP disclosure in discovery sessions (requires discovery, opt-in only)",
-                           "SECURITY", false, NULL);
+  options_builder_add_bool(
+      b, "discovery-expose-ip", '\0', offsetof(options_t, discovery_expose_ip), false,
+      "Explicitly allow public IP disclosure in discovery sessions (requires discovery, opt-in only)", "SECURITY",
+      false, NULL);
 
   // Discovery Session Registration
-  options_builder_add_bool(b, "discovery", '\0', offsetof(options_t, discovery), false,
-                           "Enable discovery session registration (requires --key or --password or --discovery-expose-ip)",
-                           "NETWORK", false, NULL);
+  options_builder_add_bool(
+      b, "discovery", '\0', offsetof(options_t, discovery), false,
+      "Enable discovery session registration (requires --key or --password or --discovery-expose-ip)", "NETWORK", false,
+      NULL);
 
   // Discovery service options (shared with client)
   options_builder_add_acds_group(b);
@@ -585,17 +582,13 @@ const options_config_t *options_preset_server(const char *program_name, const ch
                             "Start server (can specify 0-2 bind addresses for IPv4/IPv6)");
 
   // Examples for server help
-  options_builder_add_example(b, "server", NULL,
-                              "Start on localhost (127.0.0.1 and ::1)");
+  options_builder_add_example(b, "server", NULL, "Start on localhost (127.0.0.1 and ::1)");
 
-  options_builder_add_example(b, "server", "0.0.0.0",
-                              "Start on all IPv4 interfaces");
+  options_builder_add_example(b, "server", "0.0.0.0", "Start on all IPv4 interfaces");
 
-  options_builder_add_example(b, "server", "0.0.0.0 ::",
-                              "Start on all IPv4 and IPv6 interfaces (dual-stack)");
+  options_builder_add_example(b, "server", "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)");
 
-  options_builder_add_example(b, "server", "--port 8080",
-                              "Start on custom port");
+  options_builder_add_example(b, "server", "--port 8080", "Start on custom port");
 
   options_builder_add_example(b, "server", "--key ~/.ssh/id_ed25519 --discovery",
                               "Start with identity key and discovery registration");
@@ -714,27 +707,21 @@ const options_config_t *options_preset_client(const char *program_name, const ch
       sizeof(g_client_address_examples) / sizeof(g_client_address_examples[0]), parse_client_address);
 
   // Usage examples for client help
-  options_builder_add_usage(b, "client", "[address]", true,
-                            "Connect to server (defaults to localhost:27224)");
+  options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");
 
   // Examples for client help
-  options_builder_add_example(b, "client", NULL,
-                              "Connect to localhost");
+  options_builder_add_example(b, "client", NULL, "Connect to localhost");
 
-  options_builder_add_example(b, "client", "example.com",
-                              "Connect to remote server");
+  options_builder_add_example(b, "client", "example.com", "Connect to remote server");
 
-  options_builder_add_example(b, "client", "example.com:8080",
-                              "Connect to remote server on custom port");
+  options_builder_add_example(b, "client", "example.com:8080", "Connect to remote server on custom port");
 
-  options_builder_add_example(b, "client", "--color --width 120",
-                              "Connect with custom display options");
+  options_builder_add_example(b, "client", "--color --width 120", "Connect with custom display options");
 
   options_builder_add_example(b, "client", "-f '-'",
                               "Stream media from stdin (cat file.mp4 | ascii-chat client -f '-')");
 
-  options_builder_add_example(b, "client", "--snapshot",
-                              "Capture single frame and exit");
+  options_builder_add_example(b, "client", "--snapshot", "Capture single frame and exit");
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
@@ -781,15 +768,12 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
                              "Show terminal capabilities and exit", "TERMINAL");
 
   // Usage examples for mirror help
-  options_builder_add_usage(b, "mirror", NULL, true,
-                            "View local webcam or media file as ASCII art");
+  options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
 
   // Examples for mirror help
-  options_builder_add_example(b, "mirror", NULL,
-                              "View local webcam");
+  options_builder_add_example(b, "mirror", NULL, "View local webcam");
 
-  options_builder_add_example(b, "mirror", "--color",
-                              "View webcam with color support");
+  options_builder_add_example(b, "mirror", "--color", "View webcam with color support");
 
   options_builder_add_example(b, "mirror", "-f video.mp4",
                               "Stream from video file (supports mp4, mkv, webm, mov, etc)");
@@ -800,8 +784,7 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   options_builder_add_example(b, "mirror", "-f '-' --loop",
                               "Stream from stdin and loop (cat file.webm | ascii-chat mirror -f '-' --loop)");
 
-  options_builder_add_example(b, "mirror", "--snapshot",
-                              "Capture single frame and exit");
+  options_builder_add_example(b, "mirror", "--snapshot", "Capture single frame and exit");
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);
@@ -829,10 +812,10 @@ const options_config_t *options_preset_acds(const char *program_name, const char
   options_builder_add_port_option(b, OPT_ACDS_PORT_DEFAULT, "ACDS_PORT");
 
   // ACDS-specific options
-  options_builder_add_string(
-      b, "database", 'd', offsetof(options_t, discovery_database_path), "",
-      "Path to discovery service database file (default: ~/.config/ascii-chat/discovery.db or %%APPDATA%%\\ascii-chat\\discovery.db)",
-      "DATABASE", false, "DISCOVERY_DATABASE_PATH", NULL);
+  options_builder_add_string(b, "database", 'd', offsetof(options_t, discovery_database_path), "",
+                             "Path to discovery service database file (default: ~/.config/ascii-chat/discovery.db or "
+                             "%%APPDATA%%\\ascii-chat\\discovery.db)",
+                             "DATABASE", false, "DISCOVERY_DATABASE_PATH", NULL);
 
   // Encryption options (shared with client and server)
   options_builder_add_crypto_group(b);
@@ -896,14 +879,11 @@ const options_config_t *options_preset_acds(const char *program_name, const char
                             "Start discovery service (secure session signalling and WebRTC coordination)");
 
   // Examples for discovery-service help
-  options_builder_add_example(b, "discovery-service", NULL,
-                              "Start on localhost");
+  options_builder_add_example(b, "discovery-service", NULL, "Start on localhost");
 
-  options_builder_add_example(b, "discovery-service", "0.0.0.0",
-                              "Start on all IPv4 interfaces");
+  options_builder_add_example(b, "discovery-service", "0.0.0.0", "Start on all IPv4 interfaces");
 
-  options_builder_add_example(b, "discovery-service", "--port 5000",
-                              "Start on custom port");
+  options_builder_add_example(b, "discovery-service", "--port 5000", "Start on custom port");
 
   options_builder_add_example(b, "discovery-service", "--require-server-identity --require-client-identity",
                               "Enforce identity verification for all parties");
@@ -997,17 +977,16 @@ const options_config_t *options_preset_discovery(const char *program_name, const
                             "Join a discovery session (use session string from initiator)");
 
   // Examples for discovery help
-  options_builder_add_example(b, "discovery", "swift-river-mountain",
-                              "Join a session using the session string");
+  options_builder_add_example(b, "discovery", "swift-river-mountain", "Join a session using the session string");
 
-  options_builder_add_example(b, "discovery", "swift-river-mountain --color",
-                              "Join session with color support");
+  options_builder_add_example(b, "discovery", "swift-river-mountain --color", "Join session with color support");
 
   options_builder_add_example(b, "discovery", "swift-river-mountain --discovery-server discovery.example.com",
                               "Join session via custom discovery server");
 
-  options_builder_add_example(b, "discovery", "swift-river-mountain -f '-'",
-                              "Join session and stream media from stdin (cat file.mov | ascii-chat discovery ... -f '-')");
+  options_builder_add_example(
+      b, "discovery", "swift-river-mountain -f '-'",
+      "Join session and stream media from stdin (cat file.mov | ascii-chat discovery ... -f '-')");
 
   const options_config_t *config = options_builder_build(b);
   options_builder_destroy(b);

@@ -120,13 +120,13 @@ void usage_server(FILE *desc) {
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
       // Estimate width of usage line (binary name + mode + positional + options suffix)
-      int est_width = strlen("ascii-chat");  // binary name
+      int est_width = strlen("ascii-chat"); // binary name
       if (usage->mode)
         est_width += strlen(usage->mode) + 1;
       if (usage->positional)
         est_width += strlen(usage->positional) + 1;
       if (usage->show_options)
-        est_width += 20;  // "[options...]" or "[mode-options...]"
+        est_width += 20; // "[options...]" or "[mode-options...]"
 
       if (est_width > global_max_col_width)
         global_max_col_width = est_width;
@@ -181,14 +181,14 @@ void usage_server(FILE *desc) {
 
       // Add positional args if present
       if (usage->positional) {
-        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
+        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                        colored_string(LOG_COLOR_INFO, usage->positional));
       }
 
       // Add options suffix if requested
       if (usage->show_options) {
-        const char *options_text = (usage->mode && strcmp(usage->mode, "<mode>") == 0)
-                                   ? "[mode-options...]"
-                                   : "[options...]";
+        const char *options_text =
+            (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
         len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
       }
 
@@ -232,13 +232,11 @@ void usage_server(FILE *desc) {
         char colored_first_part[256];
         snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
         char colored_result[512];
-        snprintf(colored_result, sizeof(colored_result), "%s",
-                 colored_string(LOG_COLOR_INFO, colored_first_part));
+        snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
 
         // Use layout function with global max_col_width for consistent alignment
-        layout_print_two_column_row(desc, colored_result,
-                                    desc_start ? desc_start : "",
-                                    global_max_col_width, term_width);
+        layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", global_max_col_width,
+                                    term_width);
       }
       (void)fprintf(desc, "\n");
     }

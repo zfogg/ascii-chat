@@ -526,13 +526,14 @@ int strtoint_safe(const char *str);
   char identity_keys[MAX_IDENTITY_KEYS][OPTIONS_BUFF_SIZE]; /* All identity keys (multi-key support) */                \
   size_t num_identity_keys;                                 /* Number of identity keys loaded */                       \
   unsigned short int require_server_verify;                                                                            \
-  bool discovery;           /* Enable discovery session registration (default: false) */                                         \
-  bool discovery_expose_ip; /* Explicitly allow public IP disclosure in discovery sessions (opt-in) */                           \
-  bool discovery_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */                  \
-  char discovery_server[OPTIONS_BUFF_SIZE];                                                                                 \
-  int discovery_port;                                                                                                       \
-  char discovery_service_key[OPTIONS_BUFF_SIZE]; /* discovery server public key (SSH/GPG or HTTPS URL) for verification */        \
-  bool webrtc;                             /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
+  bool discovery;           /* Enable discovery session registration (default: false) */                               \
+  bool discovery_expose_ip; /* Explicitly allow public IP disclosure in discovery sessions (opt-in) */                 \
+  bool discovery_insecure;  /* Skip server key verification (MITM-vulnerable, requires explicit opt-in) */             \
+  char discovery_server[OPTIONS_BUFF_SIZE];                                                                            \
+  int discovery_port;                                                                                                  \
+  char discovery_service_key[OPTIONS_BUFF_SIZE]; /* discovery server public key (SSH/GPG or HTTPS URL) for             \
+                                                    verification */                                                    \
+  bool webrtc;                                   /* Enable WebRTC mode for ACDS session (default: Direct TCP) */
 
 /**
  * @brief Client mode options
@@ -649,13 +650,16 @@ typedef struct options_state {
   // ============================================================================
   // Discovery Service Options (server only)
   // ============================================================================
-  bool discovery;                               ///< Enable discovery session registration (default: false)
-  char discovery_server[OPTIONS_BUFF_SIZE];     ///< discovery server address (default: 127.0.0.1)
-  int discovery_port;                           ///< discovery server port (default: 27225)
-  char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or HTTPS URL)
-  bool webrtc;                             ///< Enable WebRTC mode for discovery session (default: false, Direct TCP)
-  char discovery_key_path[OPTIONS_BUFF_SIZE];   ///< discovery identity key file path (default: ~/.ascii-chat/discovery_identity)
-  char discovery_database_path[OPTIONS_BUFF_SIZE]; ///< discovery database file path (default: ~/.ascii-chat/discovery.db)
+  bool discovery;                                ///< Enable discovery session registration (default: false)
+  char discovery_server[OPTIONS_BUFF_SIZE];      ///< discovery server address (default: 127.0.0.1)
+  int discovery_port;                            ///< discovery server port (default: 27225)
+  char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
+                                                 ///< HTTPS URL)
+  bool webrtc;                                ///< Enable WebRTC mode for discovery session (default: false, Direct TCP)
+  char discovery_key_path[OPTIONS_BUFF_SIZE]; ///< discovery identity key file path (default:
+                                              ///< ~/.ascii-chat/discovery_identity)
+  char discovery_database_path[OPTIONS_BUFF_SIZE]; ///< discovery database file path (default:
+                                                   ///< ~/.ascii-chat/discovery.db)
 
   // ============================================================================
   // LAN Discovery Options
@@ -750,7 +754,7 @@ typedef struct options_state {
   bool require_client_identity; ///< ACDS: require clients to provide signed Ed25519 identity
   bool require_server_verify;   ///< Server: only accept clients who verified via ACDS
   bool require_client_verify;   ///< Client: only connect to servers whose identity was verified by ACDS
-  bool discovery_expose_ip;          ///< ACDS: explicitly allow public IP disclosure without verification (opt-in)
+  bool discovery_expose_ip;     ///< ACDS: explicitly allow public IP disclosure without verification (opt-in)
   bool discovery_insecure;      ///< ACDS: skip server key verification (MITM-vulnerable, requires explicit opt-in)
 
   // ============================================================================
