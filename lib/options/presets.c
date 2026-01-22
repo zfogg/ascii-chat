@@ -451,10 +451,10 @@ void options_builder_add_media_group(options_builder_t *b) {
   options_builder_add_callback_optional(b, "cookies-from-browser", '\0', offsetof(options_t, cookies_from_browser),
                                         &(char *){""},  // Default: empty string (auto-detect)
                                         256, parse_cookies_enabled,
-                                        "Enable reading cookies from browser for YouTube (optionally specify: chrome, firefox, etc. - see: man yt-dlp)",
+                                        "Enable reading cookies from browser for YouTube (default: auto-detect; optionally specify: chrome, firefox, etc.)",
                                         "MEDIA", false, NULL, true);
 
-  options_builder_add_bool(b, "no-cookies-from-browser", '\0', offsetof(options_t, no_cookies_from_browser), false,
+  options_builder_add_bool(b, "no-cookies-from-browser", '\0', offsetof(options_t, no_cookies_from_browser), true,
                            "Explicitly disable reading cookies from browser",
                            "MEDIA", false, NULL);
 
