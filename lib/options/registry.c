@@ -354,7 +354,7 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0, "SSH/GPG key file path", "SECURITY",
      false, "ASCII_CHAT_KEY", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"password", '\0', OPTION_TYPE_STRING, offsetof(options_t, password), "", 0, "Shared password for authentication",
      "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
@@ -472,11 +472,8 @@ static const registry_entry_t g_options_registry[] = {
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // ACDS Server Specific Options
-    {"discovery-database-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
+    {"database", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
      "Path to SQLite database for discovery service", "DATABASE", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-key-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_key_path), "", 0,
-     "Path to identity key file for discovery service", "DATABASE", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC},
     {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity),
      &g_default_require_server_identity, sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity",
