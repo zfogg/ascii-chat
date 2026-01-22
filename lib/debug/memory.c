@@ -19,6 +19,8 @@
 #include "platform/memory.h"
 #include "util/format.h"
 #include "util/path.h"
+#include "util/string.h"
+#include "log/logging.h"
 
 typedef struct mem_block {
   void *ptr;
@@ -487,7 +489,7 @@ void debug_memory_report(void) {
 
   bool quiet = g_mem.quiet_mode;
   if (!quiet) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n=== Memory Report ===\n"));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
     size_t total_freed = atomic_load(&g_mem.total_freed);
@@ -506,34 +508,99 @@ void debug_memory_report(void) {
     format_bytes_pretty(current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
 
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total allocated: %s\n", pretty_total));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total freed: %s\n", pretty_freed));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Current usage: %s\n", pretty_current));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Peak usage: %s\n", pretty_peak));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "malloc calls: %zu\n", malloc_calls));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "calloc calls: %zu\n", calloc_calls));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "free calls: %zu\n", free_calls));
+    // Calculate max label width for column alignment
+    const char *label_total = "Total allocated:";
+    const char *label_freed = "Total freed:";
+    const char *label_current = "Current usage:";
+    const char *label_peak = "Peak usage:";
+    const char *label_malloc = "malloc calls:";
+    const char *label_calloc = "calloc calls:";
+    const char *label_free = "free calls:";
+    const char *label_diff = "unfreed allocations:";
+
+    size_t max_label_width = 0;
+    max_label_width = MAX(max_label_width, strlen(label_total));
+    max_label_width = MAX(max_label_width, strlen(label_freed));
+    max_label_width = MAX(max_label_width, strlen(label_current));
+    max_label_width = MAX(max_label_width, strlen(label_peak));
+    max_label_width = MAX(max_label_width, strlen(label_malloc));
+    max_label_width = MAX(max_label_width, strlen(label_calloc));
+    max_label_width = MAX(max_label_width, strlen(label_free));
+    max_label_width = MAX(max_label_width, strlen(label_diff));
+
+#define PRINT_MEM_LINE(label, value_str) \
+  do { \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label))); \
+    for (size_t i = strlen(label); i < max_label_width; i++) { \
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " ")); \
+    } \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str)); \
+  } while (0)
+
+    PRINT_MEM_LINE(label_total, pretty_total);
+    PRINT_MEM_LINE(label_freed, pretty_freed);
+    PRINT_MEM_LINE(label_current, pretty_current);
+    PRINT_MEM_LINE(label_peak, pretty_peak);
+
+    // malloc calls
+    char malloc_str[32];
+    (void)snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
+    PRINT_MEM_LINE(label_malloc, malloc_str);
+
+    // calloc calls
+    char calloc_str[32];
+    (void)snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
+    PRINT_MEM_LINE(label_calloc, calloc_str);
+
+    // free calls
+    char free_str[32];
+    (void)snprintf(free_str, sizeof(free_str), "%zu", free_calls);
+    PRINT_MEM_LINE(label_free, free_str);
+
+    // diff - grey label, colored value (red if not 0, green if 0)
     size_t diff = (malloc_calls + calloc_calls) - free_calls;
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff));
+    char diff_str[32];
+    (void)snprintf(diff_str, sizeof(diff_str), "%zu", diff);
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
+    for (size_t i = strlen(label_diff); i < max_label_width; i++) {
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
+    }
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", colored_string(diff == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
+
+#undef PRINT_MEM_LINE
 
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
         mutex_lock(&g_mem.mutex);
 
-        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\nCurrent allocations:\n"));
+        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
         mem_block_t *curr = g_mem.head;
         while (curr) {
           char pretty_size[64];
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-          SAFE_IGNORE_PRINTF_RESULT(
-              safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
+          const char *file_location = strip_project_path(curr->file);
+
+          // Determine color based on unit (MB=red, KB=yellow, B=magenta)
+          log_color_t size_color = LOG_COLOR_FATAL;  // Default to magenta for bytes
+          if (strstr(pretty_size, "MB")) {
+            size_color = LOG_COLOR_ERROR;  // Red for megabytes
+          } else if (strstr(pretty_size, "KB")) {
+            size_color = LOG_COLOR_WARN;   // Yellow for kilobytes
+          } else if (strstr(pretty_size, " B")) {
+            size_color = LOG_COLOR_FATAL;  // Magenta for bytes
+          }
+
+          SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%d - %s\n",
+              colored_string(LOG_COLOR_GREY, file_location),
+              curr->line,
+              colored_string(size_color, pretty_size)));
           curr = curr->next;
         }
 
         mutex_unlock(&g_mem.mutex);
       } else {
-        SAFE_IGNORE_PRINTF_RESULT(
-            safe_fprintf(stderr, "\nCurrent allocations unavailable: failed to initialize debug memory mutex\n"));
+        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n",
+            colored_string(LOG_COLOR_ERROR, "Current allocations unavailable: failed to initialize debug memory mutex")));
       }
     }
   }

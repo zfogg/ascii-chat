@@ -48,6 +48,9 @@ struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
 
+  /** @brief Whether we own the media source (true) or it was provided externally (false) */
+  bool source_owned;
+
   /** @brief Adaptive sleep state for frame rate limiting */
   adaptive_sleep_state_t sleep_state;
 
@@ -182,8 +185,17 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->using_file_audio = false;
   ctx->file_has_audio = false;
 
-  // Create media source
-  ctx->source = media_source_create(config->type, config->path);
+  // Use pre-created media source if provided, otherwise create a new one
+  // (Allows reusing media source from probing phase to avoid redundant yt-dlp calls)
+  if (config->media_source) {
+    ctx->source = config->media_source;
+    ctx->source_owned = false;  // Caller owns this source
+    log_debug("Using pre-created media source (avoids redundant YouTube extraction)");
+  } else {
+    ctx->source = media_source_create(config->type, config->path);
+    ctx->source_owned = true;   // We own this source and must destroy it
+  }
+
   if (!ctx->source) {
     // Preserve existing error if set, otherwise set generic error
     asciichat_error_t existing_error = GET_ERRNO();
@@ -267,8 +279,8 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
     return;
   }
 
-  // Destroy media source
-  if (ctx->source) {
+  // Destroy media source only if we own it (not if provided by caller)
+  if (ctx->source && ctx->source_owned) {
     media_source_destroy(ctx->source);
     ctx->source = NULL;
   }

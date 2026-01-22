@@ -235,6 +235,9 @@ int mirror_main(void) {
   // Add seek timestamp if specified
   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
+  // Pass the probe_source to capture config to reuse it (avoids redundant yt-dlp extraction)
+  capture_config.media_source = probe_source;
+
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
     log_fatal("Failed to initialize capture source");
@@ -283,11 +286,7 @@ int mirror_main(void) {
       }
     }
   }
-
-  // Clean up probe source now that we're done probing
-  if (probe_source) {
-    media_source_destroy(probe_source);
-  }
+  // Note: probe_source is now managed by session_capture (not owned by us)
 
   session_display_config_t display_config = {0};
   display_config.snapshot_mode = GET_OPTION(snapshot_mode);

@@ -105,6 +105,11 @@ typedef struct {
   /** @brief Seek to this timestamp after opening media (0.0 = no seek) */
   double initial_seek_timestamp;
 
+  /** @brief Pre-created media source to reuse (optional, owned by caller if set).
+   *         If provided, will be used instead of creating a new one from type/path.
+   *         session_capture_destroy() will NOT destroy this source - caller is responsible. */
+  media_source_t *media_source;
+
   /** @brief Optional: callback to check if initialization should be cancelled (e.g., shutdown signal) */
   session_capture_should_exit_fn should_exit_callback;
 
