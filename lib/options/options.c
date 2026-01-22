@@ -966,7 +966,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Parse mode-specific arguments
-  asciichat_error_t result = options_config_parse(config, mode_argc, mode_argv, &opts, &remaining_argc, &remaining_argv);
+  asciichat_error_t result =
+      options_config_parse(config, mode_argc, mode_argv, &opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     return result;
@@ -1022,7 +1023,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   options_config_destroy(config);
-  
+
   // ========================================================================
   // STAGE 7: Post-Processing & Validation
   // ========================================================================
