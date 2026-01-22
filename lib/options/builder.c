@@ -2069,8 +2069,6 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     return;
   }
 
-  fprintf(stderr, "[DEBUG] options_config_print_options_sections_with_width called with mode=%d\n", mode);
-
   // Detect terminal width - try actual terminal size first, fallback to COLUMNS env var
   int term_width = 80;
   terminal_size_t term_size;
