@@ -32,6 +32,10 @@ typedef struct {
   volatile bool *winner_found;
   mutex_t *lock;
   cond_t *signal;
+
+  // Optional exit callback for graceful shutdown
+  parallel_connect_should_exit_fn should_exit_callback;
+  void *callback_data;
 } connection_attempt_t;
 
 static void *attempt_connection_thread(void *arg) {
@@ -86,11 +90,17 @@ static void *attempt_connection_thread(void *arg) {
     log_debug("PCONN: [%s] Connected immediately", attempt->family_name);
     attempt->connected = true;
   } else if (is_in_progress) {
-    // Wait with select() using short timeouts so we can check for winner and exit early
+    // Wait with select() using short timeouts so we can check for winner, exit callback, and exit early
     uint32_t elapsed_ms = 0;
-    uint32_t check_interval_ms = 100; // Check every 100ms if winner found
+    uint32_t check_interval_ms = 100; // Check every 100ms if winner found or exit requested
 
     while (elapsed_ms < attempt->timeout_ms) {
+      // Check if caller requested shutdown/exit (e.g., SIGTERM signal handler set flag)
+      if (attempt->should_exit_callback && attempt->should_exit_callback(attempt->callback_data)) {
+        log_debug("PCONN: [%s] Exit requested via callback, aborting connection", attempt->family_name);
+        break;
+      }
+
       // Check if winner was already found (allow loser to exit early)
       mutex_lock(attempt->lock);
       bool should_exit = *attempt->winner_found;
@@ -238,6 +248,8 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     ipv4_attempt.winner_found = &winner_found;
     ipv4_attempt.lock = &lock;
     ipv4_attempt.signal = &signal;
+    ipv4_attempt.should_exit_callback = config->should_exit_callback;
+    ipv4_attempt.callback_data = config->callback_data;
     memcpy(&ipv4_attempt.addr, ipv4_addr->ai_addr, ipv4_addr->ai_addrlen);
     ipv4_attempt.addr_len = ipv4_addr->ai_addrlen;
 
@@ -253,6 +265,8 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
     ipv6_attempt.winner_found = &winner_found;
     ipv6_attempt.lock = &lock;
     ipv6_attempt.signal = &signal;
+    ipv6_attempt.should_exit_callback = config->should_exit_callback;
+    ipv6_attempt.callback_data = config->callback_data;
     memcpy(&ipv6_attempt.addr, ipv6_addr->ai_addr, ipv6_addr->ai_addrlen);
     ipv6_attempt.addr_len = ipv6_addr->ai_addrlen;
 

@@ -90,6 +90,8 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
       .hostname = config->server_address,
       .port = config->server_port,
       .timeout_ms = config->timeout_ms,
+      .should_exit_callback = config->should_exit_callback,
+      .callback_data = config->callback_data,
   };
 
   asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);

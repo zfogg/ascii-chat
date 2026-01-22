@@ -48,6 +48,24 @@
 #include <stdio.h>
 
 /* ============================================================================
+ * Helper Functions
+ * ============================================================================ */
+
+/**
+ * @brief Wrapper for should_exit() to match parallel_connect callback signature
+ *
+ * The callback signature requires (void *user_data), but should_exit() takes
+ * no parameters. This wrapper adapts between the two.
+ *
+ * @param user_data Unused parameter (required by callback signature)
+ * @return true if exit was requested, false otherwise
+ */
+static bool should_exit_callback_wrapper(void *user_data) {
+  (void)user_data; // Unused
+  return should_exit();
+}
+
+/* ============================================================================
  * State Machine Helper Functions
  * ============================================================================ */
 
@@ -443,7 +461,9 @@ static asciichat_error_t attempt_webrtc_stun(connection_attempt_context_t *ctx, 
   acds_client_config_t acds_config = {0};
   SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
   acds_config.server_port = acds_port;
-  acds_config.timeout_ms = 5000; // 5s timeout for ACDS connection
+  acds_config.timeout_ms = 5000;                                   // 5s timeout for ACDS connection
+  acds_config.should_exit_callback = should_exit_callback_wrapper; // Check for graceful shutdown during connection
+  acds_config.callback_data = NULL;
 
   // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
   if (strlen(GET_OPTION(discovery_service_key)) > 0) {
@@ -706,7 +726,9 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
   acds_client_config_t acds_config = {0};
   SAFE_STRNCPY(acds_config.server_address, acds_server, sizeof(acds_config.server_address));
   acds_config.server_port = acds_port;
-  acds_config.timeout_ms = 5000; // 5s timeout for ACDS connection
+  acds_config.timeout_ms = 5000;                                   // 5s timeout for ACDS connection
+  acds_config.should_exit_callback = should_exit_callback_wrapper; // Check for graceful shutdown during connection
+  acds_config.callback_data = NULL;
 
   // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
   if (strlen(GET_OPTION(discovery_service_key)) > 0) {
