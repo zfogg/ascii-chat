@@ -1152,7 +1152,6 @@ asciichat_error_t options_init(int argc, char **argv);
  */
 void usage(FILE *desc, asciichat_mode_t mode);
 
-
 /** @} */
 
 /**

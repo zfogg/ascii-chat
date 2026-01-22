@@ -127,7 +127,6 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   return false;
 }
 
-
 /**
  * @brief Check if a CLI flag/option is mirror-mode specific
  *
@@ -947,38 +946,74 @@ asciichat_error_t options_init(int argc, char **argv) {
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // ========================================================================
-  // STAGE 6: Parse Command-Line Arguments (Mode-Specific)
+  // STAGE 6: Parse Command-Line Arguments (Unified)
   // ========================================================================
 
-  asciichat_error_t result = ASCIICHAT_OK;
-
-  // SAVE binary-level parsed values before mode-specific defaults overwrite them
-  log_level_t saved_log_level = opts.log_level;
-  char saved_log_file[OPTIONS_BUFF_SIZE];
-  SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
-
-  switch (detected_mode) {
-  case MODE_SERVER:
-    result = parse_server_options(mode_argc, mode_argv, &opts);
-    break;
-  case MODE_CLIENT:
-    result = parse_client_options(mode_argc, mode_argv, &opts);
-    break;
-  case MODE_MIRROR:
-    result = parse_mirror_options(mode_argc, mode_argv, &opts);
-    break;
-  case MODE_DISCOVERY_SERVER:
-    result = parse_discovery_service_options(mode_argc, mode_argv, &opts);
-    break;
-  case MODE_DISCOVERY:
-    result = parse_discovery_options(mode_argc, mode_argv, &opts);
-    break;
-  default:
-    result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);
+  // Get unified config
+  const options_config_t *config = options_preset_unified(NULL, NULL);
+  if (!config) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
   }
 
-  // RESTORE binary-level parsed values if they were explicitly set
-  // This ensures --log-level and --log-file from the binary-level parser take precedence over mode-specific defaults
+  int remaining_argc;
+  char **remaining_argv;
+
+  // Apply defaults from unified config
+  asciichat_error_t defaults_result = options_config_set_defaults(config, &opts);
+  if (defaults_result != ASCIICHAT_OK) {
+    options_config_destroy(config);
+    return defaults_result;
+  }
+
+  // Parse mode-specific arguments
+  asciichat_error_t result = options_config_parse(config, mode_argc, mode_argv, &opts, &remaining_argc, &remaining_argv);
+  if (result != ASCIICHAT_OK) {
+    options_config_destroy(config);
+    return result;
+  }
+
+  // Validate options
+  result = validate_options_and_report(config, &opts);
+  if (result != ASCIICHAT_OK) {
+    options_config_destroy(config);
+    return result;
+  }
+
+  // Check for unexpected remaining arguments
+  if (remaining_argc > 0) {
+    (void)fprintf(stderr, "Error: Unexpected arguments after options:\n");
+    for (int i = 0; i < remaining_argc; i++) {
+      (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
+    }
+    options_config_destroy(config);
+    return option_error_invalid();
+  }
+
+  // Mode-specific post-processing
+  if (detected_mode == MODE_DISCOVERY_SERVER) {
+    // Set default paths if not specified
+    if (opts.discovery_database_path[0] == '\0') {
+      char *config_dir = get_config_dir();
+      if (!config_dir) {
+        options_config_destroy(config);
+        return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
+      }
+      snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", config_dir);
+      SAFE_FREE(config_dir);
+    }
+
+    if (opts.discovery_key_path[0] == '\0') {
+      char *config_dir = get_config_dir();
+      if (!config_dir) {
+        options_config_destroy(config);
+        return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for identity key path");
+      }
+      snprintf(opts.discovery_key_path, sizeof(opts.discovery_key_path), "%sdiscovery_identity", config_dir);
+      SAFE_FREE(config_dir);
+    }
+  }
+
+  // Restore binary-level parsed values
   if (binary_level_log_level_set) {
     opts.log_level = saved_log_level;
   }
@@ -986,22 +1021,10 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
   }
 
-  // Free the temporary mode_argv if we allocated it
-  if (mode_argv != (char **)argv) {
-    SAFE_FREE(mode_argv);
-  }
-
-  if (result != ASCIICHAT_OK) {
-    return result;
-  }
-
-  // Set session string if it was detected (ACDS mode via session string pattern)
-  if (detected_session_string[0] != '\0') {
-    SAFE_STRNCPY(opts.session_string, detected_session_string, sizeof(opts.session_string));
-  }
-
+  options_config_destroy(config);
+  
   // ========================================================================
-  // STAGE 6: Post-Processing & Validation
+  // STAGE 7: Post-Processing & Validation
   // ========================================================================
 
   // Collect multiple --key flags for multi-key support (server/ACDS only)

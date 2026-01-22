@@ -305,11 +305,11 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
     // Mode-specific usage (server, client, mirror, discovery-service)
     const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
     const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-    
+
     for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
       const char *mode = *mode_ptr;
       asciichat_mode_t mode_enum;
-      
+
       // Map mode name to enum
       if (strcmp(mode, "server") == 0) {
         mode_enum = MODE_SERVER;
@@ -327,7 +327,7 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
       if (unified_config->num_usage_lines > 0) {
         for (size_t i = 0; i < unified_config->num_usage_lines; i++) {
           const usage_descriptor_t *usage = &unified_config->usage_lines[i];
-          
+
           // Filter by mode
           if (usage->mode && strcmp(usage->mode, mode) == 0) {
             fprintf(f, ".TP\n");
@@ -349,7 +349,7 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
         }
       }
     }
-    
+
     if (unified_config) {
       options_config_destroy(unified_config);
     }
@@ -615,14 +615,14 @@ static void write_examples_section_all_modes(FILE *f) {
   // Mode-specific examples (server, client, mirror, discovery-service)
   const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-  
+
   for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
     const char *mode = *mode_ptr;
 
     if (unified_config->num_examples > 0) {
       for (size_t i = 0; i < unified_config->num_examples; i++) {
         const example_descriptor_t *example = &unified_config->examples[i];
-        
+
         // Filter by mode
         if (example->mode && strcmp(example->mode, mode) == 0) {
           fprintf(f, ".TP\n");
@@ -642,7 +642,7 @@ static void write_examples_section_all_modes(FILE *f) {
       }
     }
   }
-  
+
   if (unified_config) {
     options_config_destroy(unified_config);
   }
