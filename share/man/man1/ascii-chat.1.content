@@ -136,6 +136,20 @@ The grid size adjusts based on the number of connected clients.
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
 
+.\" MERGE-START: ENVIRONMENT
+.SH ENVIRONMENT
+.TP
+.B SSH_AUTH_SOCK
+Path to SSH agent socket for password-free key authentication (Unix only).
+.TP
+.B ASCII_CHAT_KEY_PASSWORD
+Passphrase for encrypted SSH or GPG keys. Prefer using ssh-agent/gpg-agent when possible.
+.TP
+.B LOG_LEVEL
+Set logging verbosity level. Accepts either numeric (0-5) or string values:
+0/DEV, 1/DEBUG, 2/INFO, 3/WARN, 4/ERROR, 5/FATAL.
+.\" MERGE-END: ENVIRONMENT
+
 .\" MANUAL-START: FILES
 .SH FILES
 .TP

@@ -1449,8 +1449,12 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   }
 
   // Write ENVIRONMENT (MERGE) - after LIMITS, before FILES
+  // Check content file first, then existing template
   const parsed_section_t *env_section = NULL;
-  if (existing_sections) {
+  if (content_sections) {
+    env_section = find_section(content_sections, num_content_sections, "ENVIRONMENT");
+  }
+  if (!env_section && existing_sections) {
     env_section = find_section(existing_sections, num_existing_sections, "ENVIRONMENT");
   }
 
