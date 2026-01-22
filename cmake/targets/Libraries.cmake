@@ -861,6 +861,13 @@ if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
 endif()
 
+    # Ensure C++ standard library is linked for C++ dependencies  
+    # Set LINKER_LANGUAGE to CXX so CMake uses the C++ compiler for linking
+    # This automatically includes the C++ standard library
+    if(NOT WIN32)
+        set_property(TARGET ascii-chat-shared PROPERTY LINKER_LANGUAGE CXX)
+    endif()
+
 # Add build timing for ascii-chat-shared library
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
@@ -1155,8 +1162,8 @@ else()
             endif()
         endif()
     else()
-        # Non-musl builds use system libstdc++
-        target_link_libraries(ascii-chat-static-lib INTERFACE stdc++)
+        # Non-musl builds: link the C++ standard library
+        target_link_libraries(ascii-chat-static-lib INTERFACE c++)
     endif()
 endif()
 

@@ -83,6 +83,10 @@ if(_use_shared_lib)
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
             target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
         endif()
+        
+        # Ensure C++ standard library is linked
+        # Use CXX language for linking to automatically link C++ runtime
+        set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
     endif()
 else()
     # Release builds OR USE_MUSL builds: use static library
