@@ -127,6 +127,48 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   return false;
 }
 
+
+/**
+ * @brief Check if a CLI flag/option is mirror-mode specific
+ * 
+ * Queries the mirror mode config to determine if a given option
+ * is unique to mirror mode (not in server/client/discovery modes).
+ * This allows mode detection via options like -f or -u without
+ * explicitly specifying "mirror" keyword.
+ *
+ * @param opt_name Option name without dashes (e.g., "file" not "-f")
+ * @param short_name Short option char (e.g., 'f' or '\0')
+ * @return true if this option exists in mirror mode config
+ */
+static bool is_mirror_mode_option(const char *opt_name, char short_name) {
+  // Get mirror mode config
+  const options_config_t *mirror_config = options_preset_mirror(NULL, NULL);
+  if (!mirror_config) {
+    return false;
+  }
+  
+  // Check if this option exists in mirror config
+  bool found = false;
+  for (size_t i = 0; i < mirror_config->num_descriptors; i++) {
+    const option_descriptor_t *desc = &mirror_config->descriptors[i];
+    
+    // Check by long name
+    if (opt_name && desc->long_name && strcmp(opt_name, desc->long_name) == 0) {
+      found = true;
+      break;
+    }
+    
+    // Check by short name
+    if (short_name != '\0' && desc->short_name == short_name) {
+      found = true;
+      break;
+    }
+  }
+  
+  options_config_destroy(mirror_config);
+  return found;
+}
+
 static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mode_t *out_mode,
                                              char *out_session_string, int *out_mode_index) {
   if (out_mode == NULL || out_mode_index == NULL) {
@@ -190,14 +232,23 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
           }
         }
       } else {
-        // Check if this is a mirror-specific option (-f/--file or -u/--url)
+        // Extract option name (without leading dashes)
         const char *opt_name = argv[i];
+        char short_name = '\0';
+        
         if (opt_name[0] == '-') {
-          opt_name = opt_name + (opt_name[1] == '-' ? 2 : 1); // Skip - or --
+          if (opt_name[1] == '-') {
+            // Long option: skip "--"
+            opt_name = opt_name + 2;
+          } else {
+            // Short option: extract char and store
+            short_name = opt_name[1];
+            opt_name = opt_name + 1;
+          }
         }
         
-        if (strcmp(opt_name, "file") == 0 || strcmp(argv[i], "-f") == 0 ||
-            strcmp(opt_name, "url") == 0 || strcmp(argv[i], "-u") == 0) {
+        // Check if this option is mirror-specific by querying mirror config
+        if (is_mirror_mode_option(opt_name, short_name)) {
           has_mirror_specific_option = true;
           // Skip the argument if this option takes one
           if (i + 1 < argc && argv[i + 1][0] != '-') {
