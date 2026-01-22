@@ -13,6 +13,7 @@
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/ip.h"
+#include "util/string.h"
 #include "util/time.h"
 #include "util/utf8.h"
 #include "../symbols.h"
@@ -913,7 +914,10 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    // Build colored frame number using static buffer rotation
+    char frame_buf[16];
+    snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
+    log_plain("  [%s] %s", colored_string(LOG_COLOR_FATAL, frame_buf), symbol);
   }
 }
 
@@ -941,8 +945,8 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
   int offset = 0;
 
   // Header with color
-  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s%s:%s\n", log_level_color(LOG_COLOR_WARN),
-                     label, log_level_color(LOG_COLOR_RESET));
+  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n",
+                     colored_string(LOG_COLOR_WARN, label));
 
   // Calculate frame limits
   int start = skip_frames;
@@ -961,8 +965,11 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
       continue;
     }
 
-    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [%s%d%s] %s\n",
-                       log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    // Build colored frame number using static buffer rotation
+    char frame_buf[16];
+    snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
+    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [%s] %s\n",
+                       colored_string(LOG_COLOR_FATAL, frame_buf), symbol);
   }
 
   return offset;
