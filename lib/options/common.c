@@ -530,9 +530,9 @@ typedef struct {
 static const mode_metadata_t mode_info[] = {
     {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
     {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},
-    {MODE_MIRROR, "ascii-chat mirror", "render ascii on localhost with no network or audio"},
+    {MODE_MIRROR, "ascii-chat mirror", "use the webcam or files or urls without network connections"},
     {MODE_DISCOVERY_SERVER, "ascii-chat discovery-service", "secure p2p session signalling"},
-    {MODE_DISCOVERY, "ascii-chat", "P2P video chat with automatic host negotiation"},
+    {MODE_DISCOVERY, "💻📸 ascii-chat 🔡💬", "Video chat in your terminal"},
 };
 
 void usage(FILE *desc, asciichat_mode_t mode) {
@@ -550,7 +550,7 @@ void usage(FILE *desc, asciichat_mode_t mode) {
   }
 
   if (!metadata) {
-    (void)fprintf(desc, "Unknown mode\n");
+    (void)fprintf(desc, "error: Unknown mode\n");
     return;
   }
 
@@ -561,30 +561,8 @@ void usage(FILE *desc, asciichat_mode_t mode) {
     return;
   }
 
-  // Special handling for MODE_DISCOVERY: show binary-level options first
-  if (mode == MODE_DISCOVERY) {
-    // Print program name and description (color mode name magenta)
-    const char *space = strchr(metadata->program_name, ' ');
-    if (space) {
-      int binary_len = space - metadata->program_name;
-      (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, metadata->program_name,
-                    colored_string(LOG_COLOR_FATAL, space + 1), metadata->description);
-    } else {
-      (void)fprintf(desc, "%s - %s\n\n", metadata->program_name, metadata->description);
-    }
+  options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
 
-    // Print project links
-    print_project_links(desc);
-    (void)fprintf(desc, "\n");
-
-    // Print binary-level options first for discovery mode
-    options_print_help_for_mode(config, (asciichat_mode_t)-1, metadata->program_name, metadata->description, desc);
-  } else {
-    // Standard mode: use unified help printing function
-    options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
-  }
-
-  // Clean up the config
   options_config_destroy(config);
 }
 

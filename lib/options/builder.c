@@ -2149,42 +2149,42 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
   // For binary-level help, we now use a two-pass system to order groups,
   // ensuring binary-level option groups appear before discovery-mode groups.
-    if (for_binary_help) {
-      // Pass 1: Collect groups with binary options (ensure LOGGING is first if present)
-      bool logging_added = false;
-      for (size_t i = 0; i < config->num_descriptors; i++) {
-          const option_descriptor_t *desc = &config->descriptors[i];
-          if (desc->group && strcmp(desc->group, "LOGGING") == 0) {
-              unique_groups[num_unique_groups++] = "LOGGING";
-              logging_added = true;
-              break;
-          }
+  if (for_binary_help) {
+    // Pass 1: Collect groups with binary options (ensure LOGGING is first if present)
+    bool logging_added = false;
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      const option_descriptor_t *desc = &config->descriptors[i];
+      if (desc->group && strcmp(desc->group, "LOGGING") == 0) {
+        unique_groups[num_unique_groups++] = "LOGGING";
+        logging_added = true;
+        break;
       }
-  
-      // Pass 2: Collect all other groups that apply for binary help (all modes), if not already added.
-      for (size_t i = 0; i < config->num_descriptors; i++) {
-        const option_descriptor_t *desc = &config->descriptors[i];
-        // An option applies if option_applies_to_mode says so for binary help (which checks OPTION_MODE_ALL)
-        if (option_applies_to_mode(desc, mode, for_binary_help) && desc->group) {
-          // Skip LOGGING group if we already added it (for binary help)
-          if (logging_added && strcmp(desc->group, "LOGGING") == 0) {
-            continue;
-          }
-  
-          bool group_exists = false;
-          for (size_t j = 0; j < num_unique_groups; j++) {
-            if (strcmp(unique_groups[j], desc->group) == 0) {
-              group_exists = true;
-              break;
-            }
-          }
-          if (!group_exists) {
-            unique_groups[num_unique_groups++] = desc->group;
-          }
-        } else if (desc->group) {
+    }
+
+    // Pass 2: Collect all other groups that apply for binary help (all modes), if not already added.
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      const option_descriptor_t *desc = &config->descriptors[i];
+      // An option applies if option_applies_to_mode says so for binary help (which checks OPTION_MODE_ALL)
+      if (option_applies_to_mode(desc, mode, for_binary_help) && desc->group) {
+        // Skip LOGGING group if we already added it (for binary help)
+        if (logging_added && strcmp(desc->group, "LOGGING") == 0) {
+          continue;
         }
+
+        bool group_exists = false;
+        for (size_t j = 0; j < num_unique_groups; j++) {
+          if (strcmp(unique_groups[j], desc->group) == 0) {
+            group_exists = true;
+            break;
+          }
+        }
+        if (!group_exists) {
+          unique_groups[num_unique_groups++] = desc->group;
+        }
+      } else if (desc->group) {
       }
-    } else {
+    }
+  } else {
     // Original logic for other modes
     for (size_t i = 0; i < config->num_descriptors; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];

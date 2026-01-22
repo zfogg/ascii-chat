@@ -131,8 +131,9 @@ typedef struct {
  */
 typedef struct {
   const char *mode;        ///< NULL or mode name (e.g., "server", "client")
-  const char *args;        ///< NULL or args (e.g., "example.com", "swift-river-mountain")
-  const char *description; ///< Help text for this example
+  const char *args;         // Command-line arguments part of the example
+  const char *description;
+  bool owns_args_memory;    // True if args memory should be freed by options_config_destroy
 } example_descriptor_t;
 
 /**
@@ -265,9 +266,14 @@ typedef struct {
   size_t num_modes;              ///< Current count
   size_t mode_capacity;          ///< Allocated capacity
 
-  size_t struct_size;       ///< Target struct size
-  const char *program_name; ///< Program name for usage
-  const char *description;  ///< Program description for usage
+  size_t struct_size;
+  const char *program_name;
+  const char *description;
+
+  // Track dynamically allocated strings owned by the builder, to be transferred to config
+  char **owned_strings_builder;
+  size_t num_owned_strings_builder;
+  size_t owned_strings_builder_capacity;
 } options_builder_t;
 
 // ============================================================================
@@ -667,7 +673,7 @@ void options_builder_add_usage(options_builder_t *builder, const char *mode, con
  * ```
  */
 void options_builder_add_example(options_builder_t *builder, const char *mode, const char *args,
-                                 const char *description);
+                                 const char *description, bool owns_args);
 
 /**
  * @brief Add mode descriptor
