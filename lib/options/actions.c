@@ -20,6 +20,7 @@
 #include "version.h"
 #include "video/webcam/webcam.h"
 #include "audio/audio.h"
+#include "util/string.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,11 +40,13 @@ void action_list_webcams(void) {
   }
 
   if (device_count == 0) {
-    (void)fprintf(stdout, "No webcam devices found.\n");
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No webcam devices found."));
   } else {
-    (void)fprintf(stdout, "Available webcam devices:\n");
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Available Webcam Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
-      (void)fprintf(stdout, "  %u: %s\n", devices[i].index, devices[i].name);
+      char index_str[32];
+      (void)snprintf(index_str, sizeof(index_str), "%u", devices[i].index);
+      (void)fprintf(stdout, "  %s %s\n", colored_string(LOG_COLOR_GREY, index_str), colored_string(LOG_COLOR_DEV, devices[i].name));
     }
   }
 
@@ -67,13 +70,15 @@ void action_list_microphones(void) {
   }
 
   if (device_count == 0) {
-    (void)fprintf(stdout, "No microphone devices found.\n");
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No microphone devices found."));
   } else {
-    (void)fprintf(stdout, "Available microphone devices:\n");
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Available Microphone Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
-      (void)fprintf(stdout, "  %d: %s", devices[i].index, devices[i].name);
+      char index_str[32];
+      (void)snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
+      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), colored_string(LOG_COLOR_DEV, devices[i].name));
       if (devices[i].is_default_input) {
-        (void)fprintf(stdout, " (default)");
+        (void)fprintf(stdout, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
       (void)fprintf(stdout, "\n");
     }
@@ -95,13 +100,15 @@ void action_list_speakers(void) {
   }
 
   if (device_count == 0) {
-    (void)fprintf(stdout, "No speaker devices found.\n");
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No speaker devices found."));
   } else {
-    (void)fprintf(stdout, "Available speaker devices:\n");
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Available Speaker Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
-      (void)fprintf(stdout, "  %d: %s", devices[i].index, devices[i].name);
+      char index_str[32];
+      (void)snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
+      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), colored_string(LOG_COLOR_DEV, devices[i].name));
       if (devices[i].is_default_output) {
-        (void)fprintf(stdout, " (default)");
+        (void)fprintf(stdout, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
       (void)fprintf(stdout, "\n");
     }
@@ -119,29 +126,76 @@ void action_list_speakers(void) {
 void action_show_capabilities(void) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  (void)fprintf(stdout, "Terminal Capabilities:\n");
-  (void)fprintf(stdout, "  Color Support: ");
-  switch (caps.color_level) {
-  case TERM_COLOR_NONE:
-    (void)fprintf(stdout, "None (monochrome)\n");
-    break;
-  case TERM_COLOR_16:
-    (void)fprintf(stdout, "16 colors (ANSI)\n");
-    break;
-  case TERM_COLOR_256:
-    (void)fprintf(stdout, "256 colors\n");
-    break;
-  case TERM_COLOR_TRUECOLOR:
-    (void)fprintf(stdout, "Truecolor (16.7M colors)\n");
-    break;
-  default:
-    (void)fprintf(stdout, "Unknown\n");
-    break;
-  }
+  // Print title with color
+  (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Detected Terminal Capabilities:"));
 
-  (void)fprintf(stdout, "  UTF-8 Support: %s\n", caps.utf8_support ? "Yes" : "No");
-  (void)fprintf(stdout, "  Terminal Type: %s\n", caps.term_type[0] ? caps.term_type : "Unknown");
-  (void)fprintf(stdout, "  Color Term: %s\n", caps.colorterm[0] ? caps.colorterm : "Not set");
+  // Column alignment: calculate max label width
+  const char *label_color_level = "Color Level:";
+  const char *label_max_colors = "Max Colors:";
+  const char *label_utf8 = "UTF-8 Support:";
+  const char *label_render_mode = "Render Mode:";
+  const char *label_term = "TERM:";
+  const char *label_colorterm = "COLORTERM:";
+  const char *label_detection = "Detection Reliable:";
+  const char *label_bitmask = "Capabilities Bitmask:";
+
+  size_t max_label_width = 0;
+  max_label_width = MAX(max_label_width, strlen(label_color_level));
+  max_label_width = MAX(max_label_width, strlen(label_max_colors));
+  max_label_width = MAX(max_label_width, strlen(label_utf8));
+  max_label_width = MAX(max_label_width, strlen(label_render_mode));
+  max_label_width = MAX(max_label_width, strlen(label_term));
+  max_label_width = MAX(max_label_width, strlen(label_colorterm));
+  max_label_width = MAX(max_label_width, strlen(label_detection));
+  max_label_width = MAX(max_label_width, strlen(label_bitmask));
+
+#define PRINT_CAP_LINE(label, value_str, value_color) \
+  do { \
+    (void)fprintf(stdout, "  %s", colored_string(LOG_COLOR_GREY, label)); \
+    for (size_t i = strlen(label); i < max_label_width; i++) { \
+      (void)fprintf(stdout, " "); \
+    } \
+    (void)fprintf(stdout, " %s\n", colored_string(value_color, value_str)); \
+  } while (0)
+
+  // Print Color Level
+  const char *color_level_name = terminal_color_level_name(caps.color_level);
+  PRINT_CAP_LINE(label_color_level, color_level_name, LOG_COLOR_DEV);
+
+  // Print Max Colors
+  char max_colors_str[32];
+  (void)snprintf(max_colors_str, sizeof(max_colors_str), "%u", caps.color_count);
+  PRINT_CAP_LINE(label_max_colors, max_colors_str, LOG_COLOR_DEV);
+
+  // Print UTF-8 Support
+  PRINT_CAP_LINE(label_utf8, caps.utf8_support ? "Yes" : "No", caps.utf8_support ? LOG_COLOR_INFO : LOG_COLOR_ERROR);
+
+  // Print Render Mode
+  const char *render_mode_str;
+  if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
+    render_mode_str = "half-block";
+  } else if (caps.render_mode == RENDER_MODE_BACKGROUND) {
+    render_mode_str = "background";
+  } else {
+    render_mode_str = "foreground";
+  }
+  PRINT_CAP_LINE(label_render_mode, render_mode_str, LOG_COLOR_DEV);
+
+  // Print TERM
+  PRINT_CAP_LINE(label_term, caps.term_type[0] ? caps.term_type : "Unknown", LOG_COLOR_DEV);
+
+  // Print COLORTERM
+  PRINT_CAP_LINE(label_colorterm, caps.colorterm[0] ? caps.colorterm : "(not set)", LOG_COLOR_DEV);
+
+  // Print Detection Reliable
+  PRINT_CAP_LINE(label_detection, caps.detection_reliable ? "Yes" : "No", caps.detection_reliable ? LOG_COLOR_INFO : LOG_COLOR_ERROR);
+
+  // Print Capabilities Bitmask
+  char bitmask_str[32];
+  (void)snprintf(bitmask_str, sizeof(bitmask_str), "0x%08x", caps.capabilities);
+  PRINT_CAP_LINE(label_bitmask, bitmask_str, LOG_COLOR_GREY);
+
+#undef PRINT_CAP_LINE
 
   (void)fflush(stdout);
   _exit(0);
