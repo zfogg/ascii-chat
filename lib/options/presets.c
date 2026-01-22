@@ -716,7 +716,7 @@ const options_config_t *options_preset_client(const char *program_name, const ch
 
   options_builder_add_example(b, "client", "example.com:8080", "Connect to remote server on custom port");
 
-  options_builder_add_example(b, "client", "--color --width 120", "Connect with custom display options");
+  options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120", "Connect with custom display options");
 
   options_builder_add_example(b, "client", "-f '-'",
                               "Stream media from stdin (cat file.mp4 | ascii-chat client -f '-')");
@@ -773,7 +773,7 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
   // Examples for mirror help
   options_builder_add_example(b, "mirror", NULL, "View local webcam");
 
-  options_builder_add_example(b, "mirror", "--color", "View webcam with color support");
+  options_builder_add_example(b, "mirror", "--color-mode mono", "View webcam in black and white");
 
   options_builder_add_example(b, "mirror", "-f video.mp4",
                               "Stream from video file (supports mp4, mkv, webm, mov, etc)");

@@ -102,7 +102,6 @@
  * - `--port`, `-p`: Server port (or override positional argument port for client)
  * - `--key`, `-k`: SSH key file path for encryption
  * - `--password`: Password for authentication
- * - `--color`, `--256`, `--truecolor`: Force color mode
  * - `--palette`: Select ASCII palette
  * - `--help`: Print usage information and exit
  *
