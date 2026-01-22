@@ -298,7 +298,7 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
     for (const char **mode_ptr = modes; *mode_ptr; mode_ptr++) {
       const char *mode = *mode_ptr;
       const options_config_t *mode_config = NULL;
-      
+
       if (strcmp(mode, "server") == 0) {
         mode_config = options_preset_server(NULL, NULL);
       } else if (strcmp(mode, "client") == 0) {
@@ -1153,13 +1153,24 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
 asciichat_error_t options_config_generate_manpage_template(const options_config_t *config, const char *program_name,
                                                            const char *mode_name, const char *output_path,
                                                            const char *brief_description) {
-  if (!config || !program_name || !output_path || !brief_description) {
+  if (!config || !program_name || !brief_description) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing required parameters for man page generation");
   }
 
-  FILE *f = fopen(output_path, "w");
-  if (!f) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to open man page template file: %s", output_path);
+  FILE *f = NULL;
+  bool should_close = false;
+
+  if (output_path) {
+    // Write to file
+    f = fopen(output_path, "w");
+    if (!f) {
+      return SET_ERRNO(ERROR_CONFIG, "Failed to open man page template file: %s", output_path);
+    }
+    should_close = true;
+  } else {
+    // Write to stdout
+    f = stdout;
+    should_close = false;
   }
 
   // Write all sections
@@ -1179,9 +1190,13 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   fprintf(f, "auto-generated sections are populated from the command-line options builder and\n");
   fprintf(f, "can be regenerated if options change.\n");
 
-  fclose(f);
+  if (should_close) {
+    fclose(f);
+    log_info("Generated man page template: %s", output_path);
+  } else {
+    fflush(f);
+  }
 
-  log_info("Generated man page template: %s", output_path);
   return ASCIICHAT_OK;
 }
 
