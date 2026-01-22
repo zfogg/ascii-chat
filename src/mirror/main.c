@@ -73,6 +73,16 @@ static void mirror_signal_exit(void) {
 }
 
 /**
+ * Unix signal handler for graceful shutdown on SIGTERM
+ *
+ * @param sig The signal number (unused, but required by signal handler signature)
+ */
+static void mirror_handle_sigterm(int sig) {
+  (void)sig; // Unused
+  mirror_signal_exit();
+}
+
+/**
  * Console control handler for Ctrl+C and related events
  *
  * @param event The control event that occurred
@@ -138,6 +148,8 @@ int mirror_main(void) {
 
 #ifndef _WIN32
   platform_signal(SIGPIPE, SIG_IGN);
+  // Handle SIGTERM gracefully for timeout(1) support
+  platform_signal(SIGTERM, mirror_handle_sigterm);
 #endif
 
   // Create capture and display contexts from command-line options

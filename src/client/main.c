@@ -211,6 +211,20 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 }
 
 /**
+ * Unix signal handler for graceful shutdown on SIGTERM
+ *
+ * @param sig The signal number (unused)
+ */
+#ifndef _WIN32
+static void sigterm_handler(int sig) {
+  (void)sig; // Unused
+  // Signal all subsystems to shutdown (async-signal-safe operations only)
+  atomic_store(&g_should_exit, true);
+  server_connection_shutdown(); // Only uses atomics and socket_shutdown
+}
+#endif
+
+/**
  * Platform-compatible SIGWINCH handler for terminal resize events
  *
  * Automatically updates terminal dimensions and notifies server when
@@ -537,6 +551,8 @@ int client_main(void) {
   platform_signal(SIGWINCH, sigwinch_handler);
 
 #ifndef _WIN32
+  // Handle SIGTERM gracefully for timeout(1) support
+  platform_signal(SIGTERM, sigterm_handler);
   // Ignore SIGPIPE - we'll handle write errors ourselves (not available on Windows)
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
@@ -794,6 +810,12 @@ int client_main(void) {
     // Attempt connection with 3-stage fallback (TCP → STUN → TURN)
     asciichat_error_t connection_result =
         connection_attempt_with_fallback(&connection_ctx, address, (uint16_t)port, acds_server, (uint16_t)acds_port);
+
+    // Check if shutdown was requested during connection attempt
+    if (should_exit()) {
+      log_info("Shutdown requested during connection attempt");
+      return 0;
+    }
 
     // Check if connection attempt succeeded
     // Handle the error result appropriately

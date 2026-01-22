@@ -266,6 +266,11 @@ static asciichat_error_t attempt_direct_tcp(connection_attempt_context_t *ctx, c
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
+  // Check if shutdown was requested before attempting TCP connection
+  if (should_exit()) {
+    return SET_ERRNO(ERROR_NETWORK, "TCP connection attempt aborted due to shutdown request");
+  }
+
   log_info("Stage 1/3: Attempting direct TCP connection to %s:%u (3s timeout)", server_address, server_port);
 
   // Transition to attempting state
@@ -951,6 +956,15 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
+  // Check if shutdown was requested before starting connection attempt
+  // Note: If SIGTERM arrives during a blocking TCP connect(), it won't interrupt
+  // the syscall directly. The connect will continue until it times out (~3s) or
+  // succeeds, then this check will catch the exit flag. This is expected behavior
+  // for signal handling with blocking I/O.
+  if (should_exit()) {
+    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
+  }
+
   log_info("=== Connection attempt %u: %s:%u (fallback strategy: TCP → STUN → TURN) ===", ctx->reconnect_attempt,
            server_address, server_port);
 
@@ -993,6 +1007,12 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   // Stage 2: WebRTC + STUN (8s timeout)
   // ─────────────────────────────────────────────────────────────
 
+  // Check if shutdown was requested before proceeding to next stage
+  if (should_exit()) {
+    connection_state_transition(ctx, CONN_STATE_FAILED);
+    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
+  }
+
   result = attempt_webrtc_stun(ctx, server_address, acds_server, acds_port);
   if (result == ASCIICHAT_OK) {
     log_info("Connection succeeded via WebRTC+STUN");
@@ -1011,6 +1031,12 @@ asciichat_error_t connection_attempt_with_fallback(connection_attempt_context_t 
   // ─────────────────────────────────────────────────────────────
   // Stage 3: WebRTC + TURN (15s timeout)
   // ─────────────────────────────────────────────────────────────
+
+  // Check if shutdown was requested before proceeding to final stage
+  if (should_exit()) {
+    connection_state_transition(ctx, CONN_STATE_FAILED);
+    return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
+  }
 
   result = attempt_webrtc_turn(ctx, server_address, acds_server, acds_port);
   if (result == ASCIICHAT_OK) {

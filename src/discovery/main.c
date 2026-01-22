@@ -88,6 +88,18 @@ static bool discovery_console_ctrl_handler(console_ctrl_event_t event) {
   return true;
 }
 
+/**
+ * Unix signal handler for graceful shutdown on SIGTERM
+ *
+ * @param sig The signal number (unused)
+ */
+#ifndef _WIN32
+static void discovery_handle_sigterm(int sig) {
+  (void)sig; // Unused
+  discovery_signal_exit();
+}
+#endif
+
 /* ============================================================================
  * Public Interface Functions
  * ============================================================================ */
@@ -209,6 +221,8 @@ int discovery_main(void) {
   platform_set_console_ctrl_handler(discovery_console_ctrl_handler);
 
 #ifndef _WIN32
+  // Handle SIGTERM gracefully for timeout(1) support
+  platform_signal(SIGTERM, discovery_handle_sigterm);
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
