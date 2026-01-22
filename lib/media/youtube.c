@@ -20,6 +20,7 @@
 
 // libytdl includes
 #include <ytdl/info.h>
+#include <ytdl/sig.h>
 
 /**
  * @brief YouTube URL patterns (regex for detection)
@@ -209,6 +210,91 @@ static size_t youtube_fetch_watch_page(const char *video_id, uint8_t *output_htm
 }
 
 /**
+ * @brief Fetch and extract signature actions from YouTube player
+ *
+ * Fetches the player.js file and extracts the signature decryption actions.
+ * These actions are needed to decipher the encrypted format URLs.
+ *
+ * @param player_url Path to the player (e.g., "/s/player/abc123/player.js")
+ * @param sig_actions Output structure to store extracted signature actions
+ * @return 0 on success, non-zero on failure
+ *
+ * @note This is called internally only
+ */
+static int youtube_fetch_and_extract_sig_actions(const char *player_url, ytdl_sig_actions_t *sig_actions) {
+  if (!player_url || !sig_actions) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for signature action extraction");
+    return -1;
+  }
+
+  // Build full URL to player.js
+  char full_player_url[512];
+  snprintf(full_player_url, sizeof(full_player_url), "https://www.youtube.com%s", player_url);
+
+  log_debug("Fetching YouTube player: %s", full_player_url);
+
+  AVIOContext *io_ctx = NULL;
+  AVDictionary *opts = NULL;
+
+  // Set HTTP headers for player.js fetch
+  char user_agent[128];
+  snprintf(user_agent, sizeof(user_agent), "ascii-chat/%s", ASCII_CHAT_VERSION_STRING);
+  av_dict_set(&opts, "user_agent", user_agent, 0);
+  av_dict_set(&opts, "referer", "https://www.youtube.com/", 0);
+
+  // Open player.js URL
+  int ret = avio_open2(&io_ctx, full_player_url, AVIO_FLAG_READ, NULL, &opts);
+  av_dict_free(&opts);
+
+  if (ret < 0) {
+    log_warn("Failed to fetch player.js: %s (error: %d)", full_player_url, ret);
+    return -1;
+  }
+
+  // Allocate buffer for player code (typically 100KB-500KB)
+  size_t player_buffer_size = 1024 * 1024; // 1MB max
+  uint8_t *player_code = SAFE_MALLOC(player_buffer_size, uint8_t *);
+  if (!player_code) {
+    avio_close(io_ctx);
+    log_error("Failed to allocate buffer for player code");
+    return -1;
+  }
+
+  // Read player.js
+  int read_size = avio_read(io_ctx, player_code, (int)player_buffer_size - 1);
+  avio_close(io_ctx);
+
+  if (read_size <= 0) {
+    SAFE_FREE(player_code);
+    log_warn("Failed to read player.js (size: %d)", read_size);
+    return -1;
+  }
+
+  player_code[read_size] = '\0';
+  log_debug("Fetched player.js (%d bytes)", read_size);
+
+  // Initialize signature actions
+  if (ytdl_sig_actions_init(sig_actions) != 0) {
+    SAFE_FREE(player_code);
+    log_error("Failed to initialize signature actions");
+    return -1;
+  }
+
+  // Extract signature actions from player code
+  // This parses the player.js to find the decipher algorithm
+  if (ytdl_sig_actions_extract(sig_actions, (const uint8_t *)player_code, read_size) != 0) {
+    ytdl_sig_actions_free(sig_actions);
+    SAFE_FREE(player_code);
+    log_warn("Failed to extract signature actions from player");
+    return -1;
+  }
+
+  SAFE_FREE(player_code);
+  log_debug("Successfully extracted signature actions from player");
+  return 0;
+}
+
+/**
  * @brief Extract direct stream URL from YouTube video URL
  *
  * Main function for YouTube URL extraction using libytdl.
@@ -287,6 +373,23 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     SAFE_FREE(watch_html);
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Failed to extract video formats");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
+  }
+
+  // Get player URL and fetch signature actions to decipher format URLs
+  const char *player_url = ytdl_info_get_player_url(&info);
+  if (player_url && player_url[0] != '\0') {
+    ytdl_sig_actions_t sig_actions = {0};
+
+    // Try to fetch and extract signature actions
+    if (youtube_fetch_and_extract_sig_actions(player_url, &sig_actions) == 0) {
+      // Set signature actions on the info context for format URL decryption
+      ytdl_info_set_sig_actions(&info, &sig_actions);
+      log_debug("Signature actions set for format URL decryption");
+    } else {
+      log_warn("Could not fetch signature actions, format URLs may not decrypt properly");
+    }
+  } else {
+    log_warn("No player URL found in video info");
   }
 
   // Get best video format (prefers video+audio, falls back to audio-only)
