@@ -110,10 +110,9 @@ static void full_terminal_reset_internal(int fd, bool snapshot_mode) {
  */
 static void write_frame_internal(session_display_ctx_t *ctx, const char *frame_data, size_t frame_len, bool use_tty) {
   if (use_tty && ctx->tty_info.fd >= 0) {
-    // Position cursor at top-left for TTY output
-    if (!ctx->snapshot_mode) {
-      (void)terminal_cursor_home(ctx->tty_info.fd);
-    }
+    // Position cursor at top-left for TTY output (even in snapshot mode, for smooth display)
+    // Snapshot mode only disables terminal reset/clear, not cursor positioning
+    (void)terminal_cursor_home(ctx->tty_info.fd);
     (void)platform_write(ctx->tty_info.fd, frame_data, frame_len);
     (void)terminal_flush(ctx->tty_info.fd);
   } else {
