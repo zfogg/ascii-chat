@@ -15,6 +15,56 @@
 #include <stdbool.h>
 
 /**
+ * @brief Check if a string is a known unit (MB, GB, ms, Hz, etc.)
+ *
+ * @param str String to check (should be null-terminated or length-bounded)
+ * @param max_len Maximum length to check
+ * @return true if the string is a recognized unit
+ */
+static bool is_known_unit(const char *str, size_t max_len) {
+  if (!str || max_len == 0) {
+    return false;
+  }
+
+  // Known units: byte sizes, time units, frequency, percentage, and count descriptors
+  const char *known_units[] = {
+      // Byte sizes
+      "B",    "KB",   "MB",   "GB",   "TB",   "PB",   "EB",
+      "KiB",  "MiB",  "GiB",  "TiB",  "PiB",  "EiB",
+      // Time
+      "ms",   "us",   "ns",   "ps",   "s",    "sec",  "second", "seconds",
+      "m",    "min",  "minute", "minutes",
+      "h",    "hr",   "hour", "hours",
+      // Frequency
+      "Hz",   "kHz",  "MHz",  "GHz",
+      // Percentage
+      "%",
+      // Count descriptors (commonly used in logs)
+      "items", "item", "entries", "entry", "packets", "packet",
+      "frames", "frame", "messages", "message",
+      "connections", "connection", "clients", "client",
+      "events", "event", "bytes", "bits",
+      "retries", "retry", "attempts", "attempt",
+      "chunks", "chunk", "blocks", "block",
+  };
+
+  const size_t num_units = sizeof(known_units) / sizeof(known_units[0]);
+  for (size_t i = 0; i < num_units; i++) {
+    size_t unit_len = strlen(known_units[i]);
+    if (unit_len > max_len) {
+      continue;
+    }
+    // Case-insensitive comparison for units
+    if (strncasecmp(str, known_units[i], unit_len) == 0 &&
+        (unit_len == max_len || !isalpha(str[unit_len]))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * @brief Check if character at position is the start of a numeric pattern
  *
  * Detects: numbers, hex, decimals, dimensions (1920x1080), units (25 MB, 1024 GiB, etc.)
@@ -77,8 +127,8 @@ static bool is_numeric_pattern(const char *str, size_t pos, size_t *end_pos) {
     }
   }
 
-  // Check for units or percent (with or without space)
-  // Handle optional space before unit
+  // Check for known units after optional spaces (e.g., "25 MB", "1024 GiB")
+  // Only include units if they're in the known units list to avoid colorizing random words
   size_t j = i;
   bool has_space = false;
   while (str[j] == ' ' || str[j] == '\t') {
@@ -86,20 +136,20 @@ static bool is_numeric_pattern(const char *str, size_t pos, size_t *end_pos) {
     j++;
   }
 
-  // Handle units like MB, MiB, GB, GiB, KiB, B, ms, us, ns, %, Hz, MHz, entries, items, packets, etc.
-  if (isalpha(str[j]) || str[j] == '%') {
-    // Collect the unit (up to 32 characters for words like "entries", "packets", etc.)
+  if (has_space && (isalpha(str[j]) || str[j] == '%')) {
+    // Collect potential unit (up to 32 characters)
     size_t unit_start = j;
     while ((isalpha(str[j]) || str[j] == '%') && (j - unit_start) < 32) {
       j++;
     }
-    // Include the space(s) before the unit
-    i = j;
-  } else if (!has_space) {
-    // No space, no unit - just return the number
-  } else {
-    // Had space but no unit following - don't include the space
-    i = j;
+    size_t unit_len = j - unit_start;
+
+    // Check if this is a known unit
+    if (is_known_unit(str + unit_start, unit_len)) {
+      // It's a known unit, include the space and unit
+      i = j;
+    }
+    // Otherwise, don't include - just the number (i stays as is)
   }
 
   *end_pos = i;
@@ -189,6 +239,46 @@ static bool is_file_path(const char *str, size_t pos, size_t *end_pos) {
 
   *end_pos = i;
   return true;
+}
+
+/**
+ * @brief Check if character at position is the start of a URL
+ *
+ * Detects: http://..., https://..., ftp://..., etc.
+ *
+ * @param str Full string
+ * @param pos Current position
+ * @param end_pos Output: position after the URL
+ * @return true if URL found
+ */
+static bool is_url(const char *str, size_t pos, size_t *end_pos) {
+  // Check for common URL schemes: http, https, ftp, ws, wss
+  const char *schemes[] = {"https://", "http://", "ftp://", "wss://", "ws://"};
+
+  // Try each scheme
+  for (size_t s = 0; s < sizeof(schemes) / sizeof(schemes[0]); s++) {
+    size_t scheme_len = strlen(schemes[s]);
+    if (strncmp(str + pos, schemes[s], scheme_len) == 0) {
+      // Found the scheme, now collect the URL
+      size_t i = pos + scheme_len;
+
+      // URL continues until whitespace, common punctuation, or special chars
+      // Stop at: space, tab, newline, ), ], }, ", ', <, >
+      while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' &&
+             str[i] != ')' && str[i] != ']' && str[i] != '}' && str[i] != '"' &&
+             str[i] != '\'' && str[i] != '<' && str[i] != '>' && str[i] != ',') {
+        i++;
+      }
+
+      // Must have at least one character after the scheme
+      if (i > pos + scheme_len) {
+        *end_pos = i;
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -301,6 +391,22 @@ const char *colorize_log_message(const char *message) {
       snprintf(var_buf, sizeof(var_buf), "%.*s", (int)var_len, message + i);
 
       const char *colored = colored_string(LOG_COLOR_GREY, var_buf);
+      size_t colored_len = strlen(colored);
+      if (out_pos + colored_len < max_size) {
+        memcpy(output + out_pos, colored, colored_len);
+        out_pos += colored_len;
+      }
+      i = end_pos - 1;
+      continue;
+    }
+
+    // Try URL
+    if (can_colorize && is_url(message, i, &end_pos)) {
+      size_t url_len = end_pos - i;
+      char url_buf[2048];
+      snprintf(url_buf, sizeof(url_buf), "%.*s", (int)url_len, message + i);
+
+      const char *colored = colored_string(LOG_COLOR_INFO, url_buf);
       size_t colored_len = strlen(colored);
       if (out_pos + colored_len < max_size) {
         memcpy(output + out_pos, colored, colored_len);
