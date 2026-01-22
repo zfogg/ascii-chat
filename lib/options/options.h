@@ -916,28 +916,12 @@ asciichat_error_t options_set_bool(const char *field_name, bool value);
 asciichat_error_t options_set_string(const char *field_name, const char *value);
 asciichat_error_t options_set_double(const char *field_name, double value);
 
-/**
- * @brief Get terminal width (lock-free)
+/** @brief Red weight for luminance calculation
  *
- * Convenience function for common case. Equivalent to options_get()->width.
+ * Weight for red channel in luminance calculation.
  *
- * @return Terminal width in characters
+ * @ingroup options
  */
-static inline int options_get_width(void) {
-  return options_get()->width;
-}
-
-/**
- * @brief Get terminal height (lock-free)
- *
- * Convenience function for common case. Equivalent to options_get()->height.
- *
- * @return Terminal height in characters
- */
-static inline int options_get_height(void) {
-  return options_get()->height;
-}
-
 extern const float weight_red;
 
 /** @brief Green weight for luminance calculation

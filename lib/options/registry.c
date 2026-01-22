@@ -178,6 +178,8 @@ static bool parse_cookies_from_browser(const char *arg, void *dest, char **error
 // ============================================================================
 // Registry Entry Structure Definition
 // ============================================================================
+// Note: All default_*_value variables are now defined in options.h with their
+// corresponding OPT_*_DEFAULT constants for single source of truth.
 
 /**
  * @brief Registry entry - stores option definition with mode bitmask
