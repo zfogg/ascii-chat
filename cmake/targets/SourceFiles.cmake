@@ -352,11 +352,13 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 # Disable precompiled headers and static analyzers for tomlc17 (third-party code)
+# Also disable implicit-conversion sanitizer check (line 128 has intentional int->size_t conversion)
 set_source_files_properties(
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
     PROPERTIES
     SKIP_PRECOMPILE_HEADERS ON
     SKIP_LINTING ON
+    COMPILE_FLAGS "-fno-sanitize=implicit-conversion"
 )
 
 # =============================================================================
