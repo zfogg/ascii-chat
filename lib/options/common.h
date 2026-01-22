@@ -1,26 +1,88 @@
 /**
  * @file common.h
- * @brief Common utilities and helpers for option parsing
+ * @brief Common utilities and helpers for option parsing across all modes
  * @ingroup options
  *
- * Shared helper functions, validators, and utilities used by client.c, server.c,
- * and mirror.c option parsing modules. This module provides:
- * - String parsing and validation utilities
- * - Option argument validation (ports, FPS, webcam indices)
- * - SSH key detection
- * - Terminal dimension management
- * - Error handling helpers
+ * This module provides shared utilities used by the entire options system:
+ * - Validators for numeric ranges, file existence, formats (IP, port, etc.)
+ * - String parsing helpers (safe integer conversion, color mode parsing, etc.)
+ * - Terminal dimension management functions
+ * - Option lookup and typo suggestion (Levenshtein distance)
+ * - SSH key detection and defaults
  *
  * **Design Philosophy**:
- * - Single Responsibility: Each function does one validation task
- * - Consistent Error Reporting: All validators use fprintf to stderr
- * - No Side Effects: Validators don't modify global state
- * - Reusability: Used by all mode-specific parsers
  *
- * @see options.h
- * @see client.h
- * @see server.h
- * @see mirror.h
+ * - **Single Responsibility**: Each validator handles one specific type of validation
+ * - **Consistent Error Reporting**: All validators provide helpful error messages
+ * - **No Side Effects**: Validators are pure functions (no global state modification)
+ * - **Reusability**: These functions are used by registry, builder, and parsers modules
+ * - **Cross-Cutting Concerns**: Handles validation needs for all modes uniformly
+ *
+ * **Validator Functions**:
+ *
+ * Return conventions:
+ * - Numeric validators: Return parsed value on success, INT_MIN/-1 on error
+ * - Boolean validators: Return true/false with error message on failure
+ * - String validators: Validate format, write to output buffer
+ *
+ * **Typical Usage**:
+ *
+ * ```c
+ * // Validate port number
+ * uint16_t port;
+ * if (!validate_port_opt("8080", &port)) {
+ *     fprintf(stderr, "Invalid port: 8080\\n");
+ *     return false;
+ * }
+ *
+ * // Parse color mode from string
+ * asciichat_error_t err = parse_color_mode_option("256", opts);
+ * if (err != ASCIICHAT_OK) {
+ *     fprintf(stderr, "Unknown color mode\\n");
+ *     return false;
+ * }
+ *
+ * // Find similar option if user misspelled
+ * const char *suggestion = find_similar_option("prot", all_options);
+ * if (suggestion) {
+ *     fprintf(stderr, "Did you mean: --%s?\\n", suggestion);
+ * }
+ * ```
+ *
+ * **Option Parsing Helpers**:
+ *
+ * - `strtoint_safe()`: Safe integer parsing with range checking
+ * - `find_similar_option()`: Typo detection using Levenshtein distance
+ * - `validate_positive_int_opt()`: Validate positive integers
+ * - `validate_port_opt()`: Validate port numbers (1-65535)
+ * - `validate_fps_opt()`: Validate frame rates
+ * - `validate_webcam_index()`: Validate webcam device indices
+ *
+ * **Display Option Parsers**:
+ *
+ * - `parse_color_mode_option()`: Parse color mode strings (auto, mono, 16, 256, truecolor)
+ * - `parse_render_mode_option()`: Parse render mode (foreground, background, half-block)
+ * - `parse_palette_option()`: Parse palette type selection
+ * - `parse_palette_chars_option()`: Parse custom palette character set
+ *
+ * **Terminal Functions**:
+ *
+ * - `update_dimensions_for_full_height()`: Adjust dimensions to use full terminal height
+ * - `update_dimensions_to_terminal_size()`: Sync dimensions with current terminal size
+ * - `print_project_links()`: Print ascii-chat project links and info
+ *
+ * **Cryptography Helpers**:
+ *
+ * - `detect_default_ssh_key()`: Find default SSH key if not specified
+ * - `validate_options_and_report()`: Cross-field validation with error reporting
+ *
+ * @see options.h - Main options module
+ * @see registry.h - Central registry of all options
+ * @see builder.h - Builder API using these validators
+ * @see validation.h - Additional validation functions
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
  */
 
 #pragma once
