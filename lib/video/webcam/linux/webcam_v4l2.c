@@ -28,6 +28,9 @@
 #define WEBCAM_DEVICE_INDEX_MAX 99
 #define WEBCAM_READ_RETRY_COUNT 3
 
+// Module-scope cached frame (freed in webcam_cleanup_context when webcam closes)
+static image_t *v4l2_cached_frame = NULL;
+
 typedef struct {
   void *start;
   size_t length;
@@ -345,6 +348,12 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;
 
+  // Free cached frame if it was allocated
+  if (v4l2_cached_frame) {
+    image_destroy(v4l2_cached_frame);
+    v4l2_cached_frame = NULL;
+  }
+
   // Stop streaming
   enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   ioctl(ctx->fd, VIDIOC_STREAMOFF, &type);
@@ -405,16 +414,23 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Create image_t structure
-  image_t *img = image_new(ctx->width, ctx->height);
-  if (!img) {
-    log_error("Failed to allocate image buffer");
-    // Re-queue the buffer - use safe error handling
-    if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-      log_error("Failed to re-queue buffer after image allocation failure: %s", SAFE_STRERROR(errno));
+  // Allocate or reallocate cached frame if needed
+  if (!v4l2_cached_frame || v4l2_cached_frame->w != ctx->width || v4l2_cached_frame->h != ctx->height) {
+    if (v4l2_cached_frame) {
+      image_destroy(v4l2_cached_frame);
     }
-    return NULL;
+    v4l2_cached_frame = image_new(ctx->width, ctx->height);
+    if (!v4l2_cached_frame) {
+      log_error("Failed to allocate image buffer");
+      // Re-queue the buffer - use safe error handling
+      if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+        log_error("Failed to re-queue buffer after image allocation failure: %s", SAFE_STRERROR(errno));
+      }
+      return NULL;
+    }
   }
+
+  image_t *img = v4l2_cached_frame;
 
   // Copy and convert frame data based on pixel format
   if (ctx->pixelformat == V4L2_PIX_FMT_YUYV) {

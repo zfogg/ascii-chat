@@ -14,7 +14,9 @@
 #include "log/logging.h"
 #include "buffer_pool.h"
 #include "video/palette.h"
-#include "video/simd/common.h" // For simd_caches_destroy_all()
+#include "video/simd/common.h"   // For simd_caches_destroy_all()
+#include "video/webcam/webcam.h" // For webcam_cleanup()
+#include "util/time.h"           // For timer_system_cleanup()
 #include "asciichat_errno.h"
 #include "crypto/known_hosts.h"
 #include "options/options.h"
@@ -118,6 +120,13 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
 
   // Register SIMD caches cleanup (for all modes: server, client, mirror)
   (void)atexit(simd_caches_destroy_all);
+
+  // Register webcam cleanup (frees cached test pattern and webcam resources)
+  (void)atexit(webcam_cleanup);
+
+  // Register timer system cleanup AFTER memory report registration
+  // This ensures timers are freed BEFORE memory_report runs (due to atexit LIFO order)
+  (void)atexit(timer_system_cleanup);
 
   // Truncate log if it's already too large
   log_truncate_if_large();

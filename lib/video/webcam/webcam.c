@@ -14,6 +14,8 @@
 #include "platform/string.h"
 
 static webcam_context_t *global_webcam_ctx = NULL;
+static image_t *cached_test_pattern = NULL;
+static image_t *cached_webcam_frame = NULL;
 
 asciichat_error_t webcam_init(unsigned short int webcam_index) {
   // Check if test pattern mode is enabled
@@ -59,20 +61,19 @@ image_t *webcam_read(void) {
   if (GET_OPTION(test_pattern)) {
     // Use cached test pattern for 60 FPS performance
     // Generate once on first call, reuse for subsequent calls
-    static image_t *cached_pattern = NULL;
 
-    if (!cached_pattern) {
+    if (!cached_test_pattern) {
       // Generate a colorful test pattern ONCE on first call
-      cached_pattern = image_new(320, 240);
-      if (!cached_pattern) {
+      cached_test_pattern = image_new(320, 240);
+      if (!cached_test_pattern) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
         return NULL;
       }
 
       // Generate a simple color bar pattern (FAST - no per-pixel calculations)
-      for (int y = 0; y < cached_pattern->h; y++) {
-        for (int x = 0; x < cached_pattern->w; x++) {
-          rgb_pixel_t *pixel = &cached_pattern->pixels[y * cached_pattern->w + x];
+      for (int y = 0; y < cached_test_pattern->h; y++) {
+        for (int x = 0; x < cached_test_pattern->w; x++) {
+          rgb_pixel_t *pixel = &cached_test_pattern->pixels[y * cached_test_pattern->w + x];
 
           // Simple color bars (2 vertical sections for 80px width)
           int grid_x = x / 40;
@@ -102,30 +103,33 @@ image_t *webcam_read(void) {
       }
     }
 
-    // Clone the cached pattern for each call (caller owns and frees it)
-    // This is MUCH faster than regenerating the pattern each time
-    image_t *test_frame = image_new(cached_pattern->w, cached_pattern->h);
-    if (!test_frame) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
-      return NULL;
+    // Allocate cached frame once (like FFmpeg's current_image)
+    // Reuse same buffer for each call to avoid repeated allocations
+    if (!cached_webcam_frame) {
+      cached_webcam_frame = image_new(cached_test_pattern->w, cached_test_pattern->h);
+      if (!cached_webcam_frame) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate webcam frame cache");
+        return NULL;
+      }
     }
 
-    // Fast memcpy instead of per-pixel loop
-    memcpy(test_frame->pixels, cached_pattern->pixels,
-           (size_t)cached_pattern->w * cached_pattern->h * sizeof(rgb_pixel_t));
+    // Copy cached pattern to frame buffer
+    memcpy(cached_webcam_frame->pixels, cached_test_pattern->pixels,
+           (size_t)cached_test_pattern->w * cached_test_pattern->h * sizeof(rgb_pixel_t));
 
     // Apply horizontal flip if requested (same as real webcam)
     if (GET_OPTION(webcam_flip)) {
-      for (int y = 0; y < test_frame->h; y++) {
-        for (int x = 0; x < test_frame->w / 2; x++) {
-          rgb_pixel_t temp = test_frame->pixels[y * test_frame->w + x];
-          test_frame->pixels[y * test_frame->w + x] = test_frame->pixels[y * test_frame->w + (test_frame->w - 1 - x)];
-          test_frame->pixels[y * test_frame->w + (test_frame->w - 1 - x)] = temp;
+      for (int y = 0; y < cached_webcam_frame->h; y++) {
+        for (int x = 0; x < cached_webcam_frame->w / 2; x++) {
+          rgb_pixel_t temp = cached_webcam_frame->pixels[y * cached_webcam_frame->w + x];
+          cached_webcam_frame->pixels[y * cached_webcam_frame->w + x] =
+              cached_webcam_frame->pixels[y * cached_webcam_frame->w + (cached_webcam_frame->w - 1 - x)];
+          cached_webcam_frame->pixels[y * cached_webcam_frame->w + (cached_webcam_frame->w - 1 - x)] = temp;
         }
       }
     }
 
-    return test_frame;
+    return cached_webcam_frame;
   }
 
   if (!global_webcam_ctx) {
@@ -167,8 +171,20 @@ image_t *webcam_read(void) {
 }
 
 void webcam_cleanup(void) {
+  // Free cached test pattern if it was allocated
+  if (cached_test_pattern) {
+    image_destroy(cached_test_pattern);
+    cached_test_pattern = NULL;
+  }
+
+  // Free cached webcam frame if it was allocated (from test pattern or real webcam)
+  if (cached_webcam_frame) {
+    image_destroy(cached_webcam_frame);
+    cached_webcam_frame = NULL;
+  }
+
   if (GET_OPTION(test_pattern)) {
-    log_info("Test pattern mode - no webcam resources to release");
+    log_debug("Test pattern mode - webcam context cleanup skipped");
     return;
   }
 
@@ -177,7 +193,7 @@ void webcam_cleanup(void) {
     global_webcam_ctx = NULL;
     // log_info("Webcam resources released");
   } else {
-    log_info("Webcam was not opened, nothing to release");
+    log_debug("Webcam was not opened, nothing to release");
   }
 }
 
