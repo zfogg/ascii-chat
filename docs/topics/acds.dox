@@ -1,6 +1,6 @@
 /**
  * @defgroup module_acds Discovery Service (ACDS)
- * @brief 🔍 ASCII-Chat Discovery Service for session management and NAT traversal
+ * @brief 🔍 ascii-chat Discovery Service for session management and NAT traversal
  *
  * ACDS enables clients to discover servers using memorable session strings,
  * provides WebRTC signaling for P2P connections, and handles NAT traversal.
@@ -37,7 +37,7 @@
  */
 
 /**
- * @page topic_acds ASCII-Chat Discovery Service (ACDS)
+ * @page topic_acds ascii-chat Discovery Service (ACDS)
  * @ingroup module_acds
  *
  * @tableofcontents
@@ -247,7 +247,7 @@
  *
  * @subsection acds_packet_flow Packet Flow
  *
- * ACDS uses the ACIP (ASCII-Chat Internet Protocol) packet format over TCP.
+ * ACDS uses the ACIP (ascii-chat Internet Protocol) packet format over TCP.
  *
  * **Session Creation Flow**:
  * @code{.text}

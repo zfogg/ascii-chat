@@ -576,7 +576,7 @@
  *
  * @section server_acds ACDS Integration (Discovery Service)
  *
- * The server can register with the ASCII-Chat Discovery Service (ACDS) to enable easy connection
+ * The server can register with the ascii-chat Discovery Service (ACDS) to enable easy connection
  * via human-friendly session strings instead of IP addresses.
  *
  * @subsection server_acds_registration Session Registration

@@ -1,8 +1,8 @@
 /**
  * @file lib/network/mdns/mdns.c
- * @brief mDNS service discovery implementation for ASCII-Chat
+ * @brief mDNS service discovery implementation for ascii-chat
  *
- * Wraps the mdns library (https://github.com/mjansson/mdns) with ASCII-Chat specific API.
+ * Wraps the mdns library (https://github.com/mjansson/mdns) with ascii-chat specific API.
  * This implementation provides service advertisement and discovery for LAN-based sessions.
  */
 

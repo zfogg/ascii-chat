@@ -1,6 +1,6 @@
 /**
  * @file acds/main.c
- * @brief 🔍 ASCII-Chat Discovery Service (acds) main entry point
+ * @brief 🔍 ascii-chat Discovery Service (acds) main entry point
  *
  * Discovery server for session management and WebRTC signaling using
  * ACIP binary protocol over raw TCP.
@@ -70,7 +70,7 @@ int acds_main(void) {
   // Options already parsed and shared initialization complete (done by main.c)
   const options_t *opts = options_get();
 
-  log_info("ASCII-Chat Discovery Service (acds) starting...");
+  log_info("ascii-chat Discovery Service (acds) starting...");
   log_info("Version: %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
 
   // Initialize session string generator (libsodium)
@@ -267,7 +267,7 @@ int acds_main(void) {
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
   if (GET_OPTION(enable_upnp)) {
-    asciichat_error_t upnp_result = nat_upnp_open(config.port, "ASCII-Chat ACDS", &g_upnp_ctx);
+    asciichat_error_t upnp_result = nat_upnp_open(config.port, "ascii-chat ACDS", &g_upnp_ctx);
 
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
       char public_addr[22];
@@ -297,7 +297,7 @@ int acds_main(void) {
     gethostname(hostname, sizeof(hostname) - 1);
 
     asciichat_mdns_service_t service = {
-        .name = "ASCII-Chat-Discovery-Service",
+        .name = "ascii-chat-Discovery-Service",
         .type = "_ascii-chat-discovery-service._tcp",
         .host = hostname,
         .port = config.port,

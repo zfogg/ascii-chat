@@ -1166,7 +1166,7 @@ void usage_mirror(FILE *desc);
  * @brief Print ACDS usage information
  * @param desc File descriptor to write to (typically stdout or stderr)
  *
- * Prints ACDS (ASCII Chat Discovery Service) specific usage information.
+ * Prints ACDS (ascii-chat Discovery Service) specific usage information.
  *
  * **Usage**: Called when displaying ACDS help or error messages.
  *

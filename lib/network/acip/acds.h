@@ -1,6 +1,6 @@
 /**
  * @file network/acip/acds.h
- * @brief ASCII-Chat Discovery Service (ACDS) Protocol Message Formats
+ * @brief ascii-chat Discovery Service (ACDS) Protocol Message Formats
  * @ingroup acip
  * @addtogroup acds
  * @{

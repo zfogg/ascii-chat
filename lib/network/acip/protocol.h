@@ -1,13 +1,13 @@
 /**
  * @file network/acip/protocol.h
- * @brief ASCII-Chat IP Protocol (ACIP) packet type definitions
+ * @brief ascii-chat IP Protocol (ACIP) packet type definitions
  * @ingroup network
  * @addtogroup acip
  * @{
  *
  * This module defines the ACIP protocol packet types used for session management,
  * WebRTC signaling, and discovery service communication. ACIP is a binary protocol
- * over TCP used by the ASCII-Chat Discovery Service (ACDS) and clients.
+ * over TCP used by the ascii-chat Discovery Service (ACDS) and clients.
  *
  * CORE RESPONSIBILITIES:
  * ======================

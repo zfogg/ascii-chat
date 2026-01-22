@@ -1,5 +1,5 @@
 [Unit]
-Description=ASCII-Chat Coturn STUN/TURN Server
+Description=ascii-chat Coturn STUN/TURN Server
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target

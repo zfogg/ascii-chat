@@ -5,7 +5,7 @@
  * @brief ACIP client-side protocol library
  * @ingroup acip
  *
- * Client-side ACIP (ASCII-Chat IP Protocol) implementation for:
+ * Client-side ACIP (ascii-chat IP Protocol) implementation for:
  * - Session discovery and management (create, lookup, join, leave)
  * - WebRTC signaling relay (SDP, ICE candidates)
  * - String reservation (future feature)
@@ -17,7 +17,7 @@
  * - Optional password protection
  *
  * **Primary Use Case:**
- * Connecting to ACDS (ASCII-Chat Discovery Service) servers for
+ * Connecting to ACDS (ascii-chat Discovery Service) servers for
  * session discovery and WebRTC peer coordination.
  *
  * **Integration:**

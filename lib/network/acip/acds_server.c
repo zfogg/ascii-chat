@@ -8,7 +8,7 @@
  * - Error response generation
  * - Protocol compliance checking
  *
- * ACIP (ASCII-Chat IP Protocol) is the wire protocol for session
+ * ACIP (ascii-chat IP Protocol) is the wire protocol for session
  * discovery and WebRTC signaling. This module provides reusable
  * server-side utilities for any ACIP server implementation.
  */

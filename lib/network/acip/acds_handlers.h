@@ -2,7 +2,7 @@
  * @file network/acip/acds_handlers.h
  * @brief ACIP Discovery Server (ACDS) packet handlers
  *
- * Provides O(1) array-based packet dispatching for ASCII Chat Discovery Server.
+ * Provides O(1) array-based packet dispatching for ascii-chat Discovery Server.
  * Handles session management, WebRTC signaling, and discovery protocol packets.
  *
  * @author Zachary Fogg <me@zfo.gg>

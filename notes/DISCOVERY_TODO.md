@@ -1,4 +1,4 @@
-# ACDS (ASCII-Chat Discovery Service) Implementation TODO
+# ACDS (ascii-chat Discovery Service) Implementation TODO
 
 **Issue Reference:** [#239](https://github.com/zfogg/ascii-chat/issues/239)
 **Status:** Phase 2 Complete ✅ (ACDS Integration + librcu RCU lock-free registry)
@@ -763,7 +763,7 @@ Client auto-detects terminal capabilities at startup:
 
 1. Check COLORTERM env var
    - "truecolor" or "24bit" → ACIP-TC
-   
+
 2. Query terminal with XTGETTCAP or terminfo
    - colors >= 16777216 → ACIP-TC
    - colors >= 256 → ACIP-256
@@ -773,10 +773,10 @@ Client auto-detects terminal capabilities at startup:
 3. Check UTF-8 support
    - LANG contains "UTF-8" → charset=utf8
    - Print test character, query cursor position
-   
+
 4. Detect CSI REP support
    - Send CSI REP sequence, check if terminal echoes correctly
-   
+
 5. Get terminal size
    - ioctl(TIOCGWINSZ) or ANSI escape query
 ```

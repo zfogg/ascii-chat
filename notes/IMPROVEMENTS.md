@@ -1,10 +1,10 @@
-# ASCII Chat Improvements
+# ascii-chat Improvements
 
-This document outlines the significant improvements made to the ASCII Chat project to make it more robust, performant, and enjoyable to develop with as a C programmer.
+This document outlines the significant improvements made to the ascii-chat project to make it more robust, performant, and enjoyable to develop with as a C programmer.
 
 ## Overview
 
-The original ASCII chat was a simple video streaming application that converted webcam frames to ASCII art and transmitted them over TCP. While functional, it lacked many features expected in production software.
+The original ascii-chat was a simple video streaming application that converted webcam frames to ASCII art and transmitted them over TCP. While functional, it lacked many features expected in production software.
 
 ## Major Improvements
 
@@ -222,4 +222,4 @@ The codebase now follows professional C development practices:
 - **Cross-Platform**: Works on Linux, macOS, and other UNIX-like systems
 - **Dependencies**: OpenCV, pthread (all commonly available)
 
-This improved ASCII Chat demonstrates how to build robust, production-quality C applications with proper error handling, performance optimization, and maintainable architecture.
+This improved ascii-chat demonstrates how to build robust, production-quality C applications with proper error handling, performance optimization, and maintainable architecture.

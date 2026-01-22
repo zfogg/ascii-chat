@@ -1,7 +1,7 @@
 # Rate Limiter Integration Guide
 
 ## Overview
-This rate limiter library provides multiple strategies to protect your ASCII chat server from abusive clients. It includes:
+This rate limiter library provides multiple strategies to protect your ascii-chat server from abusive clients. It includes:
 
 1. **Token Bucket** - Best for most use cases, allows bursts
 2. **Sliding Window** - Strict rate limiting over time windows
@@ -45,7 +45,7 @@ switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
         // Check rate limit FIRST
         if (!multi_rate_limiter_check_video(client->rate_limiter, len)) {
-            log_warn("Client %u exceeded video rate limit (%zu bytes)", 
+            log_warn("Client %u exceeded video rate limit (%zu bytes)",
                     client->client_id, len);
             break;  // Drop packet
         }
@@ -67,7 +67,7 @@ switch (type) {
 The multi-rate limiter uses these defaults:
 
 - **Video**: 60 frames/sec (burst: 120 frames)
-- **Audio**: 100 packets/sec (burst: 200 packets)  
+- **Audio**: 100 packets/sec (burst: 200 packets)
 - **Control**: 10 packets/sec (burst: 20 packets)
 - **Bandwidth**: 10MB/sec (burst: 20MB)
 
@@ -103,7 +103,7 @@ Instead of just dropping packets, escalate responses:
 // Track violations
 if (!rate_limiter_check(...)) {
     client->violations++;
-    
+
     if (client->violations > 100) {
         // Disconnect abusive client
         remove_client(client->client_id);
@@ -112,7 +112,7 @@ if (!rate_limiter_check(...)) {
         client->penalty_until = time(NULL) + 10;
     } else if (client->violations > 20) {
         // Just log for now
-        log_warn("Client %u has %d violations", 
+        log_warn("Client %u has %d violations",
                 client->client_id, client->violations);
     }
 }
@@ -183,7 +183,7 @@ for (int i = 0; i < 1000; i++) {
 ### Problem: Legitimate bursts blocked
 **Solution**: Increase burst_size in token bucket
 
-### Problem: Clients disconnect on fast scene changes  
+### Problem: Clients disconnect on fast scene changes
 **Solution**: Increase video FPS limit or use larger burst
 
 ### Problem: Audio cuts out during high activity

@@ -622,7 +622,7 @@ const options_config_t *options_preset_client(const char *program_name, const ch
                           "Reconnection attempts (-1=infinite)", "NETWORK", false, NULL, NULL);
 
   options_builder_add_bool(b, "scan", '\0', offsetof(options_t, lan_discovery), false,
-                           "Scan for ASCII-Chat servers on local network (mDNS)", "NETWORK", false, NULL);
+                           "Scan for ascii-chat servers on local network (mDNS)", "NETWORK", false, NULL);
 
   // Terminal dimensions, webcam, display, and snapshot options (shared with mirror)
   options_builder_add_terminal_group(b);

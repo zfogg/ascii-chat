@@ -17,7 +17,7 @@
 #include <string.h>
 #include <time.h>
 
-// Simulate different packet types from your ASCII chat
+// Simulate different packet types from your ascii-chat
 typedef enum { PACKET_VIDEO_FRAME, PACKET_AUDIO_BATCH, PACKET_CONTROL, PACKET_PING } packet_type_t;
 
 // Simulate a client connection

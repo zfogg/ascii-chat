@@ -209,7 +209,7 @@ bool is_session_string(const char *str);
 // ============================================================================
 
 /**
- * @brief Discover ASCII-Chat servers on local network via mDNS
+ * @brief Discover ascii-chat servers on local network via mDNS
  *
  * Queries for mDNS _ascii-chat._tcp services and returns discovered servers.
  * This is the core discovery function used by both:

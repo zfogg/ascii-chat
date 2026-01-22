@@ -719,7 +719,7 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
  * @brief Get acds mode options preset
  *
  * @param program_name Optional program name (defaults to "ascii-chat acds")
- * @param description Optional program description (defaults to "ASCII Chat Discovery Service")
+ * @param description Optional program description (defaults to "ascii-chat Discovery Service")
  * @return Preset config (caller must free after use)
  */
 const options_config_t *options_preset_acds(const char *program_name, const char *description);

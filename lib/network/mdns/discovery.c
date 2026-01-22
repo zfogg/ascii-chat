@@ -268,8 +268,8 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
   memset(state.servers, 0, state.capacity * sizeof(discovery_tui_server_t));
 
   if (!quiet) {
-    log_info("mDNS: Searching for ASCII-Chat servers on local network (timeout: %dms)", state.timeout_ms);
-    printf("🔍 Searching for ASCII-Chat servers on LAN...\n");
+    log_info("mDNS: Searching for ascii-chat servers on local network (timeout: %dms)", state.timeout_ms);
+    printf("🔍 Searching for ascii-chat servers on LAN...\n");
   }
 
   // Initialize mDNS
@@ -309,10 +309,10 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 
   if (!quiet) {
     if (state.count > 0) {
-      printf("✅ Found %d ASCII-Chat server%s on LAN\n", state.count, state.count == 1 ? "" : "s");
+      printf("✅ Found %d ascii-chat server%s on LAN\n", state.count, state.count == 1 ? "" : "s");
       log_info("mDNS: Found %d server(s)", state.count);
     } else {
-      printf("❌ No ASCII-Chat servers found on LAN\n");
+      printf("❌ No ascii-chat servers found on LAN\n");
       log_info("mDNS: No servers found");
     }
   }

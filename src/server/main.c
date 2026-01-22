@@ -757,7 +757,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
 
   // Build session name from hostname for mDNS service name
   char hostname[256] = {0};
-  char session_name[256] = "ASCII-Chat-Server";
+  char session_name[256] = "ascii-chat-Server";
   if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
     snprintf(session_name, sizeof(session_name), "%s", hostname);
   }
@@ -1315,7 +1315,7 @@ int server_main(void) {
   // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
   log_set_terminal_output(!GET_OPTION(quiet));
 
-  log_info("ASCII Chat server starting...");
+  log_info("ascii-chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = strtoint_safe(GET_OPTION(port));
@@ -1468,7 +1468,7 @@ int server_main(void) {
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
   if (GET_OPTION(enable_upnp)) {
-    asciichat_error_t upnp_result = nat_upnp_open(port, "ASCII-Chat Server", &g_upnp_ctx);
+    asciichat_error_t upnp_result = nat_upnp_open(port, "ascii-chat Server", &g_upnp_ctx);
 
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
       char public_addr[22];

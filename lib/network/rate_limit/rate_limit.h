@@ -49,7 +49,7 @@ typedef enum {
   RATE_EVENT_SESSION_LOOKUP = 1, ///< Session lookup
   RATE_EVENT_SESSION_JOIN = 2,   ///< Session join
 
-  // ASCII-Chat server events
+  // ascii-chat server events
   RATE_EVENT_CONNECTION = 3,  ///< New connection
   RATE_EVENT_IMAGE_FRAME = 4, ///< Image frame from client (PACKET_TYPE_IMAGE_FRAME)
   RATE_EVENT_AUDIO = 5,       ///< Audio packet (PACKET_TYPE_AUDIO, PACKET_TYPE_AUDIO_BATCH)

@@ -8,7 +8,7 @@
  * - WebRTC signaling relay
  * - String reservation (future)
  *
- * ACIP (ASCII-Chat IP Protocol) is the wire protocol for session
+ * ACIP (ascii-chat IP Protocol) is the wire protocol for session
  * discovery and WebRTC signaling. ACDS is the reference server implementation.
  */
 

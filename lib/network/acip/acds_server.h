@@ -5,7 +5,7 @@
  * @addtogroup acip_server
  * @{
  *
- * Server-side ACIP (ASCII-Chat IP Protocol) utilities for:
+ * Server-side ACIP (ascii-chat IP Protocol) utilities for:
  * - Packet validation and parsing
  * - Protocol compliance checking
  * - Error response generation
@@ -18,7 +18,7 @@
  * - Session management and WebRTC signaling
  *
  * **Primary Use Case:**
- * Library functions for building ACIP servers (like ACDS - ASCII-Chat
+ * Library functions for building ACIP servers (like ACDS - ascii-chat
  * Discovery Service). Provides reusable validation and packet handling
  * logic that any ACIP server implementation can use.
  *

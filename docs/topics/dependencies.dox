@@ -250,7 +250,7 @@
  *
  * **Version**: 3.35.0 or later
  *
- * Used in the ACDS (ASCII-Chat Discovery Service) to store active sessions,
+ * Used in the ACDS (ascii-chat Discovery Service) to store active sessions,
  * user identities, and connection metadata. Zero-configuration embedded database.
  *
  * @subsection dependencies_openssl OpenSSL - Cryptography Toolkit

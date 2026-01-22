@@ -2,7 +2,7 @@
 
 /**
  * @file acds/main.h
- * @brief 🔍 ASCII-Chat Discovery Service (acds) main entry point
+ * @brief 🔍 ascii-chat Discovery Service (acds) main entry point
  *
  * The discovery service provides session management and WebRTC signaling
  * for peer-to-peer ascii-chat connections. It uses the ACIP binary protocol

@@ -2,7 +2,7 @@
 
 /**
  * @file lib/network/mdns.h
- * @brief mDNS (Multicast DNS) service discovery for ASCII-Chat
+ * @brief mDNS (Multicast DNS) service discovery for ascii-chat
  * @ingroup network
  *
  * Provides cross-platform service advertisement and discovery for LAN.

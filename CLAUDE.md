@@ -640,7 +640,7 @@ Mirror mode (local webcam preview, no networking):
 
 #### Binary-Level Options (`acds` binary)
 
-The ACDS (ASCII-Chat Discovery Service) is a separate binary for running the discovery server:
+The ACDS (ascii-chat Discovery Service) is a separate binary for running the discovery server:
 
 ```bash
 # General

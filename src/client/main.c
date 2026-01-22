@@ -584,13 +584,13 @@ int client_main(void) {
         log_lock_terminal();
 
         fprintf(stderr, "\n");
-        fprintf(stderr, "No ASCII-Chat servers found on the local network.\n");
+        fprintf(stderr, "No ascii-chat servers found on the local network.\n");
         fprintf(stderr, "Use 'ascii-chat client <address>' to connect manually.\n");
         fflush(stderr);
 
         // Log to file for debugging
         log_file_msg("\n");
-        log_file_msg("No ASCII-Chat servers found on the local network.\n");
+        log_file_msg("No ascii-chat servers found on the local network.\n");
         log_file_msg("Use 'ascii-chat client <address>' to connect manually.\n");
 
         // Redirect stderr and stdout to /dev/null so cleanup handlers can't write to console

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for ACDS (ASCII-Chat Discovery Service) protocol
+Test script for ACDS (ascii-chat Discovery Service) protocol
 
 This script tests the ACIP binary protocol by connecting to the ACDS server
 and sending SESSION_CREATE, SESSION_LOOKUP, and SESSION_JOIN packets.

@@ -1,6 +1,6 @@
 # Network Timeout Handling
 
-This document describes the network timeout handling features implemented in the ASCII chat application.
+This document describes the network timeout handling features implemented in the ascii-chat application.
 
 ## Overview
 

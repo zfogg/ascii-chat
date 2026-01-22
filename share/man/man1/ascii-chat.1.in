@@ -183,7 +183,7 @@ If port mapping fails, clients can still connect via WebRTC fallback.
 Default: \fBdisabled\fR (opt-in for security)
 .TP
 .BR \-\-acds
-Enable ACDS (ASCII Chat Discovery Service) session registration.
+Enable ACDS (ascii-chat Discovery Service) session registration.
 When enabled, the server registers with an ACDS discovery server and receives
 a memorable three-word session string (e.g., \fChappy-sunset-ocean\fR) that
 clients can use to connect instead of IP addresses.
@@ -340,7 +340,7 @@ Each retry attempt waits 2 seconds before connecting again.
 Snapshot mode always disables reconnection regardless of this setting.
 .TP
 .BR \-\-scan
-Scan for ASCII-Chat servers on the local network using mDNS service discovery.
+Scan for ascii-chat servers on the local network using mDNS service discovery.
 Displays available servers and allows you to select one to connect to.
 Servers must have mDNS advertisement enabled (default).
 .TP
@@ -1044,7 +1044,7 @@ The \fB\-\-snapshot\-delay\fR option (default 3.0s) allows time for this.
 .IP \(bu 2
 \fBSSH Agent\fR: For password-free authentication with encrypted SSH keys,
 use ssh-agent. Set $SSH_AUTH_SOCK to the agent socket path. Keys stay in the agent
-and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR in 
+and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR in
 your shell profile and use \fCssh-add -s\fR to add keys to the agent.
 .IP \(bu 2
 \fBGitHub/GitLab Keys\fR: Use \fBgithub:username\fR or \fBgitlab:username\fR
