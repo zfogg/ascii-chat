@@ -5,6 +5,7 @@
 
 #include "source.h"
 #include "ffmpeg_decoder.h"
+#include "youtube.h"
 #include "video/webcam/webcam.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"
@@ -89,8 +90,24 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
+    // Check if this is a YouTube URL and extract direct stream URL
+    const char *effective_path = path;
+    char extracted_url[2048] = {0};
+
+    if (youtube_is_youtube_url(path)) {
+      log_info("Detected YouTube URL, extracting stream URL");
+      asciichat_error_t extract_err = youtube_extract_stream_url(path, extracted_url, sizeof(extracted_url));
+      if (extract_err != ASCIICHAT_OK) {
+        log_error("Failed to extract YouTube stream URL (error: %d)", extract_err);
+        SAFE_FREE(source);
+        return NULL;
+      }
+      effective_path = extracted_url;
+      log_debug("Using extracted YouTube stream URL");
+    }
+
     // Cache file path for potential reopen on loop
-    source->file_path = strdup(path);
+    source->file_path = strdup(effective_path);
     if (!source->file_path) {
       SET_ERRNO(ERROR_MEMORY, "Failed to duplicate file path");
       SAFE_FREE(source);
@@ -99,17 +116,17 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
 
     // Create separate decoders for video and audio to allow independent reading
     // Each maintains its own stream position, preventing interference between threads
-    source->video_decoder = ffmpeg_decoder_create(path);
+    source->video_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->video_decoder) {
-      log_error("Failed to open media file for video: %s", path);
+      log_error("Failed to open media file for video: %s", effective_path);
       SAFE_FREE(source->file_path);
       SAFE_FREE(source);
       return NULL;
     }
 
-    source->audio_decoder = ffmpeg_decoder_create(path);
+    source->audio_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->audio_decoder) {
-      log_error("Failed to open media file for audio: %s", path);
+      log_error("Failed to open media file for audio: %s", effective_path);
       ffmpeg_decoder_destroy(source->video_decoder);
       source->video_decoder = NULL;
       SAFE_FREE(source->file_path);
@@ -117,7 +134,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    log_debug("Media source: File '%s' (separate video/audio decoders)", path);
+    log_debug("Media source: File '%s' (separate video/audio decoders)", effective_path);
     break;
   }
 

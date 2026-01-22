@@ -690,6 +690,7 @@ typedef struct options_state {
   // Media File Streaming Options
   // ============================================================================
   char media_file[OPTIONS_BUFF_SIZE]; ///< Media file path or "-" for stdin
+  char media_url[OPTIONS_BUFF_SIZE];  ///< Network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over media_file
   bool media_loop;                    ///< Loop media file playback
   bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
 

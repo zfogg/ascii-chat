@@ -223,6 +223,7 @@ if(FFMPEG_FOUND)
     list(APPEND VIDEO_SRCS
         lib/media/source.c
         lib/media/ffmpeg_decoder.c
+        lib/media/youtube.c
     )
 endif()
 

@@ -177,6 +177,7 @@ int mirror_main(void) {
 #endif
 
   // Configure media source based on options
+  const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
   session_capture_config_t capture_config = {0};
   capture_config.target_fps = 60; // Default for webcam
@@ -184,7 +185,24 @@ int mirror_main(void) {
   capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
   capture_config.callback_data = NULL;
 
-  if (media_file && strlen(media_file) > 0) {
+  if (media_url && strlen(media_url) > 0) {
+    // User specified a network URL (takes priority over --file)
+    log_info("Using network URL: %s", media_url);
+    capture_config.type = MEDIA_SOURCE_FILE;
+    capture_config.path = media_url;
+
+    // Detect native FPS from URL
+    media_source_t *temp_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
+    if (temp_source) {
+      double url_fps = media_source_get_video_fps(temp_source);
+      if (url_fps > 0.0) {
+        capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+        log_debug("URL FPS: %.1f (using %u)", url_fps, capture_config.target_fps);
+      }
+      media_source_destroy(temp_source);
+    }
+    capture_config.loop = false; // Network URLs cannot be looped
+  } else if (media_file && strlen(media_file) > 0) {
     // User specified a media file or stdin
     if (strcmp(media_file, "-") == 0) {
       capture_config.type = MEDIA_SOURCE_STDIN;

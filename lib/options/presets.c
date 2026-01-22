@@ -310,15 +310,19 @@ void options_builder_add_acds_security_group(options_builder_t *b) {
 /**
  * @brief Add media file streaming options to a builder
  *
- * Adds --file and --loop options for media file playback.
+ * Adds --file, --url, and --loop options for media file and URL playback.
  * Used by: client, mirror, discovery modes
  */
 void options_builder_add_media_group(options_builder_t *b) {
   options_builder_add_string(b, "file", 'f', offsetof(options_t, media_file), "",
                              "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL);
 
+  options_builder_add_string(b, "url", 'u', offsetof(options_t, media_url), "",
+                             "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file",
+                             "MEDIA", false, NULL, NULL);
+
   options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
-                           "Loop media file playback (not supported for stdin)", "MEDIA", false, NULL);
+                           "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL);
 }
 
 // ============================================================================
@@ -687,6 +691,12 @@ const options_config_t *options_preset_client(const char *program_name, const ch
   options_builder_add_dependency_conflicts(b, "no-encrypt", "key", "Cannot use --no-encrypt with --key");
   options_builder_add_dependency_conflicts(b, "no-encrypt", "password", "Cannot use --no-encrypt with --password");
 
+  // URL conflicts: --url cannot be used with --file or --loop
+  options_builder_add_dependency_conflicts(b, "url", "file",
+                                           "Option --url cannot be used with --file (--url takes priority)");
+  options_builder_add_dependency_conflicts(b, "url", "loop",
+                                           "Option --url cannot be used with --loop (network streams cannot be looped)");
+
   // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",
                              "WEBCAM");
@@ -765,6 +775,12 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
                                           "Option --snapshot-delay requires --snapshot");
 
   options_builder_add_dependency_requires(b, "loop", "file", "Option --loop requires --file");
+
+  // URL conflicts: --url cannot be used with --file or --loop
+  options_builder_add_dependency_conflicts(b, "url", "file",
+                                           "Option --url cannot be used with --file (--url takes priority)");
+  options_builder_add_dependency_conflicts(b, "url", "loop",
+                                           "Option --url cannot be used with --loop (network streams cannot be looped)");
 
   // Webcam options
   options_builder_add_action(b, "list-webcams", '\0', action_list_webcams, "List available webcam devices and exit",

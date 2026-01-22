@@ -326,10 +326,17 @@ static void *webcam_capture_thread_func(void *arg) {
 int capture_init() {
   // Build capture configuration from options
   session_capture_config_t config = {0};
+  const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
   bool media_from_stdin = GET_OPTION(media_from_stdin);
 
-  if (media_file[0] != '\0') {
+  if (media_url[0] != '\0') {
+    // Network URL streaming (takes priority over --file)
+    config.type = MEDIA_SOURCE_FILE;
+    config.path = media_url;
+    config.loop = false; // Network URLs cannot be looped
+    log_debug("Using network URL: %s", media_url);
+  } else if (media_file[0] != '\0') {
     // File or stdin streaming
     config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
     config.path = media_file;
