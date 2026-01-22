@@ -1507,8 +1507,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
       char long_flag[256];
       snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
       // Color short flag, add comma, color long flag
-      snprintf(opts_buf, sizeof(opts_buf), "%s, %s",
-               colored_string(LOG_COLOR_WARN, short_flag),
+      snprintf(opts_buf, sizeof(opts_buf), "%s, %s", colored_string(LOG_COLOR_WARN, short_flag),
                colored_string(LOG_COLOR_WARN, long_flag));
     } else {
       char long_flag[256];
@@ -1800,8 +1799,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
         option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
-                               colored_string(LOG_COLOR_WARN, short_flag),
-                               colored_string(LOG_COLOR_WARN, long_flag));
+                               colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[256];
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -1888,9 +1886,9 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
 
       if (desc->env_var_name) {
         // Color env: label and variable name grey
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                             colored_string(LOG_COLOR_GREY, "env:"),
-                             colored_string(LOG_COLOR_GREY, desc->env_var_name));
+        desc_len +=
+            snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                     colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       // Use layout function with global column width for consistent alignment
@@ -2014,8 +2012,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
         colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s",
-                                colored_string(LOG_COLOR_WARN, short_flag),
-                                colored_string(LOG_COLOR_WARN, long_flag));
+                                colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[256];
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
@@ -2102,9 +2099,9 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
       if (desc->env_var_name) {
         // Color env: label and variable name grey
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                             colored_string(LOG_COLOR_GREY, "env:"),
-                             colored_string(LOG_COLOR_GREY, desc->env_var_name));
+        desc_len +=
+            snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                     colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
