@@ -185,8 +185,6 @@ configure_libsodium_bcrypt_pbkdf()
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Uthash.cmake)
 configure_uthash()
 
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libytdl.cmake)
-
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)

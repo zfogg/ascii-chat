@@ -252,12 +252,6 @@ if(NOT BUILDING_OBJECT_LIBS)
     if(FFMPEG_FOUND)
         target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
     endif()
-
-    # Link libytdl for YouTube URL extraction
-    if(LIBYTDL_FOUND)
-        target_include_directories(ascii-chat-video PRIVATE ${LIBYTDL_INCLUDE_DIRS})
-        target_link_libraries(ascii-chat-video ytdlcore regexp)
-    endif()
 endif()
 
 # -----------------------------------------------------------------------------
@@ -865,11 +859,6 @@ endif()
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
-endif()
-
-# Link libytdl for YouTube URL extraction
-if(LIBYTDL_FOUND)
-    target_link_libraries(ascii-chat-shared PRIVATE ytdlcore regexp)
 endif()
 
 # Add build timing for ascii-chat-shared library

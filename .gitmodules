@@ -24,6 +24,3 @@
 [submodule "deps/ascii-chat-deps/utf8proc"]
 	path = deps/ascii-chat-deps/utf8proc
 	url = https://github.com/JuliaStrings/utf8proc.git
-[submodule "deps/ascii-chat-deps/libytdl"]
-	path = deps/ascii-chat-deps/libytdl
-	url = https://github.com/Wykerd/libytdl.git
