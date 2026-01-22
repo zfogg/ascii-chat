@@ -240,32 +240,98 @@ static void write_synopsis(FILE *f, const char *mode_name) {
 
 /**
  * @brief Write USAGE section from usage descriptors
+ * @param f Output file
+ * @param config Options config (can be NULL to write all modes)
  */
 static void write_usage_section(FILE *f, const options_config_t *config) {
-  if (config->num_usage_lines == 0) {
-    return;
-  }
-
   fprintf(f, ".SH USAGE\n");
 
-  for (size_t i = 0; i < config->num_usage_lines; i++) {
-    const usage_descriptor_t *usage = &config->usage_lines[i];
+  // If config is provided, use its usage lines
+  if (config && config->num_usage_lines > 0) {
+    for (size_t i = 0; i < config->num_usage_lines; i++) {
+      const usage_descriptor_t *usage = &config->usage_lines[i];
 
-    fprintf(f, ".TP\n");
-    fprintf(f, ".B ascii-chat");
-    if (usage->mode) {
-      fprintf(f, " %s", usage->mode);
-    }
-    if (usage->positional) {
-      fprintf(f, " %s", usage->positional);
-    }
-    if (usage->show_options) {
-      fprintf(f, " [options...]");
-    }
-    fprintf(f, "\n");
+      fprintf(f, ".TP\n");
+      fprintf(f, ".B ascii-chat");
+      if (usage->mode) {
+        fprintf(f, " %s", usage->mode);
+      }
+      if (usage->positional) {
+        fprintf(f, " %s", usage->positional);
+      }
+      if (usage->show_options) {
+        fprintf(f, " [options...]");
+      }
+      fprintf(f, "\n");
 
-    if (usage->description) {
-      fprintf(f, "%s\n", escape_groff_special(usage->description));
+      if (usage->description) {
+        fprintf(f, "%s\n", escape_groff_special(usage->description));
+      }
+    }
+  } else {
+    // Generate complete USAGE section from all modes
+    // Binary-level usage (from binary preset)
+    const options_config_t *binary_config = options_preset_binary(NULL, NULL);
+    if (binary_config && binary_config->num_usage_lines > 0) {
+      for (size_t i = 0; i < binary_config->num_usage_lines; i++) {
+        const usage_descriptor_t *usage = &binary_config->usage_lines[i];
+        fprintf(f, ".TP\n");
+        fprintf(f, ".B ascii-chat");
+        if (usage->positional) {
+          fprintf(f, " %s", usage->positional);
+        }
+        if (usage->show_options) {
+          fprintf(f, " [options...]");
+        }
+        fprintf(f, "\n");
+        if (usage->description) {
+          fprintf(f, "%s\n", escape_groff_special(usage->description));
+        }
+      }
+    }
+    if (binary_config) {
+      options_config_destroy(binary_config);
+    }
+
+    // Mode-specific usage (server, client, mirror, discovery-service)
+    const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
+    for (const char **mode_ptr = modes; *mode_ptr; mode_ptr++) {
+      const char *mode = *mode_ptr;
+      const options_config_t *mode_config = NULL;
+      
+      if (strcmp(mode, "server") == 0) {
+        mode_config = options_preset_server(NULL, NULL);
+      } else if (strcmp(mode, "client") == 0) {
+        mode_config = options_preset_client(NULL, NULL);
+      } else if (strcmp(mode, "mirror") == 0) {
+        mode_config = options_preset_mirror(NULL, NULL);
+      } else if (strcmp(mode, "discovery-service") == 0) {
+        mode_config = options_preset_acds(NULL, NULL);
+      }
+
+      if (mode_config && mode_config->num_usage_lines > 0) {
+        for (size_t i = 0; i < mode_config->num_usage_lines; i++) {
+          const usage_descriptor_t *usage = &mode_config->usage_lines[i];
+          fprintf(f, ".TP\n");
+          fprintf(f, ".B ascii-chat");
+          if (usage->mode) {
+            fprintf(f, " %s", usage->mode);
+          }
+          if (usage->positional) {
+            fprintf(f, " %s", usage->positional);
+          }
+          if (usage->show_options) {
+            fprintf(f, " [mode-options...]");
+          }
+          fprintf(f, "\n");
+          if (usage->description) {
+            fprintf(f, "%s\n", escape_groff_special(usage->description));
+          }
+        }
+      }
+      if (mode_config) {
+        options_config_destroy(mode_config);
+      }
     }
   }
 
@@ -484,6 +550,77 @@ static void write_examples_section(FILE *f, const options_config_t *config) {
 
     if (example->description) {
       fprintf(f, "%s\n", escape_groff_special(example->description));
+    }
+  }
+
+  fprintf(f, "\n");
+}
+
+/**
+ * @brief Write EXAMPLES section from all modes (for merged generation)
+ */
+static void write_examples_section_all_modes(FILE *f) {
+  fprintf(f, ".SH EXAMPLES\n");
+
+  // Binary-level examples (from binary preset)
+  const options_config_t *binary_config = options_preset_binary(NULL, NULL);
+  if (binary_config && binary_config->num_examples > 0) {
+    for (size_t i = 0; i < binary_config->num_examples; i++) {
+      const example_descriptor_t *example = &binary_config->examples[i];
+
+      fprintf(f, ".TP\n");
+      fprintf(f, ".B ascii-chat");
+      if (example->args) {
+        fprintf(f, " %s", example->args);
+      }
+      fprintf(f, "\n");
+
+      if (example->description) {
+        fprintf(f, "%s\n", escape_groff_special(example->description));
+      }
+    }
+  }
+  if (binary_config) {
+    options_config_destroy(binary_config);
+  }
+
+  // Mode-specific examples (server, client, mirror, discovery-service)
+  const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
+  for (const char **mode_ptr = modes; *mode_ptr; mode_ptr++) {
+    const char *mode = *mode_ptr;
+    const options_config_t *mode_config = NULL;
+
+    if (strcmp(mode, "server") == 0) {
+      mode_config = options_preset_server(NULL, NULL);
+    } else if (strcmp(mode, "client") == 0) {
+      mode_config = options_preset_client(NULL, NULL);
+    } else if (strcmp(mode, "mirror") == 0) {
+      mode_config = options_preset_mirror(NULL, NULL);
+    } else if (strcmp(mode, "discovery-service") == 0) {
+      mode_config = options_preset_acds(NULL, NULL);
+    }
+
+    if (mode_config && mode_config->num_examples > 0) {
+      for (size_t i = 0; i < mode_config->num_examples; i++) {
+        const example_descriptor_t *example = &mode_config->examples[i];
+
+        fprintf(f, ".TP\n");
+        fprintf(f, ".B ascii-chat");
+        if (example->mode) {
+          fprintf(f, " %s", example->mode);
+        }
+        if (example->args) {
+          fprintf(f, " %s", example->args);
+        }
+        fprintf(f, "\n");
+
+        if (example->description) {
+          fprintf(f, "%s\n", escape_groff_special(example->description));
+        }
+      }
+    }
+    if (mode_config) {
+      options_config_destroy(mode_config);
     }
   }
 
@@ -979,12 +1116,11 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
     if (!is_manual) {
       fprintf(f, ".TP\n");
       fprintf(f, ".B %s\n", desc->env_var_name);
-      fprintf(f, "Set to override ");
-      fprintf(f, ".B \\-\\-%s", desc->long_name);
       if (desc->help_text) {
-        fprintf(f, " (%s)", escape_groff_special(desc->help_text));
+        fprintf(f, "%s\n", escape_groff_special(desc->help_text));
+      } else {
+        fprintf(f, "Set to override .B \\-\\-%s\n", desc->long_name);
       }
-      fprintf(f, "\n");
     }
   }
 
@@ -1177,9 +1313,9 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     }
   }
 
-  // Write USAGE (AUTO)
+  // Write USAGE (AUTO) - generate complete usage from all modes
   write_section_marker(f, "AUTO", "USAGE", true);
-  write_usage_section(f, config);
+  write_usage_section(f, NULL); // Pass NULL to generate all modes
   write_section_marker(f, "AUTO", "USAGE", false);
 
   // Write OPTIONS (AUTO)
@@ -1205,14 +1341,14 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", false);
   }
 
-  // Write EXAMPLES (MERGE if marked, otherwise AUTO)
+  // Write EXAMPLES (MERGE if marked, otherwise AUTO - generate all modes)
   const parsed_section_t *examples_section = NULL;
   if (existing_sections) {
     examples_section = find_section(existing_sections, num_existing_sections, "EXAMPLES");
   }
 
   if (examples_section && examples_section->type == SECTION_TYPE_MERGE) {
-    // Merge: write manual examples, then append builder examples
+    // Merge: write manual examples, then append builder examples from all modes
     write_section_marker(f, "MERGE", "EXAMPLES", true);
     // Write manual content (but skip .SH line)
     const char *content = examples_section->content;
@@ -1239,8 +1375,8 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     if (content_end > p) {
       fwrite(p, 1, content_end - p, f);
     }
-    // Append builder examples
-    write_examples_section(f, config);
+    // Append builder examples from all modes
+    write_examples_section_all_modes(f);
     write_section_marker(f, "MERGE", "EXAMPLES", false);
   } else if (examples_section && examples_section->type == SECTION_TYPE_MANUAL) {
     write_section_marker(f, "MANUAL", "EXAMPLES", true);
@@ -1248,7 +1384,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     write_section_marker(f, "MANUAL", "EXAMPLES", false);
   } else {
     write_section_marker(f, "AUTO", "EXAMPLES", true);
-    write_examples_section(f, config);
+    write_examples_section_all_modes(f);
     write_section_marker(f, "AUTO", "EXAMPLES", false);
   }
 

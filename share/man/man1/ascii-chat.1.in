@@ -319,14 +319,86 @@ Start new session (share the session string)
 .B ascii-chat swift-river-mountain
 Join session with session string
 .TP
-.B ascii-chat server
+.B ascii-chat
 Run as dedicated server
 .TP
-.B ascii-chat client example.com
+.B ascii-chat example.com
 Connect to specific server
 .TP
-.B ascii-chat mirror
+.B ascii-chat
 Preview local webcam as ASCII
+.TP
+.B ascii-chat server
+Start on localhost (127.0.0.1 and ::1)
+.TP
+.B ascii-chat server 0.0.0.0
+Start on all IPv4 interfaces
+.TP
+.B ascii-chat server 0.0.0.0 ::
+Start on all IPv4 and IPv6 interfaces (dual-stack)
+.TP
+.B ascii-chat server --port 8080
+Start on custom port
+.TP
+.B ascii-chat server --key ~/.ssh/id_ed25519 --discovery
+Start with identity key and discovery registration
+.TP
+.B ascii-chat client
+Connect to localhost
+.TP
+.B ascii-chat client example.com
+Connect to remote server
+.TP
+.B ascii-chat client example.com:8080
+Connect to remote server on custom port
+.TP
+.B ascii-chat client --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'
+Stream from YouTube URL
+.TP
+.B ascii-chat client -f video.mp4
+Stream from local video file
+.TP
+.B ascii-chat client --color-mode mono --render-mode half-block --width 120
+Connect with custom display options
+.TP
+.B ascii-chat client --palette-chars '@%#*+=-:. '
+Use custom ASCII palette characters
+.TP
+.B ascii-chat client --snapshot
+Capture single frame and exit
+.TP
+.B ascii-chat mirror
+View local webcam
+.TP
+.B ascii-chat mirror --color-mode mono
+View webcam in black and white
+.TP
+.B ascii-chat mirror --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'
+Stream from YouTube URL
+.TP
+.B ascii-chat mirror -f video.mp4
+Stream from local video file (supports mp4, mkv, webm, mov, etc)
+.TP
+.B ascii-chat mirror -f '-'
+Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')
+.TP
+.B ascii-chat mirror --palette-chars '@%#*+=-:. '
+View with custom ASCII palette characters
+.TP
+.B ascii-chat mirror --snapshot
+Capture single frame and exit
+.TP
+.B ascii-chat discovery-service
+Start on localhost
+.TP
+.B ascii-chat discovery-service 0.0.0.0
+Start on all IPv4 interfaces
+.TP
+.B ascii-chat discovery-service --port 5000
+Start on custom port
+.TP
+.B ascii-chat discovery-service --require-server-identity --require-client-identity
+Enforce identity verification for all parties
 
 .\" AUTO-END: EXAMPLES
 .SH PALETTES
@@ -527,6 +599,8 @@ TURN authentication username (debug/test only - ACDS provides in production)
 .TP
 .B ASCII_CHAT_TURN_CREDENTIAL
 TURN authentication credential (debug/test only - ACDS provides in production)
+
+.\" MERGE-END: ENVIRONMENT
 
 .\" MERGE-END: ENVIRONMENT
 
