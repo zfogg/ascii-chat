@@ -471,13 +471,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   const char *manpage_template_file = NULL; // Template file path (.1.in)
   const char *manpage_content_file = NULL;  // Content file path (.1.content)
 
+  // ========================================================================
+  // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
+  // ========================================================================
   // Quick scan for action flags (they may have arguments)
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-        show_help = true;
-        break;
-      }
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
         break;
@@ -506,14 +505,8 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // If we found an action, skip mode detection and handle it immediately
-  if (show_help || show_version || create_config || create_manpage) {
-    // Handle actions (they will exit)
-    if (show_help) {
-      opts.help = true;
-      options_state_set(&opts);
-      return ASCIICHAT_OK;
-    }
+  // If we found version/config-create/create-manpage, handle them immediately (before mode detection)
+  if (show_version || create_config || create_manpage) {
     if (show_version) {
       opts.version = true;
       options_state_set(&opts);
@@ -581,7 +574,11 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Now do mode detection (only if no action was found)
+  // ========================================================================
+  // STAGE 1B: DO MODE DETECTION (after non-mode actions, before --help)
+  // ========================================================================
+  // This ensures that --help for an invalid mode like "discovery" properly fails
+
   asciichat_mode_t detected_mode = MODE_DISCOVERY; // Default mode
   char detected_session_string[64] = {0};
   int mode_index = -1;
@@ -590,6 +587,26 @@ asciichat_error_t options_init(int argc, char **argv) {
       options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
   if (mode_detect_result != ASCIICHAT_OK) {
     return mode_detect_result;
+  }
+
+  // ========================================================================
+  // STAGE 1C: Check for --help (now that mode is detected)
+  // ========================================================================
+  for (int i = 1; i < argc; i++) {
+    if (argv[i][0] == '-') {
+      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        show_help = true;
+        break;
+      }
+    }
+  }
+
+  // If --help was found, handle it with the detected mode
+  if (show_help) {
+    opts.help = true;
+    opts.detected_mode = detected_mode;
+    options_state_set(&opts);
+    return ASCIICHAT_OK;
   }
 
   opts.detected_mode = detected_mode;
