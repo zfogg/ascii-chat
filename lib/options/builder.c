@@ -1494,14 +1494,23 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     if (desc->hide_from_mode_help || !desc->group)
       continue;
 
-    // Build option display string with colored_string()
+    // Build option display string with separate coloring for short and long flags
     char opts_buf[256];
     if (desc->short_name && desc->short_name != '\0') {
-      snprintf(opts_buf, sizeof(opts_buf), "-%c, --%s", desc->short_name, desc->long_name);
+      char short_flag[16];
+      snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+      char long_flag[256];
+      snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+      // Color short flag, add comma, color long flag
+      snprintf(opts_buf, sizeof(opts_buf), "%s, %s",
+               colored_string(LOG_COLOR_WARN, short_flag),
+               colored_string(LOG_COLOR_WARN, long_flag));
     } else {
-      snprintf(opts_buf, sizeof(opts_buf), "--%s", desc->long_name);
+      char long_flag[256];
+      snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+      snprintf(opts_buf, sizeof(opts_buf), "%s", colored_string(LOG_COLOR_WARN, long_flag));
     }
-    const char *colored_opts = colored_string(LOG_COLOR_WARN, opts_buf);
+    const char *colored_opts = opts_buf;
 
     int w = utf8_display_width(colored_opts);
     if (w > max_col_width)
@@ -1728,16 +1737,25 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
         continue;
       }
 
-      // Build option string
-      char option_str[256] = "";
+      // Build option string with separate coloring for short and long flags
+      char option_str[512] = "";
       int option_len = 0;
 
-      // Short name and long name
+      // Short name and long name with separate coloring
       if (desc->short_name) {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "-%c, --%s", desc->short_name,
-                               desc->long_name);
+        char short_flag[16];
+        snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+        char long_flag[256];
+        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        // Color short flag, plain comma-space, color long flag
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
+                               colored_string(LOG_COLOR_WARN, short_flag),
+                               colored_string(LOG_COLOR_WARN, long_flag));
       } else {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "--%s", desc->long_name);
+        char long_flag[256];
+        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                               colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       // Value placeholder
@@ -1819,10 +1837,8 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       }
 
       // Use layout function with global column width for consistent alignment
-      char colored_option_str[512];
-      snprintf(colored_option_str, sizeof(colored_option_str), "%s", colored_string(LOG_COLOR_WARN, option_str));
-
-      layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
+      // option_str already contains colored_string() results, so pass it directly
+      layout_print_two_column_row(stream, option_str, desc_str, max_col_width, term_width);
     }
   }
 
@@ -1887,9 +1903,8 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     max_col_width = options_config_calculate_max_col_width(config);
   }
 
-  // Print all sections except USAGE
+  // Print all sections except USAGE (MODE-OPTIONS only appears in binary-level help, not mode-specific help)
   print_modes_section(config, stream, term_width, max_col_width);
-  print_mode_options_section(stream, term_width, max_col_width);
   print_examples_section(config, stream, term_width, max_col_width);
 
   // Build list of unique groups in order of first appearance
@@ -1930,42 +1945,47 @@ void options_config_print_options_sections_with_width(const options_config_t *co
         continue;
       }
 
-      // Build option string (flag part)
-      char option_str[256] = "";
-      int option_len = 0;
+      // Build option string (flag part) with separate coloring for short and long flags
+      char colored_option_str[512] = "";
+      int colored_len = 0;
 
-      // Short name and long name
+      // Short name and long name with separate coloring
       if (desc->short_name) {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "-%c, --%s", desc->short_name,
-                               desc->long_name);
+        char short_flag[16];
+        snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+        char long_flag[256];
+        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        // Color short flag, plain comma-space, color long flag
+        colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s",
+                                colored_string(LOG_COLOR_WARN, short_flag),
+                                colored_string(LOG_COLOR_WARN, long_flag));
       } else {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "--%s", desc->long_name);
+        char long_flag[256];
+        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       // Value placeholder
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
+        colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, " ");
         switch (desc->type) {
         case OPTION_TYPE_INT:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "NUM");
           break;
         case OPTION_TYPE_STRING:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "STR");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "STR");
           break;
         case OPTION_TYPE_DOUBLE:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "NUM");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "NUM");
           break;
         case OPTION_TYPE_CALLBACK:
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "VAL");
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "VAL");
           break;
         default:
           break;
         }
       }
-
-      // Build colored option string using colored_string() wrapper
-      char colored_option_str[512];
-      snprintf(colored_option_str, sizeof(colored_option_str), "%s", colored_string(LOG_COLOR_WARN, option_str));
 
       // Build description with defaults and env vars
       char desc_str[1024] = "";
