@@ -386,7 +386,7 @@ static const registry_entry_t g_options_registry[] = {
     // WebRTC options
     {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &g_default_webrtc, sizeof(bool),
      "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &g_default_prefer_webrtc,
      sizeof(bool), "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL, NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
