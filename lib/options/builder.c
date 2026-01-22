@@ -973,9 +973,14 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     }
 
     case OPTION_TYPE_CALLBACK:
-      // Callbacks don't have automatic defaults in set_defaults
-      // Defaults are applied during parsing via the parse_fn callback
-      // Note: value_size is not stored in descriptor, so we can't memcpy safely
+      // For callbacks, call parse_fn with NULL to apply default value
+      if (desc->parse_fn && desc->default_value) {
+        char *error_msg = NULL;
+        desc->parse_fn(NULL, field, &error_msg);
+        if (error_msg) {
+          free(error_msg);
+        }
+      }
       break;
 
     case OPTION_TYPE_ACTION:
