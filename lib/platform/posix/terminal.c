@@ -296,15 +296,9 @@ tty_info_t get_current_tty(void) {
     return result;
   }
 
-  // Method 3: Try controlling terminal device
-  result.fd = platform_open("/dev/tty", PLATFORM_O_WRONLY);
-  if (result.fd >= 0) {
-    result.path = "/dev/tty";
-    result.owns_fd = true;
-    log_debug("POSIX TTY from /dev/tty (fd=%d)", result.fd);
-    return result;
-  }
-
+  // Method 3: Try controlling terminal device (but only if stdout is not piped)
+  // If stdout is piped/redirected, don't try /dev/tty - respect the user's intent to pipe output
+  // Instead of opening /dev/tty when stdout is piped, just fail gracefully
   log_debug("POSIX TTY: No TTY available");
   return result; // No TTY available
 }

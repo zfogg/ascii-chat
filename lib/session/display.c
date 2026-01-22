@@ -157,8 +157,10 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->tty_info = get_current_tty();
 
   // Determine if we have a valid TTY
+  // CRITICAL: Check if stdout is a TTY, not just any fd (stdin/stderr could be TTY while stdout is piped)
+  // If stdout is piped/redirected, never perform terminal operations regardless of other fds
   if (ctx->tty_info.fd >= 0) {
-    ctx->has_tty = platform_isatty(ctx->tty_info.fd) != 0;
+    ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && (platform_isatty(STDOUT_FILENO) != 0);
   }
 
   // Detect terminal capabilities
@@ -366,7 +368,8 @@ void session_display_reset(session_display_ctx_t *ctx) {
     return;
   }
 
-  if (ctx->tty_info.fd >= 0) {
+  // Only perform terminal operations if we have a valid TTY
+  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
     (void)terminal_reset(ctx->tty_info.fd);
     (void)terminal_hide_cursor(ctx->tty_info.fd, false); // Show cursor
     (void)terminal_flush(ctx->tty_info.fd);
@@ -378,10 +381,10 @@ void session_display_clear(session_display_ctx_t *ctx) {
     return;
   }
 
-  int fd = ctx->has_tty ? ctx->tty_info.fd : STDOUT_FILENO;
-  if (fd >= 0) {
+  // Only perform terminal operations when we have a valid TTY (not when piping)
+  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
     (void)terminal_clear_screen();
-    (void)terminal_cursor_home(fd);
+    (void)terminal_cursor_home(ctx->tty_info.fd);
   }
 }
 
@@ -401,7 +404,8 @@ void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible
     return;
   }
 
-  if (ctx->tty_info.fd >= 0) {
+  // Only perform terminal operations when we have a valid TTY (not when piping)
+  if (ctx->has_tty && ctx->tty_info.fd >= 0) {
     (void)terminal_hide_cursor(ctx->tty_info.fd, !visible);
   }
 }
