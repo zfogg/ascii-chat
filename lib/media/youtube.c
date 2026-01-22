@@ -13,6 +13,7 @@
 #include "log/logging.h"
 #include "asciichat_errno.h"
 #include "version.h"
+#include "options/options.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -62,6 +63,9 @@ static bool youtube_cache_is_valid(void) {
 
 /**
  * @brief Get cached stream URL if available and valid
+ *
+ * Returns true for both successful and failed cached extractions.
+ * Check if output_url is empty to detect cached failures.
  */
 static bool youtube_cache_get(const char *youtube_url, char *output_url, size_t output_size) {
   if (!youtube_cache_is_valid()) {
@@ -73,7 +77,7 @@ static bool youtube_cache_get(const char *youtube_url, char *output_url, size_t 
     return false;
   }
 
-  // Return cached URL
+  // Return cached URL (may be empty if cached failure)
   size_t url_len = strlen(g_youtube_cache.stream_url);
   if (url_len >= output_size) {
     return false;
@@ -82,24 +86,41 @@ static bool youtube_cache_get(const char *youtube_url, char *output_url, size_t 
   strncpy(output_url, g_youtube_cache.stream_url, output_size - 1);
   output_url[output_size - 1] = '\0';
 
-  log_debug("Using cached YouTube stream URL (extracted %ld seconds ago)",
-            (long)(time(NULL) - g_youtube_cache.extracted_time));
+  if (url_len == 0) {
+    // Cached failure - don't log debug message
+    log_debug("Using cached failure for YouTube URL (failed %ld seconds ago)",
+              (long)(time(NULL) - g_youtube_cache.extracted_time));
+  } else {
+    log_debug("Using cached YouTube stream URL (extracted %ld seconds ago)",
+              (long)(time(NULL) - g_youtube_cache.extracted_time));
+  }
   return true;
 }
 
 /**
- * @brief Cache extracted stream URL
+ * @brief Cache extracted stream URL or failure
+ *
+ * If stream_url is empty/NULL, caches a failure state so we don't retry
+ * the same failed URL multiple times during initialization.
  */
 static void youtube_cache_set(const char *youtube_url, const char *stream_url) {
-  if (strlen(youtube_url) >= sizeof(g_youtube_cache.youtube_url) ||
-      strlen(stream_url) >= sizeof(g_youtube_cache.stream_url)) {
+  if (strlen(youtube_url) >= sizeof(g_youtube_cache.youtube_url)) {
     return; // URL too long to cache
+  }
+
+  if (stream_url && strlen(stream_url) >= sizeof(g_youtube_cache.stream_url)) {
+    return; // Stream URL too long to cache
   }
 
   strncpy(g_youtube_cache.youtube_url, youtube_url, sizeof(g_youtube_cache.youtube_url) - 1);
   g_youtube_cache.youtube_url[sizeof(g_youtube_cache.youtube_url) - 1] = '\0';
 
-  strncpy(g_youtube_cache.stream_url, stream_url, sizeof(g_youtube_cache.stream_url) - 1);
+  if (stream_url) {
+    strncpy(g_youtube_cache.stream_url, stream_url, sizeof(g_youtube_cache.stream_url) - 1);
+  } else {
+    // Mark as empty (failure state)
+    g_youtube_cache.stream_url[0] = '\0';
+  }
   g_youtube_cache.stream_url[sizeof(g_youtube_cache.stream_url) - 1] = '\0';
 
   g_youtube_cache.extracted_time = time(NULL);
@@ -230,21 +251,53 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   }
 
   // Check if we have a cached extraction for this URL
-  if (youtube_cache_get(youtube_url, output_url, output_size)) {
-    return ASCIICHAT_OK;
+  char cached_url[8192] = {0};
+  if (youtube_cache_get(youtube_url, cached_url, sizeof(cached_url))) {
+    if (cached_url[0] != '\0') {
+      // Cached success - return the URL
+      strncpy(output_url, cached_url, output_size - 1);
+      output_url[output_size - 1] = '\0';
+      return ASCIICHAT_OK;
+    } else {
+      // Cached failure - return error without logging again (already logged on first attempt)
+      return ERROR_YOUTUBE_EXTRACT_FAILED;
+    }
   }
 
   // Build command to run yt-dlp and extract the URL directly
-  // Try best available format (works with most videos)
   char command[2048];
   // Note: %(url)s is for yt-dlp's -O option, not snprintf format string
-  // Use realistic Chrome user-agent to bypass YouTube bot detection
-  // (Some videos may still require authentication cookies)
-  int cmd_ret = snprintf(command, sizeof(command),
-                         "yt-dlp --quiet --no-warnings "
-                         "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
-                         "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
-                         youtube_url);
+
+  int cmd_ret;
+  const char *cookies_value = GET_OPTION(cookies_from_browser);
+
+  // Build yt-dlp command based on cookies preference
+  bool disable_cookies = GET_OPTION(no_cookies_from_browser);
+
+  if (disable_cookies) {
+    // User explicitly disabled with --no-cookies-from-browser
+    cmd_ret = snprintf(command, sizeof(command),
+                       "yt-dlp --quiet --no-warnings "
+                       "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+                       "--no-cookies-from-browser "
+                       "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                       youtube_url);
+  } else if (cookies_value && cookies_value[0] != '\0') {
+    // User enabled --cookies-from-browser with optional browser/keyring specification
+    cmd_ret = snprintf(command, sizeof(command),
+                       "yt-dlp --quiet --no-warnings "
+                       "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+                       "--cookies-from-browser %s "
+                       "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                       cookies_value, youtube_url);
+  } else {
+    // Default: no cookies flag (yt-dlp default behavior)
+    cmd_ret = snprintf(command, sizeof(command),
+                       "yt-dlp --quiet --no-warnings "
+                       "--user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+                       "-f 'b' -O '%%(url)s' '%s' 2>/dev/null",
+                       youtube_url);
+  }
 
   if (cmd_ret < 0 || cmd_ret >= (int)sizeof(command)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "YouTube URL too long");
@@ -269,19 +322,38 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
 
   int pclose_ret = pclose(pipe);
   if (pclose_ret != 0) {
+    // Cache the failure so we don't retry this URL
+    youtube_cache_set(youtube_url, NULL);
+
+    // Provide helpful error message
+    const char *help_msg = "";
+    bool disable_cookies = GET_OPTION(no_cookies_from_browser);
+    const char *cookies_value = GET_OPTION(cookies_from_browser);
+
+    // Only suggest cookies if user hasn't already enabled or disabled them
+    bool cookies_enabled = !disable_cookies && cookies_value && cookies_value[0] != '\0';
+    if (!disable_cookies && !cookies_enabled) {
+      help_msg = " (Try: --cookies-from-browser [browser] - see 'man yt-dlp' for details)";
+    }
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
               "yt-dlp failed to extract video information. "
-              "Video may be age-restricted, geo-blocked, or private.");
+              "Video may be age-restricted, geo-blocked, or private.%s", help_msg);
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
   if (url_size == 0 || (url_size == 2 && strncmp(url_buffer, "NA", 2) == 0)) {
+    // Cache the failure
+    youtube_cache_set(youtube_url, NULL);
+
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned empty output - no playable formats");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
   // Validate the URL starts with http
   if (url_buffer[0] != 'h' || strncmp(url_buffer, "http", 4) != 0) {
+    // Cache the failure
+    youtube_cache_set(youtube_url, NULL);
+
     log_debug("Invalid URL from yt-dlp: %s", url_buffer);
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
               "yt-dlp returned invalid URL. Video may not be playable.");

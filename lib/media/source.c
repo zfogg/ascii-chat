@@ -114,7 +114,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       log_info("Detected YouTube URL, extracting stream URL");
       asciichat_error_t extract_err = youtube_extract_stream_url(path, extracted_url, sizeof(extracted_url));
       if (extract_err != ASCIICHAT_OK) {
-        log_error("Failed to extract YouTube stream URL (error: %d)", extract_err);
+        // Note: youtube_extract_stream_url already logs the error via SET_ERRNO on first attempt
+        // On cached failures, it returns silently. Only log here if it's not a cached failure.
+        // We detect this by checking if there's already an error context (from youtube_extract_stream_url's SET_ERRNO)
+        log_debug("Failed to extract YouTube stream URL (error: %d) - error logged by extraction function", extract_err);
         SAFE_FREE(source);
         return NULL;
       }

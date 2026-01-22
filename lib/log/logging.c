@@ -73,22 +73,22 @@ static struct log_context_t {
 #pragma GCC diagnostic pop
 
 /* Level strings for log output */
-static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+static const char *level_strings[] = {"DEV", "DEBUG", "WARN", "INFO", "ERROR", "FATAL"};
 
 /* Internal color mode enum for indexing into 2D color array */
 /* NOTE: Uses LOG_CMODE_ prefix to avoid conflict with public terminal_color_mode_t in options.h */
 typedef enum { LOG_CMODE_16 = 0, LOG_CMODE_256 = 1, LOG_CMODE_TRUECOLOR = 2, LOG_CMODE_COUNT = 3 } log_color_mode_t;
 
-#define LOG_COLOR_COUNT 8 /* DEV, DEBUG, INFO, WARN, ERROR, FATAL, GREY, RESET */
+#define LOG_COLOR_COUNT 8 /* DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
 
 /* 2D color array: [color_mode][log_color] */
 static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
     /* LOG_CMODE_16 */
-    {"\x1b[34m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[90m", "\x1b[0m"},
+    {"\x1b[94m", "\x1b[96m", "\x1b[93m", "\x1b[92m", "\x1b[91m", "\x1b[95m", "\x1b[90m", "\x1b[0m"},
     /* LOG_CMODE_256 */
-    {"\x1b[94m", "\x1b[96m", "\x1b[92m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[90m", "\x1b[0m"},
+    {"\x1b[38;5;33m", "\x1b[38;5;117m", "\x1b[38;5;221m", "\x1b[38;5;83m", "\x1b[38;5;167m", "\x1b[38;5;183m", "\x1b[38;5;244m", "\x1b[0m"},
     /* LOG_CMODE_TRUECOLOR */
-    {"\x1b[38;2;107;127;255m", "\x1b[38;2;30;205;255m", "\x1b[38;2;144;224;112m", "\x1b[38;2;253;236;111m",
+    {"\x1b[38;2;107;127;255m", "\x1b[38;2;101;172;225m", "\x1b[38;2;240;204;145m", "\x1b[38;2;144;224;112m",
      "\x1b[38;2;232;93;111m", "\x1b[38;2;200;160;216m", "\x1b[38;2;128;128;128m", "\x1b[0m"},
 };
 
@@ -680,8 +680,8 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   uint64_t tid = asciichat_thread_current_id();
   if (use_colors) {
     // Use specific colors for file/function info: file=yellow, line=magenta, function=blue, tid=grey
-    // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta), 6=GREY
-    const char *file_color = colors[3]; // WARN: Yellow for file paths
+    // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=WARN(Yellow), 3=INFO(Green), 4=ERROR(Red), 5=FATAL(Magenta), 6=GREY
+    const char *file_color = colors[2]; // WARN: Yellow for file paths
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
     const char *tid_color = colors[6];  // GREY: Grey for thread ID

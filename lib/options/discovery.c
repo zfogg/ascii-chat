@@ -55,6 +55,18 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
     return result;
   }
 
+  // Validate options (check dependencies, conflicts, etc.)
+  char *error_message = NULL;
+  result = options_config_validate(config, opts, &error_message);
+  if (result != ASCIICHAT_OK) {
+    if (error_message) {
+      (void)fprintf(stderr, "Error: %s\n", error_message);
+      free(error_message);
+    }
+    options_config_destroy(config);
+    return result;
+  }
+
   // Session string is optional:
   // - If provided: join existing session
   // - If not provided: start new session (ACDS will generate session string)

@@ -146,6 +146,26 @@ static bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
 }
 
 /**
+ * @brief Custom parser for --cookies-from-browser flag
+ * Accepts optional browser/keyring name to forward to yt-dlp
+ * Examples: chrome, firefox, chromium-cookies+firefox-passwords
+ */
+static bool parse_cookies_enabled(const char *arg, void *dest, char **error_msg) {
+  (void)error_msg;  // Unused but required by function signature
+  char *value = (char *)dest;
+
+  if (!arg || arg[0] == '\0') {
+    // No argument, use empty string (yt-dlp will auto-detect)
+    value[0] = '\0';
+  } else {
+    // Store the browser/keyring specification
+    strncpy(value, arg, 255);
+    value[255] = '\0';
+  }
+  return true;
+}
+
+/**
  * @brief Add binary-level logging options to a builder
  *
  * This ensures consistent option definitions across all modes.
@@ -425,6 +445,22 @@ void options_builder_add_media_group(options_builder_t *b) {
                                sizeof(double), parse_timestamp,
                                "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)",
                                "MEDIA", false, NULL);
+
+  options_builder_add_callback_optional(b, "cookies-from-browser", '\0', offsetof(options_t, cookies_from_browser),
+                                        &(char *){""},  // Default: empty string (auto-detect)
+                                        256, parse_cookies_enabled,
+                                        "Enable reading cookies from browser for YouTube (optionally specify: chrome, firefox, etc. - see: man yt-dlp)",
+                                        "MEDIA", false, NULL, true);
+
+  options_builder_add_bool(b, "no-cookies-from-browser", '\0', offsetof(options_t, no_cookies_from_browser), false,
+                           "Explicitly disable reading cookies from browser",
+                           "MEDIA", false, NULL);
+
+  // Make --cookies-from-browser and --no-cookies-from-browser mutually exclusive
+  options_builder_add_dependency_conflicts(b, "cookies-from-browser", "no-cookies-from-browser",
+                                          "--cookies-from-browser and --no-cookies-from-browser are mutually exclusive");
+  options_builder_add_dependency_conflicts(b, "no-cookies-from-browser", "cookies-from-browser",
+                                          "--no-cookies-from-browser and --cookies-from-browser are mutually exclusive");
 }
 
 // ============================================================================
@@ -831,11 +867,14 @@ const options_config_t *options_preset_client(const char *program_name, const ch
 
   options_builder_add_example(b, "client", "example.com:8080", "Connect to remote server on custom port");
 
+  options_builder_add_example(b, "client", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+                              "Stream from YouTube URL");
+
+  options_builder_add_example(b, "client", "-f video.mp4",
+                              "Stream from local video file");
+
   options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120",
                               "Connect with custom display options");
-
-  options_builder_add_example(b, "client", "-f '-'",
-                              "Stream media from stdin (cat file.mp4 | ascii-chat client -f '-')");
 
   options_builder_add_example(b, "client", "--snapshot", "Capture single frame and exit");
 
@@ -900,14 +939,14 @@ const options_config_t *options_preset_mirror(const char *program_name, const ch
 
   options_builder_add_example(b, "mirror", "--color-mode mono", "View webcam in black and white");
 
+  options_builder_add_example(b, "mirror", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+                              "Stream from YouTube URL");
+
   options_builder_add_example(b, "mirror", "-f video.mp4",
-                              "Stream from video file (supports mp4, mkv, webm, mov, etc)");
+                              "Stream from local video file (supports mp4, mkv, webm, mov, etc)");
 
   options_builder_add_example(b, "mirror", "-f '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')");
-
-  options_builder_add_example(b, "mirror", "-f '-' --loop",
-                              "Stream from stdin and loop (cat file.webm | ascii-chat mirror -f '-' --loop)");
 
   options_builder_add_example(b, "mirror", "--snapshot", "Capture single frame and exit");
 
@@ -1108,6 +1147,12 @@ const options_config_t *options_preset_discovery(const char *program_name, const
 
   options_builder_add_example(b, "discovery", "swift-river-mountain --discovery-server discovery.example.com",
                               "Join session via custom discovery server");
+
+  options_builder_add_example(b, "discovery", "swift-river-mountain -f video.mp4",
+                              "Join session and stream from local video file");
+
+  options_builder_add_example(b, "discovery", "swift-river-mountain --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+                              "Join session and stream from YouTube video");
 
   options_builder_add_example(
       b, "discovery", "swift-river-mountain -f '-'",
