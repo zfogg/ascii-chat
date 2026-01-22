@@ -28,6 +28,61 @@ Allows clients and servers to discover each other using memorable session string
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
 aren't possible.
 .\" MANUAL-END: DESCRIPTION
+
+.\" MANUAL-START: PALETTES
+.SH PALETTES
+Built-in ASCII character palettes for different visual styles.
+Characters are ordered from darkest (leftmost) to brightest (rightmost).
+.TP
+.B standard
+Default palette using ASCII characters only (no UTF-8 required).
+.br
+Characters: \fC   ...',;:clodxkO0KXNWM\fR
+.TP
+.B blocks
+Unicode block shading characters for smooth gradients (requires UTF-8).
+.br
+Characters: \fC   \[u2591]\[u2591]\[u2592]\[u2592]\[u2593]\[u2593]\[u2588]\[u2588]\fR
+.TP
+.B digital
+Digital/tech aesthetic with Unicode characters (requires UTF-8).
+.br
+Characters: \fC   -=\[u2261]\[u2263]\[u25B0]\[u25B1]\[u25FC]\fR
+.TP
+.B minimal
+Minimal palette with basic ASCII characters only.
+.br
+Characters: \fC   .-+*#\fR
+.TP
+.B cool
+Vertical bar progression for unique visual effect (requires UTF-8).
+.br
+Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u2588]\fR
+.TP
+.B custom
+User-defined palette via \fB\-\-palette\-chars\fR option.
+.PP
+Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
+.\" MANUAL-END: PALETTES
+
+.\" MANUAL-START: RENDER MODES
+.SH RENDER MODES
+Three rendering modes control how colors are applied:
+.TP
+.B foreground
+Default mode. ASCII characters are colored but displayed on the terminal's
+default background. Best compatibility across terminals.
+.TP
+.B background
+Terminal background cells are colored. Characters appear in the default
+foreground color. Creates a blocky, pixel-art appearance.
+.TP
+.B half\-block
+Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
+resolution. Each character cell displays two pixels (top and bottom halves).
+Requires UTF-8 support (\fB\-\-utf8\fR).
+.\" MANUAL-END: RENDER MODES
+
 .\" MANUAL-START: CONFIGURATION
 .SH CONFIGURATION
 Configuration can be stored in a TOML file at the default location
@@ -65,6 +120,7 @@ While passwords can be stored in the config file, this is discouraged.
 Use \fB\-\-password\fR interactively or environment variables instead.
 Secure your config file permissions if it contains sensitive data.
 .\" MANUAL-END: CONFIGURATION
+
 .\" MANUAL-START: LIMITS
 .SH LIMITS
 .TP
@@ -79,6 +135,7 @@ The grid size adjusts based on the number of connected clients.
 .B Frame Rate
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
+
 .\" MANUAL-START: FILES
 .SH FILES
 .TP
@@ -112,6 +169,7 @@ Used for server deployments or shared configurations.
 Alternative system-wide configuration file (BSD-style path).
 Used for locally-installed configurations.
 .\" MANUAL-END: FILES
+
 .\" MANUAL-START: EXIT STATUS
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
@@ -149,6 +207,7 @@ Runtime errors (thread, buffer, display, invalid state/param).
 .B 100\-104
 Signal and compression errors.
 .\" MANUAL-END: EXIT STATUS
+
 .\" MANUAL-START: SECURITY
 .SH SECURITY
 .B ascii-chat
@@ -174,6 +233,7 @@ If a server's key changes (possible MITM attack), the connection is rejected
 with a warning. To connect anyway, remove the server entry from
 \fIknown_hosts\fR and reconnect.
 .\" MANUAL-END: SECURITY
+
 .\" MANUAL-START: NOTES
 .SH NOTES
 .IP \(bu 2
@@ -226,14 +286,17 @@ or RLE compression codes. Only the final frame is output. Use
 the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
 .\" MANUAL-END: NOTES
+
 .\" MANUAL-START: BUGS
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .\" MANUAL-END: BUGS
+
 .\" MANUAL-START: AUTHOR
 .SH AUTHOR
 Zachary Fogg <me@zfo.gg>
 .\" MANUAL-END: AUTHOR
+
 .\" MANUAL-START: SEE ALSO
 .SH SEE ALSO
 .BR ssh (1),
@@ -262,55 +325,3 @@ Releases: https://github.com/zfogg/ascii-chat/releases
 .PP
 API documentation: https://zfogg.github.io/ascii-chat/
 .\" MANUAL-END: SEE ALSO
-.\" MANUAL-START: PALETTES
-.SH PALETTES
-Built-in ASCII character palettes for different visual styles.
-Characters are ordered from darkest (leftmost) to brightest (rightmost).
-.TP
-.B standard
-Default palette using ASCII characters only (no UTF-8 required).
-.br
-Characters: \fC   ...',;:clodxkO0KXNWM\fR
-.TP
-.B blocks
-Unicode block shading characters for smooth gradients (requires UTF-8).
-.br
-Characters: \fC   \[u2591]\[u2591]\[u2592]\[u2592]\[u2593]\[u2593]\[u2588]\[u2588]\fR
-.TP
-.B digital
-Digital/tech aesthetic with Unicode characters (requires UTF-8).
-.br
-Characters: \fC   -=\[u2261]\[u2263]\[u25B0]\[u25B1]\[u25FC]\fR
-.TP
-.B minimal
-Minimal palette with basic ASCII characters only.
-.br
-Characters: \fC   .-+*#\fR
-.TP
-.B cool
-Vertical bar progression for unique visual effect (requires UTF-8).
-.br
-Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u2588]\fR
-.TP
-.B custom
-User-defined palette via \fB\-\-palette\-chars\fR option.
-.PP
-Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
-.\" MANUAL-END: PALETTES
-.\" MANUAL-START: RENDER MODES
-.SH RENDER MODES
-Three rendering modes control how colors are applied:
-.TP
-.B foreground
-Default mode. ASCII characters are colored but displayed on the terminal's
-default background. Best compatibility across terminals.
-.TP
-.B background
-Terminal background cells are colored. Characters appear in the default
-foreground color. Creates a blocky, pixel-art appearance.
-.TP
-.B half\-block
-Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
-resolution. Each character cell displays two pixels (top and bottom halves).
-Requires UTF-8 support (\fB\-\-utf8\fR).
-.\" MANUAL-END: RENDER MODES
