@@ -103,9 +103,8 @@ static const mode_descriptor_t g_mode_table[] = {
  */
 static void print_usage(void) {
   // Print header
-  const char *RESET = log_level_color(LOG_COLOR_RESET);
-  printf("%s ascii-chat - %s %s%s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
-         ASCII_CHAT_DESCRIPTION_EMOJI_R, RESET);
+  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
+         ASCII_CHAT_DESCRIPTION_EMOJI_R);
   printf("\n");
 
   // Get binary options config with full metadata
