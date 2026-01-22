@@ -14,6 +14,7 @@
 #include "log/logging.h"
 #include "buffer_pool.h"
 #include "video/palette.h"
+#include "video/simd/common.h" // For simd_caches_destroy_all()
 #include "asciichat_errno.h"
 #include "crypto/known_hosts.h"
 #include "options/options.h"
@@ -114,6 +115,9 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
 
   // Register known_hosts cleanup
   (void)atexit(known_hosts_cleanup);
+
+  // Register SIMD caches cleanup (for all modes: server, client, mirror)
+  (void)atexit(simd_caches_destroy_all);
 
   // Truncate log if it's already too large
   log_truncate_if_large();

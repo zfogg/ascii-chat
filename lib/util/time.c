@@ -105,11 +105,13 @@ void timer_system_cleanup(void) {
   rwlock_wrlock(&g_timer_manager.rwlock);
 
   // Free all timer records
+  int timer_count = 0;
   timer_record_t *current, *tmp;
   HASH_ITER(hh, g_timer_manager.timers, current, tmp) {
     HASH_DEL(g_timer_manager.timers, current);
     SAFE_FREE(current->name);
     SAFE_FREE(current);
+    timer_count++;
   }
 
   g_timer_manager.timers = NULL;
@@ -118,7 +120,7 @@ void timer_system_cleanup(void) {
   rwlock_wrunlock(&g_timer_manager.rwlock);
   rwlock_destroy(&g_timer_manager.rwlock);
 
-  log_debug("Timer system cleaned up");
+  log_debug("Timer system cleaned up (freed %d timers)", timer_count);
 }
 
 bool timer_start(const char *name) {
