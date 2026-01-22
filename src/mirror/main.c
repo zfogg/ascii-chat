@@ -333,5 +333,12 @@ int mirror_main(void) {
   session_display_destroy(display);
   session_capture_destroy(capture);
 
+  // Free probe_source (we created it, so we must free it)
+  // This is separate from capture's media source because capture doesn't own it
+  if (probe_source) {
+    media_source_destroy(probe_source);
+    probe_source = NULL;
+  }
+
   return 0;
 }
