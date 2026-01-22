@@ -13,6 +13,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
+#include <libavutil/log.h>
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include <string.h>
@@ -166,6 +167,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   if (!path) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Path is NULL");
     return NULL;
+  }
+
+  // Suppress FFmpeg's verbose debug logging (H.264 codec warnings, etc.)
+  // Only set this once, it's a global setting
+  static bool ffmpeg_log_level_set = false;
+  if (!ffmpeg_log_level_set) {
+    av_log_set_level(AV_LOG_QUIET);  // Suppress all FFmpeg logging
+    ffmpeg_log_level_set = true;
   }
 
   ffmpeg_decoder_t *decoder = SAFE_MALLOC(sizeof(ffmpeg_decoder_t), ffmpeg_decoder_t *);
