@@ -582,7 +582,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Now do mode detection (only if no action was found)
-  asciichat_mode_t detected_mode = MODE_SERVER; // Default mode
+  asciichat_mode_t detected_mode = MODE_DISCOVERY; // Default mode
   char detected_session_string[64] = {0};
   int mode_index = -1;
 

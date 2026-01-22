@@ -48,17 +48,22 @@ static bool option_applies_to_mode(const option_descriptor_t *desc, asciichat_mo
     return false;
   }
 
-  // Binary options: show only in binary help, hide in mode-specific help
+  // Binary options: show in binary help (discovery mode shows both binary + discovery options)
   if (desc->mode_bitmask & OPTION_MODE_BINARY) {
-    return for_binary_help && !desc->hide_from_binary_help;
+    return !desc->hide_from_binary_help;
   }
 
-  // For binary help, don't show mode-specific options
+  // For binary-level help (discovery mode), also show discovery mode options
   if (for_binary_help) {
-    return false;
+    // Show discovery-mode-specific options too
+    if (mode < 0 || mode > MODE_DISCOVERY) {
+      return false;
+    }
+    option_mode_bitmask_t mode_bit = (1 << MODE_DISCOVERY);
+    return (desc->mode_bitmask & mode_bit) != 0 && !desc->hide_from_mode_help;
   }
 
-  // Mode-specific options: check if bitmask matches mode
+  // Mode-specific options (non-discovery modes): check if bitmask matches mode
   // Validate mode is in valid range
   if (mode < 0 || mode > MODE_DISCOVERY) {
     return false;
@@ -1665,7 +1670,8 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
  * - mode: magenta (using LOG_COLOR_FATAL)
  * - args/flags: yellow (using LOG_COLOR_WARN)
  */
-static void print_examples_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width) {
+static void print_examples_section(const options_config_t *config, FILE *stream, int term_width, int max_col_width,
+                                   asciichat_mode_t mode, bool for_binary_help) {
   if (!config || !stream || config->num_examples == 0) {
     return;
   }
@@ -1681,6 +1687,43 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
   // Build colored command strings using colored_string() for all components
   for (size_t i = 0; i < config->num_examples; i++) {
     const example_descriptor_t *example = &config->examples[i];
+
+    // Filter examples based on mode
+    if (for_binary_help) {
+      // Binary help shows only examples with NULL mode (binary-level examples)
+      if (example->mode != NULL) {
+        continue;
+      }
+    } else {
+      // For mode-specific help, show examples with matching mode ONLY
+      // Get mode name from the mode enum
+      const char *mode_name = NULL;
+      switch (mode) {
+      case MODE_SERVER:
+        mode_name = "server";
+        break;
+      case MODE_CLIENT:
+        mode_name = "client";
+        break;
+      case MODE_MIRROR:
+        mode_name = "mirror";
+        break;
+      case MODE_DISCOVERY_SERVER:
+        mode_name = "discovery-service";
+        break;
+      case MODE_DISCOVERY:
+        mode_name = "discovery";
+        break;
+      default:
+        mode_name = NULL;
+        break;
+      }
+      // Skip if no example mode or mode doesn't match
+      if (!example->mode || !mode_name || strcmp(example->mode, mode_name) != 0) {
+        continue;
+      }
+    }
+
     char cmd_buf[512];
     int len = 0;
 
@@ -1820,7 +1863,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
   print_usage_section(config, stream, term_width, max_col_width);
   print_modes_section(config, stream, term_width, max_col_width);
   print_mode_options_section(stream, term_width, max_col_width);
-  print_examples_section(config, stream, term_width, max_col_width);
+  print_examples_section(config, stream, term_width, max_col_width, MODE_SERVER, true);
 
   // Build list of unique groups in order of first appearance
 
@@ -2025,7 +2068,8 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     SET_ERRNO(ERROR_INVALID_PARAM, "Config or stream is NULL");
     return;
   }
-  return;
+
+  fprintf(stderr, "[DEBUG] options_config_print_options_sections_with_width called with mode=%d\n", mode);
 
   // Detect terminal width - try actual terminal size first, fallback to COLUMNS env var
   int term_width = 80;
@@ -2047,24 +2091,41 @@ void options_config_print_options_sections_with_width(const options_config_t *co
   }
 
   // Determine if this is binary-level help
-  // Binary help shows all binary options, mode help shows only mode-specific options
-  // Use invalid mode value to indicate binary help
-  bool for_binary_help = (mode < 0 || mode > MODE_DISCOVERY);
+  // Discovery mode IS the binary-level help (shows binary options + discovery options)
+  // Other modes show only mode-specific options
+  bool for_binary_help = (mode == MODE_DISCOVERY);
 
   // Print all sections except USAGE (MODE-OPTIONS only appears in binary-level help, not mode-specific help)
   if (for_binary_help) {
     print_modes_section(config, stream, term_width, max_col_width);
+    print_mode_options_section(stream, term_width, max_col_width);
   }
-  print_examples_section(config, stream, term_width, max_col_width);
+  print_examples_section(config, stream, term_width, max_col_width, mode, for_binary_help);
 
   // Build list of unique groups in order of first appearance
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
 
+  // For binary-level help (discovery mode), ensure LOGGING group appears first
+  if (for_binary_help) {
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      const option_descriptor_t *desc = &config->descriptors[i];
+      if (desc->group && strcmp(desc->group, "LOGGING") == 0) {
+        unique_groups[num_unique_groups++] = "LOGGING";
+        break;
+      }
+    }
+  }
+
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
     // Filter by mode_bitmask instead of hide_from_mode_help
     if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group) {
+      continue;
+    }
+
+    // Skip LOGGING group if we already added it (for binary help)
+    if (for_binary_help && strcmp(desc->group, "LOGGING") == 0) {
       continue;
     }
 
@@ -2092,7 +2153,8 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
     for (size_t i = 0; i < config->num_descriptors; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
-      if (desc->hide_from_mode_help || !desc->group || strcmp(desc->group, current_group) != 0) {
+      if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group ||
+          strcmp(desc->group, current_group) != 0) {
         continue;
       }
 

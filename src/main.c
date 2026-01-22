@@ -96,33 +96,9 @@ static const mode_descriptor_t g_mode_table[] = {
  * Help and Usage Functions
  * ============================================================================ */
 
-/**
- * @brief Helper to create colored option string for display
- *
- * Returns a string with ANSI color codes for proper coloring.
- * Caller must use the string immediately before calling again.
- */
-static void print_usage(void) {
-  // Print header
-  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
-         ASCII_CHAT_DESCRIPTION_EMOJI_R);
-  printf("\n");
-
-  // Get unified options config with full metadata
-  const options_config_t *config = options_preset_unified(NULL, NULL);
-  if (!config) {
-    fprintf(stderr, "Error: Failed to create options config\n");
-    return;
-  }
-
-  // Print all sections programmatically (USAGE, MODES, MODE-OPTIONS, EXAMPLES, OPTIONS)
-  options_config_print_usage(config, stdout);
-
-  // Print project links
-  print_project_links(stdout);
-
-  // Cleanup
-  options_config_destroy(config);
+static void print_usage(asciichat_mode_t mode) {
+  // Use the new usage() function from common.c which handles mode-specific help properly
+  usage(stdout, mode);
 }
 
 static void print_version(void) {
@@ -270,7 +246,7 @@ int main(int argc, char *argv[]) {
   // Handle --help and --version (these are detected and flagged by options_init)
   // Terminal capabilities already initialized in main() at startup
   if (opts->help) {
-    print_usage();
+    print_usage(opts->detected_mode);
     return 0;
   }
 
