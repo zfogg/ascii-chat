@@ -237,7 +237,8 @@ static void write_synopsis(FILE *f, const char *mode_name) {
   } else {
     // Binary-level synopsis - show main modes
     fprintf(f, ".B ascii-chat\n");
-    fprintf(f, "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | \\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n");
+    fprintf(f, "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | \\fBdiscovery-service\\fR] "
+               "[\\fImode-options\\fR]\n");
     fprintf(f, "\n");
     fprintf(f, ".B ascii-chat\n");
     fprintf(f, "[\\fIoptions\\fR] \\fI<session-string>\\fR\n");
@@ -1075,13 +1076,13 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
     // Stop before MERGE-END so auto-generated vars can be added before the closing marker
     const char *content_start = p;
     const char *content_end = content_limit;
-    
+
     // Create a null-terminated copy for strstr search
     size_t search_len = content_limit - p;
     char *search_buf = SAFE_MALLOC(search_len + 1, char *);
     memcpy(search_buf, p, search_len);
     search_buf[search_len] = '\0';
-    
+
     // Find MERGE-END marker using strstr
     const char *merge_end_pos = strstr(search_buf, "MERGE-END:");
     if (merge_end_pos) {
@@ -1104,9 +1105,9 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
         content_end = p + offset;
       }
     }
-    
+
     SAFE_FREE(search_buf);
-    
+
     // Trim trailing whitespace (but keep at least one newline if content ends with text)
     // First, trim spaces/tabs
     while (content_end > content_start && (content_end[-1] == ' ' || content_end[-1] == '\t')) {
@@ -1122,7 +1123,7 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
         content_end--;
       }
     }
-    
+
     if (content_end > content_start) {
       // Extract vars from this content before writing
       char *write_content_copy = SAFE_MALLOC(content_end - content_start + 1, char *);
@@ -1723,8 +1724,8 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   // ALSO
   if (content_sections) {
     const char *written_section_names[] = {
-        "NAME",         "SYNOPSIS",      "DESCRIPTION", "USAGE",       "EXAMPLES", "OPTIONS",    "PALETTES",
-        "RENDER MODES", "CONFIGURATION", "LIMITS",      "ENVIRONMENT", "FILES",   "EXIT STATUS", "SECURITY",
+        "NAME",         "SYNOPSIS",      "DESCRIPTION", "USAGE",       "EXAMPLES", "OPTIONS",     "PALETTES",
+        "RENDER MODES", "CONFIGURATION", "LIMITS",      "ENVIRONMENT", "FILES",    "EXIT STATUS", "SECURITY",
         "NOTES",        "BUGS",          "AUTHOR",      "SEE ALSO",    NULL};
 
     for (size_t i = 0; i < num_content_sections; i++) {
