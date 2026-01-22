@@ -34,6 +34,7 @@
 #include "session/render.h"
 
 #include "media/source.h"
+#include "media/youtube.h"
 #include "audio/audio.h"
 #include "common.h"
 #include "options/options.h"
@@ -235,8 +236,14 @@ int mirror_main(void) {
   // Add seek timestamp if specified
   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
-  // Pass the probe_source to capture config to reuse it (avoids redundant yt-dlp extraction)
-  capture_config.media_source = probe_source;
+  // For local files: pass probe_source to reuse (avoids file reopens)
+  // For YouTube URLs: don't pass probe_source because FPS detection may have altered decoder state
+  // The yt-dlp cache (30 seconds) prevents redundant network requests anyway
+  bool is_youtube_url = media_url && strlen(media_url) > 0 && youtube_is_youtube_url(media_url);
+  if (!is_youtube_url && probe_source) {
+    capture_config.media_source = probe_source;
+  }
+  // Note: For YouTube, let session_capture create its own source
 
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
@@ -248,9 +255,12 @@ int mirror_main(void) {
   audio_context_t *audio_ctx = NULL;
   bool audio_available = false;
 
-  // Check if file/URL has audio stream (reuse probe_source to avoid multiple yt-dlp extractions)
-  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && probe_source) {
-    if (media_source_has_audio(probe_source)) {
+  // Check if file/URL has audio stream
+  // For YouTube: use capture's media source (probe_source not reused due to FPS detection altering state)
+  // For files: use probe_source if available
+  media_source_t *audio_probe_source = (is_youtube_url && capture) ? session_capture_get_media_source(capture) : probe_source;
+  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
+    if (media_source_has_audio(audio_probe_source)) {
       audio_available = true;
       audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
       if (audio_ctx) {
