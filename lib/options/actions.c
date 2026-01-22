@@ -42,11 +42,11 @@ void action_list_webcams(void) {
   if (device_count == 0) {
     (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No webcam devices found."));
   } else {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Available Webcam Devices:"));
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_DEV, "Available Webcam Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       (void)snprintf(index_str, sizeof(index_str), "%u", devices[i].index);
-      (void)fprintf(stdout, "  %s %s\n", colored_string(LOG_COLOR_GREY, index_str), colored_string(LOG_COLOR_DEV, devices[i].name));
+      (void)fprintf(stdout, "  %s %s\n", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
     }
   }
 
@@ -72,11 +72,11 @@ void action_list_microphones(void) {
   if (device_count == 0) {
     (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No microphone devices found."));
   } else {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Available Microphone Devices:"));
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_DEV, "Available Microphone Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       (void)snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
-      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), colored_string(LOG_COLOR_DEV, devices[i].name));
+      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
       if (devices[i].is_default_input) {
         (void)fprintf(stdout, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
@@ -102,11 +102,11 @@ void action_list_speakers(void) {
   if (device_count == 0) {
     (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No speaker devices found."));
   } else {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Available Speaker Devices:"));
+    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_DEV, "Available Speaker Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       (void)snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
-      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), colored_string(LOG_COLOR_DEV, devices[i].name));
+      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
       if (devices[i].is_default_output) {
         (void)fprintf(stdout, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
