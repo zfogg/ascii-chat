@@ -1420,11 +1420,6 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   if (!config)
     return 0;
 
-  const char *MAGENTA = log_level_color(LOG_COLOR_FATAL);
-  const char *GREEN = log_level_color(LOG_COLOR_INFO);
-  const char *YELLOW = log_level_color(LOG_COLOR_WARN);
-  const char *RESET = log_level_color(LOG_COLOR_RESET);
-
 #ifdef _WIN32
   const char *binary_name = "ascii-chat.exe";
 #else
@@ -1442,21 +1437,20 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
     if (usage->mode) {
-      if (strcmp(usage->mode, "<mode>") == 0) {
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s<mode>%s", MAGENTA, RESET);
-      } else {
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", MAGENTA, usage->mode, RESET);
-      }
+      const char *colored_mode = colored_string(LOG_COLOR_FATAL, usage->mode);
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
     }
 
     if (usage->positional) {
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", GREEN, usage->positional, RESET);
+      const char *colored_pos = colored_string(LOG_COLOR_INFO, usage->positional);
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_pos);
     }
 
     if (usage->show_options) {
       const char *options_text =
           (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", YELLOW, options_text, RESET);
+      const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_opts);
     }
 
     int w = utf8_display_width(temp_buf);
@@ -1472,11 +1466,13 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
     if (example->mode) {
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", MAGENTA, example->mode, RESET);
+      const char *colored_mode = colored_string(LOG_COLOR_FATAL, example->mode);
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
     }
 
     if (example->args) {
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s%s%s", GREEN, example->args, RESET);
+      const char *colored_args = colored_string(LOG_COLOR_INFO, example->args);
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_args);
     }
 
     int w = utf8_display_width(temp_buf);
@@ -1486,8 +1482,8 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
 
   // Check MODES entries
   for (size_t i = 0; i < config->num_modes; i++) {
-    snprintf(temp_buf, sizeof(temp_buf), "%s%s%s", MAGENTA, config->modes[i].name, RESET);
-    int w = utf8_display_width(temp_buf);
+    const char *colored_name = colored_string(LOG_COLOR_FATAL, config->modes[i].name);
+    int w = utf8_display_width(colored_name);
     if (w > max_col_width)
       max_col_width = w;
   }
@@ -1498,14 +1494,16 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     if (desc->hide_from_mode_help || !desc->group)
       continue;
 
-    // Build option display string
+    // Build option display string with colored_string()
+    char opts_buf[256];
     if (desc->short_name && desc->short_name != '\0') {
-      snprintf(temp_buf, sizeof(temp_buf), "%s-%c, --%s%s", YELLOW, desc->short_name, desc->long_name, RESET);
+      snprintf(opts_buf, sizeof(opts_buf), "-%c, --%s", desc->short_name, desc->long_name);
     } else {
-      snprintf(temp_buf, sizeof(temp_buf), "%s--%s%s", YELLOW, desc->long_name, RESET);
+      snprintf(opts_buf, sizeof(opts_buf), "--%s", desc->long_name);
     }
+    const char *colored_opts = colored_string(LOG_COLOR_WARN, opts_buf);
 
-    int w = utf8_display_width(temp_buf);
+    int w = utf8_display_width(colored_opts);
     if (w > max_col_width)
       max_col_width = w;
   }
