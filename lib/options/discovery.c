@@ -89,10 +89,11 @@ void usage_discovery(FILE *desc) {
 
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
 
-  options_config_print_usage(config, desc);
-
   // Print project links
   print_project_links(desc);
+  (void)fprintf(desc, "\n");
+
+  options_config_print_usage(config, desc);
 
   options_config_destroy(config);
 }

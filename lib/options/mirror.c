@@ -79,11 +79,12 @@ void usage_mirror(FILE *desc) {
   // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
 
-  // Generate options from builder configuration
-  options_config_print_usage(config, desc);
-
   // Print project links
   print_project_links(desc);
+  (void)fprintf(desc, "\n");
+
+  // Generate options from builder configuration
+  options_config_print_usage(config, desc);
 
   // Clean up the config
   options_config_destroy(config);

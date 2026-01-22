@@ -97,13 +97,23 @@ void usage_client(FILE *desc) {
   // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
 
+  // Print project links
+  print_project_links(desc);
+  (void)fprintf(desc, "\n");
+
   // Detect terminal width for layout
   int term_width = 80;
-  const char *cols_env = getenv("COLUMNS");
-  if (cols_env) {
-    int cols = atoi(cols_env);
-    if (cols > 40)
-      term_width = cols;
+  terminal_size_t term_size;
+  if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
+    term_width = term_size.cols;
+  } else {
+    // Fallback to COLUMNS environment variable if terminal detection fails
+    const char *cols_env = SAFE_GETENV("COLUMNS");
+    if (cols_env) {
+      int cols = atoi(cols_env);
+      if (cols > 40)
+        term_width = cols;
+    }
   }
 
   // Print USAGE section first
@@ -175,9 +185,6 @@ void usage_client(FILE *desc) {
 
   // Print everything after USAGE (MODES, MODE-OPTIONS, EXAMPLES, OPTIONS) with global max width
   options_config_print_options_sections_with_width(config, desc, 0);
-
-  // Print project links
-  print_project_links(desc);
 
   // Clean up the config
   options_config_destroy(config);

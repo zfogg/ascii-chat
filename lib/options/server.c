@@ -93,6 +93,10 @@ void usage_server(FILE *desc) {
   // Print program name and description
   (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
 
+  // Print project links
+  print_project_links(desc);
+  (void)fprintf(desc, "\n");
+
   // Detect terminal width for layout
   int term_width = 80;
   terminal_size_t term_size;
@@ -242,9 +246,6 @@ void usage_server(FILE *desc) {
 
   // Print everything after USAGE (MODES, MODE-OPTIONS, EXAMPLES, OPTIONS) with global max width
   options_config_print_options_sections_with_width(config, desc, global_max_col_width);
-
-  // Print project links
-  print_project_links(desc);
 
   // Clean up the config
   options_config_destroy(config);
