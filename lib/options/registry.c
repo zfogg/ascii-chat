@@ -59,7 +59,6 @@ static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
   return true;
 }
 
-
 /**
  * @brief Custom parser for --seek flag
  *
@@ -265,7 +264,6 @@ static const bool g_default_no_encode_audio = !OPT_ENCODE_AUDIO_DEFAULT; // For 
 static const bool g_default_require_server_identity = false; // Default: no requirement
 static const bool g_default_require_client_identity = false; // Default: no requirement
 
-
 // ============================================================================
 // Complete Options Registry
 // ============================================================================
@@ -280,7 +278,7 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(unsigned short int), "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false, NULL,
      NULL, parse_verbose_flag, false, true, OPTION_MODE_BINARY},
     {"quiet", 'q', OPTION_TYPE_BOOL, offsetof(options_t, quiet), &g_default_quiet, sizeof(bool),
-     "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, false, false, OPTION_MODE_BINARY},
+     "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY},
 
     // TERMINAL GROUP (client, mirror, discovery)
     {"width", 'x', OPTION_TYPE_INT, offsetof(options_t, width), &g_default_width, sizeof(int),
@@ -315,8 +313,8 @@ static const registry_entry_t g_options_registry[] = {
      "ASCII_CHAT_PALETTE", NULL, parse_palette_type, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"palette-chars", 'C', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_custom), "", 0,
-     "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL, NULL, parse_palette_chars, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     "Custom palette characters (implies --palette=custom)", "DISPLAY", false, NULL, NULL, parse_palette_chars, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities), &g_default_show_capabilities,
      sizeof(bool), "Show terminal capabilities and exit", "DISPLAY", false, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
@@ -342,10 +340,9 @@ static const registry_entry_t g_options_registry[] = {
      false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // PERFORMANCE GROUP (client, server, discovery)
-    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level),
-     &g_default_compression_level, sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false,
-     "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level), &g_default_compression_level,
+     sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false, "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &g_default_no_compress, sizeof(bool),
      "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
@@ -354,8 +351,9 @@ static const registry_entry_t g_options_registry[] = {
     {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &g_default_encrypt_enabled, sizeof(bool),
      "Enable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0, "SSH/GPG key file path", "SECURITY", false,
-     "ASCII_CHAT_KEY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0, "SSH/GPG key file path", "SECURITY",
+     false, "ASCII_CHAT_KEY", NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"password", '\0', OPTION_TYPE_STRING, offsetof(options_t, password), "", 0, "Shared password for authentication",
      "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
@@ -365,11 +363,9 @@ static const registry_entry_t g_options_registry[] = {
     {"server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, server_key), "", 0,
      "Expected server public key (client)", "SECURITY", false, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
-    {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0,
-     "Allowed client keys (server)", "SECURITY", false, NULL, NULL, false, false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Server and Discovery
-    {"discovery-service-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key),
-     "", 0,
+    {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0, "Allowed client keys (server)",
+     "SECURITY", false, NULL, NULL, false, false, OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Server and Discovery
+    {"discovery-service-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
      "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
      "SECURITY", false, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Client, Server, Discovery
@@ -385,9 +381,8 @@ static const registry_entry_t g_options_registry[] = {
     {"address", '\0', OPTION_TYPE_STRING, offsetof(options_t, address), "localhost", 0,
      "Server address (client) or bind address (server)", "NETWORK", false, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"address6", '\0', OPTION_TYPE_STRING, offsetof(options_t, address6), "::1", 0,
-     "IPv6 bind address (server only)", "NETWORK", false, NULL, NULL, false, false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
+    {"address6", '\0', OPTION_TYPE_STRING, offsetof(options_t, address6), "::1", 0, "IPv6 bind address (server only)",
+     "NETWORK", false, NULL, NULL, false, false, OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
     {"max-clients", '\0', OPTION_TYPE_INT, offsetof(options_t, max_clients), &g_default_max_clients, sizeof(int),
      "Maximum concurrent clients (server only)", "NETWORK", false, NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC}, // Server and Discovery Service
@@ -397,51 +392,50 @@ static const registry_entry_t g_options_registry[] = {
 
     // WebRTC options
     {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &g_default_webrtc, sizeof(bool),
-     "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL, NULL, false, false,
+     "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Client, Server, Discovery
     {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &g_default_prefer_webrtc,
-     sizeof(bool), "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     sizeof(bool), "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
     {"no-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_webrtc), &g_default_no_webrtc, sizeof(bool),
-     "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL, NULL, false, false,
+     "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
     {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &g_default_webrtc_skip_stun,
-     sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, false, false,
+     sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
     {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
      &g_default_webrtc_disable_turn, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL,
-     NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
 
     {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
-     "ACDS: Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, false, false,
+     "ACDS: Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
     {"turn-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_servers), OPT_TURN_SERVERS_DEFAULT, 0,
-     "ACDS: Comma-separated list of TURN server URLs", "NETWORK", false, NULL, NULL, false, false,
+     "ACDS: Comma-separated list of TURN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
     {"turn-username", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_username), OPT_TURN_USERNAME_DEFAULT, 0,
-     "ACDS: Username for TURN authentication", "NETWORK", false, NULL, NULL, false, false,
+     "ACDS: Username for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
     {"turn-credential", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_credential), OPT_TURN_CREDENTIAL_DEFAULT, 0,
-     "ACDS: Credential/password for TURN authentication", "NETWORK", false, NULL, NULL, false, false,
+     "ACDS: Credential/password for TURN authentication", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
     {"turn-secret", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_secret), "", 0,
-     "ACDS: Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false, NULL, NULL, false,
+     "ACDS: Shared secret for dynamic TURN credential generation (HMAC-SHA1)", "NETWORK", false, NULL, NULL, NULL, false,
      false, OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY}, // Discovery Service and Discovery
 
     // Media File Streaming Options
     {"file", 'f', OPTION_TYPE_STRING, offsetof(options_t, media_file), "", 0,
-     "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL, false, false,
+     "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"url", 'u', OPTION_TYPE_STRING, offsetof(options_t, media_url), "", 0,
-     "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file", "MEDIA", false, NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file", "MEDIA", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &g_default_media_loop, sizeof(bool),
-     "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL, NULL, false, false,
+     "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &g_default_media_seek_timestamp,
      sizeof(double), "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false, NULL,
-     NULL, parse_timestamp, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     NULL, parse_timestamp, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"cookies-from-browser", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, cookies_from_browser),
      &g_default_cookies_from_browser_value, 0,
      "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
@@ -450,8 +444,7 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"no-cookies-from-browser", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_cookies_from_browser),
      &g_default_no_cookies_from_browser, sizeof(bool), "Explicitly disable reading cookies from browser", "MEDIA",
-     false, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // AUDIO GROUP (client, discovery)
     {"audio", 'A', OPTION_TYPE_BOOL, offsetof(options_t, audio_enabled), &g_default_audio_enabled, sizeof(bool),
@@ -461,44 +454,40 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(int), "Microphone device index (-1=default)", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX", NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"speakers-index", '\0', OPTION_TYPE_INT, offsetof(options_t, speakers_index), &g_default_speakers_index,
-     sizeof(int), "Speakers device index (-1=default)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     sizeof(int), "Speakers device index (-1=default)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL, NULL, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"microphone-sensitivity", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, microphone_sensitivity),
      &g_default_microphone_sensitivity, sizeof(float), "Microphone volume multiplier (0.0-1.0)", "AUDIO", false,
-     "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"speakers-volume", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, speakers_volume), &g_default_speakers_volume,
      sizeof(float), "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_VOLUME", NULL, NULL,
      false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"audio-analysis", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_analysis_enabled),
      &g_default_audio_analysis_enabled, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
-     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback),
-     &g_default_no_audio_playback, sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL, false,
+     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback), &g_default_no_audio_playback,
+     sizeof(bool), "Disable speaker playback (debug)", "AUDIO", false, NULL, NULL, false, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &g_default_encode_audio, sizeof(bool),
      "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &g_default_no_encode_audio,
-     sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // ACDS Server Specific Options
     {"discovery-database-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
-     "Path to SQLite database for discovery service", "ACDS", false, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC},
+     "Path to SQLite database for discovery service", "ACDS", false, NULL, NULL, NULL, false,
+     false, OPTION_MODE_DISCOVERY_SVC},
     {"discovery-key-path", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_key_path), "", 0,
-     "Path to identity key file for discovery service", "ACDS", false, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC},
+     "Path to identity key file for discovery service", "ACDS", false, NULL, NULL, NULL, false,
+     false, OPTION_MODE_DISCOVERY_SVC},
     {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity),
-     &g_default_require_server_identity, sizeof(bool),
-     "ACDS: require servers to provide signed Ed25519 identity", "ACDS", false, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC},
+     &g_default_require_server_identity, sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity",
+     "ACDS", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
     {"require-client-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_client_identity),
-     &g_default_require_client_identity, sizeof(bool),
-     "ACDS: require clients to provide signed Ed25519 identity", "ACDS", false, NULL, NULL, false, false,
-     OPTION_MODE_DISCOVERY_SVC},
+     &g_default_require_client_identity, sizeof(bool), "ACDS: require clients to provide signed Ed25519 identity",
+     "ACDS", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
 
     // Generic placeholder to mark end of array
     {NULL, '\0', OPTION_TYPE_BOOL, 0, NULL, 0, NULL, NULL, false, NULL, NULL, NULL, false, false, OPTION_MODE_NONE}};
@@ -528,6 +517,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
     if (!entry->long_name) {
       continue;
     }
+    // Silent - no debug logging needed
 
     switch (entry->type) {
     case OPTION_TYPE_STRING:

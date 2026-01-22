@@ -48,30 +48,30 @@ static bool option_applies_to_mode(const option_descriptor_t *desc, asciichat_mo
     return false;
   }
 
-  // Binary options: show in binary help (discovery mode shows both binary + discovery options)
-  if (desc->mode_bitmask & OPTION_MODE_BINARY) {
-    return !desc->hide_from_binary_help;
-  }
-
-  // For binary-level help (discovery mode), also show discovery mode options
+  // When for_binary_help is true (i.e., for 'ascii-chat --help'),
+  // we want to show all options that apply to any mode, plus binary-level options.
   if (for_binary_help) {
-    // Show discovery-mode-specific options too
-    if (mode < 0 || mode > MODE_DISCOVERY) {
-      return false;
-    }
-    option_mode_bitmask_t mode_bit = (1 << MODE_DISCOVERY);
-    return (desc->mode_bitmask & mode_bit) != 0 && !desc->hide_from_mode_help;
+    // An option applies if its mode_bitmask has any bit set for any valid mode,
+    // or if it's a binary option.
+    // OPTION_MODE_ALL is a bitmask of all modes (including OPTION_MODE_BINARY).
+    return (desc->mode_bitmask & OPTION_MODE_ALL) != 0 && !desc->hide_from_binary_help;
   }
 
-  // Mode-specific options (non-discovery modes): check if bitmask matches mode
-  // Validate mode is in valid range
-  if (mode < 0 || mode > MODE_DISCOVERY) {
+  // For mode-specific help (non-discovery modes), show only options for that mode.
+  // Do not show binary options here unless it also specifically applies to the mode.
+  // The 'mode' parameter is the actual mode (e.g., MODE_CLIENT, MODE_SERVER).
+  if (mode < 0 || mode > MODE_DISCOVERY) { // Use MODE_INVALID as upper bound for valid modes
     return false;
   }
   option_mode_bitmask_t mode_bit = (1 << mode);
+
+  // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
+  if ((desc->mode_bitmask & OPTION_MODE_BINARY) && !(desc->mode_bitmask & mode_bit)) {
+    return false; // Binary options not shown in mode-specific help unless also mode-specific
+  }
+
   bool applies = (desc->mode_bitmask & mode_bit) != 0;
 
-  // Also respect legacy hide flags for backward compatibility
   return applies && !desc->hide_from_mode_help;
 }
 
@@ -333,6 +333,9 @@ options_builder_t *options_builder_create(size_t struct_size) {
   builder->struct_size = struct_size;
   builder->program_name = NULL;
   builder->description = NULL;
+  builder->owned_strings_builder = NULL;
+  builder->num_owned_strings_builder = 0;
+  builder->owned_strings_builder_capacity = 0;
 
   return builder;
 }
@@ -382,6 +385,7 @@ void options_builder_destroy(options_builder_t *builder) {
   SAFE_FREE(builder->usage_lines);
   SAFE_FREE(builder->examples);
   SAFE_FREE(builder->modes);
+  SAFE_FREE(builder->owned_strings_builder); // Free the builder's owned strings
   SAFE_FREE(builder);
 }
 
@@ -499,9 +503,14 @@ options_config_t *options_builder_build(options_builder_t *builder) {
   config->description = builder->description;
 
   // Initialize memory management
-  config->owned_strings = NULL;
-  config->num_owned_strings = 0;
-  config->owned_strings_capacity = 0;
+  config->owned_strings = builder->owned_strings_builder;
+  config->num_owned_strings = builder->num_owned_strings_builder;
+  config->owned_strings_capacity = builder->owned_strings_builder_capacity;
+
+  // Clear builder's ownership so it doesn't free them
+  builder->owned_strings_builder = NULL;
+  builder->num_owned_strings_builder = 0;
+  builder->owned_strings_builder_capacity = 0;
 
   return config;
 }
@@ -855,6 +864,30 @@ void options_builder_add_positional(options_builder_t *builder, const char *name
 // Programmatic Help Generation
 // ============================================================================
 
+/**
+ * @brief Track an owned string for cleanup by the builder
+ */
+static void track_owned_string_builder(options_builder_t *builder, char *str) {
+  if (!str)
+    return;
+
+  if (builder->num_owned_strings_builder >= builder->owned_strings_builder_capacity) {
+    size_t new_capacity = builder->owned_strings_builder_capacity * 2;
+    if (new_capacity == 0)
+      new_capacity = INITIAL_OWNED_STRINGS_CAPACITY;
+
+    char **new_owned = SAFE_REALLOC(builder->owned_strings_builder, new_capacity * sizeof(char *), char **);
+    if (!new_owned) {
+      log_fatal("Failed to reallocate builder owned_strings array");
+      return;
+    }
+    builder->owned_strings_builder = new_owned;
+    builder->owned_strings_builder_capacity = new_capacity;
+  }
+
+  builder->owned_strings_builder[builder->num_owned_strings_builder++] = str;
+}
+
 void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options,
                                const char *description) {
   if (!builder || !description)
@@ -869,13 +902,26 @@ void options_builder_add_usage(options_builder_t *builder, const char *mode, con
 }
 
 void options_builder_add_example(options_builder_t *builder, const char *mode, const char *args,
-                                 const char *description) {
+                                 const char *description, bool owns_args) {
   if (!builder || !description)
     return;
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {.mode = mode, .args = args, .description = description};
+  example_descriptor_t example = {.mode = mode, .description = description, .owns_args_memory = owns_args};
+
+  if (owns_args) {
+    // If owning, duplicate the string and track it
+    char *owned_args = strdup(args);
+    if (!owned_args) {
+      log_fatal("Failed to duplicate example args string");
+      return;
+    }
+    example.args = owned_args;
+    track_owned_string_builder(builder, owned_args);
+  } else {
+    example.args = args;
+  }
 
   builder->examples[builder->num_examples++] = example;
 }
@@ -2088,55 +2134,72 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     max_col_width = options_config_calculate_max_col_width(config);
   }
 
+  // CAP max_col_width at 60 as per user request for first column wrapping
+  if (max_col_width > 60) {
+    max_col_width = 60;
+  }
+
   // Determine if this is binary-level help
   // Discovery mode IS the binary-level help (shows binary options + discovery options)
   // Other modes show only mode-specific options
   bool for_binary_help = (mode == MODE_DISCOVERY);
-
-  // Print all sections except USAGE (MODE-OPTIONS only appears in binary-level help, not mode-specific help)
-  if (for_binary_help) {
-    print_modes_section(config, stream, term_width, max_col_width);
-    print_mode_options_section(stream, term_width, max_col_width);
-  }
-  print_examples_section(config, stream, term_width, max_col_width, mode, for_binary_help);
-
   // Build list of unique groups in order of first appearance
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
 
-  // For binary-level help (discovery mode), ensure LOGGING group appears first
-  if (for_binary_help) {
+  // For binary-level help, we now use a two-pass system to order groups,
+  // ensuring binary-level option groups appear before discovery-mode groups.
+    if (for_binary_help) {
+      // Pass 1: Collect groups with binary options (ensure LOGGING is first if present)
+      bool logging_added = false;
+      for (size_t i = 0; i < config->num_descriptors; i++) {
+          const option_descriptor_t *desc = &config->descriptors[i];
+          if (desc->group && strcmp(desc->group, "LOGGING") == 0) {
+              unique_groups[num_unique_groups++] = "LOGGING";
+              logging_added = true;
+              break;
+          }
+      }
+  
+      // Pass 2: Collect all other groups that apply for binary help (all modes), if not already added.
+      for (size_t i = 0; i < config->num_descriptors; i++) {
+        const option_descriptor_t *desc = &config->descriptors[i];
+        // An option applies if option_applies_to_mode says so for binary help (which checks OPTION_MODE_ALL)
+        if (option_applies_to_mode(desc, mode, for_binary_help) && desc->group) {
+          // Skip LOGGING group if we already added it (for binary help)
+          if (logging_added && strcmp(desc->group, "LOGGING") == 0) {
+            continue;
+          }
+  
+          bool group_exists = false;
+          for (size_t j = 0; j < num_unique_groups; j++) {
+            if (strcmp(unique_groups[j], desc->group) == 0) {
+              group_exists = true;
+              break;
+            }
+          }
+          if (!group_exists) {
+            unique_groups[num_unique_groups++] = desc->group;
+          }
+        } else if (desc->group) {
+        }
+      }
+    } else {
+    // Original logic for other modes
     for (size_t i = 0; i < config->num_descriptors; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
-      if (desc->group && strcmp(desc->group, "LOGGING") == 0) {
-        unique_groups[num_unique_groups++] = "LOGGING";
-        break;
+      if (option_applies_to_mode(desc, mode, for_binary_help) && desc->group) {
+        bool group_exists = false;
+        for (size_t j = 0; j < num_unique_groups; j++) {
+          if (strcmp(unique_groups[j], desc->group) == 0) {
+            group_exists = true;
+            break;
+          }
+        }
+        if (!group_exists) {
+          unique_groups[num_unique_groups++] = desc->group;
+        }
       }
-    }
-  }
-
-  for (size_t i = 0; i < config->num_descriptors; i++) {
-    const option_descriptor_t *desc = &config->descriptors[i];
-    // Filter by mode_bitmask instead of hide_from_mode_help
-    if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group) {
-      continue;
-    }
-
-    // Skip LOGGING group if we already added it (for binary help)
-    if (for_binary_help && strcmp(desc->group, "LOGGING") == 0) {
-      continue;
-    }
-
-    // Check if this group is already in the list
-    bool group_exists = false;
-    for (size_t j = 0; j < num_unique_groups; j++) {
-      if (unique_groups[j] && strcmp(unique_groups[j], desc->group) == 0) {
-        group_exists = true;
-        break;
-      }
-    }
-    if (!group_exists && num_unique_groups < config->num_descriptors) {
-      unique_groups[num_unique_groups++] = desc->group;
     }
   }
 
@@ -2387,6 +2450,11 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   // Ensure minimum width
   if (global_max_col_width < 20)
     global_max_col_width = 20;
+
+  // CAP global_max_col_width at 60 as per user request for first column wrapping
+  if (global_max_col_width > 60) {
+    global_max_col_width = 60;
+  }
 
   // Print USAGE section
   fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
