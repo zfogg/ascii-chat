@@ -142,35 +142,38 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     return ERROR_YOUTUBE_INVALID_URL;
   }
 
-  // Build command to run yt-dlp with --dump-json
-  // Using popen for simpler subprocess execution
+  // Build command to run yt-dlp and extract the URL directly
+  // Try best available format (works with most videos)
   char command[2048];
-  int cmd_ret = snprintf(command, sizeof(command),
-                         "yt-dlp --dump-json --quiet --no-warnings "
-                         "-f 'bv*+ba/b' "
-                         "'%s' 2>/dev/null",
-                         youtube_url);
+  // Note: %(url)s is for yt-dlp's -O option, not snprintf format string
+  // Using literal string to avoid format string warnings
+  int cmd_ret = snprintf(command, sizeof(command), "%s%s%s",
+                         "yt-dlp --quiet --no-warnings "
+                         "-f 'b' "
+                         "-O '%(url)s' '",
+                         youtube_url,
+                         "' 2>/dev/null");
 
   if (cmd_ret < 0 || cmd_ret >= (int)sizeof(command)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "YouTube URL too long");
     return ERROR_INVALID_PARAM;
   }
 
-  // Execute yt-dlp and capture JSON output
+  // Execute yt-dlp and capture URL output
   FILE *pipe = popen(command, "r");
   if (!pipe) {
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Failed to execute yt-dlp subprocess");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
-  // Read JSON output from yt-dlp
-  char json_buffer[65536]; // 64KB buffer for JSON
-  size_t json_size = 0;
+  // Read URL output from yt-dlp (should be a single line)
+  char url_buffer[8192];
+  size_t url_size = 0;
   int c;
-  while ((c = fgetc(pipe)) != EOF && json_size < sizeof(json_buffer) - 1) {
-    json_buffer[json_size++] = (char)c;
+  while ((c = fgetc(pipe)) != EOF && c != '\n' && url_size < sizeof(url_buffer) - 1) {
+    url_buffer[url_size++] = (char)c;
   }
-  json_buffer[json_size] = '\0';
+  url_buffer[url_size] = '\0';
 
   int pclose_ret = pclose(pipe);
   if (pclose_ret != 0) {
@@ -180,86 +183,29 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
-  if (json_size == 0) {
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned empty output");
+  if (url_size == 0 || (url_size == 2 && strncmp(url_buffer, "NA", 2) == 0)) {
+    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "yt-dlp returned empty output - no playable formats");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
-  // Parse JSON to extract URL
-  // Look for "url" field in JSON (the direct stream URL)
-  const char *url_key = "\"url\":\"";
-  const char *url_start = strstr(json_buffer, url_key);
-
-  if (!url_start) {
-    log_debug("JSON output from yt-dlp:\n%s", json_buffer);
+  // Validate the URL starts with http
+  if (url_buffer[0] != 'h' || strncmp(url_buffer, "http", 4) != 0) {
+    log_debug("Invalid URL from yt-dlp: %s", url_buffer);
     SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
-              "Could not find stream URL in yt-dlp output. "
-              "Video may not be playable or format may have changed.");
+              "yt-dlp returned invalid URL. Video may not be playable.");
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
-  url_start += strlen(url_key);
-
-  // Extract URL until closing quote
-  size_t url_len = 0;
-  const char *url_end = url_start;
-  while (*url_end != '"' && *url_end != '\0' && url_len < output_size - 1) {
-    // Handle escaped quotes
-    if (*url_end == '\\' && *(url_end + 1) == '"') {
-      url_end += 2;
-      continue;
-    }
-    url_len++;
-    url_end++;
-  }
-
-  if (*url_end != '"') {
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Malformed URL in yt-dlp output");
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
-  }
-
-  if (url_len >= output_size) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Stream URL too long for output buffer");
+  if (url_size >= output_size) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Stream URL too long for output buffer (%zu bytes, max %zu)",
+              url_size, output_size);
     return ERROR_INVALID_PARAM;
   }
 
-  // Copy URL, handling escaped characters
-  size_t out_idx = 0;
-  const char *src = url_start;
-  while (*src != '"' && out_idx < output_size - 1) {
-    if (*src == '\\' && *(src + 1) != '\0') {
-      char next = *(src + 1);
-      if (next == 'n') {
-        output_url[out_idx++] = '\n';
-        src += 2;
-      } else if (next == 't') {
-        output_url[out_idx++] = '\t';
-        src += 2;
-      } else if (next == '"') {
-        output_url[out_idx++] = '"';
-        src += 2;
-      } else if (next == '\\') {
-        output_url[out_idx++] = '\\';
-        src += 2;
-      } else if (next == '/') {
-        output_url[out_idx++] = '/';
-        src += 2;
-      } else {
-        output_url[out_idx++] = *src;
-        src++;
-      }
-    } else {
-      output_url[out_idx++] = *src;
-      src++;
-    }
-  }
-  output_url[out_idx] = '\0';
+  // Copy the URL directly (it's already properly formatted)
+  strncpy(output_url, url_buffer, output_size - 1);
+  output_url[output_size - 1] = '\0';
 
-  if (out_idx == 0) {
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "Extracted URL is empty");
-    return ERROR_YOUTUBE_EXTRACT_FAILED;
-  }
-
-  log_debug("Successfully extracted YouTube stream URL (%zu bytes)", out_idx);
+  log_debug("Successfully extracted YouTube stream URL (%zu bytes)", url_size);
   return ASCIICHAT_OK;
 }
