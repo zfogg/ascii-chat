@@ -795,9 +795,9 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   SAFE_STRNCPY(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm) - 1);
 
   // Set default FPS for Windows terminals
-  extern int g_max_fps;
-  if (g_max_fps > 0) {
-    caps.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    caps.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     caps.desired_fps = DEFAULT_MAX_FPS; // 60 FPS on Windows with timeBeginPeriod(1)
   }

@@ -355,8 +355,8 @@ static void write_options_section(FILE *f, const options_config_t *config) {
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
 
-    // Skip hidden options
-    if (desc->hide_from_mode_help || !desc->group) {
+    // Skip hidden options (including options hidden from binary help, like --create-man-page)
+    if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group) {
       continue;
     }
 
@@ -387,7 +387,7 @@ static void write_options_section(FILE *f, const options_config_t *config) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Skip if not in current group or if hidden
-      if (desc->hide_from_mode_help || !desc->group || strcmp(desc->group, current_group) != 0) {
+      if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group || strcmp(desc->group, current_group) != 0) {
         continue;
       }
 

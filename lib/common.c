@@ -30,9 +30,6 @@
 #include <pthread.h> // For PTHREAD_MUTEX_INITIALIZER on POSIX
 #endif
 
-// Global frame rate variable - can be set via command line
-int g_max_fps = 0; // 0 means use default
-
 /* ============================================================================
  * Shutdown Check System Implementation
  * ============================================================================

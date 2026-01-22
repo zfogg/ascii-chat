@@ -688,9 +688,17 @@ void options_builder_add_action(options_builder_t *builder, const char *long_nam
                               .validate = NULL,
                               .parse_fn = NULL,
                               .action_fn = action_fn,
-                              .owns_memory = false};
+                              .owns_memory = false,
+                              .hide_from_mode_help = false,
+                              .hide_from_binary_help = false};
 
   builder->descriptors[builder->num_descriptors++] = desc;
+  
+  // Set hide_from_binary_help after adding (so we can check the option name)
+  if (strcmp(long_name, "create-man-page") == 0) {
+    // Always hide from help and man page (this is a development tool)
+    builder->descriptors[builder->num_descriptors - 1].hide_from_binary_help = true;
+  }
 }
 
 void options_builder_add_descriptor(options_builder_t *builder, const option_descriptor_t *descriptor) {
@@ -951,7 +959,7 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
       if (desc->default_value) {
         default_val = *(const char *const *)desc->default_value;
       }
-      
+
       // If current value is set and different from default, skip setting default
       if (current_value && current_value[0] != '\0') {
         if (!default_val || strcmp(current_value, default_val) != 0) {
@@ -959,7 +967,7 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
           break;
         }
       }
-      
+
       const char *value = NULL;
       if (env_value) {
         value = env_value;
@@ -1517,7 +1525,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   // Check OPTIONS entries (from descriptors)
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
-    if (desc->hide_from_mode_help || !desc->group)
+    if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group)
       continue;
 
     // Build option display string with separate coloring for short and long flags
@@ -1803,7 +1811,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       const option_descriptor_t *desc = &config->descriptors[i];
 
       // Skip if not in current group or if hidden
-      if (desc->hide_from_mode_help || !desc->group || strcmp(desc->group, current_group) != 0) {
+      if (desc->hide_from_mode_help || desc->hide_from_binary_help || !desc->group || strcmp(desc->group, current_group) != 0) {
         continue;
       }
 

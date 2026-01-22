@@ -777,10 +777,10 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
     SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
   }
 
-  // Set desired FPS (from global g_max_fps if available, otherwise from caps)
-  extern int g_max_fps; // Will be passed via options in future refactoring
-  if (g_max_fps > 0) {
-    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  // Set desired FPS (from options if available, otherwise from caps)
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     net_packet.desired_fps = caps.desired_fps;
   }

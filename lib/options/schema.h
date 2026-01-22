@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include "common.h"
 #include "options/options.h"
+#include "options/builder.h"
 
 /**
  * @brief Context where an option can appear
@@ -27,35 +28,18 @@ typedef enum {
   OPTION_CONTEXT_BOTH,   ///< Can appear in both CLI and config
 } option_context_t;
 
-/**
- * @brief Option value type for config files
- */
-typedef enum {
-  OPTION_TYPE_STRING, ///< String value (stored in char array)
-  OPTION_TYPE_INT,    ///< Integer value
-  OPTION_TYPE_BOOL,   ///< Boolean value
-  OPTION_TYPE_FLOAT,  ///< Floating point value
-  OPTION_TYPE_DOUBLE, ///< Double precision floating point
-  OPTION_TYPE_ENUM,   ///< Enum value (mapped to int internally, e.g., color_mode)
-} config_option_type_t;
 
 /**
- * @brief Validation function signature for config options
+ * @brief Validation function from options builder
  *
- * @param value_str String value from TOML (may need parsing)
- * @param opts Full options struct (for cross-field validation if needed)
- * @param is_client True if client mode
- * @param parsed_value Output buffer for parsed value (type-specific)
- * @param error_msg Output buffer for error message
- * @param error_msg_size Size of error_msg buffer
- * @return 0 on success, -1 on error
+ * This is the same validation function signature used by the options builder.
+ * It receives the full options struct and can perform cross-field validation.
  *
- * Note: For some validators, parsed_value may be unused (e.g., port validation
- * just checks format, doesn't return parsed value). The actual value is written
- * directly to opts via field_offset.
+ * @param options_struct Full options struct (cast to void* for generic use)
+ * @param error_msg Output: error message (allocated by validator, caller frees)
+ * @return true if valid, false if invalid
  */
-typedef int (*config_validate_fn_t)(const char *value_str, options_t *opts, bool is_client, void *parsed_value,
-                                     char *error_msg, size_t error_msg_size);
+typedef bool (*builder_validate_fn_t)(const void *options_struct, char **error_msg);
 
 /**
  * @brief Option metadata for config file parsing
@@ -66,17 +50,17 @@ typedef int (*config_validate_fn_t)(const char *value_str, options_t *opts, bool
 typedef struct {
   const char *toml_key;      ///< TOML key path (e.g., "network.port", "client.address")
   const char *cli_flag;      ///< CLI flag name (e.g., "--port") or NULL if no CLI flag
-  config_option_type_t type; ///< Value type
+  option_type_t type; ///< Value type (from builder)
   option_context_t context;  ///< Where this option can appear
   const char *category;      ///< Category name (e.g., "network", "client", "audio")
   size_t field_offset;       ///< offsetof(options_t, field) - where to store value
   size_t field_size;         ///< Size of field in options_t
 
-  // Validation
-  config_validate_fn_t validate_fn; ///< Validation function (can be NULL for simple types)
+  // Validation - uses builder's validate function directly
+  builder_validate_fn_t validate_fn; ///< Builder's validation function (can be NULL for simple types)
 
   // Mode restrictions
-  bool is_client_only;  ///< Only used in client mode
+  bool is_client_only; ///< Only used in client mode
   bool is_server_only; ///< Only used in server mode
 
   // Documentation
@@ -116,3 +100,17 @@ const config_option_metadata_t **config_schema_get_by_category(const char *categ
  * @return Array of all metadata (NULL-terminated)
  */
 const config_option_metadata_t *config_schema_get_all(size_t *count);
+
+/**
+ * @brief Build schema dynamically from options builder configs
+ *
+ * This function builds the config schema by merging all mode configs (server, client, mirror, etc.).
+ * It generates TOML keys, CLI flags, categories, and types from the builder's option descriptors.
+ *
+ * @param configs Array of option configs (can contain NULL entries)
+ * @param num_configs Number of configs in the array
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note This should be called once during initialization before any config parsing
+ */
+asciichat_error_t config_schema_build_from_configs(const options_config_t **configs, size_t num_configs);

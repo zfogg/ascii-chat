@@ -575,12 +575,13 @@ const options_config_t *options_preset_binary(const char *program_name, const ch
                              "Load configuration from FILE", "CONFIGURATION", false, NULL, NULL);
 
   // Man page generation
-  options_builder_add_action(b, "create-man-page-template", '\0', action_create_manpage,
-                             "Generate man page template from options builder (preserves manual content)"
+  options_builder_add_action(b, "create-man-page", '\0', action_create_manpage,
 #ifndef NDEBUG
-                             " [output.1]"
+                             "Generate man page template from options builder (preserves manual content) [template.1.in] [content.1.content]",
+#else
+                             "Generate man page template from options builder (preserves manual content) [template.1.in] [content.1.content]",
 #endif
-                             , "CONFIGURATION");
+                             "CONFIGURATION");
 
   // Config file creation
   options_builder_add_action(b, "config-create", '\0', action_create_config,

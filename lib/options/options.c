@@ -25,6 +25,7 @@
 #include "network/mdns/discovery.h"
 
 #include "options/config.h"
+#include "options/schema.h"
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
@@ -231,6 +232,124 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 }
 
 // ============================================================================
+// Default Initialization
+// ============================================================================
+
+/**
+ * @brief Create a new options_t struct with all defaults set
+ *
+ * Initializes an options_t struct with all fields set to their default values
+ * from OPT_*_DEFAULT defines. This ensures consistent default initialization
+ * across the codebase.
+ */
+options_t options_t_new(void) {
+  options_t opts;
+
+  // Zero-initialize all fields first
+  memset(&opts, 0, sizeof(opts));
+
+  // ============================================================================
+  // Terminal Dimensions
+  // ============================================================================
+  opts.width = OPT_WIDTH_DEFAULT;
+  opts.height = OPT_HEIGHT_DEFAULT;
+  opts.auto_width = OPT_AUTO_WIDTH_DEFAULT;
+  opts.auto_height = OPT_AUTO_HEIGHT_DEFAULT;
+
+  // ============================================================================
+  // Network Options
+  // ============================================================================
+  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "%s", OPT_PORT_DEFAULT);
+  SAFE_STRNCPY(opts.address, OPT_ADDRESS_DEFAULT, sizeof(opts.address));
+  SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
+
+  // ============================================================================
+  // Server Options
+  // ============================================================================
+  opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
+  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
+  opts.fps = OPT_FPS_DEFAULT;
+
+  // ============================================================================
+  // Client Options
+  // ============================================================================
+  opts.webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
+  opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
+  opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
+  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+  opts.snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+
+  // ============================================================================
+  // Display Options
+  // ============================================================================
+  opts.color_mode = OPT_COLOR_MODE_DEFAULT;
+  opts.render_mode = OPT_RENDER_MODE_DEFAULT;
+  opts.palette_type = PALETTE_STANDARD; // Default palette (no OPT_*_DEFAULT for this)
+  opts.show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
+  opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
+  opts.stretch = OPT_STRETCH_DEFAULT;
+  opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
+
+  // ============================================================================
+  // Audio Options
+  // ============================================================================
+  opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
+  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
+  opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
+  opts.speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT;
+  opts.audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
+  opts.audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
+
+  // ============================================================================
+  // Webcam Options
+  // ============================================================================
+  opts.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
+  opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
+
+  // ============================================================================
+  // Output Options
+  // ============================================================================
+  opts.quiet = OPT_QUIET_DEFAULT;
+  opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
+
+  // ============================================================================
+  // Encryption Options
+  // ============================================================================
+  opts.encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
+  opts.no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
+
+  // ============================================================================
+  // WebRTC Options
+  // ============================================================================
+  opts.webrtc = OPT_WEBRTC_DEFAULT;
+  opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
+  opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
+  opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+  opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
+
+  // ============================================================================
+  // ACDS/Discovery Options
+  // ============================================================================
+  opts.discovery = OPT_ACDS_DEFAULT;
+  opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
+  opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
+  opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
+  opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
+  SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
+  SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
+  SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
+  SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
+
+  // ============================================================================
+  // Other Options
+  // ============================================================================
+  opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
+  opts.media_loop = OPT_MEDIA_LOOP_DEFAULT;
+
+  return opts;
+}
+
+// ============================================================================
 // Main Option Parser Entry Point
 // ============================================================================
 
@@ -269,8 +388,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool create_config = false;
   bool create_manpage = false;
   const char *config_create_path = NULL;
-  const char *manpage_output_path = NULL;   // Optional output path for final .1 file (debug builds)
-  const char *manpage_content_file = NULL; // Optional content file to merge (debug builds)
+  const char *manpage_template_file = NULL; // Template file path (.1.in)
+  const char *manpage_content_file = NULL;  // Content file path (.1.content)
 
   // Quick scan for action flags (they may have arguments)
   for (int i = 1; i < argc; i++) {
@@ -290,20 +409,18 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         break;
       }
-      if (strcmp(argv[i], "--create-man-page-template") == 0) {
+      if (strcmp(argv[i], "--create-man-page") == 0) {
         create_manpage = true;
-#ifndef NDEBUG
-        // First optional arg: output .1 file path
+        // First arg: template file path (.1.in)
         if (i + 1 < argc && argv[i + 1][0] != '-') {
-          manpage_output_path = argv[i + 1];
+          manpage_template_file = argv[i + 1];
           i++; // Skip this arg
-          // Second optional arg: content file path
+          // Second arg: content file path (.1.content)
           if (i + 1 < argc && argv[i + 1][0] != '-') {
             manpage_content_file = argv[i + 1];
-            i++; // Skip this arg too
+            i++; // Skip this arg
           }
         }
-#endif
         break;
       }
     }
@@ -350,20 +467,24 @@ asciichat_error_t options_init(int argc, char **argv) {
       exit(0);
     }
     if (create_manpage) {
-      // Handle --create-man-page-template: generate merged man page template to stdout
-      const char *template_path = "share/man/man1/ascii-chat.1.in";
-      const options_config_t *config = options_preset_binary(NULL, NULL);
-      if (!config) {
-        fprintf(stderr, "Error: Failed to get binary options config\n");
-        return ERROR_MEMORY;
+      // Handle --create-man-page: generate merged man page template to stdout
+      // First arg: template file path (.1.in), second arg: content file path (.1.content)
+      const char *template_path = manpage_template_file;
+      if (!template_path) {
+        // Default template file path
+        template_path = "share/man/man1/ascii-chat.1.in";
       }
-      // Pass NULL as output_path to write to stdout
-      // Use content file if provided, otherwise default to share/man/man1/ascii-chat.1.content
       const char *content_file = manpage_content_file;
       if (!content_file) {
         // Default content file path
         content_file = "share/man/man1/ascii-chat.1.content";
       }
+      const options_config_t *config = options_preset_binary(NULL, NULL);
+      if (!config) {
+        fprintf(stderr, "Error: Failed to get binary options config\n");
+        return ERROR_MEMORY;
+      }
+      // Pass NULL as output_path to write merged result to stdout
       asciichat_error_t err = options_config_generate_manpage_merged(
           config, "ascii-chat", NULL, NULL, "Video chat in your terminal", template_path, content_file);
       options_config_destroy(config);
@@ -376,56 +497,6 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         return err;
       }
-#ifndef NDEBUG
-      // In debug builds, if output path provided, generate final .1 file
-      if (manpage_output_path) {
-        // First, write template to a temp file, then generate final man page
-        const char *temp_template = "/tmp/ascii-chat.1.in.tmp";
-        FILE *temp_file = fopen(temp_template, "w");
-        if (!temp_file) {
-          fprintf(stderr, "Error: Failed to create temp template file\n");
-          return ERROR_CONFIG;
-        }
-        // Regenerate template to temp file
-        const options_config_t *config2 = options_preset_binary(NULL, NULL);
-        if (!config2) {
-          fclose(temp_file);
-          fprintf(stderr, "Error: Failed to get binary options config\n");
-          return ERROR_MEMORY;
-        }
-        const char *content_file = manpage_content_file;
-        if (!content_file) {
-          content_file = "share/man/man1/ascii-chat.1.content";
-        }
-        err = options_config_generate_manpage_merged(
-            config2, "ascii-chat", NULL, temp_template, "Video chat in your terminal", template_path, content_file);
-        options_config_destroy(config2);
-        fclose(temp_file);
-        
-        if (err == ASCIICHAT_OK) {
-          const char *version_string = ASCII_CHAT_VERSION_FULL;
-          if (version_string[0] == 'v') {
-            version_string = version_string + 1;
-          }
-          err = options_config_generate_final_manpage(temp_template, manpage_output_path, version_string,
-                                                      manpage_content_file);
-          // Clean up temp file
-          if (remove(temp_template) != 0) {
-            // Non-fatal if cleanup fails
-          }
-          if (err != ASCIICHAT_OK) {
-            asciichat_error_context_t err_ctx;
-            if (HAS_ERRNO(&err_ctx)) {
-              fprintf(stderr, "Error generating final man page: %s\n", err_ctx.context_message);
-            } else {
-              fprintf(stderr, "Error: Failed to generate final man page\n");
-            }
-            return err;
-          }
-          fprintf(stderr, "Generated final man page: %s\n", manpage_output_path);
-        }
-      }
-#endif
       exit(0);
     }
   }
@@ -544,16 +615,23 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   if (create_manpage) {
     // Handle --create-man-page-template: generate merged man page template
-    const char *template_path = "share/man/man1/ascii-chat.1.in";
+    // The .1.in file is the existing template to read from (not the output)
+    const char *existing_template_path = "share/man/man1/ascii-chat.1.in";
     const options_config_t *config = options_preset_binary(NULL, NULL);
     if (!config) {
       fprintf(stderr, "Error: Failed to get binary options config\n");
       return ERROR_MEMORY;
     }
 
-    const char *content_file = "share/man/man1/ascii-chat.1.content";
-    asciichat_error_t err = options_config_generate_manpage_merged(
-        config, "ascii-chat", NULL, template_path, "Video chat in your terminal", template_path, content_file);
+    // Use content file if provided (debug builds only), otherwise default to share/man/man1/ascii-chat.1.content
+    const char *content_file = manpage_content_file;
+    if (!content_file) {
+      content_file = "share/man/man1/ascii-chat.1.content";
+    }
+    // Write merged result to the template file (overwrites existing template)
+    asciichat_error_t err =
+        options_config_generate_manpage_merged(config, "ascii-chat", NULL, existing_template_path,
+                                               "Video chat in your terminal", existing_template_path, content_file);
 
     options_config_destroy(config);
 
@@ -567,40 +645,8 @@ asciichat_error_t options_init(int argc, char **argv) {
       return err;
     }
 
-    printf("Generated merged man page template: %s\n", template_path);
+    printf("Generated merged man page template: %s\n", existing_template_path);
     printf("Review AUTO sections - manual edits will be lost on regeneration.\n");
-
-#ifndef NDEBUG
-    // In debug builds, if output path provided, generate final .1 file
-    if (manpage_output_path) {
-      // Get version string
-      const char *version_string = ASCII_CHAT_VERSION_FULL;
-      // Remove leading 'v' if present for man page (man pages typically don't include 'v')
-      if (version_string[0] == 'v') {
-        version_string = version_string + 1;
-      }
-
-      // Check if there's a second argument (content file path)
-      const char *content_file_path = NULL;
-      // manpage_output_path is the first arg after --create-man-page-template
-      // If there's another arg, it's the content file
-      // We need to check argv for this - but we already parsed it above
-      // For now, content_file_path is NULL (can be extended later)
-
-      err = options_config_generate_final_manpage(template_path, manpage_output_path, version_string,
-                                                   content_file_path);
-      if (err != ASCIICHAT_OK) {
-        asciichat_error_context_t err_ctx;
-        if (HAS_ERRNO(&err_ctx)) {
-          fprintf(stderr, "Error generating final man page: %s\n", err_ctx.context_message);
-        } else {
-          fprintf(stderr, "Error: Failed to generate final man page\n");
-        }
-        return err;
-      }
-      printf("Generated final man page: %s\n", manpage_output_path);
-    }
-#endif
 
     exit(0); // Exit successfully after generating template
   }
@@ -675,25 +721,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 3: Set Mode-Specific Defaults
   // ========================================================================
 
-  // Set default dimensions (fallback if terminal size detection fails)
-  opts.width = OPT_WIDTH_DEFAULT;
-  opts.height = OPT_HEIGHT_DEFAULT;
-  opts.auto_width = true;
-  opts.auto_height = true;
-
-  // Set default port
-  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "%s", OPT_PORT_DEFAULT);
-
-  // Set other non-zero defaults (using macros from options.h)
-  opts.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
-  opts.color_mode = OPT_COLOR_MODE_DEFAULT;
-  opts.render_mode = OPT_RENDER_MODE_DEFAULT;
-  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
-  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-  opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
-  opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
-  opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
-  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+  // Initialize all defaults using options_t_new()
+  opts = options_t_new();
 
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
@@ -793,7 +822,28 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // ========================================================================
-  // STAGE 4: Load Configuration Files
+  // STAGE 4: Build Dynamic Schema from Options Builder Configs
+  // ========================================================================
+
+  // Build the config schema dynamically from all mode configs
+  // This generates TOML keys, CLI flags, categories, and types from builder data
+  const options_config_t *configs[] = {
+      options_preset_server(NULL, NULL),   // Index 0: server
+      options_preset_client(NULL, NULL),   // Index 1: client
+      options_preset_mirror(NULL, NULL),   // Index 2: mirror
+      options_preset_acds(NULL, NULL),     // Index 3: acds
+      options_preset_discovery(NULL, NULL) // Index 4: discovery
+  };
+  const size_t num_configs = sizeof(configs) / sizeof(configs[0]);
+
+  asciichat_error_t schema_build_result = config_schema_build_from_configs(configs, num_configs);
+  if (schema_build_result != ASCIICHAT_OK) {
+    // Schema build failed, but continue with static schema as fallback
+    (void)schema_build_result;
+  }
+
+  // ========================================================================
+  // STAGE 5: Load Configuration Files
   // ========================================================================
 
   // Extract --config value from argv before loading config files
@@ -808,12 +858,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Discovery mode is client-like (uses terminal display, webcam, etc.)
   bool is_client_or_mirror =
       (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY);
-  
+
   asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // ========================================================================
-  // STAGE 5: Parse Command-Line Arguments (Mode-Specific)
+  // STAGE 6: Parse Command-Line Arguments (Mode-Specific)
   // ========================================================================
 
   asciichat_error_t result = ASCIICHAT_OK;

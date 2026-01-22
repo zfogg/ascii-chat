@@ -139,37 +139,8 @@ asciichat_error_t options_state_init(void) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
   }
 
-  // Zero-initialize (all fields start at 0/false/NULL)
-  memset(initial_opts, 0, sizeof(*initial_opts));
-
-  // Set non-zero defaults using defines from options.h
-  // These match the documented defaults in --help output
-
-  // Network defaults
-  SAFE_STRNCPY(initial_opts->port, OPT_PORT_DEFAULT, sizeof(initial_opts->port));
-  SAFE_STRNCPY(initial_opts->address, OPT_ADDRESS_DEFAULT, sizeof(initial_opts->address));
-  SAFE_STRNCPY(initial_opts->address6, OPT_ADDRESS6_DEFAULT, sizeof(initial_opts->address6));
-
-  // Server defaults
-  initial_opts->max_clients = OPT_MAX_CLIENTS_DEFAULT;
-  initial_opts->compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-
-  // Client defaults
-  initial_opts->webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
-  initial_opts->microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
-  initial_opts->speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
-  initial_opts->snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
-  initial_opts->reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-
-  // Boolean defaults that are true by default
-  initial_opts->encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
-  initial_opts->webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
-  initial_opts->show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
-  initial_opts->force_utf8 = OPT_FORCE_UTF8_DEFAULT;
-  initial_opts->audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
-
-  // Color and rendering defaults
-  initial_opts->color_mode = COLOR_MODE_AUTO; // -1
+  // Initialize all defaults using options_t_new()
+  *initial_opts = options_t_new();
 
   // Publish initial struct (release semantics - make all fields visible to readers)
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);

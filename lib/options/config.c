@@ -70,71 +70,8 @@
 
 /** @} */
 
-/**
- * @name Configuration State Tracking
- * @{
- *
- * These flags track which options were set from the config file. They are
- * primarily used for debugging and logging purposes, as CLI arguments will
- * override config values regardless of these flags.
- */
-
-/** @brief Track if network address was set from config */
-static bool config_address_set = false;
-/** @brief Track if IPv6 bind address was set from config (server only) */
-static bool config_address6_set = false;
-/** @brief Track if network port was set from config */
-static bool config_port_set = false;
-/** @brief Track if client width was set from config */
-static bool config_width_set = false;
-/** @brief Track if client height was set from config */
-static bool config_height_set = false;
-/** @brief Track if webcam index was set from config */
-static bool config_webcam_index_set = false;
-/** @brief Track if webcam flip was set from config */
-static bool config_webcam_flip_set = false;
-/** @brief Track if color mode was set from config */
-static bool config_color_mode_set = false;
-/** @brief Track if render mode was set from config */
-static bool config_render_mode_set = false;
-/** @brief Track if palette type was set from config */
-static bool config_palette_set = false;
-/** @brief Track if palette chars were set from config */
-static bool config_palette_chars_set = false;
-/** @brief Track if audio enabled was set from config */
-static bool config_audio_enabled_set = false;
-/** @brief Track if microphone index was set from config */
-static bool config_microphone_index_set = false;
-/** @brief Track if speakers index was set from config */
-static bool config_speakers_index_set = false;
-/** @brief Track if stretch was set from config */
-static bool config_stretch_set = false;
-/** @brief Track if quiet mode was set from config */
-static bool config_quiet_set = false;
-/** @brief Track if snapshot mode was set from config */
-static bool config_snapshot_mode_set = false;
-/** @brief Track if mirror mode was set from config */
-static bool config_mirror_mode_set = false;
-/** @brief Track if snapshot delay was set from config */
-static bool config_snapshot_delay_set = false;
-/** @brief Track if log file was set from config */
-static bool config_log_file_set = false;
-/** @brief Track if encryption enabled was set from config */
-static bool config_encrypt_enabled_set = false;
-/** @brief Track if encryption key was set from config */
-static bool config_encrypt_key_set = false;
-/** @brief Track if password was set from config */
-static bool config_password_set = false;
-/** @brief Track if keyfile was set from config */
-static bool config_encrypt_keyfile_set = false;
-/** @brief Track if no_encrypt flag was set from config */
-static bool config_no_encrypt_set = false;
-/** @brief Track if server key was set from config (client only) */
-static bool config_server_key_set = false;
-/** @brief Track if client keys were set from config (server only) */
-static bool config_client_keys_set = false;
-
-/** @} */
+// Configuration state tracking removed - not needed with schema-driven approach
+// CLI arguments always override config values, so no need to track what was set
 
 /* Validation functions are now provided by options/validation.h */
 
@@ -198,10 +135,10 @@ static const char *get_toml_string_validated(toml_datum_t datum) {
  * 5. Writes to options_t using field_offset
  *
  * Handles special cases:
- * - Legacy network.address fallback
  * - palette.chars auto-setting palette_type
  * - Path normalization for keys/log files
  * - Type coercion (int/string, float/string)
+ * - crypto.no_encrypt special logic
  */
 static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client, options_t *opts, bool strict) {
   size_t metadata_count = 0;
@@ -258,12 +195,14 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
       break;
     }
     case OPTION_TYPE_INT: {
+      // INT type handles both regular integers and enums (enums come as strings)
       if (datum.type == TOML_INT64) {
         int_val = (int)datum.u.int64;
         has_value = true;
         // Convert to string for validation
         SAFE_SNPRINTF(value_str, sizeof(value_str), "%d", int_val);
       } else if (datum.type == TOML_STRING) {
+        // Could be an enum (color_mode, render_mode, palette_type) or string representation of int
         const char *str = get_toml_string_validated(datum);
         if (str) {
           SAFE_STRNCPY(value_str, str, sizeof(value_str));
@@ -279,8 +218,8 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
       }
       break;
     }
-    case OPTION_TYPE_FLOAT:
     case OPTION_TYPE_DOUBLE: {
+      // DOUBLE type handles both float and double (check field_size to distinguish)
       if (datum.type == TOML_FP64) {
         double_val = datum.u.fp64;
         has_value = true;
@@ -292,14 +231,6 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
           SAFE_STRNCPY(value_str, str, sizeof(value_str));
           has_value = true;
         }
-      }
-      break;
-    }
-    case OPTION_TYPE_ENUM: {
-      const char *str = get_toml_string_validated(datum);
-      if (str) {
-        SAFE_STRNCPY(value_str, str, sizeof(value_str));
-        has_value = true;
       }
       break;
     }
@@ -330,49 +261,94 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
       continue;
     }
 
-    // Validate if validator exists
+    // Parse and validate string values using validation functions from validation.h
+    // These are the same functions used by the options builder
     char error_msg[256] = {0};
     char parsed_buffer[OPTIONS_BUFF_SIZE] = {0};
     int parsed_int = 0;
     float parsed_float = 0.0f;
-    double parsed_double = 0.0;
-    void *parsed_value = NULL;
+    bool parse_success = true;
 
-    // Set parsed_value pointer based on type
+    // Parse string value based on type using validation functions
     switch (meta->type) {
-    case OPTION_TYPE_STRING:
-      parsed_value = parsed_buffer;
+    case OPTION_TYPE_STRING: {
+      // For strings, we still need to validate format (e.g., IP addresses, ports)
+      // Use validation functions that handle string parsing
+      // Most string fields don't need validation, but some do (ports, IPs, paths)
+      // For now, just copy the value - validation happens via builder's validate function after writing
+      SAFE_STRNCPY(parsed_buffer, value_str, sizeof(parsed_buffer));
       break;
-    case OPTION_TYPE_INT:
-    case OPTION_TYPE_ENUM:
-      parsed_value = &parsed_int;
+    }
+    case OPTION_TYPE_INT: {
+      // Enums are stored as OPTION_TYPE_INT in builder but come as strings in TOML
+      // Check field_offset to detect enum fields (color_mode, render_mode, palette_type)
+      // Check if this is an enum field (comes as string in TOML) or regular int
+      int enum_val = -1;
+      bool is_enum = false;
+
+      // Detect enum fields by checking field_offset
+      if (meta->field_offset == offsetof(options_t, color_mode)) {
+        enum_val = validate_opt_color_mode(value_str, error_msg, sizeof(error_msg));
+        is_enum = true;
+      } else if (meta->field_offset == offsetof(options_t, render_mode)) {
+        enum_val = validate_opt_render_mode(value_str, error_msg, sizeof(error_msg));
+        is_enum = true;
+      } else if (meta->field_offset == offsetof(options_t, palette_type)) {
+        enum_val = validate_opt_palette(value_str, error_msg, sizeof(error_msg));
+        is_enum = true;
+      }
+
+      if (is_enum) {
+        // Enum parsing
+        if (enum_val < 0) {
+          parse_success = false;
+          if (strlen(error_msg) == 0) {
+            SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid enum value: %s", value_str);
+          }
+        } else {
+          parsed_int = enum_val;
+        }
+      } else {
+        // Regular integer parsing
+        char *endptr = NULL;
+        long parsed = strtol(value_str, &endptr, 10);
+        if (*endptr != '\0') {
+          parse_success = false;
+          SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid integer: %s", value_str);
+        } else if (parsed < INT_MIN || parsed > INT_MAX) {
+          parse_success = false;
+          SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Integer out of range: %s", value_str);
+        } else {
+          parsed_int = (int)parsed;
+        }
+      }
       break;
-    case OPTION_TYPE_FLOAT:
-      parsed_value = &parsed_float;
+    }
+    case OPTION_TYPE_DOUBLE: {
+      char *endptr = NULL;
+      double parsed = strtod(value_str, &endptr);
+      if (*endptr != '\0') {
+        parse_success = false;
+        SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid float: %s", value_str);
+      } else {
+        parsed_float = (float)parsed;
+      }
       break;
-    case OPTION_TYPE_DOUBLE:
-      // Double validators may write to float*, so use parsed_float for validation
-      // then cast to double when writing
-      parsed_value = &parsed_float;
-      break;
+    }
     case OPTION_TYPE_BOOL:
-      parsed_value = NULL; // Bool doesn't need validation
+      // Already parsed above
       break;
     }
 
-    if (meta->validate_fn && parsed_value) {
-      int validate_result = meta->validate_fn(value_str, opts, is_client, parsed_value, error_msg, sizeof(error_msg));
-      if (validate_result != 0) {
-        CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str,
-                    strlen(error_msg) > 0 ? error_msg : "validation failed");
-        if (strict) {
-          if (first_error == ASCIICHAT_OK) {
-            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s: %s", meta->toml_key, error_msg);
-          }
-          continue; // Continue to collect all errors, but mark first
+    if (!parse_success) {
+      CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str, error_msg);
+      if (strict) {
+        if (first_error == ASCIICHAT_OK) {
+          first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s: %s", meta->toml_key, error_msg);
         }
         continue;
       }
+      continue;
     }
 
     // Write value to options_t using field_offset
@@ -453,100 +429,50 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
       }
       break;
     }
-    case OPTION_TYPE_FLOAT: {
-      float float_val = (float)double_val;
-      if (meta->validate_fn) {
-        float_val = parsed_float;
-      }
-      *(float *)field_ptr = float_val;
-      break;
-    }
     case OPTION_TYPE_DOUBLE: {
-      // Use validator result if available, otherwise use original TOML value
-      double final_double_val = double_val; // Default to original TOML value
-      if (meta->validate_fn) {
-        // Validator wrote to parsed_float, cast to double
-        final_double_val = (double)parsed_float;
-      }
-      *(double *)field_ptr = final_double_val;
-      break;
-    }
-    case OPTION_TYPE_ENUM: {
-      // Enums always need validation (they come as strings)
-      if (meta->validate_fn) {
-        int enum_val = parsed_int;
-        // Enums are stored as their underlying int type
-        if (meta->field_size == sizeof(terminal_color_mode_t)) {
-          *(terminal_color_mode_t *)field_ptr = (terminal_color_mode_t)enum_val;
-        } else if (meta->field_size == sizeof(render_mode_t)) {
-          *(render_mode_t *)field_ptr = (render_mode_t)enum_val;
-        } else if (meta->field_size == sizeof(palette_type_t)) {
-          *(palette_type_t *)field_ptr = (palette_type_t)enum_val;
-        } else {
-          *(int *)field_ptr = enum_val;
+      // Check field_size to distinguish float from double
+      if (meta->field_size == sizeof(float)) {
+        // Float field
+        float float_val = (float)double_val;
+        if (meta->validate_fn) {
+          float_val = parsed_float;
         }
+        *(float *)field_ptr = float_val;
       } else {
-        // No validator for enum - this shouldn't happen, but handle gracefully
-        CONFIG_WARN("Enum option %s has no validator (skipping)", meta->toml_key);
+        // Double field
+        double final_double_val = double_val; // Default to original TOML value
+        if (meta->validate_fn) {
+          // Validator wrote to parsed_float, cast to double
+          final_double_val = (double)parsed_float;
+        }
+        *(double *)field_ptr = final_double_val;
       }
       break;
     }
+      // Enums are OPTION_TYPE_INT, handled above in the INT case
     }
 
+    // Call builder's validate function if it exists (for cross-field validation)
+    if (meta->validate_fn) {
+      char *validate_error = NULL;
+      if (!meta->validate_fn(opts, &validate_error)) {
+        CONFIG_WARN("Validation failed for %s: %s (skipping)", meta->toml_key,
+                    validate_error ? validate_error : "validation failed");
+        if (validate_error) {
+          SAFE_FREE(validate_error);
+        }
+        if (strict) {
+          if (first_error == ASCIICHAT_OK) {
+            first_error = SET_ERRNO(ERROR_CONFIG, "Validation failed for %s", meta->toml_key);
+          }
+          continue;
+        }
+        continue;
+      }
+    }
+
+    // Mark this option as set
     option_set_flags[i] = true;
-
-    // Special handling: sync FPS to global variable for backward compatibility
-    if (strcmp(meta->toml_key, "client.fps") == 0) {
-      extern int g_max_fps; // From common.c
-      g_max_fps = opts->fps;
-    }
-  }
-
-  // Handle legacy network.address fallback for client
-  if (is_client) {
-    toml_datum_t client_addr = toml_seek(toptab, "client.address");
-    if (client_addr.type == TOML_UNKNOWN) {
-      // Try legacy network.address
-      toml_datum_t network_addr = toml_seek(toptab, "network.address");
-      const char *addr_str = get_toml_string_validated(network_addr);
-      if (addr_str && strlen(addr_str) > 0) {
-        char parsed_addr[OPTIONS_BUFF_SIZE];
-        char error_msg[256];
-        if (validate_opt_ip_address(addr_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                    sizeof(error_msg)) == 0) {
-          SAFE_STRNCPY(opts->address, parsed_addr, sizeof(opts->address));
-        } else {
-          CONFIG_WARN("%s (skipping network.address)", error_msg);
-          if (strict && first_error == ASCIICHAT_OK) {
-            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid network.address: %s", error_msg);
-          }
-        }
-      }
-    }
-  }
-
-  // Handle legacy network.address fallback for server (if bind_ipv4/bind_ipv6 not set)
-  if (!is_client) {
-    toml_datum_t bind_ipv4 = toml_seek(toptab, "server.bind_ipv4");
-    toml_datum_t bind_ipv6 = toml_seek(toptab, "server.bind_ipv6");
-    if (bind_ipv4.type == TOML_UNKNOWN && bind_ipv6.type == TOML_UNKNOWN) {
-      // Try legacy network.address
-      toml_datum_t network_addr = toml_seek(toptab, "network.address");
-      const char *addr_str = get_toml_string_validated(network_addr);
-      if (addr_str && strlen(addr_str) > 0) {
-        char parsed_addr[OPTIONS_BUFF_SIZE];
-        char error_msg[256];
-        if (validate_opt_ip_address(addr_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                    sizeof(error_msg)) == 0) {
-          SAFE_STRNCPY(opts->address, parsed_addr, sizeof(opts->address));
-        } else {
-          CONFIG_WARN("%s (skipping network.address)", error_msg);
-          if (strict && first_error == ASCIICHAT_OK) {
-            first_error = SET_ERRNO(ERROR_CONFIG, "Invalid network.address: %s", error_msg);
-          }
-        }
-      }
-    }
   }
 
   // Handle special crypto.no_encrypt logic
@@ -564,659 +490,6 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, bool is_client
   }
 
   return first_error;
-}
-
-/** @} */
-
-/**
- * @name Internal Configuration Application Functions (Legacy - kept for reference)
- * @{
- *
- * These functions are kept for reference but are now replaced by config_apply_schema().
- * They may be removed in a future cleanup.
- */
-
-/**
- * @brief Load and apply network configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[network]` section:
- * - `network.port`: Port number (1-65535), can be integer or string (shared between server and client)
- *
- * For client:
- * - `client.address` or `network.address`: Server address to connect to
- *
- * For server:
- * - `server.bind_ipv4`: IPv4 bind address (default: 127.0.0.1)
- * - `server.bind_ipv6`: IPv6 bind address (default: ::1)
- * - `network.address`: Legacy/fallback bind address (used if server.bind_ipv4/bind_ipv6 not set)
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_network_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  if (is_client) {
-    // Client: Get connect address from client.address or network.address (legacy)
-    toml_datum_t address = toml_seek(toptab, "client.address");
-    const char *address_str = get_toml_string_validated(address);
-    if (!address_str || strlen(address_str) == 0) {
-      // Fallback to legacy network.address
-      toml_datum_t network = toml_seek(toptab, "network");
-      if (network.type == TOML_TABLE) {
-        address = toml_seek(toptab, "network.address");
-        address_str = get_toml_string_validated(address);
-      }
-    }
-    if (address_str && strlen(address_str) > 0 && !config_address_set) {
-      char parsed_addr[OPTIONS_BUFF_SIZE];
-      char error_msg[256];
-      if (validate_opt_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                  sizeof(error_msg)) == 0) {
-        SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-        config_address_set = true;
-      } else {
-        CONFIG_WARN("%s (skipping client address)", error_msg);
-      }
-    }
-  } else {
-    // Server: Get bind addresses from server.bind_ipv4 and server.bind_ipv6
-    toml_datum_t server = toml_seek(toptab, "server");
-    if (server.type == TOML_TABLE) {
-      // IPv4 bind address - seek from the server table, not root
-      toml_datum_t bind_ipv4 = toml_get(server, "bind_ipv4");
-      const char *ipv4_str = get_toml_string_validated(bind_ipv4);
-      if (ipv4_str && strlen(ipv4_str) > 0 && !config_address_set) {
-        char parsed_addr[OPTIONS_BUFF_SIZE];
-        char error_msg[256];
-        if (validate_opt_ip_address(ipv4_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                    sizeof(error_msg)) == 0) {
-          SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-          config_address_set = true;
-        } else {
-          const char *errmsg = (strlen(error_msg) > 0) ? error_msg : "Invalid IPv4 address";
-          CONFIG_WARN("Invalid server.bind_ipv4 value '%s': %s (skipping)", ipv4_str, errmsg);
-        }
-      }
-
-      // IPv6 bind address - seek from the server table, not root
-      toml_datum_t bind_ipv6 = toml_get(server, "bind_ipv6");
-      const char *ipv6_str = get_toml_string_validated(bind_ipv6);
-      if (ipv6_str && strlen(ipv6_str) > 0 && !config_address6_set) {
-        char parsed_addr[OPTIONS_BUFF_SIZE];
-        char error_msg[256];
-        if (validate_opt_ip_address(ipv6_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                    sizeof(error_msg)) == 0) {
-          SAFE_SNPRINTF(opts->address6, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-          config_address6_set = true;
-        } else {
-          const char *errmsg = (strlen(error_msg) > 0) ? error_msg : "Invalid IPv6 address";
-          CONFIG_WARN("Invalid server.bind_ipv6 value '%s': %s (skipping)", ipv6_str, errmsg);
-        }
-      }
-    }
-
-    // Fallback to legacy network.address if no server-specific bind addresses found
-    if (!config_address_set) {
-      toml_datum_t network = toml_seek(toptab, "network");
-      if (network.type == TOML_TABLE) {
-        toml_datum_t address = toml_get(network, "address");
-        const char *address_str = get_toml_string_validated(address);
-        if (address_str && strlen(address_str) > 0) {
-          char parsed_addr[OPTIONS_BUFF_SIZE];
-          char error_msg[256];
-          if (validate_opt_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                      sizeof(error_msg)) == 0) {
-            SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-            config_address_set = true;
-          } else {
-            CONFIG_WARN("%s (skipping network.address)", error_msg);
-          }
-        }
-      }
-    }
-  }
-
-  // Port (shared between server and client)
-  toml_datum_t network = toml_seek(toptab, "network");
-  if (network.type != TOML_TABLE) {
-    return; // No network section
-  }
-
-  // Port (can be string or integer in TOML)
-  toml_datum_t port = toml_seek(toptab, "network.port");
-  if (port.type == TOML_STRING && !config_port_set) {
-    const char *port_str = port.u.s;
-    char error_msg[256];
-    if (validate_opt_port(port_str, error_msg, sizeof(error_msg)) == 0) {
-      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%s", port_str);
-      config_port_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping network.port)", error_msg);
-    }
-  } else if (port.type == TOML_INT64 && !config_port_set) {
-    int64_t port_val = port.u.int64;
-    if (port_val >= 1 && port_val <= 65535) {
-      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%lld", (long long)port_val);
-      config_port_set = true;
-    } else {
-      CONFIG_WARN("Invalid port value %lld (must be 1-65535, skipping network.port)", (long long)port_val);
-    }
-  }
-}
-
-/**
- * @brief Load and apply client configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[client]` section. Only processes config
- * when `is_client` is true (server ignores client-specific options).
- *
- * Supported options:
- * - `client.width`: Terminal width (positive integer)
- * - `client.height`: Terminal height (positive integer)
- * - `client.webcam_index`: Webcam device index (non-negative integer)
- * - `client.webcam_flip`: Flip webcam image horizontally (boolean)
- * - `client.color_mode`: Color mode ("none", "16", "256", "truecolor")
- * - `client.render_mode`: Render mode ("half-block", "block", "char")
- * - `client.fps`: Frames per second (1-144), can be integer or string
- * - `client.stretch`: Stretch video to terminal size (boolean)
- * - `client.quiet`: Quiet mode (boolean)
- * - `client.snapshot_mode`: Snapshot mode (boolean)
- * - `client.mirror_mode`: Mirror mode (boolean) - view webcam locally without server
- * - `client.snapshot_delay`: Snapshot delay in seconds (non-negative float)
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  if (!is_client) {
-    return; // Server doesn't use client config
-  }
-
-  toml_datum_t client = toml_seek(toptab, "client");
-  if (client.type != TOML_TABLE) {
-    return; // No client section
-  }
-
-  // Width
-  toml_datum_t width = toml_seek(toptab, "client.width");
-  if (width.type == TOML_INT64 && !config_width_set && !opts->auto_width) {
-    int64_t width_val = width.u.int64;
-    if (width_val > 0) {
-      opts->width = (int)width_val;
-      opts->auto_width = false;
-      config_width_set = true;
-    }
-  } else if (width.type == TOML_STRING && !config_width_set) {
-    const char *width_str = width.u.s;
-    char error_msg[256];
-    int width_val = validate_opt_positive_int(width_str, error_msg, sizeof(error_msg));
-    if (width_val > 0) {
-      opts->width = width_val;
-      opts->auto_width = false;
-      config_width_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.width)", error_msg);
-    }
-  }
-
-  // Height
-  toml_datum_t height = toml_seek(toptab, "client.height");
-  if (height.type == TOML_INT64 && !config_height_set && !opts->auto_height) {
-    int64_t height_val = height.u.int64;
-    if (height_val > 0) {
-      opts->height = (int)height_val;
-      opts->auto_height = false;
-      config_height_set = true;
-    }
-  } else if (height.type == TOML_STRING && !config_height_set) {
-    const char *height_str = height.u.s;
-    char error_msg[256];
-    int height_val = validate_opt_positive_int(height_str, error_msg, sizeof(error_msg));
-    if (height_val > 0) {
-      opts->height = height_val;
-      opts->auto_height = false;
-      config_height_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.height)", error_msg);
-    }
-  }
-
-  // Webcam index
-  toml_datum_t webcam_index = toml_seek(toptab, "client.webcam_index");
-  if (webcam_index.type == TOML_INT64 && !config_webcam_index_set) {
-    int64_t idx = webcam_index.u.int64;
-    if (idx >= 0) {
-      opts->webcam_index = (unsigned short int)idx;
-      config_webcam_index_set = true;
-    }
-  } else if (webcam_index.type == TOML_STRING && !config_webcam_index_set) {
-    const char *idx_str = webcam_index.u.s;
-    char error_msg[256];
-    int idx = validate_opt_non_negative_int(idx_str, error_msg, sizeof(error_msg));
-    if (idx >= 0) {
-      opts->webcam_index = (unsigned short int)idx;
-      config_webcam_index_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.webcam_index)", error_msg);
-    }
-  }
-
-  // Webcam flip
-  toml_datum_t webcam_flip = toml_seek(toptab, "client.webcam_flip");
-  if (webcam_flip.type == TOML_BOOLEAN && !config_webcam_flip_set) {
-    opts->webcam_flip = webcam_flip.u.boolean;
-    config_webcam_flip_set = true;
-  }
-
-  // Color mode
-  toml_datum_t color_mode = toml_seek(toptab, "client.color_mode");
-  const char *color_mode_str = get_toml_string_validated(color_mode);
-  if (color_mode_str && !config_color_mode_set) {
-    char error_msg[256];
-    int mode = validate_opt_color_mode(color_mode_str, error_msg, sizeof(error_msg));
-    if (mode >= 0) {
-      opts->color_mode = (terminal_color_mode_t)mode;
-      config_color_mode_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.color_mode)", error_msg);
-    }
-  }
-
-  // Render mode
-  toml_datum_t render_mode = toml_seek(toptab, "client.render_mode");
-  const char *render_mode_str = get_toml_string_validated(render_mode);
-  if (render_mode_str && !config_render_mode_set) {
-    char error_msg[256];
-    int mode = validate_opt_render_mode(render_mode_str, error_msg, sizeof(error_msg));
-    if (mode >= 0) {
-      opts->render_mode = (render_mode_t)mode;
-      config_render_mode_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.render_mode)", error_msg);
-    }
-  }
-
-  // FPS (NOTE: FPS is still a global variable g_max_fps, not in options_t)
-  toml_datum_t fps = toml_seek(toptab, "client.fps");
-  extern int g_max_fps; // From common.c
-  if (fps.type == TOML_INT64) {
-    int64_t fps_val = fps.u.int64;
-    if (fps_val >= 1 && fps_val <= 144) {
-      g_max_fps = (int)fps_val;
-    } else {
-      CONFIG_WARN("Invalid FPS value %lld (must be 1-144, skipping client.fps)", (long long)fps_val);
-    }
-  } else if (fps.type == TOML_STRING) {
-    const char *fps_str = fps.u.s;
-    char error_msg[256];
-    int fps_val = validate_opt_fps(fps_str, error_msg, sizeof(error_msg));
-    if (fps_val > 0) {
-      g_max_fps = fps_val;
-    } else {
-      CONFIG_WARN("%s (skipping client.fps)", error_msg);
-    }
-  }
-
-  // Stretch
-  toml_datum_t stretch = toml_seek(toptab, "client.stretch");
-  if (stretch.type == TOML_BOOLEAN && !config_stretch_set) {
-    opts->stretch = stretch.u.boolean ? 1 : 0;
-    config_stretch_set = true;
-  }
-
-  // Quiet
-  toml_datum_t quiet = toml_seek(toptab, "client.quiet");
-  if (quiet.type == TOML_BOOLEAN && !config_quiet_set) {
-    opts->quiet = quiet.u.boolean ? 1 : 0;
-    config_quiet_set = true;
-  }
-
-  // Snapshot mode
-  toml_datum_t snapshot_mode = toml_seek(toptab, "client.snapshot_mode");
-  if (snapshot_mode.type == TOML_BOOLEAN && !config_snapshot_mode_set) {
-    opts->snapshot_mode = snapshot_mode.u.boolean ? 1 : 0;
-    config_snapshot_mode_set = true;
-  }
-
-  // Snapshot delay
-  toml_datum_t snapshot_delay = toml_seek(toptab, "client.snapshot_delay");
-  if (snapshot_delay.type == TOML_FP64 && !config_snapshot_delay_set) {
-    double delay = snapshot_delay.u.fp64;
-    if (delay >= 0.0) {
-      opts->snapshot_delay = (float)delay;
-      config_snapshot_delay_set = true;
-    } else {
-      CONFIG_WARN("Invalid snapshot_delay value %.2f (must be non-negative, skipping)", delay);
-    }
-  } else if (snapshot_delay.type == TOML_STRING && !config_snapshot_delay_set) {
-    const char *delay_str = snapshot_delay.u.s;
-    char error_msg[256];
-    float delay = validate_opt_float_non_negative(delay_str, error_msg, sizeof(error_msg));
-    if (delay >= 0.0f) {
-      opts->snapshot_delay = delay;
-      config_snapshot_delay_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.snapshot_delay)", error_msg);
-    }
-  }
-}
-
-/**
- * @brief Load and apply audio configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[audio]` section. Only processes config
- * when `is_client` is true (server doesn't use audio options).
- *
- * Supported options:
- * - `audio.enabled`: Enable audio streaming (boolean)
- * - `audio.microphone_index`: Microphone device index (integer, -1 for default)
- * - `audio.speakers_index`: Speakers device index (integer, -1 for default)
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_audio_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  if (!is_client) {
-    return; // Server doesn't use audio config
-  }
-
-  toml_datum_t audio = toml_seek(toptab, "audio");
-  if (audio.type != TOML_TABLE) {
-    return; // No audio section
-  }
-
-  // Audio enabled
-  toml_datum_t audio_enabled = toml_seek(toptab, "audio.enabled");
-  if (audio_enabled.type == TOML_BOOLEAN && !config_audio_enabled_set) {
-    opts->audio_enabled = audio_enabled.u.boolean ? 1 : 0;
-    config_audio_enabled_set = true;
-  }
-
-  // Microphone index
-  toml_datum_t microphone_index = toml_seek(toptab, "audio.microphone_index");
-  if (microphone_index.type == TOML_INT64 && !config_microphone_index_set) {
-    int64_t mic_idx = microphone_index.u.int64;
-    if (mic_idx >= -1) {
-      opts->microphone_index = (int)mic_idx;
-      config_microphone_index_set = true;
-    }
-  } else if (microphone_index.type == TOML_STRING && !config_microphone_index_set) {
-    const char *mic_str = microphone_index.u.s;
-    char error_msg[256];
-    int mic_idx = validate_opt_device_index(mic_str, error_msg, sizeof(error_msg));
-    if (mic_idx != INT_MIN) {
-      opts->microphone_index = mic_idx;
-      config_microphone_index_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
-    }
-  }
-
-  // Speakers index
-  toml_datum_t speakers_index = toml_seek(toptab, "audio.speakers_index");
-  if (speakers_index.type == TOML_INT64 && !config_speakers_index_set) {
-    int64_t spk_idx = speakers_index.u.int64;
-    if (spk_idx >= -1) {
-      opts->speakers_index = (int)spk_idx;
-      config_speakers_index_set = true;
-    }
-  } else if (speakers_index.type == TOML_STRING && !config_speakers_index_set) {
-    const char *spk_str = speakers_index.u.s;
-    char error_msg[256];
-    int spk_idx = validate_opt_device_index(spk_str, error_msg, sizeof(error_msg));
-    if (spk_idx != INT_MIN) {
-      opts->speakers_index = spk_idx;
-      config_speakers_index_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
-    }
-  }
-}
-
-/**
- * @brief Load and apply palette configuration from TOML
- * @param toptab Root TOML table
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[palette]` section:
- * - `palette.type`: Palette type ("blocks", "half-blocks", "chars", "custom")
- * - `palette.chars`: Custom palette character string (max 255 chars)
- *
- * If `palette.chars` is provided, `palette.type` is automatically set to "custom".
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_palette_config_from_toml(toml_datum_t toptab, options_t *opts) {
-  toml_datum_t palette = toml_seek(toptab, "palette");
-  if (palette.type != TOML_TABLE) {
-    return; // No palette section
-  }
-
-  // Palette type
-  toml_datum_t palette_type = toml_seek(toptab, "palette.type");
-  const char *palette_type_str = get_toml_string_validated(palette_type);
-  if (palette_type_str && !config_palette_set) {
-    char error_msg[256];
-    int type = validate_opt_palette(palette_type_str, error_msg, sizeof(error_msg));
-    if (type >= 0) {
-      opts->palette_type = (palette_type_t)type;
-      config_palette_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping palette.type)", error_msg);
-    }
-  }
-
-  // Palette chars (custom palette)
-  toml_datum_t palette_chars = toml_seek(toptab, "palette.chars");
-  const char *palette_chars_str = get_toml_string_validated(palette_chars);
-  if (palette_chars_str && !config_palette_chars_set) {
-    if (strlen(palette_chars_str) < sizeof(opts->palette_custom)) {
-      SAFE_STRNCPY(opts->palette_custom, palette_chars_str, sizeof(opts->palette_custom));
-      opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
-      opts->palette_custom_set = true;
-      opts->palette_type = PALETTE_CUSTOM; // Automatically set to custom
-      config_palette_chars_set = true;
-    } else {
-      CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(palette_chars_str),
-                  sizeof(opts->palette_custom) - 1);
-    }
-  }
-}
-
-/**
- * @brief Load and apply crypto configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[crypto]` section:
- * - `crypto.encrypt_enabled`: Enable encryption (boolean)
- * - `crypto.key`: Encryption key identifier (string, e.g., "gpg:keyid")
- * - `crypto.password`: Password for encryption (string, **warning**: insecure!)
- * - `crypto.keyfile`: Path to key file (string)
- * - `crypto.no_encrypt`: Disable encryption (boolean)
- * - `crypto.server_key`: Server public key (client only, string)
- * - `crypto.client_keys`: Client keys directory (server only, string)
- *
- * @warning Storing passwords in config files is insecure. A warning is printed
- *          if a password is found. Use CLI `--password` or environment variables instead.
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  toml_datum_t crypto = toml_seek(toptab, "crypto");
-  if (crypto.type != TOML_TABLE) {
-    return ASCIICHAT_OK; // No crypto section
-  }
-
-  // Encrypt enabled
-  toml_datum_t encrypt_enabled = toml_seek(toptab, "crypto.encrypt_enabled");
-  if (encrypt_enabled.type == TOML_BOOLEAN && !config_encrypt_enabled_set) {
-    opts->encrypt_enabled = encrypt_enabled.u.boolean ? 1 : 0;
-    config_encrypt_enabled_set = true;
-  }
-
-  // Key
-  toml_datum_t key = toml_seek(toptab, "crypto.key");
-  const char *key_str = get_toml_string_validated(key);
-  if (key_str && strlen(key_str) > 0 && !config_encrypt_key_set) {
-    if (path_looks_like_path(key_str)) {
-      char *normalized_key = NULL;
-      asciichat_error_t key_result = path_validate_user_path(key_str, PATH_ROLE_KEY_PRIVATE, &normalized_key);
-      if (key_result != ASCIICHAT_OK) {
-        SAFE_FREE(normalized_key);
-        return key_result;
-      }
-      SAFE_SNPRINTF(opts->encrypt_key, OPTIONS_BUFF_SIZE, "%s", normalized_key);
-      SAFE_FREE(normalized_key);
-    } else {
-      SAFE_SNPRINTF(opts->encrypt_key, OPTIONS_BUFF_SIZE, "%s", key_str);
-    }
-    opts->encrypt_enabled = 1; // Auto-enable encryption when key provided
-    config_encrypt_key_set = true;
-  }
-
-  // Password (WARNING: storing passwords in config file is insecure!)
-  // We only load it if explicitly set, but warn user
-  toml_datum_t password = toml_seek(toptab, "crypto.password");
-  const char *password_str = get_toml_string_validated(password);
-  if (password_str && strlen(password_str) > 0 && !config_password_set) {
-    char error_msg[256];
-    if (validate_opt_password(password_str, error_msg, sizeof(error_msg)) == 0) {
-      CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
-      SAFE_SNPRINTF(opts->password, OPTIONS_BUFF_SIZE, "%s", password_str);
-      opts->encrypt_enabled = 1; // Auto-enable encryption when password provided
-      config_password_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping crypto.password)", error_msg);
-    }
-  }
-
-  // Keyfile
-  toml_datum_t keyfile = toml_seek(toptab, "crypto.keyfile");
-  const char *keyfile_str = get_toml_string_validated(keyfile);
-  if (keyfile_str && strlen(keyfile_str) > 0 && !config_encrypt_keyfile_set) {
-    if (path_looks_like_path(keyfile_str)) {
-      char *normalized_keyfile = NULL;
-      asciichat_error_t keyfile_result =
-          path_validate_user_path(keyfile_str, PATH_ROLE_KEY_PRIVATE, &normalized_keyfile);
-      if (keyfile_result != ASCIICHAT_OK) {
-        SAFE_FREE(normalized_keyfile);
-        return keyfile_result;
-      }
-      SAFE_SNPRINTF(opts->encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", normalized_keyfile);
-      SAFE_FREE(normalized_keyfile);
-    } else {
-      SAFE_SNPRINTF(opts->encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", keyfile_str);
-    }
-    opts->encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
-    config_encrypt_keyfile_set = true;
-  }
-
-  // No encrypt
-  toml_datum_t no_encrypt = toml_seek(toptab, "crypto.no_encrypt");
-  if (no_encrypt.type == TOML_BOOLEAN && !config_no_encrypt_set) {
-    if (no_encrypt.u.boolean) {
-      opts->no_encrypt = 1;
-      opts->encrypt_enabled = 0;
-      config_no_encrypt_set = true;
-    }
-  }
-
-  // Server key (client only)
-  if (is_client) {
-    toml_datum_t server_key = toml_seek(toptab, "crypto.server_key");
-    const char *server_key_str = get_toml_string_validated(server_key);
-    if (server_key_str && strlen(server_key_str) > 0 && !config_server_key_set) {
-      if (path_looks_like_path(server_key_str)) {
-        char *normalized_server_key = NULL;
-        asciichat_error_t server_key_result =
-            path_validate_user_path(server_key_str, PATH_ROLE_KEY_PUBLIC, &normalized_server_key);
-        if (server_key_result != ASCIICHAT_OK) {
-          SAFE_FREE(normalized_server_key);
-          return server_key_result;
-        }
-        SAFE_SNPRINTF(opts->server_key, OPTIONS_BUFF_SIZE, "%s", normalized_server_key);
-        SAFE_FREE(normalized_server_key);
-      } else {
-        SAFE_SNPRINTF(opts->server_key, OPTIONS_BUFF_SIZE, "%s", server_key_str);
-      }
-      config_server_key_set = true;
-    }
-  }
-
-  // Client keys (server only)
-  if (!is_client) {
-    toml_datum_t client_keys = toml_seek(toptab, "crypto.client_keys");
-    const char *client_keys_str = get_toml_string_validated(client_keys);
-    if (client_keys_str && strlen(client_keys_str) > 0 && !config_client_keys_set) {
-      if (path_looks_like_path(client_keys_str)) {
-        char *normalized_client_keys = NULL;
-        asciichat_error_t client_keys_result =
-            path_validate_user_path(client_keys_str, PATH_ROLE_CLIENT_KEYS, &normalized_client_keys);
-        if (client_keys_result != ASCIICHAT_OK) {
-          SAFE_FREE(normalized_client_keys);
-          return client_keys_result;
-        }
-        SAFE_SNPRINTF(opts->client_keys, OPTIONS_BUFF_SIZE, "%s", normalized_client_keys);
-        SAFE_FREE(normalized_client_keys);
-      } else {
-        SAFE_SNPRINTF(opts->client_keys, OPTIONS_BUFF_SIZE, "%s", client_keys_str);
-      }
-      config_client_keys_set = true;
-    }
-  }
-
-  return ASCIICHAT_OK;
-}
-
-/**
- * @brief Load and apply log file configuration from TOML
- * @param toptab Root TOML table
- * @param opts Options structure to write configuration to
- *
- * Applies log file configuration. The log file path can be specified either:
- * - At the root level: `log_file = "path/to/log"`
- * - In a `[logging]` section: `logging.log_file = "path/to/log"`
- *
- * The root-level `log_file` takes precedence if both are present.
- *
- * @ingroup config
- */
-static asciichat_error_t apply_log_config(toml_datum_t toptab, options_t *opts) {
-  // Log file can be in root or in a [logging] section
-  toml_datum_t log_file = toml_seek(toptab, "log_file");
-  if (log_file.type == TOML_UNKNOWN) {
-    log_file = toml_seek(toptab, "logging.log_file");
-  }
-
-  const char *log_file_str = get_toml_string_validated(log_file);
-  if (log_file_str && strlen(log_file_str) > 0 && !config_log_file_set) {
-    char *normalized_log = NULL;
-    asciichat_error_t log_result = path_validate_user_path(log_file_str, PATH_ROLE_LOG_FILE, &normalized_log);
-    if (log_result != ASCIICHAT_OK) {
-      SAFE_FREE(normalized_log);
-      return log_result;
-    }
-    SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", normalized_log);
-    SAFE_FREE(normalized_log);
-    config_log_file_set = true;
-  }
-  return ASCIICHAT_OK;
 }
 
 /** @} */
@@ -1355,35 +628,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   }
   // In non-strict mode, continue even if some options failed validation
 
-  // Reset all config flags for next call
-  config_address_set = false;
-  config_address6_set = false;
-  config_port_set = false;
-  config_width_set = false;
-  config_height_set = false;
-  config_webcam_index_set = false;
-  config_webcam_flip_set = false;
-  config_color_mode_set = false;
-  config_render_mode_set = false;
-  config_palette_set = false;
-  config_palette_chars_set = false;
-  config_audio_enabled_set = false;
-  config_microphone_index_set = false;
-  config_speakers_index_set = false;
-  config_stretch_set = false;
-  config_quiet_set = false;
-  config_snapshot_mode_set = false;
-  config_mirror_mode_set = false;
-  config_snapshot_delay_set = false;
-  config_log_file_set = false;
-  config_encrypt_enabled_set = false;
-  config_encrypt_key_set = false;
-  config_password_set = false;
-  config_encrypt_keyfile_set = false;
-  config_no_encrypt_set = false;
-  config_server_key_set = false;
-  config_client_keys_set = false;
-
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
 
   // Log successful config load (use stderr since logging may not be initialized yet)
@@ -1402,25 +646,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   return ASCIICHAT_OK;
 }
 
-/**
- * @brief Create default configuration file with all default values
- * @param config_path Path to config file to create (NULL uses default location)
- * @param opts Options structure with values to write (use defaults for a "default" config)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Creates a new configuration file at the specified path (or default location
- * if config_path is NULL) with all configuration options set to values from opts.
- *
- * The created file includes:
- * - Version comment at the top (current ascii-chat version)
- * - All supported configuration sections with values from opts
- * - Comments explaining each option
- *
- * @note The function will create the directory structure if needed.
- * @note If the file already exists, it will not be overwritten (returns error).
- *
- * @ingroup config
- */
 asciichat_error_t config_create_default(const char *config_path, const options_t *opts) {
   char *config_path_expanded = NULL;
   defer(SAFE_FREE(config_path_expanded));
@@ -1644,33 +869,18 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         (void)fprintf(f, "#%s = %s\n", key_name, bool_value ? "true" : "false");
         break;
       }
-      case OPTION_TYPE_FLOAT: {
-        float float_value = *(float *)field_ptr;
-        (void)fprintf(f, "#%s = %.1f\n", key_name, (double)float_value);
-        break;
-      }
       case OPTION_TYPE_DOUBLE: {
-        double double_value = *(double *)field_ptr;
-        (void)fprintf(f, "#%s = %.1f\n", key_name, double_value);
-        break;
-      }
-      case OPTION_TYPE_ENUM: {
-        // Enums are stored as their underlying int type
-        int enum_value = 0;
-        if (meta->field_size == sizeof(terminal_color_mode_t)) {
-          enum_value = *(terminal_color_mode_t *)field_ptr;
-        } else if (meta->field_size == sizeof(render_mode_t)) {
-          enum_value = *(render_mode_t *)field_ptr;
-        } else if (meta->field_size == sizeof(palette_type_t)) {
-          enum_value = *(palette_type_t *)field_ptr;
+        // Check field_size to distinguish float from double
+        if (meta->field_size == sizeof(float)) {
+          float float_value = *(float *)field_ptr;
+          (void)fprintf(f, "#%s = %.1f\n", key_name, (double)float_value);
         } else {
-          enum_value = *(int *)field_ptr;
+          double double_value = *(double *)field_ptr;
+          (void)fprintf(f, "#%s = %.1f\n", key_name, double_value);
         }
-        // For enums, write as string representation (will be commented out, user can uncomment)
-        // The actual enum-to-string conversion would require enum helpers, so just write the int
-        (void)fprintf(f, "#%s = %d  # (enum value, see --help for valid options)\n", key_name, enum_value);
         break;
       }
+        // Enums are OPTION_TYPE_INT, handled above in the INT case
       }
 
       written_flags[opt_idx] = true;

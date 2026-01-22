@@ -196,6 +196,12 @@
  */
 #define OPT_HEIGHT_DEFAULT 70
 
+/** @brief Default auto-detect width flag (true = auto-detect from terminal) */
+#define OPT_AUTO_WIDTH_DEFAULT true
+
+/** @brief Default auto-detect height flag (true = auto-detect from terminal) */
+#define OPT_AUTO_HEIGHT_DEFAULT true
+
 /** @brief Default snapshot delay in seconds
  *
  * Default delay for snapshot mode before exiting. macOS webcams show pure black
@@ -1042,6 +1048,24 @@ extern unsigned short int GRAY[];
  *
  * @ingroup options
  */
+
+/**
+ * @brief Create a new options_t struct with all defaults set
+ *
+ * Initializes an options_t struct with all fields set to their default values
+ * from OPT_*_DEFAULT defines. This is used internally by options_init() and
+ * options_state_init() to ensure consistent default initialization.
+ *
+ * @return A new options_t struct with all defaults applied
+ *
+ * @note The returned struct is allocated on the stack - caller should copy it
+ * @note All string fields are initialized with their default values
+ * @note All numeric fields are set to their OPT_*_DEFAULT values
+ * @note All boolean fields are set to their OPT_*_DEFAULT values
+ *
+ * @ingroup options
+ */
+options_t options_t_new(void);
 
 /**
  * @brief Initialize options by parsing command-line arguments with unified mode detection

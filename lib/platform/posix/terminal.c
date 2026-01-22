@@ -694,9 +694,9 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   caps.render_mode = GET_OPTION(render_mode);
 
   // Set default FPS based on platform
-  extern int g_max_fps;
-  if (g_max_fps > 0) {
-    caps.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    caps.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     caps.desired_fps = DEFAULT_MAX_FPS; // 60 FPS on Unix by default
   }

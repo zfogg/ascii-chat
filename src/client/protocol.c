@@ -333,8 +333,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Initialize FPS tracker on first frame
   if (!fps_tracker_initialized) {
-    extern int g_max_fps; // From common.c
-    int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
+    int fps = GET_OPTION(fps);
+    int expected_fps = fps > 0 ? ((fps > 144) ? 144 : fps) : DEFAULT_MAX_FPS;
     fps_init(&fps_tracker, expected_fps, "ASCII_RX");
     fps_tracker_initialized = true;
   }
@@ -466,7 +466,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Don't limit frame rate in snapshot mode - always render the final frame
   if (!take_snapshot) {
     // Get the client's desired FPS (what we told the server we can display)
-    int client_display_fps = MAX_FPS;
+    int fps = GET_OPTION(fps);
+    int client_display_fps = fps > 0 ? fps : DEFAULT_MAX_FPS;
     uint64_t render_interval_us = (NS_PER_SEC_INT / NS_PER_US_INT) / (uint64_t)client_display_fps;
 
     uint64_t render_time_ns = time_get_ns();

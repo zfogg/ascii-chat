@@ -1,0 +1,796 @@
+.TH ascii-chat 1 "January 2026" "ascii-chat" "User Commands"
+.SH NAME
+.B ascii-chat
+\- Video chat in your terminal
+
+.\" AUTO-START: SYNOPSIS
+.\" This section is auto-generated. Manual edits will be lost.
+.SH SYNOPSIS
+.B ascii-chat
+[\fIoptions\fR]
+
+.\" AUTO-END: SYNOPSIS
+.SH DESCRIPTION
+.B ascii-chat
+is a terminal-based video chat application that converts webcam video to ASCII
+art in real-time. It enables video chat directly in your terminal, whether you're
+using a local console, a remote SSH session, or any terminal emulator.
+.PP
+The program operates in four modes:
+.TP
+.B server
+Runs a video chat server that accepts connections from multiple clients,
+mixes their audio and video streams together, and broadcasts the mixed streams
+out to all connected clients. Clients see a grid of ascii video cells displaying
+the users of the call.
+.TP
+.B client
+Connects to an ascii-chat server, captures video from the local webcam, sends it
+to the server, and displays the combined video feed grid from all participants that
+the server sends back.
+.TP
+.B mirror
+Displays your local webcam as ASCII art without any network connection.
+Perfect for testing webcam, palette settings, and terminal rendering.
+.TP
+.B discovery-server
+Runs an ACDS (ascii-chat Discovery Service) server for session management.
+Allows clients and servers to discover each other using memorable session strings
+instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
+aren't possible.
+.\" MANUAL-END: DESCRIPTION
+
+.\" MANUAL-START: PALETTES
+.\" AUTO-START: USAGE
+.\" This section is auto-generated. Manual edits will be lost.
+.SH USAGE
+.TP
+.B ascii-chat [options...]
+Start a new session (share the session string)
+.TP
+.B ascii-chat <session-string> [options...]
+Join an existing session
+.TP
+.B ascii-chat [options...]
+Run in a specific mode
+.TP
+.B ascii-chat server [bind-address] [bind-address] [mode-options...]
+Start server (can specify 0-2 bind addresses for IPv4/IPv6)
+.TP
+.B ascii-chat client [address] [mode-options...]
+Connect to server (defaults to localhost:27224)
+.TP
+.B ascii-chat mirror [mode-options...]
+View local webcam or media file as ASCII art
+.TP
+.B ascii-chat discovery-service [bind-address] [bind-address] [mode-options...]
+Start discovery service (can specify 0-2 bind addresses for IPv4/IPv6)
+
+.\" AUTO-END: USAGE
+.\" AUTO-START: OPTIONS
+.\" This section is auto-generated. Manual edits will be lost.
+.SH OPTIONS
+.SS GENERAL
+.TP
+.B \-\-help
+Show this help (default: false)
+.TP
+.B \-\-version
+Show version information (default: false)
+.SS CONFIGURATION
+.TP
+.B \-\-config \fISTR\fR
+Load configuration from FILE (default: )
+.TP
+.B \-\-config-create
+Create default configuration file and exit
+.SS LOGGING
+.TP
+.B \-L, \-\-log-file \fISTR\fR
+Redirect logs to FILE (default: )
+Env: \fBASCII_CHAT_LOG_FILE\fR
+.TP
+.B \-\-log-level \fIVAL\fR
+Set log level: dev, debug, info, warn, error, fatal (default: )
+.TP
+.B \-V, \-\-verbose \fIVAL\fR
+Increase log verbosity (stackable: -VV, -VVV, or --verbose) (default: )
+.TP
+.B \-q, \-\-quiet
+Disable console logging (log to file only) (default: false)
+.SS NETWORK
+.TP
+.B \-\-prefer-webrtc
+Try WebRTC before Direct TCP (useful when Direct TCP fails) (default: false)
+.TP
+.B \-\-no-webrtc
+Disable WebRTC, use Direct TCP only (default: false)
+.TP
+.B \-\-webrtc-skip-stun
+Skip WebRTC+STUN stage, go straight to TURN relay (default: false)
+.TP
+.B \-\-webrtc-disable-turn
+Disable WebRTC+TURN relay, use STUN only (default: false)
+.TP
+.B \-p, \-\-port \fISTR\fR
+Server port (default: 27224)
+Env: \fBASCII_CHAT_PORT\fR
+.TP
+.B \-\-max-clients \fINUM\fR
+Maximum concurrent clients (default: 9)
+Env: \fBASCII_CHAT_MAX_CLIENTS\fR
+.TP
+.B \-\-no-audio-mixer
+Disable audio mixer (debug) (default: false)
+.TP
+.B \-\-discovery
+Enable discovery service registration (requires --key or --password or --discovery-expose-ip) (default: false)
+.TP
+.B \-\-discovery-server \fISTR\fR
+Discovery service address (default: discovery-service.ascii-chat.com)
+.TP
+.B \-\-discovery-port \fINUM\fR
+Discovery service port (default: 27225)
+.TP
+.B \-\-upnp
+Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users) (default: false)
+Env: \fBASCII_CHAT_UPNP\fR
+.TP
+.B \-\-no-mdns-advertise
+Disable mDNS service advertisement on local network (LAN discovery won't find this server) (default: false)
+.TP
+.B \-\-stun-servers \fISTR\fR
+Comma-separated STUN server URLs (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_STUN_SERVERS\fR
+.TP
+.B \-\-turn-servers \fISTR\fR
+Comma-separated TURN server URLs (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_TURN_SERVERS\fR
+.TP
+.B \-\-turn-username \fISTR\fR
+TURN authentication username (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_TURN_USERNAME\fR
+.TP
+.B \-\-turn-credential \fISTR\fR
+TURN authentication credential (debug/test only - ACDS provides in production) (default: )
+Env: \fBASCII_CHAT_TURN_CREDENTIAL\fR
+.SS PERFORMANCE
+.TP
+.B \-\-compression-level \fINUM\fR
+zstd compression level (1-9) (default: 3)
+Env: \fBASCII_CHAT_COMPRESSION_LEVEL\fR
+.TP
+.B \-\-no-compress
+Disable compression (default: false)
+Env: \fBASCII_CHAT_NO_COMPRESS\fR
+.SS SECURITY
+.TP
+.B \-E, \-\-encrypt
+Enable encryption (default: true)
+.TP
+.B \-K, \-\-key \fISTR\fR
+SSH/GPG key file path (default: )
+Env: \fBASCII_CHAT_KEY\fR
+.TP
+.B \-\-password \fISTR\fR
+Shared password for authentication (default: )
+Env: \fBASCII_CHAT_PASSWORD\fR
+.TP
+.B \-\-no-encrypt
+Disable encryption (default: false)
+.TP
+.B \-\-client-keys \fISTR\fR
+Allowed client keys whitelist (default: )
+.TP
+.B \-\-discovery-expose-ip
+Explicitly allow public IP disclosure in discovery sessions (opt-in only) (default: false)
+.TP
+.B \-\-discovery-service-key \fISTR\fR
+Discovery service public key for verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user) (default: )
+.SS TERMINAL
+.TP
+.B \-x, \-\-width \fINUM\fR
+Terminal width in characters (default: 110)
+Env: \fBASCII_CHAT_WIDTH\fR
+.TP
+.B \-y, \-\-height \fINUM\fR
+Terminal height in characters (default: 70)
+Env: \fBASCII_CHAT_HEIGHT\fR
+.SS WEBCAM
+.TP
+.B \-c, \-\-webcam-index \fINUM\fR
+Webcam device index (default: 0)
+Env: \fBASCII_CHAT_WEBCAM_INDEX\fR
+.TP
+.B \-g, \-\-webcam-flip
+Flip webcam horizontally (default: true)
+.TP
+.B \-\-test-pattern
+Use test pattern instead of webcam (default: false)
+Env: \fBWEBCAM_DISABLED\fR
+.SS DISPLAY
+.TP
+.B \-\-color-mode \fIVAL\fR
+Terminal color level (auto, none, 16, 256, truecolor) (default: )
+Env: \fBASCII_CHAT_COLOR_MODE\fR
+.TP
+.B \-M, \-\-render-mode \fIVAL\fR
+Render mode (foreground, background, half-block) (default: )
+Env: \fBASCII_CHAT_RENDER_MODE\fR
+.TP
+.B \-P, \-\-palette \fIVAL\fR
+ASCII palette type (standard, blocks, digital, minimal, cool, custom) (default: )
+Env: \fBASCII_CHAT_PALETTE\fR
+.TP
+.B \-C, \-\-palette-chars \fIVAL\fR
+Custom palette characters (implies --palette=custom) (default: )
+.TP
+.B \-\-show-capabilities
+Show terminal capabilities and exit (default: false)
+.TP
+.B \-\-utf8
+Force UTF-8 support (default: false)
+.TP
+.B \-s, \-\-stretch
+Allow aspect ratio distortion (default: false)
+.TP
+.B \-\-strip-ansi
+Strip ANSI escape sequences (default: false)
+.TP
+.B \-\-fps \fINUM\fR
+Target framerate (1-144, default: 60) (default: 0)
+Env: \fBASCII_CHAT_FPS\fR
+.SS SNAPSHOT
+.TP
+.B \-S, \-\-snapshot
+Snapshot mode (one frame and exit) (default: false)
+Env: \fBASCII_CHAT_SNAPSHOT\fR
+.TP
+.B \-D, \-\-snapshot-delay \fINUM\fR
+Snapshot delay in seconds (default: 4.00)
+Env: \fBASCII_CHAT_SNAPSHOT_DELAY\fR
+.SS MEDIA
+.TP
+.B \-f, \-\-file \fISTR\fR
+Stream from media file or stdin (use '-' for stdin) (default: )
+.TP
+.B \-u, \-\-url \fISTR\fR
+Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file (default: )
+.TP
+.B \-l, \-\-loop
+Loop media file playback (not supported for network URLs) (default: false)
+.TP
+.B \-s, \-\-seek \fIVAL\fR
+Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms) (default: )
+.TP
+.B \-\-cookies-from-browser \fIVAL\fR
+Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). Use without argument to default to chrome.
+.TP
+.B \-\-no-cookies-from-browser
+Explicitly disable reading cookies from browser (default: false)
+.SS AUDIO
+.TP
+.B \-A, \-\-audio
+Enable audio streaming (default: false)
+Env: \fBASCII_CHAT_AUDIO\fR
+.TP
+.B \-\-microphone-index \fINUM\fR
+Microphone device index (-1=default) (default: -1)
+Env: \fBASCII_CHAT_MICROPHONE_INDEX\fR
+.TP
+.B \-\-speakers-index \fINUM\fR
+Speakers device index (-1=default) (default: -1)
+Env: \fBASCII_CHAT_SPEAKERS_INDEX\fR
+.TP
+.B \-\-microphone-sensitivity \fINUM\fR
+Microphone volume multiplier (0.0-1.0) (default: 1.00)
+Env: \fBASCII_CHAT_MICROPHONE_SENSITIVITY\fR
+.TP
+.B \-\-speakers-volume \fINUM\fR
+Speaker volume multiplier (0.0-1.0) (default: 1.00)
+Env: \fBASCII_CHAT_SPEAKERS_VOLUME\fR
+.TP
+.B \-\-audio-analysis
+Enable audio analysis (debug) (default: false)
+Env: \fBASCII_CHAT_AUDIO_ANALYSIS\fR
+.TP
+.B \-\-no-audio-playback
+Disable speaker playback (debug) (default: false)
+Env: \fBASCII_CHAT_NO_AUDIO_PLAYBACK\fR
+.TP
+.B \-\-encode-audio
+Enable Opus audio encoding (default: true)
+Env: \fBASCII_CHAT_ENCODE_AUDIO\fR
+.TP
+.B \-\-no-encode-audio
+Disable Opus audio encoding (default: false)
+Env: \fBASCII_CHAT_NO_ENCODE_AUDIO\fR
+
+.\" AUTO-END: OPTIONS
+.\" AUTO-START: EXAMPLES
+.\" This section is auto-generated. Manual edits will be lost.
+.SH EXAMPLES
+.TP
+.B ascii-chat
+Start new session (share the session string)
+.TP
+.B ascii-chat swift-river-mountain
+Join session with session string
+.TP
+.B ascii-chat
+Run as dedicated server
+.TP
+.B ascii-chat example.com
+Connect to specific server
+.TP
+.B ascii-chat
+Preview local webcam as ASCII
+.TP
+.B ascii-chat server
+Start on localhost (127.0.0.1 and ::1)
+.TP
+.B ascii-chat server 0.0.0.0
+Start on all IPv4 interfaces
+.TP
+.B ascii-chat server 0.0.0.0 ::
+Start on all IPv4 and IPv6 interfaces (dual-stack)
+.TP
+.B ascii-chat server --port 8080
+Start on custom port
+.TP
+.B ascii-chat server --key ~/.ssh/id_ed25519 --discovery
+Start with identity key and discovery registration
+.TP
+.B ascii-chat client
+Connect to localhost
+.TP
+.B ascii-chat client example.com
+Connect to remote server
+.TP
+.B ascii-chat client example.com:8080
+Connect to remote server on custom port
+.TP
+.B ascii-chat client --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'
+Stream from YouTube URL
+.TP
+.B ascii-chat client -f video.mp4
+Stream from local video file
+.TP
+.B ascii-chat client --color-mode mono --render-mode half-block --width 120
+Connect with custom display options
+.TP
+.B ascii-chat client --palette-chars '@%#*+=-:. '
+Use custom ASCII palette characters
+.TP
+.B ascii-chat client --snapshot
+Capture single frame and exit
+.TP
+.B ascii-chat mirror
+View local webcam
+.TP
+.B ascii-chat mirror --color-mode mono
+View webcam in black and white
+.TP
+.B ascii-chat mirror --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'
+Stream from YouTube URL
+.TP
+.B ascii-chat mirror -f video.mp4
+Stream from local video file (supports mp4, mkv, webm, mov, etc)
+.TP
+.B ascii-chat mirror -f '-'
+Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')
+.TP
+.B ascii-chat mirror --palette-chars '@%#*+=-:. '
+View with custom ASCII palette characters
+.TP
+.B ascii-chat mirror --snapshot
+Capture single frame and exit
+.TP
+.B ascii-chat discovery-service
+Start on localhost
+.TP
+.B ascii-chat discovery-service 0.0.0.0
+Start on all IPv4 interfaces
+.TP
+.B ascii-chat discovery-service --port 5000
+Start on custom port
+.TP
+.B ascii-chat discovery-service --require-server-identity --require-client-identity
+Enforce identity verification for all parties
+
+.\" AUTO-END: EXAMPLES
+.SH PALETTES
+Built-in ASCII character palettes for different visual styles.
+Characters are ordered from darkest (leftmost) to brightest (rightmost).
+.TP
+.B standard
+Default palette using ASCII characters only (no UTF-8 required).
+.br
+Characters: \fC   ...',;:clodxkO0KXNWM\fR
+.TP
+.B blocks
+Unicode block shading characters for smooth gradients (requires UTF-8).
+.br
+Characters: \fC   \[u2591]\[u2591]\[u2592]\[u2592]\[u2593]\[u2593]\[u2588]\[u2588]\fR
+.TP
+.B digital
+Digital/tech aesthetic with Unicode characters (requires UTF-8).
+.br
+Characters: \fC   -=\[u2261]\[u2263]\[u25B0]\[u25B1]\[u25FC]\fR
+.TP
+.B minimal
+Minimal palette with basic ASCII characters only.
+.br
+Characters: \fC   .-+*#\fR
+.TP
+.B cool
+Vertical bar progression for unique visual effect (requires UTF-8).
+.br
+Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u2588]\fR
+.TP
+.B custom
+User-defined palette via \fB\-\-palette\-chars\fR option.
+.PP
+Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
+.\" MANUAL-END: PALETTES
+
+.\" MANUAL-START: RENDER MODES
+.SH RENDER MODES
+Three rendering modes control how colors are applied:
+.TP
+.B foreground
+Default mode. ASCII characters are colored but displayed on the terminal's
+default background. Best compatibility across terminals.
+.TP
+.B background
+Terminal background cells are colored. Characters appear in the default
+foreground color. Creates a blocky, pixel-art appearance.
+.TP
+.B half\-block
+Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
+resolution. Each character cell displays two pixels (top and bottom halves).
+Requires UTF-8 support (\fB\-\-utf8\fR).
+.\" MANUAL-END: RENDER MODES
+
+.\" MANUAL-START: CONFIGURATION
+.SH CONFIGURATION
+Configuration can be stored in a TOML file at the default location
+(see FILES section) or specified via \fB\-\-config\fR.
+.PP
+.B Configuration Priority:
+.RS
+Command-line arguments override config file values.
+Config file values override default values.
+.RE
+.PP
+.B Configuration Sections:
+.RS
+.IP \(bu 2
+\fB[network]\fR: port
+.IP \(bu 2
+\fB[server]\fR: bind_ipv4, bind_ipv6
+.IP \(bu 2
+\fB[client]\fR: address (default server to connect to), width, height,
+webcam_index, webcam_flip, color_mode, render_mode, fps, stretch, quiet,
+snapshot_mode, snapshot_delay, test_pattern, show_capabilities, force_utf8
+.IP \(bu 2
+\fB[audio]\fR: enabled, microphone_index, speakers_index, microphone_sensitivity, speakers_volume
+.IP \(bu 2
+\fB[palette]\fR: type, chars
+.IP \(bu 2
+\fB[crypto]\fR: encrypt_enabled, key, password, keyfile, no_encrypt,
+server_key (client), client_keys (server)
+.IP \(bu 2
+\fB[logging]\fR: log_file
+.RE
+.PP
+.B Security Warning:
+While passwords can be stored in the config file, this is discouraged.
+Use \fB\-\-password\fR interactively or environment variables instead.
+Secure your config file permissions if it contains sensitive data.
+.\" MANUAL-END: CONFIGURATION
+
+.\" MANUAL-START: LIMITS
+.SH LIMITS
+.TP
+.B Maximum Clients
+Default 10 clients per server (configurable 1-32 via \fB\-\-max\-clients\fR).
+Higher values increase server resource requirements.
+.TP
+.B Video Grid Layout
+Clients are arranged in an automatically-sized grid (e.g., 2x2, 3x3).
+The grid size adjusts based on the number of connected clients.
+.TP
+.B Frame Rate
+Default 60 FPS. Configurable from 1-144 FPS.
+.\" MANUAL-END: LIMITS
+
+.\" MANUAL-START: FILES
+.\" MERGE-START: ENVIRONMENT
+.\" This section merges auto-generated and manual content.
+.SH ENVIRONMENT
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: FILES
+.TP
+.B ASCII_CHAT_LOG_FILE
+Redirect logs to FILE
+.TP
+.B ASCII_CHAT_PORT
+Server port
+.TP
+.B ASCII_CHAT_MAX_CLIENTS
+Maximum concurrent clients
+.TP
+.B ASCII_CHAT_COMPRESSION_LEVEL
+zstd compression level (1-9)
+.TP
+.B ASCII_CHAT_NO_COMPRESS
+Disable compression
+.TP
+.B ASCII_CHAT_KEY
+SSH/GPG key file path
+.TP
+.B ASCII_CHAT_PASSWORD
+Shared password for authentication
+.TP
+.B ASCII_CHAT_UPNP
+Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)
+.TP
+.B ASCII_CHAT_WIDTH
+Terminal width in characters
+.TP
+.B ASCII_CHAT_HEIGHT
+Terminal height in characters
+.TP
+.B ASCII_CHAT_WEBCAM_INDEX
+Webcam device index
+.TP
+.B WEBCAM_DISABLED
+Use test pattern instead of webcam
+.TP
+.B ASCII_CHAT_COLOR_MODE
+Terminal color level (auto, none, 16, 256, truecolor)
+.TP
+.B ASCII_CHAT_RENDER_MODE
+Render mode (foreground, background, half-block)
+.TP
+.B ASCII_CHAT_PALETTE
+ASCII palette type (standard, blocks, digital, minimal, cool, custom)
+.TP
+.B ASCII_CHAT_FPS
+Target framerate (1-144, default: 60)
+.TP
+.B ASCII_CHAT_SNAPSHOT
+Snapshot mode (one frame and exit)
+.TP
+.B ASCII_CHAT_SNAPSHOT_DELAY
+Snapshot delay in seconds
+.TP
+.B ASCII_CHAT_AUDIO
+Enable audio streaming
+.TP
+.B ASCII_CHAT_MICROPHONE_INDEX
+Microphone device index (-1=default)
+.TP
+.B ASCII_CHAT_SPEAKERS_INDEX
+Speakers device index (-1=default)
+.TP
+.B ASCII_CHAT_MICROPHONE_SENSITIVITY
+Microphone volume multiplier (0.0-1.0)
+.TP
+.B ASCII_CHAT_SPEAKERS_VOLUME
+Speaker volume multiplier (0.0-1.0)
+.TP
+.B ASCII_CHAT_AUDIO_ANALYSIS
+Enable audio analysis (debug)
+.TP
+.B ASCII_CHAT_NO_AUDIO_PLAYBACK
+Disable speaker playback (debug)
+.TP
+.B ASCII_CHAT_ENCODE_AUDIO
+Enable Opus audio encoding
+.TP
+.B ASCII_CHAT_NO_ENCODE_AUDIO
+Disable Opus audio encoding
+.TP
+.B ASCII_CHAT_STUN_SERVERS
+Comma-separated STUN server URLs (debug/test only - ACDS provides in production)
+.TP
+.B ASCII_CHAT_TURN_SERVERS
+Comma-separated TURN server URLs (debug/test only - ACDS provides in production)
+.TP
+.B ASCII_CHAT_TURN_USERNAME
+TURN authentication username (debug/test only - ACDS provides in production)
+.TP
+.B ASCII_CHAT_TURN_CREDENTIAL
+TURN authentication credential (debug/test only - ACDS provides in production)
+
+.\" MERGE-END: ENVIRONMENT
+.SH FILES
+.TP
+.I ~/.ssh/id_ed25519
+Default SSH Ed25519 private key used for encryption if \fB\-\-key\fR is not specified.
+.TP
+.I ~/.ssh/id_ed25519.pub
+Public key corresponding to the default private key.
+.TP
+.I config.toml
+Configuration file in the configuration directory.
+.TP
+.I known_hosts
+Known hosts file for TOFU (Trust On First Use) server verification.
+.TP
+.I $XDG_CONFIG_HOME/ascii-chat/ \fRor\fI ~/.ascii-chat/
+Configuration directory on Linux/macOS.
+Uses $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/.
+Contains config.toml and known_hosts.
+.TP
+.I %APPDATA%\eascii-chat\e \fRor\fI ~\e.ascii-chat\e
+Configuration directory on Windows.
+Uses %APPDATA%\eascii-chat\e if APPDATA is set, otherwise ~\e.ascii-chat\e.
+Contains config.toml and known_hosts.
+.TP
+.I /etc/ascii-chat/config.toml
+System-wide configuration file on Linux/macOS.
+Used for server deployments or shared configurations.
+.TP
+.I /usr/local/etc/ascii-chat/config.toml
+Alternative system-wide configuration file (BSD-style path).
+Used for locally-installed configurations.
+.\" MANUAL-END: FILES
+
+.\" MANUAL-START: EXIT STATUS
+.SH EXIT STATUS
+Exit codes correspond to the \fBasciichat_error_t\fR enum values:
+.TP
+.B 0
+Success (ASCIICHAT_OK).
+.TP
+.B 1
+General unspecified error (ERROR_GENERAL).
+.TP
+.B 2
+Invalid command-line arguments or options (ERROR_USAGE).
+.TP
+.B 3
+Memory allocation failed (ERROR_MEMORY).
+.TP
+.B 4
+Configuration file or settings error (ERROR_CONFIG).
+.TP
+.B 5\-7
+Initialization errors (crypto, logging, platform).
+.TP
+.B 20\-25
+Device errors (webcam, audio, terminal).
+.TP
+.B 40\-45
+Network errors (bind, connect, timeout, protocol).
+.TP
+.B 60\-64
+Cryptographic errors (key, auth, handshake, verification).
+.TP
+.B 80\-90
+Runtime errors (thread, buffer, display, invalid state/param).
+.TP
+.B 100\-104
+Signal and compression errors.
+.\" MANUAL-END: EXIT STATUS
+
+.\" MANUAL-START: SECURITY
+.SH SECURITY
+.B ascii-chat
+supports end-to-end encryption using modern cryptographic algorithms:
+.IP \(bu 2
+X25519 elliptic curve Diffie-Hellman key exchange
+.IP \(bu 2
+XSalsa20-Poly1305 authenticated encryption (AEAD)
+.IP \(bu 2
+Ed25519 digital signatures for SSH key authentication
+.PP
+Encryption is enabled by default. Use \fB\-\-no\-encrypt\fR to disable it.
+Use \fB\-\-server\-key\fR on the client to verify server identity and prevent
+man-in-the-middle attacks. Use \fB\-\-client\-keys\fR on the server to restrict
+access to specific clients.
+.SS "Trust On First Use (TOFU)"
+When connecting to a server without \fB\-\-server\-key\fR, ascii-chat uses
+TOFU verification similar to SSH. On first connection, the server's identity
+key fingerprint is displayed and stored in \fIknown_hosts\fR. Subsequent
+connections verify the server key matches the stored fingerprint.
+.PP
+If a server's key changes (possible MITM attack), the connection is rejected
+with a warning. To connect anyway, remove the server entry from
+\fIknown_hosts\fR and reconnect.
+.\" MANUAL-END: SECURITY
+
+.\" MANUAL-START: NOTES
+.SH NOTES
+.IP \(bu 2
+\fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
+are NOT supported due to libsodium limitations. Generate Ed25519 keys with:
+\fCssh-keygen -t ed25519\fR
+.IP \(bu 2
+\fBTerminal Detection\fR: Color capabilities are auto-detected from $COLORTERM,
+$TERM, and terminal queries. Use \fB\-\-show\-capabilities\fR to see what was detected.
+If detection fails, terminal size falls back to 110x70 characters.
+.IP \(bu 2
+\fBWebcam Warmup\fR: Many webcams need 1-3 seconds to adjust exposure and focus.
+The \fB\-\-snapshot\-delay\fR option (default 3.0s) allows time for this.
+.IP \(bu 2
+\fBSSH Agent\fR: For password-free authentication with encrypted SSH keys,
+use ssh-agent. Set $SSH_AUTH_SOCK to the agent socket path. Keys stay in the agent
+and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR in
+your shell profile and use \fCssh-add -s\fR to add keys to the agent.
+.IP \(bu 2
+\fBGitHub/GitLab Keys\fR: Use \fBgithub:username\fR or \fBgitlab:username\fR
+to fetch public keys directly. All Ed25519 keys from the user's profile are
+used, so users with multiple SSH keys (e.g., for different machines) can
+authenticate with any of them. RSA and ECDSA keys are ignored.
+.IP \(bu 2
+\fBRemote Sessions\fR: When using ascii-chat over SSH or in tmux/screen,
+truecolor may not work if $COLORTERM isn't forwarded. Try
+\fB\-\-color\-mode truecolor\fR to force it, or add \fCset -g default-terminal "xterm-256color"\fR
+to your tmux.conf.
+.IP \(bu 2
+\fBUTF-8 Palettes\fR: The "blocks", "digital", and "cool" palettes require UTF-8
+terminal support. Use \fB\-\-utf8\fR to force UTF-8 mode if auto-detection fails.
+.IP \(bu 2
+\fBHalf-Block Mode\fR: The \fB\-\-render\-mode half\-block\fR option doubles vertical
+resolution but requires UTF-8 support. Always use \fB\-\-utf8\fR with half-block mode.
+.IP \(bu 2
+\fBPerformance\fR: For best performance, use truecolor mode with a modern
+terminal emulator (kitty, alacritty, iTerm2, Windows Terminal).
+256-color mode requires color distance calculations which are slower.
+.IP \(bu 2
+\fBAspect Ratio\fR: By default, the video preserves aspect ratio with letterboxing.
+Use \fB\-\-stretch\fR to fill the entire terminal (may distort the image).
+.IP \(bu 2
+\fBPiping Output\fR: When piping or redirecting stdout in snapshot mode
+(\fBmirror \-\-snapshot > file\fR), ascii-chat automatically detects
+that stdout is not a terminal and outputs clean ASCII without cursor movement
+or RLE compression codes. Only the final frame is output. Use
+\fB\-\-color\-mode mono\fR for completely plain ASCII with no escape codes at all.
+.IP \(bu 2
+\fBEncrypted Keys\fR: Encrypted private keys (SSH/GPG) work well with either ssh-agent/gpg-agent or
+the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
+only works in interactive terminals.
+.\" MANUAL-END: NOTES
+
+.\" MANUAL-START: BUGS
+.SH BUGS
+Report bugs at: https://github.com/zfogg/ascii-chat/issues
+.\" MANUAL-END: BUGS
+
+.\" MANUAL-START: AUTHOR
+.SH AUTHOR
+Zachary Fogg <me@zfo.gg>
+.\" MANUAL-END: AUTHOR
+
+.\" MANUAL-START: SEE ALSO
+.SH SEE ALSO
+.BR ssh (1),
+.BR ssh-keygen (1),
+.BR ssh-agent (1)
+.PP
+.B ascii-chat
+API documentation (section 3):
+.BR ascii-chat-build (3),
+.BR ascii-chat-config (3),
+.BR ascii-chat-crypto (3),
+.BR ascii-chat-client (3),
+.BR ascii-chat-server (3),
+.BR ascii-chat-errno (3),
+.BR ascii-chat-options (3),
+.BR ascii-chat-network (3),
+.BR ascii-chat-platform (3)
+.PP
+Project homepage: https://ascii-chat.com
+.PP
+Discovery service: https://discover.ascii-chat.com
+.PP
+GitHub repository: https://github.com/zfogg/ascii-chat
+.PP
+Releases: https://github.com/zfogg/ascii-chat/releases
+.PP
+API documentation: https://zfogg.github.io/ascii-chat/
+.\" MANUAL-END: SEE ALSO

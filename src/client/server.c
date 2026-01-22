@@ -1158,8 +1158,9 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
   }
 
   // Set desired FPS
-  if (g_max_fps > 0) {
-    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     net_packet.desired_fps = caps.desired_fps;
   }
