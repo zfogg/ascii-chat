@@ -1,37 +1,15 @@
-.\" ascii-chat - terminal video chat with ASCII art
-.\" Manual page for ascii-chat(1)
-.\"
-.TH ASCII-CHAT 1 "December 2025" "ascii-chat @PROJECT_VERSION@" "User Commands"
+.TH ascii-chat 1 "January 2026" "ascii-chat" "User Commands"
 .SH NAME
-ascii-chat \- Video chat in your terminal
+.B ascii-chat
+\- Video chat in your terminal
+
+.\" AUTO-START: SYNOPSIS
+.\" This section is auto-generated. Manual edits will be lost.
 .SH SYNOPSIS
 .B ascii-chat
-.RI [ binary-options ]
-.I mode
-.RI [ mode-options ]
-.PP
-.B ascii-chat
-.RI [ binary-options ]
-.B server
-.RI [ address ][: port ]
-.RI [ options ]
-.PP
-.B ascii-chat
-.RI [ binary-options ]
-.B client
-.RI [ address ][: port ]
-.RI [ options ]
-.PP
-.B ascii-chat
-.RI [ binary-options ]
-.B mirror
-.RI [ options ]
-.PP
-.B ascii-chat
-.RI [ binary-options ]
-.B discovery-server
-.RI [ address ][: port ]
-.RI [ options ]
+[\fIoptions\fR]
+
+.\" AUTO-END: SYNOPSIS
 .SH DESCRIPTION
 .B ascii-chat
 is a terminal-based video chat application that converts webcam video to ASCII
@@ -60,766 +38,357 @@ Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
 aren't possible.
+.\" MANUAL-END: DESCRIPTION
+.\" MANUAL-START: CONFIGURATION
+.\" MANUAL-END: DESCRIPTION
+.\" MANUAL-START: CONFIGURATION
+.\" MANUAL-END: DESCRIPTION
+.\" MANUAL-START: CONFIGURATION
+.\" MANUAL-END: DESCRIPTION
+.\" MANUAL-START: CONFIGURATION
+.\" MANUAL-END: DESCRIPTION
+.\" MANUAL-START: CONFIGURATION
+.\" MANUAL-END: DESCRIPTION
+.\" AUTO-START: USAGE
+.\" This section is auto-generated. Manual edits will be lost.
+.\" AUTO-START: USAGE
+.\" This section is auto-generated. Manual edits will be lost.
+.\" MANUAL-END: DESCRIPTION
+.\" AUTO-START: USAGE
+.\" This section is auto-generated. Manual edits will be lost.
+.\" AUTO-START: USAGE
+.\" This section is auto-generated. Manual edits will be lost.
+.SH USAGE
+.TP
+.B ascii-chat [options...]
+Start a new session (share the session string)
+.TP
+.B ascii-chat <session-string> [options...]
+Join an existing session
+.TP
+.B ascii-chat <mode> [options...]
+Run in a specific mode
+
+.\" AUTO-END: USAGE
+.\" AUTO-START: OPTIONS
+.\" This section is auto-generated. Manual edits will be lost.
 .SH OPTIONS
-.SS "Binary-Level Options"
-These options apply to all modes and must be specified \fBbefore\fR the mode argument.
-.TP
-.BR \-\-help
-Print usage information and exit.
-.TP
-.BR \-\-version
-Print version information and exit.
-.TP
-.BR \-\-config =\fIPATH\fR
-Load configuration from TOML file at PATH.
-.TP
-.BR \-\-config\-create [=\fIPATH\fR]
-Create a default configuration file and exit.
-If PATH is not specified, uses the default location.
-If the file exists, prompts for confirmation to overwrite.
-Supports piped input for scripting (e.g., \fCecho "y" | ascii-chat --config-create\fR).
-.TP
-.BR \-V ", " \-\-verbose
-Increase output verbosity. Can be specified multiple times for increased detail:
-.RS
-.IP \(bu 2
-\fB\-V\fR: More detailed output
-.IP \(bu 2
-\fB\-VV\fR: Even more detail
-.IP \(bu 2
-\fB\-VVV\fR: Maximum verbosity
-.RE
-.TP
-.BR \-L ", " \-\-log\-file =\fIPATH\fR
-Write log output to the specified file. The default log files are client.log, server.log,
-and mirror.log in your current working directory, based on the mode.
-.TP
-.BR \-\-log\-level =\fILEVEL\fR
-Set logging verbosity level: dev, debug, info, warn, error, fatal.
-.RS
-.IP \(bu 2
-\fBDefault\fR: debug (Debug/Dev builds), info (Release/RelWithDebInfo builds)
-.IP \(bu 2
-\fBPrecedence\fR: LOG_LEVEL environment variable > \-\-log\-level > build type default
-.RE
-.TP
-.BR \-q ", " \-\-quiet
-Disable console logging (log to file only). Only errors and critical warnings are displayed on the console.
-Logs continue to be written to the log file if \-\-log\-file is specified.
-.PP
-.B Example:
-.RS
-.nf
-ascii-chat -V --log-level debug --log-file /tmp/debug.log client
-ascii-chat --config ~/my-config.toml server
-.fi
-.RE
-.SS "Network Options"
-.TP
-.BR \-p ", " \-\-port =\fIPORT\fR
-Server port number. Valid range: 1-65535.
-Default: \fB27224\fR ("ASCII" on a phone dial pad).
-.PP
-.B Important:
-.RS
-For client mode, you cannot use both \fB--port\fR and a port in the positional address
-argument (e.g., \fBhost:port\fR). If both are provided, the program will exit with an error.
-.RE
-.SS "Server Address (Positional Arguments)"
-The server accepts 0-2 positional arguments for bind addresses.
-.PP
-.B Argument Count:
-.RS
-.IP \(bu 2
-\fB0 arguments\fR: Bind to both 127.0.0.1 and ::1 (dual-stack defaults)
-.IP \(bu 2
-\fB1 argument\fR: Bind only to this address (IPv4 OR IPv6)
-.IP \(bu 2
-\fB2 arguments\fR: Bind to both (must be one IPv4 AND one IPv6)
-.RE
-.PP
-.B Disabling IPv4 or IPv6:
-.RS
-To run IPv4-only or IPv6-only, provide a single address argument:
-.IP \(bu 2
-\fBIPv4 only\fR: \fCascii-chat server 0.0.0.0\fR
-.IP \(bu 2
-\fBIPv6 only\fR: \fCascii-chat server ::\fR
-.RE
-.PP
-.B Order Independence:
-.RS
-When providing two addresses, the order doesn't matter. The server automatically
-detects which is IPv4 and which is IPv6.
-.RE
-.PP
-.B Examples:
-.RS
-.nf
-ascii-chat server                  # Dual-stack: 127.0.0.1 + ::1
-ascii-chat server 0.0.0.0          # IPv4 only: all interfaces
-ascii-chat server ::               # IPv6 only: all interfaces
-ascii-chat server 0.0.0.0 ::       # Dual-stack: all interfaces
-ascii-chat server :: 0.0.0.0       # Same (order independent)
-ascii-chat server 127.0.0.1 ::1    # Dual-stack: localhost
-ascii-chat server --port 8080      # Dual-stack on port 8080
-.fi
-.RE
-.SS "Network Options (Server Only)"
-.TP
-.BR \-\-upnp
-Enable UPnP/NAT-PMP for automatic router port mapping.
-When enabled, the server attempts to configure your router to forward the
-listening port, allowing direct TCP connections from the internet.
-This works for approximately 70% of home routers.
-.RS
-.IP \(bu 2
-\fBUPnP\fR: Universal Plug and Play (most consumer routers)
-.IP \(bu 2
-\fBNAT-PMP\fR: NAT Port Mapping Protocol (Apple routers, Time Capsule)
-.RE
-.IP
-If port mapping fails, clients can still connect via WebRTC fallback.
-Default: \fBdisabled\fR (opt-in for security)
-.TP
-.BR \-\-acds
-Enable ACDS (ascii-chat Discovery Service) session registration.
-When enabled, the server registers with an ACDS discovery server and receives
-a memorable three-word session string (e.g., \fChappy-sunset-ocean\fR) that
-clients can use to connect instead of IP addresses.
-.RS
-.IP \(bu 2
-Requires authentication: \fB--key\fR, \fB--password\fR, or \fB--acds-expose-ip\fR
-.IP \(bu 2
-Handles NAT traversal automatically via WebRTC when direct TCP fails
-.IP \(bu 2
-Default ACDS server: \fCdiscovery-server.ascii-chat.com:27225\fR
-.RE
-.IP
-Default: \fBdisabled\fR
-.TP
-.BR \-\-acds\-server =\fIADDRESS\fR
-ACDS discovery server address to register with.
-Default: \fBdiscovery-server.ascii-chat.com\fR
-.TP
-.BR \-\-acds\-port =\fIPORT\fR
-ACDS discovery server port.
-Default: \fB27225\fR
-.TP
-.BR \-\-acds\-key =\fIKEY\fR
-ACDS server public key for trust verification. Prevents man-in-the-middle
-attacks by verifying the ACDS server's identity. Accepts:
-.RS
-.IP \(bu 2
-Path to SSH Ed25519 public key file
-.IP \(bu 2
-HTTPS URL to fetch key from
-.IP \(bu 2
-GitHub: \fCgithub:username\fR
-.IP \(bu 2
-GitLab: \fCgitlab:username\fR
-.RE
-.TP
-.BR \-\-acds\-expose\-ip
-Explicitly allow public IP disclosure in ACDS sessions.
-When enabled, allows ACDS registration without authentication keys.
-Default: \fBdisabled\fR (opt-in for privacy)
-.TP
-.BR \-\-webrtc
-Use WebRTC peer-to-peer mode instead of direct TCP.
-Useful when both server and client are behind NAT without port forwarding.
-Default: \fBdirect TCP\fR
-.TP
-.BR \-\-no\-mdns\-advertise
-Disable mDNS service advertisement on the local network.
-When disabled, clients using \fB--scan\fR won't discover this server.
-Default: \fBenabled\fR (advertise via mDNS)
-.TP
-.BR \-\-max\-clients =\fIN\fR
-Maximum number of concurrent client connections allowed.
-Valid range: 1-32.
-Default: \fB10\fR
-.br
-Higher values require more server resources (CPU, memory, bandwidth).
-Clients attempting to connect when the limit is reached will be rejected.
-.SS "Server Audio Options"
-.TP
-.BR \-\-no\-audio\-mixer
-Disable audio mixer, send silence instead of mixing client audio streams.
-Useful for debugging audio pipeline issues without hearing mixed output.
-Server-only option (client audio is still received and recorded).
-.SS "Network Performance Options"
-.TP
-.BR \-\-compression\-level =\fIN\fR
-zstd compression level for video frames. Valid range: 1-9.
-Default: \fB1\fR (fastest, best for real-time)
-.RS
-.IP \(bu 2
-\fBLevel 1\fR: Fastest compression, lowest ratio (best for real-time streaming)
-.IP \(bu 2
-\fBLevel 3\fR: Balanced speed/ratio
-.IP \(bu 2
-\fBLevel 9\fR: Slower compression, best ratio (for limited bandwidth)
-.RE
-.IP
-Levels above 5 may cause frame drops on slower machines.
-Both client and server must use compatible compression settings.
-.TP
-.BR \-\-no\-compress
-Disable video frame compression entirely.
-Useful for debugging, local testing, or when CPU usage is more critical than bandwidth.
-Significantly increases network traffic.
-When enabled, \-\-compression\-level is ignored.
-Available for both client and server.
-.TP
-.BR \-\-encode\-audio
-Force enable Opus audio encoding for compression and bandwidth savings.
-When used with \-\-no\-compress, still enables audio encoding.
-.TP
-.BR \-\-no\-encode\-audio
-Disable Opus audio encoding, send raw audio samples instead.
-Increases bandwidth but slightly reduces CPU usage.
-.SS "Client Address (Positional Argument)"
-The client accepts an optional positional argument for the server address.
-This can be a hostname, IPv4 address, or IPv6 address, optionally followed
-by a port number.
-.PP
-.B Supported Formats:
-.RS
-.IP \(bu 2
-\fB(none)\fR: Connect to localhost:27224
-.IP \(bu 2
-\fBhostname\fR: Connect to hostname:27224
-.IP \(bu 2
-\fBhostname:port\fR: Connect to hostname:port
-.IP \(bu 2
-\fB192.168.1.1\fR: Connect to IPv4 address with default port
-.IP \(bu 2
-\fB192.168.1.1:8080\fR: Connect to IPv4 address with custom port
-.IP \(bu 2
-\fB::1\fR: Connect to IPv6 address with default port
-.IP \(bu 2
-\fB[::1]:8080\fR: Connect to IPv6 address with custom port (brackets required with port)
-.RE
-.PP
-.B Important:
-.RS
-You cannot use both a port in the positional argument (e.g., \fBhost:port\fR) and
-the \fB\-\-port\fR flag. If both are provided, the program will exit with an error.
-Use one or the other, not both.
-.RE
-.PP
-Hostnames are resolved via DNS lookup during startup.
-.PP
-.B Examples:
-.RS
-.nf
-ascii-chat client                       # Connect to localhost:27224
-ascii-chat client example.com           # Connect to example.com:27224
-ascii-chat client example.com:8080      # Connect to example.com:8080
-ascii-chat client --port 8080           # Connect to localhost:8080
-ascii-chat client example.com --port 8080  # ERROR: cannot use both
-.fi
-.RE
-.SS "Network Options (Client Only)"
-.TP
-.BR \-\-reconnect =\fIVALUE\fR
-Automatic reconnection behavior after connection loss.
-Valid values: \fBoff\fR, \fBauto\fR, or a number (1-999).
-Default: \fBauto\fR (unlimited)
-.RS
-.IP \(bu 2
-\fBoff\fR (or 0): Exit immediately on connection failure
-.IP \(bu 2
-\fB1-999\fR: Retry up to N times before giving up
-.IP \(bu 2
-\fBauto\fR (or -1): Retry indefinitely until successful
-.RE
-.IP
-Each retry attempt waits 2 seconds before connecting again.
-Snapshot mode always disables reconnection regardless of this setting.
-.TP
-.BR \-\-scan
-Scan for ascii-chat servers on the local network using mDNS service discovery.
-Displays available servers and allows you to select one to connect to.
-Servers must have mDNS advertisement enabled (default).
-.TP
-.BR \-\-acds\-server =\fIADDRESS\fR
-ACDS discovery server address to query.
-Default: \fBdiscovery-server.ascii-chat.com\fR
-.TP
-.BR \-\-acds\-port =\fIPORT\fR
-ACDS discovery server port.
-Default: \fB27225\fR
-.TP
-.BR \-\-acds\-key =\fIKEY\fR
-ACDS server public key for trust verification. Accepts:
-.RS
-.IP \(bu 2
-Path to SSH Ed25519 public key file
-.IP \(bu 2
-HTTPS URL to fetch key from
-.IP \(bu 2
-GitHub: \fCgithub:username\fR
-.IP \(bu 2
-GitLab: \fCgitlab:username\fR
-.RE
-.TP
-.BR \-\-webrtc
-Use WebRTC peer-to-peer mode instead of direct TCP.
-Default: \fBdirect TCP\fR
-.TP
-.BR \-\-prefer\-webrtc
-Try WebRTC connection before attempting direct TCP.
-Useful when direct TCP connections are known to fail due to NAT.
-Default: try direct TCP first
-.TP
-.BR \-\-no\-webrtc
-Disable WebRTC entirely, use only direct TCP connections.
-Connection will fail if direct TCP is not possible.
-.TP
-.BR \-\-webrtc\-skip\-stun
-Skip the WebRTC+STUN connection attempt and go straight to TURN relay.
-Faster connection when STUN is known to fail, but uses more relay bandwidth.
-.TP
-.BR \-\-webrtc\-disable\-turn
-Disable WebRTC+TURN relay connections, use only STUN.
-Connection will fail if STUN hole punching doesn't work.
-.TP
-.BR \-\-acds\-insecure
-Skip server key verification when connecting through ACDS.
-Makes you vulnerable to man-in-the-middle attacks.
-Requires explicit opt-in for security awareness.
-Default: \fBserver key verification enabled\fR
-.SS "Terminal Dimensions (Client Only)"
-.TP
-.BR \-x ", " \-\-width =\fICOLS\fR
-Set terminal width in characters. Disables auto-detection for width.
-Default: auto-detect from terminal size, fallback to \fB110\fR
-.TP
-.BR \-y ", " \-\-height =\fIROWS\fR
-Set terminal height in characters. Disables auto-detection for height.
-Default: auto-detect from terminal size, fallback to \fB70\fR
-.SS "Display Options (Client Only)"
-.TP
-.BR \-\-color\-mode =\fIMODE\fR
-Terminal color mode: auto, mono, 16, 256, truecolor.
-Default: \fBauto\fR (detect terminal capabilities)
-.TP
-.BR \-M ", " \-\-render\-mode =\fIMODE\fR
-Rendering mode: foreground (text colored), background
-(terminal background colored, text color default),
-half-block (Unicode half-blocks for 2x vertical resolution).
-Default: \fBforeground\fR
-.TP
-.BR \-\-utf8
-Force enable UTF-8 support for Unicode palette characters.
-Required for half-block render mode.
-.TP
-.BR \-s ", " \-\-stretch
-Allow image stretching without preserving aspect ratio.
-Default: preserve aspect ratio (may have letterboxing).
-.TP
-.BR \-P ", " \-\-palette =\fIPALETTE\fR
-ASCII character palette: standard, blocks, digital, minimal, cool, custom.
-Default: \fBstandard\fR
-.TP
-.BR \-C ", " \-\-palette\-chars =\fICHARS\fR
-Custom palette characters (implies \-\-palette=custom).
-Characters should be ordered from darkest to brightest.
-Example: " .:-=+*#%@"
-.TP
-.BR \-\-show\-capabilities
-Print detected terminal capabilities and exit.
-.SS "Webcam Options (Client Only)"
-.TP
-.BR \-c ", " \-\-webcam\-index =\fIINDEX\fR
-Webcam device index (0-based). Index 0 is the first available device.
-Default: \fB0\fR
-.TP
-.BR \-f ", " \-\-webcam\-flip
-Toggle horizontal flipping of webcam image.
-Default: flipped (like looking in a mirror)
-.TP
-.BR \-\-test\-pattern
-Use a test pattern instead of real webcam input.
-Useful for testing when you don't have a physical webcam connected to the computer.
-.TP
-.BR \-\-list\-webcams
-List all available webcam devices and exit.
-Shows device index and name for each detected camera.
-.TP
-.BR \-\-fps =\fIFPS\fR
-Desired frame rate (1-144).
-Default: \fB60\fR
-.SS "Media File Options (Client Only)"
-.TP
-.BR \-f ", " \-\-file =\fIFILE\fR
-Stream from a media file instead of webcam.
-Accepts video files, image files, or stdin (use \fC-\fR for stdin).
-Supports common formats: MP4, MOV, AVI, PNG, JPEG, etc.
-.TP
-.BR \-l ", " \-\-loop
-Loop media file playback continuously.
-Only works with regular files, not stdin streams.
-.SS "Snapshot Mode"
-.TP
-.BR \-S ", " \-\-snapshot
-Connect to a server (or use mirror mode locally) and print at least one frame, then exit.
-Some webcams "warm up" and need time, so there is --snapshot\-delay to control how long after the camera starts before a frame is sampled.
-In your terminal you can pipe the stdout of \fIascii-chat client --snapshot\fR or \fIascii-chat mirror --snapshot\fR to a file to take a photo.
---snapshot is useful for testing, scripting, ai agents like Claude and Cursor, and CI/CD pipelines. Works with both client and mirror modes.
-.PP
-Connection behavior in snapshot mode:
-.RS
-.IP \(bu 2
-\fBNo retries\fR: If the connection fails, exits immediately with error code 1
-instead of retrying. Ideal for scripting and CI/CD pipelines.
-.IP \(bu 2
-\fBNo reconnection\fR: If the connection is lost during capture, exits with an error
-instead of attempting to reconnect.
-.RE
-.TP
-.BR \-D ", " \-\-snapshot\-delay =\fISECONDS\fR
-Delay in seconds before capturing snapshot (for frame warmup).
-Default: \fB3.0\fR
-.SS "Piping and Redirecting (Mirror + Snapshot)"
-.PP
-When you use \fBmirror\fR mode with \fB\-\-snapshot\fR, the output is optimized for
-piping to other commands or redirecting to files. When stdout is redirected
-(not a terminal), ascii-chat automatically:
-.RS
-.IP \(bu 2
-Outputs only the final frame (after \fB\-\-snapshot\-delay\fR has elapsed)
-.IP \(bu 2
-Disables ANSI cursor movement and RLE compression codes
-.IP \(bu 2
-Adds a trailing newline after the frame
-.RE
-.PP
-This makes the output clean and suitable for saving to files or processing
-with other tools. Color escape codes (\fB[0m\fR resets) may still appear at line
-endings; use \fB\-\-strip\-ansi\fR with \fB\-\-color\-mode mono\fR for completely plain
-ASCII output.
-.TP
-.BR \-\-strip\-ansi
-Remove ALL ANSI escape sequences from the output, producing completely plain
-ASCII text with no color codes, cursor movement, or any other escape sequences.
-This is more aggressive than \fB\-\-color\-mode mono\fR which only disables color
-generation but may still include reset codes.
-.PP
-Useful when piping to commands that don't understand ANSI codes, or when
-saving to plain text files.
-.SS "Audio Options (Client Only)"
-.TP
-.BR \-A ", " \-\-audio
-Enable audio capture and streaming.
-.TP
-.BR \-\-microphone\-index =\fIINDEX\fR
-Microphone (audio input) device index. Use \fB-1\fR for system default.
-Default: \fB-1\fR
-.TP
-.BR \-\-speakers\-index =\fIINDEX\fR
-Speakers (audio output) device index. Use \fB-1\fR for system default.
-Default: \fB-1\fR
-.TP
-.BR \-\-microphone\-sensitivity =\fIVALUE\fR
-Microphone volume multiplier, range \fB0.0\fR (muted) to \fB1.0\fR (original volume).
-Default: \fB1.0\fR (no change)
-.TP
-.BR \-\-speakers\-volume =\fIVALUE\fR
-Speaker volume multiplier, range \fB0.0\fR (muted) to \fB1.0\fR (original volume).
-Default: \fB1.0\fR (no change)
-.TP
-.BR \-\-list\-microphones
-List all available audio input devices (microphones) and exit.
-Shows device index, name, and capabilities.
-.TP
-.BR \-\-list\-speakers
-List all available audio output devices (speakers) and exit.
-Shows device index, name, and capabilities.
-.TP
-.BR \-\-audio\-analysis
-Enable audio analysis for debugging audio quality and levels.
-Shows detailed analysis of captured and received audio.
-.TP
-.BR \-\-no\-audio\-playback
-Disable speaker playback while keeping received audio recording.
-Useful for debugging audio pipeline issues without hearing playback.
-.SS "Encryption Options"
-.TP
-.BR \-E ", " \-\-encrypt
-Enable packet encryption.
-Default: \fBenabled\fR
-.TP
-.BR \-K ", " \-\-key =\fIKEY\fR
-Key for authentication. Accepts:
-.RS
-.IP \(bu 2
-File path: /path/to/key (SSH Ed25519 private key)
-.IP \(bu 2
-GitHub: github:username
-.IP \(bu 2
-GitLab: gitlab:username
-.IP \(bu 2
-GPG: gpg:KEYID (8, 16, or 40-character key ID or fingerprint)
-.IP \(bu 2
-Auto-detect: ssh (uses ~/.ssh/id_ed25519)
-.RE
-.IP
-GPG keys require the \fBgpg\fR binary in PATH and use gpg-agent for signing.
-.IP
-Implies \-\-encrypt.
-.TP
-.BR \-\-password [=\fIPASSWORD\fR]
-Password for connection encryption. If PASSWORD is not provided,
-prompts interactively. Both client and server must use the same password.
-Implies \-\-encrypt.
-.RS
-.IP \(bu 2
-\fBLength\fR: 8-256 characters (inclusive)
-.IP \(bu 2
-\fBCharacters\fR: Any UTF-8 characters are supported. Cannot contain null bytes.
-.IP \(bu 2
-\fBKey Derivation\fR: Uses Argon2id (memory-hard, ~64MB RAM, ~0.1s)
-.RE
-.TP
-.BR \-F ", " \-\-keyfile =\fIFILE\fR
-Read encryption key from FILE. Implies \-\-encrypt.
-.TP
-.BR \-\-no\-encrypt
-Explicitly disable encryption, even if keys are available.
-.TP
-.BR \-\-server\-key =\fIKEY\fR
-(Client only) Expected server public key for identity verification.
-Prevents man-in-the-middle attacks. Accepts:
-.RS
-.IP \(bu 2
-Path to .pub file (SSH Ed25519 public key)
-.IP \(bu 2
-GitHub: github:username
-.IP \(bu 2
-GitLab: gitlab:username
-.IP \(bu 2
-GPG: gpg:KEYID (8, 16, or 40-character key ID or fingerprint)
-.RE
-.TP
-.BR \-\-client\-keys =\fIFILE\fR
-(Server only) File containing allowed client public keys for authentication.
-Uses SSH \fIauthorized_keys\fR format: one key per line, each line formatted as
-\fCssh-ed25519 AAAAC3... [comment]\fR. Also accepts \fIknown_hosts\fR format.
-Only Ed25519 keys are parsed; RSA/ECDSA keys in the file are ignored.
-.SS "Discovery Server Options"
-The following options apply to \fBdiscovery-server\fR mode only.
-.TP
-.BR \-p ", " \-\-port =\fIPORT\fR
-ACDS server port to listen on.
-Default: \fB27225\fR
-.TP
-.BR \-k ", " \-\-key =\fIPATH\fR
-Path to ACDS identity key file (Ed25519 private key).
-This is the server's long-term identity key used for signing session data.
-Default: \fB~/.ascii-chat/acds_identity\fR
-.TP
-.BR \-d ", " \-\-database =\fIPATH\fR
-Path to ACDS database file (SQLite).
-Stores active sessions and their connection information.
-Default: \fB~/.ascii-chat/acds.db\fR
-.TP
-.BR \-S ", " \-\-require\-server\-identity
-Require servers to provide signed Ed25519 identity when creating sessions.
-Prevents anonymous session creation.
-.TP
-.BR \-C ", " \-\-require\-client\-identity
-Require clients to provide signed Ed25519 identity when joining sessions.
-Prevents anonymous session joining.
-.TP
-.BR \-V ", " \-\-require\-server\-verify
-ACDS policy: require servers to verify client identity during handshake.
-Forces all servers using this ACDS to authenticate clients.
-.TP
-.BR \-c ", " \-\-require\-client\-verify
-ACDS policy: require clients to verify server identity during handshake.
-Forces all clients using this ACDS to authenticate servers.
-.TP
-.BR \-\-stun\-servers =\fIURLs\fR
-Comma-separated list of STUN server URLs for WebRTC NAT traversal.
-Default: \fCstun:stun.ascii-chat.com:3478,stun:stun.l.google.com:19302\fR
-.TP
-.BR \-\-turn\-servers =\fIURLs\fR
-Comma-separated list of TURN server URLs for WebRTC relay.
-Default: \fCturn:turn.ascii-chat.com:3478\fR
-.TP
-.BR \-\-turn\-username =\fIUSERNAME\fR
-Username for TURN server authentication.
-Default: \fBascii\fR
-.TP
-.BR \-\-turn\-credential =\fICREDENTIAL\fR
-Credential/password for TURN server authentication.
-.TP
-.BR \-\-turn\-secret =\fISECRET\fR
-Shared secret for dynamic TURN credential generation using HMAC-SHA1.
-Allows the ACDS to generate time-limited TURN credentials.
-.TP
-.BR \-\-upnp
-Enable UPnP/NAT-PMP for automatic router port mapping.
-Allows the discovery server to be accessible from the internet without manual port forwarding.
+.SS GENERAL
+.TP
+.B \-\-help
+Show this help
+.IP "(default: false)" 4
+.TP
+.B \-\-version
+Show version information
+.IP "(default: false)" 4
+.SS CONFIGURATION
+.TP
+.B \-\-create-man-page-template
+Generate man page template from options builder (preserves manual content) [output.1]
+.SS LOGGING
+.TP
+.B \-L, \-\-log-file \fISTR\fR
+Redirect logs to FILE
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_LOG_FILE\fR" 4
+.TP
+.B \-\-log-level \fIVAL\fR
+Set log level: dev, debug, info, warn, error, fatal
+.IP "(default: )" 4
+.TP
+.B \-V, \-\-verbose \fIVAL\fR
+Increase log verbosity (stackable: -VV, -VVV, or --verbose)
+.IP "(default: )" 4
+.TP
+.B \-q, \-\-quiet
+Disable console logging (log to file only)
+.IP "(default: false)" 4
+.SS NETWORK
+.TP
+.B \-\-prefer-webrtc
+Try WebRTC before Direct TCP (useful when Direct TCP fails)
+.IP "(default: false)" 4
+.TP
+.B \-\-no-webrtc
+Disable WebRTC, use Direct TCP only
+.IP "(default: false)" 4
+.TP
+.B \-\-webrtc-skip-stun
+Skip WebRTC+STUN stage, go straight to TURN relay
+.IP "(default: false)" 4
+.TP
+.B \-\-webrtc-disable-turn
+Disable WebRTC+TURN relay, use STUN only
+.IP "(default: false)" 4
+.TP
+.B \-p, \-\-port \fISTR\fR
+Server port
+.IP "(default: 27224)" 4
+.IP "Env: \fBASCII_CHAT_PORT\fR" 4
+.TP
+.B \-\-max-clients \fINUM\fR
+Maximum concurrent clients
+.IP "(default: 9)" 4
+.IP "Env: \fBASCII_CHAT_MAX_CLIENTS\fR" 4
+.TP
+.B \-\-no-audio-mixer
+Disable audio mixer (debug)
+.IP "(default: false)" 4
+.TP
+.B \-\-discovery
+Enable discovery service registration (requires --key or --password or --discovery-expose-ip)
+.IP "(default: false)" 4
+.TP
+.B \-\-discovery-server \fISTR\fR
+Discovery service address
+.IP "(default: discovery-service.ascii-chat.com)" 4
+.TP
+.B \-\-discovery-port \fINUM\fR
+Discovery service port
+.IP "(default: 27225)" 4
+.TP
+.B \-\-upnp
+Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users)
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_UPNP\fR" 4
+.TP
+.B \-\-no-mdns-advertise
+Disable mDNS service advertisement on local network (LAN discovery won't find this server)
+.IP "(default: false)" 4
+.TP
+.B \-\-stun-servers \fISTR\fR
+Comma-separated STUN server URLs (debug/test only - ACDS provides in production)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_STUN_SERVERS\fR" 4
+.TP
+.B \-\-turn-servers \fISTR\fR
+Comma-separated TURN server URLs (debug/test only - ACDS provides in production)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_TURN_SERVERS\fR" 4
+.TP
+.B \-\-turn-username \fISTR\fR
+TURN authentication username (debug/test only - ACDS provides in production)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_TURN_USERNAME\fR" 4
+.TP
+.B \-\-turn-credential \fISTR\fR
+TURN authentication credential (debug/test only - ACDS provides in production)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_TURN_CREDENTIAL\fR" 4
+.SS PERFORMANCE
+.TP
+.B \-\-compression-level \fINUM\fR
+zstd compression level (1-9)
+.IP "(default: 3)" 4
+.IP "Env: \fBASCII_CHAT_COMPRESSION_LEVEL\fR" 4
+.TP
+.B \-\-no-compress
+Disable compression
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_NO_COMPRESS\fR" 4
+.SS SECURITY
+.TP
+.B \-E, \-\-encrypt
+Enable encryption
+.IP "(default: true)" 4
+.TP
+.B \-K, \-\-key \fISTR\fR
+SSH/GPG key file path
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_KEY\fR" 4
+.TP
+.B \-\-password \fISTR\fR
+Shared password for authentication
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_PASSWORD\fR" 4
+.TP
+.B \-\-no-encrypt
+Disable encryption
+.IP "(default: false)" 4
+.TP
+.B \-\-client-keys \fISTR\fR
+Allowed client keys whitelist
+.IP "(default: )" 4
+.TP
+.B \-\-discovery-expose-ip
+Explicitly allow public IP disclosure in discovery sessions (opt-in only)
+.IP "(default: false)" 4
+.TP
+.B \-\-discovery-service-key \fISTR\fR
+Discovery service public key for verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)
+.IP "(default: )" 4
+.SS TERMINAL
+.TP
+.B \-x, \-\-width \fINUM\fR
+Terminal width in characters
+.IP "(default: 110)" 4
+.IP "Env: \fBASCII_CHAT_WIDTH\fR" 4
+.TP
+.B \-y, \-\-height \fINUM\fR
+Terminal height in characters
+.IP "(default: 70)" 4
+.IP "Env: \fBASCII_CHAT_HEIGHT\fR" 4
+.SS WEBCAM
+.TP
+.B \-c, \-\-webcam-index \fINUM\fR
+Webcam device index
+.IP "(default: 0)" 4
+.IP "Env: \fBASCII_CHAT_WEBCAM_INDEX\fR" 4
+.TP
+.B \-g, \-\-webcam-flip
+Flip webcam horizontally
+.IP "(default: true)" 4
+.TP
+.B \-\-test-pattern
+Use test pattern instead of webcam
+.IP "(default: false)" 4
+.IP "Env: \fBWEBCAM_DISABLED\fR" 4
+.SS DISPLAY
+.TP
+.B \-\-color-mode \fIVAL\fR
+Terminal color level (auto, none, 16, 256, truecolor)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_COLOR_MODE\fR" 4
+.TP
+.B \-M, \-\-render-mode \fIVAL\fR
+Render mode (foreground, background, half-block)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_RENDER_MODE\fR" 4
+.TP
+.B \-P, \-\-palette \fIVAL\fR
+ASCII palette type (standard, blocks, digital, minimal, cool, custom)
+.IP "(default: )" 4
+.IP "Env: \fBASCII_CHAT_PALETTE\fR" 4
+.TP
+.B \-C, \-\-palette-chars \fIVAL\fR
+Custom palette characters (implies --palette=custom)
+.IP "(default: )" 4
+.TP
+.B \-\-show-capabilities
+Show terminal capabilities and exit
+.IP "(default: false)" 4
+.TP
+.B \-\-utf8
+Force UTF-8 support
+.IP "(default: false)" 4
+.TP
+.B \-s, \-\-stretch
+Allow aspect ratio distortion
+.IP "(default: false)" 4
+.TP
+.B \-\-strip-ansi
+Strip ANSI escape sequences
+.IP "(default: false)" 4
+.TP
+.B \-\-fps \fINUM\fR
+Target framerate (1-144, default: 60)
+.IP "(default: 0)" 4
+.IP "Env: \fBASCII_CHAT_FPS\fR" 4
+.SS SNAPSHOT
+.TP
+.B \-S, \-\-snapshot
+Snapshot mode (one frame and exit)
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_SNAPSHOT\fR" 4
+.TP
+.B \-D, \-\-snapshot-delay \fINUM\fR
+Snapshot delay in seconds
+.IP "(default: 4.00)" 4
+.IP "Env: \fBASCII_CHAT_SNAPSHOT_DELAY\fR" 4
+.SS MEDIA
+.TP
+.B \-f, \-\-file \fISTR\fR
+Stream from media file or stdin (use '-' for stdin)
+.IP "(default: )" 4
+.TP
+.B \-u, \-\-url \fISTR\fR
+Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file
+.IP "(default: )" 4
+.TP
+.B \-l, \-\-loop
+Loop media file playback (not supported for network URLs)
+.IP "(default: false)" 4
+.TP
+.B \-s, \-\-seek \fIVAL\fR
+Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)
+.IP "(default: )" 4
+.TP
+.B \-\-cookies-from-browser \fIVAL\fR
+Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). Use without argument to default to chrome.
+.TP
+.B \-\-no-cookies-from-browser
+Explicitly disable reading cookies from browser
+.IP "(default: false)" 4
+.SS AUDIO
+.TP
+.B \-A, \-\-audio
+Enable audio streaming
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_AUDIO\fR" 4
+.TP
+.B \-\-microphone-index \fINUM\fR
+Microphone device index (-1=default)
+.IP "(default: -1)" 4
+.IP "Env: \fBASCII_CHAT_MICROPHONE_INDEX\fR" 4
+.TP
+.B \-\-speakers-index \fINUM\fR
+Speakers device index (-1=default)
+.IP "(default: -1)" 4
+.IP "Env: \fBASCII_CHAT_SPEAKERS_INDEX\fR" 4
+.TP
+.B \-\-microphone-sensitivity \fINUM\fR
+Microphone volume multiplier (0.0-1.0)
+.IP "(default: 1.00)" 4
+.IP "Env: \fBASCII_CHAT_MICROPHONE_SENSITIVITY\fR" 4
+.TP
+.B \-\-speakers-volume \fINUM\fR
+Speaker volume multiplier (0.0-1.0)
+.IP "(default: 1.00)" 4
+.IP "Env: \fBASCII_CHAT_SPEAKERS_VOLUME\fR" 4
+.TP
+.B \-\-audio-analysis
+Enable audio analysis (debug)
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_AUDIO_ANALYSIS\fR" 4
+.TP
+.B \-\-no-audio-playback
+Disable speaker playback (debug)
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_NO_AUDIO_PLAYBACK\fR" 4
+.TP
+.B \-\-encode-audio
+Enable Opus audio encoding
+.IP "(default: true)" 4
+.IP "Env: \fBASCII_CHAT_ENCODE_AUDIO\fR" 4
+.TP
+.B \-\-no-encode-audio
+Disable Opus audio encoding
+.IP "(default: false)" 4
+.IP "Env: \fBASCII_CHAT_NO_ENCODE_AUDIO\fR" 4
+
+.\" AUTO-END: OPTIONS
+.\" AUTO-START: EXAMPLES
+.\" This section is auto-generated. Manual edits will be lost.
 .SH EXAMPLES
-.SS "Configuration Management"
 .TP
-.B Create default config file
-.nf
-ascii-chat --config-create
-.fi
+.B ascii-chat
+Start new session (share the session string)
 .TP
-.B Create config at custom location
-.nf
-ascii-chat --config-create ~/.my-config.toml
-.fi
+.B ascii-chat swift-river-mountain
+Join session with session string
 .TP
-.B Overwrite existing config (scripted)
-.nf
-echo "y" | ascii-chat --config-create
-yes | ascii-chat --config-create /tmp/server.toml
-.fi
+.B ascii-chat server
+Run as dedicated server
 .TP
-.B Use config file with server
-.nf
-ascii-chat --config ~/.ascii-chat/server.toml server
-.fi
+.B ascii-chat client example.com
+Connect to specific server
 .TP
-.B Use config file with client
-.nf
-ascii-chat --config ~/.ascii-chat/client.toml client example.com
-.fi
-.SS "Basic Usage"
-.TP
-.B Start a basic server
-.nf
-ascii-chat server
-.fi
-.TP
-.B Connect to a local server
-.nf
-ascii-chat client
-.fi
-.SS "Connect to a remote server with truecolor"
-.nf
-ascii-chat client example.com \-\-color\-mode truecolor
-.fi
-.SS "Connect to a server with custom port"
-.nf
-ascii-chat client example.com:8080
-.fi
-.SS "Connect via IPv6 address"
-.nf
-ascii-chat client ::1
-ascii-chat client [::1]:8080
-.fi
-.SS "Server with custom client limit"
-.nf
-ascii-chat server \-\-max\-clients 20
-.fi
-.SS "Server with higher compression for bandwidth savings"
-.nf
-ascii-chat server \-\-compression\-level 5
-.fi
-.SS "Server without compression (for local testing)"
-.nf
-ascii-chat server \-\-no\-compress
-.fi
-.SS "Client with automatic reconnection"
-.nf
-ascii-chat client example.com \-\-reconnect auto
-.fi
-.SS "Client with limited reconnection attempts"
-.nf
-ascii-chat client example.com \-\-reconnect 5
-.fi
-.SS "Server with encryption using SSH key"
-.nf
-ascii-chat server \-\-key ~/.ssh/id_ed25519
-.fi
-.SS "Client with server verification"
-.nf
-ascii-chat client example.com \-\-server\-key ~/.ssh/server.pub
-.fi
-.SS "Capture a single ASCII snapshot"
-.nf
-ascii-chat client \-\-snapshot \-\-color\-mode truecolor
-.fi
-.SS "View webcam locally in mirror mode"
-.nf
-ascii-chat mirror \-\-color\-mode truecolor
-.fi
-.SS "Capture local webcam snapshot (no server)"
-.nf
-ascii-chat mirror \-\-snapshot \-\-snapshot\-delay 1.0
-.fi
-.SS "Save ASCII selfie to a file"
-.nf
-ascii-chat mirror \-\-snapshot \-\-snapshot\-delay 2 > selfie.txt
-.fi
-.SS "Save ASCII selfie with no ANSI codes (plain text)"
-.nf
-ascii-chat mirror \-\-snapshot \-\-strip\-ansi > selfie.txt
-.fi
-.SS "Pipe ASCII art to another command"
-.nf
-ascii-chat mirror \-\-snapshot | head \-10
-.fi
-.SS "Instant capture (no delay)"
-.nf
-ascii-chat mirror \-\-snapshot \-\-snapshot\-delay 0 > instant.txt
-.fi
-.SS "Test without webcam using test pattern"
-.nf
-ascii-chat client \-\-test\-pattern \-\-color\-mode truecolor
-.fi
-.SS "Use half-block rendering for higher resolution"
-.nf
-ascii-chat client \-\-render\-mode half\-block \-\-utf8
-.fi
-.SS "Use GitHub key for authentication"
-.nf
-ascii-chat client example.com \-\-key github:username
-.fi
-.SS "Stream video file as ASCII art"
-.nf
-ascii-chat mirror \-\-file video.mp4 \-\-color\-mode truecolor
-.fi
-.IP
-Plays an MP4 video file as ASCII art. Works with any video format supported by FFmpeg (MP4, MOV, AVI, MKV, WebM).
-.SS "Play animated GIF as ASCII"
-.nf
-ascii-chat mirror \-\-file animation.gif \-\-loop
-.fi
-.IP
-Loops an animated GIF continuously. Great for testing or creating looping ASCII animations.
-.SS "Display image as ASCII"
-.nf
-ascii-chat mirror \-\-file photo.jpg \-\-snapshot
-.fi
-.IP
-Converts a JPEG or PNG image to ASCII art. Useful for one-off ASCII conversions of photos.
-.SS "Stream audio visualized as ASCII"
-.nf
-ascii-chat mirror \-\-file song.mp3 \-\-test\-pattern
-.fi
-.IP
-Plays audio from an MP3 file. Use with \fB\-\-test\-pattern\fR to show a visual pattern while audio plays.
-Note: Pure audio files don't have video frames, so combine with test pattern or another visual source.
-.SS "Pipe video through stdin"
-.nf
-cat video.mp4 | ascii-chat mirror \-\-file \-
-.fi
-.IP
-Streams video from stdin. Use \fC-\fR as the filename to read from standard input.
-Useful for chaining with other commands or streaming from network sources.
-.SS "Use Unicode block characters for higher contrast"
-.nf
-ascii-chat client \-\-palette blocks \-\-utf8
-.fi
+.B ascii-chat mirror
+Preview local webcam as ASCII
+
+.\" AUTO-END: EXAMPLES
+.\" MANUAL-START: PALETTES
 .SH PALETTES
 Built-in ASCII character palettes for different visual styles.
 Characters are ordered from darkest (leftmost) to brightest (rightmost).
@@ -853,6 +422,11 @@ Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u258
 User-defined palette via \fB\-\-palette\-chars\fR option.
 .PP
 Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
+.\" MANUAL-END: PALETTES
+.\" MANUAL-START: RENDER MODES
+.\" MANUAL-END: PALETTES
+.\" MANUAL-START: RENDER MODES
+.\" MANUAL-END: PALETTES
 .SH RENDER MODES
 Three rendering modes control how colors are applied:
 .TP
@@ -868,6 +442,10 @@ foreground color. Creates a blocky, pixel-art appearance.
 Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
 resolution. Each character cell displays two pixels (top and bottom halves).
 Requires UTF-8 support (\fB\-\-utf8\fR).
+.\" MANUAL-END: RENDER MODES
+.\" MANUAL-START: CONFIGURATION
+.\" MANUAL-END: RENDER MODES
+.\" MANUAL-START: CONFIGURATION
 .SH CONFIGURATION
 Configuration can be stored in a TOML file at the default location
 (see FILES section) or specified via \fB\-\-config\fR.
@@ -903,6 +481,19 @@ server_key (client), client_keys (server)
 While passwords can be stored in the config file, this is discouraged.
 Use \fB\-\-password\fR interactively or environment variables instead.
 Secure your config file permissions if it contains sensitive data.
+.\" MANUAL-END: CONFIGURATION
+.\" MANUAL-START: LIMITS
+.\" MANUAL-END: CONFIGURATION
+.\" MANUAL-START: LIMITS
+.\" MANUAL-END: CONFIGURATION
+.\" MANUAL-START: LIMITS
+.\" MANUAL-END: CONFIGURATION
+.\" MANUAL-START: LIMITS
+.\" MANUAL-END: CONFIGURATION
+.\" MANUAL-START: LIMITS
+.\" MANUAL-END: CONFIGURATION
+.\" MANUAL-START: LIMITS
+.\" MANUAL-END: CONFIGURATION
 .SH LIMITS
 .TP
 .B Maximum Clients
@@ -915,6 +506,24 @@ The grid size adjusts based on the number of connected clients.
 .TP
 .B Frame Rate
 Default 60 FPS. Configurable from 1-144 FPS.
+.\" MANUAL-END: LIMITS
+.\" MANUAL-START: FILES
+.\" MANUAL-END: LIMITS
+.\" MANUAL-START: FILES
+.\" MANUAL-END: LIMITS
+.\" MANUAL-START: FILES
+.\" MANUAL-END: LIMITS
+.\" MANUAL-START: FILES
+.\" MANUAL-END: LIMITS
+.\" MERGE-START: ENVIRONMENT
+.\" This section merges auto-generated and manual content.
+.\" MERGE-START: ENVIRONMENT
+.\" This section merges auto-generated and manual content.
+.\" MANUAL-END: LIMITS
+.\" MERGE-START: ENVIRONMENT
+.\" This section merges auto-generated and manual content.
+.\" MERGE-START: ENVIRONMENT
+.\" This section merges auto-generated and manual content.
 .SH ENVIRONMENT
 .TP
 .B SSH_AUTH_SOCK
@@ -940,6 +549,131 @@ Color terminal indicator. Set to "truecolor" or "24bit" for truecolor support.
 Automatically enables test pattern mode when set to "1", "true", "yes", or "on".
 Useful for CI/CD pipelines and testing environments without a physical webcam.
 Equivalent to passing \fB\-\-test\-pattern\fR.
+.TP
+.B ASCII_CHAT_LOG_FILE
+Set to override .B \-\-log-file (Redirect logs to FILE)
+.TP
+.B ASCII_CHAT_PORT
+Set to override .B \-\-port (Server port)
+.TP
+.B ASCII_CHAT_MAX_CLIENTS
+Set to override .B \-\-max-clients (Maximum concurrent clients)
+.TP
+.B ASCII_CHAT_COMPRESSION_LEVEL
+Set to override .B \-\-compression-level (zstd compression level (1-9))
+.TP
+.B ASCII_CHAT_NO_COMPRESS
+Set to override .B \-\-no-compress (Disable compression)
+.TP
+.B ASCII_CHAT_KEY
+Set to override .B \-\-key (SSH/GPG key file path)
+.TP
+.B ASCII_CHAT_PASSWORD
+Set to override .B \-\-password (Shared password for authentication)
+.TP
+.B ASCII_CHAT_UPNP
+Set to override .B \-\-upnp (Enable UPnP/NAT-PMP for automatic router port mapping (direct TCP for ~70%% of home users))
+.TP
+.B ASCII_CHAT_WIDTH
+Set to override .B \-\-width (Terminal width in characters)
+.TP
+.B ASCII_CHAT_HEIGHT
+Set to override .B \-\-height (Terminal height in characters)
+.TP
+.B ASCII_CHAT_WEBCAM_INDEX
+Set to override .B \-\-webcam-index (Webcam device index)
+.TP
+.B ASCII_CHAT_COLOR_MODE
+Set to override .B \-\-color-mode (Terminal color level (auto, none, 16, 256, truecolor))
+.TP
+.B ASCII_CHAT_RENDER_MODE
+Set to override .B \-\-render-mode (Render mode (foreground, background, half-block))
+.TP
+.B ASCII_CHAT_PALETTE
+Set to override .B \-\-palette (ASCII palette type (standard, blocks, digital, minimal, cool, custom))
+.TP
+.B ASCII_CHAT_FPS
+Set to override .B \-\-fps (Target framerate (1-144, default: 60))
+.TP
+.B ASCII_CHAT_SNAPSHOT
+Set to override .B \-\-snapshot (Snapshot mode (one frame and exit))
+.TP
+.B ASCII_CHAT_SNAPSHOT_DELAY
+Set to override .B \-\-snapshot-delay (Snapshot delay in seconds)
+.TP
+.B ASCII_CHAT_AUDIO
+Set to override .B \-\-audio (Enable audio streaming)
+.TP
+.B ASCII_CHAT_MICROPHONE_INDEX
+Set to override .B \-\-microphone-index (Microphone device index (-1=default))
+.TP
+.B ASCII_CHAT_SPEAKERS_INDEX
+Set to override .B \-\-speakers-index (Speakers device index (-1=default))
+.TP
+.B ASCII_CHAT_MICROPHONE_SENSITIVITY
+Set to override .B \-\-microphone-sensitivity (Microphone volume multiplier (0.0-1.0))
+.TP
+.B ASCII_CHAT_SPEAKERS_VOLUME
+Set to override .B \-\-speakers-volume (Speaker volume multiplier (0.0-1.0))
+.TP
+.B ASCII_CHAT_AUDIO_ANALYSIS
+Set to override .B \-\-audio-analysis (Enable audio analysis (debug))
+.TP
+.B ASCII_CHAT_NO_AUDIO_PLAYBACK
+Set to override .B \-\-no-audio-playback (Disable speaker playback (debug))
+.TP
+.B ASCII_CHAT_ENCODE_AUDIO
+Set to override .B \-\-encode-audio (Enable Opus audio encoding)
+.TP
+.B ASCII_CHAT_NO_ENCODE_AUDIO
+Set to override .B \-\-no-encode-audio (Disable Opus audio encoding)
+.TP
+.B ASCII_CHAT_STUN_SERVERS
+Set to override .B \-\-stun-servers (Comma-separated STUN server URLs (debug/test only - ACDS provides in production))
+.TP
+.B ASCII_CHAT_TURN_SERVERS
+Set to override .B \-\-turn-servers (Comma-separated TURN server URLs (debug/test only - ACDS provides in production))
+.TP
+.B ASCII_CHAT_TURN_USERNAME
+Set to override .B \-\-turn-username (TURN authentication username (debug/test only - ACDS provides in production))
+.TP
+.B ASCII_CHAT_TURN_CREDENTIAL
+Set to override .B \-\-turn-credential (TURN authentication credential (debug/test only - ACDS provides in production))
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: DESCRIPTION
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: DESCRIPTION
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: DESCRIPTION
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: DESCRIPTION
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: DESCRIPTION
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: FILES
+
+.\" MERGE-END: ENVIRONMENT
+
+.\" MERGE-END: ENVIRONMENT
+.\" MANUAL-START: FILES
 .SH FILES
 .TP
 .I ~/.ssh/id_ed25519
@@ -971,6 +705,17 @@ Used for server deployments or shared configurations.
 .I /usr/local/etc/ascii-chat/config.toml
 Alternative system-wide configuration file (BSD-style path).
 Used for locally-installed configurations.
+.\" MANUAL-END: FILES
+.\" MANUAL-START: EXIT STATUS
+.\" MANUAL-END: FILES
+.\" MANUAL-START: EXIT STATUS
+.\" MANUAL-END: FILES
+.\" MANUAL-START: EXIT STATUS
+.\" MANUAL-END: FILES
+.\" MANUAL-START: EXIT STATUS
+.\" MANUAL-END: FILES
+.\" MANUAL-START: EXIT STATUS
+.\" MANUAL-END: FILES
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
 .TP
@@ -1006,6 +751,16 @@ Runtime errors (thread, buffer, display, invalid state/param).
 .TP
 .B 100\-104
 Signal and compression errors.
+.\" MANUAL-END: EXIT STATUS
+.\" MANUAL-START: SECURITY
+.\" MANUAL-END: EXIT STATUS
+.\" MANUAL-START: SECURITY
+.\" MANUAL-END: EXIT STATUS
+.\" MANUAL-START: SECURITY
+.\" MANUAL-END: EXIT STATUS
+.\" MANUAL-START: SECURITY
+.\" MANUAL-END: EXIT STATUS
+.\" MANUAL-START: SECURITY
 .SH SECURITY
 .B ascii-chat
 supports end-to-end encryption using modern cryptographic algorithms:
@@ -1029,6 +784,15 @@ connections verify the server key matches the stored fingerprint.
 If a server's key changes (possible MITM attack), the connection is rejected
 with a warning. To connect anyway, remove the server entry from
 \fIknown_hosts\fR and reconnect.
+.\" MANUAL-END: SECURITY
+.\" MANUAL-START: NOTES
+.\" MANUAL-END: SECURITY
+.\" MANUAL-START: NOTES
+.\" MANUAL-END: SECURITY
+.\" MANUAL-START: NOTES
+.\" MANUAL-END: SECURITY
+.\" MANUAL-START: NOTES
+.\" MANUAL-END: SECURITY
 .SH NOTES
 .IP \(bu 2
 \fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
@@ -1079,10 +843,31 @@ or RLE compression codes. Only the final frame is output. Use
 \fBEncrypted Keys\fR: Encrypted private keys (SSH/GPG) work well with either ssh-agent/gpg-agent or
 the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
+.\" MANUAL-END: NOTES
+.\" MANUAL-START: BUGS
+.\" MANUAL-END: NOTES
+.\" MANUAL-START: BUGS
+.\" MANUAL-END: NOTES
+.\" MANUAL-START: BUGS
+.\" MANUAL-END: NOTES
+.\" MANUAL-START: BUGS
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
+.\" MANUAL-END: BUGS
+.\" MANUAL-START: AUTHOR
+.\" MANUAL-END: BUGS
+.\" MANUAL-START: AUTHOR
+.\" MANUAL-END: BUGS
+.\" MANUAL-START: AUTHOR
+.\" MANUAL-END: BUGS
 .SH AUTHOR
 Zachary Fogg <me@zfo.gg>
+.\" MANUAL-END: AUTHOR
+.\" MANUAL-START: SEE ALSO
+.\" MANUAL-END: AUTHOR
+.\" MANUAL-START: SEE ALSO
+.\" MANUAL-END: AUTHOR
+.\" MANUAL-START: SEE ALSO
 .SH SEE ALSO
 .BR ssh (1),
 .BR ssh-keygen (1),
@@ -1109,3 +894,7 @@ GitHub repository: https://github.com/zfogg/ascii-chat
 Releases: https://github.com/zfogg/ascii-chat/releases
 .PP
 API documentation: https://zfogg.github.io/ascii-chat/
+.\" MANUAL-END: SEE ALSO
+.\" MANUAL-START: PALETTES
+.\" MANUAL-END: SEE ALSO
+.\" MANUAL-END: SEE ALSO

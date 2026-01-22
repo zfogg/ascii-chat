@@ -16,14 +16,19 @@
 #include "options/client.h"
 #include "options/mirror.h"
 #include "options/discovery.h"
+#include "options/manpage.h"
+#include "options/presets.h"
+#include "options/config.h"
 #include "platform/terminal.h"
 #include "version.h"
 #include "video/webcam/webcam.h"
 #include "audio/audio.h"
 #include "util/string.h"
+#include "util/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // ============================================================================
 // Webcam Action
@@ -271,6 +276,86 @@ void action_help_acds(void) {
 
 void action_help_discovery(void) {
   usage_discovery(stdout);
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+// ============================================================================
+// Man Page Generation Action
+// ============================================================================
+
+void action_create_manpage(void) {
+  const char *template_path = "share/man/man1/ascii-chat.1.in";
+  const char *output_path = template_path;
+
+  // Get binary-level config
+  const options_config_t *config = options_preset_binary(NULL, NULL);
+  if (!config) {
+    (void)fprintf(stderr, "Error: Failed to get binary options config\n");
+    _exit(1);
+  }
+
+  // Generate merged man page (use default content file)
+  const char *content_file = "share/man/man1/ascii-chat.1.content";
+  asciichat_error_t err = options_config_generate_manpage_merged(
+      config, "ascii-chat", NULL, output_path, "Video chat in your terminal", template_path, content_file);
+
+  if (err != ASCIICHAT_OK) {
+    asciichat_error_context_t err_ctx;
+    if (HAS_ERRNO(&err_ctx)) {
+      (void)fprintf(stderr, "Error: %s\n", err_ctx.context_message);
+    } else {
+      (void)fprintf(stderr, "Error: Failed to generate man page template\n");
+    }
+    _exit(1);
+  }
+
+  (void)fprintf(stdout, "Generated merged man page template: %s\n", output_path);
+  (void)fprintf(stdout, "Review AUTO sections - manual edits will be lost on regeneration.\n");
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+// ============================================================================
+// Config Creation Action
+// ============================================================================
+
+void action_create_config(void) {
+  // Get binary-level config to access options
+  const options_config_t *config = options_preset_binary(NULL, NULL);
+  if (!config) {
+    (void)fprintf(stderr, "Error: Failed to get binary options config\n");
+    _exit(1);
+  }
+
+  // Parse just to get the config path if provided
+  // For now, use default path (can be extended to read from argv if needed)
+  options_t opts = {0};
+  char config_path[PLATFORM_MAX_PATH_LENGTH] = {0};
+  
+  // Try to get config path from options (if --config was set)
+  // For --config-create, we'll use default path unless extended
+  char *config_dir = get_config_dir();
+  if (!config_dir) {
+    (void)fprintf(stderr, "Error: Failed to determine default config directory\n");
+    _exit(1);
+  }
+  snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
+  SAFE_FREE(config_dir);
+
+  // Create config with default options
+  asciichat_error_t result = config_create_default(config_path, &opts);
+  if (result != ASCIICHAT_OK) {
+    asciichat_error_context_t err_ctx;
+    if (HAS_ERRNO(&err_ctx)) {
+      (void)fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+    } else {
+      (void)fprintf(stderr, "Error: Failed to create config file at %s\n", config_path);
+    }
+    _exit(1);
+  }
+
+  (void)fprintf(stdout, "Created default config file at: %s\n", config_path);
   (void)fflush(stdout);
   _exit(0);
 }

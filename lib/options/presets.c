@@ -8,6 +8,7 @@
 #include "options.h"
 #include "parsers.h"
 #include "actions.h"
+#include "config.h"
 #include "common.h"
 #include "platform/terminal.h"
 #include "video/palette.h"
@@ -568,6 +569,22 @@ const options_config_t *options_preset_binary(const char *program_name, const ch
 
   options_builder_add_bool(b, "version", '\0', offsetof(options_t, version), false, "Show version information",
                            "GENERAL", false, NULL);
+
+  // Configuration options
+  options_builder_add_string(b, "config", '\0', offsetof(options_t, config_file), "",
+                             "Load configuration from FILE", "CONFIGURATION", false, NULL, NULL);
+
+  // Man page generation
+  options_builder_add_action(b, "create-man-page-template", '\0', action_create_manpage,
+                             "Generate man page template from options builder (preserves manual content)"
+#ifndef NDEBUG
+                             " [output.1]"
+#endif
+                             , "CONFIGURATION");
+
+  // Config file creation
+  options_builder_add_action(b, "config-create", '\0', action_create_config,
+                             "Create default configuration file and exit", "CONFIGURATION");
 
   // Add logging options
   options_builder_add_logging_group(b);

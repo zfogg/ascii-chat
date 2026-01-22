@@ -945,6 +945,21 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     }
 
     case OPTION_TYPE_STRING: {
+      // Check if value is already set (non-empty and different from default)
+      const char *current_value = (const char *)field;
+      const char *default_val = NULL;
+      if (desc->default_value) {
+        default_val = *(const char *const *)desc->default_value;
+      }
+      
+      // If current value is set and different from default, skip setting default
+      if (current_value && current_value[0] != '\0') {
+        if (!default_val || strcmp(current_value, default_val) != 0) {
+          // Value is already set, skip
+          break;
+        }
+      }
+      
       const char *value = NULL;
       if (env_value) {
         value = env_value;

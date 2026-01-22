@@ -1106,7 +1106,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
   FILE *f = NULL;
   bool should_close = false;
-  
+
   if (output_path) {
     // Write to file
     f = fopen(output_path, "w");
@@ -1166,7 +1166,8 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   if (!description_section && existing_sections) {
     description_section = find_section(existing_sections, num_existing_sections, "DESCRIPTION");
   }
-  if (description_section && (description_section->type == SECTION_TYPE_MANUAL || description_section->type == SECTION_TYPE_UNMARKED)) {
+  if (description_section &&
+      (description_section->type == SECTION_TYPE_MANUAL || description_section->type == SECTION_TYPE_UNMARKED)) {
     if (!description_section->has_markers) {
       write_section_marker(f, "MANUAL", "DESCRIPTION", true);
     }
@@ -1311,7 +1312,8 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
   // Write remaining manual sections: FILES, EXIT STATUS, SECURITY, NOTES, BUGS, AUTHOR, SEE ALSO
   // Check content file first, then existing template
-  const char *manual_section_names[] = {"FILES", "EXIT STATUS", "SECURITY", "NOTES", "BUGS", "AUTHOR", "SEE ALSO", NULL};
+  const char *manual_section_names[] = {"FILES", "EXIT STATUS", "SECURITY", "NOTES",
+                                        "BUGS",  "AUTHOR",      "SEE ALSO", NULL};
 
   for (const char **section_name = manual_section_names; *section_name; section_name++) {
     const parsed_section_t *section = NULL;
@@ -1332,7 +1334,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
         const char *content = section->content;
         const char *content_limit = content + section->content_len;
         const char *write_end = content_limit;
-        
+
         // Simple approach: if content ends with a START marker line, trim it
         // Look backwards from the end for ".\" MANUAL-START:", ".\" AUTO-START:", or ".\" MERGE-START:"
         const char *p = content_limit;
@@ -1349,17 +1351,17 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
             line_start++;
           }
           // Check if it's a START marker
-          if ((line_start + 16 <= content_limit && line_start[0] == '.' && line_start[1] == '\\' && 
+          if ((line_start + 16 <= content_limit && line_start[0] == '.' && line_start[1] == '\\' &&
                line_start[2] == '"' && line_start[3] == ' ' && strncmp(line_start + 4, "MANUAL-START:", 13) == 0) ||
-              (line_start + 14 <= content_limit && line_start[0] == '.' && line_start[1] == '\\' && 
+              (line_start + 14 <= content_limit && line_start[0] == '.' && line_start[1] == '\\' &&
                line_start[2] == '"' && line_start[3] == ' ' && strncmp(line_start + 4, "AUTO-START:", 11) == 0) ||
-              (line_start + 15 <= content_limit && line_start[0] == '.' && line_start[1] == '\\' && 
+              (line_start + 15 <= content_limit && line_start[0] == '.' && line_start[1] == '\\' &&
                line_start[2] == '"' && line_start[3] == ' ' && strncmp(line_start + 4, "MERGE-START:", 12) == 0)) {
             // This is a START marker - trim it (go back to before this line)
             write_end = p;
           }
         }
-        
+
         // Also check for END markers followed by START markers (original logic)
         p = content;
         while (p < content_limit) {
@@ -1388,17 +1390,18 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
             // Check if next line is a START marker (could be on same line or next line)
             const char *check_pos = line_end;
             // Skip any whitespace/newlines
-            while (check_pos < content_limit && (*check_pos == ' ' || *check_pos == '\t' || *check_pos == '\n' || *check_pos == '\r')) {
+            while (check_pos < content_limit &&
+                   (*check_pos == ' ' || *check_pos == '\t' || *check_pos == '\n' || *check_pos == '\r')) {
               check_pos++;
             }
-              // Check if it's a START marker (pattern is: .\" MANUAL-START:)
-              // In file: period, backslash, double-quote, space
-              if ((check_pos + 16 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
-                   check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MANUAL-START:", 13) == 0) ||
-                  (check_pos + 14 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
-                   check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "AUTO-START:", 11) == 0) ||
-                  (check_pos + 15 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
-                   check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MERGE-START:", 12) == 0)) {
+            // Check if it's a START marker (pattern is: .\" MANUAL-START:)
+            // In file: period, backslash, double-quote, space
+            if ((check_pos + 16 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
+                 check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MANUAL-START:", 13) == 0) ||
+                (check_pos + 14 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
+                 check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "AUTO-START:", 11) == 0) ||
+                (check_pos + 15 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
+                 check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MERGE-START:", 12) == 0)) {
               // This START marker belongs to next section - stop writing at end of END marker line
               write_end = line_end;
               break;
@@ -1427,14 +1430,15 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
               line_end++;
             }
             const char *check_pos = line_end;
-            while (check_pos < content_limit && (*check_pos == ' ' || *check_pos == '\t' || *check_pos == '\n' || *check_pos == '\r')) {
+            while (check_pos < content_limit &&
+                   (*check_pos == ' ' || *check_pos == '\t' || *check_pos == '\n' || *check_pos == '\r')) {
               check_pos++;
             }
-            if ((check_pos + 16 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
+            if ((check_pos + 16 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
                  check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MANUAL-START:", 13) == 0) ||
-                (check_pos + 14 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
+                (check_pos + 14 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
                  check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "AUTO-START:", 11) == 0) ||
-                (check_pos + 15 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
+                (check_pos + 15 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
                  check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MERGE-START:", 12) == 0)) {
               write_end = line_end;
               break;
@@ -1463,14 +1467,15 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
               line_end++;
             }
             const char *check_pos = line_end;
-            while (check_pos < content_limit && (*check_pos == ' ' || *check_pos == '\t' || *check_pos == '\n' || *check_pos == '\r')) {
+            while (check_pos < content_limit &&
+                   (*check_pos == ' ' || *check_pos == '\t' || *check_pos == '\n' || *check_pos == '\r')) {
               check_pos++;
             }
-            if ((check_pos + 16 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
+            if ((check_pos + 16 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
                  check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MANUAL-START:", 13) == 0) ||
-                (check_pos + 14 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
+                (check_pos + 14 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
                  check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "AUTO-START:", 11) == 0) ||
-                (check_pos + 15 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' && 
+                (check_pos + 15 <= content_limit && check_pos[0] == '.' && check_pos[1] == '\\' &&
                  check_pos[2] == '"' && check_pos[3] == ' ' && strncmp(check_pos + 4, "MERGE-START:", 12) == 0)) {
               write_end = line_end;
               break;
@@ -1480,7 +1485,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           }
           p++;
         }
-        
+
         // Write content up to write_end
         if (write_end > content) {
           fwrite(content, 1, write_end - content, f);
@@ -1501,12 +1506,14 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
   // Add any sections from content file that weren't already written
   // Sections that are already written: NAME, SYNOPSIS, DESCRIPTION, USAGE, OPTIONS, EXAMPLES,
-  // PALETTES, RENDER MODES, CONFIGURATION, LIMITS, ENVIRONMENT, FILES, EXIT STATUS, SECURITY, NOTES, BUGS, AUTHOR, SEE ALSO
+  // PALETTES, RENDER MODES, CONFIGURATION, LIMITS, ENVIRONMENT, FILES, EXIT STATUS, SECURITY, NOTES, BUGS, AUTHOR, SEE
+  // ALSO
   if (content_sections) {
-    const char *written_section_names[] = {"NAME", "SYNOPSIS", "DESCRIPTION", "USAGE", "OPTIONS", "EXAMPLES",
-                                           "PALETTES", "RENDER MODES", "CONFIGURATION", "LIMITS", "ENVIRONMENT",
-                                           "FILES", "EXIT STATUS", "SECURITY", "NOTES", "BUGS", "AUTHOR", "SEE ALSO", NULL};
-    
+    const char *written_section_names[] = {
+        "NAME",         "SYNOPSIS",      "DESCRIPTION", "USAGE",       "OPTIONS", "EXAMPLES",    "PALETTES",
+        "RENDER MODES", "CONFIGURATION", "LIMITS",      "ENVIRONMENT", "FILES",   "EXIT STATUS", "SECURITY",
+        "NOTES",        "BUGS",          "AUTHOR",      "SEE ALSO",    NULL};
+
     for (size_t i = 0; i < num_content_sections; i++) {
       const parsed_section_t *content_section = &content_sections[i];
       // Only add if content exists and section name exists
@@ -1620,8 +1627,7 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
 
       // Check if we have content for this section from the file
       if (content_sections) {
-        const parsed_section_t *content_section =
-            find_section(content_sections, num_content_sections, section_name);
+        const parsed_section_t *content_section = find_section(content_sections, num_content_sections, section_name);
         if (content_section) {
           current_section_name = section_name;
           // Check if this is a MERGE section in template

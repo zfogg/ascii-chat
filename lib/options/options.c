@@ -20,6 +20,8 @@
 #include "options/discovery_service.h"
 #include "options/discovery.h"
 #include "options/validation.h"
+#include "options/manpage.h"
+#include "options/presets.h"
 #include "network/mdns/discovery.h"
 
 #include "options/config.h"
@@ -31,6 +33,7 @@
 #include "platform/util.h"
 #include "util/path.h"
 #include "network/mdns/discovery.h"
+#include "version.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -259,32 +262,18 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================
 
-  asciichat_mode_t detected_mode = MODE_SERVER; // Default mode
-  char detected_session_string[64] = {0};
-  int mode_index = -1;
-
-  // First, detect the mode from command-line arguments
-  asciichat_error_t mode_detect_result =
-      options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
-  if (mode_detect_result != ASCIICHAT_OK) {
-    return mode_detect_result;
-  }
-
-  opts.detected_mode = detected_mode;
-
-  // Check for binary-level --help, --version, or --config-create
-  // These only trigger if:
-  // 1. No mode was detected (mode_index == -1), OR
-  // 2. The option appears BEFORE the mode in argv
+  // Check for binary-level actions FIRST (before mode detection)
+  // These actions may take arguments, so we need to check them before mode detection
   bool show_help = false;
   bool show_version = false;
   bool create_config = false;
+  bool create_manpage = false;
   const char *config_create_path = NULL;
+  const char *manpage_output_path = NULL;   // Optional output path for final .1 file (debug builds)
+  const char *manpage_content_file = NULL; // Optional content file to merge (debug builds)
 
-  int search_limit = (mode_index == -1) ? argc : mode_index;
-  bool binary_level_log_file_set = false;  // Track if user explicitly set --log-file
-  bool binary_level_log_level_set = false; // Track if user explicitly set --log-level
-  for (int i = 1; i < search_limit; i++) {
+  // Quick scan for action flags (they may have arguments)
+  for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
         show_help = true;
@@ -296,12 +285,170 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
       if (strcmp(argv[i], "--config-create") == 0) {
         create_config = true;
-        // Check if next argument is a path (not a flag)
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           config_create_path = argv[i + 1];
         }
         break;
       }
+      if (strcmp(argv[i], "--create-man-page-template") == 0) {
+        create_manpage = true;
+#ifndef NDEBUG
+        // First optional arg: output .1 file path
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          manpage_output_path = argv[i + 1];
+          i++; // Skip this arg
+          // Second optional arg: content file path
+          if (i + 1 < argc && argv[i + 1][0] != '-') {
+            manpage_content_file = argv[i + 1];
+            i++; // Skip this arg too
+          }
+        }
+#endif
+        break;
+      }
+    }
+  }
+
+  // If we found an action, skip mode detection and handle it immediately
+  if (show_help || show_version || create_config || create_manpage) {
+    // Handle actions (they will exit)
+    if (show_help) {
+      opts.help = true;
+      options_state_set(&opts);
+      return ASCIICHAT_OK;
+    }
+    if (show_version) {
+      opts.version = true;
+      options_state_set(&opts);
+      return ASCIICHAT_OK;
+    }
+    if (create_config) {
+      // Handle --config-create: create default config file and exit
+      char config_path[PLATFORM_MAX_PATH_LENGTH];
+      if (config_create_path) {
+        SAFE_STRNCPY(config_path, config_create_path, sizeof(config_path));
+      } else {
+        char *config_dir = get_config_dir();
+        if (!config_dir) {
+          fprintf(stderr, "Error: Failed to determine default config directory\n");
+          return ERROR_CONFIG;
+        }
+        snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
+        SAFE_FREE(config_dir);
+      }
+      asciichat_error_t result = config_create_default(config_path, &opts);
+      if (result != ASCIICHAT_OK) {
+        asciichat_error_context_t err_ctx;
+        if (HAS_ERRNO(&err_ctx)) {
+          fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+        } else {
+          fprintf(stderr, "Error: Failed to create config file at %s\n", config_path);
+        }
+        return result;
+      }
+      printf("Created default config file at: %s\n", config_path);
+      exit(0);
+    }
+    if (create_manpage) {
+      // Handle --create-man-page-template: generate merged man page template to stdout
+      const char *template_path = "share/man/man1/ascii-chat.1.in";
+      const options_config_t *config = options_preset_binary(NULL, NULL);
+      if (!config) {
+        fprintf(stderr, "Error: Failed to get binary options config\n");
+        return ERROR_MEMORY;
+      }
+      // Pass NULL as output_path to write to stdout
+      // Use content file if provided, otherwise default to share/man/man1/ascii-chat.1.content
+      const char *content_file = manpage_content_file;
+      if (!content_file) {
+        // Default content file path
+        content_file = "share/man/man1/ascii-chat.1.content";
+      }
+      asciichat_error_t err = options_config_generate_manpage_merged(
+          config, "ascii-chat", NULL, NULL, "Video chat in your terminal", template_path, content_file);
+      options_config_destroy(config);
+      if (err != ASCIICHAT_OK) {
+        asciichat_error_context_t err_ctx;
+        if (HAS_ERRNO(&err_ctx)) {
+          fprintf(stderr, "Error: %s\n", err_ctx.context_message);
+        } else {
+          fprintf(stderr, "Error: Failed to generate man page template\n");
+        }
+        return err;
+      }
+#ifndef NDEBUG
+      // In debug builds, if output path provided, generate final .1 file
+      if (manpage_output_path) {
+        // First, write template to a temp file, then generate final man page
+        const char *temp_template = "/tmp/ascii-chat.1.in.tmp";
+        FILE *temp_file = fopen(temp_template, "w");
+        if (!temp_file) {
+          fprintf(stderr, "Error: Failed to create temp template file\n");
+          return ERROR_CONFIG;
+        }
+        // Regenerate template to temp file
+        const options_config_t *config2 = options_preset_binary(NULL, NULL);
+        if (!config2) {
+          fclose(temp_file);
+          fprintf(stderr, "Error: Failed to get binary options config\n");
+          return ERROR_MEMORY;
+        }
+        const char *content_file = manpage_content_file;
+        if (!content_file) {
+          content_file = "share/man/man1/ascii-chat.1.content";
+        }
+        err = options_config_generate_manpage_merged(
+            config2, "ascii-chat", NULL, temp_template, "Video chat in your terminal", template_path, content_file);
+        options_config_destroy(config2);
+        fclose(temp_file);
+        
+        if (err == ASCIICHAT_OK) {
+          const char *version_string = ASCII_CHAT_VERSION_FULL;
+          if (version_string[0] == 'v') {
+            version_string = version_string + 1;
+          }
+          err = options_config_generate_final_manpage(temp_template, manpage_output_path, version_string,
+                                                      manpage_content_file);
+          // Clean up temp file
+          if (remove(temp_template) != 0) {
+            // Non-fatal if cleanup fails
+          }
+          if (err != ASCIICHAT_OK) {
+            asciichat_error_context_t err_ctx;
+            if (HAS_ERRNO(&err_ctx)) {
+              fprintf(stderr, "Error generating final man page: %s\n", err_ctx.context_message);
+            } else {
+              fprintf(stderr, "Error: Failed to generate final man page\n");
+            }
+            return err;
+          }
+          fprintf(stderr, "Generated final man page: %s\n", manpage_output_path);
+        }
+      }
+#endif
+      exit(0);
+    }
+  }
+
+  // Now do mode detection (only if no action was found)
+  asciichat_mode_t detected_mode = MODE_SERVER; // Default mode
+  char detected_session_string[64] = {0};
+  int mode_index = -1;
+
+  asciichat_error_t mode_detect_result =
+      options_detect_mode(argc, argv, &detected_mode, detected_session_string, &mode_index);
+  if (mode_detect_result != ASCIICHAT_OK) {
+    return mode_detect_result;
+  }
+
+  opts.detected_mode = detected_mode;
+
+  // Check for binary-level options that can appear before or after mode
+  int search_limit = (mode_index == -1) ? argc : mode_index;
+  bool binary_level_log_file_set = false;  // Track if user explicitly set --log-file
+  bool binary_level_log_level_set = false; // Track if user explicitly set --log-level
+  for (int i = 1; i < search_limit; i++) {
+    if (argv[i][0] == '-') {
       // Handle -V and --verbose (stackable verbosity)
       if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
         // Check if next argument is a number (optional argument)
@@ -393,6 +540,69 @@ asciichat_error_t options_init(int argc, char **argv) {
 
     printf("Created default config file at: %s\n", config_path);
     exit(0); // Exit successfully after creating config
+  }
+
+  if (create_manpage) {
+    // Handle --create-man-page-template: generate merged man page template
+    const char *template_path = "share/man/man1/ascii-chat.1.in";
+    const options_config_t *config = options_preset_binary(NULL, NULL);
+    if (!config) {
+      fprintf(stderr, "Error: Failed to get binary options config\n");
+      return ERROR_MEMORY;
+    }
+
+    const char *content_file = "share/man/man1/ascii-chat.1.content";
+    asciichat_error_t err = options_config_generate_manpage_merged(
+        config, "ascii-chat", NULL, template_path, "Video chat in your terminal", template_path, content_file);
+
+    options_config_destroy(config);
+
+    if (err != ASCIICHAT_OK) {
+      asciichat_error_context_t err_ctx;
+      if (HAS_ERRNO(&err_ctx)) {
+        fprintf(stderr, "Error: %s\n", err_ctx.context_message);
+      } else {
+        fprintf(stderr, "Error: Failed to generate man page template\n");
+      }
+      return err;
+    }
+
+    printf("Generated merged man page template: %s\n", template_path);
+    printf("Review AUTO sections - manual edits will be lost on regeneration.\n");
+
+#ifndef NDEBUG
+    // In debug builds, if output path provided, generate final .1 file
+    if (manpage_output_path) {
+      // Get version string
+      const char *version_string = ASCII_CHAT_VERSION_FULL;
+      // Remove leading 'v' if present for man page (man pages typically don't include 'v')
+      if (version_string[0] == 'v') {
+        version_string = version_string + 1;
+      }
+
+      // Check if there's a second argument (content file path)
+      const char *content_file_path = NULL;
+      // manpage_output_path is the first arg after --create-man-page-template
+      // If there's another arg, it's the content file
+      // We need to check argv for this - but we already parsed it above
+      // For now, content_file_path is NULL (can be extended later)
+
+      err = options_config_generate_final_manpage(template_path, manpage_output_path, version_string,
+                                                   content_file_path);
+      if (err != ASCIICHAT_OK) {
+        asciichat_error_context_t err_ctx;
+        if (HAS_ERRNO(&err_ctx)) {
+          fprintf(stderr, "Error generating final man page: %s\n", err_ctx.context_message);
+        } else {
+          fprintf(stderr, "Error: Failed to generate final man page\n");
+        }
+        return err;
+      }
+      printf("Generated final man page: %s\n", manpage_output_path);
+    }
+#endif
+
+    exit(0); // Exit successfully after generating template
   }
 
   // ========================================================================
@@ -586,10 +796,20 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 4: Load Configuration Files
   // ========================================================================
 
+  // Extract --config value from argv before loading config files
+  const char *config_path_to_load = NULL;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
+      config_path_to_load = argv[i + 1];
+      break;
+    }
+  }
+
   // Discovery mode is client-like (uses terminal display, webcam, etc.)
   bool is_client_or_mirror =
       (detected_mode == MODE_CLIENT || detected_mode == MODE_MIRROR || detected_mode == MODE_DISCOVERY);
-  asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, NULL, false, &opts);
+  
+  asciichat_error_t config_result = config_load_system_and_user(is_client_or_mirror, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // ========================================================================

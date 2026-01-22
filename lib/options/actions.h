@@ -87,3 +87,20 @@ void action_help_acds(void);
  * Exits with code 0.
  */
 void action_help_discovery(void);
+
+/**
+ * @brief Generate man page template from options builder
+ *
+ * Generates a merged man page template preserving manual content.
+ * Outputs to share/man/man1/ascii-chat.1.in or specified path.
+ * Exits with code 0 on success, 1 on error.
+ */
+void action_create_manpage(void);
+
+/**
+ * @brief Create default configuration file and exit
+ *
+ * Creates a default configuration file at the default location
+ * (or specified path if extended). Exits with code 0 on success, 1 on error.
+ */
+void action_create_config(void);

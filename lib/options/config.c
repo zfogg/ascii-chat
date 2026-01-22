@@ -908,6 +908,12 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
 
   // Determine display path for error messages (before any early returns)
   const char *display_path = config_path ? config_path : config_path_expanded;
+  
+  // Log that we're attempting to load config (before logging is initialized, use stderr)
+  if (config_path) {
+    (void)fprintf(stderr, "Loading configuration from: %s\n", display_path);
+    (void)fflush(stderr);
+  }
 
   // Check if config file exists
   struct stat st;
@@ -992,6 +998,11 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   config_client_keys_set = false;
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
+  
+  // Log successful config load (use stderr since logging may not be initialized yet)
+  (void)fprintf(stderr, "Loaded configuration from: %s\n", display_path);
+  (void)fflush(stderr);
+  
   return ASCIICHAT_OK;
 }
 
