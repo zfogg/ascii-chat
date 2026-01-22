@@ -351,29 +351,29 @@ static const registry_entry_t g_options_registry[] = {
     // SECURITY GROUP (client, server, discovery)
     {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &g_default_encrypt_enabled, sizeof(bool),
      "Enable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0, "SSH/GPG key file path", "SECURITY",
      false, "ASCII_CHAT_KEY", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"password", '\0', OPTION_TYPE_STRING, offsetof(options_t, password), "", 0, "Shared password for authentication",
      "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"no-encrypt", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_encrypt), &g_default_no_encrypt, sizeof(bool),
-     "Disable encryption", "SECURITY", false, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+     "Disable encryption", "SECURITY", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, server_key), "", 0,
-     "Expected server public key (client)", "SECURITY", false, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     "Expected server public key (client)", "SECURITY", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0, "Allowed client keys (server)",
-     "SECURITY", false, NULL, NULL, false, false, OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Server and Discovery
+     "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"discovery-service-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
      "Discovery server public key for trust verification (SSH/GPG file, HTTPS URL, or github:user/gitlab:user)",
-     "SECURITY", false, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Client, Server, Discovery
+     "SECURITY", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure),
      &g_default_discovery_insecure, sizeof(bool),
-     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false, NULL, NULL, NULL, false,
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // NETWORK GROUP (general network options, various modes)
     {"port", 'p', OPTION_TYPE_STRING, offsetof(options_t, port), &g_default_port, 0, "Server port", "NETWORK", false,
@@ -389,19 +389,19 @@ static const registry_entry_t g_options_registry[] = {
     // WebRTC options
     {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &g_default_webrtc, sizeof(bool),
      "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY}, // Client, Server, Discovery
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &g_default_prefer_webrtc,
      sizeof(bool), "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL, NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"no-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_webrtc), &g_default_no_webrtc, sizeof(bool),
      "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &g_default_webrtc_skip_stun,
      sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
      &g_default_webrtc_disable_turn, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false, NULL,
-     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
 
     {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
      "ACDS: Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
