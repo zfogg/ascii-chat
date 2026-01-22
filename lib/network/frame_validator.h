@@ -41,8 +41,7 @@ asciichat_error_t frame_validate_legacy(size_t len, size_t expected_rgb_size);
  *
  * @ingroup network
  */
-asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compressed,
-                                     uint32_t *out_data_size);
+asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compressed, uint32_t *out_data_size);
 
 /**
  * @brief Check for overflow when adding header to data

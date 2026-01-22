@@ -44,8 +44,7 @@ asciichat_error_t frame_validate_legacy(size_t len, size_t expected_rgb_size) {
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compressed,
-                                     uint32_t *out_data_size) {
+asciichat_error_t frame_validate_new(void *data, size_t len, bool *out_compressed, uint32_t *out_data_size) {
   // Check minimum new format header size
   if (len < FRAME_HEADER_SIZE_NEW) {
     SET_ERRNO(ERROR_INVALID_FRAME, "New frame header too small: %zu bytes", len);

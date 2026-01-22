@@ -467,8 +467,8 @@ void *client_video_render_thread(void *arg) {
       int sources_count = 0; // Track number of video sources in this frame
 
       log_debug("About to call create_mixed_ascii_frame_for_client for client %u", thread_client_id);
-      char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
-                                                              &frame_size, NULL, &sources_count);
+      char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
+                                                              false, &frame_size, NULL, &sources_count);
       log_debug("create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
                 (void *)ascii_frame, frame_size, sources_count);
 
