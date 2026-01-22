@@ -363,6 +363,9 @@ int capture_init() {
   config.audio_fallback_to_mic = true;
   config.mic_audio_ctx = audio_get_context();
 
+  // Add seek timestamp if specified
+  config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+
   // Create capture context using session library
   g_capture_ctx = session_capture_create(&config);
   if (!g_capture_ctx) {

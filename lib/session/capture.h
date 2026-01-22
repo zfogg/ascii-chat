@@ -102,6 +102,9 @@ typedef struct {
   /** @brief Microphone audio context for fallback (borrowed, not owned) */
   void *mic_audio_ctx;
 
+  /** @brief Seek to this timestamp after opening media (0.0 = no seek) */
+  double initial_seek_timestamp;
+
   /** @brief Optional: callback to check if initialization should be cancelled (e.g., shutdown signal) */
   session_capture_should_exit_fn should_exit_callback;
 

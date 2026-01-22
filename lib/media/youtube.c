@@ -238,10 +238,12 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
   char command[2048];
   // Note: %(url)s is for yt-dlp's -O option, not snprintf format string
   // Using literal string to avoid format string warnings
+  // Try with cookies first, fall back to no cookies
   int cmd_ret = snprintf(command, sizeof(command), "%s%s%s",
                          "yt-dlp --quiet --no-warnings "
-                         "-f 'b' "
-                         "-O '%(url)s' '",
+                         "-f 'b' -O '%(url)s' "
+                         "--cookies-from-browser firefox "
+                         "'",
                          youtube_url,
                          "' 2>/dev/null");
 

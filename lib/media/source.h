@@ -322,6 +322,33 @@ asciichat_error_t media_source_rewind(media_source_t *source);
 asciichat_error_t media_source_sync_audio_to_video(media_source_t *source);
 
 /**
+ * @brief Seek media source to timestamp
+ * @param source Media source (must not be NULL)
+ * @param timestamp_sec Timestamp in seconds
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Seeks both video and audio decoders to the specified timestamp.
+ * Handles shared decoder locking for YouTube URLs.
+ *
+ * **Behavior:**
+ * - FILE sources: Seek to timestamp (if seekable)
+ * - STDIN sources: ERROR_NOT_SUPPORTED (cannot seek stdin)
+ * - WEBCAM/TEST sources: No-op (always returns OK)
+ *
+ * **Thread safety:**
+ * - For YouTube URLs with shared decoder, automatically locks during seek
+ * - Safe to call from any thread
+ *
+ * @note FILE sources only (returns OK for others)
+ * @note STDIN sources: ERROR_NOT_SUPPORTED (cannot seek stdin)
+ * @note Negative timestamps are rejected
+ * @note Seeks are approximate (may land before requested timestamp)
+ *
+ * @ingroup media
+ */
+asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec);
+
+/**
  * @brief Get media source type
  * @param source Media source (must not be NULL)
  * @return Media source type

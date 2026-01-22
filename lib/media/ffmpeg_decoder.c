@@ -17,6 +17,7 @@
 #include <libswscale/swscale.h>
 #include <libswresample/swresample.h>
 #include <string.h>
+#include <inttypes.h>
 
 /* ============================================================================
  * Constants
@@ -727,7 +728,22 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
   }
 
-  // Flush codec buffers
+  // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
+  int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
+
+  // Seek to timestamp with frame-based seeking to nearest keyframe
+  // Note: av_seek_frame can only seek to keyframes in most video codecs
+  int seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
+  if (seek_ret < 0) {
+    // Fallback: try without AVSEEK_FLAG_FRAME
+    seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
+  }
+
+  if (seek_ret < 0) {
+    return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to timestamp %.2f seconds", timestamp_sec);
+  }
+
+  // Flush codec buffers AFTER seeking to discard any buffered frames from before the seek
   if (decoder->video_codec_ctx) {
     avcodec_flush_buffers(decoder->video_codec_ctx);
   }
@@ -735,16 +751,9 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
     avcodec_flush_buffers(decoder->audio_codec_ctx);
   }
 
-  // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
-  int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
-
-  // Seek to timestamp
-  if (av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD) < 0) {
-    return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to timestamp %.2f seconds", timestamp_sec);
-  }
-
+  // Reset state to indicate no current position is known until next frame is read
   decoder->eof_reached = false;
-  decoder->audio_buffer_offset = 0;
+  decoder->audio_buffer_offset = 0;  // Discard any buffered audio samples from before seek
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 

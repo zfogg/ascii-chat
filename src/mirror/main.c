@@ -230,6 +230,9 @@ int mirror_main(void) {
     capture_config.loop = false;
   }
 
+  // Add seek timestamp if specified
+  capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
     log_fatal("Failed to initialize capture source");
@@ -251,6 +254,9 @@ int mirror_main(void) {
         if (audio_init(audio_ctx) == ASCIICHAT_OK) {
           // Store the media source in audio context for direct callback reading
           audio_ctx->media_source = session_capture_get_media_source(capture);
+
+          // Enable playback-only mode (no microphone input in mirror mode)
+          audio_ctx->playback_only = true;
 
           // Disable jitter buffering for local file playback
           if (audio_ctx->playback_buffer) {

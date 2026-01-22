@@ -214,6 +214,24 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     media_source_set_loop(ctx->source, true);
   }
 
+  // Perform initial seek if requested
+  if (config->initial_seek_timestamp > 0.0) {
+    log_info("Seeking to %.2f seconds", config->initial_seek_timestamp);
+    asciichat_error_t seek_err = media_source_seek(ctx->source, config->initial_seek_timestamp);
+    if (seek_err != ASCIICHAT_OK) {
+      log_warn("Failed to seek to %.2f seconds: %d", config->initial_seek_timestamp, seek_err);
+      // Continue anyway - seeking is best-effort
+    } else {
+      log_debug("Successfully seeked to %.2f seconds", config->initial_seek_timestamp);
+      // Codec buffers are flushed during seek, so next frame read will use correct position
+
+      // Reset timing state after seek to prevent FPS calculation confusion
+      // (frame_count and elapsed_time must match the new playback position)
+      ctx->frame_count = 0;
+      ctx->start_time_ns = time_get_ns();
+    }
+  }
+
   // Initialize adaptive sleep for frame rate limiting
   // Calculate baseline sleep time in nanoseconds from target FPS
   uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;

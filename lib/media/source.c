@@ -137,46 +137,34 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // IMPORTANT: YouTube URLs cannot support concurrent decoders on the same URL
-    // (YouTube server rejects multiple simultaneous connections to same stream URL)
-    // So we use a SHARED decoder for both video and audio with YouTube URLs.
-    // For local files, we use SEPARATE decoders to allow independent read rates.
+    // Create separate decoders for video and audio
+    // Both YouTube URLs and local files use separate decoders to allow independent read rates
+    // This prevents oscillation issues when video and audio threads read at different times
+
+    source->video_decoder = ffmpeg_decoder_create(effective_path);
+    if (!source->video_decoder) {
+      log_error("Failed to open media file for video: %s", effective_path);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      SAFE_FREE(source);
+      return NULL;
+    }
+
+    source->audio_decoder = ffmpeg_decoder_create(effective_path);
+    if (!source->audio_decoder) {
+      log_error("Failed to open media file for audio: %s", effective_path);
+      ffmpeg_decoder_destroy(source->video_decoder);
+      source->video_decoder = NULL;
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      SAFE_FREE(source);
+      return NULL;
+    }
+    source->is_shared_decoder = false;
 
     if (is_youtube) {
-      // YouTube: Create single shared decoder for both video and audio
-      source->video_decoder = ffmpeg_decoder_create(effective_path);
-      if (!source->video_decoder) {
-        log_error("Failed to open YouTube stream: %s", effective_path);
-        SAFE_FREE(source->file_path);
-        SAFE_FREE(source->original_youtube_url);
-        SAFE_FREE(source);
-        return NULL;
-      }
-      // Both audio and video use the same decoder
-      source->audio_decoder = source->video_decoder;
-      source->is_shared_decoder = true;
-      log_debug("Media source: YouTube (shared decoder for video/audio)");
+      log_debug("Media source: YouTube (separate video/audio decoders)");
     } else {
-      // Local file: Create separate decoders for video and audio
-      // Each maintains its own stream position, allowing independent read rates
-      source->video_decoder = ffmpeg_decoder_create(effective_path);
-      if (!source->video_decoder) {
-        log_error("Failed to open media file for video: %s", effective_path);
-        SAFE_FREE(source->file_path);
-        SAFE_FREE(source);
-        return NULL;
-      }
-
-      source->audio_decoder = ffmpeg_decoder_create(effective_path);
-      if (!source->audio_decoder) {
-        log_error("Failed to open media file for audio: %s", effective_path);
-        ffmpeg_decoder_destroy(source->video_decoder);
-        source->video_decoder = NULL;
-        SAFE_FREE(source->file_path);
-        SAFE_FREE(source);
-        return NULL;
-      }
-      source->is_shared_decoder = false;
       log_debug("Media source: File '%s' (separate video/audio decoders)", effective_path);
     }
     break;
@@ -297,7 +285,13 @@ image_t *media_source_read_video(media_source_t *source) {
       pthread_mutex_lock(&source->decoder_mutex);
     }
 
+    double pos_before = ffmpeg_decoder_get_position(source->video_decoder);
     image_t *frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
+    double pos_after = ffmpeg_decoder_get_position(source->video_decoder);
+
+    if (source->is_shared_decoder && pos_before >= 0 && pos_after >= 0 && (pos_after < pos_before - 1.0 || pos_after > pos_before + 5.0)) {
+      log_warn("VIDEO POSITION JUMP: %.2f -> %.2f (delta: %.2f sec)", pos_before, pos_after, pos_after - pos_before);
+    }
 
     // Handle EOF with loop
     if (!frame && ffmpeg_decoder_at_end(source->video_decoder)) {
@@ -530,6 +524,61 @@ asciichat_error_t media_source_sync_audio_to_video(media_source_t *source) {
   }
 
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec) {
+  if (!source) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Media source is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (timestamp_sec < 0.0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Timestamp must be >= 0.0");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // WEBCAM and TEST sources: no-op (always return OK)
+  if (source->type == MEDIA_SOURCE_WEBCAM || source->type == MEDIA_SOURCE_TEST) {
+    return ASCIICHAT_OK;
+  }
+
+  // STDIN: not supported
+  if (source->type == MEDIA_SOURCE_STDIN) {
+    SET_ERRNO(ERROR_NOT_SUPPORTED, "Cannot seek stdin");
+    return ERROR_NOT_SUPPORTED;
+  }
+
+  asciichat_error_t result = ASCIICHAT_OK;
+
+  // For YouTube URLs with shared decoder, lock during seek
+  if (source->is_shared_decoder) {
+    pthread_mutex_lock(&source->decoder_mutex);
+  }
+
+  // Seek video decoder
+  if (source->video_decoder) {
+    asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(
+        source->video_decoder, timestamp_sec);
+    if (video_err != ASCIICHAT_OK) {
+      log_warn("Video seek to %.2f failed: error code %d", timestamp_sec, video_err);
+      result = video_err;
+    }
+  }
+
+  // Seek audio decoder (if separate from video)
+  if (source->audio_decoder && !source->is_shared_decoder) {
+    asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(
+        source->audio_decoder, timestamp_sec);
+    if (audio_err != ASCIICHAT_OK) {
+      log_warn("Audio seek to %.2f failed: error code %d", timestamp_sec, audio_err);
+      result = audio_err;
+    }
+  }
+
+  if (source->is_shared_decoder) {
+    pthread_mutex_unlock(&source->decoder_mutex);
+  }
+  return result;
 }
 
 media_source_type_t media_source_get_type(media_source_t *source) {

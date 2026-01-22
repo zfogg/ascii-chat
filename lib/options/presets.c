@@ -50,6 +50,102 @@ static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
 }
 
 /**
+ * @brief Custom parser for --seek flag
+ *
+ * Accepts both "hh:mm:ss.ms" format and plain seconds format.
+ * Examples:
+ * - "30" = 30 seconds
+ * - "30.5" = 30.5 seconds
+ * - "1:30" = 1 minute 30 seconds (90 seconds)
+ * - "1:30.5" = 1 minute 30.5 seconds (90.5 seconds)
+ * - "0:1:30.5" = 1 minute 30.5 seconds (90.5 seconds)
+ * - "1:2:30.5" = 1 hour 2 minutes 30.5 seconds (3750.5 seconds)
+ */
+static bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
+  if (!arg || arg[0] == '\0') {
+    if (error_msg) {
+      *error_msg = strdup("--seek requires a timestamp argument");
+    }
+    return false;
+  }
+
+  double *timestamp = (double *)dest;
+  char *endptr;
+  long strtol_result;
+
+  // Count colons to determine format
+  int colon_count = 0;
+  for (const char *p = arg; *p; p++) {
+    if (*p == ':') colon_count++;
+  }
+
+  if (colon_count == 0) {
+    // Plain seconds format: "30" or "30.5"
+    *timestamp = strtod(arg, &endptr);
+    if (*endptr != '\0' || *timestamp < 0.0) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected non-negative seconds");
+      }
+      return false;
+    }
+    return true;
+  } else if (colon_count == 1) {
+    // MM:SS or MM:SS.ms format
+    strtol_result = strtol(arg, &endptr, 10);
+    if (*endptr != ':' || strtol_result < 0) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
+      }
+      return false;
+    }
+    long minutes = strtol_result;
+    double seconds = strtod(endptr + 1, &endptr);
+    if (*endptr != '\0' && *endptr != '.' && *endptr != '\0') {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
+      }
+      return false;
+    }
+    *timestamp = minutes * 60.0 + seconds;
+    return true;
+  } else if (colon_count == 2) {
+    // HH:MM:SS or HH:MM:SS.ms format
+    strtol_result = strtol(arg, &endptr, 10);
+    if (*endptr != ':' || strtol_result < 0) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
+      }
+      return false;
+    }
+    long hours = strtol_result;
+
+    strtol_result = strtol(endptr + 1, &endptr, 10);
+    if (*endptr != ':' || strtol_result < 0 || strtol_result >= 60) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: minutes must be 0-59");
+      }
+      return false;
+    }
+    long minutes = strtol_result;
+
+    double seconds = strtod(endptr + 1, &endptr);
+    if (*endptr != '\0') {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
+      }
+      return false;
+    }
+    *timestamp = hours * 3600.0 + minutes * 60.0 + seconds;
+    return true;
+  } else {
+    if (error_msg) {
+      *error_msg = strdup("Invalid timestamp format");
+    }
+    return false;
+  }
+}
+
+/**
  * @brief Add binary-level logging options to a builder
  *
  * This ensures consistent option definitions across all modes.
@@ -323,6 +419,12 @@ void options_builder_add_media_group(options_builder_t *b) {
 
   options_builder_add_bool(b, "loop", 'l', offsetof(options_t, media_loop), false,
                            "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL);
+
+  options_builder_add_callback(b, "seek", 's', offsetof(options_t, media_seek_timestamp),
+                               &(double){0.0},  // Default: no seeking
+                               sizeof(double), parse_timestamp,
+                               "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)",
+                               "MEDIA", false, NULL);
 }
 
 // ============================================================================

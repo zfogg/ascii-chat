@@ -161,6 +161,7 @@ typedef struct {
   bool initialized;           ///< True if context has been initialized
   bool running;               ///< True if duplex stream is active
   bool separate_streams;      ///< True if using separate input/output streams
+  bool playback_only;         ///< True for playback-only mode (mirror), skip microphone capture
   _Atomic bool shutting_down; ///< True when shutdown started - callback outputs silence
   mutex_t state_mutex;        ///< Mutex protecting context state
 

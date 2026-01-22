@@ -374,12 +374,14 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   // STEP 2: Copy raw mic samples → worker for AEC3 processing (~0.5ms)
-  if (input && ctx->raw_capture_rb) {
+  // Skip microphone capture in playback-only mode (mirror)
+  if (!ctx->playback_only && input && ctx->raw_capture_rb) {
     audio_ring_buffer_write(ctx->raw_capture_rb, input, (int)num_samples);
   }
 
   // STEP 3: Copy raw speaker samples → worker for AEC3 reference (~0.5ms)
   // This is CRITICAL for AEC3 - worker needs exact render signal at same time as capture
+  // In playback-only mode, we still write the render reference for consistency
   if (output && ctx->raw_render_rb) {
     audio_ring_buffer_write(ctx->raw_render_rb, output, (int)num_samples);
   }
@@ -488,20 +490,27 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     log_warn_every(LOG_RATE_FAST, "PortAudio output underflow (separate stream)");
   }
 
-  // STEP 1: Read processed playback from worker → speakers
-  if (output && ctx->processed_playback_rb) {
-    size_t samples_read = audio_ring_buffer_read(ctx->processed_playback_rb, output, num_samples);
+  // STEP 1: Read audio source
+  size_t samples_read = 0;
+  if (output) {
+    // For mirror mode with media file: read audio directly from media source
+    if (ctx->media_source) {
+      samples_read = media_source_read_audio((void *)ctx->media_source, output, num_samples);
+    } else if (ctx->processed_playback_rb) {
+      // Network mode: read from processed playback buffer (worker output)
+      samples_read = audio_ring_buffer_read(ctx->processed_playback_rb, output, num_samples);
+    }
+
+    // Fill remaining with silence if underrun
     if (samples_read < num_samples) {
       SAFE_MEMSET(output + samples_read, (num_samples - samples_read) * sizeof(float), 0,
                   (num_samples - samples_read) * sizeof(float));
     }
 
     // STEP 2: Copy to render buffer for input callback (AEC3 reference)
-    if (ctx->render_buffer) {
+    if (ctx->render_buffer && samples_read > 0) {
       audio_ring_buffer_write(ctx->render_buffer, output, (int)samples_read);
     }
-  } else if (output) {
-    SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
   }
 
   // STEP 3: Signal worker
@@ -561,7 +570,8 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   }
 
   // STEP 1: Copy raw mic samples → worker for AEC3 processing
-  if (input && ctx->raw_capture_rb) {
+  // Skip microphone capture in playback-only mode (mirror)
+  if (!ctx->playback_only && input && ctx->raw_capture_rb) {
     audio_ring_buffer_write(ctx->raw_capture_rb, input, (int)num_samples);
   }
 
@@ -1266,29 +1276,35 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     return ASCIICHAT_OK;
   }
 
-  // Setup input parameters
-  PaStreamParameters inputParams;
-  if (GET_OPTION(microphone_index) >= 0) {
-    inputParams.device = GET_OPTION(microphone_index);
-  } else {
-    inputParams.device = Pa_GetDefaultInputDevice();
-  }
+  // Setup input parameters (skip if playback-only mode)
+  PaStreamParameters inputParams = {0};
+  const PaDeviceInfo *inputInfo = NULL;
+  bool has_input = false;
 
-  if (inputParams.device == paNoDevice) {
-    mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "No input device available");
-  }
+  if (!ctx->playback_only) {
+    if (GET_OPTION(microphone_index) >= 0) {
+      inputParams.device = GET_OPTION(microphone_index);
+    } else {
+      inputParams.device = Pa_GetDefaultInputDevice();
+    }
 
-  const PaDeviceInfo *inputInfo = Pa_GetDeviceInfo(inputParams.device);
-  if (!inputInfo) {
-    mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Input device info not found");
-  }
+    if (inputParams.device == paNoDevice) {
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "No input device available");
+    }
 
-  inputParams.channelCount = AUDIO_CHANNELS;
-  inputParams.sampleFormat = paFloat32;
-  inputParams.suggestedLatency = inputInfo->defaultLowInputLatency;
-  inputParams.hostApiSpecificStreamInfo = NULL;
+    inputInfo = Pa_GetDeviceInfo(inputParams.device);
+    if (!inputInfo) {
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Input device info not found");
+    }
+
+    has_input = true;
+    inputParams.channelCount = AUDIO_CHANNELS;
+    inputParams.sampleFormat = paFloat32;
+    inputParams.suggestedLatency = inputInfo->defaultLowInputLatency;
+    inputParams.hostApiSpecificStreamInfo = NULL;
+  }
 
   // Setup output parameters
   PaStreamParameters outputParams;
@@ -1315,11 +1331,17 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   // Store device rates for diagnostics
-  ctx->input_device_rate = inputInfo->defaultSampleRate;
+  ctx->input_device_rate = has_input ? inputInfo->defaultSampleRate : 0;
   ctx->output_device_rate = has_output ? outputInfo->defaultSampleRate : 0;
 
   log_info("Opening audio:");
-  log_info("  Input:  %s (%.0f Hz)", inputInfo->name, inputInfo->defaultSampleRate);
+  if (has_input) {
+    log_info("  Input:  %s (%.0f Hz)", inputInfo->name, inputInfo->defaultSampleRate);
+  } else if (ctx->playback_only) {
+    log_info("  Input:  (playback-only mode - no microphone)");
+  } else {
+    log_info("  Input:  (none)");
+  }
   if (has_output) {
     log_info("  Output: %s (%.0f Hz)", outputInfo->name, outputInfo->defaultSampleRate);
   } else {
@@ -1327,9 +1349,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   // Check if sample rates differ - ALSA full-duplex doesn't handle this well
-  // If no output, always use separate streams (input-only)
-  bool rates_differ = has_output && (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate);
-  bool try_separate = rates_differ || !has_output;
+  // If no input or no output, always use separate streams
+  bool rates_differ = has_input && has_output && (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate);
+  bool try_separate = rates_differ || !has_input || !has_output;
   PaError err = paNoError;
 
   if (!try_separate) {
@@ -1352,13 +1374,15 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   }
 
   if (try_separate) {
-    // Fall back to separate streams (needed when sample rates differ or input-only mode)
-    if (has_output) {
+    // Fall back to separate streams (needed when sample rates differ or input-only/playback-only mode)
+    if (has_output && has_input) {
       log_info("Using separate input/output streams (sample rates differ: %.0f vs %.0f Hz)",
                inputInfo->defaultSampleRate, outputInfo->defaultSampleRate);
       log_info("  Will resample: buffer at %.0f Hz → output at %.0f Hz", (double)AUDIO_SAMPLE_RATE,
                outputInfo->defaultSampleRate);
-    } else {
+    } else if (has_output) {
+      log_info("Using output-only mode (playback-only for mirror/media)");
+    } else if (has_input) {
       log_info("Using input-only mode (no output device available)");
     }
 
@@ -1418,33 +1442,37 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       }
     }
 
-    // Open input stream - use pipeline sample rate (AUDIO_SAMPLE_RATE)
-    // In input-only mode, we don't need to match output device rate
-    double input_stream_rate = AUDIO_SAMPLE_RATE;
-    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-                        input_callback, ctx);
-    bool input_ok = (err == paNoError);
+    // Open input stream only if we have input (skip for playback-only mode)
+    bool input_ok = !has_input; // If no input, mark as OK (skip)
+    if (has_input) {
+      // Use pipeline sample rate (AUDIO_SAMPLE_RATE)
+      // In input-only mode, we don't need to match output device rate
+      double input_stream_rate = AUDIO_SAMPLE_RATE;
+      err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, input_stream_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                          input_callback, ctx);
+      input_ok = (err == paNoError);
 
-    // If input failed, try device 0 as fallback (HDMI on BeaglePlay)
-    if (!input_ok) {
-      log_debug("Input failed - trying device 0 as fallback");
-      PaStreamParameters fallback_input_params = inputParams;
-      fallback_input_params.device = 0;
-      const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
-      if (device_0_info && device_0_info->maxInputChannels > 0) {
-        err = Pa_OpenStream(&ctx->input_stream, &fallback_input_params, NULL, input_stream_rate,
-                            AUDIO_FRAMES_PER_BUFFER, paClipOff, input_callback, ctx);
-        if (err == paNoError) {
-          log_info("Input stream opened on device 0 (fallback from default)");
-          input_ok = true;
-        } else {
-          log_warn("Fallback also failed on device 0: %s", Pa_GetErrorText(err));
+      // If input failed, try device 0 as fallback (HDMI on BeaglePlay)
+      if (!input_ok) {
+        log_debug("Input failed - trying device 0 as fallback");
+        PaStreamParameters fallback_input_params = inputParams;
+        fallback_input_params.device = 0;
+        const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
+        if (device_0_info && device_0_info->maxInputChannels > 0) {
+          err = Pa_OpenStream(&ctx->input_stream, &fallback_input_params, NULL, input_stream_rate,
+                              AUDIO_FRAMES_PER_BUFFER, paClipOff, input_callback, ctx);
+          if (err == paNoError) {
+            log_info("Input stream opened on device 0 (fallback from default)");
+            input_ok = true;
+          } else {
+            log_warn("Fallback also failed on device 0: %s", Pa_GetErrorText(err));
+          }
         }
       }
-    }
 
-    if (!input_ok) {
-      log_warn("Failed to open input stream: %s", Pa_GetErrorText(err));
+      if (!input_ok) {
+        log_warn("Failed to open input stream: %s", Pa_GetErrorText(err));
+      }
     }
 
     // Check if we got at least one stream working

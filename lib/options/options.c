@@ -159,9 +159,29 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
         // Skip the argument if needed
         if (takes_arg && i + 1 < argc) {
           i++; // Skip required argument
-        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-' &&
-                   isdigit((unsigned char)argv[i + 1][0])) {
-          i++; // Skip optional numeric argument
+        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
+          // For optional arguments, skip if it doesn't look like a mode/session string
+          const char *next_arg = argv[i + 1];
+          bool looks_like_mode_or_session = false;
+
+          // Check if it looks like a mode name
+          const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", NULL};
+          for (int j = 0; mode_names[j] != NULL; j++) {
+            if (strcmp(next_arg, mode_names[j]) == 0) {
+              looks_like_mode_or_session = true;
+              break;
+            }
+          }
+
+          // Check if it looks like a session string (word-word-word)
+          if (!looks_like_mode_or_session && is_session_string(next_arg)) {
+            looks_like_mode_or_session = true;
+          }
+
+          // If it doesn't look like a mode/session, it's the optional argument for this option
+          if (!looks_like_mode_or_session) {
+            i++; // Skip optional argument
+          }
         }
       }
       continue;
@@ -262,6 +282,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   const char *config_create_path = NULL;
 
   int search_limit = (mode_index == -1) ? argc : mode_index;
+  bool binary_level_log_file_set = false;  // Track if user explicitly set --log-file
+  bool binary_level_log_level_set = false; // Track if user explicitly set --log-level
   for (int i = 1; i < search_limit; i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -305,6 +327,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           char *error_msg = NULL;
           if (parse_log_level(argv[i + 1], &opts.log_level, &error_msg)) {
+            binary_level_log_level_set = true;
             i++; // Skip the level argument
           } else {
             if (error_msg) {
@@ -318,6 +341,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
+          binary_level_log_file_set = true;
           i++; // Skip the file argument
         }
       }
@@ -464,7 +488,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
   // Debug: MODE.log in current working directory (e.g., ./server.log)
-  char *log_dir = get_log_dir();
+  // SKIP this if user already set --log-file or -L at binary level
+  if (!binary_level_log_file_set) {
+    char *log_dir = get_log_dir();
   if (log_dir) {
     // Determine log filename based on mode
     const char *log_filename;
@@ -529,6 +555,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
     SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
   }
+  }  // Close: if (!binary_level_log_file_set)
 
   // Encryption options default to disabled/empty
   opts.no_encrypt = 0;
@@ -596,13 +623,12 @@ asciichat_error_t options_init(int argc, char **argv) {
     result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid detected mode: %d", detected_mode);
   }
 
-  // RESTORE binary-level parsed values if they were different from defaults
-  // This ensures --log-level and --log-file from the binary-level parser take precedence
-  if (saved_log_level != DEFAULT_LOG_LEVEL) {
+  // RESTORE binary-level parsed values if they were explicitly set
+  // This ensures --log-level and --log-file from the binary-level parser take precedence over mode-specific defaults
+  if (binary_level_log_level_set) {
     opts.log_level = saved_log_level;
   }
-  // Also restore log_file if it was explicitly set via -L or --log-file
-  if (saved_log_file[0] != '\0' && strcmp(saved_log_file, opts.log_file) != 0) {
+  if (binary_level_log_file_set) {
     SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
   }
 

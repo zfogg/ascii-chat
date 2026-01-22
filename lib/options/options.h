@@ -693,6 +693,7 @@ typedef struct options_state {
   char media_url[OPTIONS_BUFF_SIZE];  ///< Network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over media_file
   bool media_loop;                    ///< Loop media file playback
   bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
+  double media_seek_timestamp;        ///< Seek to timestamp in seconds before playback
 
   // ============================================================================
   // Display Options
