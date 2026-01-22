@@ -79,17 +79,6 @@ extern "C" {
  */
 asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts);
 
-/**
- * @brief Print discovery mode usage/help text
- *
- * Displays comprehensive help for all discovery options.
- *
- * @param stream Output stream (stdout for --help, stderr for errors)
- *
- * @see usage_client()
- * @see usage_server()
- */
-void usage_discovery(FILE *stream);
 
 #ifdef __cplusplus
 }

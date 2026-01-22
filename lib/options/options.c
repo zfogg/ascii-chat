@@ -141,31 +141,37 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
  * @return true if this option exists in mirror mode config
  */
 static bool is_mirror_mode_option(const char *opt_name, char short_name) {
-  // Get mirror mode config
-  const options_config_t *mirror_config = options_preset_mirror(NULL, NULL);
-  if (!mirror_config) {
+  // Get unified config
+  const options_config_t *config = options_preset_unified(NULL, NULL);
+  if (!config) {
     return false;
   }
 
-  // Check if this option exists in mirror config
+  // Check if this option exists and applies to mirror mode
   bool found = false;
-  for (size_t i = 0; i < mirror_config->num_descriptors; i++) {
-    const option_descriptor_t *desc = &mirror_config->descriptors[i];
+  for (size_t i = 0; i < config->num_descriptors; i++) {
+    const option_descriptor_t *desc = &config->descriptors[i];
 
     // Check by long name
     if (opt_name && desc->long_name && strcmp(opt_name, desc->long_name) == 0) {
-      found = true;
+      // Check if this option applies to mirror mode
+      if (desc->mode_bitmask & (1 << MODE_MIRROR)) {
+        found = true;
+      }
       break;
     }
 
     // Check by short name
     if (short_name != '\0' && desc->short_name == short_name) {
-      found = true;
+      // Check if this option applies to mirror mode
+      if (desc->mode_bitmask & (1 << MODE_MIRROR)) {
+        found = true;
+      }
       break;
     }
   }
 
-  options_config_destroy(mirror_config);
+  options_config_destroy(config);
   return found;
 }
 
@@ -559,7 +565,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         // Default content file path
         content_file = "share/man/man1/ascii-chat.1.content";
       }
-      const options_config_t *config = options_preset_binary(NULL, NULL);
+      const options_config_t *config = options_preset_unified(NULL, NULL);
       if (!config) {
         fprintf(stderr, "Error: Failed to get binary options config\n");
         return ERROR_MEMORY;
@@ -697,7 +703,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     // Handle --create-man-page-template: generate merged man page template
     // The .1.in file is the existing template to read from (not the output)
     const char *existing_template_path = "share/man/man1/ascii-chat.1.in";
-    const options_config_t *config = options_preset_binary(NULL, NULL);
+    const options_config_t *config = options_preset_unified(NULL, NULL);
     if (!config) {
       fprintf(stderr, "Error: Failed to get binary options config\n");
       return ERROR_MEMORY;
@@ -908,24 +914,19 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // ========================================================================
-  // STAGE 4: Build Dynamic Schema from Options Builder Configs
+  // STAGE 4: Build Dynamic Schema from Unified Options Config
   // ========================================================================
 
-  // Build the config schema dynamically from all mode configs
+  // Build the config schema dynamically from the unified config
   // This generates TOML keys, CLI flags, categories, and types from builder data
-  const options_config_t *configs[] = {
-      options_preset_server(NULL, NULL),   // Index 0: server
-      options_preset_client(NULL, NULL),   // Index 1: client
-      options_preset_mirror(NULL, NULL),   // Index 2: mirror
-      options_preset_acds(NULL, NULL),     // Index 3: acds
-      options_preset_discovery(NULL, NULL) // Index 4: discovery
-  };
-  const size_t num_configs = sizeof(configs) / sizeof(configs[0]);
-
-  asciichat_error_t schema_build_result = config_schema_build_from_configs(configs, num_configs);
-  if (schema_build_result != ASCIICHAT_OK) {
-    // Schema build failed, but continue with static schema as fallback
-    (void)schema_build_result;
+  const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+  if (unified_config) {
+    asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
+    if (schema_build_result != ASCIICHAT_OK) {
+      // Schema build failed, but continue with static schema as fallback
+      (void)schema_build_result;
+    }
+    options_config_destroy(unified_config);
   }
 
   // ========================================================================

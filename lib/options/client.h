@@ -112,65 +112,6 @@ extern "C" {
  */
 asciichat_error_t parse_client_options(int argc, char **argv, options_t *opts);
 
-/**
- * @brief Print client mode usage/help text
- *
- * Displays comprehensive help for all client options, including:
- * - Description of client mode
- * - Positional argument format and examples
- * - All client-specific flags with descriptions
- * - Shared flags (palette, encryption, output)
- * - Usage examples for common scenarios
- *
- * **Output Format**:
- * ```
- * Client mode: Connect to ascii-chat server and display video grid
- *
- * Usage: ascii-chat client [OPTIONS] [address][:port]
- *
- * Positional Arguments:
- *   [address][:port]        Server address with optional port (default: localhost:27224)
- *                           Examples: localhost, 192.168.1.100:8080, [::1]:27224
- *
- * Network Options:
- *   -p, --port PORT         Server port (default: 27224)
- *                           Note: Conflicts with port in positional argument
- *
- * Webcam Options:
- *   -c, --webcam-index N    Webcam device index (default: 0)
- *   -f, --webcam-flip       Mirror webcam horizontally (default: true)
- *   --test-pattern          Use test pattern instead of real webcam
- *   --list-webcams          List available webcams and exit
- *
- * [... continues with all option categories ...]
- * ```
- *
- * @param stream Output stream (stdout for --help, stderr for errors)
- *
- * @note Does not exit - caller decides whether to exit after printing
- * @note Always includes mode description, positional args, and all flags
- * @note Examples show real-world usage patterns
- *
- * Example usage:
- * @code
- * // Print help and exit successfully
- * if (help_requested) {
- *     usage_client(stdout);
- *     exit(0);
- * }
- *
- * // Print usage hint on error
- * if (parse_error) {
- *     fprintf(stderr, "Error: Invalid option\n\n");
- *     usage_client(stderr);
- *     exit(1);
- * }
- * @endcode
- *
- * @see usage_server()
- * @see usage_mirror()
- */
-void usage_client(FILE *stream);
 
 #ifdef __cplusplus
 }

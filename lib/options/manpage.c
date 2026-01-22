@@ -280,7 +280,7 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
   } else {
     // Generate complete USAGE section from all modes
     // Binary-level usage (from binary preset)
-    const options_config_t *binary_config = options_preset_binary(NULL, NULL);
+    const options_config_t *binary_config = options_preset_unified(NULL, NULL);
     if (binary_config && binary_config->num_usage_lines > 0) {
       for (size_t i = 0; i < binary_config->num_usage_lines; i++) {
         const usage_descriptor_t *usage = &binary_config->usage_lines[i];
@@ -304,43 +304,54 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
 
     // Mode-specific usage (server, client, mirror, discovery-service)
     const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
-    for (const char **mode_ptr = modes; *mode_ptr; mode_ptr++) {
+    const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+    
+    for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
       const char *mode = *mode_ptr;
-      const options_config_t *mode_config = NULL;
-
+      asciichat_mode_t mode_enum;
+      
+      // Map mode name to enum
       if (strcmp(mode, "server") == 0) {
-        mode_config = options_preset_server(NULL, NULL);
+        mode_enum = MODE_SERVER;
       } else if (strcmp(mode, "client") == 0) {
-        mode_config = options_preset_client(NULL, NULL);
+        mode_enum = MODE_CLIENT;
       } else if (strcmp(mode, "mirror") == 0) {
-        mode_config = options_preset_mirror(NULL, NULL);
+        mode_enum = MODE_MIRROR;
       } else if (strcmp(mode, "discovery-service") == 0) {
-        mode_config = options_preset_acds(NULL, NULL);
+        mode_enum = MODE_DISCOVERY_SERVER;
+      } else {
+        continue;
       }
 
-      if (mode_config && mode_config->num_usage_lines > 0) {
-        for (size_t i = 0; i < mode_config->num_usage_lines; i++) {
-          const usage_descriptor_t *usage = &mode_config->usage_lines[i];
-          fprintf(f, ".TP\n");
-          fprintf(f, ".B ascii-chat");
-          if (usage->mode) {
-            fprintf(f, " %s", usage->mode);
-          }
-          if (usage->positional) {
-            fprintf(f, " %s", usage->positional);
-          }
-          if (usage->show_options) {
-            fprintf(f, " [mode-options...]");
-          }
-          fprintf(f, "\n");
-          if (usage->description) {
-            fprintf(f, "%s\n", escape_groff_special(usage->description));
+      // Print usage lines for this mode
+      if (unified_config->num_usage_lines > 0) {
+        for (size_t i = 0; i < unified_config->num_usage_lines; i++) {
+          const usage_descriptor_t *usage = &unified_config->usage_lines[i];
+          
+          // Filter by mode
+          if (usage->mode && strcmp(usage->mode, mode) == 0) {
+            fprintf(f, ".TP\n");
+            fprintf(f, ".B ascii-chat");
+            if (usage->mode) {
+              fprintf(f, " %s", usage->mode);
+            }
+            if (usage->positional) {
+              fprintf(f, " %s", usage->positional);
+            }
+            if (usage->show_options) {
+              fprintf(f, " [mode-options...]");
+            }
+            fprintf(f, "\n");
+            if (usage->description) {
+              fprintf(f, "%s\n", escape_groff_special(usage->description));
+            }
           }
         }
       }
-      if (mode_config) {
-        options_config_destroy(mode_config);
-      }
+    }
+    
+    if (unified_config) {
+      options_config_destroy(unified_config);
     }
   }
 
@@ -580,7 +591,7 @@ static void write_examples_section_all_modes(FILE *f) {
   fprintf(f, ".SH EXAMPLES\n");
 
   // Binary-level examples (from binary preset)
-  const options_config_t *binary_config = options_preset_binary(NULL, NULL);
+  const options_config_t *binary_config = options_preset_unified(NULL, NULL);
   if (binary_config && binary_config->num_examples > 0) {
     for (size_t i = 0; i < binary_config->num_examples; i++) {
       const example_descriptor_t *example = &binary_config->examples[i];
@@ -603,42 +614,37 @@ static void write_examples_section_all_modes(FILE *f) {
 
   // Mode-specific examples (server, client, mirror, discovery-service)
   const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
-  for (const char **mode_ptr = modes; *mode_ptr; mode_ptr++) {
+  const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+  
+  for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
     const char *mode = *mode_ptr;
-    const options_config_t *mode_config = NULL;
 
-    if (strcmp(mode, "server") == 0) {
-      mode_config = options_preset_server(NULL, NULL);
-    } else if (strcmp(mode, "client") == 0) {
-      mode_config = options_preset_client(NULL, NULL);
-    } else if (strcmp(mode, "mirror") == 0) {
-      mode_config = options_preset_mirror(NULL, NULL);
-    } else if (strcmp(mode, "discovery-service") == 0) {
-      mode_config = options_preset_acds(NULL, NULL);
-    }
+    if (unified_config->num_examples > 0) {
+      for (size_t i = 0; i < unified_config->num_examples; i++) {
+        const example_descriptor_t *example = &unified_config->examples[i];
+        
+        // Filter by mode
+        if (example->mode && strcmp(example->mode, mode) == 0) {
+          fprintf(f, ".TP\n");
+          fprintf(f, ".B ascii-chat");
+          if (example->mode) {
+            fprintf(f, " %s", example->mode);
+          }
+          if (example->args) {
+            fprintf(f, " %s", example->args);
+          }
+          fprintf(f, "\n");
 
-    if (mode_config && mode_config->num_examples > 0) {
-      for (size_t i = 0; i < mode_config->num_examples; i++) {
-        const example_descriptor_t *example = &mode_config->examples[i];
-
-        fprintf(f, ".TP\n");
-        fprintf(f, ".B ascii-chat");
-        if (example->mode) {
-          fprintf(f, " %s", example->mode);
-        }
-        if (example->args) {
-          fprintf(f, " %s", example->args);
-        }
-        fprintf(f, "\n");
-
-        if (example->description) {
-          fprintf(f, "%s\n", escape_groff_special(example->description));
+          if (example->description) {
+            fprintf(f, "%s\n", escape_groff_special(example->description));
+          }
         }
       }
     }
-    if (mode_config) {
-      options_config_destroy(mode_config);
-    }
+  }
+  
+  if (unified_config) {
+    options_config_destroy(unified_config);
   }
 
   fprintf(f, "\n");

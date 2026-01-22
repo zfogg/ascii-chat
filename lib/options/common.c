@@ -518,27 +518,74 @@ void update_dimensions_to_terminal_size(options_t *opts) {
 }
 
 // ============================================================================
-// Generic Usage Function (Dispatches to Mode-Specific Functions)
+// Generic Usage Function (Unified Implementation)
 // ============================================================================
 
+typedef struct {
+  asciichat_mode_t mode;
+  const char *program_name;
+  const char *description;
+} mode_metadata_t;
+
+static const mode_metadata_t mode_info[] = {
+    {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
+    {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},
+    {MODE_MIRROR, "ascii-chat mirror", "render ascii on localhost with no network or audio"},
+    {MODE_DISCOVERY_SERVER, "ascii-chat discovery-service", "secure p2p session signalling"},
+    {MODE_DISCOVERY, "ascii-chat", "P2P video chat with automatic host negotiation"},
+};
+
 void usage(FILE *desc, asciichat_mode_t mode) {
-  switch (mode) {
-  case MODE_SERVER:
-    usage_server(desc);
-    break;
-  case MODE_CLIENT:
-    usage_client(desc);
-    break;
-  case MODE_MIRROR:
-    usage_mirror(desc);
-    break;
-  case MODE_DISCOVERY_SERVER:
-    usage_acds(desc);
-    break;
-  default:
-    (void)fprintf(desc, "Unknown mode\n");
-    break;
+  if (!desc) {
+    return;
   }
+
+  // Find mode metadata
+  const mode_metadata_t *metadata = NULL;
+  for (size_t i = 0; i < sizeof(mode_info) / sizeof(mode_info[0]); i++) {
+    if (mode_info[i].mode == mode) {
+      metadata = &mode_info[i];
+      break;
+    }
+  }
+
+  if (!metadata) {
+    (void)fprintf(desc, "Unknown mode\n");
+    return;
+  }
+
+  // Get unified config
+  const options_config_t *config = options_preset_unified(metadata->program_name, metadata->description);
+  if (!config) {
+    (void)fprintf(desc, "Error: Failed to create options config\n");
+    return;
+  }
+
+  // Special handling for MODE_DISCOVERY: show binary-level options first
+  if (mode == MODE_DISCOVERY) {
+    // Print program name and description (color mode name magenta)
+    const char *space = strchr(metadata->program_name, ' ');
+    if (space) {
+      int binary_len = space - metadata->program_name;
+      (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, metadata->program_name,
+                    colored_string(LOG_COLOR_FATAL, space + 1), metadata->description);
+    } else {
+      (void)fprintf(desc, "%s - %s\n\n", metadata->program_name, metadata->description);
+    }
+
+    // Print project links
+    print_project_links(desc);
+    (void)fprintf(desc, "\n");
+
+    // Print binary-level options first for discovery mode
+    options_print_help_for_mode(config, (asciichat_mode_t)-1, metadata->program_name, metadata->description, desc);
+  } else {
+    // Standard mode: use unified help printing function
+    options_print_help_for_mode(config, mode, metadata->program_name, metadata->description, desc);
+  }
+
+  // Clean up the config
+  options_config_destroy(config);
 }
 
 // ============================================================================

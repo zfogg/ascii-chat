@@ -12,6 +12,7 @@
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
+#include "options/common.h"
 #include "options/server.h"
 #include "options/client.h"
 #include "options/mirror.h"
@@ -251,31 +252,31 @@ void action_show_version(void) {
 // ============================================================================
 
 void action_help_server(void) {
-  usage_server(stdout);
+  usage(stdout, MODE_SERVER);
   (void)fflush(stdout);
   _exit(0);
 }
 
 void action_help_client(void) {
-  usage_client(stdout);
+  usage(stdout, MODE_CLIENT);
   (void)fflush(stdout);
   _exit(0);
 }
 
 void action_help_mirror(void) {
-  usage_mirror(stdout);
+  usage(stdout, MODE_MIRROR);
   (void)fflush(stdout);
   _exit(0);
 }
 
 void action_help_acds(void) {
-  usage_acds(stdout);
+  usage(stdout, MODE_DISCOVERY_SERVER);
   (void)fflush(stdout);
   _exit(0);
 }
 
 void action_help_discovery(void) {
-  usage_discovery(stdout);
+  usage(stdout, MODE_DISCOVERY);
   (void)fflush(stdout);
   _exit(0);
 }
@@ -289,7 +290,7 @@ void action_create_manpage(void) {
   const char *output_path = template_path;
 
   // Get binary-level config
-  const options_config_t *config = options_preset_binary(NULL, NULL);
+  const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     (void)fprintf(stderr, "Error: Failed to get binary options config\n");
     _exit(1);
@@ -322,7 +323,7 @@ void action_create_manpage(void) {
 
 void action_create_config(void) {
   // Get binary-level config to access options
-  const options_config_t *config = options_preset_binary(NULL, NULL);
+  const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     (void)fprintf(stderr, "Error: Failed to get binary options config\n");
     _exit(1);

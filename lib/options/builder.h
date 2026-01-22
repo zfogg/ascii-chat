@@ -702,56 +702,7 @@ void options_builder_add_mode(options_builder_t *builder, const char *name, cons
  * @param description Optional program description
  * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_binary(const char *program_name, const char *description);
-
-/**
- * @brief Get server mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat server")
- * @param description Optional program description (defaults to "Start ascii-chat server")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_server(const char *program_name, const char *description);
-
-/**
- * @brief Get client mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat client")
- * @param description Optional program description (defaults to "Connect to ascii-chat server")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_client(const char *program_name, const char *description);
-
-/**
- * @brief Get mirror mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat mirror")
- * @param description Optional program description (defaults to "Local webcam viewing (no network)")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_mirror(const char *program_name, const char *description);
-
-/**
- * @brief Get acds mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat acds")
- * @param description Optional program description (defaults to "ascii-chat Discovery Service")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_acds(const char *program_name, const char *description);
-
-/**
- * @brief Get discovery mode options preset
- *
- * Discovery mode allows participants to join a session and dynamically become
- * the host based on NAT quality. Combines client-like options (display, webcam,
- * audio) with ACDS discovery options.
- *
- * @param program_name Optional program name (defaults to "ascii-chat discovery")
- * @param description Optional program description
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_discovery(const char *program_name, const char *description);
+const options_config_t *options_preset_unified(const char *program_name, const char *description);
 
 // ============================================================================
 // Parsing and Validation

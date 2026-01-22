@@ -18,36 +18,6 @@
 const options_config_t *options_preset_unified(const char *program_name, const char *description);
 
 /**
- * @brief Create binary-level options preset (DEPRECATED - use options_preset_unified)
- */
-const options_config_t *options_preset_binary(const char *program_name, const char *description);
-
-/**
- * @brief Create server mode options preset
- */
-const options_config_t *options_preset_server(const char *program_name, const char *description);
-
-/**
- * @brief Create client mode options preset
- */
-const options_config_t *options_preset_client(const char *program_name, const char *description);
-
-/**
- * @brief Create mirror mode options preset
- */
-const options_config_t *options_preset_mirror(const char *program_name, const char *description);
-
-/**
- * @brief Create ACDS (discovery service) mode options preset
- */
-const options_config_t *options_preset_acds(const char *program_name, const char *description);
-
-/**
- * @brief Create discovery mode options preset
- */
-const options_config_t *options_preset_discovery(const char *program_name, const char *description);
-
-/**
  * @brief Add binary-level logging options to a builder
  */
 void options_builder_add_logging_group(options_builder_t *b);

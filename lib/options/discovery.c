@@ -37,8 +37,8 @@
 // ============================================================================
 
 asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config =
-      options_preset_discovery("ascii-chat", "P2P video chat with automatic host negotiation");
+  // Use unified config and parse everything (validation will catch mode-specific issues)
+  const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
   }
@@ -86,36 +86,3 @@ asciichat_error_t parse_discovery_options(int argc, char **argv, options_t *opts
   return ASCIICHAT_OK;
 }
 
-// ============================================================================
-// Discovery Usage Text
-// ============================================================================
-
-void usage_discovery(FILE *desc) {
-  const options_config_t *config =
-      options_preset_discovery("ascii-chat", "P2P video chat with automatic host negotiation");
-  if (!config) {
-    (void)fprintf(desc, "Error: Failed to create options config\n");
-    return;
-  }
-
-  // For discovery mode, show BINARY options FIRST, then mode-specific options
-  // Print program name and description (color mode name magenta)
-  const char *space = strchr(config->program_name, ' ');
-  if (space) {
-    int binary_len = space - config->program_name;
-    (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, config->program_name,
-                  colored_string(LOG_COLOR_FATAL, space + 1), config->description);
-  } else {
-    (void)fprintf(desc, "%s - %s\n\n", config->program_name, config->description);
-  }
-
-  // Print project links
-  print_project_links(desc);
-  (void)fprintf(desc, "\n");
-
-  // Print binary-level options first for discovery mode
-  options_print_help_for_mode(config, (asciichat_mode_t)-1, config->program_name, config->description, desc);
-
-  // Clean up
-  options_config_destroy(config);
-}

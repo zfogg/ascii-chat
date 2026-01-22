@@ -782,7 +782,7 @@ Test(options, usage_client) {
   FILE *devnull = fopen("/dev/null", "w");
   cr_assert_not_null(devnull);
 
-  usage_client(devnull);
+  usage(devnull, MODE_CLIENT);
 
   fclose(devnull);
 }
@@ -791,7 +791,7 @@ Test(options, usage_server) {
   FILE *devnull = fopen("/dev/null", "w");
   cr_assert_not_null(devnull);
 
-  usage_server(devnull);
+  usage(devnull, MODE_SERVER);
 
   fclose(devnull);
 }
@@ -801,9 +801,9 @@ Test(options, usage_function) {
   cr_assert_not_null(devnull);
 
   // Test all three usage functions (client, server, mirror)
-  usage_client(devnull);
-  usage_server(devnull);
-  usage_mirror(devnull);
+  usage(devnull, MODE_CLIENT);
+  usage(devnull, MODE_SERVER);
+  usage(devnull, MODE_MIRROR);
 
   fclose(devnull);
 }

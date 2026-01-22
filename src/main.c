@@ -108,8 +108,8 @@ static void print_usage(void) {
          ASCII_CHAT_DESCRIPTION_EMOJI_R);
   printf("\n");
 
-  // Get binary options config with full metadata
-  const options_config_t *config = options_preset_binary(NULL, NULL);
+  // Get unified options config with full metadata
+  const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     fprintf(stderr, "Error: Failed to create options config\n");
     return;
