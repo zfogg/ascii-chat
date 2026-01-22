@@ -235,6 +235,7 @@ static const int g_default_max_clients = OPT_MAX_CLIENTS_DEFAULT;
 static const int g_default_reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 
 static const char *g_default_discovery_server = OPT_ENDPOINT_DISCOVERY_SERVICE;
+static const int g_default_discovery_port = OPT_ACDS_PORT_INT_DEFAULT;
 static const bool g_default_webrtc = OPT_WEBRTC_DEFAULT;
 static const bool g_default_discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
 static const bool g_default_discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
@@ -480,6 +481,16 @@ static const registry_entry_t g_options_registry[] = {
     {"database", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
      "Path to SQLite database for discovery service", "DATABASE", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_DISCOVERY_SVC},
+    {"discovery-server", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_server), &g_default_discovery_server, 0,
+     "Discovery service address (for ACDS registration)", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"discovery-port", '\0', OPTION_TYPE_INT, offsetof(options_t, discovery_port), &g_default_discovery_port, sizeof(int),
+     "Discovery service port", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"discovery-expose-ip", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_expose_ip),
+     &g_default_discovery_expose_ip, sizeof(bool),
+     "Allow public IP disclosure in discovery sessions (requires confirmation)", "NETWORK", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity),
      &g_default_require_server_identity, sizeof(bool), "ACDS: require servers to provide signed Ed25519 identity",
      "SECURITY", false, NULL, NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
