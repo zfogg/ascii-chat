@@ -10,6 +10,7 @@
 #include "platform/abstraction.h"
 #include "platform/system.h"
 #include "util/path.h"
+#include "util/string.h"
 #include "util/time.h"
 #include "util/utf8.h"
 #include <stdarg.h>
@@ -96,8 +97,7 @@ static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
-                 message);                                                                                             \
+    safe_fprintf(stderr, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
     platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
     platform_write(g_log.file, message, strlen(message));                                                              \
     platform_write(g_log.file, "\n", 1);                                                                               \
@@ -108,8 +108,7 @@ static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
-                 message);                                                                                             \
+    safe_fprintf(stderr, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
     platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
     platform_write(g_log.file, message, strlen(message));                                                              \
     platform_write(g_log.file, "\n", 1);                                                                               \
@@ -679,13 +678,13 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   const char *rel_file = extract_project_relative_path(file);
   uint64_t tid = asciichat_thread_current_id();
   if (use_colors) {
-    // Use specific colors for file/function info: file=yellow, line=magenta, function=blue, tid=cyan
-    // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta)
+    // Use specific colors for file/function info: file=yellow, line=magenta, function=blue, tid=grey
+    // Array indices: 0=DEV(Blue), 1=DEBUG(Cyan), 2=INFO(Green), 3=WARN(Yellow), 4=ERROR(Red), 5=FATAL(Magenta), 6=GREY
     const char *file_color = colors[3]; // WARN: Yellow for file paths
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
-    const char *tid_color = colors[1];  // DEBUG: Cyan for thread ID
-    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [%stid:%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color,
+    const char *tid_color = colors[6];  // GREY: Grey for thread ID
+    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color,
                       timestamp, reset, color, level_string, reset, tid_color, tid, reset, file_color, rel_file, reset,
                       line_color, line, reset, func_color, func, reset, reset, newline_or_not);
   } else {

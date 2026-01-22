@@ -16,6 +16,7 @@
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/time.h"
+#include "util/string.h"
 #include "platform/system.h"
 #include "common.h"
 #include "log/logging.h"
@@ -93,8 +94,7 @@ void log_labeled(const char *label, log_color_t color, const char *message, ...)
   char *formatted_message = format_message(message, args);
   va_end(args);
 
-  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOG_COLOR_RESET),
-               formatted_message);
+  safe_fprintf(stderr, "%s: %s\n", colored_string(color, label), formatted_message);
 
   log_file("%s: %s", label, formatted_message);
 
@@ -329,8 +329,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   if (context->context_message) {
-    safe_fprintf(stderr, "%s  Context:%s %s\n", log_level_color(LOG_COLOR_WARN), log_level_color(LOG_COLOR_RESET),
-                 context->context_message);
+    safe_fprintf(stderr, "  %s %s\n", colored_string(LOG_COLOR_WARN, "Context:"), context->context_message);
     log_file("  Context: %s", context->context_message);
   }
 
