@@ -15,11 +15,11 @@ trap cleanup EXIT INT TERM
 rm -f /tmp/server.log /tmp/client_stderr.log "$FRAME_FILE"
 echo "Starting discovery server..."
 ssh sidechain "pkill -9 ascii-chat 2>/dev/null || true; sleep 1; rm -f ~/.ascii-chat/acds.db* /tmp/acds.log 2>/dev/null || true"
-ssh sidechain "nohup bash -c 'WEBCAM_DISABLED=1 timeout 120 /opt/ascii-chat/build/bin/ascii-chat discovery-service 0.0.0.0 :: --port $DISCOVERY_PORT > /tmp/acds.log 2>&1' > /dev/null 2>&1 &"
+ssh sidechain "nohup bash -c 'timeout 120 /opt/ascii-chat/build/bin/ascii-chat --log-file /tmp/acds.log discovery-service 0.0.0.0 :: --port $DISCOVERY_PORT 2>&1' > /dev/null 2>&1 &"
 sleep 5
 
 echo "Starting server..."
-echo "y" | WEBCAM_DISABLED=1 timeout 25 $BIN/ascii-chat \
+echo "y" | timeout 25 $BIN/ascii-chat \
   --log-file /tmp/server.log \
   server 127.0.0.1 :: \
   --port $SERVER_PORT \
@@ -60,8 +60,7 @@ echo "Capturing frame via WebRTC snapshot..."
 
 # Run client and capture frame output
 # Snapshot mode will output ASCII frame to stdout, errors to stderr
-set -x
-WEBCAM_DISABLED=1 timeout 6 $BIN/ascii-chat \
+timeout 6 $BIN/ascii-chat --log-file /tmp/client.log \
   "$SESSION" \
   --test-pattern \
   --prefer-webrtc \
