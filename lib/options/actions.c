@@ -149,13 +149,13 @@ void action_show_capabilities(void) {
   max_label_width = MAX(max_label_width, strlen(label_detection));
   max_label_width = MAX(max_label_width, strlen(label_bitmask));
 
-#define PRINT_CAP_LINE(label, value_str, value_color) \
-  do { \
-    (void)fprintf(stdout, "  %s", colored_string(LOG_COLOR_GREY, label)); \
-    for (size_t i = strlen(label); i < max_label_width; i++) { \
-      (void)fprintf(stdout, " "); \
-    } \
-    (void)fprintf(stdout, " %s\n", colored_string(value_color, value_str)); \
+#define PRINT_CAP_LINE(label, value_str, value_color)                                                                  \
+  do {                                                                                                                 \
+    (void)fprintf(stdout, "  %s", colored_string(LOG_COLOR_GREY, label));                                              \
+    for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
+      (void)fprintf(stdout, " ");                                                                                      \
+    }                                                                                                                  \
+    (void)fprintf(stdout, " %s\n", colored_string(value_color, value_str));                                            \
   } while (0)
 
   // Print Color Level
@@ -188,7 +188,8 @@ void action_show_capabilities(void) {
   PRINT_CAP_LINE(label_colorterm, caps.colorterm[0] ? caps.colorterm : "(not set)", LOG_COLOR_DEV);
 
   // Print Detection Reliable
-  PRINT_CAP_LINE(label_detection, caps.detection_reliable ? "Yes" : "No", caps.detection_reliable ? LOG_COLOR_INFO : LOG_COLOR_ERROR);
+  PRINT_CAP_LINE(label_detection, caps.detection_reliable ? "Yes" : "No",
+                 caps.detection_reliable ? LOG_COLOR_INFO : LOG_COLOR_ERROR);
 
   // Print Capabilities Bitmask
   char bitmask_str[32];

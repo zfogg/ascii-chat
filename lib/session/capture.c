@@ -189,11 +189,11 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   // (Allows reusing media source from probing phase to avoid redundant yt-dlp calls)
   if (config->media_source) {
     ctx->source = config->media_source;
-    ctx->source_owned = false;  // Caller owns this source
+    ctx->source_owned = false; // Caller owns this source
     log_debug("Using pre-created media source (avoids redundant YouTube extraction)");
   } else {
     ctx->source = media_source_create(config->type, config->path);
-    ctx->source_owned = true;   // We own this source and must destroy it
+    ctx->source_owned = true; // We own this source and must destroy it
   }
 
   if (!ctx->source) {

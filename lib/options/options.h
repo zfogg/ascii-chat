@@ -694,8 +694,8 @@ typedef struct options_state {
   bool media_loop;                    ///< Loop media file playback
   bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
   double media_seek_timestamp;        ///< Seek to timestamp in seconds before playback
-  char cookies_from_browser[256];     ///< Browser/keyring for cookies: empty=default, or "chrome"/"firefox"/etc to specify
-  bool no_cookies_from_browser;       ///< Disable reading cookies from browser (--no-cookies-from-browser flag)
+  char cookies_from_browser[256]; ///< Browser/keyring for cookies: empty=default, or "chrome"/"firefox"/etc to specify
+  bool no_cookies_from_browser;   ///< Disable reading cookies from browser (--no-cookies-from-browser flag)
 
   // ============================================================================
   // Display Options

@@ -117,7 +117,8 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
         // Note: youtube_extract_stream_url already logs the error via SET_ERRNO on first attempt
         // On cached failures, it returns silently. Only log here if it's not a cached failure.
         // We detect this by checking if there's already an error context (from youtube_extract_stream_url's SET_ERRNO)
-        log_debug("Failed to extract YouTube stream URL (error: %d) - error logged by extraction function", extract_err);
+        log_debug("Failed to extract YouTube stream URL (error: %d) - error logged by extraction function",
+                  extract_err);
         SAFE_FREE(source);
         return NULL;
       }
@@ -292,7 +293,8 @@ image_t *media_source_read_video(media_source_t *source) {
     image_t *frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
     double pos_after = ffmpeg_decoder_get_position(source->video_decoder);
 
-    if (source->is_shared_decoder && pos_before >= 0 && pos_after >= 0 && (pos_after < pos_before - 1.0 || pos_after > pos_before + 5.0)) {
+    if (source->is_shared_decoder && pos_before >= 0 && pos_after >= 0 &&
+        (pos_after < pos_before - 1.0 || pos_after > pos_before + 5.0)) {
       log_warn("VIDEO POSITION JUMP: %.2f -> %.2f (delta: %.2f sec)", pos_before, pos_after, pos_after - pos_before);
     }
 
@@ -560,8 +562,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   // Seek video decoder
   if (source->video_decoder) {
-    asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(
-        source->video_decoder, timestamp_sec);
+    asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source->video_decoder, timestamp_sec);
     if (video_err != ASCIICHAT_OK) {
       log_warn("Video seek to %.2f failed: error code %d", timestamp_sec, video_err);
       result = video_err;
@@ -570,8 +571,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   // Seek audio decoder (if separate from video)
   if (source->audio_decoder && !source->is_shared_decoder) {
-    asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(
-        source->audio_decoder, timestamp_sec);
+    asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, timestamp_sec);
     if (audio_err != ASCIICHAT_OK) {
       log_warn("Audio seek to %.2f failed: error code %d", timestamp_sec, audio_err);
       result = audio_err;

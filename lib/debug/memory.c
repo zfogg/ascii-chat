@@ -528,13 +528,13 @@ void debug_memory_report(void) {
     max_label_width = MAX(max_label_width, strlen(label_free));
     max_label_width = MAX(max_label_width, strlen(label_diff));
 
-#define PRINT_MEM_LINE(label, value_str) \
-  do { \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label))); \
-    for (size_t i = strlen(label); i < max_label_width; i++) { \
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " ")); \
-    } \
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str)); \
+#define PRINT_MEM_LINE(label, value_str)                                                                               \
+  do {                                                                                                                 \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+    }                                                                                                                  \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str));                                               \
   } while (0)
 
     PRINT_MEM_LINE(label_total, pretty_total);
@@ -565,7 +565,8 @@ void debug_memory_report(void) {
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
     }
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", colored_string(diff == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
+    SAFE_IGNORE_PRINTF_RESULT(
+        safe_fprintf(stderr, " %s\n", colored_string(diff == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
 
 #undef PRINT_MEM_LINE
 
@@ -573,7 +574,8 @@ void debug_memory_report(void) {
       if (ensure_mutex_initialized()) {
         mutex_lock(&g_mem.mutex);
 
-        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
+        SAFE_IGNORE_PRINTF_RESULT(
+            safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
         mem_block_t *curr = g_mem.head;
         while (curr) {
           char pretty_size[64];
@@ -581,26 +583,27 @@ void debug_memory_report(void) {
           const char *file_location = strip_project_path(curr->file);
 
           // Determine color based on unit (MB=red, KB=yellow, B=magenta)
-          log_color_t size_color = LOG_COLOR_FATAL;  // Default to magenta for bytes
+          log_color_t size_color = LOG_COLOR_FATAL; // Default to magenta for bytes
           if (strstr(pretty_size, "MB")) {
-            size_color = LOG_COLOR_ERROR;  // Red for megabytes
+            size_color = LOG_COLOR_ERROR; // Red for megabytes
           } else if (strstr(pretty_size, "KB")) {
-            size_color = LOG_COLOR_WARN;   // Yellow for kilobytes
+            size_color = LOG_COLOR_WARN; // Yellow for kilobytes
           } else if (strstr(pretty_size, " B")) {
-            size_color = LOG_COLOR_FATAL;  // Magenta for bytes
+            size_color = LOG_COLOR_FATAL; // Magenta for bytes
           }
 
           SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "  - %s:%d - %s\n",
-              colored_string(LOG_COLOR_GREY, file_location),
-              curr->line,
-              colored_string(size_color, pretty_size)));
+                                                 colored_string(LOG_COLOR_GREY, file_location), curr->line,
+                                                 colored_string(size_color, pretty_size)));
           curr = curr->next;
         }
 
         mutex_unlock(&g_mem.mutex);
       } else {
-        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n",
-            colored_string(LOG_COLOR_ERROR, "Current allocations unavailable: failed to initialize debug memory mutex")));
+        SAFE_IGNORE_PRINTF_RESULT(
+            safe_fprintf(stderr, "\n%s\n",
+                         colored_string(LOG_COLOR_ERROR,
+                                        "Current allocations unavailable: failed to initialize debug memory mutex")));
       }
     }
   }

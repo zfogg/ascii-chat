@@ -753,7 +753,7 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
 
   // Reset state to indicate no current position is known until next frame is read
   decoder->eof_reached = false;
-  decoder->audio_buffer_offset = 0;  // Discard any buffered audio samples from before seek
+  decoder->audio_buffer_offset = 0; // Discard any buffered audio samples from before seek
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 

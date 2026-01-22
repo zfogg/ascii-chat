@@ -491,71 +491,71 @@ asciichat_error_t options_init(int argc, char **argv) {
   // SKIP this if user already set --log-file or -L at binary level
   if (!binary_level_log_file_set) {
     char *log_dir = get_log_dir();
-  if (log_dir) {
-    // Determine log filename based on mode
-    const char *log_filename;
-    switch (detected_mode) {
-    case MODE_SERVER:
-      log_filename = "server.log";
-      break;
-    case MODE_CLIENT:
-      log_filename = "client.log";
-      break;
-    case MODE_MIRROR:
-      log_filename = "mirror.log";
-      break;
-    case MODE_DISCOVERY_SERVER:
-      log_filename = "acds.log";
-      break;
-    case MODE_DISCOVERY:
-      log_filename = "discovery.log";
-      break;
-    default:
-      log_filename = "ascii-chat.log";
-      break;
-    }
+    if (log_dir) {
+      // Determine log filename based on mode
+      const char *log_filename;
+      switch (detected_mode) {
+      case MODE_SERVER:
+        log_filename = "server.log";
+        break;
+      case MODE_CLIENT:
+        log_filename = "client.log";
+        break;
+      case MODE_MIRROR:
+        log_filename = "mirror.log";
+        break;
+      case MODE_DISCOVERY_SERVER:
+        log_filename = "acds.log";
+        break;
+      case MODE_DISCOVERY:
+        log_filename = "discovery.log";
+        break;
+      default:
+        log_filename = "ascii-chat.log";
+        break;
+      }
 
-    // Build full log file path: log_dir + separator + log_filename
-    char default_log_path[PLATFORM_MAX_PATH_LENGTH];
-    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
+      // Build full log file path: log_dir + separator + log_filename
+      char default_log_path[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
 
-    // Validate and normalize the path
-    char *normalized_default_log = NULL;
-    if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
-      SAFE_FREE(normalized_default_log);
+      // Validate and normalize the path
+      char *normalized_default_log = NULL;
+      if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
+        SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
+        SAFE_FREE(normalized_default_log);
+      } else {
+        // Validation failed - use the path as-is (validation may fail in debug builds)
+        SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
+      }
+
+      SAFE_FREE(log_dir);
     } else {
-      // Validation failed - use the path as-is (validation may fail in debug builds)
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
+      // Fallback if get_log_dir() fails - use simple filename in CWD
+      const char *log_filename;
+      switch (detected_mode) {
+      case MODE_SERVER:
+        log_filename = "server.log";
+        break;
+      case MODE_CLIENT:
+        log_filename = "client.log";
+        break;
+      case MODE_MIRROR:
+        log_filename = "mirror.log";
+        break;
+      case MODE_DISCOVERY_SERVER:
+        log_filename = "acds.log";
+        break;
+      case MODE_DISCOVERY:
+        log_filename = "discovery.log";
+        break;
+      default:
+        log_filename = "ascii-chat.log";
+        break;
+      }
+      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
     }
-
-    SAFE_FREE(log_dir);
-  } else {
-    // Fallback if get_log_dir() fails - use simple filename in CWD
-    const char *log_filename;
-    switch (detected_mode) {
-    case MODE_SERVER:
-      log_filename = "server.log";
-      break;
-    case MODE_CLIENT:
-      log_filename = "client.log";
-      break;
-    case MODE_MIRROR:
-      log_filename = "mirror.log";
-      break;
-    case MODE_DISCOVERY_SERVER:
-      log_filename = "acds.log";
-      break;
-    case MODE_DISCOVERY:
-      log_filename = "discovery.log";
-      break;
-    default:
-      log_filename = "ascii-chat.log";
-      break;
-    }
-    SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
-  }
-  }  // Close: if (!binary_level_log_file_set)
+  } // Close: if (!binary_level_log_file_set)
 
   // Encryption options default to disabled/empty
   opts.no_encrypt = 0;

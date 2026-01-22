@@ -34,7 +34,8 @@
 // ============================================================================
 
 asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
-  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "render ascii on localhost with no network or audio");
+  const options_config_t *config =
+      options_preset_mirror("ascii-chat mirror", "render ascii on localhost with no network or audio");
   if (!config) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
   }
@@ -81,7 +82,8 @@ asciichat_error_t parse_mirror_options(int argc, char **argv, options_t *opts) {
 
 void usage_mirror(FILE *desc) {
   // Get config with program name and description
-  const options_config_t *config = options_preset_mirror("ascii-chat mirror", "render ascii on localhost with no network or audio");
+  const options_config_t *config =
+      options_preset_mirror("ascii-chat mirror", "render ascii on localhost with no network or audio");
   if (!config) {
     (void)fprintf(desc, "Error: Failed to create options config\n");
     return;
