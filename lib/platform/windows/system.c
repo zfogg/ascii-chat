@@ -895,9 +895,6 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     return;
   }
 
-  // Print header with color
-  log_labeled(label, LOG_COLOR_WARN, "");
-
   // Calculate frame limits
   int start = skip_frames;
   int end = count;
@@ -905,9 +902,16 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Print backtrace frames with colored frame numbers
+  // Build entire backtrace output in buffer for single logging statement
+  char buffer[8192] = {0};
+  int offset = 0;
+
+  // Add header
+  offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
+
+  // Build backtrace frames with colored frame numbers
   int frame_num = 0;
-  for (int i = start; i < end; i++) {
+  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -915,11 +919,16 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    // Build colored frame number using static buffer rotation
-    char frame_buf[16];
-    snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
-    log_plain("  [%s] %s", colored_string(LOG_COLOR_FATAL, frame_buf), symbol);
+    // Build colored frame number string
+    char frame_str[16];
+    snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
+    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%s] %s\n",
+                       colored_string(LOG_COLOR_FATAL, frame_str), symbol);
+    frame_num++;
   }
+
+  // Log entire backtrace in single statement using logging system
+  log_plain_stderr("%s", buffer);
 }
 
 /**

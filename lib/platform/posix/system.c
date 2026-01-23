@@ -645,7 +645,7 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Build backtrace output in buffer for atomic stderr write
+  // Build entire backtrace output in buffer for single logging statement
   char buffer[8192] = {0};
   int offset = 0;
 
@@ -662,14 +662,15 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    // Build colored frame number using static buffer rotation
-    char frame_buf[16];
-    snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
+    // Build colored frame number string
+    char frame_str[16];
+    snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
     offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%s] %s\n",
-                       colored_string(LOG_COLOR_FATAL, frame_buf), symbol);
+                       colored_string(LOG_COLOR_FATAL, frame_str), symbol);
+    frame_num++;
   }
 
-  // Print entire backtrace in one call to avoid interleaving
+  // Log entire backtrace in single statement using logging system
   log_plain_stderr("%s", buffer);
 }
 
