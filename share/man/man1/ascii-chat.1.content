@@ -228,7 +228,7 @@ Unlike HTTPS, ascii-chat has no global certificate authority to bootstrap trust.
 .B GPG key fingerprints:
 \fB\-\-server\-key gpg:897607FA43DC66F6\fR or \fB\-\-key gpg:MYKEYID\fR (uses system GPG keyring via gpg-agent)
 .RE
-.br
+.PP
 .B
 \fBClient Whitelisting:\fR Server restricts connections to pre-approved client keys via \fB\-\-client\-keys\fR (accepts local file, HTTPS URL, or GitHub/GitLab shorthand). Prevents unauthorized client connections.
 .br
