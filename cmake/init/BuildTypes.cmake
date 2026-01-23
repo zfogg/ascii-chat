@@ -62,8 +62,8 @@ function(configure_build_type_post_project)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
         # Dev mode - debug WITHOUT sanitizers (faster iteration)
-        # DEBUG_MEMORY disabled for performance (use Debug build for memory tracking)
-        message(STATUS "DEBUG_MEMORY disabled in Dev mode for performance")
+        # Enable DEBUG_MEMORY for memory tracking (no sanitizer conflicts in Dev mode)
+        configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
         add_definitions(-DENABLE_ERRNO_BACKTRACES)
