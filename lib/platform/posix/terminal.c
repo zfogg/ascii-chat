@@ -39,9 +39,9 @@ asciichat_error_t terminal_get_size(terminal_size_t *size) {
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
     size->rows = ws.ws_row;
     size->cols = ws.ws_col;
-    return 0;
+    return ASCIICHAT_OK;
   }
-  return -1;
+  return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal size");
 }
 
 /**
@@ -71,12 +71,17 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-    return tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set raw mode");
+    }
+    return ASCIICHAT_OK;
   }
   if (saved) {
-    return tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) != 0) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to restore terminal mode");
+    }
   }
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -95,7 +100,10 @@ asciichat_error_t terminal_set_echo(bool enable) {
     tty.c_lflag &= ~(tcflag_t)ECHO;
   }
 
-  return tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+  if (tcsetattr(STDIN_FILENO, TCSANOW, &tty) != 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set echo mode");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
