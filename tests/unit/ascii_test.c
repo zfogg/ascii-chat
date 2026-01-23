@@ -748,7 +748,7 @@ Test(ascii, ascii_operations_with_invalid_parameters) {
   cr_assert_null(result);
 
   // ascii_convert_with_capabilities with invalid parameters
-  result = ascii_convert_with_capabilities(NULL, -1, -1, NULL, false, false, NULL, NULL);
+  result = ascii_convert_with_capabilities(NULL, -1, -1, NULL, false, false, NULL);
   cr_assert_null(result);
 
   // ascii_pad_frame_width with invalid parameters
