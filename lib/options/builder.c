@@ -775,6 +775,133 @@ void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bi
 }
 
 // ============================================================================
+// Completion Metadata (Phase 2 Implementation)
+// ============================================================================
+
+/**
+ * @brief Find descriptor by option name in builder
+ * @param builder Builder to search
+ * @param option_name Long name of option to find
+ * @return Index of descriptor, or -1 if not found
+ */
+static int find_descriptor_in_builder(const options_builder_t *builder, const char *option_name) {
+  if (!builder || !option_name) {
+    return -1;
+  }
+  for (size_t i = 0; i < builder->num_descriptors; i++) {
+    if (builder->descriptors[i].long_name && strcmp(builder->descriptors[i].long_name, option_name) == 0) {
+      return (int)i;
+    }
+  }
+  return -1;
+}
+
+void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
+                                     const char **descriptions, size_t count) {
+  if (!builder || !option_name || !values || !descriptions) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder or arguments are NULL");
+    return;
+  }
+
+  int idx = find_descriptor_in_builder(builder, option_name);
+  if (idx < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' not found in builder", option_name);
+    return;
+  }
+
+  option_descriptor_t *desc = &builder->descriptors[idx];
+  desc->metadata.enum_values = values;
+  desc->metadata.enum_count = count;
+  desc->metadata.enum_descriptions = descriptions;
+}
+
+void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max, int step) {
+  if (!builder || !option_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
+    return;
+  }
+
+  int idx = find_descriptor_in_builder(builder, option_name);
+  if (idx < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' not found in builder", option_name);
+    return;
+  }
+
+  option_descriptor_t *desc = &builder->descriptors[idx];
+  desc->metadata.numeric_range.min = min;
+  desc->metadata.numeric_range.max = max;
+  desc->metadata.numeric_range.step = step;
+}
+
+void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples,
+                                  size_t count) {
+  if (!builder || !option_name || !examples) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder or arguments are NULL");
+    return;
+  }
+
+  int idx = find_descriptor_in_builder(builder, option_name);
+  if (idx < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' not found in builder", option_name);
+    return;
+  }
+
+  option_descriptor_t *desc = &builder->descriptors[idx];
+  desc->metadata.examples = examples;
+  desc->metadata.example_count = count;
+}
+
+void options_builder_set_input_type(options_builder_t *builder, const char *option_name,
+                                    option_input_type_t input_type) {
+  if (!builder || !option_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
+    return;
+  }
+
+  int idx = find_descriptor_in_builder(builder, option_name);
+  if (idx < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' not found in builder", option_name);
+    return;
+  }
+
+  option_descriptor_t *desc = &builder->descriptors[idx];
+  desc->metadata.input_type = input_type;
+}
+
+void options_builder_mark_as_list(options_builder_t *builder, const char *option_name) {
+  if (!builder || !option_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
+    return;
+  }
+
+  int idx = find_descriptor_in_builder(builder, option_name);
+  if (idx < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' not found in builder", option_name);
+    return;
+  }
+
+  option_descriptor_t *desc = &builder->descriptors[idx];
+  desc->metadata.is_list = true;
+}
+
+void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name,
+                                               const char *default_value) {
+  if (!builder || !option_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
+    return;
+  }
+
+  int idx = find_descriptor_in_builder(builder, option_name);
+  if (idx < 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' not found in builder", option_name);
+    return;
+  }
+
+  option_descriptor_t *desc = &builder->descriptors[idx];
+  desc->metadata.default_value = default_value;
+}
+
+// ============================================================================
 // Managing Dependencies
 // ============================================================================
 

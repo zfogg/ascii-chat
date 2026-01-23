@@ -440,15 +440,38 @@ static const registry_entry_t g_options_registry[] = {
     {NULL, '\0', OPTION_TYPE_BOOL, 0, NULL, 0, NULL, NULL, false, NULL, NULL, NULL, false, false, OPTION_MODE_NONE}};
 
 static size_t g_registry_size = 0;
+static bool g_metadata_populated = false;
+
+// ============================================================================
+// Metadata Initialization for Critical Options (forward implementation)
+// ============================================================================
 
 /**
- * @brief Initialize registry size
+ * @brief Populate metadata for critical options
+ *
+ * This function initializes completion metadata for options that benefit
+ * from smart completion generation (enums, numeric ranges, examples).
+ *
+ * Called during registry initialization to set up metadata for:
+ * - color-mode: enum values with descriptions
+ * - compression-level: numeric range (1-9)
+ * - fps: numeric range with examples
+ * - palette: enum values
+ * - etc.
+ */
+static void registry_populate_metadata_for_critical_options(void);
+
+/**
+ * @brief Initialize registry size and metadata
  */
 static void registry_init_size(void) {
   if (g_registry_size == 0) {
     for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
       g_registry_size++;
     }
+    // Populate metadata after registry is sized
+    registry_populate_metadata_for_critical_options();
+    g_metadata_populated = true;
   }
 }
 
@@ -872,4 +895,297 @@ const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mod
 
   *num_options = count;
   return descriptors;
+}
+
+// ============================================================================
+// Completion Metadata Access (Phase 3 Implementation)
+// ============================================================================
+
+const option_metadata_t *options_registry_get_metadata(const char *long_name) {
+  if (!long_name) {
+    return NULL;
+  }
+
+  const option_descriptor_t *desc = options_registry_find_by_name(long_name);
+  if (!desc) {
+    return NULL;
+  }
+
+  return &desc->metadata;
+}
+
+const char **options_registry_get_enum_values(const char *option_name, const char ***descriptions, size_t *count) {
+  if (!option_name || !count) {
+    if (count)
+      *count = 0;
+    return NULL;
+  }
+
+  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  if (!meta || meta->input_type != OPTION_INPUT_ENUM || meta->enum_count == 0) {
+    *count = 0;
+    if (descriptions)
+      *descriptions = NULL;
+    return NULL;
+  }
+
+  *count = meta->enum_count;
+  if (descriptions) {
+    *descriptions = meta->enum_descriptions;
+  }
+  return meta->enum_values;
+}
+
+bool options_registry_get_numeric_range(const char *option_name, int *min_out, int *max_out, int *step_out) {
+  if (!option_name || !min_out || !max_out || !step_out) {
+    return false;
+  }
+
+  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  if (!meta || meta->input_type != OPTION_INPUT_NUMERIC) {
+    *min_out = 0;
+    *max_out = 0;
+    *step_out = 0;
+    return false;
+  }
+
+  *min_out = meta->numeric_range.min;
+  *max_out = meta->numeric_range.max;
+  *step_out = meta->numeric_range.step;
+  return true;
+}
+
+const char **options_registry_get_examples(const char *option_name, size_t *count) {
+  if (!option_name || !count) {
+    if (count)
+      *count = 0;
+    return NULL;
+  }
+
+  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  if (!meta || meta->example_count == 0) {
+    *count = 0;
+    return NULL;
+  }
+
+  *count = meta->example_count;
+  return meta->examples;
+}
+
+option_input_type_t options_registry_get_input_type(const char *option_name) {
+  if (!option_name) {
+    return OPTION_INPUT_NONE;
+  }
+
+  const option_metadata_t *meta = options_registry_get_metadata(option_name);
+  if (!meta) {
+    return OPTION_INPUT_NONE;
+  }
+
+  return meta->input_type;
+}
+
+// ============================================================================
+// Metadata Initialization for Critical Options
+// ============================================================================
+
+/**
+ * @brief Populate metadata for critical options
+ *
+ * This function initializes completion metadata for options that benefit
+ * from smart completion generation (enums, numeric ranges, examples).
+ *
+ * Called during registry initialization to set up metadata for:
+ * - color-mode: enum values with descriptions
+ * - compression-level: numeric range (1-9)
+ * - fps: numeric range with examples
+ * - palette: enum values
+ * - etc.
+ */
+static void registry_populate_metadata_for_critical_options(void) {
+  // Color mode enum values
+  static const char *color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
+  static const char *color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
+                                           "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
+
+  option_descriptor_t *color_desc = (option_descriptor_t *)options_registry_find_by_name("color-mode");
+  if (color_desc) {
+    color_desc->metadata.enum_values = color_mode_values;
+    color_desc->metadata.enum_count = 5;
+    color_desc->metadata.enum_descriptions = color_mode_descs;
+    color_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  }
+
+  // Compression level numeric range
+  option_descriptor_t *compress_desc = (option_descriptor_t *)options_registry_find_by_name("compression-level");
+  if (compress_desc) {
+    compress_desc->metadata.numeric_range.min = 1;
+    compress_desc->metadata.numeric_range.max = 9;
+    compress_desc->metadata.numeric_range.step = 1;
+    compress_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+    static const char *compress_examples[] = {"1", "3", "9"};
+    compress_desc->metadata.examples = compress_examples;
+    compress_desc->metadata.example_count = 3;
+  }
+
+  // FPS numeric range
+  option_descriptor_t *fps_desc = (option_descriptor_t *)options_registry_find_by_name("fps");
+  if (fps_desc) {
+    fps_desc->metadata.numeric_range.min = 1;
+    fps_desc->metadata.numeric_range.max = 144;
+    fps_desc->metadata.numeric_range.step = 0;  // Continuous (no step)
+    fps_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+    static const char *fps_examples[] = {"30", "60", "144"};
+    fps_desc->metadata.examples = fps_examples;
+    fps_desc->metadata.example_count = 3;
+  }
+
+  // Palette enum values
+  static const char *palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
+  static const char *palette_descs[] = {"Standard ASCII palette",
+                                         "Block characters (full/half/quarter blocks)",
+                                         "Digital/computer style",
+                                         "Minimal palette (light aesthetic)",
+                                         "Cool/modern style",
+                                         "Custom user-defined characters"};
+
+  option_descriptor_t *palette_desc = (option_descriptor_t *)options_registry_find_by_name("palette");
+  if (palette_desc) {
+    palette_desc->metadata.enum_values = palette_values;
+    palette_desc->metadata.enum_count = 6;
+    palette_desc->metadata.enum_descriptions = palette_descs;
+    palette_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  }
+
+  // Render mode enum values
+  static const char *render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
+  static const char *render_descs[] = {"Render using foreground characters only",
+                                        "Render using foreground characters only (alias)",
+                                        "Render using background colors only",
+                                        "Render using background colors only (alias)",
+                                        "Use half-block characters for 2x vertical resolution"};
+
+  option_descriptor_t *render_desc = (option_descriptor_t *)options_registry_find_by_name("render-mode");
+  if (render_desc) {
+    render_desc->metadata.enum_values = render_values;
+    render_desc->metadata.enum_count = 5;
+    render_desc->metadata.enum_descriptions = render_descs;
+    render_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  }
+
+  // Log level enum values
+  static const char *log_level_values[] = {"dev", "debug", "info", "warn", "error", "fatal"};
+  static const char *log_level_descs[] = {"Development (most verbose, includes function traces)",
+                                          "Debug (includes internal state tracking)",
+                                          "Informational (key lifecycle events)",
+                                          "Warnings (unusual conditions)",
+                                          "Errors only",
+                                          "Fatal errors only"};
+
+  option_descriptor_t *log_desc = (option_descriptor_t *)options_registry_find_by_name("log-level");
+  if (log_desc) {
+    log_desc->metadata.enum_values = log_level_values;
+    log_desc->metadata.enum_count = 6;
+    log_desc->metadata.enum_descriptions = log_level_descs;
+    log_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  }
+
+  // File path options
+  option_descriptor_t *logfile_desc = (option_descriptor_t *)options_registry_find_by_name("log-file");
+  if (logfile_desc) {
+    logfile_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
+  }
+
+  option_descriptor_t *keyfile_desc = (option_descriptor_t *)options_registry_find_by_name("key");
+  if (keyfile_desc) {
+    keyfile_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
+  }
+
+  option_descriptor_t *config_desc = (option_descriptor_t *)options_registry_find_by_name("config");
+  if (config_desc) {
+    config_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
+  }
+
+  // STUN servers and TURN servers are lists
+  option_descriptor_t *stun_desc = (option_descriptor_t *)options_registry_find_by_name("stun-servers");
+  if (stun_desc) {
+    stun_desc->metadata.input_type = OPTION_INPUT_STRING;
+    stun_desc->metadata.is_list = true;
+  }
+
+  option_descriptor_t *turn_desc = (option_descriptor_t *)options_registry_find_by_name("turn-servers");
+  if (turn_desc) {
+    turn_desc->metadata.input_type = OPTION_INPUT_STRING;
+    turn_desc->metadata.is_list = true;
+  }
+
+  // Microphone and speaker indices
+  option_descriptor_t *mic_idx_desc = (option_descriptor_t *)options_registry_find_by_name("microphone-index");
+  if (mic_idx_desc) {
+    mic_idx_desc->metadata.numeric_range.min = -1;
+    mic_idx_desc->metadata.numeric_range.max = 0;  // 0 for max (no real limit)
+    mic_idx_desc->metadata.numeric_range.step = 1;
+    mic_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  option_descriptor_t *speaker_idx_desc = (option_descriptor_t *)options_registry_find_by_name("speakers-index");
+  if (speaker_idx_desc) {
+    speaker_idx_desc->metadata.numeric_range.min = -1;
+    speaker_idx_desc->metadata.numeric_range.max = 0;  // 0 for max (no real limit)
+    speaker_idx_desc->metadata.numeric_range.step = 1;
+    speaker_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  // Webcam device index
+  option_descriptor_t *webcam_idx_desc = (option_descriptor_t *)options_registry_find_by_name("webcam-index");
+  if (webcam_idx_desc) {
+    webcam_idx_desc->metadata.numeric_range.min = 0;
+    webcam_idx_desc->metadata.numeric_range.max = 0;  // 0 for max (no real limit)
+    webcam_idx_desc->metadata.numeric_range.step = 1;
+    webcam_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  // Port option
+  option_descriptor_t *port_desc = (option_descriptor_t *)options_registry_find_by_name("port");
+  if (port_desc) {
+    port_desc->metadata.numeric_range.min = 1;
+    port_desc->metadata.numeric_range.max = 65535;
+    port_desc->metadata.numeric_range.step = 0;  // Continuous
+    port_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  // Width and height
+  option_descriptor_t *width_desc = (option_descriptor_t *)options_registry_find_by_name("width");
+  if (width_desc) {
+    width_desc->metadata.numeric_range.min = 20;
+    width_desc->metadata.numeric_range.max = 512;
+    width_desc->metadata.numeric_range.step = 0;  // Continuous
+    width_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  option_descriptor_t *height_desc = (option_descriptor_t *)options_registry_find_by_name("height");
+  if (height_desc) {
+    height_desc->metadata.numeric_range.min = 10;
+    height_desc->metadata.numeric_range.max = 256;
+    height_desc->metadata.numeric_range.step = 0;  // Continuous
+    height_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  // Max clients
+  option_descriptor_t *maxclients_desc = (option_descriptor_t *)options_registry_find_by_name("max-clients");
+  if (maxclients_desc) {
+    maxclients_desc->metadata.numeric_range.min = 1;
+    maxclients_desc->metadata.numeric_range.max = 99;
+    maxclients_desc->metadata.numeric_range.step = 1;
+    maxclients_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
+
+  // Reconnect attempts
+  option_descriptor_t *reconnect_desc = (option_descriptor_t *)options_registry_find_by_name("reconnect-attempts");
+  if (reconnect_desc) {
+    reconnect_desc->metadata.numeric_range.min = -1;  // -1 for infinite
+    reconnect_desc->metadata.numeric_range.max = 0;   // No limit
+    reconnect_desc->metadata.numeric_range.step = 1;
+    reconnect_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  }
 }

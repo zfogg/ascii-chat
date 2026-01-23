@@ -53,6 +53,58 @@ typedef enum {
 } option_type_t;
 
 /**
+ * @brief Completion input type for smart shell completions
+ *
+ * Specifies the kind of input an option expects, used to generate
+ * better completions with value suggestions, ranges, and examples.
+ */
+typedef enum {
+  OPTION_INPUT_NONE,     ///< No input (boolean flag)
+  OPTION_INPUT_ENUM,     ///< Choose from fixed set of enum values
+  OPTION_INPUT_NUMERIC,  ///< Numeric value with optional min/max/step
+  OPTION_INPUT_STRING,   ///< Free-form text input
+  OPTION_INPUT_FILEPATH, ///< File path completion
+  OPTION_INPUT_CHOICE    ///< Dynamic choice (e.g., from system)
+} option_input_type_t;
+
+/**
+ * @brief Metadata for shell completion generation
+ *
+ * Stores additional information about options to enable smart shell
+ * completions with value suggestions, numeric ranges, examples, etc.
+ * This data is used by all shell completion generators (bash, fish, zsh, powershell).
+ */
+typedef struct {
+  // Enum values with descriptions
+  const char **enum_values;            ///< Enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
+  size_t enum_count;                   ///< Number of enum values
+  const char **enum_descriptions;      ///< Descriptions parallel to enum_values (e.g., "Auto-detect from terminal")
+
+  // Numeric range
+  struct {
+    int min;   ///< Minimum value (or 0 if no limit)
+    int max;   ///< Maximum value (or 0 if no limit)
+    int step;  ///< Step size (0 = no step, continuous)
+  } numeric_range;
+
+  // Examples
+  const char **examples;     ///< Example values or command invocations
+  size_t example_count;      ///< Number of examples
+
+  // Default value (informational, may be duplicated from descriptor)
+  const char *default_value; ///< Default value as string for display
+
+  // Input type for completions
+  option_input_type_t input_type; ///< What kind of input this option expects
+
+  // Flags
+  bool is_list; ///< If true, option accepts multiple comma-separated or space-separated values
+
+  // Validation pattern (optional)
+  const char *validation_pattern; ///< Optional regex pattern for validation hints
+} option_metadata_t;
+
+/**
  * @brief Option dependency types
  *
  * Defines relationships between options.
@@ -67,6 +119,8 @@ typedef enum {
  * @brief Option descriptor
  *
  * Describes a single command-line option with all its metadata.
+ * Includes both parsing information and completion metadata for
+ * generating smart shell completions.
  */
 typedef struct {
   // Identification
@@ -105,6 +159,9 @@ typedef struct {
 
   // Mode applicability
   option_mode_bitmask_t mode_bitmask; ///< Which modes this option applies to
+
+  // Completion metadata (NEW - for smart shell completions)
+  option_metadata_t metadata; ///< Metadata for shell completions (enums, ranges, examples, etc.)
 } option_descriptor_t;
 
 /**
@@ -475,6 +532,123 @@ void options_builder_add_action(options_builder_t *builder, const char *long_nam
  * @param mode_bitmask Bitmask indicating which modes this option applies to
  */
 void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bitmask_t mode_bitmask);
+
+// ============================================================================
+// Completion Metadata (NEW - Phase 2)
+// ============================================================================
+
+/**
+ * @brief Set enum values with descriptions for an option
+ *
+ * Populates the metadata with enum values and descriptions for shell completion.
+ * Both arrays must have the same length.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param values Array of enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
+ * @param descriptions Array of descriptions parallel to values
+ * @param count Number of values/descriptions
+ *
+ * Example:
+ * ```c
+ * const char *color_values[] = {"auto", "none", "16", "256", "truecolor"};
+ * const char *color_descs[] = {
+ *     "Auto-detect from terminal",
+ *     "Monochrome only",
+ *     "16 colors (ANSI)",
+ *     "256 colors (xterm)",
+ *     "24-bit truecolor (modern terminals)"
+ * };
+ * options_builder_set_enum_values(builder, "color-mode", color_values, color_descs, 5);
+ * options_builder_set_input_type(builder, "color-mode", OPTION_INPUT_ENUM);
+ * ```
+ */
+void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
+                                     const char **descriptions, size_t count);
+
+/**
+ * @brief Set numeric range for an option
+ *
+ * Specifies minimum, maximum, and optional step for numeric input completions.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param min Minimum value (0 = no limit)
+ * @param max Maximum value (0 = no limit)
+ * @param step Step size (0 = continuous, no step)
+ *
+ * Example:
+ * ```c
+ * options_builder_set_numeric_range(builder, "compression-level", 1, 9, 1);
+ * options_builder_set_input_type(builder, "compression-level", OPTION_INPUT_NUMERIC);
+ * ```
+ */
+void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max, int step);
+
+/**
+ * @brief Set example values for an option
+ *
+ * Provides example values or command invocations for help display and completion suggestions.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param examples Array of example strings (may be values or full commands)
+ * @param count Number of examples
+ *
+ * Example:
+ * ```c
+ * const char *fps_examples[] = {"30", "60", "144"};
+ * options_builder_set_examples(builder, "fps", fps_examples, 3);
+ * ```
+ */
+void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples,
+                                  size_t count);
+
+/**
+ * @brief Set input type for an option
+ *
+ * Specifies what kind of input the option expects (enum, numeric, filepath, etc.)
+ * for generating appropriate shell completions.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param input_type The input type (OPTION_INPUT_ENUM, OPTION_INPUT_NUMERIC, etc.)
+ *
+ * Example:
+ * ```c
+ * options_builder_set_input_type(builder, "color-mode", OPTION_INPUT_ENUM);
+ * options_builder_set_input_type(builder, "log-file", OPTION_INPUT_FILEPATH);
+ * ```
+ */
+void options_builder_set_input_type(options_builder_t *builder, const char *option_name, option_input_type_t input_type);
+
+/**
+ * @brief Mark option as accepting multiple values
+ *
+ * Indicates the option accepts comma-separated or space-separated values.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to mark
+ *
+ * Example:
+ * ```c
+ * options_builder_mark_as_list(builder, "stun-servers");  // Accepts comma-separated URLs
+ * ```
+ */
+void options_builder_mark_as_list(options_builder_t *builder, const char *option_name);
+
+/**
+ * @brief Set default value string in metadata
+ *
+ * Sets the default value string for display in completions (informational,
+ * separate from the descriptor's default_value which is used for parsing).
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param default_value Default value as string for display
+ */
+void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name,
+                                               const char *default_value);
 
 /**
  * @brief Add full option descriptor (advanced)
