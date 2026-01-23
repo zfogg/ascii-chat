@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "options/completions/bash.h"
+#include "options/completions/completions.h"
 #include "options/registry.h"
 #include "options/enums.h"
 #include "common.h"
@@ -175,40 +176,8 @@ static asciichat_error_t bash_write_all_options(FILE *output)
  */
 static void bash_write_enum_cases(FILE *output)
 {
-  // Collect options from all modes to ensure completions for server-only, client-only, etc.
-  option_descriptor_t *combined_opts = NULL;
   size_t combined_count = 0;
-
-  // Get options from all modes (MODE_DISCOVERY is generic, plus specific modes)
-  mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
-  for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
-    size_t mode_count = 0;
-    const option_descriptor_t *mode_opts = options_registry_get_for_mode(modes[m], &mode_count);
-    if (mode_opts) {
-      // Collect unique options
-      for (size_t i = 0; i < mode_count; i++) {
-        // Check if already collected
-        bool already_has = false;
-        for (size_t j = 0; j < combined_count; j++) {
-          if (strcmp(combined_opts[j].long_name, mode_opts[i].long_name) == 0) {
-            already_has = true;
-            break;
-          }
-        }
-        if (!already_has) {
-          combined_count++;
-          option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(combined_opts,
-                                                                          combined_count * sizeof(option_descriptor_t),
-                                                                          option_descriptor_t *);
-          if (temp) {
-            combined_opts = temp;
-            combined_opts[combined_count - 1] = mode_opts[i];
-          }
-        }
-      }
-      SAFE_FREE(mode_opts);
-    }
-  }
+  option_descriptor_t *combined_opts = completions_collect_all_modes_unique(&combined_count);
 
   if (!combined_opts) {
     return;
@@ -294,38 +263,8 @@ static void bash_write_completion_logic(FILE *output)
     "  # Options that take file paths\n");
 
   // Generate file path options dynamically from registry (collect from all modes)
-  option_descriptor_t *combined_opts = NULL;
   size_t combined_count = 0;
-
-  // Get options from all modes
-  mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
-  for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
-    size_t mode_count = 0;
-    const option_descriptor_t *mode_opts = options_registry_get_for_mode(modes[m], &mode_count);
-    if (mode_opts) {
-      // Collect unique options
-      for (size_t i = 0; i < mode_count; i++) {
-        bool already_has = false;
-        for (size_t j = 0; j < combined_count; j++) {
-          if (strcmp(combined_opts[j].long_name, mode_opts[i].long_name) == 0) {
-            already_has = true;
-            break;
-          }
-        }
-        if (!already_has) {
-          combined_count++;
-          option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(combined_opts,
-                                                                          combined_count * sizeof(option_descriptor_t),
-                                                                          option_descriptor_t *);
-          if (temp) {
-            combined_opts = temp;
-            combined_opts[combined_count - 1] = mode_opts[i];
-          }
-        }
-      }
-      SAFE_FREE(mode_opts);
-    }
-  }
+  option_descriptor_t *combined_opts = completions_collect_all_modes_unique(&combined_count);
 
   if (combined_opts) {
     bool first = true;

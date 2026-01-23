@@ -54,6 +54,7 @@
 #include <stdio.h>
 #include "common.h"
 #include "options/options.h"
+#include "options/registry.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -100,6 +101,21 @@ const char* completions_get_shell_name(completion_format_t format);
  * @return Completion format, or COMPLETION_FORMAT_UNKNOWN if not recognized
  */
 completion_format_t completions_parse_shell_name(const char *shell_name);
+
+/**
+ * @brief Collect options from all modes with deduplication
+ *
+ * Iterates through all completion modes (MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT,
+ * MODE_MIRROR, MODE_DISCOVERY_SERVER) and collects unique options by long_name.
+ * Useful for generators that need to show completions for options across multiple modes.
+ *
+ * @param[out] count Pointer to receive the count of unique options
+ * @return Dynamically allocated array of option_descriptor_t, must be freed by caller.
+ *         Returns NULL if no options found.
+ *
+ * @note The caller must free the returned pointer with SAFE_FREE()
+ */
+option_descriptor_t* completions_collect_all_modes_unique(size_t *count);
 
 #ifdef __cplusplus
 }
