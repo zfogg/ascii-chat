@@ -81,70 +81,8 @@ asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]) {
   return ASCIICHAT_OK;
 }
 
-bool is_session_string(const char *str) {
-  if (!str || strlen(str) == 0)
-    return false;
-
-  // Parse as word-word-word where each word is 3-64 alphanumerics
-  // Hyphens are separators between words
-  // No leading/trailing hyphens, no consecutive hyphens
-  size_t len = strlen(str);
-
-  // Check length bounds (minimum: "a-a-a" = 5, maximum: 64 chars per word * 3 + 2 hyphens = 194)
-  if (len < 5 || len > 194) {
-    return false;
-  }
-
-  // Must not start or end with hyphen
-  if (str[0] == '-' || str[len - 1] == '-') {
-    return false;
-  }
-
-  // Count words separated by hyphens
-  int word_count = 1; // Start with 1 (not 0) to account for first word
-  int current_word_len = 0;
-  bool last_was_hyphen = false;
-
-  for (size_t i = 0; i < len; i++) {
-    char c = str[i];
-
-    if (isalnum(c)) {
-      current_word_len++;
-
-      // Individual word must be 3-64 characters
-      if (current_word_len > 64) {
-        return false;
-      }
-      last_was_hyphen = false;
-    } else if (c == '-') {
-      // Hyphen marks end of current word
-      if (last_was_hyphen) {
-        // Consecutive hyphens
-        return false;
-      }
-
-      // Current word must have been at least 3 chars
-      if (current_word_len < 3) {
-        return false;
-      }
-
-      word_count++;
-      current_word_len = 0;
-      last_was_hyphen = true;
-    } else {
-      // Invalid character
-      return false;
-    }
-  }
-
-  // Final word must be 3-64 characters
-  if (current_word_len < 3 || current_word_len > 64) {
-    return false;
-  }
-
-  // Must have exactly 3 words
-  return word_count == 3;
-}
+// NOTE: is_session_string() has been moved to lib/discovery/strings.c with enhanced
+// validation against cached wordlists. See that module for the implementation.
 
 // ============================================================================
 // TXT Record Parsing

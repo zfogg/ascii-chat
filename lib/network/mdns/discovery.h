@@ -67,6 +67,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include "common.h"
+#include "discovery/strings.h" // For is_session_string()
 #include "network/mdns/discovery_tui.h" // For discovery_tui_server_t
 
 #ifdef __cplusplus
@@ -183,26 +184,6 @@ void discovery_config_init_defaults(discovery_config_t *config);
  */
 asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config,
                                             discovery_result_t *result);
-
-/**
- * @brief Check if a string matches session string pattern
- *
- * Validates that input matches three-word pattern: `word-word-word`
- * Each word is 3-64 characters of alphanumerics and hyphens (RFC 952).
- *
- * Examples:
- * - ✅ `swift-river-mountain` - valid
- * - ✅ `cat-dog-bird` - valid
- * - ❌ `swift` - invalid (only one word)
- * - ❌ `swift-river-` - invalid (trailing hyphen)
- * - ❌ `swift_river_mountain` - invalid (underscores not allowed)
- *
- * @param str String to validate
- * @return true if matches session string pattern, false otherwise
- *
- * @note Used by src/main.c to detect binary-level session string argument
- */
-bool is_session_string(const char *str);
 
 // ============================================================================
 // mDNS Query API (Core Module)
