@@ -228,11 +228,11 @@ static const registry_entry_t g_options_registry[] = {
      "Create default config file and exit (optionally specify path)", "CONFIGURATION", false, NULL, NULL, NULL, false,
      false, OPTION_MODE_BINARY},
 
-    // ACTIONS GROUP (binary-level)
+    // SHELL GROUP (binary-level)
     {"completions", '\0', OPTION_TYPE_STRING, 0, NULL, 0, "Generate shell completions (bash, fish, zsh, powershell)",
-     "ACTIONS", false, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY},
+     "SHELL", false, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY},
     {"create-man-page", '\0', OPTION_TYPE_BOOL, 0, NULL, 0,
-     "Create man page (requires template and content file paths)", "ACTIONS", false, NULL, NULL, NULL, false, false,
+     "Create man page (requires template and content file paths)", "SHELL", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_BINARY},
 
     // TERMINAL GROUP (client, mirror, discovery)
