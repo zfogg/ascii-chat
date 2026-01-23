@@ -309,7 +309,7 @@ if(APPLE AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     find_program(DSYMUTIL_EXECUTABLE dsymutil)
     if(DSYMUTIL_EXECUTABLE)
         add_custom_command(TARGET ascii-chat POST_BUILD
-            COMMAND ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat> -o $<TARGET_FILE:ascii-chat>.dSYM
+            COMMAND timeout 3 ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat> -o $<TARGET_FILE:ascii-chat>.dSYM
             COMMENT "Generating dSYM for ascii-chat (enables atos backtraces with line numbers)"
             VERBATIM
         )

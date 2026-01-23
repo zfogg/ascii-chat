@@ -131,7 +131,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
 
     # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
     add_custom_target(docs
-        COMMAND ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+        COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/docs/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
