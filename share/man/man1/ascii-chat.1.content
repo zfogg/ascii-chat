@@ -290,6 +290,34 @@ the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
 .\" MANUAL-END: NOTES
 
+.\" MANUAL-START: ENVIRONMENT
+.SH ENVIRONMENT
+.TP
+.B ASCII_CHAT_KEY_PASSWORD
+Passphrase for encrypted SSH or GPG keys. Prefer using ssh-agent/gpg-agent when possible.
+.TP
+.B COLORTERM
+Color terminal indicator. Set to "truecolor" or "24bit" for truecolor support.
+.TP
+.B LOG_LEVEL
+Set logging verbosity level. Accepts either numeric (0-5) or string values:
+.br
+0/DEV, 1/DEBUG, 2/INFO, 3/WARN, 4/ERROR, 5/FATAL.
+.br
+Takes precedence over \fB\-\-log\-level\fR command-line argument and build type defaults.
+.TP
+.B SSH_AUTH_SOCK
+Path to SSH agent socket for password-free key authentication (Unix only).
+.TP
+.B TERM
+Terminal type, used for auto-detecting color capabilities.
+.TP
+.B WEBCAM_DISABLED
+Automatically enables test pattern mode when set to "1", "true", "yes", or "on".
+Useful for CI/CD pipelines and testing environments without a physical webcam.
+Equivalent to passing \fB\-\-test\-pattern\fR.
+.\" MANUAL-END: ENVIRONMENT
+
 .\" MANUAL-START: BUGS
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
