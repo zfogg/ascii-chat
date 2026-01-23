@@ -356,6 +356,7 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
 /**
  * @brief Format mode names from a mode_bitmask
  * Returns a string like "server, client" or "all modes" or NULL if no specific mode
+ * Maps MODE_DISCOVERY to "binary" (the unified binary visible to users)
  */
 static const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   if (mode_bitmask == 0) {
@@ -387,7 +388,8 @@ static const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_DISCOVERY)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery", pos > 0 ? ", " : "");
+    // MODE_DISCOVERY is the unified binary mode - show as "binary" to users
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sbinary", pos > 0 ? ", " : "");
   }
 
   return pos > 0 ? mode_str : NULL;
