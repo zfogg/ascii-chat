@@ -212,22 +212,21 @@ static void bash_write_enum_cases(FILE *output)
         }
       }
     }
-    // Write numeric range or examples
-    else if (meta->input_type == OPTION_INPUT_NUMERIC) {
-      // For numeric ranges, suggest a few common values
-      if (meta->numeric_range.min == 1 && meta->numeric_range.max == 9) {
-        fprintf(output, "1 2 3 4 5 6 7 8 9");
-      } else if (meta->numeric_range.max > 0) {
-        fprintf(output, "%d %d %d", meta->numeric_range.min, (meta->numeric_range.min + meta->numeric_range.max) / 2, meta->numeric_range.max);
-      }
-    }
-    // Write examples as fallback
+    // Check for examples first (more practical than calculated ranges)
     else if (meta->examples && meta->example_count > 0) {
       for (size_t j = 0; j < meta->example_count; j++) {
         fprintf(output, "%s", meta->examples[j]);
         if (j < meta->example_count - 1) {
           fprintf(output, " ");
         }
+      }
+    }
+    // Fallback to numeric range if no examples
+    else if (meta->input_type == OPTION_INPUT_NUMERIC) {
+      if (meta->numeric_range.min == 1 && meta->numeric_range.max == 9) {
+        fprintf(output, "1 2 3 4 5 6 7 8 9");
+      } else if (meta->numeric_range.max > 0) {
+        fprintf(output, "%d %d %d", meta->numeric_range.min, (meta->numeric_range.min + meta->numeric_range.max) / 2, meta->numeric_range.max);
       }
     }
 

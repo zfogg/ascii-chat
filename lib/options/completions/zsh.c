@@ -30,25 +30,25 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt)
         strcat(completion_spec, meta->enum_values[i]);
       }
       strcat(completion_spec, ")");
-    } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
-      // Numeric completion with range
-      if (meta->numeric_range.min > 0 || meta->numeric_range.max > 0) {
-        snprintf(completion_spec, sizeof(completion_spec), ":(numeric %d-%d)",
-                 meta->numeric_range.min, meta->numeric_range.max);
-      } else {
-        strcpy(completion_spec, ":(numeric)");
-      }
     } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
       // File path completion
       strcpy(completion_spec, ":_files");
     } else if (meta->examples && meta->example_count > 0) {
-      // Examples: "(example1 example2)"
+      // Examples: "(example1 example2)" - practical values, higher priority than calculated ranges
       strcpy(completion_spec, ":(");
       for (size_t i = 0; i < meta->example_count; i++) {
         if (i > 0) strcat(completion_spec, " ");
         strcat(completion_spec, meta->examples[i]);
       }
       strcat(completion_spec, ")");
+    } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
+      // Numeric completion with range - only if no examples
+      if (meta->numeric_range.min > 0 || meta->numeric_range.max > 0) {
+        snprintf(completion_spec, sizeof(completion_spec), ":(numeric %d-%d)",
+                 meta->numeric_range.min, meta->numeric_range.max);
+      } else {
+        strcpy(completion_spec, ":(numeric)");
+      }
     }
   }
 

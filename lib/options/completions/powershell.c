@@ -39,6 +39,24 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt)
       fprintf(output, ") }\n");
       return;
     }
+    else if (meta->examples && meta->example_count > 0) {
+      // Example values (practical values, higher priority than calculated ranges)
+      if (opt->short_name != '\0') {
+        fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
+        for (size_t i = 0; i < meta->example_count; i++) {
+          if (i > 0) fprintf(output, ", ");
+          fprintf(output, "'%s'", meta->examples[i]);
+        }
+        fprintf(output, ") }\n");
+      }
+      fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
+      for (size_t i = 0; i < meta->example_count; i++) {
+        if (i > 0) fprintf(output, ", ");
+        fprintf(output, "'%s'", meta->examples[i]);
+      }
+      fprintf(output, ") }\n");
+      return;
+    }
     else if (meta->input_type == OPTION_INPUT_NUMERIC) {
       // Numeric range - suggest min, middle, max values
       if (opt->short_name != '\0') {
@@ -59,24 +77,6 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt)
         int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
         fprintf(output, ", '%d'", middle);
         fprintf(output, ", '%d'", meta->numeric_range.max);
-      }
-      fprintf(output, ") }\n");
-      return;
-    }
-    else if (meta->examples && meta->example_count > 0) {
-      // Example values
-      if (opt->short_name != '\0') {
-        fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
-        for (size_t i = 0; i < meta->example_count; i++) {
-          if (i > 0) fprintf(output, ", ");
-          fprintf(output, "'%s'", meta->examples[i]);
-        }
-        fprintf(output, ") }\n");
-      }
-      fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
-      for (size_t i = 0; i < meta->example_count; i++) {
-        if (i > 0) fprintf(output, ", ");
-        fprintf(output, "'%s'", meta->examples[i]);
       }
       fprintf(output, ") }\n");
       return;

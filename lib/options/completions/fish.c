@@ -38,6 +38,24 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
       }
       return;
     }
+    else if (meta->input_type == OPTION_INPUT_FILEPATH) {
+      // File paths use default fish file completion
+      exclusive = false;
+    }
+    else if (meta->examples && meta->example_count > 0) {
+      exclusive = true;
+      // Example values as completions (practical values, higher priority than calculated ranges)
+      for (size_t i = 0; i < meta->example_count; i++) {
+        if (opt->short_name != '\0') {
+          fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
+                  condition, opt->short_name, meta->examples[i], opt->help_text);
+          break;  // Only output short option once with first example
+        }
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n",
+                condition, opt->long_name, meta->examples[i], opt->help_text);
+      }
+      return;
+    }
     else if (meta->input_type == OPTION_INPUT_NUMERIC) {
       exclusive = true;
       // Numeric range - suggest min, middle, max values
@@ -55,24 +73,6 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
                 condition, opt->long_name, middle);
         fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (max)'\n",
                 condition, opt->long_name, meta->numeric_range.max);
-      }
-      return;
-    }
-    else if (meta->input_type == OPTION_INPUT_FILEPATH) {
-      // File paths use default fish file completion
-      exclusive = false;
-    }
-    else if (meta->examples && meta->example_count > 0) {
-      exclusive = true;
-      // Example values as completions
-      for (size_t i = 0; i < meta->example_count; i++) {
-        if (opt->short_name != '\0') {
-          fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
-                  condition, opt->short_name, meta->examples[i], opt->help_text);
-          break;  // Only output short option once with first example
-        }
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n",
-                condition, opt->long_name, meta->examples[i], opt->help_text);
       }
       return;
     }

@@ -1192,38 +1192,114 @@ static void registry_populate_metadata_for_critical_options(void) {
     port_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
 
-  // Width and height
-  option_descriptor_t *width_desc = (option_descriptor_t *)options_registry_find_by_name("width");
-  if (width_desc) {
-    width_desc->metadata.numeric_range.min = 20;
-    width_desc->metadata.numeric_range.max = 512;
-    width_desc->metadata.numeric_range.step = 0; // Continuous
-    width_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  // Width with practical examples
+  {
+    static const char *width_examples[] = {"80", "120", "160"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = 20;
+    meta.numeric_range.max = 512;
+    meta.numeric_range.step = 0;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = width_examples;
+    meta.example_count = 3;
+    cache_metadata("width", &meta);
   }
 
-  option_descriptor_t *height_desc = (option_descriptor_t *)options_registry_find_by_name("height");
-  if (height_desc) {
-    height_desc->metadata.numeric_range.min = 10;
-    height_desc->metadata.numeric_range.max = 256;
-    height_desc->metadata.numeric_range.step = 0; // Continuous
-    height_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  // Height with practical examples
+  {
+    static const char *height_examples[] = {"24", "40", "60"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = 10;
+    meta.numeric_range.max = 256;
+    meta.numeric_range.step = 0;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = height_examples;
+    meta.example_count = 3;
+    cache_metadata("height", &meta);
   }
 
-  // Max clients
-  option_descriptor_t *maxclients_desc = (option_descriptor_t *)options_registry_find_by_name("max-clients");
-  if (maxclients_desc) {
-    maxclients_desc->metadata.numeric_range.min = 1;
-    maxclients_desc->metadata.numeric_range.max = 99;
-    maxclients_desc->metadata.numeric_range.step = 1;
-    maxclients_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  // Max clients with practical examples
+  {
+    static const char *maxclients_examples[] = {"2", "4", "8"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = 1;
+    meta.numeric_range.max = 99;
+    meta.numeric_range.step = 1;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = maxclients_examples;
+    meta.example_count = 3;
+    cache_metadata("max-clients", &meta);
   }
 
-  // Reconnect attempts
-  option_descriptor_t *reconnect_desc = (option_descriptor_t *)options_registry_find_by_name("reconnect-attempts");
-  if (reconnect_desc) {
-    reconnect_desc->metadata.numeric_range.min = -1; // -1 for infinite
-    reconnect_desc->metadata.numeric_range.max = 0;  // No limit
-    reconnect_desc->metadata.numeric_range.step = 1;
-    reconnect_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  // Reconnect attempts with practical examples
+  {
+    static const char *reconnect_examples[] = {"0", "5", "10"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = -1;
+    meta.numeric_range.max = 99;
+    meta.numeric_range.step = 1;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = reconnect_examples;
+    meta.example_count = 3;
+    cache_metadata("reconnect-attempts", &meta);
+  }
+
+  // Webcam index with practical examples
+  {
+    static const char *webcam_examples[] = {"0", "1", "2"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = 0;
+    meta.numeric_range.max = 10;
+    meta.numeric_range.step = 1;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = webcam_examples;
+    meta.example_count = 3;
+    cache_metadata("webcam-index", &meta);
+  }
+
+  // Microphone index with practical examples
+  {
+    static const char *mic_examples[] = {"-1", "0", "1"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = -1;
+    meta.numeric_range.max = 10;
+    meta.numeric_range.step = 1;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = mic_examples;
+    meta.example_count = 3;
+    cache_metadata("microphone-index", &meta);
+  }
+
+  // Speakers index with practical examples
+  {
+    static const char *speakers_examples[] = {"-1", "0", "1"};
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = -1;
+    meta.numeric_range.max = 10;
+    meta.numeric_range.step = 1;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = speakers_examples;
+    meta.example_count = 3;
+    cache_metadata("speakers-index", &meta);
+  }
+
+  // Cookies from browser enum
+  {
+    static const char *cookies_values[] = {"chrome", "firefox", "edge", "safari", "brave", "opera", "vivaldi", "whale"};
+    option_metadata_t meta = {0};
+    meta.enum_values = cookies_values;
+    meta.enum_count = 8;
+    meta.input_type = OPTION_INPUT_ENUM;
+    cache_metadata("cookies-from-browser", &meta);
+  }
+
+  // Seek timestamp examples
+  {
+    static const char *seek_examples[] = {"0", "60", "3:45"};
+    option_metadata_t meta = {0};
+    meta.input_type = OPTION_INPUT_STRING;
+    meta.examples = seek_examples;
+    meta.example_count = 3;
+    cache_metadata("seek", &meta);
   }
 }
