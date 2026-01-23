@@ -130,8 +130,19 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
       argv_with_null = argv;
     }
 
+    // Clear any inherited options state from parent fork
+    options_state_shutdown();
+
     // options_init now auto-detects mode from argv
+    if (debug_log) {
+      fprintf(debug_log, "Child %d: calling options_init with argc=%d\n", getpid(), argc);
+      fflush(debug_log);
+    }
     asciichat_error_t result = options_init(argc, argv_with_null);
+    if (debug_log) {
+      fprintf(debug_log, "Child %d: options_init returned %d\n", getpid(), result);
+      fflush(debug_log);
+    }
 
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {

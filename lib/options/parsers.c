@@ -75,11 +75,9 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char *msg = SAFE_MALLOC(256, char *);
-    if (msg) {
-      snprintf(msg, 256, "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
-      *error_msg = msg;
-    }
+    char msg[256];
+    snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
+    *error_msg = strdup(msg);
   }
   return false;
 }
@@ -255,10 +253,7 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
 bool parse_port_option(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {
-      *error_msg = SAFE_MALLOC(256, char *);
-      if (*error_msg) {
-        snprintf(*error_msg, 256, "Internal error: NULL argument or destination");
-      }
+      *error_msg = strdup("Internal error: NULL argument or destination");
     }
     return false;
   }
@@ -270,10 +265,9 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
   asciichat_error_t err = parse_port(arg, &port_num);
   if (err != ASCIICHAT_OK) {
     if (error_msg) {
-      *error_msg = SAFE_MALLOC(256, char *);
-      if (*error_msg) {
-        snprintf(*error_msg, 256, "Invalid port '%s'. Port must be a number between 1 and 65535.", arg);
-      }
+      char msg[256];
+      snprintf(msg, sizeof(msg), "Invalid port '%s'. Port must be a number between 1 and 65535.", arg);
+      *error_msg = strdup(msg);
     }
     return false;
   }

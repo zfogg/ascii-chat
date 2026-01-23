@@ -62,22 +62,55 @@ bool shutdown_is_requested(void) {
 static void print_mimalloc_stats(void);
 #endif
 
+// Guard to prevent multiple atexit handler registration
+// (can happen if options_init() is called multiple times during startup)
+// But allow subsystem reinitialization for tests and other use cases
+static bool g_atexit_handlers_registered = false;
+
 asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client) {
   // Register memory debugging stats FIRST so it runs LAST at exit
   // (atexit callbacks run in LIFO order - last registered runs first)
   // This ensures all cleanup handlers run before the memory report is printed
+  // Only register atexit handlers once
+  if (!g_atexit_handlers_registered) {
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-  (void)atexit(debug_memory_report);
+    (void)atexit(debug_memory_report);
 #elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-  (void)atexit(print_mimalloc_stats);
-  UNUSED(print_mimalloc_stats);
+    (void)atexit(print_mimalloc_stats);
+    UNUSED(print_mimalloc_stats);
 #endif
 
-  // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != ASCIICHAT_OK) {
-    FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
+    // Initialize platform-specific functionality (Winsock, etc)
+    if (platform_init() != ASCIICHAT_OK) {
+      FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
+    }
+    (void)atexit(platform_cleanup);
+
+    // Initialize global shared buffer pool
+    buffer_pool_init_global();
+    (void)atexit(buffer_pool_cleanup_global);
+
+    // Register errno cleanup
+    (void)atexit(asciichat_errno_cleanup);
+
+    // Register options state cleanup
+    (void)atexit(options_state_shutdown);
+
+    // Register known_hosts cleanup
+    (void)atexit(known_hosts_cleanup);
+
+    // Register SIMD caches cleanup (for all modes: server, client, mirror)
+    (void)atexit(simd_caches_destroy_all);
+
+    // Register webcam cleanup (frees cached test pattern and webcam resources)
+    (void)atexit(webcam_cleanup);
+
+    // Register timer system cleanup AFTER memory report registration
+    // This ensures timers are freed BEFORE memory_report runs (due to atexit LIFO order)
+    (void)atexit(timer_system_cleanup);
+
+    g_atexit_handlers_registered = true;
   }
-  (void)atexit(platform_cleanup);
 
   // Apply quiet mode setting BEFORE log_init so initialization messages are suppressed
   if (GET_OPTION(quiet)) {
@@ -101,29 +134,6 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   if (apply_palette_config(GET_OPTION(palette_type), custom_chars) != 0) {
     FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
   }
-
-  // Initialize global shared buffer pool
-  buffer_pool_init_global();
-  (void)atexit(buffer_pool_cleanup_global);
-
-  // Register errno cleanup
-  (void)atexit(asciichat_errno_cleanup);
-
-  // Register options state cleanup
-  (void)atexit(options_state_shutdown);
-
-  // Register known_hosts cleanup
-  (void)atexit(known_hosts_cleanup);
-
-  // Register SIMD caches cleanup (for all modes: server, client, mirror)
-  (void)atexit(simd_caches_destroy_all);
-
-  // Register webcam cleanup (frees cached test pattern and webcam resources)
-  (void)atexit(webcam_cleanup);
-
-  // Register timer system cleanup AFTER memory report registration
-  // This ensures timers are freed BEFORE memory_report runs (due to atexit LIFO order)
-  (void)atexit(timer_system_cleanup);
 
   // Truncate log if it's already too large
   log_truncate_if_large();
