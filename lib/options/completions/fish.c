@@ -27,12 +27,13 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
     if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
       exclusive = true;
       // Enum values as completions
+      // Output short option once with first value
+      if (opt->short_name != '\0') {
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
+                condition, opt->short_name, meta->enum_values[0], opt->help_text);
+      }
+      // Output long option with all values
       for (size_t i = 0; i < meta->enum_count; i++) {
-        if (opt->short_name != '\0') {
-          fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
-                  condition, opt->short_name, meta->enum_values[i], opt->help_text);
-          break;  // Only output short option once with first value
-        }
         fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n",
                 condition, opt->long_name, meta->enum_values[i], opt->help_text);
       }
@@ -45,12 +46,13 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
     else if (meta->examples && meta->example_count > 0) {
       exclusive = true;
       // Example values as completions (practical values, higher priority than calculated ranges)
+      // Output short option once with first example
+      if (opt->short_name != '\0') {
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
+                condition, opt->short_name, meta->examples[0], opt->help_text);
+      }
+      // Output long option with all examples
       for (size_t i = 0; i < meta->example_count; i++) {
-        if (opt->short_name != '\0') {
-          fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
-                  condition, opt->short_name, meta->examples[i], opt->help_text);
-          break;  // Only output short option once with first example
-        }
         fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n",
                 condition, opt->long_name, meta->examples[i], opt->help_text);
       }
