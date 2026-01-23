@@ -349,7 +349,12 @@ Zachary Fogg <me@zfo.gg>
 .SH SEE ALSO
 .BR ssh (1),
 .BR ssh-keygen (1),
-.BR ssh-agent (1)
+.BR ssh-agent (1),
+.BR gpg (1),
+.BR gpgconf (1),
+.BR ffmpeg-formats (1),
+.BR ffmpeg-codecs (1),
+.BR yt-dlp (1)
 .PP
 .B ascii-chat
 API documentation (section 3):
