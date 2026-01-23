@@ -737,10 +737,6 @@ static void write_environment_section(FILE *f, const options_config_t *config) {
  * @brief Write manual section placeholders
  */
 static void write_manual_sections(FILE *f) {
-  fprintf(f, ".SH DESCRIPTION\n");
-  fprintf(f, "[MANUAL: Add detailed description of the program here]\n");
-  fprintf(f, "\n");
-
   fprintf(f, ".SH FILES\n");
   fprintf(f, ".TP\n");
   fprintf(f, ".B $HOME/.ascii-chat/\n");
@@ -748,15 +744,20 @@ static void write_manual_sections(FILE *f) {
   fprintf(f, "\n");
 
   fprintf(f, ".SH NOTES\n");
-  fprintf(f, "[MANUAL: Add additional notes about the program]\n");
+  fprintf(f, "ascii-chat API documentation (section 3): ascii-chat-build(3), "
+             "ascii-chat-config(3), ascii-chat-crypto(3), ascii-chat-client(3), "
+             "ascii-chat-server(3), ascii-chat-errno(3), ascii-chat-options(3), "
+             "ascii-chat-network(3), ascii-chat-platform(3) ");
   fprintf(f, "\n");
 
   fprintf(f, ".SH BUGS\n");
-  fprintf(f, "[MANUAL: Report bugs at https://github.com/anthropics/ascii-chat/issues]\n");
+  fprintf(f, "Report bugs at https://github.com/zfogg/ascii-chat/issues\n");
   fprintf(f, "\n");
 
   fprintf(f, ".SH AUTHOR\n");
-  fprintf(f, "[MANUAL: Add author information]\n");
+  fprintf(f, "Zachary Fogg <me@zfo.gg> https://zfo.gg https://github.com/zfogg\n");
+  fprintf(f, "https://zfo.gg https://github.com/zfogg\n");
+  fprintf(f, "https://github.com/zfogg\n");
   fprintf(f, "\n");
 
   fprintf(f, ".SH SEE ALSO\n");
@@ -961,88 +962,38 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
   write_section_marker(f, "MERGE", "ENVIRONMENT", true);
   fprintf(f, ".SH ENVIRONMENT\n");
 
-  // Collect all environment variables (both manual and auto-generated)
-  env_var_entry_t *all_vars = NULL;
-  size_t num_all_vars = 0;
-  size_t capacity = 32;
-  all_vars = SAFE_MALLOC(capacity * sizeof(env_var_entry_t), env_var_entry_t *);
+  // Collect manual environment variable names
+  char **manual_vars = NULL;
+  size_t num_manual_vars = 0;
 
-  // Extract and collect manual environment variables from content
   if (existing_section && existing_section->content) {
-    const char *content = existing_section->content;
-    const char *content_limit = content + existing_section->content_len;
-    const char *p = content;
+    // Create null-terminated copy for extraction function
+    char *content_copy = SAFE_MALLOC(existing_section->content_len + 1, char *);
+    memcpy(content_copy, existing_section->content, existing_section->content_len);
+    content_copy[existing_section->content_len] = '\0';
+    asciichat_error_t extract_err = extract_env_var_names_from_content(content_copy, &manual_vars, &num_manual_vars);
+    SAFE_FREE(content_copy);
+    if (extract_err != ASCIICHAT_OK) {
+      manual_vars = NULL;
+      num_manual_vars = 0;
+    }
 
-    // Parse environment variable entries from manual content
-    // Looking for .TP followed by .B <VAR_NAME>
-    while (p < content_limit) {
-      if (p + 3 <= content_limit && strncmp(p, ".TP", 3) == 0 &&
-          (p + 3 >= content_limit || p[3] == '\n' || isspace((unsigned char)p[3]))) {
-        // Found .TP, look for following .B with variable name
-        const char *tp_start = p;
-        p += 3;
-        while (p < content_limit && (*p == '\n' || isspace((unsigned char)*p))) {
-          p++;
-        }
-
-        // Look for .B directive
-        if (p + 3 <= content_limit && strncmp(p, ".B ", 3) == 0) {
-          p += 3;
-          while (p < content_limit && isspace((unsigned char)*p) && *p != '\n') {
-            p++;
-          }
-
-          // Extract variable name
-          const char *var_start = p;
-          while (p < content_limit && !isspace((unsigned char)*p) && *p != '\n') {
-            p++;
-          }
-          const char *var_end = p;
-
-          if (var_end > var_start) {
-            size_t var_len = var_end - var_start;
-            char var_name[256];
-            if (var_len < sizeof(var_name)) {
-              memcpy(var_name, var_start, var_len);
-              var_name[var_len] = '\0';
-
-              // Collect the full .TP block until next .TP or end
-              const char *block_start = tp_start;
-              const char *block_end = p;
-              while (block_end < content_limit) {
-                if (block_end + 3 <= content_limit && strncmp(block_end, ".TP", 3) == 0 &&
-                    (block_end + 3 >= content_limit || block_end[3] == '\n' || isspace((unsigned char)block_end[3]))) {
-                  break;
-                }
-                block_end++;
-              }
-
-              // Add to array
-              if (num_all_vars >= capacity) {
-                capacity *= 2;
-                all_vars = SAFE_REALLOC(all_vars, capacity * sizeof(env_var_entry_t), env_var_entry_t *);
-              }
-
-              size_t block_len = block_end - block_start;
-              all_vars[num_all_vars].name = SAFE_MALLOC(var_len + 1, char *);
-              memcpy(all_vars[num_all_vars].name, var_name, var_len + 1);
-              all_vars[num_all_vars].description = SAFE_MALLOC(block_len + 1, char *);
-              memcpy(all_vars[num_all_vars].description, block_start, block_len);
-              all_vars[num_all_vars].description[block_len] = '\0';
-              all_vars[num_all_vars].is_manual = true;
-              num_all_vars++;
-
-              p = block_end;
-              continue;
-            }
-          }
-        }
+    // Write manual env vars first (preserving their full descriptions from existing section)
+    if (existing_section->content && existing_section->content_len > 0) {
+      fwrite(existing_section->content, 1, existing_section->content_len, f);
+      // Ensure newline after manual content
+      if (existing_section->content_len > 0 && existing_section->content[existing_section->content_len - 1] != '\n') {
+        fprintf(f, "\n");
       }
-      p++;
     }
   }
 
-  // Add auto-generated environment variables from options
+  // Collect auto-generated environment variables that aren't in manual list
+  env_var_entry_t *auto_vars = NULL;
+  size_t num_auto_vars = 0;
+  size_t capacity = 32;
+  auto_vars = SAFE_MALLOC(capacity * sizeof(env_var_entry_t), env_var_entry_t *);
+
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
 
@@ -1052,55 +1003,64 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
 
     // Check if already in manual list
     bool already_exists = false;
-    for (size_t j = 0; j < num_all_vars; j++) {
-      if (strcmp(all_vars[j].name, desc->env_var_name) == 0) {
-        already_exists = true;
-        break;
+    if (manual_vars) {
+      for (size_t j = 0; j < num_manual_vars; j++) {
+        if (manual_vars[j] && strcmp(manual_vars[j], desc->env_var_name) == 0) {
+          already_exists = true;
+          break;
+        }
       }
     }
 
     if (!already_exists) {
-      if (num_all_vars >= capacity) {
+      if (num_auto_vars >= capacity) {
         capacity *= 2;
-        all_vars = SAFE_REALLOC(all_vars, capacity * sizeof(env_var_entry_t), env_var_entry_t *);
+        auto_vars = SAFE_REALLOC(auto_vars, capacity * sizeof(env_var_entry_t), env_var_entry_t *);
       }
 
-      all_vars[num_all_vars].name = SAFE_MALLOC(strlen(desc->env_var_name) + 1, char *);
-      strcpy(all_vars[num_all_vars].name, desc->env_var_name);
+      auto_vars[num_auto_vars].name = SAFE_MALLOC(strlen(desc->env_var_name) + 1, char *);
+      strcpy(auto_vars[num_auto_vars].name, desc->env_var_name);
 
       // Generate description for auto-generated variable
       size_t desc_len = strlen(".TP\n.B ") + strlen(desc->env_var_name) + 1 + strlen("Set to override .B \\-\\--") +
                         strlen(desc->long_name) + 20;
-      all_vars[num_all_vars].description = SAFE_MALLOC(desc_len, char *);
-      snprintf(all_vars[num_all_vars].description, desc_len, ".TP\n.B %s\nSet to override .B \\-\\-%s",
+      auto_vars[num_auto_vars].description = SAFE_MALLOC(desc_len, char *);
+      snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\nSet to override .B \\-\\-%s",
                desc->env_var_name, desc->long_name);
 
-      all_vars[num_all_vars].is_manual = false;
-      num_all_vars++;
+      auto_vars[num_auto_vars].is_manual = false;
+      num_auto_vars++;
     }
   }
 
-  // Sort all variables alphabetically
-  qsort(all_vars, num_all_vars, sizeof(env_var_entry_t), compare_env_vars);
+  // Sort auto-generated variables alphabetically
+  qsort(auto_vars, num_auto_vars, sizeof(env_var_entry_t), compare_env_vars);
 
-  // Write sorted variables
-  for (size_t i = 0; i < num_all_vars; i++) {
-    fprintf(f, "%s", all_vars[i].description);
-    if (all_vars[i].description[strlen(all_vars[i].description) - 1] != '\n') {
-      fprintf(f, "\n");
-    }
+  // Write sorted auto-generated variables
+  for (size_t i = 0; i < num_auto_vars; i++) {
+    fprintf(f, "%s\n", auto_vars[i].description);
   }
 
-  // Free all variables
-  for (size_t i = 0; i < num_all_vars; i++) {
-    if (all_vars[i].name) {
-      SAFE_FREE(all_vars[i].name);
+  // Free auto variables
+  for (size_t i = 0; i < num_auto_vars; i++) {
+    if (auto_vars[i].name) {
+      SAFE_FREE(auto_vars[i].name);
     }
-    if (all_vars[i].description) {
-      SAFE_FREE(all_vars[i].description);
+    if (auto_vars[i].description) {
+      SAFE_FREE(auto_vars[i].description);
     }
   }
-  SAFE_FREE(all_vars);
+  SAFE_FREE(auto_vars);
+
+  // Free manual vars names
+  if (manual_vars) {
+    for (size_t i = 0; i < num_manual_vars; i++) {
+      if (manual_vars[i]) {
+        SAFE_FREE(manual_vars[i]);
+      }
+    }
+    SAFE_FREE(manual_vars);
+  }
 
   fprintf(f, "\n");
   write_section_marker(f, "MERGE", "ENVIRONMENT", false);
