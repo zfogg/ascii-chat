@@ -76,28 +76,16 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
 typedef options_t options_backup_t;
 
 static void save_options(options_backup_t *backup) {
-  // Shutdown any previous RCU state (from prior tests)
-  // This ensures a clean state for each test
-  options_state_shutdown();
-
-  // Initialize fresh RCU state
-  options_state_init();
-
   // Get current options from RCU and make a copy
+  // Don't call init here - let options_init() handle that in the test
   const options_t *current = options_get();
   memcpy(backup, current, sizeof(options_t));
 }
 
 static void restore_options(const options_backup_t *backup) {
-  // Shutdown the RCU state after test
-  // This cleans up for the next test
+  // Clean up RCU state after test by shutting down
+  // This ensures the next test starts fresh
   options_state_shutdown();
-
-  // Re-initialize for next test
-  options_state_init();
-
-  // Restore the saved options by publishing back to RCU
-  options_state_set((options_t *)backup);
 }
 
 // Helper function to test options_init with fork/exec to avoid exit() calls
