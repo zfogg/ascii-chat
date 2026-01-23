@@ -13,6 +13,7 @@
 #include "options/registry.h"
 #include "options/parsers.h" // For parse_log_level, parse_color_mode, parse_palette_type, parse_palette_chars, etc.
 #include "options/validation.h"
+#include "options/actions.h" // For action_list_webcams, action_list_microphones, action_list_speakers
 #include "options/common.h"
 #include "common.h"
 #include "log/logging.h"
@@ -238,6 +239,12 @@ static const registry_entry_t g_options_registry[] = {
     {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &default_test_pattern_value,
      sizeof(bool), "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"list-webcams", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available webcam devices and exit", "WEBCAM", false,
+     NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"list-microphones", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available audio input devices and exit", "AUDIO",
+     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"list-speakers", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available audio output devices and exit", "AUDIO",
+     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // DISPLAY GROUP (client, mirror, discovery)
     {"color-mode", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, color_mode), &default_color_mode_value,
@@ -571,8 +578,18 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
       }
       break;
     case OPTION_TYPE_ACTION:
-      SET_ERRNO(ERROR_INVALID_STATE, "Actions are not supported in this function");
-      // Actions are added separately, not in registry
+      // Actions are now registered as options with help text
+      // Look up the corresponding action function based on option name
+      if (strcmp(entry->long_name, "list-webcams") == 0) {
+        options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_webcams, entry->help_text,
+                                   entry->group);
+      } else if (strcmp(entry->long_name, "list-microphones") == 0) {
+        options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_microphones,
+                                   entry->help_text, entry->group);
+      } else if (strcmp(entry->long_name, "list-speakers") == 0) {
+        options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_speakers, entry->help_text,
+                                   entry->group);
+      }
       break;
     }
 
