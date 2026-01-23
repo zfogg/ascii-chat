@@ -17,44 +17,41 @@ asciichat_error_t completions_generate_fish(FILE *output);
 asciichat_error_t completions_generate_zsh(FILE *output);
 asciichat_error_t completions_generate_powershell(FILE *output);
 
-asciichat_error_t completions_generate_for_shell(completion_format_t format, FILE *output)
-{
+asciichat_error_t completions_generate_for_shell(completion_format_t format, FILE *output) {
   if (!output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
   switch (format) {
-    case COMPLETION_FORMAT_BASH:
-      return completions_generate_bash(output);
-    case COMPLETION_FORMAT_FISH:
-      return completions_generate_fish(output);
-    case COMPLETION_FORMAT_ZSH:
-      return completions_generate_zsh(output);
-    case COMPLETION_FORMAT_POWERSHELL:
-      return completions_generate_powershell(output);
-    default:
-      return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown completion format: %d", format);
+  case COMPLETION_FORMAT_BASH:
+    return completions_generate_bash(output);
+  case COMPLETION_FORMAT_FISH:
+    return completions_generate_fish(output);
+  case COMPLETION_FORMAT_ZSH:
+    return completions_generate_zsh(output);
+  case COMPLETION_FORMAT_POWERSHELL:
+    return completions_generate_powershell(output);
+  default:
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unknown completion format: %d", format);
   }
 }
 
-const char* completions_get_shell_name(completion_format_t format)
-{
+const char *completions_get_shell_name(completion_format_t format) {
   switch (format) {
-    case COMPLETION_FORMAT_BASH:
-      return "bash";
-    case COMPLETION_FORMAT_FISH:
-      return "fish";
-    case COMPLETION_FORMAT_ZSH:
-      return "zsh";
-    case COMPLETION_FORMAT_POWERSHELL:
-      return "powershell";
-    default:
-      return "unknown";
+  case COMPLETION_FORMAT_BASH:
+    return "bash";
+  case COMPLETION_FORMAT_FISH:
+    return "fish";
+  case COMPLETION_FORMAT_ZSH:
+    return "zsh";
+  case COMPLETION_FORMAT_POWERSHELL:
+    return "powershell";
+  default:
+    return "unknown";
   }
 }
 
-completion_format_t completions_parse_shell_name(const char *shell_name)
-{
+completion_format_t completions_parse_shell_name(const char *shell_name) {
   if (!shell_name) {
     return COMPLETION_FORMAT_UNKNOWN;
   }
@@ -96,8 +93,7 @@ completion_format_t completions_parse_shell_name(const char *shell_name)
  *
  * @note The caller must free the returned pointer with SAFE_FREE()
  */
-option_descriptor_t* completions_collect_all_modes_unique(size_t *count)
-{
+option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
   if (!count) {
     return NULL;
   }
@@ -124,9 +120,8 @@ option_descriptor_t* completions_collect_all_modes_unique(size_t *count)
         }
         if (!already_has) {
           combined_count++;
-          option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(combined_opts,
-                                                                          combined_count * sizeof(option_descriptor_t),
-                                                                          option_descriptor_t *);
+          option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
+              combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
           if (temp) {
             combined_opts = temp;
             combined_opts[combined_count - 1] = mode_opts[i];

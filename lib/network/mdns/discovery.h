@@ -67,7 +67,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include "common.h"
-#include "discovery/strings.h" // For is_session_string()
+#include "discovery/strings.h"          // For is_session_string()
 #include "network/mdns/discovery_tui.h" // For discovery_tui_server_t
 
 #ifdef __cplusplus

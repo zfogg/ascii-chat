@@ -214,4 +214,3 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     fprintf(stream, "\n");
   }
 }
-

@@ -89,7 +89,7 @@ asciichat_error_t completions_generate_for_shell(completion_format_t format, FIL
  * @param format Completion format
  * @return Shell name string (e.g., "bash", "fish"), or "unknown" if invalid
  */
-const char* completions_get_shell_name(completion_format_t format);
+const char *completions_get_shell_name(completion_format_t format);
 
 /**
  * @brief Parse shell name string to completion format
@@ -115,7 +115,7 @@ completion_format_t completions_parse_shell_name(const char *shell_name);
  *
  * @note The caller must free the returned pointer with SAFE_FREE()
  */
-option_descriptor_t* completions_collect_all_modes_unique(size_t *count);
+option_descriptor_t *completions_collect_all_modes_unique(size_t *count);
 
 #ifdef __cplusplus
 }

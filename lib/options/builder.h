@@ -76,20 +76,20 @@ typedef enum {
  */
 typedef struct {
   // Enum values with descriptions
-  const char **enum_values;            ///< Enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
-  size_t enum_count;                   ///< Number of enum values
-  const char **enum_descriptions;      ///< Descriptions parallel to enum_values (e.g., "Auto-detect from terminal")
+  const char **enum_values;       ///< Enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
+  size_t enum_count;              ///< Number of enum values
+  const char **enum_descriptions; ///< Descriptions parallel to enum_values (e.g., "Auto-detect from terminal")
 
   // Numeric range
   struct {
-    int min;   ///< Minimum value (or 0 if no limit)
-    int max;   ///< Maximum value (or 0 if no limit)
-    int step;  ///< Step size (0 = no step, continuous)
+    int min;  ///< Minimum value (or 0 if no limit)
+    int max;  ///< Maximum value (or 0 if no limit)
+    int step; ///< Step size (0 = no step, continuous)
   } numeric_range;
 
   // Examples
-  const char **examples;     ///< Example values or command invocations
-  size_t example_count;      ///< Number of examples
+  const char **examples; ///< Example values or command invocations
+  size_t example_count;  ///< Number of examples
 
   // Default value (informational, may be duplicated from descriptor)
   const char *default_value; ///< Default value as string for display
@@ -620,7 +620,8 @@ void options_builder_set_examples(options_builder_t *builder, const char *option
  * options_builder_set_input_type(builder, "log-file", OPTION_INPUT_FILEPATH);
  * ```
  */
-void options_builder_set_input_type(options_builder_t *builder, const char *option_name, option_input_type_t input_type);
+void options_builder_set_input_type(options_builder_t *builder, const char *option_name,
+                                    option_input_type_t input_type);
 
 /**
  * @brief Mark option as accepting multiple values

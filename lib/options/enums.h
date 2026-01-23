@@ -25,9 +25,9 @@ extern "C" {
  * @brief Enum value mapping for an option
  */
 typedef struct {
-  const char *option_name;    ///< Long option name (e.g., "log-level")
-  const char **values;        ///< Array of valid string values
-  size_t value_count;         ///< Number of values in array
+  const char *option_name; ///< Long option name (e.g., "log-level")
+  const char **values;     ///< Array of valid string values
+  size_t value_count;      ///< Number of values in array
 } enum_descriptor_t;
 
 /**
@@ -37,7 +37,7 @@ typedef struct {
  * @param value_count OUTPUT: Number of values returned
  * @return Array of valid string values, or NULL if not an enum option
  */
-const char** options_get_enum_values(const char *option_name, size_t *value_count);
+const char **options_get_enum_values(const char *option_name, size_t *value_count);
 
 /**
  * @brief Check if an option has enum values

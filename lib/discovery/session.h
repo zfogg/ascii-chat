@@ -51,7 +51,7 @@ typedef struct {
  */
 typedef struct session_entry {
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< e.g., "affectionate-acquaintance-acquaintance"
-  uint8_t session_id[16];  ///< UUID
+  uint8_t session_id[16];                          ///< UUID
 
   uint8_t host_pubkey[32];      ///< Host's Ed25519 key
   uint8_t capabilities;         ///< bit 0: video, bit 1: audio

@@ -815,7 +815,8 @@ void options_builder_set_enum_values(options_builder_t *builder, const char *opt
   desc->metadata.enum_descriptions = descriptions;
 }
 
-void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max, int step) {
+void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max,
+                                       int step) {
   if (!builder || !option_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or option_name is NULL");
     return;

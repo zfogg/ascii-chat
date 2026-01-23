@@ -490,11 +490,11 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
       strcmp(field_name, "encrypt_keyfile") != 0 && strcmp(field_name, "server_key") != 0 &&
       strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&
       strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_database_path") != 0 &&
-      strcmp(field_name, "log_file") != 0 &&
-      strcmp(field_name, "media_file") != 0 && strcmp(field_name, "palette_custom") != 0 &&
-      strcmp(field_name, "stun_servers") != 0 && strcmp(field_name, "turn_servers") != 0 &&
-      strcmp(field_name, "turn_username") != 0 && strcmp(field_name, "turn_credential") != 0 &&
-      strcmp(field_name, "turn_secret") != 0 && strcmp(field_name, "session_string") != 0) {
+      strcmp(field_name, "log_file") != 0 && strcmp(field_name, "media_file") != 0 &&
+      strcmp(field_name, "palette_custom") != 0 && strcmp(field_name, "stun_servers") != 0 &&
+      strcmp(field_name, "turn_servers") != 0 && strcmp(field_name, "turn_username") != 0 &&
+      strcmp(field_name, "turn_credential") != 0 && strcmp(field_name, "turn_secret") != 0 &&
+      strcmp(field_name, "session_string") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown string field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }

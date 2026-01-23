@@ -29,8 +29,8 @@
  * @brief Hashtable entry for cached word lookups
  */
 typedef struct {
-  char *word;      ///< The word string (key)
-  UT_hash_handle hh;  ///< uthash handle
+  char *word;        ///< The word string (key)
+  UT_hash_handle hh; ///< uthash handle
 } word_cache_entry_t;
 
 /**
@@ -125,8 +125,7 @@ asciichat_error_t acds_string_init(void) {
     log_warn("Failed to register atexit handler for session string cache cleanup");
   }
 
-  log_debug("Session string word cache initialized (%zu adjectives, %zu nouns)",
-            adjectives_count, nouns_count);
+  log_debug("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
   return ASCIICHAT_OK;
 }
 

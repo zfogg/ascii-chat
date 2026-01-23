@@ -10,8 +10,7 @@
 #include "options/registry.h"
 #include "common.h"
 
-static void ps_write_option(FILE *output, const option_descriptor_t *opt)
-{
+static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
   if (!opt) {
     return;
   }
@@ -26,42 +25,44 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt)
       if (opt->short_name != '\0') {
         fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
         for (size_t i = 0; i < meta->enum_count; i++) {
-          if (i > 0) fprintf(output, ", ");
+          if (i > 0)
+            fprintf(output, ", ");
           fprintf(output, "'%s'", meta->enum_values[i]);
         }
         fprintf(output, ") }\n");
       }
       fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
       for (size_t i = 0; i < meta->enum_count; i++) {
-        if (i > 0) fprintf(output, ", ");
+        if (i > 0)
+          fprintf(output, ", ");
         fprintf(output, "'%s'", meta->enum_values[i]);
       }
       fprintf(output, ") }\n");
       return;
-    }
-    else if (meta->examples && meta->example_count > 0) {
+    } else if (meta->examples && meta->example_count > 0) {
       // Example values (practical values, higher priority than calculated ranges)
       if (opt->short_name != '\0') {
         fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
         for (size_t i = 0; i < meta->example_count; i++) {
-          if (i > 0) fprintf(output, ", ");
+          if (i > 0)
+            fprintf(output, ", ");
           fprintf(output, "'%s'", meta->examples[i]);
         }
         fprintf(output, ") }\n");
       }
       fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
       for (size_t i = 0; i < meta->example_count; i++) {
-        if (i > 0) fprintf(output, ", ");
+        if (i > 0)
+          fprintf(output, ", ");
         fprintf(output, "'%s'", meta->examples[i]);
       }
       fprintf(output, ") }\n");
       return;
-    }
-    else if (meta->input_type == OPTION_INPUT_NUMERIC) {
+    } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
       // Numeric range - suggest min, middle, max values
       if (opt->short_name != '\0') {
-        fprintf(output, "    @{ Name = '-%c'; Description = '%s (numeric %d-%d)'; Values = @(",
-                opt->short_name, opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
+        fprintf(output, "    @{ Name = '-%c'; Description = '%s (numeric %d-%d)'; Values = @(", opt->short_name,
+                opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
         fprintf(output, "'%d'", meta->numeric_range.min);
         if (meta->numeric_range.max > meta->numeric_range.min) {
           int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
@@ -70,8 +71,8 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt)
         }
         fprintf(output, ") }\n");
       }
-      fprintf(output, "    @{ Name = '--%s'; Description = '%s (numeric %d-%d)'; Values = @(",
-              opt->long_name, opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
+      fprintf(output, "    @{ Name = '--%s'; Description = '%s (numeric %d-%d)'; Values = @(", opt->long_name,
+              opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
       fprintf(output, "'%d'", meta->numeric_range.min);
       if (meta->numeric_range.max > meta->numeric_range.min) {
         int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
@@ -90,36 +91,33 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt)
   fprintf(output, "    @{ Name = '--%s'; Description = '%s' }\n", opt->long_name, opt->help_text);
 }
 
-asciichat_error_t completions_generate_powershell(FILE *output)
-{
+asciichat_error_t completions_generate_powershell(FILE *output) {
   if (!output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
-  fprintf(output,
-    "# PowerShell completion script for ascii-chat\n"
-    "# Generated from options registry - DO NOT EDIT MANUALLY\n"
-    "# Usage: ascii-chat --completions powershell | Out-String | Invoke-Expression\n"
-    "\n"
-    "$script:AsciiChatCompleter = {\n"
-    "  param($wordToComplete, $commandAst, $cursorPosition)\n"
-    "\n"
-    "  $words = @($commandAst.CommandElements | ForEach-Object { $_.Value })\n"
-    "  $mode = $null\n"
-    "\n"
-    "  foreach ($word in $words) {\n"
-    "    if ($word -in @('server', 'client', 'mirror')) {\n"
-    "      $mode = $word\n"
-    "      break\n"
-    "    }\n"
-    "  }\n"
-    "\n"
-    "  $binaryOptions = @(\n");
+  fprintf(output, "# PowerShell completion script for ascii-chat\n"
+                  "# Generated from options registry - DO NOT EDIT MANUALLY\n"
+                  "# Usage: ascii-chat --completions powershell | Out-String | Invoke-Expression\n"
+                  "\n"
+                  "$script:AsciiChatCompleter = {\n"
+                  "  param($wordToComplete, $commandAst, $cursorPosition)\n"
+                  "\n"
+                  "  $words = @($commandAst.CommandElements | ForEach-Object { $_.Value })\n"
+                  "  $mode = $null\n"
+                  "\n"
+                  "  foreach ($word in $words) {\n"
+                  "    if ($word -in @('server', 'client', 'mirror')) {\n"
+                  "      $mode = $word\n"
+                  "      break\n"
+                  "    }\n"
+                  "  }\n"
+                  "\n"
+                  "  $binaryOptions = @(\n");
 
   /* Binary options - use unified display API matching help system */
   size_t binary_count = 0;
-  const option_descriptor_t *binary_opts =
-      options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
+  const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
 
   if (binary_opts) {
     for (size_t i = 0; i < binary_count; i++) {
@@ -132,8 +130,7 @@ asciichat_error_t completions_generate_powershell(FILE *output)
 
   /* Server options - use unified display API matching help system */
   size_t server_count = 0;
-  const option_descriptor_t *server_opts =
-      options_registry_get_for_display(MODE_SERVER, false, &server_count);
+  const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
 
   if (server_opts) {
     for (size_t i = 0; i < server_count; i++) {
@@ -146,8 +143,7 @@ asciichat_error_t completions_generate_powershell(FILE *output)
 
   /* Client options - use unified display API matching help system */
   size_t client_count = 0;
-  const option_descriptor_t *client_opts =
-      options_registry_get_for_display(MODE_CLIENT, false, &client_count);
+  const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
 
   if (client_opts) {
     for (size_t i = 0; i < client_count; i++) {
@@ -160,8 +156,7 @@ asciichat_error_t completions_generate_powershell(FILE *output)
 
   /* Mirror options - use unified display API matching help system */
   size_t mirror_count = 0;
-  const option_descriptor_t *mirror_opts =
-      options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
+  const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
 
   if (mirror_opts) {
     for (size_t i = 0; i < mirror_count; i++) {
@@ -185,38 +180,40 @@ asciichat_error_t completions_generate_powershell(FILE *output)
   }
 
   fprintf(output,
-    "  )\n"
-    "\n"
-    "  $options = $binaryOptions\n"
-    "  \n"
-    "  if ($mode -eq 'server') {\n"
-    "    $options += $serverOptions\n"
-    "  } elseif ($mode -eq 'client') {\n"
-    "    $options += $clientOptions\n"
-    "  } elseif ($mode -eq 'mirror') {\n"
-    "    $options += $mirrorOptions\n"
-    "  } elseif ($mode -eq 'discovery-service') {\n"
-    "    $options += $discoverySvcOptions\n"
-    "  }\n"
-    "\n"
-    "  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n"
-    "    @('server', 'client', 'mirror', 'discovery-service') | Where-Object { $_ -like \"$wordToComplete*\" } | ForEach-Object {\n"
-    "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \"Mode: $_\")\n"
-    "    }\n"
-    "  } else {\n"
-    "    $options | Where-Object { $_.Name -like \"$wordToComplete*\" } | ForEach-Object {\n"
-    "      if ($_.Values) {\n"
-    "        $_.Values | ForEach-Object {\n"
-    "          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_.Description)\n"
-    "        }\n"
-    "      } else {\n"
-    "        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Description)\n"
-    "      }\n"
-    "    }\n"
-    "  }\n"
-    "}\n"
-    "\n"
-    "Register-ArgumentCompleter -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n");
+          "  )\n"
+          "\n"
+          "  $options = $binaryOptions\n"
+          "  \n"
+          "  if ($mode -eq 'server') {\n"
+          "    $options += $serverOptions\n"
+          "  } elseif ($mode -eq 'client') {\n"
+          "    $options += $clientOptions\n"
+          "  } elseif ($mode -eq 'mirror') {\n"
+          "    $options += $mirrorOptions\n"
+          "  } elseif ($mode -eq 'discovery-service') {\n"
+          "    $options += $discoverySvcOptions\n"
+          "  }\n"
+          "\n"
+          "  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n"
+          "    @('server', 'client', 'mirror', 'discovery-service') | Where-Object { $_ -like \"$wordToComplete*\" } | "
+          "ForEach-Object {\n"
+          "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \"Mode: $_\")\n"
+          "    }\n"
+          "  } else {\n"
+          "    $options | Where-Object { $_.Name -like \"$wordToComplete*\" } | ForEach-Object {\n"
+          "      if ($_.Values) {\n"
+          "        $_.Values | ForEach-Object {\n"
+          "          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_.Description)\n"
+          "        }\n"
+          "      } else {\n"
+          "        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', "
+          "$_.Description)\n"
+          "      }\n"
+          "    }\n"
+          "  }\n"
+          "}\n"
+          "\n"
+          "Register-ArgumentCompleter -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n");
 
   return ASCIICHAT_OK;
 }
