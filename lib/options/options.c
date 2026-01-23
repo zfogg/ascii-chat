@@ -96,6 +96,7 @@
 #include "util/time.h"
 #include "network/mdns/discovery.h"
 #include "version.h"
+#include "debug/memory.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -106,6 +107,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// ============================================================================
+// Global Action Flag Tracking
+// ============================================================================
+
+/** @brief Global flag tracking if an action was passed (--show-capabilities, etc) */
+static bool g_action_flag = false;
+
+/**
+ * @brief Set the action flag to indicate an action was passed
+ * @param action_present true if action flag was detected
+ */
+static void set_action_flag(bool action_present) {
+  g_action_flag = action_present;
+}
+
+/**
+ * @brief Check if an action flag was detected
+ * @return true if an action flag was passed
+ */
+bool has_action_flag(void) {
+  return g_action_flag;
+}
 
 // ============================================================================
 // Mode Detection Helper
@@ -617,13 +641,29 @@ asciichat_error_t options_init(int argc, char **argv) {
           action_completions(argv[i + 1]);
           // action_completions() calls exit(), so we don't reach here
         } else {
-          (void)fprintf(stderr, "Error: --completions requires shell name (bash, fish, zsh, powershell)\n");
+          log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
           _exit(1);
         }
         break; // Unreachable, but for clarity
       }
+      // Check for other action flags
+      if (strcmp(argv[i], "--show-capabilities") == 0) {
+        has_action = true;
+      }
+      if (strcmp(argv[i], "--list-webcams") == 0) {
+        has_action = true;
+      }
+      if (strcmp(argv[i], "--list-microphones") == 0) {
+        has_action = true;
+      }
+      if (strcmp(argv[i], "--list-speakers") == 0) {
+        has_action = true;
+      }
     }
   }
+
+  // Store action flag globally for use during cleanup
+  set_action_flag(has_action);
 
   // Initialize logging system early so prompts display properly (e.g., for --config-create)
   // This must happen before config_create_default is called
@@ -632,7 +672,8 @@ asciichat_error_t options_init(int argc, char **argv) {
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
   }
   if (has_action) {
-    log_set_terminal_output(false); // Suppress console logging BEFORE shared_init
+    debug_memory_set_quiet_mode(true); // Suppress memory report for clean action output (BEFORE logging)
+    log_set_terminal_output(false);    // Suppress console logging BEFORE shared_init
   }
   asciichat_error_t logging_init_result = asciichat_shared_init("options-early.log", false);
   if (logging_init_result != ASCIICHAT_OK) {
@@ -1259,6 +1300,16 @@ asciichat_error_t options_init(int argc, char **argv) {
       log_error("--seek requires --file or --url");
       return ERROR_INVALID_PARAM;
     }
+  }
+
+  // ========================================================================
+  // STAGE 6.5: Suppress memory report if any action flags are set
+  // ========================================================================
+
+  // Check for builder-parsed action flags that might not have been detected in early scan
+  // If quiet_mode is not already set, check for action-like flags now
+  if (opts.show_capabilities) {
+    debug_memory_set_quiet_mode(true);
   }
 
   // ========================================================================
