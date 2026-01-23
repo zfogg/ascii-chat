@@ -1087,10 +1087,8 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
                                              const parsed_section_t *existing_section) {
   write_section_marker(f, "MERGE", "ENVIRONMENT", true);
 
-  // Only write header if not already in section content
-  if (!existing_section || !existing_section->content || strstr(existing_section->content, ".SH ENVIRONMENT") == NULL) {
-    fprintf(f, ".SH ENVIRONMENT\n");
-  }
+  // Always write header - the extraction function only gets .TP entries, not the header
+  fprintf(f, ".SH ENVIRONMENT\n");
 
   // Collect manual environment variables with their descriptions
   env_var_entry_t *all_vars = NULL;
