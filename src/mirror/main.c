@@ -331,8 +331,8 @@ int mirror_main(void) {
   }
 
   // Cleanup
-  // Only re-enable terminal output for shutdown message if it wasn't disabled (--quiet)
-  if (log_get_terminal_output()) {
+  // Re-enable terminal output for shutdown message if --quiet wasn't passed
+  if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);
     log_info("Mirror mode shutting down");
   }

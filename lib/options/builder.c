@@ -1695,28 +1695,27 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     }
   }
 
-  // Handle option based on type
-  if (desc->type == OPTION_TYPE_BOOL) {
-    // Boolean flag - set to true
-    *(bool *)field = true;
-  } else if (desc->type == OPTION_TYPE_ACTION) {
-    // Action flag - just set to true (action may exit or do nothing)
-    *(bool *)field = true;
-  } else if (desc->parse_fn) {
-    // Use parse function for parsing (CALLBACK type)
-    char *error_msg = NULL;
-    bool success = desc->parse_fn(opt_value, options_struct, &error_msg);
-    if (!success) {
-      if (error_msg) {
-        log_plain_stderr("Error parsing %s: %s", arg, error_msg);
-        SAFE_FREE(error_msg);
+  // Handle option based on type using the handler registry
+  if (desc->type < sizeof(g_builder_handlers) / sizeof(g_builder_handlers[0])) {
+    const option_builder_handler_t *handler = &g_builder_handlers[desc->type];
+
+    if (desc->type == OPTION_TYPE_BOOL || desc->type == OPTION_TYPE_ACTION) {
+      // Boolean/action flags don't need a value
+      asciichat_error_t result = handler->apply_cli(field, NULL, desc);
+      if (result != ASCIICHAT_OK) {
+        if (equals)
+          *equals = '='; // Restore
+        return result;
       }
-      if (equals)
-        *equals = '='; // Restore
-      return ERROR_USAGE;
+    } else {
+      // Other types need a value (INT, STRING, DOUBLE, CALLBACK)
+      asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
+      if (result != ASCIICHAT_OK) {
+        if (equals)
+          *equals = '='; // Restore
+        return result;
+      }
     }
-    if (error_msg)
-      SAFE_FREE(error_msg);
   } else {
     if (equals)
       *equals = '='; // Restore

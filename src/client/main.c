@@ -435,7 +435,7 @@ static int initialize_client_systems(bool shared_init_completed) {
   }
 
   // Ensure logging output is available for connection attempts (unless it was disabled with --quiet)
-  if (log_get_terminal_output()) {
+  if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);
   }
   log_truncate_if_large();
@@ -860,7 +860,7 @@ int client_main(void) {
 
       if (has_ever_connected) {
         display_full_reset();
-        if (log_get_terminal_output()) {
+        if (!GET_OPTION(quiet)) {
           log_set_terminal_output(true);
         }
       } else {
@@ -957,7 +957,7 @@ int client_main(void) {
 
     // Re-enable terminal logging when connection is lost for debugging reconnection
     // (but only if we've ever successfully connected before and --quiet wasn't set)
-    if (has_ever_connected && log_get_terminal_output()) {
+    if (has_ever_connected && !GET_OPTION(quiet)) {
       printf("\n");
       log_set_terminal_output(true);
     }

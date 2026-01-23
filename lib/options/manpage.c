@@ -355,12 +355,18 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
 
 /**
  * @brief Format mode names from a mode_bitmask
- * Returns a string like "server, client" or "all modes" or NULL if no specific mode
+ * Returns a string like "server, client" or "all modes" or "global" or NULL if no specific mode
  * Maps MODE_DISCOVERY to "binary" (the unified binary visible to users)
+ * Binary-level options (OPTION_MODE_BINARY without mode bits) show as "global"
  */
 static const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   if (mode_bitmask == 0) {
     return NULL; // No mode restrictions
+  }
+
+  // Check if this is a binary-level option (parsed before mode detection)
+  if ((mode_bitmask & OPTION_MODE_BINARY) && !(mode_bitmask & 0x1F)) {
+    return "global"; // Binary-only option with no mode restrictions
   }
 
   // Check if it's all modes (except OPTION_MODE_BINARY which is a flag, not a mode)
@@ -511,11 +517,14 @@ static void write_options_section(FILE *f, const options_config_t *config) {
         }
       }
 
-      // Add mode information if not all modes
-      if (!(desc->mode_bitmask & OPTION_MODE_BINARY)) {
-        const char *modes = format_mode_names(desc->mode_bitmask);
-        if (modes && strcmp(modes, "all modes") != 0) {
-          fprintf(f, "(modes: %s)\n", modes);
+      // Add mode information if applicable
+      const char *mode_str = format_mode_names(desc->mode_bitmask);
+      if (mode_str && strcmp(mode_str, "all modes") != 0) {
+        // Use "(mode: ...)" for global, "(modes: ...)" for mode-specific
+        if (strcmp(mode_str, "global") == 0) {
+          fprintf(f, "(mode: %s)\n", mode_str);
+        } else {
+          fprintf(f, "(modes: %s)\n", mode_str);
         }
       }
 
