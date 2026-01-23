@@ -5,7 +5,12 @@ is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
 using a local console, a remote SSH session, or any terminal emulator.
 .PP
-The program operates in four modes:
+The program operates in five modes:
+.TP
+.B ascii-chat
+The binary's default operating mode without additional commands. Starts or joins an
+ascii-chat Discovery Service session with a session string. This mode makes secure
+internet connections and attempts direct tcp and webrtc connections.
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
@@ -22,7 +27,7 @@ the server sends back.
 Displays your local webcam as ASCII art without any network connection.
 Perfect for testing webcam, palette settings, and terminal rendering.
 .TP
-.B discovery-server
+.B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections

@@ -156,7 +156,7 @@ Common development targets (run with `cmake --build build --target <name>`):
 
 ## Usage
 
-ascii-chat uses a unified binary with four modes: `server`, `client`, `mirror`, and `discovery-server`.
+ascii-chat uses a unified binary with four modes: `server`, `client`, `mirror`, and `discovery-service`.
 
 **Get help:**
 
@@ -165,7 +165,7 @@ ascii-chat --help                      # Top-level help
 ascii-chat server --help               # Server-specific help
 ascii-chat client --help               # Client-specific help
 ascii-chat mirror --help               # Mirror-specific help
-ascii-chat discovery-server --help     # Discovery-server-specific help
+ascii-chat discovery-service --help     # Discovery-service-specific help
 ```
 
 **Read the manual:**
@@ -341,7 +341,7 @@ Future enhancement: ACIP will adopt this error framework for comprehensive error
 **Official server (trusted by default):**
 
 - The official ACDS server runs at **discovery-server.ascii-chat.com:27225**
-- Ed25519 public keys available at **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)**
+- Its Ed25519 public keys available at **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)**
 - Manual verification via SSH and GPG fingerprints on the website
 
 **Session database:**
