@@ -172,11 +172,9 @@ Tab completion is available for Bash, Fish, Zsh, and PowerShell. Completions are
 # Zsh: Add Homebrew/Linuxbrew completions to FPATH (~/.zshrc)
 export FPATH=$(brew --prefix)/share/zsh/site-functions:$FPATH
 
-# Bash: Homebrew completions are usually sourced automatically
-# If not, add to ~/.bashrc:
-[[ -r "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]] && . "$(brew --prefix)/etc/profile.d/bash_completion.sh"
-
-# Fish/PowerShell: Completions work automatically in standard locations
+# Bash: if you have a custom BASH_COMPLETION_USER_DIR
+export BASH_COMPLETION_USER_DIR=~/.bash-completions
+ascii-chat --completions bash > $BASH_COMPLETION_USER_DIR/completions/completions/ascii-chat.bash
 ```
 
 **If building from source or without a package manager:** Generate completions on-demand:
