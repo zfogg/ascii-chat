@@ -98,8 +98,17 @@ static const option_builder_handler_t g_builder_handlers[] = {
 
 // --- is_set handlers ---
 static bool is_set_bool(const void *field, const option_descriptor_t *desc) {
-  bool value = *(const bool *)field;
-  bool default_val = desc->default_value ? *(const bool *)desc->default_value : false;
+  // Safely read the bool value (may be uninitialized)
+  unsigned char value_byte = 0;
+  memcpy(&value_byte, field, 1);
+  bool value = (value_byte != 0);
+
+  bool default_val = false;
+  if (desc && desc->default_value) {
+    unsigned char default_byte = 0;
+    memcpy(&default_byte, desc->default_value, 1);
+    default_val = (default_byte != 0);
+  }
   return value != default_val;
 }
 
@@ -144,19 +153,35 @@ static bool is_set_action(const void *field, const option_descriptor_t *desc) {
 
 // --- apply_env handlers ---
 static void apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc) {
-  bool current_value = *(const bool *)field;
-  bool default_val = desc->default_value ? *(const bool *)desc->default_value : false;
+  // Safely read the current bool value (may be uninitialized)
+  unsigned char current_byte = 0;
+  memcpy(&current_byte, field, 1);
+  bool current_value = (current_byte != 0);
+
+  // Safely read the default value
+  bool default_val = false;
+  if (desc && desc->default_value) {
+    unsigned char default_byte = 0;
+    memcpy(&default_byte, desc->default_value, 1);
+    default_val = (default_byte != 0);
+  }
+
   if (current_value != default_val) {
     return; // Already set, skip env var
   }
+
   bool value = false;
   if (env_value) {
     value = (strcmp(env_value, "1") == 0 || strcmp(env_value, "true") == 0 || strcmp(env_value, "yes") == 0 ||
              strcmp(env_value, "on") == 0);
-  } else if (desc->default_value) {
-    value = *(const bool *)desc->default_value;
+  } else if (desc && desc->default_value) {
+    unsigned char default_byte = 0;
+    memcpy(&default_byte, desc->default_value, 1);
+    value = (default_byte != 0);
   }
-  *(bool *)field = value;
+
+  unsigned char value_byte = value ? 1 : 0;
+  memcpy(field, &value_byte, 1);
 }
 
 static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {
@@ -243,7 +268,8 @@ static void apply_env_action(void *field, const char *env_value, const option_de
 static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
   (void)opt_value;
   (void)desc;
-  *(bool *)field = true;
+  unsigned char value_byte = 1; // true
+  memcpy(field, &value_byte, 1);
   return ASCIICHAT_OK;
 }
 
