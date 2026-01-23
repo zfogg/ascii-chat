@@ -560,16 +560,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     return rcu_init_result;
   }
 
-  // Immediately publish default-initialized options to RCU
-  // This ensures atexit handlers can safely call GET_OPTION() even if options_init() fails
-  // All fields default to safe values (test_pattern=false, quiet=false, etc.)
-  options_t default_opts = options_t_new();
-  asciichat_error_t default_publish = options_state_set(&default_opts);
-  if (default_publish != ASCIICHAT_OK) {
-    // Even if publishing defaults fails, continue - RCU is at least partially initialized
-    log_warn("Failed to publish default options: %d", default_publish);
-  }
-
   // ========================================================================
   // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================

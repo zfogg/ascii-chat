@@ -45,6 +45,19 @@ static mutex_t g_options_write_mutex;
  */
 static bool g_options_initialized = false;
 
+/**
+ * @brief Static default options used when options_get() is called before initialization
+ * or during cleanup. This ensures atexit handlers can safely call GET_OPTION().
+ */
+static const options_t g_default_options = (options_t){
+    .test_pattern = false,
+    .quiet = false,
+    .log_level = LOG_INFO,
+    .color_mode = COLOR_MODE_AUTO,
+    .palette_type = PALETTE_STANDARD,
+    // All other fields are zero-initialized (empty strings, false, 0, etc.)
+};
+
 // ============================================================================
 // Memory Reclamation Strategy
 // ============================================================================
@@ -202,11 +215,11 @@ const options_t *options_get(void) {
   // Guarantees we see all writes made before the pointer was published
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
 
-  // Should never be NULL after initialization
+  // If options not yet published, return safe static default instead of crashing
+  // This allows atexit handlers to safely call GET_OPTION() during cleanup
   if (!current) {
-    log_fatal("Options not initialized! Call options_state_init() first");
-    log_warn("options_get() called before options initialization - this will cause a crash");
-    abort();
+    // Return static default - safe for atexit handlers to read
+    return (const options_t *)&g_default_options;
   }
 
   return current;
