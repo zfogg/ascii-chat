@@ -10,7 +10,7 @@
 #   - docs: Doxygen executable must be installed
 #
 # Outputs:
-#   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1
+#   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1 (uncompressed for direct use)
 #   - docs: ${CMAKE_BINARY_DIR}/docs/html/ and ${CMAKE_BINARY_DIR}/docs/man/man3/
 # =============================================================================
 
@@ -30,6 +30,8 @@ endif()
 # This merges the template (.1.in) with manual content (.1.content) and auto-generates
 # option documentation from the options builder
 # Note: --create-man-page writes to stdout, so we redirect output to the target file
+# Store uncompressed in build directory for direct use with 'man' command,
+# compression happens only during installation for packaging
 if(UNIX)
     # Unix: Use sh -c for shell redirection
     add_custom_command(
