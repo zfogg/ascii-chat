@@ -38,24 +38,23 @@ void action_list_webcams(void) {
 
   asciichat_error_t result = webcam_list_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
-    (void)fprintf(stderr, "Error: Failed to enumerate webcam devices\n");
-    _exit(1);
+    log_plain_stderr("Error: Failed to enumerate webcam devices");
+    exit(1);
   }
 
   if (device_count == 0) {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No webcam devices found."));
+    log_plain_stderr("%s", colored_string(LOG_COLOR_ERROR, "No webcam devices found."));
   } else {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_DEV, "Available Webcam Devices:"));
+    log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Webcam Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       (void)snprintf(index_str, sizeof(index_str), "%u", devices[i].index);
-      (void)fprintf(stdout, "  %s %s\n", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      log_plain_stderr("  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
     }
   }
 
   webcam_free_device_list(devices);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 // ============================================================================
@@ -68,28 +67,33 @@ void action_list_microphones(void) {
 
   asciichat_error_t result = audio_list_input_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
-    (void)fprintf(stderr, "Error: Failed to enumerate audio input devices\n");
-    _exit(1);
+    log_plain_stderr("Error: Failed to enumerate audio input devices");
+    exit(1);
   }
 
   if (device_count == 0) {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No microphone devices found."));
+    log_plain_stderr("%s", colored_string(LOG_COLOR_ERROR, "No microphone devices found."));
   } else {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_DEV, "Available Microphone Devices:"));
+    log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Microphone Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       (void)snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
-      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      char device_line[512];
+      char *line_ptr = device_line;
+      int remaining = sizeof(device_line);
+      (void)snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
       if (devices[i].is_default_input) {
-        (void)fprintf(stdout, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
+        size_t len = strlen(device_line);
+        line_ptr = device_line + len;
+        remaining = sizeof(device_line) - (int)len;
+        (void)snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
-      (void)fprintf(stdout, "\n");
+      log_plain_stderr("%s", device_line);
     }
   }
 
   audio_free_device_list(devices);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 void action_list_speakers(void) {
@@ -98,28 +102,33 @@ void action_list_speakers(void) {
 
   asciichat_error_t result = audio_list_output_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
-    (void)fprintf(stderr, "Error: Failed to enumerate audio output devices\n");
-    _exit(1);
+    log_plain_stderr("Error: Failed to enumerate audio output devices");
+    exit(1);
   }
 
   if (device_count == 0) {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_ERROR, "No speaker devices found."));
+    log_plain_stderr("%s", colored_string(LOG_COLOR_ERROR, "No speaker devices found."));
   } else {
-    (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_DEV, "Available Speaker Devices:"));
+    log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Speaker Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       (void)snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
-      (void)fprintf(stdout, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      char device_line[512];
+      char *line_ptr = device_line;
+      int remaining = sizeof(device_line);
+      (void)snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
       if (devices[i].is_default_output) {
-        (void)fprintf(stdout, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
+        size_t len = strlen(device_line);
+        line_ptr = device_line + len;
+        remaining = sizeof(device_line) - (int)len;
+        (void)snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
-      (void)fprintf(stdout, "\n");
+      log_plain_stderr("%s", device_line);
     }
   }
 
   audio_free_device_list(devices);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 // ============================================================================
@@ -130,7 +139,7 @@ void action_show_capabilities(void) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
   // Print title with color
-  (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Detected Terminal Capabilities:"));
+  log_plain_stderr("%s", colored_string(LOG_COLOR_INFO, "Detected Terminal Capabilities:"));
 
   // Column alignment: calculate max label width
   const char *label_color_level = "Color Level:";
@@ -154,11 +163,16 @@ void action_show_capabilities(void) {
 
 #define PRINT_CAP_LINE(label, value_str, value_color)                                                                  \
   do {                                                                                                                 \
-    (void)fprintf(stdout, "  %s", colored_string(LOG_COLOR_GREY, label));                                              \
+    char _cap_line_buf[1024];                                                                                          \
+    int _cap_pos = 0;                                                                                                  \
+    _cap_pos += snprintf(_cap_line_buf + _cap_pos, sizeof(_cap_line_buf) - _cap_pos, "  %s",                           \
+                         colored_string(LOG_COLOR_GREY, label));                                                       \
     for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
-      (void)fprintf(stdout, " ");                                                                                      \
+      _cap_line_buf[_cap_pos++] = ' ';                                                                                 \
     }                                                                                                                  \
-    (void)fprintf(stdout, " %s\n", colored_string(value_color, value_str));                                            \
+    _cap_pos += snprintf(_cap_line_buf + _cap_pos, sizeof(_cap_line_buf) - _cap_pos, " %s",                            \
+                         colored_string(value_color, value_str));                                                      \
+    log_plain_stderr("%s", _cap_line_buf);                                                                             \
   } while (0)
 
   // Print Color Level
@@ -201,8 +215,7 @@ void action_show_capabilities(void) {
 
 #undef PRINT_CAP_LINE
 
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 // ============================================================================
@@ -210,38 +223,36 @@ void action_show_capabilities(void) {
 // ============================================================================
 
 void action_show_version(void) {
-  (void)fprintf(stdout, "ascii-chat %s (%s, %s)\n", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE,
-                ASCII_CHAT_BUILD_DATE);
-  (void)fprintf(stdout, "\n");
-  (void)fprintf(stdout, "Built with:\n");
+  log_plain_stderr("ascii-chat %s (%s, %s)", ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+  log_plain_stderr("");
+  log_plain_stderr("Built with:");
 
 #ifdef __clang__
-  (void)fprintf(stdout, "  Compiler: Clang %s\n", __clang_version__);
+  log_plain_stderr("  Compiler: Clang %s", __clang_version__);
 #elif defined(__GNUC__)
-  (void)fprintf(stdout, "  Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+  log_plain_stderr("  Compiler: GCC %d.%d.%d", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #elif defined(_MSC_VER)
-  (void)fprintf(stdout, "  Compiler: MSVC %d\n", _MSC_VER);
+  log_plain_stderr("  Compiler: MSVC %d", _MSC_VER);
 #else
-  (void)fprintf(stdout, "  Compiler: Unknown\n");
+  log_plain_stderr("  Compiler: Unknown");
 #endif
 
 #ifdef USE_MUSL
-  (void)fprintf(stdout, "  C Library: musl\n");
+  log_plain_stderr("  C Library: musl");
 #elif defined(__GLIBC__)
-  (void)fprintf(stdout, "  C Library: glibc %d.%d\n", __GLIBC__, __GLIBC_MINOR__);
+  log_plain_stderr("  C Library: glibc %d.%d", __GLIBC__, __GLIBC_MINOR__);
 #elif defined(_WIN32)
-  (void)fprintf(stdout, "  C Library: MSVCRT\n");
+  log_plain_stderr("  C Library: MSVCRT");
 #elif defined(__APPLE__)
-  (void)fprintf(stdout, "  C Library: libSystem\n");
+  log_plain_stderr("  C Library: libSystem");
 #else
-  (void)fprintf(stdout, "  C Library: Unknown\n");
+  log_plain_stderr("  C Library: Unknown");
 #endif
 
-  (void)fprintf(stdout, "\n");
-  (void)fprintf(stdout, "For more information: https://github.com/zfogg/ascii-chat\n");
+  log_plain_stderr("");
+  log_plain_stderr("For more information: https://github.com/zfogg/ascii-chat");
 
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 // ============================================================================
@@ -250,32 +261,27 @@ void action_show_version(void) {
 
 void action_help_server(void) {
   usage(stdout, MODE_SERVER);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 void action_help_client(void) {
   usage(stdout, MODE_CLIENT);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 void action_help_mirror(void) {
   usage(stdout, MODE_MIRROR);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 void action_help_acds(void) {
   usage(stdout, MODE_DISCOVERY_SERVER);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 void action_help_discovery(void) {
   usage(stdout, MODE_DISCOVERY);
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }
 
 // ============================================================================
@@ -289,8 +295,8 @@ void action_create_manpage(void) {
   // Get binary-level config
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
-    (void)fprintf(stderr, "Error: Failed to get binary options config\n");
-    _exit(1);
+    log_plain_stderr("Error: Failed to get binary options config");
+    exit(1);
   }
 
   // Generate merged man page (use default content file)
@@ -301,17 +307,16 @@ void action_create_manpage(void) {
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
     if (HAS_ERRNO(&err_ctx)) {
-      (void)fprintf(stderr, "Error: %s\n", err_ctx.context_message);
+      log_plain_stderr("Error: %s", err_ctx.context_message);
     } else {
-      (void)fprintf(stderr, "Error: Failed to generate man page template\n");
+      log_plain_stderr("Error: Failed to generate man page template");
     }
-    _exit(1);
+    exit(1);
   }
 
-  (void)fprintf(stdout, "Generated merged man page template: %s\n", output_path);
-  (void)fprintf(stdout, "Review AUTO sections - manual edits will be lost on regeneration.\n");
-  (void)fflush(stdout);
-  _exit(0);
+  log_plain_stderr("Generated merged man page template: %s", output_path);
+  log_plain_stderr("Review AUTO sections - manual edits will be lost on regeneration.");
+  exit(0);
 }
 
 // ============================================================================
@@ -322,8 +327,8 @@ void action_create_config(void) {
   // Get binary-level config to access options
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
-    (void)fprintf(stderr, "Error: Failed to get binary options config\n");
-    _exit(1);
+    log_plain_stderr("Error: Failed to get binary options config");
+    exit(1);
   }
 
   // Parse just to get the config path if provided
@@ -335,8 +340,8 @@ void action_create_config(void) {
   // For --config-create, we'll use default path unless extended
   char *config_dir = get_config_dir();
   if (!config_dir) {
-    (void)fprintf(stderr, "Error: Failed to determine default config directory\n");
-    _exit(1);
+    log_plain_stderr("Error: Failed to determine default config directory");
+    exit(1);
   }
   snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
   SAFE_FREE(config_dir);
@@ -346,16 +351,15 @@ void action_create_config(void) {
   if (result != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
     if (HAS_ERRNO(&err_ctx)) {
-      (void)fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+      log_plain_stderr("Error creating config: %s", err_ctx.context_message);
     } else {
-      (void)fprintf(stderr, "Error: Failed to create config file at %s\n", config_path);
+      log_plain_stderr("Error: Failed to create config file at %s", config_path);
     }
-    _exit(1);
+    exit(1);
   }
 
-  (void)fprintf(stdout, "Created default config file at: %s\n", config_path);
-  (void)fflush(stdout);
-  _exit(0);
+  log_plain_stderr("Created default config file at: %s", config_path);
+  exit(0);
 }
 
 // ============================================================================
@@ -364,22 +368,21 @@ void action_create_config(void) {
 
 void action_completions(const char *shell_name) {
   if (!shell_name || strlen(shell_name) == 0) {
-    (void)fprintf(stderr, "Error: --completions requires shell name (bash, fish, zsh, powershell)\n");
-    _exit(1);
+    log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
+    exit(1);
   }
 
   completion_format_t format = completions_parse_shell_name(shell_name);
   if (format == COMPLETION_FORMAT_UNKNOWN) {
-    (void)fprintf(stderr, "Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)\n", shell_name);
-    _exit(1);
+    log_plain_stderr("Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
+    exit(1);
   }
 
   asciichat_error_t result = completions_generate_for_shell(format, stdout);
   if (result != ASCIICHAT_OK) {
-    (void)fprintf(stderr, "Error: Failed to generate %s completions\n", completions_get_shell_name(format));
-    _exit(1);
+    log_plain_stderr("Error: Failed to generate %s completions", completions_get_shell_name(format));
+    exit(1);
   }
 
-  (void)fflush(stdout);
-  _exit(0);
+  exit(0);
 }

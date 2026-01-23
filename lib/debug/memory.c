@@ -488,6 +488,12 @@ static const char *strip_project_path(const char *full_path) {
 void debug_memory_report(void) {
   asciichat_errno_cleanup();
 
+  // Skip memory report if an action flag was passed (for clean action output)
+  extern bool has_action_flag(void);
+  if (has_action_flag()) {
+    return;
+  }
+
   bool quiet = g_mem.quiet_mode;
   if (!quiet) {
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));

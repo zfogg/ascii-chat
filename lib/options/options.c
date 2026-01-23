@@ -96,7 +96,6 @@
 #include "util/time.h"
 #include "network/mdns/discovery.h"
 #include "version.h"
-#include "debug/memory.h"
 
 #ifdef _WIN32
 #include <io.h>
@@ -604,8 +603,13 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // Quick scan for action flags (they may have arguments)
   // This must happen BEFORE logging initialization so we can suppress logs before shared_init()
+  // Also scan for --quiet / -q so we can suppress logging from the start
+  bool user_quiet = false;
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
+      if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
+        user_quiet = true;
+      }
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
         has_action = true;
@@ -642,23 +646,16 @@ asciichat_error_t options_init(int argc, char **argv) {
           // action_completions() calls exit(), so we don't reach here
         } else {
           log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
-          _exit(1);
+          exit(1);
         }
         break; // Unreachable, but for clarity
       }
-      // Check for other action flags
+      // Check for other action flags that are parsed by the builder
+      // Note: --show-capabilities is only for client/mirror modes (parsed by builder)
       if (strcmp(argv[i], "--show-capabilities") == 0) {
         has_action = true;
       }
-      if (strcmp(argv[i], "--list-webcams") == 0) {
-        has_action = true;
-      }
-      if (strcmp(argv[i], "--list-microphones") == 0) {
-        has_action = true;
-      }
-      if (strcmp(argv[i], "--list-speakers") == 0) {
-        has_action = true;
-      }
+      // TODO: --list-webcams, --list-microphones, --list-speakers are not yet defined as options
     }
   }
 
@@ -667,13 +664,13 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Initialize logging system early so prompts display properly (e.g., for --config-create)
   // This must happen before config_create_default is called
-  // If an action flag is detected, silence logs BEFORE logging init so shared_init() output is suppressed
+  // If an action flag is detected OR user passed --quiet, silence logs BEFORE logging init so shared_init() output is
+  // suppressed
   if (!timer_system_init()) {
     return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
   }
-  if (has_action) {
-    debug_memory_set_quiet_mode(true); // Suppress memory report for clean action output (BEFORE logging)
-    log_set_terminal_output(false);    // Suppress console logging BEFORE shared_init
+  if (user_quiet || has_action) {
+    log_set_terminal_output(false); // Suppress console logging BEFORE shared_init for clean action output
   }
   asciichat_error_t logging_init_result = asciichat_shared_init("options-early.log", false);
   if (logging_init_result != ASCIICHAT_OK) {
@@ -1300,16 +1297,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       log_error("--seek requires --file or --url");
       return ERROR_INVALID_PARAM;
     }
-  }
-
-  // ========================================================================
-  // STAGE 6.5: Suppress memory report if any action flags are set
-  // ========================================================================
-
-  // Check for builder-parsed action flags that might not have been detected in early scan
-  // If quiet_mode is not already set, check for action-like flags now
-  if (opts.show_capabilities) {
-    debug_memory_set_quiet_mode(true);
   }
 
   // ========================================================================

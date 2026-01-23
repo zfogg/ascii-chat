@@ -836,7 +836,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   const char *display_path = config_path ? config_path : config_path_expanded;
 
   // Log that we're attempting to load config (before logging is initialized, use stderr)
-  if (config_path) {
+  // Only print if terminal output is enabled (suppress with --quiet)
+  if (config_path && log_get_terminal_output()) {
     (void)fprintf(stderr, "Loading configuration from: %s\n", display_path);
     (void)fflush(stderr);
   }
@@ -890,7 +891,10 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
 
   // Log successful config load (use stderr since logging may not be initialized yet)
-  (void)fprintf(stderr, "Loaded configuration from: %s\n", display_path);
+  // Only print if terminal output is enabled (suppress with --quiet)
+  if (log_get_terminal_output()) {
+    (void)fprintf(stderr, "Loaded configuration from: %s\n", display_path);
+  }
   (void)fflush(stderr);
 
   // Update RCU system with modified options (for test compatibility)

@@ -397,6 +397,15 @@
 /** @brief Default show terminal capabilities flag */
 #define OPT_SHOW_CAPABILITIES_DEFAULT false
 
+/** @brief Default list webcams flag */
+#define OPT_LIST_WEBCAMS_DEFAULT false
+
+/** @brief Default list microphones flag */
+#define OPT_LIST_MICROPHONES_DEFAULT false
+
+/** @brief Default list speakers flag */
+#define OPT_LIST_SPEAKERS_DEFAULT false
+
 /** @brief Default force UTF-8 support flag */
 #define OPT_FORCE_UTF8_DEFAULT false
 
@@ -989,6 +998,18 @@ extern unsigned short int BLUE[];
 extern unsigned short int GRAY[];
 
 /** @} */
+
+/**
+ * @brief Check if an action flag was detected
+ * @return true if an action flag was passed (--show-capabilities, --list-webcams, etc.)
+ *
+ * Used by action implementations to enable output logging temporarily.
+ * When an action is passed, the logging system is disabled before the action runs
+ * to keep output clean. Actions can use this to re-enable logging if needed.
+ *
+ * @ingroup options
+ */
+bool has_action_flag(void);
 
 /**
  * @name Option Parsing Functions

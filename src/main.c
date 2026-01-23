@@ -252,7 +252,7 @@ int main(int argc, char *argv[]) {
 
   if (opts->version) {
     print_version();
-    return 0;
+    exit(0);
   }
 
   // Handle client-specific --show-capabilities flag (exit after showing capabilities)
@@ -329,8 +329,7 @@ int main(int argc, char *argv[]) {
 
 #undef PRINT_CAP_LINE
 
-    (void)fflush(stdout);
-    return 0;
+    exit(0);
   }
 
   // Initialize timer system BEFORE any subsystem that might use timing functions

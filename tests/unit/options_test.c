@@ -477,12 +477,17 @@ static color_mode_test_case_t color_mode_cases[] = {
     {"256color", true, 0, "Valid mode: 256color"},
     {"truecolor", true, 0, "Valid mode: truecolor"},
     {"24bit", true, 0, "Valid mode: 24bit"},
+    {"rgb", true, 0, "Valid mode: rgb"},
+    {"tc", true, 0, "Valid mode: tc"},
+    {"true", true, 0, "Valid mode: true"},
+    {"a", true, 0, "Valid mode: a"},
+    {"mono", true, 0, "Valid mode: mono"},
+    {"ansi", true, 0, "Valid mode: ansi"},
     // Invalid modes
     {"invalid", false, 1, "Invalid mode: invalid"},
     {"32", false, 1, "Invalid mode: 32"},
     {"512", false, 1, "Invalid mode: 512"},
     {"fullcolor", false, 1, "Invalid mode: fullcolor"},
-    {"rgb", false, 1, "Invalid mode: rgb"},
     {"", false, 1, "Invalid mode: empty string"},
 };
 
