@@ -380,8 +380,11 @@ int discovery_main(void) {
   }
 
   // Cleanup
-  log_set_terminal_output(true);
-  log_info("Discovery mode shutting down");
+  // Only re-enable terminal output for shutdown message if it wasn't disabled (--quiet)
+  if (log_get_terminal_output()) {
+    log_set_terminal_output(true);
+    log_info("Discovery mode shutting down");
+  }
 
   session_display_destroy(display);
   session_capture_destroy(capture);

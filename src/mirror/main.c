@@ -331,8 +331,11 @@ int mirror_main(void) {
   }
 
   // Cleanup
-  log_set_terminal_output(true);
-  log_info("Mirror mode shutting down");
+  // Only re-enable terminal output for shutdown message if it wasn't disabled (--quiet)
+  if (log_get_terminal_output()) {
+    log_set_terminal_output(true);
+    log_info("Mirror mode shutting down");
+  }
 
   // Stop audio FIRST to prevent callback from accessing media_source
   if (audio_ctx) {

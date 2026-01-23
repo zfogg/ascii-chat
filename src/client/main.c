@@ -434,8 +434,10 @@ static int initialize_client_systems(bool shared_init_completed) {
     }
   }
 
-  // Ensure logging output is available for connection attempts
-  log_set_terminal_output(true);
+  // Ensure logging output is available for connection attempts (unless it was disabled with --quiet)
+  if (log_get_terminal_output()) {
+    log_set_terminal_output(true);
+  }
   log_truncate_if_large();
 
   // Initialize display subsystem
@@ -858,7 +860,9 @@ int client_main(void) {
 
       if (has_ever_connected) {
         display_full_reset();
-        log_set_terminal_output(true);
+        if (log_get_terminal_output()) {
+          log_set_terminal_output(true);
+        }
       } else {
         // Add newline to separate from ASCII art display for first-time connection failures
         printf("\n");
@@ -952,8 +956,8 @@ int client_main(void) {
     log_debug("Connection lost, cleaning up for reconnection");
 
     // Re-enable terminal logging when connection is lost for debugging reconnection
-    // (but only if we've ever successfully connected before)
-    if (has_ever_connected) {
+    // (but only if we've ever successfully connected before and --quiet wasn't set)
+    if (has_ever_connected && log_get_terminal_output()) {
       printf("\n");
       log_set_terminal_output(true);
     }

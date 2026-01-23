@@ -815,15 +815,16 @@ asciichat_error_t options_init(int argc, char **argv) {
   opts.detected_mode = detected_mode;
 
   // Check for binary-level options that can appear before or after mode
-  int search_limit = (mode_index == -1) ? argc : mode_index;
+  // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
+  // These are documented as binary-level options that can appear anywhere
   bool binary_level_log_file_set = false;  // Track if user explicitly set --log-file
   bool binary_level_log_level_set = false; // Track if user explicitly set --log-level
-  for (int i = 1; i < search_limit; i++) {
+  for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       // Handle -V and --verbose (stackable verbosity)
       if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--verbose") == 0) {
         // Check if next argument is a number (optional argument)
-        if (i + 1 < search_limit && argv[i + 1][0] != '-') {
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
           // Try to parse as integer count
           char *endptr;
           long value = strtol(argv[i + 1], &endptr, 10);
@@ -1183,6 +1184,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   char saved_log_file[OPTIONS_BUFF_SIZE];
   SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
   bool saved_binary_quiet = opts.quiet;
+  asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
 
   // Get unified config
   const options_config_t *config = options_preset_unified(NULL, NULL);
@@ -1202,8 +1204,11 @@ asciichat_error_t options_init(int argc, char **argv) {
     return defaults_result;
   }
 
+  // CRITICAL: RESTORE detected_mode BEFORE parsing so mode validation works
+  opts.detected_mode = mode_saved_for_parsing;
+
   // Parse mode-specific arguments
-  option_mode_bitmask_t mode_bitmask = (1 << detected_mode);
+  option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
@@ -1356,6 +1361,11 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_FREE(allocated_mode_argv);
     return publish_result;
   }
+
+  // Now that options are published, update debug memory quiet mode with actual --quiet value
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  debug_memory_set_quiet_mode(GET_OPTION(quiet));
+#endif
 
   SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;

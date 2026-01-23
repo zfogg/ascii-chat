@@ -786,8 +786,10 @@ void server_connection_close() {
     g_encryption_enabled = false;
   }
 
-  // Turn ON terminal logging when connection is closed
-  log_set_terminal_output(true);
+  // Turn ON terminal logging when connection is closed (unless it was disabled with --quiet)
+  if (log_get_terminal_output()) {
+    log_set_terminal_output(true);
+  }
 }
 
 /**
@@ -833,8 +835,10 @@ void server_connection_lost() {
   atomic_store(&g_connection_lost, true);
   atomic_store(&g_connection_active, false);
 
-  // Turn ON terminal logging when connection is lost
-  log_set_terminal_output(true);
+  // Turn ON terminal logging when connection is lost (unless it was disabled with --quiet)
+  if (log_get_terminal_output()) {
+    log_set_terminal_output(true);
+  }
   display_full_reset();
 }
 
@@ -858,7 +862,9 @@ bool server_connection_is_lost() {
  * @ingroup client_connection
  */
 void server_connection_cleanup() {
-  log_set_terminal_output(true);
+  if (log_get_terminal_output()) {
+    log_set_terminal_output(true);
+  }
   server_connection_close();
   mutex_destroy(&g_send_mutex);
 }
