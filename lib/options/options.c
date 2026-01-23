@@ -650,12 +650,29 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         break; // Unreachable, but for clarity
       }
+      if (strcmp(argv[i], "--list-webcams") == 0) {
+        has_action = true;
+        action_list_webcams();
+        // action_list_webcams() calls exit(), so we don't reach here
+        break;
+      }
+      if (strcmp(argv[i], "--list-microphones") == 0) {
+        has_action = true;
+        action_list_microphones();
+        // action_list_microphones() calls exit(), so we don't reach here
+        break;
+      }
+      if (strcmp(argv[i], "--list-speakers") == 0) {
+        has_action = true;
+        action_list_speakers();
+        // action_list_speakers() calls exit(), so we don't reach here
+        break;
+      }
       // Check for other action flags that are parsed by the builder
       // Note: --show-capabilities is only for client/mirror modes (parsed by builder)
       if (strcmp(argv[i], "--show-capabilities") == 0) {
         has_action = true;
       }
-      // TODO: --list-webcams, --list-microphones, --list-speakers are not yet defined as options
     }
   }
 
