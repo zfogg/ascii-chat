@@ -424,6 +424,7 @@ ascii-chat is built on operating system code and several libraries.
 - [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O for bidirectional voice communication
 - [**tomlc17**](https://github.com/cktan/tomlc17) - TOML config file parsing (`~/.config/ascii-chat/config.toml`)
 - [**uthash**](https://troydhanson.github.io/uthash/) - Hash tables for fast O(1) client lookups
+- [**utf8proc**](https://github.com/JuliaStrings/utf8proc) - UTF-8 string processing and character width calculations for proper terminal display of Unicode
 - [**libsodium**](https://libsodium.org/) - End-to-end encryption (X25519, XSalsa20-Poly1305, Ed25519)
 - [**libsodium-bcrypt-pbkdf**](https://github.com/imaami/libsodium-bcrypt-pbkdf) - Decrypt password-protected SSH Ed25519 keys
 - [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
