@@ -1556,7 +1556,14 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     write_section_marker(f, "AUTO", "SYNOPSIS", false);
   }
 
-  // Write DESCRIPTION (MANUAL) - right after SYNOPSIS, before USAGE/OPTIONS
+  // Write POSITIONAL ARGUMENTS (AUTO) - right after SYNOPSIS, before DESCRIPTION
+  if (config->num_positional_args > 0) {
+    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", true);
+    write_positional_section(f, config);
+    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", false);
+  }
+
+  // Write DESCRIPTION (MANUAL) - after POSITIONAL ARGUMENTS, before USAGE/OPTIONS
   // Check content file first, then existing template
   const parsed_section_t *description_section = NULL;
   if (content_sections) {
@@ -1642,13 +1649,6 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     write_section_marker(f, "AUTO", "OPTIONS", true);
     write_options_section(f, config);
     write_section_marker(f, "AUTO", "OPTIONS", false);
-  }
-
-  // Write POSITIONAL ARGUMENTS (AUTO)
-  if (config->num_positional_args > 0) {
-    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", true);
-    write_positional_section(f, config);
-    write_section_marker(f, "AUTO", "POSITIONAL ARGUMENTS", false);
   }
 
   // Write PALETTES and RENDER MODES (MANUAL) - right after EXAMPLES, before ENVIRONMENT
