@@ -475,26 +475,33 @@ file(MAKE_DIRECTORY
 # Generate completions at build time using the binary itself
 # These custom commands run after the ascii-chat binary is built
 # Completions are generated directly to their proper share subdirectories
+#
+# CRITICAL: Use $<TARGET_FILE:ascii-chat> for DEPENDS to ensure the actual binary
+# file is built and linked before these commands run. Without this, parallel builds
+# might start the completions generation before linking completes.
 add_custom_command(
     OUTPUT
         "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
         "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
         "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
         "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions bash
+    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions bash
             > "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions fish
+    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions fish
             > "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions zsh
+    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions zsh
             > "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
-    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions powershell
+    COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions powershell
             > "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-    DEPENDS ascii-chat
+    DEPENDS $<TARGET_FILE:ascii-chat>
     COMMENT "Generating shell completions from options registry..."
     VERBATIM
 )
 
 # Create target for generating all completions
+# CRITICAL: The custom_command DEPENDS on $<TARGET_FILE:ascii-chat> which ensures
+# the ascii-chat binary is fully built and linked before completions generation.
+# This prevents parallel build races where completions run before linking completes.
 add_custom_target(completions ALL
     DEPENDS
         "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
