@@ -44,20 +44,20 @@ static asciichat_mdns_t *g_mdns_ctx = NULL;
 /**
  * @brief Atomic flag for shutdown request
  */
-static atomic_bool g_discovery_should_exit = false;
+static atomic_bool g_acds_should_exit = false;
 
 /**
  * @brief Check if discovery mode should exit
  */
-static bool discovery_should_exit(void) {
-  return atomic_load(&g_discovery_should_exit);
+static bool acds_should_exit(void) {
+  return atomic_load(&g_acds_should_exit);
 }
 
 /**
  * @brief Signal discovery mode to exit
  */
-static void discovery_signal_exit(void) {
-  atomic_store(&g_discovery_should_exit, true);
+static void acds_signal_exit(void) {
+  atomic_store(&g_acds_should_exit, true);
 }
 
 /**
@@ -68,7 +68,7 @@ static void signal_handler(int sig) {
   if (g_server) {
     atomic_store(&g_server->tcp_server.running, false);
   }
-  discovery_signal_exit();
+  acds_signal_exit();
   // UPnP context will be cleaned up after server shutdown
 }
 
@@ -285,7 +285,7 @@ int acds_main(void) {
   }
 
   // Check if shutdown was requested during initialization
-  if (discovery_should_exit()) {
+  if (acds_should_exit()) {
     log_info("Shutdown signal received during initialization, skipping server startup");
     return 0;
   }
@@ -302,7 +302,7 @@ int acds_main(void) {
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
 
   // Check again before expensive UPnP initialization (might timeout trying to reach router)
-  if (discovery_should_exit()) {
+  if (acds_should_exit()) {
     log_info("Shutdown signal received before UPnP initialization");
     result = ASCIICHAT_OK;
     goto cleanup_resources;
@@ -326,7 +326,7 @@ int acds_main(void) {
   }
 
   // Check if shutdown was requested before initializing mDNS
-  if (discovery_should_exit()) {
+  if (acds_should_exit()) {
     log_info("Shutdown signal received before mDNS initialization");
     result = ASCIICHAT_OK;
     goto cleanup_resources;
