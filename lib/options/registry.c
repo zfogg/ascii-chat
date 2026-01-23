@@ -443,6 +443,45 @@ static const registry_entry_t g_options_registry[] = {
 static size_t g_registry_size = 0;
 static bool g_metadata_populated = false;
 
+// Permanent metadata cache - prevents metadata from being lost on subsequent descriptor lookups
+typedef struct {
+  const char *long_name;
+  option_metadata_t metadata;
+} cached_metadata_t;
+
+#define MAX_CACHED_METADATA 200
+static cached_metadata_t g_metadata_cache[MAX_CACHED_METADATA];
+static size_t g_metadata_cache_count = 0;
+
+static void cache_metadata(const char *long_name, const option_metadata_t *meta) {
+  if (!long_name || !meta || g_metadata_cache_count >= MAX_CACHED_METADATA) {
+    return;
+  }
+  // Check if already cached
+  for (size_t i = 0; i < g_metadata_cache_count; i++) {
+    if (strcmp(g_metadata_cache[i].long_name, long_name) == 0) {
+      g_metadata_cache[i].metadata = *meta;
+      return;
+    }
+  }
+  // Add new entry
+  g_metadata_cache[g_metadata_cache_count].long_name = long_name;
+  g_metadata_cache[g_metadata_cache_count].metadata = *meta;
+  g_metadata_cache_count++;
+}
+
+static const option_metadata_t *get_cached_metadata(const char *long_name) {
+  if (!long_name) {
+    return NULL;
+  }
+  for (size_t i = 0; i < g_metadata_cache_count; i++) {
+    if (strcmp(g_metadata_cache[i].long_name, long_name) == 0) {
+      return &g_metadata_cache[i].metadata;
+    }
+  }
+  return NULL;
+}
+
 // ============================================================================
 // Metadata Initialization for Critical Options (forward implementation)
 // ============================================================================
@@ -904,12 +943,15 @@ const option_metadata_t *options_registry_get_metadata(const char *long_name) {
     return NULL;
   }
 
-  const option_descriptor_t *desc = options_registry_find_by_name(long_name);
-  if (!desc) {
-    return NULL;
+  // Check cache first (faster and preserves metadata across calls)
+  const option_metadata_t *cached = get_cached_metadata(long_name);
+  if (cached) {
+    return cached;
   }
 
-  return &desc->metadata;
+  // If not in cache, return empty metadata
+  static option_metadata_t empty_metadata = {0};
+  return &empty_metadata;
 }
 
 const char **options_registry_get_enum_values(const char *option_name, const char ***descriptions, size_t *count) {
@@ -1002,86 +1044,88 @@ option_input_type_t options_registry_get_input_type(const char *option_name) {
  */
 static void registry_populate_metadata_for_critical_options(void) {
   // Color mode enum values
-  static const char *color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
-  static const char *color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
-                                           "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
-
-  option_descriptor_t *color_desc = (option_descriptor_t *)options_registry_find_by_name("color-mode");
-  if (color_desc) {
-    color_desc->metadata.enum_values = color_mode_values;
-    color_desc->metadata.enum_count = 5;
-    color_desc->metadata.enum_descriptions = color_mode_descs;
-    color_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  {
+    static const char *color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
+    static const char *color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
+                                             "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
+    option_metadata_t meta = {0};
+    meta.enum_values = color_mode_values;
+    meta.enum_count = 5;
+    meta.enum_descriptions = color_mode_descs;
+    meta.input_type = OPTION_INPUT_ENUM;
+    cache_metadata("color-mode", &meta);
   }
 
   // Compression level numeric range
-  option_descriptor_t *compress_desc = (option_descriptor_t *)options_registry_find_by_name("compression-level");
-  if (compress_desc) {
-    compress_desc->metadata.numeric_range.min = 1;
-    compress_desc->metadata.numeric_range.max = 9;
-    compress_desc->metadata.numeric_range.step = 1;
-    compress_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  {
     static const char *compress_examples[] = {"1", "3", "9"};
-    compress_desc->metadata.examples = compress_examples;
-    compress_desc->metadata.example_count = 3;
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = 1;
+    meta.numeric_range.max = 9;
+    meta.numeric_range.step = 1;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = compress_examples;
+    meta.example_count = 3;
+    cache_metadata("compression-level", &meta);
   }
 
   // FPS numeric range
-  option_descriptor_t *fps_desc = (option_descriptor_t *)options_registry_find_by_name("fps");
-  if (fps_desc) {
-    fps_desc->metadata.numeric_range.min = 1;
-    fps_desc->metadata.numeric_range.max = 144;
-    fps_desc->metadata.numeric_range.step = 0; // Continuous (no step)
-    fps_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
+  {
     static const char *fps_examples[] = {"30", "60", "144"};
-    fps_desc->metadata.examples = fps_examples;
-    fps_desc->metadata.example_count = 3;
+    option_metadata_t meta = {0};
+    meta.numeric_range.min = 1;
+    meta.numeric_range.max = 144;
+    meta.numeric_range.step = 0;
+    meta.input_type = OPTION_INPUT_NUMERIC;
+    meta.examples = fps_examples;
+    meta.example_count = 3;
+    cache_metadata("fps", &meta);
   }
 
   // Palette enum values
-  static const char *palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
-  static const char *palette_descs[] = {"Standard ASCII palette", "Block characters (full/half/quarter blocks)",
-                                        "Digital/computer style", "Minimal palette (light aesthetic)",
-                                        "Cool/modern style",      "Custom user-defined characters"};
-
-  option_descriptor_t *palette_desc = (option_descriptor_t *)options_registry_find_by_name("palette");
-  if (palette_desc) {
-    palette_desc->metadata.enum_values = palette_values;
-    palette_desc->metadata.enum_count = 6;
-    palette_desc->metadata.enum_descriptions = palette_descs;
-    palette_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  {
+    static const char *palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
+    static const char *palette_descs[] = {"Standard ASCII palette", "Block characters (full/half/quarter blocks)",
+                                          "Digital/computer style", "Minimal palette (light aesthetic)",
+                                          "Cool/modern style",      "Custom user-defined characters"};
+    option_metadata_t meta = {0};
+    meta.enum_values = palette_values;
+    meta.enum_count = 6;
+    meta.enum_descriptions = palette_descs;
+    meta.input_type = OPTION_INPUT_ENUM;
+    cache_metadata("palette", &meta);
   }
 
   // Render mode enum values
-  static const char *render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
-  static const char *render_descs[] = {
-      "Render using foreground characters only", "Render using foreground characters only (alias)",
-      "Render using background colors only", "Render using background colors only (alias)",
-      "Use half-block characters for 2x vertical resolution"};
-
-  option_descriptor_t *render_desc = (option_descriptor_t *)options_registry_find_by_name("render-mode");
-  if (render_desc) {
-    render_desc->metadata.enum_values = render_values;
-    render_desc->metadata.enum_count = 5;
-    render_desc->metadata.enum_descriptions = render_descs;
-    render_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  {
+    static const char *render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
+    static const char *render_descs[] = {
+        "Render using foreground characters only", "Render using foreground characters only (alias)",
+        "Render using background colors only", "Render using background colors only (alias)",
+        "Use half-block characters for 2x vertical resolution"};
+    option_metadata_t meta = {0};
+    meta.enum_values = render_values;
+    meta.enum_count = 5;
+    meta.enum_descriptions = render_descs;
+    meta.input_type = OPTION_INPUT_ENUM;
+    cache_metadata("render-mode", &meta);
   }
 
   // Log level enum values
-  static const char *log_level_values[] = {"dev", "debug", "info", "warn", "error", "fatal"};
-  static const char *log_level_descs[] = {"Development (most verbose, includes function traces)",
-                                          "Debug (includes internal state tracking)",
-                                          "Informational (key lifecycle events)",
-                                          "Warnings (unusual conditions)",
-                                          "Errors only",
-                                          "Fatal errors only"};
-
-  option_descriptor_t *log_desc = (option_descriptor_t *)options_registry_find_by_name("log-level");
-  if (log_desc) {
-    log_desc->metadata.enum_values = log_level_values;
-    log_desc->metadata.enum_count = 6;
-    log_desc->metadata.enum_descriptions = log_level_descs;
-    log_desc->metadata.input_type = OPTION_INPUT_ENUM;
+  {
+    static const char *log_level_values[] = {"dev", "debug", "info", "warn", "error", "fatal"};
+    static const char *log_level_descs[] = {"Development (most verbose, includes function traces)",
+                                            "Debug (includes internal state tracking)",
+                                            "Informational (key lifecycle events)",
+                                            "Warnings (unusual conditions)",
+                                            "Errors only",
+                                            "Fatal errors only"};
+    option_metadata_t meta = {0};
+    meta.enum_values = log_level_values;
+    meta.enum_count = 6;
+    meta.enum_descriptions = log_level_descs;
+    meta.input_type = OPTION_INPUT_ENUM;
+    cache_metadata("log-level", &meta);
   }
 
   // File path options

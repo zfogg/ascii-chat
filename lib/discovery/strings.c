@@ -157,6 +157,7 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
 
 bool acds_string_validate(const char *str) {
   if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session string is NULL");
     return false;
   }
 

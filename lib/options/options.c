@@ -134,8 +134,10 @@
  * @return true if this is a binary-level option
  */
 static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_arg, bool *out_takes_optional_arg) {
-  if (!arg)
+  if (!arg) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "arg is null");
     return false;
+  }
 
   if (out_takes_arg)
     *out_takes_arg = false;

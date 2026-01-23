@@ -147,7 +147,7 @@ bool validate_webcam_index(const char *value_str, unsigned short int *out_index)
     return false;
   }
 
-  char error_msg[256];
+  char error_msg[BUFFER_SIZE_SMALL];
   int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
   if (parsed_index == INT_MIN) {
     (void)fprintf(stderr, "Invalid webcam index: %s\n", error_msg);
@@ -444,7 +444,7 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
     return ERROR_INVALID_PARAM;
   }
 
-  char error_msg[256];
+  char error_msg[BUFFER_SIZE_SMALL];
   int log_level = validate_opt_log_level(value_str, error_msg, sizeof(error_msg));
 
   if (log_level == -1) {

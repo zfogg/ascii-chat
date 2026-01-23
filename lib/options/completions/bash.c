@@ -175,38 +175,59 @@ static asciichat_error_t bash_write_all_options(FILE *output)
  */
 static void bash_write_enum_cases(FILE *output)
 {
-  /* Enum option names to check */
-  const char *enum_opts[] = {
-    "log-level", "color-mode", "palette", "render-mode", "reconnect", NULL
-  };
+  // Get all registry options and iterate through them
+  size_t total_count = 0;
+  const option_descriptor_t *all_opts = options_registry_get_for_mode(MODE_DISCOVERY, &total_count);
 
-  for (size_t i = 0; enum_opts[i] != NULL; i++) {
-    const char *opt_name = enum_opts[i];
-    size_t enum_count = 0;
-    const char **enum_values = options_get_enum_values(opt_name, &enum_count);
+  if (!all_opts) {
+    return;
+  }
 
-    if (!enum_values) {
+  for (size_t i = 0; i < total_count; i++) {
+    const option_descriptor_t *opt = &all_opts[i];
+    const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
+
+    if (!meta) {
       continue;
     }
 
-    /* Get option descriptor for short name */
-    const option_descriptor_t *opt = options_registry_find_by_name(opt_name);
-    if (!opt) {
+    // Skip options with no enum or examples
+    if (meta->input_type != OPTION_INPUT_ENUM && meta->example_count == 0 && meta->numeric_range.max == 0) {
       continue;
     }
 
-    /* Write case statement */
+    // Write case statement
     if (opt->short_name != '\0') {
       fprintf(output, "  -%c | ", opt->short_name);
     }
-    fprintf(output, "--%-25s)\n", opt_name);
+    fprintf(output, "--%-25s)\n", opt->long_name);
     fprintf(output, "    COMPREPLY=($(compgen -W \"");
 
-    /* Write enum values */
-    for (size_t j = 0; j < enum_count; j++) {
-      fprintf(output, "%s", enum_values[j]);
-      if (j < enum_count - 1) {
-        fprintf(output, " ");
+    // Write enum values
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
+      for (size_t j = 0; j < meta->enum_count; j++) {
+        fprintf(output, "%s", meta->enum_values[j]);
+        if (j < meta->enum_count - 1) {
+          fprintf(output, " ");
+        }
+      }
+    }
+    // Write numeric range or examples
+    else if (meta->input_type == OPTION_INPUT_NUMERIC) {
+      // For numeric ranges, suggest a few common values
+      if (meta->numeric_range.min == 1 && meta->numeric_range.max == 9) {
+        fprintf(output, "1 2 3 4 5 6 7 8 9");
+      } else if (meta->numeric_range.max > 0) {
+        fprintf(output, "%d %d %d", meta->numeric_range.min, (meta->numeric_range.min + meta->numeric_range.max) / 2, meta->numeric_range.max);
+      }
+    }
+    // Write examples as fallback
+    else if (meta->examples && meta->example_count > 0) {
+      for (size_t j = 0; j < meta->example_count; j++) {
+        fprintf(output, "%s", meta->examples[j]);
+        if (j < meta->example_count - 1) {
+          fprintf(output, " ");
+        }
       }
     }
 
@@ -215,11 +236,7 @@ static void bash_write_enum_cases(FILE *output)
     fprintf(output, "    ;;\n");
   }
 
-  /* Numeric compression level (not an enum, just a range) */
-  fprintf(output, "  --compression-level)\n");
-  fprintf(output, "    COMPREPLY=($(compgen -W \"1 2 3 4 5 6 7 8 9\" -- \"$cur\"))\n");
-  fprintf(output, "    return\n");
-  fprintf(output, "    ;;\n");
+  SAFE_FREE(all_opts);
 }
 
 /**
@@ -244,11 +261,39 @@ static void bash_write_completion_logic(FILE *output)
     "  done\n"
     "\n"
     "  case \"$prev\" in\n"
-    "  # Options that take file paths\n"
-    "  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config | -d | --database | -k)\n"
-    "    _filedir\n"
-    "    return\n"
-    "    ;;\n");
+    "  # Options that take file paths\n");
+
+  // Generate file path options dynamically from registry
+  size_t total_count = 0;
+  const option_descriptor_t *all_opts = options_registry_get_for_mode(MODE_DISCOVERY, &total_count);
+
+  if (all_opts) {
+    bool first = true;
+    for (size_t i = 0; i < total_count; i++) {
+      const option_descriptor_t *opt = &all_opts[i];
+      const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
+
+      if (meta && meta->input_type == OPTION_INPUT_FILEPATH) {
+        if (!first) {
+          fprintf(output, " | ");
+        }
+        first = false;
+
+        if (opt->short_name != '\0') {
+          fprintf(output, "-%c | ", opt->short_name);
+        }
+        fprintf(output, "--%s", opt->long_name);
+      }
+    }
+    SAFE_FREE(all_opts);
+
+    if (!first) {
+      fprintf(output, ")\n");
+      fprintf(output, "    _filedir\n");
+      fprintf(output, "    return\n");
+      fprintf(output, "    ;;\n");
+    }
+  }
 
   /* Write enum cases */
   bash_write_enum_cases(output);

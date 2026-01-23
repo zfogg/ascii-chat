@@ -17,10 +17,80 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
     return;
   }
 
-  if (opt->short_name != '\0') {
-    fprintf(output, "complete -c ascii-chat %s -s %c -d '%s'\n", condition, opt->short_name, opt->help_text);
+  // Get completion metadata for this option
+  const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
+
+  // Determine if we should exclude file completion
+  bool exclusive = false;
+
+  if (meta) {
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
+      exclusive = true;
+      // Enum values as completions
+      for (size_t i = 0; i < meta->enum_count; i++) {
+        if (opt->short_name != '\0') {
+          fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
+                  condition, opt->short_name, meta->enum_values[i], opt->help_text);
+          break;  // Only output short option once with first value
+        }
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n",
+                condition, opt->long_name, meta->enum_values[i], opt->help_text);
+      }
+      return;
+    }
+    else if (meta->input_type == OPTION_INPUT_NUMERIC) {
+      exclusive = true;
+      // Numeric range - suggest min, middle, max values
+      if (opt->short_name != '\0') {
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%d' -d 'numeric (%d-%d)'\n",
+                condition, opt->short_name, meta->numeric_range.min,
+                meta->numeric_range.min, meta->numeric_range.max);
+      }
+      fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (%d-%d)'\n",
+              condition, opt->long_name, meta->numeric_range.min,
+              meta->numeric_range.min, meta->numeric_range.max);
+      if (meta->numeric_range.max > meta->numeric_range.min) {
+        int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (middle)'\n",
+                condition, opt->long_name, middle);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%d' -d 'numeric (max)'\n",
+                condition, opt->long_name, meta->numeric_range.max);
+      }
+      return;
+    }
+    else if (meta->input_type == OPTION_INPUT_FILEPATH) {
+      // File paths use default fish file completion
+      exclusive = false;
+    }
+    else if (meta->examples && meta->example_count > 0) {
+      exclusive = true;
+      // Example values as completions
+      for (size_t i = 0; i < meta->example_count; i++) {
+        if (opt->short_name != '\0') {
+          fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n",
+                  condition, opt->short_name, meta->examples[i], opt->help_text);
+          break;  // Only output short option once with first example
+        }
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n",
+                condition, opt->long_name, meta->examples[i], opt->help_text);
+      }
+      return;
+    }
   }
-  fprintf(output, "complete -c ascii-chat %s -l %s -d '%s'\n", condition, opt->long_name, opt->help_text);
+
+  // Basic completion without values
+  if (opt->short_name != '\0') {
+    if (exclusive) {
+      fprintf(output, "complete -c ascii-chat %s -s %c -x -d '%s'\n", condition, opt->short_name, opt->help_text);
+    } else {
+      fprintf(output, "complete -c ascii-chat %s -s %c -d '%s'\n", condition, opt->short_name, opt->help_text);
+    }
+  }
+  if (exclusive) {
+    fprintf(output, "complete -c ascii-chat %s -l %s -x -d '%s'\n", condition, opt->long_name, opt->help_text);
+  } else {
+    fprintf(output, "complete -c ascii-chat %s -l %s -d '%s'\n", condition, opt->long_name, opt->help_text);
+  }
 }
 
 asciichat_error_t completions_generate_fish(FILE *output)

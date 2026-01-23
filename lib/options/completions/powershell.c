@@ -16,6 +16,74 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt)
     return;
   }
 
+  // Get completion metadata for this option
+  const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
+
+  // Build values array if metadata exists
+  if (meta) {
+    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
+      // Enum values
+      if (opt->short_name != '\0') {
+        fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
+        for (size_t i = 0; i < meta->enum_count; i++) {
+          if (i > 0) fprintf(output, ", ");
+          fprintf(output, "'%s'", meta->enum_values[i]);
+        }
+        fprintf(output, ") }\n");
+      }
+      fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
+      for (size_t i = 0; i < meta->enum_count; i++) {
+        if (i > 0) fprintf(output, ", ");
+        fprintf(output, "'%s'", meta->enum_values[i]);
+      }
+      fprintf(output, ") }\n");
+      return;
+    }
+    else if (meta->input_type == OPTION_INPUT_NUMERIC) {
+      // Numeric range - suggest min, middle, max values
+      if (opt->short_name != '\0') {
+        fprintf(output, "    @{ Name = '-%c'; Description = '%s (numeric %d-%d)'; Values = @(",
+                opt->short_name, opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
+        fprintf(output, "'%d'", meta->numeric_range.min);
+        if (meta->numeric_range.max > meta->numeric_range.min) {
+          int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
+          fprintf(output, ", '%d'", middle);
+          fprintf(output, ", '%d'", meta->numeric_range.max);
+        }
+        fprintf(output, ") }\n");
+      }
+      fprintf(output, "    @{ Name = '--%s'; Description = '%s (numeric %d-%d)'; Values = @(",
+              opt->long_name, opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
+      fprintf(output, "'%d'", meta->numeric_range.min);
+      if (meta->numeric_range.max > meta->numeric_range.min) {
+        int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
+        fprintf(output, ", '%d'", middle);
+        fprintf(output, ", '%d'", meta->numeric_range.max);
+      }
+      fprintf(output, ") }\n");
+      return;
+    }
+    else if (meta->examples && meta->example_count > 0) {
+      // Example values
+      if (opt->short_name != '\0') {
+        fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
+        for (size_t i = 0; i < meta->example_count; i++) {
+          if (i > 0) fprintf(output, ", ");
+          fprintf(output, "'%s'", meta->examples[i]);
+        }
+        fprintf(output, ") }\n");
+      }
+      fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
+      for (size_t i = 0; i < meta->example_count; i++) {
+        if (i > 0) fprintf(output, ", ");
+        fprintf(output, "'%s'", meta->examples[i]);
+      }
+      fprintf(output, ") }\n");
+      return;
+    }
+  }
+
+  // Basic option without values
   if (opt->short_name != '\0') {
     fprintf(output, "    @{ Name = '-%c'; Description = '%s' }\n", opt->short_name, opt->help_text);
   }
@@ -137,7 +205,13 @@ asciichat_error_t completions_generate_powershell(FILE *output)
     "    }\n"
     "  } else {\n"
     "    $options | Where-Object { $_.Name -like \"$wordToComplete*\" } | ForEach-Object {\n"
-    "      [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Description)\n"
+    "      if ($_.Values) {\n"
+    "        $_.Values | ForEach-Object {\n"
+    "          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_.Description)\n"
+    "        }\n"
+    "      } else {\n"
+    "        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Description)\n"
+    "      }\n"
     "    }\n"
     "  }\n"
     "}\n"

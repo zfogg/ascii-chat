@@ -82,7 +82,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       // Print everything up to the newline
       int text_len = p - line_start;
       if (text_len > 0) {
-        char seg[512];
+        char seg[BUFFER_SIZE_MEDIUM];
         strncpy(seg, line_start, text_len);
         seg[text_len] = '\0';
         layout_print_colored_segment(stream, seg);
@@ -122,7 +122,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
     if (actual_width >= available_width && last_space && last_space > line_start) {
       // Print text up to last space with colors applied
       int text_len = last_space - line_start;
-      char seg[512];
+      char seg[BUFFER_SIZE_MEDIUM];
       strncpy(seg, line_start, text_len);
       seg[text_len] = '\0';
       layout_print_colored_segment(stream, seg);
@@ -140,7 +140,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
 
   // Print remaining text
   if (p > line_start) {
-    char seg[512];
+    char seg[BUFFER_SIZE_MEDIUM];
     int text_len = p - line_start;
     strncpy(seg, line_start, text_len);
     seg[text_len] = '\0';

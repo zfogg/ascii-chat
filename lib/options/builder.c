@@ -1731,7 +1731,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
 #endif
 
   int max_col_width = 0;
-  char temp_buf[512];
+  char temp_buf[BUFFER_SIZE_MEDIUM];
 
   // Check USAGE entries
   for (size_t i = 0; i < config->num_usage_lines; i++) {
@@ -1799,17 +1799,17 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
       continue;
 
     // Build option display string with separate coloring for short and long flags
-    char opts_buf[256];
+    char opts_buf[BUFFER_SIZE_SMALL];
     if (desc->short_name && desc->short_name != '\0') {
       char short_flag[16];
       snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
-      char long_flag[256];
+      char long_flag[BUFFER_SIZE_SMALL];
       snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
       // Color short flag, add comma, color long flag
       snprintf(opts_buf, sizeof(opts_buf), "%s, %s", colored_string(LOG_COLOR_WARN, short_flag),
                colored_string(LOG_COLOR_WARN, long_flag));
     } else {
-      char long_flag[256];
+      char long_flag[BUFFER_SIZE_SMALL];
       snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
       snprintf(opts_buf, sizeof(opts_buf), "%s", colored_string(LOG_COLOR_WARN, long_flag));
     }
@@ -1847,7 +1847,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
   // Build colored syntax strings using colored_string() for all components
   for (size_t i = 0; i < config->num_usage_lines; i++) {
     const usage_descriptor_t *usage = &config->usage_lines[i];
-    char usage_buf[512];
+    char usage_buf[BUFFER_SIZE_MEDIUM];
     int len = 0;
 
     // Start with binary name
@@ -1938,7 +1938,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
       }
     }
 
-    char cmd_buf[512];
+    char cmd_buf[BUFFER_SIZE_MEDIUM];
     int len = 0;
 
     // Start with binary name
@@ -1955,7 +1955,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
 
       // Parse args to color flags and arguments separately
       const char *p = example->args;
-      char current_token[256];
+      char current_token[BUFFER_SIZE_SMALL];
       int token_len = 0;
 
       while (*p) {
@@ -2018,7 +2018,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
 
   // Print each mode with colored name using colored_string() and global column width
   for (size_t i = 0; i < config->num_modes; i++) {
-    char mode_buf[256];
+    char mode_buf[BUFFER_SIZE_SMALL];
     snprintf(mode_buf, sizeof(mode_buf), "%s", colored_string(LOG_COLOR_FATAL, config->modes[i].name));
     layout_print_two_column_row(stream, mode_buf, config->modes[i].description, max_col_width, term_width);
   }
@@ -2129,20 +2129,20 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       }
 
       // Build option string with separate coloring for short and long flags
-      char option_str[512] = "";
+      char option_str[BUFFER_SIZE_MEDIUM] = "";
       int option_len = 0;
 
       // Short name and long name with separate coloring
       if (desc->short_name) {
         char short_flag[16];
         snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
-        char long_flag[256];
+        char long_flag[BUFFER_SIZE_SMALL];
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
         option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
                                colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
-        char long_flag[256];
+        char long_flag[BUFFER_SIZE_SMALL];
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
                                colored_string(LOG_COLOR_WARN, long_flag));
@@ -2174,7 +2174,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       }
 
       // Build description string (plain text, colors applied when printing)
-      char desc_str[512] = "";
+      char desc_str[BUFFER_SIZE_MEDIUM] = "";
       int desc_len = 0;
 
       if (desc->help_text) {
@@ -2388,20 +2388,20 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       }
 
       // Build option string (flag part) with separate coloring for short and long flags
-      char colored_option_str[512] = "";
+      char colored_option_str[BUFFER_SIZE_MEDIUM] = "";
       int colored_len = 0;
 
       // Short name and long name with separate coloring
       if (desc->short_name) {
         char short_flag[16];
         snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
-        char long_flag[256];
+        char long_flag[BUFFER_SIZE_SMALL];
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
         colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s",
                                 colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
-        char long_flag[256];
+        char long_flag[BUFFER_SIZE_SMALL];
         snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
                                 colored_string(LOG_COLOR_WARN, long_flag));
@@ -2629,7 +2629,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   if (config->num_usage_lines > 0) {
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
-      char usage_buf[512];
+      char usage_buf[BUFFER_SIZE_MEDIUM];
       int len = 0;
 
       len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "ascii-chat");
