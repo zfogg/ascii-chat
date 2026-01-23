@@ -87,11 +87,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     frame_start_ns = time_get_ns();
     uint64_t current_time_ns = frame_start_ns;
 
-    // Log actual loop iteration time
+    // Log actual loop iteration time (time since last frame started)
     if (last_loop_time_ns > 0 && frame_count % 30 == 0) {
       uint64_t loop_time_ns = time_elapsed_ns(last_loop_time_ns, frame_start_ns);
       double loop_time_ms = (double)loop_time_ns / 1000000.0;
-      log_info("LOOP_TIME: iteration took %.2f ms", loop_time_ms);
+      log_info("LOOP_TIME: frame-to-frame time %.2f ms (target %.2f ms)", loop_time_ms, 1000.0 / GET_OPTION(fps));
     }
     last_loop_time_ns = frame_start_ns;
 

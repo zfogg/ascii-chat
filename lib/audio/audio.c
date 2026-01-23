@@ -1330,9 +1330,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     }
   }
 
-  // Store device rates for diagnostics
-  ctx->input_device_rate = has_input ? inputInfo->defaultSampleRate : 0;
-  ctx->output_device_rate = has_output ? outputInfo->defaultSampleRate : 0;
+  // Store device rates for diagnostics (only access if device info was retrieved)
+  ctx->input_device_rate = (has_input && inputInfo) ? inputInfo->defaultSampleRate : 0;
+  ctx->output_device_rate = (has_output && outputInfo) ? outputInfo->defaultSampleRate : 0;
 
   log_info("Opening audio:");
   if (has_input) {

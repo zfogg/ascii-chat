@@ -186,7 +186,7 @@ static void handle_client_error_packet(client_info_t *client, const void *data, 
  *
  * THREAD SAFETY: Protected by g_client_manager_rwlock for concurrent access
  */
-client_manager_t g_client_manager = {0};
+client_manager_t g_client_manager;
 
 /**
  * @brief Reader-writer lock protecting the global client manager

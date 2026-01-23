@@ -19,7 +19,9 @@
 /**
  * @brief Maximum participants per session
  */
+#if !defined(MAX_PARTICIPANTS)
 #define MAX_PARTICIPANTS 8
+#endif
 
 /**
  * @brief Participant in a session
