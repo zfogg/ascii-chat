@@ -1152,6 +1152,19 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
 
     switch (desc->type) {
     case OPTION_TYPE_BOOL: {
+      // Check if value is already set (different from default)
+      bool current_value = *(const bool *)field;
+      bool default_val = false;
+      if (desc->default_value) {
+        default_val = *(const bool *)desc->default_value;
+      }
+
+      // If current value differs from default, assume it came from config file and preserve it
+      if (current_value != default_val) {
+        // Value is already set (likely from config), skip env var
+        break;
+      }
+
       bool value = false;
       if (env_value) {
         // Parse env var as bool
@@ -1165,6 +1178,20 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     }
 
     case OPTION_TYPE_INT: {
+      // Check if value is already set (different from default)
+      int current_value = 0;
+      memcpy(&current_value, field, sizeof(int));
+      int default_val = 0;
+      if (desc->default_value) {
+        default_val = *(const int *)desc->default_value;
+      }
+
+      // If current value differs from default, assume it came from config file and preserve it
+      if (current_value != default_val) {
+        // Value is already set (likely from config), skip env var
+        break;
+      }
+
       int value = 0;
       if (env_value) {
         // Parse env var as int
@@ -1215,6 +1242,20 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     }
 
     case OPTION_TYPE_DOUBLE: {
+      // Check if value is already set (different from default)
+      double current_value = 0.0;
+      memcpy(&current_value, field, sizeof(double));
+      double default_val = 0.0;
+      if (desc->default_value) {
+        default_val = *(const double *)desc->default_value;
+      }
+
+      // If current value differs from default, assume it came from config file and preserve it
+      if (current_value != default_val) {
+        // Value is already set (likely from config), skip env var
+        break;
+      }
+
       double value = 0.0;
       if (env_value) {
         char *endptr;
