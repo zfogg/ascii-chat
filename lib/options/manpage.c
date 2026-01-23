@@ -369,23 +369,21 @@ static const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return "global"; // Binary-only option with no mode restrictions
   }
 
-  // Check if it's all modes (except OPTION_MODE_BINARY which is a flag, not a mode)
-  option_mode_bitmask_t all_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
-                                         (1 << MODE_DISCOVERY_SERVER) | (1 << MODE_DISCOVERY);
-  if ((mode_bitmask & all_modes_mask) == all_modes_mask) {
+  // Check if it's all user-facing modes (server, client, mirror, discovery-service)
+  // MODE_DISCOVERY is internal and not shown to users
+  option_mode_bitmask_t user_modes_mask =
+      (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) | (1 << MODE_DISCOVERY_SERVER);
+  if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
     return "all modes";
   }
 
-  // Build a list of specific modes in consistent order:
-  // binary, client, server, mirror, discovery-service
+  // Build a list of user-facing modes in consistent order:
+  // client, server, mirror, discovery-service
+  // (Note: MODE_DISCOVERY is internal and not displayed to users)
   static char mode_str[256];
   mode_str[0] = '\0';
   int pos = 0;
 
-  // MODE_DISCOVERY is the unified binary mode - show as "binary" to users
-  if (mode_bitmask & (1 << MODE_DISCOVERY)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "binary");
-  }
   if (mode_bitmask & (1 << MODE_CLIENT)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
   }
