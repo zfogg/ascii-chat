@@ -582,8 +582,7 @@ static void write_positional_section(FILE *f, const options_config_t *config) {
       fprintf(f, ".RS\n");
       fprintf(f, ".B Examples:\n");
       for (size_t j = 0; j < pos_arg->num_examples; j++) {
-        fprintf(f, ".IP \"\\(bu\" 2\n");
-        fprintf(f, "%s\n", escape_groff_special(pos_arg->examples[j]));
+        fprintf(f, ".IP %s\n", escape_groff_special(pos_arg->examples[j]));
       }
       fprintf(f, ".RE\n");
     }
