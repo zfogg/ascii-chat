@@ -13,11 +13,13 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
+#include "platform/util.h"       // For platform_strtok_r
 #include "gpg/export.h"          // For gpg_get_public_key()
 #include "network/http_client.h" // For https_get()
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
 // =============================================================================
 // High-Level Key Parsing Functions
@@ -302,6 +304,49 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
   }
 
   *num_keys = 0;
+
+  // Handle comma-separated key specifiers
+  if (strchr(input, ',') != NULL) {
+    char *input_copy = SAFE_MALLOC(strlen(input) + 1, char *);
+    strcpy(input_copy, input);
+
+    char *saveptr = NULL;
+    char *specifier = platform_strtok_r(input_copy, ",", &saveptr);
+
+    while (specifier != NULL && *num_keys < max_keys) {
+      // Trim leading/trailing whitespace
+      while (*specifier && isspace((unsigned char)*specifier)) {
+        specifier++;
+      }
+      char *end = specifier + strlen(specifier) - 1;
+      while (end > specifier && isspace((unsigned char)*end)) {
+        *end-- = '\0';
+      }
+
+      // Skip empty specifiers
+      if (strlen(specifier) > 0) {
+        // Recursively parse this single specifier (will not re-enter comma handling)
+        size_t current_num = 0;
+        asciichat_error_t result =
+            parse_public_keys(specifier, &keys_out[*num_keys], &current_num, max_keys - *num_keys);
+        if (result == ASCIICHAT_OK && current_num > 0) {
+          *num_keys += current_num;
+        } else {
+          log_warn("Failed to parse key specifier: %s", specifier);
+          // Continue parsing remaining specifiers even if one fails
+        }
+      }
+
+      specifier = platform_strtok_r(NULL, ",", &saveptr);
+    }
+
+    SAFE_FREE(input_copy);
+
+    if (*num_keys == 0) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found in comma-separated list: %s", input);
+    }
+    return ASCIICHAT_OK;
+  }
 
   // Check for direct SSH Ed25519 key format BEFORE checking for file paths
   // (SSH keys can contain '/' in base64, which would match path_looks_like_path)

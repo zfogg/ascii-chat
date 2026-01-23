@@ -289,34 +289,31 @@ void action_help_discovery(void) {
 // ============================================================================
 
 void action_create_manpage(void) {
-  const char *template_path = "share/man/man1/ascii-chat.1.in";
-  const char *output_path = template_path;
-
   // Get binary-level config
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     log_plain_stderr("Error: Failed to get binary options config");
-    exit(1);
+    _exit(1);
   }
 
-  // Generate merged man page (use default content file)
-  const char *content_file = "share/man/man1/ascii-chat.1.content";
-  asciichat_error_t err = options_config_generate_manpage_merged(
-      config, "ascii-chat", NULL, output_path, "Video chat in your terminal", template_path, content_file);
+  // Generate merged man page from embedded or filesystem resources
+  // Resources are loaded automatically based on build type:
+  // - Production (Release): From embedded binary data
+  // - Development (Debug): From filesystem files
+  asciichat_error_t err =
+      options_config_generate_manpage_merged(config, "ascii-chat", NULL, NULL, "Video chat in your terminal");
 
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
     if (HAS_ERRNO(&err_ctx)) {
       log_plain_stderr("Error: %s", err_ctx.context_message);
     } else {
-      log_plain_stderr("Error: Failed to generate man page template");
+      log_plain_stderr("Error: Failed to generate man page");
     }
-    exit(1);
+    _exit(1);
   }
 
-  log_plain_stderr("Generated merged man page template: %s", output_path);
-  log_plain_stderr("Review AUTO sections - manual edits will be lost on regeneration.");
-  exit(0);
+  _exit(0);
 }
 
 // ============================================================================

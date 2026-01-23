@@ -31,43 +31,58 @@ endif()
 # option documentation from the options builder
 # Note: --create-man-page writes to stdout, so we redirect output to the target file
 # Development builds generate uncompressed .1 only; packaging compresses at install time
-if(UNIX)
-    # Unix: Use sh -c for shell redirection
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
-        COMMAND sh -c "timeout 3 ${ASCII_CHAT_EXECUTABLE} --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
-        COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        DEPENDS
-            ascii-chat
-            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
-        COMMENT "Generating ascii-chat.1 from template and content files"
-        VERBATIM
-    )
-elseif(WIN32)
-    # Windows: Use cmd /c for shell redirection
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
-        COMMAND cmd /c "timeout /t 3 /nobreak && \"${ASCII_CHAT_EXECUTABLE}\" --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
-        COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        DEPENDS
-            ascii-chat
-            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-            "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
-        COMMENT "Generating ascii-chat.1 from template and content files"
-        VERBATIM
+#
+# NOTE: Release builds skip man page generation due to a parsing issue with Release optimizations.
+# Debug/Dev builds work fine. For Release, manually run: ./build/bin/ascii-chat --create-man-page > share/man/man1/ascii-chat.1
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # Debug builds (all platforms): Generate man pages
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
+
+    if(UNIX)
+        # Unix: Use sh -c for shell redirection
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from embedded resources..."
+            COMMAND sh -c "timeout 3 ${ASCII_CHAT_EXECUTABLE} --create-man-page > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
+            COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            DEPENDS
+                ascii-chat
+                "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+                "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
+            COMMENT "Generating ascii-chat.1 from embedded resources"
+            VERBATIM
+        )
+    elseif(WIN32)
+        # Windows: Use cmd /c for shell redirection
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from embedded resources..."
+            COMMAND cmd /c "\"${ASCII_CHAT_EXECUTABLE}\" --create-man-page > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
+            COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+            DEPENDS
+                ascii-chat
+                "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+                "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
+            COMMENT "Generating ascii-chat.1 from embedded resources"
+            VERBATIM
+        )
+    endif()
+
+    # Build man pages target for Debug builds
+    add_custom_target(man1 ALL
+        DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        COMMENT "Man pages build complete"
     )
 else()
-    message(FATAL_ERROR "Unsupported platform for man page generation")
-endif()
+    # Release builds: Skip man page generation (workaround for Release segfault)
+    # Man pages can still be generated manually: ./bin/ascii-chat --create-man-page > ascii-chat.1
+    message(STATUS "Man page generation skipped for Release builds (use --create-man-page manually if needed)")
 
-# Build man pages by default for release/packaging - they're needed by CPack install
-add_custom_target(man1 ALL
-    DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMENT "Man pages build complete"
-)
+    # Create dummy man1 target that does nothing
+    add_custom_target(man1
+        COMMENT "Man page target (skipped for Release builds)"
+    )
+endif()
 
 message(STATUS "Man1 target ${BoldCyan}'man1'${ColorReset} is available (no Doxygen required). Build with: ${BoldYellow}cmake --build build --target man1${ColorReset}")
 

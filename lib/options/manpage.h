@@ -147,24 +147,33 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
  * @ingroup options
  */
 /**
- * @brief Generate merged man page template from options builder and existing template
+ * @brief Generate merged man page from options builder and embedded resources
+ *
+ * Generates a merged man page by combining auto-generated content from the options
+ * builder with manual sections from embedded resources. Automatically selects between
+ * embedded resources (production builds) and filesystem resources (development builds).
+ *
+ * **Resource Loading:**
+ * - **Template**: Loads ascii-chat.1.in template from embedded resources or filesystem
+ * - **Content**: Loads ascii-chat.1.content sections from embedded resources or filesystem
+ * - **Merging**: Intelligently merges AUTO, MANUAL, and MERGE-marked sections
  *
  * @param config Finalized options configuration
  * @param program_name Program name (e.g., "ascii-chat")
  * @param mode_name Mode name (e.g., "server", "client", or NULL for binary-level)
  * @param output_path Output file path, or NULL to write to stdout
  * @param brief_description One-line program description
- * @param existing_template_path Path to existing template to merge with (can be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * @note If output_path is NULL, writes to stdout
- * @note If existing_template_path is NULL, generates fresh template
+ * @note Resources are loaded automatically from embedded or filesystem based on build type
+ *
+ * @deprecated The old signature with explicit file paths is no longer supported.
+ *             Resources are now loaded automatically from embedded resources.
  */
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
                                                          const char *mode_name, const char *output_path,
-                                                         const char *brief_description,
-                                                         const char *existing_template_path,
-                                                         const char *content_file_path);
+                                                         const char *brief_description);
 
 /**
  * @brief Parse existing man page template to extract sections

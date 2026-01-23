@@ -308,6 +308,7 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
+    lib/embedded_resources.c    # Resource embedding for production builds
     lib/log/logging.c
     lib/log/colorize.c
     lib/log/mmap.c

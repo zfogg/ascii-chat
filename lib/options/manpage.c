@@ -9,12 +9,21 @@
 #include "log/logging.h"
 #include "util/string.h"
 #include "version.h"
-#include "options/options.h" // For asciichat_mode_t and option_mode_bitmask_t
+#include "options/options.h"    // For asciichat_mode_t and option_mode_bitmask_t
+#include "embedded_resources.h" // For embedded documentation resources
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
+
+// ============================================================================
+// Forward Declarations
+// ============================================================================
+
+static parsed_section_t *parse_sections_from_file(FILE *f, size_t *num_sections);
+static parsed_section_t *parse_manpage_sections_from_memory(const char *content, size_t content_len,
+                                                            size_t *num_sections);
 
 // ============================================================================
 // Helper Functions for Groff/Troff Formatting
@@ -768,138 +777,9 @@ parsed_section_t *parse_manpage_sections(const char *filepath, size_t *num_secti
     return NULL;
   }
 
-  parsed_section_t *sections = NULL;
-  size_t capacity = 16;
-  size_t count = 0;
-  sections = SAFE_MALLOC(capacity * sizeof(parsed_section_t), parsed_section_t *);
-
-  char *line = NULL;
-  size_t line_len = 0;
-  size_t line_num = 0;
-
-  parsed_section_t *current_section = NULL;
-  char *current_content = NULL;
-  size_t current_content_capacity = 4096;
-  size_t current_content_len = 0;
-  current_content = SAFE_MALLOC(current_content_capacity, char *);
-
-  // Track markers for current section
-  const char *current_type = NULL;
-  char *current_marker_section = NULL;
-  bool in_marked_section = false;
-
-  while (getline(&line, &line_len, f) != -1) {
-    line_num++;
-
-    const char *marker_type = NULL;
-    char *marker_section = NULL;
-    bool is_marker = is_marker_line(line, &marker_type, &marker_section);
-
-    char *section_header_name = NULL;
-    bool is_header = is_section_header(line, &section_header_name);
-
-    if (is_marker) {
-      // Check if this is a START marker
-      if (strstr(line, "-START:") != NULL) {
-        // Start of a marked section
-        current_type = marker_type;
-        if (current_marker_section) {
-          SAFE_FREE(current_marker_section);
-        }
-        current_marker_section = marker_section;
-        in_marked_section = true;
-        marker_section = NULL; // Ownership transferred
-      } else if (strstr(line, "-END:") != NULL) {
-        // End of marked section
-        if (marker_section) {
-          SAFE_FREE(marker_section);
-        }
-        in_marked_section = false;
-        current_type = NULL;
-        if (current_marker_section) {
-          SAFE_FREE(current_marker_section);
-          current_marker_section = NULL;
-        }
-      } else {
-        if (marker_section) {
-          SAFE_FREE(marker_section);
-        }
-      }
-    }
-
-    if (is_header) {
-      // Finalize previous section if exists
-      if (current_section) {
-        if (current_content && current_content_len > 0) {
-          current_section->content = current_content;
-          current_section->content_len = current_content_len;
-          current_content = NULL;
-          current_content_capacity = 4096;
-          current_content_len = 0;
-          current_content = SAFE_MALLOC(current_content_capacity, char *);
-        } else {
-          SAFE_FREE(current_content);
-          current_content = NULL;
-          current_content_capacity = 4096;
-          current_content_len = 0;
-          current_content = SAFE_MALLOC(current_content_capacity, char *);
-        }
-      }
-
-      // Start new section
-      if (count >= capacity) {
-        capacity *= 2;
-        sections = SAFE_REALLOC(sections, capacity * sizeof(parsed_section_t), parsed_section_t *);
-      }
-
-      current_section = &sections[count++];
-      memset(current_section, 0, sizeof(parsed_section_t));
-      current_section->section_name = section_header_name;
-      current_section->start_line = line_num;
-      current_section->end_line = line_num; // Will be updated when section ends
-      current_section->type = in_marked_section ? type_string_to_enum(current_type) : SECTION_TYPE_UNMARKED;
-      current_section->has_markers = in_marked_section;
-
-      // Append header line to content
-      size_t line_strlen = strlen(line);
-      if (current_content_len + line_strlen + 1 >= current_content_capacity) {
-        current_content_capacity = (current_content_len + line_strlen + 1) * 2;
-        current_content = SAFE_REALLOC(current_content, current_content_capacity, char *);
-      }
-      memcpy(current_content + current_content_len, line, line_strlen);
-      current_content_len += line_strlen;
-      current_content[current_content_len] = '\0'; // Ensure null-terminated
-    } else if (current_section) {
-      // Append line to current section content
-      size_t line_strlen = strlen(line);
-      if (current_content_len + line_strlen + 1 >= current_content_capacity) {
-        current_content_capacity = (current_content_len + line_strlen + 1) * 2;
-        current_content = SAFE_REALLOC(current_content, current_content_capacity, char *);
-      }
-      memcpy(current_content + current_content_len, line, line_strlen);
-      current_content_len += line_strlen;
-      current_content[current_content_len] = '\0'; // Ensure null-terminated
-      current_section->end_line = line_num;
-    }
-  }
-
-  // Finalize last section
-  if (current_section && current_content && current_content_len > 0) {
-    current_section->content = current_content;
-    current_section->content_len = current_content_len;
-  } else if (current_content) {
-    SAFE_FREE(current_content);
-  }
-
-  if (current_marker_section) {
-    SAFE_FREE(current_marker_section);
-  }
-  if (line) {
-    free(line);
-  }
+  // Use common parsing function
+  parsed_section_t *sections = parse_sections_from_file(f, num_sections);
   fclose(f);
-
-  *num_sections = count;
   return sections;
 }
 
@@ -1326,37 +1206,281 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
   return result;
 }
 
+// ============================================================================
+// Helper: Parse manpage sections from FILE*
+// ============================================================================
+
+/**
+ * @brief Parse man page sections from an open FILE*
+ *
+ * This is the core parsing logic extracted from parse_manpage_sections.
+ * Takes an open FILE* and parses sections from it.
+ *
+ * @param f Open FILE* to read from
+ * @param num_sections Output: number of sections parsed
+ * @return Array of parsed sections (caller must free), or NULL on error
+ */
+static parsed_section_t *parse_sections_from_file(FILE *f, size_t *num_sections) {
+  if (!f || !num_sections) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_sections_from_file");
+    return NULL;
+  }
+
+  parsed_section_t *sections = NULL;
+  size_t capacity = 16;
+  size_t count = 0;
+  sections = SAFE_MALLOC(capacity * sizeof(parsed_section_t), parsed_section_t *);
+
+  char *line = NULL;
+  size_t line_len = 0;
+  size_t line_num = 0;
+
+  parsed_section_t *current_section = NULL;
+  char *current_content = NULL;
+  size_t current_content_capacity = 4096;
+  size_t current_content_len = 0;
+  current_content = SAFE_MALLOC(current_content_capacity, char *);
+
+  // Track markers for current section
+  const char *current_type = NULL;
+  char *current_marker_section = NULL;
+  bool in_marked_section = false;
+
+  while (getline(&line, &line_len, f) != -1) {
+    line_num++;
+
+    const char *marker_type = NULL;
+    char *marker_section = NULL;
+    bool is_marker = is_marker_line(line, &marker_type, &marker_section);
+
+    char *section_header_name = NULL;
+    bool is_header = is_section_header(line, &section_header_name);
+
+    if (is_marker) {
+      // Check if this is a START marker
+      if (strstr(line, "-START:") != NULL) {
+        // Start of a marked section
+        current_type = marker_type;
+        if (current_marker_section) {
+          SAFE_FREE(current_marker_section);
+        }
+        current_marker_section = marker_section;
+        in_marked_section = true;
+        marker_section = NULL; // Ownership transferred
+      } else if (strstr(line, "-END:") != NULL) {
+        // End of marked section
+        if (marker_section) {
+          SAFE_FREE(marker_section);
+        }
+        in_marked_section = false;
+        current_type = NULL;
+        if (current_marker_section) {
+          SAFE_FREE(current_marker_section);
+          current_marker_section = NULL;
+        }
+      } else {
+        if (marker_section) {
+          SAFE_FREE(marker_section);
+        }
+      }
+    }
+
+    if (is_header) {
+      // Finalize previous section if exists
+      if (current_section) {
+        if (current_content && current_content_len > 0) {
+          current_section->content = current_content;
+          current_section->content_len = current_content_len;
+          current_content = NULL;
+          current_content_capacity = 4096;
+          current_content_len = 0;
+          current_content = SAFE_MALLOC(current_content_capacity, char *);
+        } else {
+          SAFE_FREE(current_content);
+          current_content = NULL;
+          current_content_capacity = 4096;
+          current_content_len = 0;
+          current_content = SAFE_MALLOC(current_content_capacity, char *);
+        }
+      }
+
+      // Start new section
+      if (count >= capacity) {
+        capacity *= 2;
+        sections = SAFE_REALLOC(sections, capacity * sizeof(parsed_section_t), parsed_section_t *);
+      }
+
+      current_section = &sections[count++];
+      memset(current_section, 0, sizeof(parsed_section_t));
+      current_section->section_name = section_header_name;
+      current_section->start_line = line_num;
+      current_section->end_line = line_num;
+      current_section->type = in_marked_section ? type_string_to_enum(current_type) : SECTION_TYPE_UNMARKED;
+      current_section->has_markers = in_marked_section;
+
+      // Append header line to content
+      size_t line_strlen = strlen(line);
+      if (current_content_len + line_strlen + 1 >= current_content_capacity) {
+        current_content_capacity = (current_content_len + line_strlen + 1) * 2;
+        current_content = SAFE_REALLOC(current_content, current_content_capacity, char *);
+      }
+      memcpy(current_content + current_content_len, line, line_strlen);
+      current_content_len += line_strlen;
+      current_content[current_content_len] = '\0';
+    } else if (current_section) {
+      // Append line to current section content
+      size_t line_strlen = strlen(line);
+      if (current_content_len + line_strlen + 1 >= current_content_capacity) {
+        current_content_capacity = (current_content_len + line_strlen + 1) * 2;
+        current_content = SAFE_REALLOC(current_content, current_content_capacity, char *);
+      }
+      memcpy(current_content + current_content_len, line, line_strlen);
+      current_content_len += line_strlen;
+      current_content[current_content_len] = '\0';
+      current_section->end_line = line_num;
+    }
+  }
+
+  // Finalize last section
+  if (current_section && current_content && current_content_len > 0) {
+    current_section->content = current_content;
+    current_section->content_len = current_content_len;
+  } else if (current_content) {
+    SAFE_FREE(current_content);
+  }
+
+  if (current_marker_section) {
+    SAFE_FREE(current_marker_section);
+  }
+  if (line) {
+    free(line);
+  }
+
+  *num_sections = count;
+  return sections;
+}
+
+/**
+ * @brief Parse man page sections from memory buffer
+ *
+ * Creates a temporary FILE* from memory and parses sections.
+ * Uses platform-specific methods for efficiency:
+ * - Unix/macOS: fmemopen() for zero-copy (if available)
+ * - Windows: tmpfile() + fwrite (no fmemopen)
+ *
+ * @param content Memory buffer containing man page content
+ * @param content_len Length of buffer (excluding null terminator)
+ * @param num_sections Output: number of sections parsed
+ * @return Array of parsed sections (caller must free), or NULL on error
+ */
+static parsed_section_t *parse_manpage_sections_from_memory(const char *content, size_t content_len,
+                                                            size_t *num_sections) {
+  if (!content || !num_sections) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_manpage_sections_from_memory");
+    return NULL;
+  }
+
+#ifdef _WIN32
+  // Windows: Use tmpfile() since fmemopen() is not available
+  FILE *tmp = tmpfile();
+  if (!tmp) {
+    SET_ERRNO(ERROR_CONFIG, "Failed to create temporary file for memory parsing");
+    return NULL;
+  }
+
+  // Write content to temporary file
+  if (fwrite(content, 1, content_len, tmp) != content_len) {
+    fclose(tmp);
+    SET_ERRNO(ERROR_CONFIG, "Failed to write to temporary file");
+    return NULL;
+  }
+
+  // Rewind to beginning for reading
+  rewind(tmp);
+
+  // Parse using common function
+  parsed_section_t *sections = parse_sections_from_file(tmp, num_sections);
+  fclose(tmp);
+  return sections;
+
+#else // Unix/macOS: Use fmemopen()
+  // Open memory buffer as FILE*
+  // NOTE: content_len excludes the null terminator, but the embedded string IS null-terminated.
+  // Pass content_len + 1 to fmemopen to include the null terminator in the buffer size.
+  FILE *mem_file = fmemopen((void *)content, content_len + 1, "r");
+  if (!mem_file) {
+    SET_ERRNO(ERROR_CONFIG, "Failed to open memory buffer as file");
+    return NULL;
+  }
+
+  // Parse using common function
+  parsed_section_t *sections = parse_sections_from_file(mem_file, num_sections);
+  fclose(mem_file);
+  return sections;
+#endif
+}
+
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
                                                          const char *mode_name, const char *output_path,
-                                                         const char *brief_description,
-                                                         const char *existing_template_path,
-                                                         const char *content_file_path) {
+                                                         const char *brief_description) {
   if (!config || !program_name || !brief_description) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing required parameters for man page generation");
   }
 
-  // Parse existing template if provided
-  parsed_section_t *existing_sections = NULL;
-  size_t num_existing_sections = 0;
-  if (existing_template_path) {
-    existing_sections = parse_manpage_sections(existing_template_path, &num_existing_sections);
-    if (!existing_sections && num_existing_sections > 0) {
-      log_warn("Failed to parse existing template, generating fresh template");
-    }
+  // Load man page resources from embedded or filesystem based on build type
+  FILE *template_file = NULL;
+  FILE *content_file = NULL;
+  const char *template_str = NULL;
+  const char *content_str = NULL;
+  size_t template_len = 0;
+  size_t content_len = 0;
+
+  // Get template source (embedded in production, filesystem in development)
+  if (get_manpage_template(&template_file, &template_str, &template_len) != 0) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to load man page template");
   }
 
-  // Parse content file if provided and merge with existing sections
+  // Get content source (embedded in production, filesystem in development)
+  if (get_manpage_content(&content_file, &content_str, &content_len) != 0) {
+    release_manpage_resources(template_file);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to load man page content");
+  }
+
+  // Parse template and content sections
+  parsed_section_t *existing_sections = NULL;
+  size_t num_existing_sections = 0;
+
+#if USE_EMBEDDED_RESOURCES
+  // Production: Parse from embedded memory
+  existing_sections = parse_manpage_sections_from_memory(template_str, template_len, &num_existing_sections);
+#else
+  // Development: Parse from filesystem path
+  existing_sections = parse_manpage_sections("share/man/man1/ascii-chat.1.in", &num_existing_sections);
+#endif
+
+  if (!existing_sections && num_existing_sections > 0) {
+    log_warn("Failed to parse man page template, generating fresh template");
+  }
+
+  // Parse content sections
   parsed_section_t *content_sections = NULL;
   size_t num_content_sections = 0;
-  if (content_file_path) {
-    content_sections = parse_manpage_sections(content_file_path, &num_content_sections);
-    if (!content_sections && num_content_sections > 0) {
-      log_warn("Failed to parse content file, proceeding without it");
-    } else if (content_sections) {
-      // Merge content file sections: they override existing sections of the same name
-      // We'll merge during writing by checking content_sections first, then falling back to existing_sections
-    }
+
+#if USE_EMBEDDED_RESOURCES
+  // Production: Parse from embedded memory
+  content_sections = parse_manpage_sections_from_memory(content_str, content_len, &num_content_sections);
+#else
+  // Development: Parse from filesystem path
+  content_sections = parse_manpage_sections("share/man/man1/ascii-chat.1.content", &num_content_sections);
+#endif
+
+  if (!content_sections && num_content_sections > 0) {
+    log_warn("Failed to parse man page content, proceeding without it");
   }
+
+  // Release resource file handles (no-op for embedded resources)
+  release_manpage_resources(template_file);
+  release_manpage_resources(content_file);
 
   FILE *f = NULL;
   bool should_close = false;

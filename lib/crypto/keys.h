@@ -107,15 +107,23 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out);
  * - GitHub SSH: "github:username" - returns ALL Ed25519 keys from user's profile
  * - GitLab SSH: "gitlab:username" - returns ALL Ed25519 keys from user's profile
  * - File path: Returns all keys from file (one per line)
+ * - Comma-separated list: "github:user1, /path/to/keys.pub, https://example.com/key.pub" - returns all keys from all
+ * sources
  *
  * **Single key formats (behaves like parse_public_key):**
  * - SSH Ed25519: "ssh-ed25519 AAAAC3..." - returns single key
  * - Raw hex: 64 hex chars - returns single key
  * - GPG formats: Returns single key
  *
+ * **Comma-separated support:**
+ * When input contains commas, each comma-separated specifier is parsed independently.
+ * Whitespace around commas is automatically trimmed. If any specifier fails to parse,
+ * that specifier is skipped with a warning, but parsing continues for remaining specifiers.
+ * Returns ASCIICHAT_OK if at least one specifier parsed successfully.
+ *
  * This function is useful when you need to verify against ANY of a user's keys,
  * such as when a user has multiple SSH keys for different machines on their
- * GitHub/GitLab account.
+ * GitHub/GitLab account, or keys from multiple sources.
  *
  * @note GitHub/GitLab: Users often have multiple SSH keys for different machines.
  *       This function fetches all keys so you can verify against any of them.
