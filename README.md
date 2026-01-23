@@ -162,6 +162,39 @@ man build/share/man/man1/ascii-chat.1
 
 Or view online: **[ascii-chat.com/man](https://ascii-chat.com/man)**
 
+**Shell Completions:**
+
+Tab completion is available for Bash, Fish, Zsh, and PowerShell. Completions are auto-generated from the options registry at build time.
+
+**If installed via package manager (Homebrew, AUR, etc.):** Completions are already installed in standard directories. You may need to setup your shell's completion path:
+
+```bash
+# Zsh: Add Homebrew/Linuxbrew completions to FPATH (~/.zshrc)
+export FPATH=$(brew --prefix)/share/zsh/site-functions:$FPATH
+
+# Bash: Homebrew completions are usually sourced automatically
+# If not, add to ~/.bashrc:
+[[ -r "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]] && . "$(brew --prefix)/etc/profile.d/bash_completion.sh"
+
+# Fish/PowerShell: Completions work automatically in standard locations
+```
+
+**If building from source or without a package manager:** Generate completions on-demand:
+
+```bash
+# Bash (~/.bashrc)
+eval "$(ascii-chat --completions bash)"
+
+# Fish (~/.config/fish/config.fish)
+ascii-chat --completions fish | source
+
+# Zsh (~/.zshrc)
+eval "$(ascii-chat --completions zsh)"
+
+# PowerShell ($PROFILE)
+ascii-chat --completions powershell | Out-String | Invoke-Expression
+```
+
 ## Cryptography
 
 See **[ascii-chat.com/crypto](https://ascii-chat.com/crypto)** for complete cryptography documentation.
