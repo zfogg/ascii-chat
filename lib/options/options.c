@@ -397,6 +397,13 @@ options_t options_t_new(void) {
   memset(&opts, 0, sizeof(opts));
 
   // ============================================================================
+  // Binary-Level Options (parsed first, before mode selection)
+  // ============================================================================
+  opts.help = false;
+  opts.version = false;
+  // config_file is already zeroed by memset
+
+  // ============================================================================
   // Terminal Dimensions
   // ============================================================================
   opts.width = OPT_WIDTH_DEFAULT;
@@ -407,92 +414,142 @@ options_t options_t_new(void) {
   // ============================================================================
   // Network Options
   // ============================================================================
-  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "%s", OPT_PORT_DEFAULT);
   SAFE_STRNCPY(opts.address, OPT_ADDRESS_DEFAULT, sizeof(opts.address));
   SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
-
-  // ============================================================================
-  // Server Options
-  // ============================================================================
+  SAFE_SNPRINTF(opts.port, OPTIONS_BUFF_SIZE, "%s", OPT_PORT_DEFAULT);
   opts.max_clients = OPT_MAX_CLIENTS_DEFAULT;
-  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-  opts.fps = OPT_FPS_DEFAULT;
+  // session_string is already zeroed by memset
 
   // ============================================================================
-  // Client Options
+  // Discovery Service Options (server only)
+  // ============================================================================
+  opts.discovery = OPT_ACDS_DEFAULT;
+  // discovery_server is already zeroed by memset
+  // discovery_port is already zeroed by memset
+  // discovery_service_key is already zeroed by memset
+  opts.webrtc = OPT_WEBRTC_DEFAULT;
+  // discovery_database_path is already zeroed by memset
+
+  // ============================================================================
+  // LAN Discovery Options
+  // ============================================================================
+  opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
+  // no_mdns_advertise is already zeroed by memset
+
+  // ============================================================================
+  // Network Performance Options
+  // ============================================================================
+  opts.compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
+  opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
+  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
+
+  // ============================================================================
+  // Client Reconnection Options
+  // ============================================================================
+  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+
+  // ============================================================================
+  // Webcam Options
   // ============================================================================
   opts.webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
-  opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
-  opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
-  opts.reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-  opts.snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+  opts.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
+  opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
+  opts.no_audio_mixer = false;
+
+  // ============================================================================
+  // Media File Streaming Options
+  // ============================================================================
+  // media_file is already zeroed by memset
+  // media_url is already zeroed by memset
+  opts.media_loop = OPT_MEDIA_LOOP_DEFAULT;
+  opts.media_from_stdin = false;
+  opts.media_seek_timestamp = 0.0;
+  // cookies_from_browser is already zeroed by memset
+  opts.no_cookies_from_browser = false;
 
   // ============================================================================
   // Display Options
   // ============================================================================
   opts.color_mode = OPT_COLOR_MODE_DEFAULT;
   opts.render_mode = OPT_RENDER_MODE_DEFAULT;
-  opts.palette_type = PALETTE_STANDARD; // Default palette (no OPT_*_DEFAULT for this)
   opts.show_capabilities = OPT_SHOW_CAPABILITIES_DEFAULT;
   opts.force_utf8 = OPT_FORCE_UTF8_DEFAULT;
-  opts.stretch = OPT_STRETCH_DEFAULT;
-  opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
+  opts.fps = OPT_FPS_DEFAULT;
 
   // ============================================================================
-  // Audio Options
+  // Audio Configuration
   // ============================================================================
   opts.audio_enabled = OPT_AUDIO_ENABLED_DEFAULT;
-  opts.encode_audio = OPT_ENCODE_AUDIO_DEFAULT;
+  opts.microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
+  opts.speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
   opts.microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
   opts.speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT;
   opts.audio_analysis_enabled = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
   opts.audio_no_playback = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
 
   // ============================================================================
-  // Webcam Options
+  // Image Options
   // ============================================================================
-  opts.webcam_flip = OPT_WEBCAM_FLIP_DEFAULT;
-  opts.test_pattern = OPT_TEST_PATTERN_DEFAULT;
+  opts.stretch = OPT_STRETCH_DEFAULT;
 
   // ============================================================================
   // Output Options
   // ============================================================================
   opts.quiet = OPT_QUIET_DEFAULT;
+  opts.verbose_level = 0;
   opts.snapshot_mode = OPT_SNAPSHOT_MODE_DEFAULT;
+  opts.snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+  opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
+  // log_file is already zeroed by memset
+  opts.log_level = LOG_INFO;
 
   // ============================================================================
   // Encryption Options
   // ============================================================================
   opts.encrypt_enabled = OPT_ENCRYPT_ENABLED_DEFAULT;
+  // encrypt_key is already zeroed by memset
+  // password is already zeroed by memset
+  // encrypt_keyfile is already zeroed by memset
   opts.no_encrypt = OPT_NO_ENCRYPT_DEFAULT;
+  // server_key is already zeroed by memset
+  // client_keys is already zeroed by memset
+  // identity_keys array is already zeroed by memset
+  opts.num_identity_keys = 0;
 
   // ============================================================================
-  // WebRTC Options
+  // Identity Verification Options (ACDS + Crypto Handshake)
   // ============================================================================
-  opts.webrtc = OPT_WEBRTC_DEFAULT;
+  opts.require_server_identity = false;
+  opts.require_client_identity = false;
+  opts.require_server_verify = false;
+  opts.require_client_verify = false;
+  opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
+  opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
+
+  // ============================================================================
+  // WebRTC Connection Strategy Options (client-side fallback control)
+  // ============================================================================
   opts.prefer_webrtc = OPT_PREFER_WEBRTC_DEFAULT;
   opts.no_webrtc = OPT_NO_WEBRTC_DEFAULT;
   opts.webrtc_skip_stun = OPT_WEBRTC_SKIP_STUN_DEFAULT;
   opts.webrtc_disable_turn = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
 
   // ============================================================================
-  // ACDS/Discovery Options
+  // WebRTC Connectivity Options (ACDS mode only)
   // ============================================================================
-  opts.discovery = OPT_ACDS_DEFAULT;
-  opts.discovery_expose_ip = OPT_ACDS_EXPOSE_IP_DEFAULT;
-  opts.discovery_insecure = OPT_ACDS_INSECURE_DEFAULT;
   opts.enable_upnp = OPT_ENABLE_UPNP_DEFAULT;
-  opts.lan_discovery = OPT_LAN_DISCOVERY_DEFAULT;
   SAFE_STRNCPY(opts.stun_servers, OPT_STUN_SERVERS_DEFAULT, sizeof(opts.stun_servers));
   SAFE_STRNCPY(opts.turn_servers, OPT_TURN_SERVERS_DEFAULT, sizeof(opts.turn_servers));
   SAFE_STRNCPY(opts.turn_username, OPT_TURN_USERNAME_DEFAULT, sizeof(opts.turn_username));
   SAFE_STRNCPY(opts.turn_credential, OPT_TURN_CREDENTIAL_DEFAULT, sizeof(opts.turn_credential));
+  // turn_secret is already zeroed by memset
 
   // ============================================================================
-  // Other Options
+  // Palette Configuration
   // ============================================================================
-  opts.no_compress = OPT_NO_COMPRESS_DEFAULT;
-  opts.media_loop = OPT_MEDIA_LOOP_DEFAULT;
+  opts.palette_type = PALETTE_STANDARD; // Default palette
+  // palette_custom is already zeroed by memset
+  opts.palette_custom_set = false;
 
   return opts;
 }
