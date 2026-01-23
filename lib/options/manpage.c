@@ -961,7 +961,11 @@ static int compare_env_vars(const void *a, const void *b) {
 static void write_environment_section_merged(FILE *f, const options_config_t *config,
                                              const parsed_section_t *existing_section) {
   write_section_marker(f, "MERGE", "ENVIRONMENT", true);
-  fprintf(f, ".SH ENVIRONMENT\n");
+
+  // Only write header if not already in section content
+  if (!existing_section || !existing_section->content || strstr(existing_section->content, ".SH ENVIRONMENT") == NULL) {
+    fprintf(f, ".SH ENVIRONMENT\n");
+  }
 
   // Collect manual environment variable names
   char **manual_vars = NULL;
@@ -981,9 +985,40 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
 
     // Write manual env vars first (preserving their full descriptions from existing section)
     if (existing_section->content && existing_section->content_len > 0) {
-      fwrite(existing_section->content, 1, existing_section->content_len, f);
+      // Trim any trailing section markers (.\" MANUAL-START:, .\" AUTO-START:, .\" MERGE-START:)
+      size_t write_len = existing_section->content_len;
+      const char *content = existing_section->content;
+
+      // Look backwards from the end for a marker line
+      const char *p = content + existing_section->content_len;
+      while (p > content && *(p - 1) != '\n') {
+        p--;
+      }
+      // Now p points to the start of the last line (or the end)
+      if (p < content + existing_section->content_len) {
+        // Check if the last line is a section marker
+        const char *line_start = p;
+        // Skip leading whitespace
+        const char *line_content = line_start;
+        while (line_content < content + existing_section->content_len &&
+               (*line_content == ' ' || *line_content == '\t')) {
+          line_content++;
+        }
+        // Check if this looks like a section marker
+        if (line_content + 10 <= content + existing_section->content_len && line_content[0] == '.' &&
+            line_content[1] == '\\' && line_content[2] == '"' && line_content[3] == ' ') {
+          // Looks like a marker - check what kind
+          if (strncmp(line_content + 4, "MANUAL-START:", 13) == 0 ||
+              strncmp(line_content + 4, "AUTO-START:", 11) == 0 || strncmp(line_content + 4, "MERGE-START:", 12) == 0) {
+            // This is a section start marker - trim it
+            write_len = p - content;
+          }
+        }
+      }
+
+      fwrite(existing_section->content, 1, write_len, f);
       // Ensure newline after manual content
-      if (existing_section->content_len > 0 && existing_section->content[existing_section->content_len - 1] != '\n') {
+      if (write_len > 0 && existing_section->content[write_len - 1] != '\n') {
         fprintf(f, "\n");
       }
     }
