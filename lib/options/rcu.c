@@ -210,6 +210,18 @@ void options_state_shutdown(void) {
   log_debug("Options state shutdown complete");
 }
 
+// ============================================================================
+// Schema Cleanup Hook
+// ============================================================================
+// Note: Schema is built as a global during options_init but needs explicit
+// cleanup to free all dynamically allocated strings. We declare it here
+// and it's implemented in schema.c.
+extern void config_schema_cleanup(void);
+
+void options_cleanup_schema(void) {
+  config_schema_cleanup();
+}
+
 const options_t *options_get(void) {
   // Lock-free read with acquire semantics
   // Guarantees we see all writes made before the pointer was published

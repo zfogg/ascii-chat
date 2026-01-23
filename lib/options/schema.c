@@ -399,3 +399,33 @@ const config_option_metadata_t *config_schema_get_all(size_t *count) {
   }
   return g_dynamic_schema;
 }
+
+// ============================================================================
+// Schema Cleanup
+// ============================================================================
+
+void config_schema_cleanup(void) {
+  if (!g_schema_built) {
+    return; // Nothing to clean up
+  }
+
+  // Free all dynamically allocated strings (toml_key, cli_flag, category)
+  if (g_dynamic_strings) {
+    for (size_t i = 0; i < g_dynamic_strings_count; i++) {
+      SAFE_FREE(g_dynamic_strings[i]);
+    }
+    SAFE_FREE(g_dynamic_strings);
+    g_dynamic_strings = NULL;
+    g_dynamic_strings_count = 0;
+    g_dynamic_strings_capacity = 0;
+  }
+
+  // Free the schema array itself
+  if (g_dynamic_schema) {
+    SAFE_FREE(g_dynamic_schema);
+    g_dynamic_schema = NULL;
+    g_dynamic_schema_count = 0;
+  }
+
+  g_schema_built = false;
+}

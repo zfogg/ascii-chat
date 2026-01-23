@@ -112,3 +112,14 @@ const config_option_metadata_t *config_schema_get_all(size_t *count);
  * @note This should be called once during initialization before any config parsing
  */
 asciichat_error_t config_schema_build_from_configs(const options_config_t **configs, size_t num_configs);
+
+/**
+ * @brief Clean up dynamically allocated schema resources
+ *
+ * Frees all memory allocated by config_schema_build_from_configs(),
+ * including the dynamic schema array and all associated strings.
+ * Safe to call multiple times or if schema was never built.
+ *
+ * @note This should be called during shutdown to prevent memory leaks
+ */
+void config_schema_cleanup(void);

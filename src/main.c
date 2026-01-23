@@ -390,6 +390,7 @@ int main(int argc, char *argv[]) {
 
   // Clean up options state before exiting
   options_state_shutdown();
+  options_cleanup_schema();
 
   if (exit_code == ERROR_USAGE) {
     _exit(ERROR_USAGE);

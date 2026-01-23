@@ -116,3 +116,12 @@ asciichat_error_t options_state_set(const options_t *opts);
  * Should be called at program shutdown after all threads have exited.
  */
 void options_state_shutdown(void);
+
+/**
+ * @brief Clean up schema resources
+ *
+ * Frees the dynamically allocated options schema array and all associated strings.
+ * Should be called at program shutdown after options_state_shutdown().
+ * Safe to call multiple times or if schema was never built.
+ */
+void options_cleanup_schema(void);
