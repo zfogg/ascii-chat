@@ -489,7 +489,7 @@ add_custom_command(
 )
 
 # Create target for generating all completions
-add_custom_target(generate-completions ALL
+add_custom_target(completions ALL
     DEPENDS
         "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
         "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
