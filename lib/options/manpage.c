@@ -22,7 +22,7 @@
 // ============================================================================
 
 static parsed_section_t *parse_sections_from_file(FILE *f, size_t *num_sections);
-#if USE_EMBEDDED_RESOURCES
+#ifdef NDEBUG
 static parsed_section_t *parse_manpage_sections_from_memory(const char *content, size_t content_len,
                                                             size_t *num_sections);
 #endif
@@ -1362,7 +1362,7 @@ static parsed_section_t *parse_sections_from_file(FILE *f, size_t *num_sections)
   return sections;
 }
 
-#if USE_EMBEDDED_RESOURCES
+#ifdef NDEBUG
 /**
  * @brief Parse man page sections from memory buffer
  *
@@ -1439,7 +1439,7 @@ static parsed_section_t *parse_manpage_sections_from_memory(const char *content,
   return sections;
 #endif
 }
-#endif // USE_EMBEDDED_RESOURCES
+#endif // NDEBUG
 
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
                                                          const char *mode_name, const char *output_path,
@@ -1471,11 +1471,11 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   parsed_section_t *existing_sections = NULL;
   size_t num_existing_sections = 0;
 
-#if USE_EMBEDDED_RESOURCES
-  // Production: Parse from embedded memory
+#ifdef NDEBUG
+  // Release: Parse from embedded memory
   existing_sections = parse_manpage_sections_from_memory(template_str, template_len, &num_existing_sections);
 #else
-  // Development: Parse from filesystem path
+  // Debug: Parse from filesystem path
   existing_sections = parse_manpage_sections("share/man/man1/ascii-chat.1.in", &num_existing_sections);
 #endif
 
@@ -1487,11 +1487,11 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   parsed_section_t *content_sections = NULL;
   size_t num_content_sections = 0;
 
-#if USE_EMBEDDED_RESOURCES
-  // Production: Parse from embedded memory
+#ifdef NDEBUG
+  // Release: Parse from embedded memory
   content_sections = parse_manpage_sections_from_memory(content_str, content_len, &num_content_sections);
 #else
-  // Development: Parse from filesystem path
+  // Debug: Parse from filesystem path
   content_sections = parse_manpage_sections("share/man/man1/ascii-chat.1.content", &num_content_sections);
 #endif
 

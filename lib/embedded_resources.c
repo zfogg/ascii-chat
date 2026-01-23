@@ -21,7 +21,7 @@
 //
 // These symbols are defined in auto-generated C files (generated at build time
 // by cmake/utils/EmbedTextFile.cmake). They always exist (generated from
-// CMakeLists.txt custom commands), but are only used when USE_EMBEDDED_RESOURCES=1
+// CMakeLists.txt custom commands), but are only used in Release builds (NDEBUG defined)
 //
 extern const char embedded_manpage_template[];
 extern const size_t embedded_manpage_template_len;
@@ -33,8 +33,8 @@ extern const size_t embedded_manpage_content_len;
 // =============================================================================
 
 int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_len) {
-#if USE_EMBEDDED_RESOURCES
-  // Production build: Return embedded data
+#ifdef NDEBUG
+  // Release build: Return embedded data
   if (out_content) {
     *out_content = embedded_manpage_template;
   }
@@ -48,7 +48,7 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
   log_debug("Using embedded man page template (%zu bytes)", embedded_manpage_template_len);
   return 0;
 #else
-  // Development build: Read from filesystem
+  // Debug build: Read from filesystem
   if (!out_file) {
     SET_ERRNO(ERROR_INVALID_PARAM, "out_file cannot be NULL in development mode");
     return -1;
@@ -84,8 +84,8 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
 }
 
 int get_manpage_content(FILE **out_file, const char **out_content, size_t *out_len) {
-#if USE_EMBEDDED_RESOURCES
-  // Production build: Return embedded data
+#ifdef NDEBUG
+  // Release build: Return embedded data
   if (out_content) {
     *out_content = embedded_manpage_content;
   }
@@ -99,7 +99,7 @@ int get_manpage_content(FILE **out_file, const char **out_content, size_t *out_l
   log_debug("Using embedded man page content (%zu bytes)", embedded_manpage_content_len);
   return 0;
 #else
-  // Development build: Read from filesystem
+  // Debug build: Read from filesystem
   if (!out_file) {
     SET_ERRNO(ERROR_INVALID_PARAM, "out_file cannot be NULL in development mode");
     return -1;
@@ -135,11 +135,11 @@ int get_manpage_content(FILE **out_file, const char **out_content, size_t *out_l
 }
 
 void release_manpage_resources(FILE *file) {
-#if USE_EMBEDDED_RESOURCES
-  // Production build: No-op (embedded data is static, not heap-allocated)
+#ifdef NDEBUG
+  // Release build: No-op (embedded data is static, not heap-allocated)
   (void)file; // Suppress unused parameter warning
 #else
-  // Development build: Close file handle if present
+  // Debug build: Close file handle if present
   if (file) {
     fclose(file);
   }

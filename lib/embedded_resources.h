@@ -53,17 +53,12 @@
 // =============================================================================
 
 /**
- * @brief Detect if this is a production build with embedded resources
+ * @brief Behavior based on build type
  *
  * In CMake:
- * - `NDEBUG` is defined in Release/RelWithDebInfo builds
- * - `NDEBUG` is undefined in Debug/Dev builds
+ * - `NDEBUG` is defined in Release/RelWithDebInfo builds → use embedded resources
+ * - `NDEBUG` is undefined in Debug/Dev builds → use filesystem resources
  */
-#if defined(NDEBUG) && !defined(DEBUG)
-#define USE_EMBEDDED_RESOURCES 1
-#else
-#define USE_EMBEDDED_RESOURCES 0
-#endif
 
 // =============================================================================
 // External Declarations for Embedded Data
@@ -106,8 +101,8 @@ extern const size_t embedded_manpage_content_len;
  *
  * Automatically selects between embedded and filesystem resources based
  * on build type:
- * - **Production** (USE_EMBEDDED_RESOURCES=1): Returns embedded string
- * - **Development** (USE_EMBEDDED_RESOURCES=0): Reads from filesystem
+ * - **Release builds** (NDEBUG defined): Returns embedded string
+ * - **Debug builds** (NDEBUG undefined): Reads from filesystem
  *
  * **Parameter Usage:**
  * - In production: `out_content` and `out_len` are set, `out_file` is NULL
