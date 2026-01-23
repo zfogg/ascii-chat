@@ -247,9 +247,7 @@ static void utf8_heap_update_score(utf8_palette_cache_t *cache, double new_score
 // Min-heap functions now replace LRU list management
 
 // Thread-safe cache eviction implementations
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf8(uint32_t hash,
-                                                                                  utf8_palette_cache_t *new_cache) {
+static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache) {
   // Already holding write lock
   // Note: key should already be set by caller, but ensure it's set
   new_cache->key = hash;
@@ -270,7 +268,6 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
       log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
                 victim_age, victim_access_count);
 
-      // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
       HASH_DEL(g_utf8_cache_table, victim_cache);
       SAFE_FREE(victim_cache);
     }
@@ -290,8 +287,7 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
 // char_ramp_cache functions removed - data already available in utf8_palette_cache_t
 
 // Get or create UTF-8 palette cache for a given palette
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
+utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   if (!ascii_chars)
     return NULL;
 
@@ -310,7 +306,6 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
 
   // Check if cache exists
   utf8_palette_cache_t *cache = NULL;
-  // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
   HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
@@ -356,7 +351,6 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
 
   // Double-check: another thread might have created it while we upgraded locks
   cache = NULL;
-  // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
   HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Found it! Just update access tracking and return
@@ -519,8 +513,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 // No callback needed - uthash iteration handles cleanup directly
 
 // Central cleanup function for all SIMD caches
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) void simd_caches_destroy_all(void) {
+void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
   // Destroy shared UTF-8 palette cache (write lock for cleanup)
@@ -529,7 +522,6 @@ __attribute__((no_sanitize("integer"))) void simd_caches_destroy_all(void) {
     // Free all UTF-8 cache entries using HASH_ITER
     utf8_palette_cache_t *cache, *tmp;
     HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
-      // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
       HASH_DEL(g_utf8_cache_table, cache);
       SAFE_FREE(cache);
     }

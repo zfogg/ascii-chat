@@ -48,13 +48,40 @@ static bool g_options_initialized = false;
 /**
  * @brief Static default options used when options_get() is called before initialization
  * or during cleanup. This ensures atexit handlers can safely call GET_OPTION().
+ *
+ * Critical note: This must match the defaults in options_t_new(). Any field with a
+ * non-zero default should be explicitly set here to avoid division-by-zero or other
+ * issues when options haven't been initialized yet (e.g., during early startup or
+ * atexit handlers).
  */
 static const options_t g_default_options = (options_t){
-    .test_pattern = false,
-    .quiet = false,
+    // Logging
     .log_level = LOG_INFO,
+    .quiet = false,
+
+    // Display
     .color_mode = COLOR_MODE_AUTO,
     .palette_type = PALETTE_STANDARD,
+    .render_mode = RENDER_MODE_FOREGROUND,
+    .fps = OPT_FPS_DEFAULT,
+
+    // Performance
+    .compression_level = OPT_COMPRESSION_LEVEL_DEFAULT,
+
+    // Webcam
+    .test_pattern = false,
+
+    // Network
+    .max_clients = OPT_MAX_CLIENTS_DEFAULT,
+    .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
+
+    // Audio
+    .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
+    .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,
+    .speakers_index = OPT_SPEAKERS_INDEX_DEFAULT,
+    .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,
+    .speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT,
+
     // All other fields are zero-initialized (empty strings, false, 0, etc.)
 };
 

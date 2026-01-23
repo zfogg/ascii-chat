@@ -91,7 +91,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     if (prev_frame_start_ns > 0 && frame_count % 30 == 0) {
       uint64_t loop_time_ns = time_elapsed_ns(prev_frame_start_ns, frame_start_ns);
       double loop_time_ms = (double)loop_time_ns / 1000000.0;
-      log_info("LOOP_TIME: frame-to-frame time %.2f ms (target %.2f ms)", loop_time_ms, 1000.0 / GET_OPTION(fps));
+      int fps = GET_OPTION(fps);
+      if (fps > 0) {
+        log_info("LOOP_TIME: frame-to-frame time %.2f ms (target %.2f ms)", loop_time_ms, 1000.0 / fps);
+      }
     }
     prev_frame_start_ns = frame_start_ns;
 

@@ -1037,7 +1037,6 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
     // Null-terminate (PEM is text format)
     // We verified bytes_read == file_size above, and allocated file_size + 1 bytes.
     // file_size is bounded by the check on line 863 (0 < file_size <= 10MB).
-    // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - file_size is bounded above
     pem_data[file_size] = '\0';
 
     // Success!

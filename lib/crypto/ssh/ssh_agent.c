@@ -217,7 +217,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   uint32_t len = 11;
   write_u32_be(buf + pos, len);
   pos += 4;
-  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - Binary protocol, intentionally not null-terminated
+  // Binary protocol: intentionally not null-terminated
   memcpy(buf + pos, "ssh-ed25519", 11);
   pos += 11;
 
