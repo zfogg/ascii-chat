@@ -115,20 +115,11 @@ endif()
 # Valid build types (matching Makefile)
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Dev" "Release" "RelWithDebInfo" "TSan")
 
-# Interprocedural optimization (LTO) support detection
-include(CheckIPOSupported)
+# NOTE: Interprocedural optimization (LTO) check has been moved to CMakeLists.txt
+# AFTER project() is called, since check_ipo_supported() requires languages to be enabled.
+# See CMakeLists.txt line ~105 for post-project() config section.
+# Initialize here so it's available throughout the build
 set(ASCIICHAT_ENABLE_IPO FALSE CACHE INTERNAL "Enable IPO for release builds")
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
-    if(IPO_SUPPORTED)
-        set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
-        message(STATUS "Interprocedural optimization ${BoldGreen}enabled${ColorReset} for ${CMAKE_BUILD_TYPE} builds")
-    else()
-        message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")
-    endif()
-endif()
 
 if(USE_MUSL)
     set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

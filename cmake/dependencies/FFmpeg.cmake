@@ -86,13 +86,18 @@ if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
             message(STATUS "  Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
         endif()
 
+        # Pass through optimization flags for FFmpeg
+        # Note: FFmpeg has issues with ThinLTO on macOS (stack probing conflicts),
+        # so we use standard optimizations instead. The main binary still uses LTO.
+        set(FFMPEG_CFLAGS "-fPIC -O3")
+
         execute_process(
             COMMAND "${FFMPEG_SOURCE_DIR}/configure"
                 --prefix=${FFMPEG_PREFIX}
                 --enable-static
                 --disable-shared
                 --enable-pic
-                --extra-cflags=-fPIC
+                --extra-cflags=${FFMPEG_CFLAGS}
                 --disable-programs
                 --disable-doc
                 --disable-htmlpages
