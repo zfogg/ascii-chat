@@ -57,6 +57,9 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
       opterr = 1;                                                                                                      \
       optopt = 0;                                                                                                      \
       /* options_init now auto-detects mode from argv */                                                               \
+      /* Shutdown and reinit RCU state for parent process call */                                                      \
+      options_state_shutdown();                                                                                        \
+      options_state_init();                                                                                            \
       options_init(argc, argv);                                                                                        \
       /* Get options from RCU for assertions */                                                                        \
       const options_t *opts = options_get();                                                                           \
@@ -73,8 +76,11 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
 typedef options_t options_backup_t;
 
 static void save_options(options_backup_t *backup) {
-  // Initialize RCU state if not already initialized
-  // This is safe to call multiple times - it's a no-op if already initialized
+  // Shutdown any previous RCU state (from prior tests)
+  // This ensures a clean state for each test
+  options_state_shutdown();
+
+  // Initialize fresh RCU state
   options_state_init();
 
   // Get current options from RCU and make a copy
@@ -83,6 +89,13 @@ static void save_options(options_backup_t *backup) {
 }
 
 static void restore_options(const options_backup_t *backup) {
+  // Shutdown the RCU state after test
+  // This cleans up for the next test
+  options_state_shutdown();
+
+  // Re-initialize for next test
+  options_state_init();
+
   // Restore the saved options by publishing back to RCU
   options_state_set((options_t *)backup);
 }
