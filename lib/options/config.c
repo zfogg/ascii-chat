@@ -197,6 +197,361 @@ static const option_type_handler_t g_type_handlers[] = {
     [OPTION_TYPE_ACTION] = {NULL, NULL, NULL, NULL},
 };
 
+// ============================================================================
+// Type Handler Implementations
+// ============================================================================
+
+/**
+ * @brief Extract STRING value from TOML datum
+ */
+static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                           bool *has_value) {
+  (void)int_val;
+  (void)bool_val;
+  (void)double_val;
+
+  if (datum.type == TOML_STRING) {
+    const char *str = get_toml_string_validated(datum);
+    if (str && strlen(str) > 0) {
+      SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+      *has_value = true;
+    }
+  } else if (datum.type == TOML_INT64) {
+    // Convert integer to string (e.g., port = 7777)
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
+    *has_value = true;
+  }
+}
+
+/**
+ * @brief Extract INT value from TOML datum
+ */
+static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                        bool *has_value) {
+  (void)bool_val;
+  (void)double_val;
+
+  if (datum.type == TOML_INT64) {
+    *int_val = (int)datum.u.int64;
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%d", *int_val);
+    *has_value = true;
+  } else if (datum.type == TOML_STRING) {
+    const char *str = get_toml_string_validated(datum);
+    if (str) {
+      SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+      *has_value = true;
+    }
+  }
+}
+
+/**
+ * @brief Extract BOOL value from TOML datum
+ */
+static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                         bool *has_value) {
+  (void)int_val;
+  (void)double_val;
+
+  if (datum.type == TOML_BOOLEAN) {
+    *bool_val = datum.u.boolean;
+    // Also set value_str for parse_validate phase
+    SAFE_STRNCPY(value_str, *bool_val ? "true" : "false", BUFFER_SIZE_MEDIUM);
+    *has_value = true;
+  }
+}
+
+/**
+ * @brief Extract DOUBLE value from TOML datum
+ */
+static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                           bool *has_value) {
+  (void)int_val;
+  (void)bool_val;
+
+  if (datum.type == TOML_FP64) {
+    *double_val = datum.u.fp64;
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%.10g", *double_val);
+    *has_value = true;
+  } else if (datum.type == TOML_STRING) {
+    const char *str = get_toml_string_validated(datum);
+    if (str) {
+      SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+      *has_value = true;
+    }
+  }
+}
+
+/**
+ * @brief Parse and validate STRING value
+ */
+static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta,
+                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  (void)meta;
+  (void)error_msg;
+  (void)error_size;
+
+  SAFE_STRNCPY(parsed->str_value, value_str, sizeof(parsed->str_value));
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Parse and validate INT value
+ */
+static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta,
+                                            option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  // Detect enum fields by checking field_offset
+  int enum_val = -1;
+  bool is_enum = false;
+
+  if (meta->field_offset == offsetof(options_t, color_mode)) {
+    enum_val = validate_opt_color_mode(value_str, error_msg, error_size);
+    is_enum = true;
+  } else if (meta->field_offset == offsetof(options_t, render_mode)) {
+    enum_val = validate_opt_render_mode(value_str, error_msg, error_size);
+    is_enum = true;
+  } else if (meta->field_offset == offsetof(options_t, palette_type)) {
+    enum_val = validate_opt_palette(value_str, error_msg, error_size);
+    is_enum = true;
+  }
+
+  if (is_enum) {
+    // Enum parsing
+    if (enum_val < 0) {
+      if (strlen(error_msg) == 0) {
+        SAFE_SNPRINTF(error_msg, error_size, "Invalid enum value: %s", value_str);
+      }
+      return ERROR_CONFIG;
+    }
+    parsed->int_value = enum_val;
+  } else {
+    // Regular integer parsing
+    char *endptr = NULL;
+    long parsed_val = strtol(value_str, &endptr, 10);
+    if (*endptr != '\0') {
+      SAFE_SNPRINTF(error_msg, error_size, "Invalid integer: %s", value_str);
+      return ERROR_CONFIG;
+    }
+    if (parsed_val < INT_MIN || parsed_val > INT_MAX) {
+      SAFE_SNPRINTF(error_msg, error_size, "Integer out of range: %s", value_str);
+      return ERROR_CONFIG;
+    }
+    parsed->int_value = (int)parsed_val;
+  }
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Parse and validate BOOL value
+ */
+static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta,
+                                             option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  (void)meta;
+  (void)error_msg;
+  (void)error_size;
+
+  // Parse boolean from string representation ("true" or "false")
+  if (value_str && (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0)) {
+    parsed->bool_value = true;
+  } else {
+    parsed->bool_value = false;
+  }
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Parse and validate DOUBLE value
+ */
+static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta,
+                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  (void)meta;
+
+  char *endptr = NULL;
+  double parsed_val = strtod(value_str, &endptr);
+  if (*endptr != '\0') {
+    SAFE_SNPRINTF(error_msg, error_size, "Invalid float: %s", value_str);
+    return ERROR_CONFIG;
+  }
+  parsed->float_value = (float)parsed_val;
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write STRING value to struct field
+ */
+static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                      options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+  const char *final_value = parsed->str_value;
+
+  // Special handling for path-based options (keys, log files)
+  bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL ||
+                         strstr(meta->toml_key, "keyfile") != NULL);
+  if (is_path_option) {
+    // Check if it's a path that needs normalization
+    if (path_looks_like_path(final_value)) {
+      char *normalized = NULL;
+      path_role_t role = PATH_ROLE_CONFIG_FILE; // Default
+      if (strstr(meta->toml_key, "key") != NULL) {
+        role = (strstr(meta->toml_key, "server_key") != NULL || strstr(meta->toml_key, "client_keys") != NULL)
+                   ? PATH_ROLE_KEY_PUBLIC
+                   : PATH_ROLE_KEY_PRIVATE;
+      } else if (strstr(meta->toml_key, "log_file") != NULL) {
+        role = PATH_ROLE_LOG_FILE;
+      }
+
+      asciichat_error_t path_result = path_validate_user_path(final_value, role, &normalized);
+      if (path_result != ASCIICHAT_OK) {
+        SAFE_FREE(normalized);
+        return path_result;
+      }
+      SAFE_STRNCPY(field_ptr, normalized, meta->field_size);
+      SAFE_FREE(normalized);
+    } else {
+      // Not a path, just an identifier (e.g., "gpg:keyid", "github:user")
+      SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+    }
+
+    // Auto-enable encryption for crypto.key, crypto.password, crypto.keyfile
+    if (strstr(meta->toml_key, "crypto.key") != NULL || strstr(meta->toml_key, "crypto.password") != NULL ||
+        strstr(meta->toml_key, "crypto.keyfile") != NULL) {
+      opts->encrypt_enabled = 1;
+    }
+  } else {
+    SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write INT value to struct field
+ */
+static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                   options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+
+  // Handle unsigned short int fields (webcam_index)
+  if (meta->field_size == sizeof(unsigned short int)) {
+    *(unsigned short int *)field_ptr = (unsigned short int)parsed->int_value;
+  } else {
+    *(int *)field_ptr = parsed->int_value;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write BOOL value to struct field
+ */
+static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                    options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+
+  // Handle unsigned short int bool fields (common in options_t)
+  if (meta->field_size == sizeof(unsigned short int)) {
+    *(unsigned short int *)field_ptr = parsed->bool_value ? 1 : 0;
+  } else {
+    *(bool *)field_ptr = parsed->bool_value;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write DOUBLE value to struct field
+ */
+static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                      options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+
+  // Check field_size to distinguish float from double
+  if (meta->field_size == sizeof(float)) {
+    *(float *)field_ptr = parsed->float_value;
+  } else {
+    *(double *)field_ptr = (double)parsed->float_value;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Format STRING value for TOML output
+ */
+static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                          size_t bufsize) {
+  (void)field_size;
+  (void)meta;
+
+  const char *str_value = (const char *)field_ptr;
+  if (str_value && strlen(str_value) > 0) {
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", str_value);
+  } else {
+    SAFE_SNPRINTF(buf, bufsize, "\"\"");
+  }
+}
+
+/**
+ * @brief Format INT value for TOML output
+ */
+static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                       size_t bufsize) {
+  (void)meta;
+
+  int int_value = 0;
+  if (field_size == sizeof(unsigned short int)) {
+    int_value = *(unsigned short int *)field_ptr;
+  } else {
+    int_value = *(int *)field_ptr;
+  }
+  SAFE_SNPRINTF(buf, bufsize, "%d", int_value);
+}
+
+/**
+ * @brief Format BOOL value for TOML output
+ */
+static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                        size_t bufsize) {
+  (void)meta;
+
+  bool bool_value = false;
+  if (field_size == sizeof(unsigned short int)) {
+    bool_value = *(unsigned short int *)field_ptr != 0;
+  } else {
+    bool_value = *(bool *)field_ptr;
+  }
+  SAFE_SNPRINTF(buf, bufsize, "%s", bool_value ? "true" : "false");
+}
+
+/**
+ * @brief Format DOUBLE value for TOML output
+ */
+static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                          size_t bufsize) {
+  (void)meta;
+
+  if (field_size == sizeof(float)) {
+    float float_value = 0.0f;
+    memcpy(&float_value, field_ptr, sizeof(float));
+    SAFE_SNPRINTF(buf, bufsize, "%.1f", (double)float_value);
+  } else {
+    double double_value = 0.0;
+    memcpy(&double_value, field_ptr, sizeof(double));
+    SAFE_SNPRINTF(buf, bufsize, "%.1f", double_value);
+  }
+}
+
 /**
  * @name Schema-Based Configuration Parser
  * @{
@@ -269,73 +624,16 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       continue; // Option not present in config
     }
 
-    // Extract value based on type
+    // Extract value based on type using handler
     char value_str[BUFFER_SIZE_MEDIUM] = {0};
     bool has_value = false;
     int int_val = 0;
     bool bool_val = false;
     double double_val = 0.0;
 
-    switch (meta->type) {
-    case OPTION_TYPE_STRING: {
-      // String options can come as TOML_STRING or TOML_INT64 (e.g., port as integer)
-      if (datum.type == TOML_STRING) {
-        const char *str = get_toml_string_validated(datum);
-        if (str && strlen(str) > 0) {
-          SAFE_STRNCPY(value_str, str, sizeof(value_str));
-          has_value = true;
-        }
-      } else if (datum.type == TOML_INT64) {
-        // Convert integer to string (e.g., port = 7777)
-        SAFE_SNPRINTF(value_str, sizeof(value_str), "%lld", (long long)datum.u.int64);
-        has_value = true;
-      }
-      break;
-    }
-    case OPTION_TYPE_INT: {
-      // INT type handles both regular integers and enums (enums come as strings)
-      if (datum.type == TOML_INT64) {
-        int_val = (int)datum.u.int64;
-        has_value = true;
-        // Convert to string for validation
-        SAFE_SNPRINTF(value_str, sizeof(value_str), "%d", int_val);
-      } else if (datum.type == TOML_STRING) {
-        // Could be an enum (color_mode, render_mode, palette_type) or string representation of int
-        const char *str = get_toml_string_validated(datum);
-        if (str) {
-          SAFE_STRNCPY(value_str, str, sizeof(value_str));
-          has_value = true;
-        }
-      }
-      break;
-    }
-    case OPTION_TYPE_BOOL: {
-      if (datum.type == TOML_BOOLEAN) {
-        bool_val = datum.u.boolean;
-        has_value = true;
-      }
-      break;
-    }
-    case OPTION_TYPE_DOUBLE: {
-      // DOUBLE type handles both float and double (check field_size to distinguish)
-      if (datum.type == TOML_FP64) {
-        double_val = datum.u.fp64;
-        has_value = true;
-        // Convert to string for validation
-        SAFE_SNPRINTF(value_str, sizeof(value_str), "%.10g", double_val);
-      } else if (datum.type == TOML_STRING) {
-        const char *str = get_toml_string_validated(datum);
-        if (str) {
-          SAFE_STRNCPY(value_str, str, sizeof(value_str));
-          has_value = true;
-        }
-      }
-      break;
-    }
-    case OPTION_TYPE_CALLBACK:
-    case OPTION_TYPE_ACTION:
-      // These types are not loaded from config files - skip them
-      break;
+    // Use type handler for extraction (consolidated from 5 switch cases)
+    if (g_type_handlers[meta->type].extract) {
+      g_type_handlers[meta->type].extract(datum, value_str, &int_val, &bool_val, &double_val, &has_value);
     }
 
     if (!has_value) {
@@ -363,91 +661,23 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       continue;
     }
 
-    // Parse and validate string values using validation functions from validation.h
-    // These are the same functions used by the options builder
+    // Parse and validate value using handler
     char error_msg[BUFFER_SIZE_SMALL] = {0};
-    char parsed_buffer[OPTIONS_BUFF_SIZE] = {0};
-    int parsed_int = 0;
-    float parsed_float = 0.0f;
-    bool parse_success = true;
+    option_parsed_value_t parsed = {0};
+    asciichat_error_t parse_result = ASCIICHAT_OK;
 
-    // Parse string value based on type using validation functions
-    switch (meta->type) {
-    case OPTION_TYPE_STRING: {
-      // For strings, we still need to validate format (e.g., IP addresses, ports)
-      // Use validation functions that handle string parsing
-      // Most string fields don't need validation, but some do (ports, IPs, paths)
-      // For now, just copy the value - validation happens via builder's validate function after writing
-      SAFE_STRNCPY(parsed_buffer, value_str, sizeof(parsed_buffer));
-      break;
-    }
-    case OPTION_TYPE_INT: {
-      // Enums are stored as OPTION_TYPE_INT in builder but come as strings in TOML
-      // Check field_offset to detect enum fields (color_mode, render_mode, palette_type)
-      // Check if this is an enum field (comes as string in TOML) or regular int
-      int enum_val = -1;
-      bool is_enum = false;
-
-      // Detect enum fields by checking field_offset
-      if (meta->field_offset == offsetof(options_t, color_mode)) {
-        enum_val = validate_opt_color_mode(value_str, error_msg, sizeof(error_msg));
-        is_enum = true;
-      } else if (meta->field_offset == offsetof(options_t, render_mode)) {
-        enum_val = validate_opt_render_mode(value_str, error_msg, sizeof(error_msg));
-        is_enum = true;
-      } else if (meta->field_offset == offsetof(options_t, palette_type)) {
-        enum_val = validate_opt_palette(value_str, error_msg, sizeof(error_msg));
-        is_enum = true;
-      }
-
-      if (is_enum) {
-        // Enum parsing
-        if (enum_val < 0) {
-          parse_success = false;
-          if (strlen(error_msg) == 0) {
-            SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid enum value: %s", value_str);
-          }
-        } else {
-          parsed_int = enum_val;
-        }
-      } else {
-        // Regular integer parsing
-        char *endptr = NULL;
-        long parsed = strtol(value_str, &endptr, 10);
-        if (*endptr != '\0') {
-          parse_success = false;
-          SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid integer: %s", value_str);
-        } else if (parsed < INT_MIN || parsed > INT_MAX) {
-          parse_success = false;
-          SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Integer out of range: %s", value_str);
-        } else {
-          parsed_int = (int)parsed;
-        }
-      }
-      break;
-    }
-    case OPTION_TYPE_DOUBLE: {
-      char *endptr = NULL;
-      double parsed = strtod(value_str, &endptr);
-      if (*endptr != '\0') {
-        parse_success = false;
-        SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid float: %s", value_str);
-      } else {
-        parsed_float = (float)parsed;
-      }
-      break;
-    }
-    case OPTION_TYPE_BOOL:
-      // Already parsed above
-      break;
-    case OPTION_TYPE_CALLBACK:
-    case OPTION_TYPE_ACTION:
-      // These types are not loaded from config files - skip them
-      parse_success = false;
-      break;
+    // Use type handler for parsing/validation (consolidated from 5 switch cases)
+    if (g_type_handlers[meta->type].parse_validate) {
+      parse_result = g_type_handlers[meta->type].parse_validate(value_str, meta, &parsed, error_msg, sizeof(error_msg));
+    } else if (meta->type != OPTION_TYPE_CALLBACK && meta->type != OPTION_TYPE_ACTION) {
+      // Handler exists for all types except CALLBACK and ACTION
+      parse_result = ERROR_CONFIG;
+    } else {
+      // Skip callback and action types (not loaded from config)
+      continue;
     }
 
-    if (!parse_success) {
+    if (parse_result != ASCIICHAT_OK) {
       CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str, error_msg);
       if (strict) {
         if (first_error == ASCIICHAT_OK) {
@@ -458,109 +688,21 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       continue;
     }
 
-    // Write value to options_t using field_offset
-    char *field_ptr = ((char *)opts) + meta->field_offset;
-
-    switch (meta->type) {
-    case OPTION_TYPE_STRING: {
-      // For string types, use parsed_buffer if validator filled it (e.g., IP address normalization)
-      // Otherwise use original value_str
-      const char *final_value = (parsed_buffer[0] != '\0') ? parsed_buffer : value_str;
-
-      // Special handling for path-based options (keys, log files)
-      // Check if this is a path-based option by examining the key name
-      bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL ||
-                             strstr(meta->toml_key, "keyfile") != NULL);
-      if (is_path_option) {
-        // Check if it's a path that needs normalization
-        if (path_looks_like_path(final_value)) {
-          char *normalized = NULL;
-          path_role_t role = PATH_ROLE_CONFIG_FILE; // Default
-          if (strstr(meta->toml_key, "key") != NULL) {
-            role = (strstr(meta->toml_key, "server_key") != NULL || strstr(meta->toml_key, "client_keys") != NULL)
-                       ? PATH_ROLE_KEY_PUBLIC
-                       : PATH_ROLE_KEY_PRIVATE;
-          } else if (strstr(meta->toml_key, "log_file") != NULL) {
-            role = PATH_ROLE_LOG_FILE;
+    // Write value to options_t using handler
+    if (g_type_handlers[meta->type].write_to_struct) {
+      char error_msg_write[BUFFER_SIZE_SMALL] = {0};
+      asciichat_error_t write_result =
+          g_type_handlers[meta->type].write_to_struct(&parsed, meta, opts, error_msg_write, sizeof(error_msg_write));
+      if (write_result != ASCIICHAT_OK) {
+        CONFIG_WARN("Failed to write %s: %s (skipping)", meta->toml_key, error_msg_write);
+        if (strict) {
+          if (first_error == ASCIICHAT_OK) {
+            first_error = write_result;
           }
-
-          asciichat_error_t path_result = path_validate_user_path(final_value, role, &normalized);
-          if (path_result != ASCIICHAT_OK) {
-            SAFE_FREE(normalized);
-            if (strict) {
-              if (first_error == ASCIICHAT_OK) {
-                first_error = path_result;
-              }
-              continue;
-            }
-            continue;
-          }
-          SAFE_STRNCPY(field_ptr, normalized, meta->field_size);
-          SAFE_FREE(normalized);
-        } else {
-          // Not a path, just an identifier (e.g., "gpg:keyid", "github:user")
-          SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+          continue;
         }
-
-        // Auto-enable encryption for crypto.key, crypto.password, crypto.keyfile
-        if (strstr(meta->toml_key, "crypto.key") != NULL || strstr(meta->toml_key, "crypto.password") != NULL ||
-            strstr(meta->toml_key, "crypto.keyfile") != NULL) {
-          opts->encrypt_enabled = 1;
-        }
-      } else {
-        SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+        continue;
       }
-      break;
-    }
-    case OPTION_TYPE_INT: {
-      // Use validator result if available, otherwise use original parsed value
-      int final_int_val = int_val; // Default to original value
-      if (meta->validate_fn) {
-        // Validator returned parsed value in parsed_value (int*)
-        final_int_val = parsed_int;
-      }
-      // Handle unsigned short int fields (webcam_index)
-      if (meta->field_size == sizeof(unsigned short int)) {
-        *(unsigned short int *)field_ptr = (unsigned short int)final_int_val;
-      } else {
-        *(int *)field_ptr = final_int_val;
-      }
-      break;
-    }
-    case OPTION_TYPE_BOOL: {
-      // Handle unsigned short int bool fields (common in options_t)
-      if (meta->field_size == sizeof(unsigned short int)) {
-        *(unsigned short int *)field_ptr = bool_val ? 1 : 0;
-      } else {
-        *(bool *)field_ptr = bool_val;
-      }
-      break;
-    }
-    case OPTION_TYPE_DOUBLE: {
-      // Check field_size to distinguish float from double
-      if (meta->field_size == sizeof(float)) {
-        // Float field
-        float float_val = (float)double_val;
-        if (meta->validate_fn) {
-          float_val = parsed_float;
-        }
-        *(float *)field_ptr = float_val;
-      } else {
-        // Double field
-        double final_double_val = double_val; // Default to original TOML value
-        if (meta->validate_fn) {
-          // Validator wrote to parsed_float, cast to double
-          final_double_val = (double)parsed_float;
-        }
-        *(double *)field_ptr = final_double_val;
-      }
-      break;
-    }
-    case OPTION_TYPE_CALLBACK:
-    case OPTION_TYPE_ACTION:
-      // These types are not loaded from config files - skip them
-      break;
-      // Enums are OPTION_TYPE_INT, handled above in the INT case
     }
 
     // Call builder's validate function if it exists (for cross-field validation)
@@ -945,55 +1087,12 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         (void)fprintf(output_file, "# %s\n", meta->description);
       }
 
-      // Format and write the option value based on type
-      switch (meta->type) {
-      case OPTION_TYPE_STRING: {
-        const char *str_value = (const char *)field_ptr;
-        if (str_value && strlen(str_value) > 0) {
-          (void)fprintf(output_file, "%s = \"%s\"\n", key_name, str_value);
-        } else {
-          (void)fprintf(output_file, "%s = \"\"\n", key_name);
-        }
-        break;
-      }
-      case OPTION_TYPE_INT: {
-        int int_value = 0;
-        if (meta->field_size == sizeof(unsigned short int)) {
-          int_value = *(unsigned short int *)field_ptr;
-        } else {
-          int_value = *(int *)field_ptr;
-        }
-        (void)fprintf(output_file, "%s = %d\n", key_name, int_value);
-        break;
-      }
-      case OPTION_TYPE_BOOL: {
-        bool bool_value = false;
-        if (meta->field_size == sizeof(unsigned short int)) {
-          bool_value = *(unsigned short int *)field_ptr != 0;
-        } else {
-          bool_value = *(bool *)field_ptr;
-        }
-        (void)fprintf(output_file, "%s = %s\n", key_name, bool_value ? "true" : "false");
-        break;
-      }
-      case OPTION_TYPE_DOUBLE: {
-        // Check field_size to distinguish float from double
-        if (meta->field_size == sizeof(float)) {
-          float float_value = 0.0f;
-          memcpy(&float_value, field_ptr, sizeof(float));
-          (void)fprintf(output_file, "%s = %.1f\n", key_name, (double)float_value);
-        } else {
-          double double_value = 0.0;
-          memcpy(&double_value, field_ptr, sizeof(double));
-          (void)fprintf(output_file, "%s = %.1f\n", key_name, double_value);
-        }
-        break;
-      }
-      case OPTION_TYPE_CALLBACK:
-      case OPTION_TYPE_ACTION:
-        // These types are not saved to config files - skip them
-        break;
-        // Enums are OPTION_TYPE_INT, handled above in the INT case
+      // Format and write the option value using handler
+      if (g_type_handlers[meta->type].format_output) {
+        char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
+        g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value,
+                                                  sizeof(formatted_value));
+        (void)fprintf(output_file, "%s = %s\n", key_name, formatted_value);
       }
 
       written_flags[opt_idx] = true;
