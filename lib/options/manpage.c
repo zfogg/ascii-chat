@@ -427,21 +427,9 @@ static void write_options_section(FILE *f, const options_config_t *config) {
 
       // Add argument placeholder for value-taking options
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        switch (desc->type) {
-        case OPTION_TYPE_INT:
-          fprintf(f, " \\fINUM\\fR");
-          break;
-        case OPTION_TYPE_STRING:
-          fprintf(f, " \\fISTR\\fR");
-          break;
-        case OPTION_TYPE_DOUBLE:
-          fprintf(f, " \\fINUM\\fR");
-          break;
-        case OPTION_TYPE_CALLBACK:
-          fprintf(f, " \\fIVAL\\fR");
-          break;
-        default:
-          break;
+        const char *placeholder = options_get_type_placeholder(desc->type);
+        if (placeholder && *placeholder) {
+          fprintf(f, " \\fI%s\\fR", placeholder);
         }
       }
 
@@ -463,34 +451,21 @@ static void write_options_section(FILE *f, const options_config_t *config) {
 
       // Add default value if present
       if (desc->default_value) {
-        fprintf(f, "(default: ");
+        char default_buf[256];
+        int n = options_format_default_value(desc->type, desc->default_value, default_buf, sizeof(default_buf));
+        if (n > 0) {
+          fprintf(f, "(default: ");
 
-        switch (desc->type) {
-        case OPTION_TYPE_BOOL:
-          fprintf(f, "%s", *(const bool *)desc->default_value ? "true" : "false");
-          break;
-        case OPTION_TYPE_INT: {
-          int int_val = 0;
-          memcpy(&int_val, desc->default_value, sizeof(int));
-          fprintf(f, "%d", int_val);
-          break;
-        }
-        case OPTION_TYPE_STRING:
-          fprintf(f, "%s", escape_groff_special(*(const char *const *)desc->default_value));
-          break;
-        case OPTION_TYPE_DOUBLE: {
-          double double_val = 0.0;
-          memcpy(&double_val, desc->default_value, sizeof(double));
-          fprintf(f, "%.2f", double_val);
-          break;
-        }
-        default:
-          break;
-        }
+          // Apply groff escaping for STRING type only
+          if (desc->type == OPTION_TYPE_STRING) {
+            fprintf(f, "%s", escape_groff_special(default_buf));
+          } else {
+            fprintf(f, "%s", default_buf);
+          }
 
-        fprintf(f, ")");
-        // Add newline after default value (always need one to separate from next option)
-        fprintf(f, "\n");
+          fprintf(f, ")");
+          fprintf(f, "\n");
+        }
       }
 
       // Add environment variable note if present

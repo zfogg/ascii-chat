@@ -19,6 +19,53 @@
 #include "video/palette.h"
 #include "options/options.h"
 
+// ============================================================================
+// Generic Integer Range Validator
+// ============================================================================
+
+/**
+ * @brief Generic validator for integers within a range
+ *
+ * Used by multiple specific validators (FPS, max clients, compression level, etc.)
+ * to eliminate code duplication.
+ *
+ * @param value_str String to validate
+ * @param min Minimum allowed value (inclusive)
+ * @param max Maximum allowed value (inclusive)
+ * @param param_name Parameter name for error messages
+ * @param error_msg Buffer for error message
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed integer value on success, INT_MIN on error
+ */
+static int validate_int_range(const char *value_str, int min, int max, const char *param_name, char *error_msg,
+                              size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "%s value is required", param_name);
+    }
+    return INT_MIN;
+  }
+
+  int val = strtoint_safe(value_str);
+  if (val == INT_MIN || val < min || val > max) {
+    if (error_msg) {
+      if (min == max) {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be exactly %d.", param_name, value_str, min);
+      } else if (min == 1 && max == INT_MAX) {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a positive integer.", param_name, value_str);
+      } else if (min == 0 && max == INT_MAX) {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a non-negative integer.", param_name,
+                      value_str);
+      } else {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be between %d and %d.", param_name, value_str,
+                      min, max);
+      }
+    }
+    return INT_MIN;
+  }
+  return val;
+}
+
 /**
  * Validate port number (1-65535)
  * Returns 0 on success, non-zero on error
@@ -48,21 +95,8 @@ int validate_opt_port(const char *value_str, char *error_msg, size_t error_msg_s
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_positive_int(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val <= 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a positive integer.", value_str);
-    }
-    return -1;
-  }
-  return val;
+  int result = validate_int_range(value_str, 1, INT_MAX, "Value", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -70,21 +104,8 @@ int validate_opt_positive_int(const char *value_str, char *error_msg, size_t err
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_non_negative_int(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val < 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a non-negative integer.", value_str);
-    }
-    return -1;
-  }
-  return val;
+  int result = validate_int_range(value_str, 0, INT_MAX, "Value", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -303,21 +324,8 @@ float validate_opt_float_non_negative(const char *value_str, char *error_msg, si
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_max_clients(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Max clients value is required");
-    }
-    return -1;
-  }
-
-  int max = strtoint_safe(value_str);
-  if (max == INT_MIN || max < 1 || max > 32) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid max clients '%s'. Must be between 1 and 32.", value_str);
-    }
-    return -1;
-  }
-  return max;
+  int result = validate_int_range(value_str, 1, 32, "Max clients", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -325,21 +333,8 @@ int validate_opt_max_clients(const char *value_str, char *error_msg, size_t erro
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_compression_level(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Compression level value is required");
-    }
-    return -1;
-  }
-
-  int level = strtoint_safe(value_str);
-  if (level == INT_MIN || level < 1 || level > 9) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid compression level '%s'. Must be between 1 and 9.", value_str);
-    }
-    return -1;
-  }
-  return level;
+  int result = validate_int_range(value_str, 1, 9, "Compression level", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -347,21 +342,8 @@ int validate_opt_compression_level(const char *value_str, char *error_msg, size_
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "FPS value is required");
-    }
-    return -1;
-  }
-
-  int fps_val = strtoint_safe(value_str);
-  if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid FPS value '%s'. FPS must be between 1 and 144.", value_str);
-    }
-    return -1;
-  }
-  return fps_val;
+  int result = validate_int_range(value_str, 1, 144, "FPS", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**

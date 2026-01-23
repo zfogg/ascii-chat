@@ -1017,3 +1017,38 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
  * @param options_struct Options struct to clean up
  */
 void options_config_cleanup(const options_config_t *config, void *options_struct);
+
+// ============================================================================
+// Option Formatting Utilities
+// ============================================================================
+
+/**
+ * @brief Get placeholder string for option type
+ *
+ * Returns standardized placeholder strings for use in help text and man pages:
+ * - INT/DOUBLE → "NUM"
+ * - STRING → "STR"
+ * - CALLBACK → "VAL"
+ * - BOOL/ACTION → "" (empty string)
+ *
+ * @param type Option type enum value
+ * @return Pointer to string literal (never NULL, may be empty)
+ */
+const char *options_get_type_placeholder(option_type_t type);
+
+/**
+ * @brief Format option default value to string
+ *
+ * Formats default value according to option type:
+ * - BOOL: "true" or "false"
+ * - INT: "%d" format
+ * - STRING: raw string (caller applies escaping if needed)
+ * - DOUBLE: "%.2f" format
+ *
+ * @param type Option type enum value
+ * @param default_value Pointer to default value (type-specific)
+ * @param buf Output buffer
+ * @param bufsize Size of output buffer
+ * @return Number of characters written, or 0 on error
+ */
+int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize);

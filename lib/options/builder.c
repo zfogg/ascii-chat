@@ -338,21 +338,10 @@ static void format_help_placeholder_action(char *buf, size_t bufsize) {
  * @return Pointer to string literal ("NUM", "STR", "VAL") or empty string
  */
 static const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
-  if (!desc)
-    return "";
-  switch (desc->type) {
-  case OPTION_TYPE_INT:
-  case OPTION_TYPE_DOUBLE:
-    return "NUM";
-  case OPTION_TYPE_STRING:
-    return "STR";
-  case OPTION_TYPE_CALLBACK:
-    return "VAL";
-  case OPTION_TYPE_BOOL:
-  case OPTION_TYPE_ACTION:
-  default:
+  if (!desc) {
     return "";
   }
+  return options_get_type_placeholder(desc->type);
 }
 
 /**
@@ -363,28 +352,10 @@ static const char *get_option_help_placeholder_str(const option_descriptor_t *de
  * @return Number of characters written to buf
  */
 static int format_option_default_value_str(const option_descriptor_t *desc, char *buf, size_t bufsize) {
-  if (!desc || !desc->default_value || !buf || bufsize == 0) {
+  if (!desc || !buf || bufsize == 0) {
     return 0;
   }
-
-  switch (desc->type) {
-  case OPTION_TYPE_BOOL:
-    return snprintf(buf, bufsize, "%s", *(const bool *)desc->default_value ? "true" : "false");
-  case OPTION_TYPE_INT: {
-    int int_val = 0;
-    memcpy(&int_val, desc->default_value, sizeof(int));
-    return snprintf(buf, bufsize, "%d", int_val);
-  }
-  case OPTION_TYPE_STRING:
-    return snprintf(buf, bufsize, "%s", *(const char *const *)desc->default_value);
-  case OPTION_TYPE_DOUBLE: {
-    double double_val = 0.0;
-    memcpy(&double_val, desc->default_value, sizeof(double));
-    return snprintf(buf, bufsize, "%.2f", double_val);
-  }
-  default:
-    return 0;
-  }
+  return options_format_default_value(desc->type, desc->default_value, buf, bufsize);
 }
 
 // ============================================================================

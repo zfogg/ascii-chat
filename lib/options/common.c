@@ -458,6 +458,51 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
 }
 
 // ============================================================================
+// Option Formatting Utilities
+// ============================================================================
+
+const char *options_get_type_placeholder(option_type_t type) {
+  switch (type) {
+  case OPTION_TYPE_INT:
+  case OPTION_TYPE_DOUBLE:
+    return "NUM";
+  case OPTION_TYPE_STRING:
+    return "STR";
+  case OPTION_TYPE_CALLBACK:
+    return "VAL";
+  case OPTION_TYPE_BOOL:
+  case OPTION_TYPE_ACTION:
+  default:
+    return "";
+  }
+}
+
+int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize) {
+  if (!default_value || !buf || bufsize == 0) {
+    return 0;
+  }
+
+  switch (type) {
+  case OPTION_TYPE_BOOL:
+    return snprintf(buf, bufsize, "%s", *(const bool *)default_value ? "true" : "false");
+  case OPTION_TYPE_INT: {
+    int int_val = 0;
+    memcpy(&int_val, default_value, sizeof(int));
+    return snprintf(buf, bufsize, "%d", int_val);
+  }
+  case OPTION_TYPE_STRING:
+    return snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
+  case OPTION_TYPE_DOUBLE: {
+    double double_val = 0.0;
+    memcpy(&double_val, default_value, sizeof(double));
+    return snprintf(buf, bufsize, "%.2f", double_val);
+  }
+  default:
+    return 0;
+  }
+}
+
+// ============================================================================
 // Terminal Dimension Utilities
 // ============================================================================
 
