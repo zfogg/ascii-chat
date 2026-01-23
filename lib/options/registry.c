@@ -319,7 +319,7 @@ static const registry_entry_t g_options_registry[] = {
      "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &default_no_compress_value, sizeof(bool),
-     "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, NULL, false, false,
+     "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
 
     // SECURITY GROUP (client, server, discovery)
@@ -455,17 +455,17 @@ static const registry_entry_t g_options_registry[] = {
 #ifdef DEBUG
     {"audio-analysis", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_analysis_enabled),
      &default_audio_analysis_value, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
-     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 #endif
     {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback),
      &default_no_audio_playback_value, sizeof(bool), "Disable speakers output", "AUDIO", false,
      "ASCII_CHAT_NO_AUDIO_PLAYBACK", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_encode_audio_value,
-     sizeof(bool), "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     sizeof(bool), "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_no_encode_audio_value,
      sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, false,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // ACDS Server Specific Options
     {"database", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,

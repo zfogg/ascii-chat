@@ -22,8 +22,10 @@
 // ============================================================================
 
 static parsed_section_t *parse_sections_from_file(FILE *f, size_t *num_sections);
+#if USE_EMBEDDED_RESOURCES
 static parsed_section_t *parse_manpage_sections_from_memory(const char *content, size_t content_len,
                                                             size_t *num_sections);
+#endif
 
 // ============================================================================
 // Helper Functions for Groff/Troff Formatting
@@ -1360,6 +1362,7 @@ static parsed_section_t *parse_sections_from_file(FILE *f, size_t *num_sections)
   return sections;
 }
 
+#if USE_EMBEDDED_RESOURCES
 /**
  * @brief Parse man page sections from memory buffer
  *
@@ -1436,6 +1439,7 @@ static parsed_section_t *parse_manpage_sections_from_memory(const char *content,
   return sections;
 #endif
 }
+#endif // USE_EMBEDDED_RESOURCES
 
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
                                                          const char *mode_name, const char *output_path,

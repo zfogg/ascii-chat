@@ -665,8 +665,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool create_manpage = false;
   bool has_action = false; // Track if any action flag is present
   const char *config_create_path = NULL;
-  const char *manpage_template_file = NULL; // Template file path (.1.in)
-  const char *manpage_content_file = NULL;  // Content file path (.1.content)
 
   // ========================================================================
   // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
@@ -696,16 +694,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--create-man-page") == 0) {
         create_manpage = true;
         has_action = true;
-        // First arg: template file path (.1.in)
-        if (i + 1 < argc && argv[i + 1][0] != '-') {
-          manpage_template_file = argv[i + 1];
-          i++; // Skip this arg
-          // Second arg: content file path (.1.content)
-          if (i + 1 < argc && argv[i + 1][0] != '-') {
-            manpage_content_file = argv[i + 1];
-            i++; // Skip this arg
-          }
-        }
         break;
       }
       if (strcmp(argv[i], "--completions") == 0) {
@@ -880,8 +868,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Check for binary-level options that can appear before or after mode
   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
   // These are documented as binary-level options that can appear anywhere
-  bool binary_level_log_file_set = false;  // Track if user explicitly set --log-file
-  bool binary_level_log_level_set = false; // Track if user explicitly set --log-level
+  bool binary_level_log_file_set = false; // Track if user explicitly set --log-file
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       // Handle -V and --verbose (stackable verbosity)
@@ -909,7 +896,6 @@ asciichat_error_t options_init(int argc, char **argv) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           char *error_msg = NULL;
           if (parse_log_level(argv[i + 1], &opts.log_level, &error_msg)) {
-            binary_level_log_level_set = true;
             i++; // Skip the level argument
           } else {
             if (error_msg) {

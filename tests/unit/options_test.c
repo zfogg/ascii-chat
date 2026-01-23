@@ -83,6 +83,7 @@ static void save_options(options_backup_t *backup) {
 }
 
 static void restore_options(const options_backup_t *backup) {
+  (void)backup; // Unused parameter
   // Clean up RCU state after test by shutting down
   // This ensures the next test starts fresh
   options_state_shutdown();
