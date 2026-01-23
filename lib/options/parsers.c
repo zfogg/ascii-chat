@@ -115,11 +115,9 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char *msg = SAFE_MALLOC(256, char *);
-    if (msg) {
-      snprintf(msg, 256, "Invalid render mode '%s'. Valid values: foreground, background, half-block", arg);
-      *error_msg = msg;
-    }
+    char msg[256];
+    snprintf(msg, sizeof(msg), "Invalid render mode '%s'. Valid values: foreground, background, half-block", arg);
+    *error_msg = strdup(msg);
   }
   return false;
 }
@@ -174,12 +172,10 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char *msg = SAFE_MALLOC(256, char *);
-    if (msg) {
-      snprintf(msg, 256, "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom",
-               arg);
-      *error_msg = msg;
-    }
+    char msg[256];
+    snprintf(msg, sizeof(msg),
+             "Invalid palette type '%s'. Valid values: standard, blocks, digital, minimal, cool, custom", arg);
+    *error_msg = strdup(msg);
   }
   return false;
 }
@@ -241,11 +237,9 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
 
   // Invalid value
   if (error_msg) {
-    char *msg = SAFE_MALLOC(256, char *);
-    if (msg) {
-      snprintf(msg, 256, "Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal", arg);
-      *error_msg = msg;
-    }
+    char msg[256];
+    snprintf(msg, sizeof(msg), "Invalid log level '%s'. Valid values: dev, debug, info, warn, error, fatal", arg);
+    *error_msg = strdup(msg);
   }
   return false;
 }
@@ -319,15 +313,13 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
     if (address[0] != '\0' && strcmp(address, "127.0.0.1") != 0 && strcmp(address, "localhost") != 0 &&
         strcmp(address, "0.0.0.0") != 0) {
       if (error_msg) {
-        char *msg = SAFE_MALLOC(256, char *);
-        if (msg) {
-          snprintf(msg, 256,
-                   "Cannot specify multiple IPv4 addresses.\n"
-                   "Already have: %s\n"
-                   "Cannot add: %s",
-                   address, addr_to_check);
-          *error_msg = msg;
-        }
+        char msg[256];
+        snprintf(msg, sizeof(msg),
+                 "Cannot specify multiple IPv4 addresses.\n"
+                 "Already have: %s\n"
+                 "Cannot add: %s",
+                 address, addr_to_check);
+        *error_msg = strdup(msg);
       }
       return -1;
     }
@@ -338,15 +330,13 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
     // Allow overwriting default (::1)
     if (address6[0] != '\0' && strcmp(address6, "::1") != 0) {
       if (error_msg) {
-        char *msg = SAFE_MALLOC(256, char *);
-        if (msg) {
-          snprintf(msg, 256,
-                   "Cannot specify multiple IPv6 addresses.\n"
-                   "Already have: %s\n"
-                   "Cannot add: %s",
-                   address6, addr_to_check);
-          *error_msg = msg;
-        }
+        char msg[256];
+        snprintf(msg, sizeof(msg),
+                 "Cannot specify multiple IPv6 addresses.\n"
+                 "Already have: %s\n"
+                 "Cannot add: %s",
+                 address6, addr_to_check);
+        *error_msg = strdup(msg);
       }
       return -1;
     }
@@ -354,18 +344,16 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
     consumed = 1;
   } else {
     if (error_msg) {
-      char *msg = SAFE_MALLOC(512, char *);
-      if (msg) {
-        snprintf(msg, 512,
-                 "Invalid IP address '%s'.\n"
-                 "Server bind addresses must be valid IPv4 or IPv6 addresses.\n"
-                 "Examples:\n"
-                 "  ascii-chat server 0.0.0.0\n"
-                 "  ascii-chat server ::1\n"
-                 "  ascii-chat server 0.0.0.0 ::1",
-                 arg);
-        *error_msg = msg;
-      }
+      char msg[512];
+      snprintf(msg, sizeof(msg),
+               "Invalid IP address '%s'.\n"
+               "Server bind addresses must be valid IPv4 or IPv6 addresses.\n"
+               "Examples:\n"
+               "  ascii-chat server 0.0.0.0\n"
+               "  ascii-chat server ::1\n"
+               "  ascii-chat server 0.0.0.0 ::1",
+               arg);
+      *error_msg = strdup(msg);
     }
     return -1;
   }
@@ -469,11 +457,9 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
         long port_num = strtol(port_str, &endptr, 10);
         if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
           if (error_msg) {
-            char *msg = SAFE_MALLOC(256, char *);
-            if (msg) {
-              snprintf(msg, 256, "Invalid port number '%s'. Must be 1-65535.", port_str);
-              *error_msg = msg;
-            }
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Invalid port number '%s'. Must be 1-65535.", port_str);
+            *error_msg = strdup(msg);
           }
           return -1;
         }
@@ -505,11 +491,9 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
         long port_num = strtol(port_str, &endptr, 10);
         if (*endptr != '\0' || port_num < 1 || port_num > 65535) {
           if (error_msg) {
-            char *msg = SAFE_MALLOC(256, char *);
-            if (msg) {
-              snprintf(msg, 256, "Invalid port number '%s'. Must be 1-65535.", port_str);
-              *error_msg = msg;
-            }
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Invalid port number '%s'. Must be 1-65535.", port_str);
+            *error_msg = strdup(msg);
           }
           return -1;
         }
@@ -533,16 +517,14 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     // Looks like an IPv4 attempt - validate strictly
     if (!is_valid_ipv4(address)) {
       if (error_msg) {
-        char *msg = SAFE_MALLOC(512, char *);
-        if (msg) {
-          snprintf(msg, 512,
-                   "Invalid IPv4 address '%s'.\n"
-                   "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n"
-                   "Examples: 127.0.0.1, 192.168.1.1\n"
-                   "For hostnames, use letters: example.com, localhost",
-                   address);
-          *error_msg = msg;
-        }
+        char msg[512];
+        snprintf(msg, sizeof(msg),
+                 "Invalid IPv4 address '%s'.\n"
+                 "IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n"
+                 "Examples: 127.0.0.1, 192.168.1.1\n"
+                 "For hostnames, use letters: example.com, localhost",
+                 address);
+        *error_msg = strdup(msg);
       }
       return -1;
     }
@@ -575,11 +557,9 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
 
   if (strlen(arg) >= 256) {
     if (error_msg) {
-      char *msg = SAFE_MALLOC(256, char *);
-      if (msg) {
-        snprintf(msg, 256, "Invalid palette-chars: too long (%zu chars, max 255)", strlen(arg));
-        *error_msg = msg;
-      }
+      char msg[256];
+      snprintf(msg, sizeof(msg), "Invalid palette-chars: too long (%zu chars, max 255)", strlen(arg));
+      *error_msg = strdup(msg);
     }
     return false;
   }
