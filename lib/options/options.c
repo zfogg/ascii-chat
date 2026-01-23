@@ -628,6 +628,17 @@ asciichat_error_t options_init(int argc, char **argv) {
       return ASCIICHAT_OK;
     }
     if (create_config) {
+      // Build the schema first so config_create_default can generate options from it
+      const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+      if (unified_config) {
+        asciichat_error_t schema_build_result = config_schema_build_from_configs(&unified_config, 1);
+        if (schema_build_result != ASCIICHAT_OK) {
+          // Schema build failed, but continue anyway
+          (void)schema_build_result;
+        }
+        options_config_destroy(unified_config);
+      }
+
       // Handle --config-create: create default config file or output to stdout
       // If a path was provided, write to that file (error if it fails)
       // If no path was provided, write to stdout

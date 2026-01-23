@@ -219,40 +219,41 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
     }
   }
 
-  char response[16];
   bool result = default_yes;
 
-  if (fgets(response, sizeof(response), stdin) != NULL) {
-    // Remove trailing newline
-    size_t len = strlen(response);
-    if (len > 0 && response[len - 1] == '\n') {
-      response[len - 1] = '\0';
-      len--;
-    }
-
-    // Empty response = use default
-    if (len == 0) {
-      result = default_yes;
-    }
-    // Check for yes
-    else if (_stricmp(response, "yes") == 0 || _stricmp(response, "y") == 0) {
-      result = true;
-    }
-    // Check for no
-    else if (_stricmp(response, "no") == 0 || _stricmp(response, "n") == 0) {
-      result = false;
-    }
-    // Invalid input - use default
-    else {
-      result = default_yes;
-    }
-  } else {
-    // fgets failed (EOF or error) - return default
-    result = default_yes;
-  }
-
-  // Unlock terminal if we locked it
+  // Only read from stdin if interactive (avoid blocking on non-TTY stdin)
   if (is_interactive) {
+    char response[16];
+    if (fgets(response, sizeof(response), stdin) != NULL) {
+      // Remove trailing newline
+      size_t len = strlen(response);
+      if (len > 0 && response[len - 1] == '\n') {
+        response[len - 1] = '\0';
+        len--;
+      }
+
+      // Empty response = use default
+      if (len == 0) {
+        result = default_yes;
+      }
+      // Check for yes
+      else if (_stricmp(response, "yes") == 0 || _stricmp(response, "y") == 0) {
+        result = true;
+      }
+      // Check for no
+      else if (_stricmp(response, "no") == 0 || _stricmp(response, "n") == 0) {
+        result = false;
+      }
+      // Invalid input - use default
+      else {
+        result = default_yes;
+      }
+    } else {
+      // fgets failed (EOF or error) - return default
+      result = default_yes;
+    }
+
+    // Unlock terminal
     log_unlock_terminal(previous_terminal_state);
   }
 
