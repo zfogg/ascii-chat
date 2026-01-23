@@ -595,21 +595,23 @@ static void write_examples_section(FILE *f, const options_config_t *config) {
 static void write_examples_section_all_modes(FILE *f) {
   fprintf(f, ".SH EXAMPLES\n");
 
-  // Binary-level examples (from binary preset)
+  // Binary-level examples (discovery mode - no mode prefix) - only show examples where mode is NULL
   const options_config_t *binary_config = options_preset_unified(NULL, NULL);
   if (binary_config && binary_config->num_examples > 0) {
     for (size_t i = 0; i < binary_config->num_examples; i++) {
       const example_descriptor_t *example = &binary_config->examples[i];
+      // Only include binary-level examples (no mode specified)
+      if (example->mode == NULL) {
+        fprintf(f, ".TP\n");
+        fprintf(f, ".B ascii-chat");
+        if (example->args) {
+          fprintf(f, " %s", example->args);
+        }
+        fprintf(f, "\n");
 
-      fprintf(f, ".TP\n");
-      fprintf(f, ".B ascii-chat");
-      if (example->args) {
-        fprintf(f, " %s", example->args);
-      }
-      fprintf(f, "\n");
-
-      if (example->description) {
-        fprintf(f, "%s\n", escape_groff_special(example->description));
+        if (example->description) {
+          fprintf(f, "%s\n", escape_groff_special(example->description));
+        }
       }
     }
   }
@@ -617,8 +619,8 @@ static void write_examples_section_all_modes(FILE *f) {
     options_config_destroy(binary_config);
   }
 
-  // Mode-specific examples (server, client, mirror, discovery-service)
-  const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
+  // Mode-specific examples (server, client, mirror, discovery-service, discovery)
+  const char *modes[] = {"server", "client", "mirror", "discovery-service", "discovery", NULL};
   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
 
   for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
