@@ -93,8 +93,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
   options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
                             "Start discovery service (can specify 0-2 bind addresses for IPv4/IPv6)");
-  options_builder_add_usage(b, "discovery", "<session-string>", true,
-                            "Join a discovery session (use session string from initiator)");
 
   // Add examples for binary-level help (implicitly discovery mode)
   options_builder_add_example(b, NULL, NULL, "Start new session (share the session string)", false);
@@ -164,7 +162,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
   options_builder_add_mode(b, "mirror", "View local webcam as ASCII art (no server)");
   options_builder_add_mode(b, "discovery-service", "Secure P2P session signalling");
-  options_builder_add_mode(b, "discovery", "Join a discovery session using a session string");
 
   // Add common dependencies (these will be validated after parsing)
   // Note: Dependencies are validated at runtime, so we add them here for documentation
