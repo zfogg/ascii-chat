@@ -1514,6 +1514,24 @@ static const option_descriptor_t *find_option_descriptor(const options_config_t 
  * @brief Parse a single flag option with its argument
  *
  * Handles both long options (--name, --name=value) and short options (-n value)
+ * Uses mode_bitmask from options_struct for mode filtering.
+ *
+ * @param config Options configuration
+ * @param argv Current argv array
+ * @param argv_index Current index in argv
+ * @param argc Total number of arguments
+ * @param options_struct Destination struct for parsed values
+ * @param consumed_count Output: number of argv elements consumed (1 or 2)
+ * @return Error code
+ */
+static asciichat_error_t parse_single_flag_with_mode(const options_config_t *config, char **argv, int argv_index,
+                                                     int argc, void *options_struct, option_mode_bitmask_t mode_bitmask,
+                                                     int *consumed_count);
+
+/**
+ * @brief Parse a single command-line flag and update options struct
+ *
+ * Handles both long options (--name, --name=value) and short options (-n value)
  *
  * @param config Options configuration
  * @param argv Current argv array
@@ -1606,6 +1624,111 @@ static asciichat_error_t parse_single_flag(const options_config_t *config, char 
 }
 
 /**
+ * @brief Parse a single flag with explicit mode_bitmask for validation
+ *
+ * This variant is called from options_config_parse_unified with the mode_bitmask
+ * parameter to ensure proper mode-based option filtering.
+ *
+ * @param config Options configuration
+ * @param argv Argument vector
+ * @param argv_index Index of the argument to parse
+ * @param argc Argument count
+ * @param options_struct Destination struct for parsed values
+ * @param mode_bitmask Mode bitmask for filtering options
+ * @param consumed_count Output: number of argv elements consumed (1 or 2)
+ * @return Error code
+ */
+static asciichat_error_t parse_single_flag_with_mode(const options_config_t *config, char **argv, int argv_index,
+                                                     int argc, void *options_struct, option_mode_bitmask_t mode_bitmask,
+                                                     int *consumed_count) {
+  *consumed_count = 1;
+
+  const char *arg = argv[argv_index];
+  char *long_opt_value = NULL;
+  char *equals = NULL;
+
+  // Handle long options with `=` (e.g., --port=8080)
+  if (strncmp(arg, "--", 2) == 0) {
+    equals = strchr(arg, '=');
+    if (equals) {
+      long_opt_value = equals + 1;
+      // Temporarily null-terminate to get option name
+      *equals = '\0';
+    }
+  }
+
+  // Find matching descriptor
+  const option_descriptor_t *desc = find_option_descriptor(config, arg);
+  if (!desc) {
+    if (equals)
+      *equals = '='; // Restore
+    return SET_ERRNO(ERROR_USAGE, "Unknown option: %s", arg);
+  }
+
+  // Check if option applies to current mode based on the passed mode_bitmask
+  if (desc->mode_bitmask != 0 && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
+    // Option has specific mode restrictions - use the passed mode_bitmask directly
+    if (!(desc->mode_bitmask & mode_bitmask)) {
+      if (equals)
+        *equals = '='; // Restore
+      return SET_ERRNO(ERROR_USAGE, "Option %s is not supported for this mode", arg);
+    }
+  }
+
+  void *field = (char *)options_struct + desc->offset;
+  const char *opt_value = NULL;
+
+  // Get option value if needed
+  if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
+    if (long_opt_value) {
+      // Value came from --name=value
+      opt_value = long_opt_value;
+    } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
+      // Value from next argument
+      opt_value = argv[argv_index + 1];
+      *consumed_count = 2;
+    } else {
+      // No value provided
+      if (equals)
+        *equals = '='; // Restore
+      return SET_ERRNO(ERROR_USAGE, "Option %s requires a value", arg);
+    }
+  }
+
+  // Handle option based on type
+  if (desc->type == OPTION_TYPE_BOOL) {
+    // Boolean flag - set to true
+    *(bool *)field = true;
+  } else if (desc->type == OPTION_TYPE_ACTION) {
+    // Action flag - just set to true (action may exit or do nothing)
+    *(bool *)field = true;
+  } else if (desc->parse_fn) {
+    // Use parse function for parsing (CALLBACK type)
+    char *error_msg = NULL;
+    bool success = desc->parse_fn(opt_value, options_struct, &error_msg);
+    if (!success) {
+      if (error_msg) {
+        log_plain_stderr("Error parsing %s: %s", arg, error_msg);
+        SAFE_FREE(error_msg);
+      }
+      if (equals)
+        *equals = '='; // Restore
+      return ERROR_USAGE;
+    }
+    if (error_msg)
+      SAFE_FREE(error_msg);
+  } else {
+    if (equals)
+      *equals = '='; // Restore
+    return SET_ERRNO(ERROR_USAGE, "Invalid option type for %s", arg);
+  }
+
+  if (equals)
+    *equals = '='; // Restore
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Unified argument parser supporting mixed positional and flag arguments
  *
  * Unlike the traditional two-phase approach, this parser handles both positional
@@ -1649,9 +1772,10 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
       continue;
     }
 
-    // Parse this flag
+    // Parse this flag with mode validation using the detected_mode bitmask
     int consumed = 0;
-    asciichat_error_t err = parse_single_flag(config, argv, i, argc, options_struct, &consumed);
+    asciichat_error_t err =
+        parse_single_flag_with_mode(config, argv, i, argc, options_struct, detected_mode, &consumed);
     if (err != ASCIICHAT_OK) {
       SAFE_FREE(positional_args);
       return err;

@@ -866,7 +866,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
     }
   }
-
   if (show_help) {
     // Show binary-level help from src/main.c
     opts.help = true;
@@ -1044,6 +1043,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (binary_level_log_file[0] != '\0') {
     SAFE_STRNCPY(opts.log_file, binary_level_log_file, sizeof(opts.log_file));
   }
+  fprintf(stderr, "[AFTER_STAGE3_RESTORE] opts.quiet=%d (was binary_level_quiet=%d)\n", opts.quiet, binary_level_quiet);
 
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
@@ -1142,6 +1142,8 @@ asciichat_error_t options_init(int argc, char **argv) {
     opts.address6[0] = '\0';
   }
 
+  fprintf(stderr, "[BEFORE_STAGE4] opts.quiet=%d\n", opts.quiet);
+
   // ========================================================================
   // STAGE 4: Build Dynamic Schema from Unified Options Config
   // ========================================================================
@@ -1158,6 +1160,8 @@ asciichat_error_t options_init(int argc, char **argv) {
     options_config_destroy(unified_config);
   }
 
+  fprintf(stderr, "[BEFORE_STAGE5] opts.quiet=%d\n", opts.quiet);
+
   // ========================================================================
   // STAGE 5: Load Configuration Files
   // ========================================================================
@@ -1171,9 +1175,13 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
+  fprintf(stderr, "[BEFORE_CONFIG_LOAD] opts.quiet=%d\n", opts.quiet);
+
   // Load config files - now uses detected_mode directly for bitmask validation
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
+
+  fprintf(stderr, "[AFTER_CONFIG_LOAD] opts.quiet=%d\n", opts.quiet);
 
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
@@ -1184,6 +1192,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   char saved_log_file[OPTIONS_BUFF_SIZE];
   SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
   bool saved_binary_quiet = opts.quiet;
+  fprintf(stderr, "[BEFORE_STAGE6] opts.quiet=%d, saved_binary_quiet=%d\n", opts.quiet, saved_binary_quiet);
   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
 
   // Get unified config
@@ -1274,7 +1283,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
   }
   // Always restore quiet flag if it was set at binary level
+  fprintf(stderr, "[RESTORE_STAGE6] saved_binary_quiet=%d, restoring to opts.quiet\n", saved_binary_quiet);
   opts.quiet = saved_binary_quiet;
+  fprintf(stderr, "[AFTER_RESTORE_STAGE6] opts.quiet=%d\n", opts.quiet);
 
   options_config_destroy(config);
 
@@ -1353,6 +1364,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 7: Publish to RCU
   // ========================================================================
 
+  // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
+  bool quiet_for_memory_report = opts.quiet;
+#endif
+
   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
   // This makes the options visible to all threads via lock-free reads
   asciichat_error_t publish_result = options_state_set(&opts);
@@ -1362,9 +1378,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     return publish_result;
   }
 
-  // Now that options are published, update debug memory quiet mode with actual --quiet value
+  // Now update debug memory quiet mode with the saved quiet value
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-  debug_memory_set_quiet_mode(GET_OPTION(quiet));
+  debug_memory_set_quiet_mode(quiet_for_memory_report);
 #endif
 
   SAFE_FREE(allocated_mode_argv);
