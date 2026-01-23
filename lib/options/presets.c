@@ -68,48 +68,57 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   }
 
   // Generate random session strings for examples
-  char session_buf1[SESSION_STRING_BUFFER_SIZE];
-  char session_buf2[SESSION_STRING_BUFFER_SIZE];
-  char session_buf3[SESSION_STRING_BUFFER_SIZE];
-  char session_buf4[SESSION_STRING_BUFFER_SIZE];
-  char session_buf5[SESSION_STRING_BUFFER_SIZE];
-  char session_buf6[SESSION_STRING_BUFFER_SIZE];
-  char session_buf7[SESSION_STRING_BUFFER_SIZE];
-  char session_buf8[SESSION_STRING_BUFFER_SIZE];
+  // Use static buffers so they persist after the function returns
+  static char session_buf1[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf2[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf3[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf4[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf5[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf6[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf7[SESSION_STRING_BUFFER_SIZE];
+  static char session_buf8[SESSION_STRING_BUFFER_SIZE];
 
-  // Generate strings with fallbacks
-  char *example_session_string = "bright-star-river";
-  char *example_session_string2 = "happy-cloud-garden";
-  char *example_session_string3 = "sweet-garden-haven";
-  char *example_session_string4 = "vibrant-ocean-light";
-  char *example_session_string5 = "bright-star-dream";
-  char *example_session_string6 = "dream-path-moon";
-  char *example_session_string7 = "lucky-light-ocean";
-  char *example_session_string8 = "calm-river-cloud";
+  // Fallback strings if generation fails
+  char *example_session_string = "invalid-session-string";
+  char *example_session_string2 = "invalid-session-string";
+  char *example_session_string3 = "invalid-session-string";
+  char *example_session_string4 = "invalid-session-string";
+  char *example_session_string5 = "invalid-session-string";
+  char *example_session_string6 = "invalid-session-string";
+  char *example_session_string7 = "invalid-session-string";
+  char *example_session_string8 = "invalid-session-string";
 
-  // Try to generate all session strings
-  if (acds_string_generate(session_buf1, sizeof(session_buf1)) == ASCIICHAT_OK) {
+  // Generate all session strings (sodium_init called as needed by acds_string_generate)
+  acds_string_generate(session_buf1, sizeof(session_buf1));
+  if (session_buf1[0] != '\0') {
     example_session_string = session_buf1;
   }
-  if (acds_string_generate(session_buf2, sizeof(session_buf2)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf2, sizeof(session_buf2));
+  if (session_buf2[0] != '\0') {
     example_session_string2 = session_buf2;
   }
-  if (acds_string_generate(session_buf3, sizeof(session_buf3)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf3, sizeof(session_buf3));
+  if (session_buf3[0] != '\0') {
     example_session_string3 = session_buf3;
   }
-  if (acds_string_generate(session_buf4, sizeof(session_buf4)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf4, sizeof(session_buf4));
+  if (session_buf4[0] != '\0') {
     example_session_string4 = session_buf4;
   }
-  if (acds_string_generate(session_buf5, sizeof(session_buf5)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf5, sizeof(session_buf5));
+  if (session_buf5[0] != '\0') {
     example_session_string5 = session_buf5;
   }
-  if (acds_string_generate(session_buf6, sizeof(session_buf6)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf6, sizeof(session_buf6));
+  if (session_buf6[0] != '\0') {
     example_session_string6 = session_buf6;
   }
-  if (acds_string_generate(session_buf7, sizeof(session_buf7)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf7, sizeof(session_buf7));
+  if (session_buf7[0] != '\0') {
     example_session_string7 = session_buf7;
   }
-  if (acds_string_generate(session_buf8, sizeof(session_buf8)) == ASCIICHAT_OK) {
+  acds_string_generate(session_buf8, sizeof(session_buf8));
+  if (session_buf8[0] != '\0') {
     example_session_string8 = session_buf8;
   }
 

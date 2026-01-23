@@ -130,8 +130,15 @@ asciichat_error_t acds_string_init(void) {
 }
 
 asciichat_error_t acds_string_generate(char *output, size_t output_size) {
-  if (!output || output_size < 48) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "output buffer must be at least 48 bytes");
+  if (!output || output_size < SESSION_STRING_BUFFER_SIZE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "output buffer must be at least %zu bytes",
+                     (size_t)SESSION_STRING_BUFFER_SIZE);
+  }
+
+  // Ensure libsodium is initialized before using randombytes_uniform
+  // sodium_init() is idempotent - safe to call multiple times
+  if (sodium_init() < 0) {
+    return SET_ERRNO(ERROR_CRYPTO_INIT, "Failed to initialize libsodium");
   }
 
   // Pick random adjective
