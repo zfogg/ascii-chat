@@ -41,9 +41,13 @@ set(GREP_EXCLUDE_PATTERNS
     # Dependency cache paths (non-developer paths, deterministic across builds)
     ".deps-cache/"
     # LLVM/libc++ source paths - embedded in static libc++abi via __FILE__ macros
+    # These are from assertion/exception messages in static libc++ and don't affect portability
     "llvm-project/libcxxabi/"
     "llvm-project/libcxx/"
     "llvm-project/libunwind/"
+    # User home paths from static library __FILE__ macros (llvm, libc++, libunwind)
+    # These come from system /usr/local/lib/ paths and are expected in release builds
+    "/usr/local/"
 )
 
 # Build grep exclude arguments
