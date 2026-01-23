@@ -352,7 +352,7 @@ void webrtc_peer_manager_destroy(webrtc_peer_manager_t *manager) {
   mutex_lock(&manager->peers_mutex);
 
   // Close all peer connections
-  peer_entry_t *peer, *tmp;
+  peer_entry_t *peer = NULL, *tmp = NULL;
   HASH_ITER(hh, manager->peers, peer, tmp) {
     remove_peer_locked(manager, peer);
   }

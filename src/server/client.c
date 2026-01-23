@@ -242,8 +242,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
  * @note Does not require external locking - hash table provides thread safety
  * @note Returns direct pointer to client struct - caller should use snapshot pattern
  */
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer"))) client_info_t *find_client_by_id(uint32_t client_id) {
+client_info_t *find_client_by_id(uint32_t client_id) {
   if (client_id == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client ID");
     return NULL;
@@ -254,7 +253,11 @@ __attribute__((no_sanitize("integer"))) client_info_t *find_client_by_id(uint32_
 
   client_info_t *result = NULL;
   uint32_t search_id = client_id; // uthash needs an lvalue for the key
+  // uthash uses intentional unsigned overflow in hash computation (standard practice)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winteger-overflow"
   HASH_FIND_INT(g_client_manager.clients_by_id, &search_id, result);
+#pragma GCC diagnostic pop
 
   rwlock_rdunlock(&g_client_manager_rwlock);
 
@@ -454,9 +457,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   return 0;
 }
 
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_ctx, socket_t socket,
-                                                       const char *client_ip, int port) {
+int add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port) {
   rwlock_wrlock(&g_client_manager_rwlock);
 
   // Find empty slot - this is the authoritative check
@@ -604,7 +605,11 @@ __attribute__((no_sanitize("integer"))) int add_client(server_context_t *server_
   // Add client to uthash table for O(1) lookup
   // Note: HASH_ADD_INT uses the client_id field directly from the client structure
   uint32_t cid = atomic_load(&client->client_id);
+  // uthash uses intentional unsigned overflow in hash computation (standard practice)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winteger-overflow"
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
+#pragma GCC diagnostic pop
   log_debug("Added client %u to uthash table", cid);
 
   // Register this client's audio buffer with the mixer
@@ -814,9 +819,7 @@ error_cleanup:
  * @note The transport must be fully initialized and ready to send/receive
  * @note Client capabilities are still expected as first packet
  */
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
-                                                              const char *client_ip) {
+int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport, const char *client_ip) {
   if (!server_ctx || !transport || !client_ip) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to add_webrtc_client");
     return -1;
@@ -931,7 +934,11 @@ __attribute__((no_sanitize("integer"))) int add_webrtc_client(server_context_t *
 
   // Add client to uthash table for O(1) lookup
   uint32_t cid = atomic_load(&client->client_id);
+  // uthash uses intentional unsigned overflow in hash computation (standard practice)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winteger-overflow"
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
+#pragma GCC diagnostic pop
   log_debug("Added WebRTC client %u to uthash table", cid);
 
   // Register this client's audio buffer with the mixer
@@ -1079,8 +1086,7 @@ error_cleanup_webrtc:
   return -1;
 }
 
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer"))) int remove_client(server_context_t *server_ctx, uint32_t client_id) {
+int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   if (!server_ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Cannot remove client %u: NULL server_ctx", client_id);
     return -1;
@@ -1257,6 +1263,9 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
   // Another thread might have already removed it
   if (target_client) {
     client_info_t *hash_entry = NULL;
+    // uthash uses intentional unsigned overflow in hash computation (standard practice)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winteger-overflow"
     HASH_FIND(hh, g_client_manager.clients_by_id, &client_id, sizeof(client_id), hash_entry);
     if (hash_entry == target_client) {
       HASH_DELETE(hh, g_client_manager.clients_by_id, target_client);
@@ -1265,6 +1274,7 @@ __attribute__((no_sanitize("integer"))) int remove_client(server_context_t *serv
       log_warn("Client %u already removed from hash table by another thread (found=%p, expected=%p)", client_id,
                (void *)hash_entry, (void *)target_client);
     }
+#pragma GCC diagnostic pop
   } else {
     log_warn("Failed to remove client %u from hash table (client not found)", client_id);
   }

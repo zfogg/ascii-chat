@@ -431,7 +431,7 @@ void symbol_cache_cleanup(void) {
   size_t entry_count = HASH_COUNT(g_symbol_cache);
 
   // Free all symbol entries using HASH_ITER
-  symbol_entry_t *entry, *tmp;
+  symbol_entry_t *entry = NULL, *tmp = NULL;
   size_t freed_count = 0;
   HASH_ITER(hh, g_symbol_cache, entry, tmp) {
     if (entry) {

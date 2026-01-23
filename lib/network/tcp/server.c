@@ -296,7 +296,7 @@ void tcp_server_shutdown(tcp_server_t *server) {
   // Clean up client registry
   mutex_lock(&server->clients_mutex);
 
-  tcp_client_entry_t *entry, *tmp;
+  tcp_client_entry_t *entry = NULL, *tmp = NULL;
   HASH_ITER(hh, server->clients, entry, tmp) {
     // Call cleanup callback if set
     if (server->cleanup_fn && entry->client_data) {

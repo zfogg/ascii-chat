@@ -191,7 +191,7 @@ static asciichat_error_t memory_cleanup(void *backend_data, uint32_t max_age_sec
   mutex_lock(&backend->lock);
 
   size_t total_removed = 0;
-  rate_event_t *event, *tmp;
+  rate_event_t *event = NULL, *tmp = NULL;
 
   HASH_ITER(hh, backend->events, event, tmp) {
     size_t before_count = event->count;
