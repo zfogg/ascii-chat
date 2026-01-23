@@ -1043,7 +1043,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (binary_level_log_file[0] != '\0') {
     SAFE_STRNCPY(opts.log_file, binary_level_log_file, sizeof(opts.log_file));
   }
-  fprintf(stderr, "[AFTER_STAGE3_RESTORE] opts.quiet=%d (was binary_level_quiet=%d)\n", opts.quiet, binary_level_quiet);
 
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
@@ -1142,8 +1141,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     opts.address6[0] = '\0';
   }
 
-  fprintf(stderr, "[BEFORE_STAGE4] opts.quiet=%d\n", opts.quiet);
-
   // ========================================================================
   // STAGE 4: Build Dynamic Schema from Unified Options Config
   // ========================================================================
@@ -1160,8 +1157,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     options_config_destroy(unified_config);
   }
 
-  fprintf(stderr, "[BEFORE_STAGE5] opts.quiet=%d\n", opts.quiet);
-
   // ========================================================================
   // STAGE 5: Load Configuration Files
   // ========================================================================
@@ -1175,13 +1170,15 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  fprintf(stderr, "[BEFORE_CONFIG_LOAD] opts.quiet=%d\n", opts.quiet);
+  // Save binary-level quiet flag BEFORE config loading (config may set it to false)
+  bool binary_quiet_before_config = opts.quiet;
 
   // Load config files - now uses detected_mode directly for bitmask validation
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
-  fprintf(stderr, "[AFTER_CONFIG_LOAD] opts.quiet=%d\n", opts.quiet);
+  // Restore binary-level quiet flag if it was set (don't let config override --quiet)
+  opts.quiet = binary_quiet_before_config;
 
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
@@ -1191,8 +1188,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   log_level_t saved_log_level = opts.log_level;
   char saved_log_file[OPTIONS_BUFF_SIZE];
   SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
-  bool saved_binary_quiet = opts.quiet;
-  fprintf(stderr, "[BEFORE_STAGE6] opts.quiet=%d, saved_binary_quiet=%d\n", opts.quiet, saved_binary_quiet);
+  // Note: opts.quiet is now preserved across config loading (see STAGE 5)
   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
 
   // Get unified config
@@ -1282,10 +1278,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (binary_level_log_file_set) {
     SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
   }
-  // Always restore quiet flag if it was set at binary level
-  fprintf(stderr, "[RESTORE_STAGE6] saved_binary_quiet=%d, restoring to opts.quiet\n", saved_binary_quiet);
-  opts.quiet = saved_binary_quiet;
-  fprintf(stderr, "[AFTER_RESTORE_STAGE6] opts.quiet=%d\n", opts.quiet);
+  // Note: opts.quiet is preserved through STAGE 5 config loading, no need to restore here
 
   options_config_destroy(config);
 
