@@ -1023,13 +1023,14 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
 
       // Generate description for auto-generated variable (use help_text if available)
       const char *var_help = desc->help_text ? desc->help_text : "";
-      size_t desc_len = strlen(".TP\n.B ") + strlen(desc->env_var_name) + 1 + strlen(var_help) + 50;
+      size_t desc_len =
+          strlen(".TP\n.B ") + strlen(desc->env_var_name) + 1 + strlen(var_help) + strlen(desc->long_name) + 100;
       auto_vars[num_auto_vars].description = SAFE_MALLOC(desc_len, char *);
       if (desc->help_text) {
-        snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\n%s", desc->env_var_name,
-                 escape_groff_special(desc->help_text));
+        snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\n%s (see \\fB\\-\\-%s\\fR)",
+                 desc->env_var_name, escape_groff_special(desc->help_text), desc->long_name);
       } else {
-        snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\nSet to override .B \\-\\-%s",
+        snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\nSet to override \\fB\\-\\-%s\\fR",
                  desc->env_var_name, desc->long_name);
       }
 
