@@ -942,6 +942,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // If mode_index == -1, we use all arguments (they become mode-specific args)
   int mode_argc = argc;
   char **mode_argv = (char **)argv;
+  char **allocated_mode_argv = NULL; // Track if we need to free mode_argv
 
   if (mode_index != -1) {
     // Mode found at position mode_index
@@ -961,6 +962,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (!new_mode_argv) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate mode_argv");
     }
+    allocated_mode_argv = new_mode_argv; // Track allocation for cleanup
 
     // Copy: [program_name, args_before_mode (excluding binary opts)..., args_after_mode...]
     if (mode_index == 0) {
@@ -1155,6 +1157,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Get unified config
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
+    SAFE_FREE(allocated_mode_argv);
     return SET_ERRNO(ERROR_CONFIG, "Failed to create options configuration");
   }
 
@@ -1165,6 +1168,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   asciichat_error_t defaults_result = options_config_set_defaults(config, &opts);
   if (defaults_result != ASCIICHAT_OK) {
     options_config_destroy(config);
+    SAFE_FREE(allocated_mode_argv);
     return defaults_result;
   }
 
@@ -1173,6 +1177,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       options_config_parse(config, mode_argc, mode_argv, &opts, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
+    SAFE_FREE(allocated_mode_argv);
     return result;
   }
 
@@ -1186,6 +1191,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (early_publish != ASCIICHAT_OK) {
     log_error("Failed to publish parsed options to RCU state early");
     options_config_destroy(config);
+    SAFE_FREE(allocated_mode_argv);
     return early_publish;
   }
   log_debug("Successfully published options to RCU");
@@ -1194,6 +1200,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
+    SAFE_FREE(allocated_mode_argv);
     return result;
   }
 
@@ -1204,6 +1211,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
     }
     options_config_destroy(config);
+    SAFE_FREE(allocated_mode_argv);
     return option_error_invalid();
   }
 
@@ -1214,6 +1222,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       char *config_dir = get_config_dir();
       if (!config_dir) {
         options_config_destroy(config);
+        SAFE_FREE(allocated_mode_argv);
         return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
       }
       snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", config_dir);
@@ -1241,6 +1250,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVER) {
     int num_keys = options_collect_identity_keys(&opts, argc, argv);
     if (num_keys < 0) {
+      SAFE_FREE(allocated_mode_argv);
       return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to collect identity keys");
     }
     // num_keys == 0 is OK (no --key flags provided)
@@ -1289,12 +1299,14 @@ asciichat_error_t options_init(int argc, char **argv) {
     // Can't seek stdin
     if (opts.media_from_stdin) {
       log_error("--seek cannot be used with stdin (--file -)");
+      SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
 
     // Require --file or --url
     if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
       log_error("--seek requires --file or --url");
+      SAFE_FREE(allocated_mode_argv);
       return ERROR_INVALID_PARAM;
     }
   }
@@ -1308,8 +1320,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   asciichat_error_t publish_result = options_state_set(&opts);
   if (publish_result != ASCIICHAT_OK) {
     log_error("Failed to publish parsed options to RCU state");
+    SAFE_FREE(allocated_mode_argv);
     return publish_result;
   }
 
+  SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;
 }
