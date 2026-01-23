@@ -13,6 +13,7 @@
 
 #include "debug/memory.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "asciichat_errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
@@ -25,7 +26,7 @@
 typedef struct mem_block {
   void *ptr;
   size_t size;
-  char file[256];
+  char file[BUFFER_SIZE_SMALL];
   int line;
   bool is_aligned;
   struct mem_block *next;

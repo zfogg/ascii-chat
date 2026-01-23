@@ -10,6 +10,7 @@
 #include "log/logging.h"
 #include "asciichat_errno.h"
 #include "platform/abstraction.h"
+#include "common/buffer_sizes.h"
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -107,7 +108,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
 
     // Check if this is a YouTube URL and extract direct stream URL
     const char *effective_path = path;
-    char extracted_url[2048] = {0};
+    char extracted_url[BUFFER_SIZE_XLARGE] = {0};
     bool is_youtube = youtube_is_youtube_url(path);
 
     if (is_youtube) {

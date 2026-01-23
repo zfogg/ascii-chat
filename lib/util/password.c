@@ -8,6 +8,7 @@
 #include "log/logging.h"
 #include "platform/question.h"
 #include "util/utf8.h"
+#include "common/buffer_sizes.h"
 
 #include <string.h>
 
@@ -32,7 +33,7 @@ int prompt_password(const char *prompt, char *password, size_t max_len) {
 
   // Create separator that matches prompt width (minimum 40 chars)
   int separator_width = (prompt_width > 40) ? prompt_width : 40;
-  char separator[256];
+  char separator[BUFFER_SIZE_SMALL];
   if (separator_width > (int)sizeof(separator) - 1) {
     separator_width = sizeof(separator) - 1;
   }
@@ -77,7 +78,7 @@ int prompt_password_simple(const char *prompt, char *password, size_t max_len) {
   }
 
   // Build prompt with colon suffix, using byte-length for memcpy
-  char full_prompt[256];
+  char full_prompt[BUFFER_SIZE_SMALL];
   size_t prompt_byte_len = strlen(prompt);
   if (prompt_byte_len >= sizeof(full_prompt) - 2) {
     prompt_byte_len = sizeof(full_prompt) - 3;

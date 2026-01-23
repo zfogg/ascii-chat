@@ -94,6 +94,7 @@
 #include "network/webrtc/peer_manager.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"
@@ -259,7 +260,7 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-  char message[256];
+  char message[BUFFER_SIZE_SMALL];
   vsnprintf(message, sizeof(message), format, args);
   va_end(args);
 

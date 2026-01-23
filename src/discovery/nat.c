@@ -7,6 +7,7 @@
 #include "nat.h"
 
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "log/logging.h"
 #include "network/nat/upnp.h"
 #include "network/webrtc/stun.h"
@@ -167,7 +168,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
   log_debug("Starting STUN probe to %s (local_port=%u)", stun_server, local_port);
 
   // Parse stun_server for hostname and port
-  char host_buf[256] = {0};
+  char host_buf[BUFFER_SIZE_SMALL] = {0};
   uint16_t stun_port = STUN_DEFAULT_PORT;
 
   SAFE_STRNCPY(host_buf, stun_server, sizeof(host_buf));

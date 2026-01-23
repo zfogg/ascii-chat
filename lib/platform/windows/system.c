@@ -10,6 +10,7 @@
 #include "../internal.h"
 #include "../socket.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/ip.h"
@@ -42,7 +43,7 @@
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-  static char username[256] = {'\0'};
+  static char username[BUFFER_SIZE_SMALL] = {'\0'};
   if (username[0] != '\0') {
     log_debug("Username already cached: %s", username);
     return username;
@@ -786,7 +787,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
           cache_success = false;
         } else {
           // Clean up mangled CRT symbols from cache (e.g., memcpy_$fo_rvas$() -> memcpy())
-          char cleaned_sym[1024];
+          char cleaned_sym[BUFFER_SIZE_LARGE];
           if (dollar_pos) {
             // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
             size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - sym));
@@ -828,7 +829,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
 
     // Fall back to DbgHelp if cache failed
     if (!cache_success && atomic_load(&g_symbols_initialized)) {
-      char temp_buffer[1024];
+      char temp_buffer[BUFFER_SIZE_LARGE];
       resolve_windows_symbol(buffer[i], temp_buffer, sizeof(temp_buffer));
 
       // Check if DbgHelp actually resolved the symbol (not just "0x...")
@@ -1190,7 +1191,7 @@ void platform_memory_barrier(void) {
 // ============================================================================
 
 // Thread-local storage for error strings
-static __declspec(thread) char error_buffer[256];
+static __declspec(thread) char error_buffer[BUFFER_SIZE_SMALL];
 
 /**
  * @brief Get thread-safe error string

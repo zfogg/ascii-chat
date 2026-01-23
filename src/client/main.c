@@ -81,6 +81,7 @@
 #include "platform/symbols.h"
 #include "platform/system.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -761,7 +762,7 @@ int client_main(void) {
 
     // Set discovered address/port for connection
     // Copy to static buffers since discovery_result goes out of scope after this block
-    static char address_buffer[256];
+    static char address_buffer[BUFFER_SIZE_SMALL];
     static char port_buffer[8];
     SAFE_STRNCPY(address_buffer, discovery_result.server_address, sizeof(address_buffer));
     snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);

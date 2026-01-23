@@ -15,6 +15,7 @@
 
 #include "participant.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "options/options.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
@@ -48,7 +49,7 @@
  */
 struct session_participant {
   /** @brief Server address */
-  char address[256];
+  char address[BUFFER_SIZE_SMALL];
 
   /** @brief Server port */
   int port;
@@ -57,10 +58,10 @@ struct session_participant {
   bool encryption_enabled;
 
   /** @brief Password (if any) */
-  char password[256];
+  char password[BUFFER_SIZE_SMALL];
 
   /** @brief Server key for verification (if any) */
-  char server_key[512];
+  char server_key[BUFFER_SIZE_MEDIUM];
 
   /** @brief Audio enabled */
   bool enable_audio;

@@ -9,6 +9,7 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../../common.h" // For log_error()
+#include "../../common/buffer_sizes.h"
 #include "../../asciichat_errno.h"
 #include "../../util/ip.h"
 #include "../../util/string.h"
@@ -47,7 +48,7 @@ extern char **backtrace_symbols(void *const *buffer, int size) __attribute__((we
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-  static char username[256];
+  static char username[BUFFER_SIZE_SMALL];
   const char *user = getenv("USER");
   if (!user) {
     user = getenv("USERNAME");
@@ -365,7 +366,7 @@ void platform_memory_barrier(void) {
 // ============================================================================
 
 // Thread-local storage for error strings
-static __thread char error_buffer[256];
+static __thread char error_buffer[BUFFER_SIZE_SMALL];
 
 /**
  * @brief Get thread-safe error string

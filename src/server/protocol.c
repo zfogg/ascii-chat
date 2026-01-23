@@ -119,6 +119,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"
@@ -167,7 +168,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
     return;
   }
 
-  char reason[256] = {0};
+  char reason[BUFFER_SIZE_SMALL] = {0};
   if (format) {
     va_list args;
     va_start(args, format);

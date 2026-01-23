@@ -138,6 +138,7 @@
 #include "client.h"
 #include "render.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "buffer_pool.h"
 #include "network/packet_queue.h"
 #include "debug/lock.h"
@@ -346,7 +347,7 @@ void *stats_logger_thread(void *arg) {
 
     // Collect all statistics data first
 #ifndef NDEBUG
-    char lock_debug_info[512] = {0};
+    char lock_debug_info[BUFFER_SIZE_MEDIUM] = {0};
     // CRITICAL: Check exit condition again before accessing lock_debug
     // lock_debug might be destroyed during shutdown
     if (!atomic_load(&g_server_should_exit) && lock_debug_is_initialized()) {
@@ -376,7 +377,7 @@ void *stats_logger_thread(void *arg) {
     int active_clients = 0;
     int clients_with_audio = 0;
     int clients_with_video = 0;
-    char client_details[2048] = {0};
+    char client_details[BUFFER_SIZE_XLARGE] = {0};
     int client_details_len = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {

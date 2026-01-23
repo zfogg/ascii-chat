@@ -7,6 +7,7 @@
 #include "ip.h"
 #include "parsing.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +32,7 @@ int is_valid_ipv4(const char *ip) {
   }
 
   if (strlen(ip) > 256) {
-    char ip_buffer[256];
+    char ip_buffer[BUFFER_SIZE_SMALL];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
     SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
     return 0; // Invalid
@@ -86,7 +87,7 @@ int is_valid_ipv6(const char *ip) {
   }
 
   if (strlen(ip) > 256) {
-    char ip_buffer[256];
+    char ip_buffer[BUFFER_SIZE_SMALL];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
     SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
     return 0; // Invalid
@@ -237,7 +238,7 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
   }
 
   if (strlen(ip) > 256) {
-    char ip_buffer[256];
+    char ip_buffer[BUFFER_SIZE_SMALL];
     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
     return SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", ip_buffer);
   }
@@ -314,7 +315,7 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
   }
 
   if (strlen(input) > 256) {
-    char input_buffer[256];
+    char input_buffer[BUFFER_SIZE_SMALL];
     SAFE_STRNCPY(input_buffer, input, sizeof(input_buffer));
     SET_ERRNO(ERROR_INVALID_PARAM, "Suspiciously long ip: %s", input_buffer);
     return -1;

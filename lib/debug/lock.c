@@ -13,6 +13,7 @@
 // Without DEBUG_LOCKS, lock_debug.h provides inline no-op stubs
 
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "asciichat_errno.h"
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
@@ -261,7 +262,7 @@ static void print_usage_stats_callback(lock_usage_stats_t *stats, void *user_dat
   uint64_t avg_hold_time_ns = stats->total_hold_time_ns / stats->total_acquisitions;
 
   // Format all information into a single log message with newlines
-  char log_message[1024];
+  char log_message[BUFFER_SIZE_LARGE];
   int offset = 0;
 
   offset += safe_snprintf(log_message + offset, SAFE_BUFFER_SIZE(sizeof(log_message), offset),
@@ -371,7 +372,7 @@ typedef struct {
   char duration_str[32];
   const char *lock_type_str;
   void *lock_address;
-  char file_name[256];
+  char file_name[BUFFER_SIZE_SMALL];
   int line_number;
   char function_name[128];
   uint64_t thread_id;
@@ -922,7 +923,7 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   // - DEADLOCK: we already hold it, rwlocks don't support recursive write locking
   bool should_log_warning = false;
   char deferred_duration_str[32] = {0};
-  char deferred_file_name[256] = {0};
+  char deferred_file_name[BUFFER_SIZE_SMALL] = {0};
   int deferred_line_number = 0;
   char deferred_function_name[128] = {0};
   void *deferred_lock_ptr = NULL;
