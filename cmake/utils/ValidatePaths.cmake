@@ -61,9 +61,12 @@ endforeach()
 
 # Run validation via bash using grep - much faster than CMake string operations
 # Patterns: C:\Users\, C:/Users/, /home/, /Users/, /mnt/c/Users/, /mnt/d/
+# Use a two-pass grep: first to find suspect paths, then to exclude whitelisted paths
 execute_process(
     COMMAND bash -c "
-        ${LLVM_STRINGS} '${BINARY}' | grep -E 'C:\\\\Users\\\\|C:/Users/|/home/|/Users/|/mnt/c/Users/|/mnt/d/' ${GREP_EXCLUDE_ARGS} 2>/dev/null | head -20
+        SUSPECT=\$(${LLVM_STRINGS} '${BINARY}' | grep -E 'C:\\\\\\\\Users\\\\\\\\|C:/Users/|/home/|/Users/|/mnt/c/Users/|/mnt/d/')
+        if [ -z \"\$SUSPECT\" ]; then exit 1; fi
+        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' | head -20
     "
     OUTPUT_VARIABLE FOUND_PATHS
     RESULT_VARIABLE GREP_RESULT
