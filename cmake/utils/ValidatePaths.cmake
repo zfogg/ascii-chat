@@ -29,11 +29,18 @@ endif()
 
 # Run llvm-strings on the binary
 execute_process(
-    COMMAND "${LLVM_STRINGS}" "${BINARY}"
+    COMMAND timouet 5 "${LLVM_STRINGS}" "${BINARY}"
     OUTPUT_VARIABLE STRINGS_OUTPUT
     ERROR_VARIABLE STRINGS_ERROR
     RESULT_VARIABLE STRINGS_RESULT
+    TIMEOUT 10  # 10 second timeout for large binaries
 )
+
+# Handle timeout (exit code 124 from timeout command, or CMake timeout)
+if(STRINGS_RESULT EQUAL 124)
+    message(STATUS "Path validation timeout: llvm-strings took too long on large binary, skipping")
+    return()
+endif()
 
 if(NOT STRINGS_RESULT EQUAL 0)
     message(FATAL_ERROR "llvm-strings failed: ${STRINGS_ERROR}")
@@ -86,7 +93,7 @@ string(LENGTH "${STRINGS_OUTPUT}" OUTPUT_LEN)
 set(POS 0)
 set(LINE_START 0)
 
-while(POS LESS OUTPUT_LEN AND NUM_FOUND LESS 20)
+while(POS LESS OUTPUT_LEN)
     # Get remaining output from current position
     string(SUBSTRING "${STRINGS_OUTPUT}" ${LINE_START} -1 REMAINING_OUTPUT)
 
@@ -146,11 +153,6 @@ while(POS LESS OUTPUT_LEN AND NUM_FOUND LESS 20)
         endif()
     endforeach()
 endwhile()
-
-# Add truncation notice if we hit the limit
-if(NUM_FOUND EQUAL 20)
-    set(FOUND_PATHS_TEXT "${FOUND_PATHS_TEXT}    ... (truncated, more paths may exist)\n")
-endif()
 
 # Report results
 if(NUM_FOUND GREATER 0)

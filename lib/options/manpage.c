@@ -1389,9 +1389,13 @@ static parsed_section_t *parse_manpage_sections_from_memory(const char *content,
   }
 
   // Write content to temporary file
-  if (fwrite(content, 1, content_len, tmp) != content_len) {
+  // CRITICAL: Write content_len + 1 to include the null terminator!
+  // The embedded string is content_len + 1 bytes (content_len chars + null terminator)
+  // getline() needs the null terminator to properly handle EOF
+  size_t bytes_to_write = content_len + 1; // Include null terminator
+  if (fwrite(content, 1, bytes_to_write, tmp) != bytes_to_write) {
     fclose(tmp);
-    SET_ERRNO(ERROR_CONFIG, "Failed to write to temporary file");
+    SET_ERRNO(ERROR_CONFIG, "Failed to write complete content to temporary file");
     return NULL;
   }
 
@@ -1403,19 +1407,32 @@ static parsed_section_t *parse_manpage_sections_from_memory(const char *content,
   fclose(tmp);
   return sections;
 
-#else // Unix/macOS: Use fmemopen()
-  // Open memory buffer as FILE*
-  // NOTE: content_len excludes the null terminator, but the embedded string IS null-terminated.
-  // Pass content_len + 1 to fmemopen to include the null terminator in the buffer size.
-  FILE *mem_file = fmemopen((void *)content, content_len + 1, "r");
-  if (!mem_file) {
-    SET_ERRNO(ERROR_CONFIG, "Failed to open memory buffer as file");
+#else // Unix/macOS: Use tmpfile() (same as Windows for consistency)
+  // Use tmpfile instead of fmemopen for better portability and consistency
+  FILE *tmp = tmpfile();
+  if (!tmp) {
+    SET_ERRNO(ERROR_CONFIG, "Failed to create temporary file for memory parsing");
     return NULL;
   }
 
+  // Write content to temporary file
+  // CRITICAL: Write content_len + 1 to include the null terminator!
+  // The embedded string is content_len + 1 bytes (content_len chars + null terminator)
+  // getline() needs the null terminator to properly handle EOF
+  size_t bytes_to_write = content_len + 1; // Include null terminator
+  size_t written = fwrite(content, 1, bytes_to_write, tmp);
+  if (written != bytes_to_write) {
+    fclose(tmp);
+    SET_ERRNO(ERROR_CONFIG, "Failed to write complete content to temporary file");
+    return NULL;
+  }
+
+  // Rewind to beginning for reading
+  rewind(tmp);
+
   // Parse using common function
-  parsed_section_t *sections = parse_sections_from_file(mem_file, num_sections);
-  fclose(mem_file);
+  parsed_section_t *sections = parse_sections_from_file(tmp, num_sections);
+  fclose(tmp);
   return sections;
 #endif
 }
