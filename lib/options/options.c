@@ -416,6 +416,52 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
  * from OPT_*_DEFAULT defines. This ensures consistent default initialization
  * across the codebase.
  */
+/**
+ * @brief Helper to save binary-level options before reset
+ *
+ * Binary-level options are parsed first (STAGE 1) and should never be reset by
+ * subsequent stages. This helper extracts them so they can be preserved across
+ * options_t_new() calls.
+ */
+typedef struct {
+  log_level_t log_level;
+  unsigned short int verbose_level;
+  bool quiet;
+  char log_file[OPTIONS_BUFF_SIZE];
+  bool help;
+  bool version;
+  char config_file[OPTIONS_BUFF_SIZE];
+  asciichat_mode_t detected_mode;
+} binary_level_opts_t;
+
+static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
+  binary_level_opts_t binary = {0};
+  if (!opts)
+    return binary;
+  binary.log_level = opts->log_level;
+  binary.verbose_level = opts->verbose_level;
+  binary.quiet = opts->quiet;
+  SAFE_STRNCPY(binary.log_file, opts->log_file, sizeof(binary.log_file));
+  binary.help = opts->help;
+  binary.version = opts->version;
+  SAFE_STRNCPY(binary.config_file, opts->config_file, sizeof(binary.config_file));
+  binary.detected_mode = opts->detected_mode;
+  return binary;
+}
+
+static inline void restore_binary_level(options_t *opts, const binary_level_opts_t *binary) {
+  if (!opts || !binary)
+    return;
+  opts->log_level = binary->log_level;
+  opts->verbose_level = binary->verbose_level;
+  opts->quiet = binary->quiet;
+  SAFE_STRNCPY(opts->log_file, binary->log_file, sizeof(opts->log_file));
+  opts->help = binary->help;
+  opts->version = binary->version;
+  SAFE_STRNCPY(opts->config_file, binary->config_file, sizeof(opts->config_file));
+  opts->detected_mode = binary->detected_mode;
+}
+
 options_t options_t_new(void) {
   options_t opts;
 
@@ -553,6 +599,30 @@ options_t options_t_new(void) {
   SAFE_STRNCPY(opts.address6, OPT_ADDRESS6_DEFAULT, sizeof(opts.address6));
   // session_string is already zeroed by memset
   // detected_mode is already zeroed by memset
+
+  return opts;
+}
+
+/**
+ * @brief Create new options struct, preserving binary-level fields from source
+ *
+ * This version of options_t_new() extracts binary-level options from a source
+ * struct before performing a full reset, then restores them after. This allows
+ * binary-level options (--quiet, --verbose, --log-level, etc.) to persist through
+ * multiple reset cycles without manual save/restore code.
+ *
+ * @param source The options struct to extract binary-level fields from (NULL-safe)
+ * @return New options_t with defaults and binary-level fields preserved
+ */
+options_t options_t_new_preserve_binary(const options_t *source) {
+  // Extract binary-level options before reset
+  binary_level_opts_t binary = extract_binary_level(source);
+
+  // Create fresh options with all defaults
+  options_t opts = options_t_new();
+
+  // Restore binary-level options (overwrite defaults)
+  restore_binary_level(&opts, &binary);
 
   return opts;
 }
@@ -1023,26 +1093,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 3: Set Mode-Specific Defaults
   // ========================================================================
 
-  // Save binary-level options parsed in STAGE 1 before creating new opts struct
-  // These are restored after options_t_new() zeros them
-  asciichat_mode_t saved_detected_mode = opts.detected_mode;
-  bool binary_level_quiet = opts.quiet;
-  log_level_t binary_level_log_level = opts.log_level;
-  unsigned short int binary_level_verbose = opts.verbose_level;
-  char binary_level_log_file[OPTIONS_BUFF_SIZE];
-  SAFE_STRNCPY(binary_level_log_file, opts.log_file, sizeof(binary_level_log_file));
-
-  // Initialize all defaults using options_t_new()
-  opts = options_t_new();
-
-  // Restore detected_mode and binary-level options (were zeroed/reset by options_t_new)
-  opts.detected_mode = saved_detected_mode;
-  opts.quiet = binary_level_quiet;
-  opts.log_level = binary_level_log_level;
-  opts.verbose_level = binary_level_verbose;
-  if (binary_level_log_file[0] != '\0') {
-    SAFE_STRNCPY(opts.log_file, binary_level_log_file, sizeof(opts.log_file));
-  }
+  // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
+  // options (--quiet, --verbose, --log-level, etc.) from being reset
+  opts = options_t_new_preserve_binary(&opts);
 
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
@@ -1170,34 +1223,23 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Save binary-level flags BEFORE config loading (config may reset them to defaults)
-  bool binary_quiet_before_config = opts.quiet;
-  log_level_t binary_log_level_before_config = opts.log_level;
-  char binary_log_file_before_config[OPTIONS_BUFF_SIZE];
-  SAFE_STRNCPY(binary_log_file_before_config, opts.log_file, sizeof(binary_log_file_before_config));
+  // Extract binary-level options BEFORE config loading (config may reset them)
+  binary_level_opts_t binary_before_config = extract_binary_level(&opts);
 
   // Load config files - now uses detected_mode directly for bitmask validation
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
-  // Restore binary-level flags if they were set (don't let config override binary-level options)
-  opts.quiet = binary_quiet_before_config;
-  if (binary_level_log_level_set) {
-    opts.log_level = binary_log_level_before_config;
-  }
-  if (binary_level_log_file_set) {
-    SAFE_STRNCPY(opts.log_file, binary_log_file_before_config, sizeof(opts.log_file));
-  }
+  // Restore binary-level options (don't let config override command-line options)
+  restore_binary_level(&opts, &binary_before_config);
 
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
   // ========================================================================
 
-  // SAVE binary-level parsed values before unified defaults overwrite them
-  log_level_t saved_log_level = opts.log_level;
-  char saved_log_file[OPTIONS_BUFF_SIZE];
-  SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
-  // Note: opts.quiet is now preserved across config loading (see STAGE 5)
+  // Extract binary-level options BEFORE applying unified defaults
+  // (which might override them from config files)
+  binary_level_opts_t binary_before_defaults = extract_binary_level(&opts);
   asciichat_mode_t mode_saved_for_parsing = detected_mode; // CRITICAL: Save before defaults reset
 
   // Get unified config
@@ -1217,6 +1259,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_FREE(allocated_mode_argv);
     return defaults_result;
   }
+
+  // Restore binary-level options (they should never be overridden by defaults)
+  restore_binary_level(&opts, &binary_before_defaults);
 
   // CRITICAL: RESTORE detected_mode BEFORE parsing so mode validation works
   opts.detected_mode = mode_saved_for_parsing;
@@ -1279,15 +1324,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       SAFE_FREE(config_dir);
     }
   }
-
-  // Restore binary-level parsed values
-  if (binary_level_log_level_set) {
-    opts.log_level = saved_log_level;
-  }
-  if (binary_level_log_file_set) {
-    SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
-  }
-  // Note: opts.quiet is preserved through STAGE 5 config loading, no need to restore here
 
   options_config_destroy(config);
 
