@@ -650,7 +650,10 @@ const option_descriptor_t *options_registry_find_by_name(const char *long_name) 
 
   const registry_entry_t *entry = registry_find_entry_by_name(long_name);
   if (!entry) {
-    SET_ERRNO(ERROR_NOT_FOUND, "Option not found: %s", long_name);
+    // Don't log error for binary-level options like "config" that aren't in registry
+    if (strcmp(long_name, "config") != 0) {
+      SET_ERRNO(ERROR_NOT_FOUND, "Option not found: %s", long_name);
+    }
     return NULL;
   }
 
