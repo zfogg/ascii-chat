@@ -481,13 +481,13 @@ add_custom_command(
         "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
         "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
         "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions bash
+    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions bash
             > "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions fish
+    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions fish
             > "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions zsh
+    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions zsh
             > "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions powershell
+    COMMAND timeout 3 "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions powershell
             > "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
     DEPENDS ascii-chat
     COMMENT "Generating shell completions from options registry..."

@@ -36,7 +36,7 @@ if(UNIX)
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
         COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
-        COMMAND sh -c "${ASCII_CHAT_EXECUTABLE} --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
+        COMMAND sh -c "timeout 3 ${ASCII_CHAT_EXECUTABLE} --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
         COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
         DEPENDS
             ascii-chat
@@ -50,7 +50,7 @@ elseif(WIN32)
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
         COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template and content..."
-        COMMAND cmd /c "\"${ASCII_CHAT_EXECUTABLE}\" --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
+        COMMAND cmd /c "timeout /t 3 /nobreak && \"${ASCII_CHAT_EXECUTABLE}\" --create-man-page \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in\" \"${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content\" > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\""
         COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
         DEPENDS
             ascii-chat
