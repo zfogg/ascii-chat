@@ -75,7 +75,7 @@
  *
  *     // Or get full options_t pointer for multi-field access
  *     const options_t *opts = options_get();
- *     printf("Mode: %d, Dimensions: %dx%d\n", 
+ *     printf("Mode: %d, Dimensions: %dx%d\n",
  *            opts->detected_mode, opts->width, opts->height);
  *
  *     // Thread-safe updates (if needed at runtime)
@@ -507,6 +507,58 @@
 #else
 #define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
 #endif
+
+// ============================================================================
+// Static Default Value Variables
+// ============================================================================
+// These are referenced from the registry and provide const void * pointers
+// for non-string default values. Defined alongside OPT_*_DEFAULT for clarity.
+
+static const int default_log_level_value = DEFAULT_LOG_LEVEL;
+static const int default_width_value = OPT_WIDTH_DEFAULT;
+static const int default_height_value = OPT_HEIGHT_DEFAULT;
+static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
+static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
+static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
+static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
+static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
+static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
+static const bool default_show_capabilities_value = OPT_SHOW_CAPABILITIES_DEFAULT;
+static const bool default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
+static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
+static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
+static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
+static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
+static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
+static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
+static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
+static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
+static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
+static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
+static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
+static const bool default_webrtc_value = OPT_WEBRTC_DEFAULT;
+static const bool default_enable_upnp_value = OPT_ENABLE_UPNP_DEFAULT;
+static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
+static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
+static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
+static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
+static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
+static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
+static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
+static const bool default_no_cookies_value = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
+static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
+static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;
+static const int default_speakers_index_value = OPT_SPEAKERS_INDEX_DEFAULT;
+static const float default_microphone_sensitivity_value = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
+static const float default_speakers_volume_value = OPT_SPEAKERS_VOLUME_DEFAULT;
+static const bool default_audio_analysis_value = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
+static const bool default_no_audio_playback_value = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
+static const bool default_encode_audio_value = OPT_ENCODE_AUDIO_DEFAULT;
+static const bool default_no_encode_audio_value = !OPT_ENCODE_AUDIO_DEFAULT;
+static const bool default_discovery_expose_ip_value = OPT_ACDS_EXPOSE_IP_DEFAULT;
+static const bool default_discovery_insecure_value = OPT_ACDS_INSECURE_DEFAULT;
+static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
+static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 
 /** @{ @} */
 
@@ -1257,57 +1309,5 @@ void update_dimensions_to_terminal_size(options_t *opts);
  * @ingroup options
  */
 void update_dimensions_for_full_height(options_t *opts);
-
-// ============================================================================
-// Static Default Value Variables
-// ============================================================================
-// These are referenced from the registry and provide const void * pointers
-// for non-string default values. Defined alongside OPT_*_DEFAULT for clarity.
-
-static const int default_log_level_value = DEFAULT_LOG_LEVEL;
-static const int default_width_value = OPT_WIDTH_DEFAULT;
-static const int default_height_value = OPT_HEIGHT_DEFAULT;
-static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
-static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
-static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
-static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
-static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
-static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
-static const bool default_show_capabilities_value = OPT_SHOW_CAPABILITIES_DEFAULT;
-static const bool default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
-static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
-static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
-static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
-static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
-static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
-static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
-static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
-static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
-static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
-static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
-static const bool default_webrtc_value = OPT_WEBRTC_DEFAULT;
-static const bool default_enable_upnp_value = OPT_ENABLE_UPNP_DEFAULT;
-static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
-static const bool default_prefer_webrtc_value = OPT_PREFER_WEBRTC_DEFAULT;
-static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
-static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
-static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
-static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
-static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
-static const bool default_no_cookies_value = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
-static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
-static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;
-static const int default_speakers_index_value = OPT_SPEAKERS_INDEX_DEFAULT;
-static const float default_microphone_sensitivity_value = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
-static const float default_speakers_volume_value = OPT_SPEAKERS_VOLUME_DEFAULT;
-static const bool default_audio_analysis_value = OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT;
-static const bool default_no_audio_playback_value = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
-static const bool default_encode_audio_value = OPT_ENCODE_AUDIO_DEFAULT;
-static const bool default_no_encode_audio_value = !OPT_ENCODE_AUDIO_DEFAULT;
-static const bool default_discovery_expose_ip_value = OPT_ACDS_EXPOSE_IP_DEFAULT;
-static const bool default_discovery_insecure_value = OPT_ACDS_INSECURE_DEFAULT;
-static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
-static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 
 /** @} */
