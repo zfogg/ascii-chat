@@ -354,6 +354,46 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
 }
 
 /**
+ * @brief Format mode names from a mode_bitmask
+ * Returns a string like "server, client" or "all modes" or NULL if no specific mode
+ */
+static const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
+  if (mode_bitmask == 0) {
+    return NULL; // No mode restrictions
+  }
+
+  // Check if it's all modes (except OPTION_MODE_BINARY which is a flag, not a mode)
+  option_mode_bitmask_t all_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
+                                         (1 << MODE_DISCOVERY_SERVER) | (1 << MODE_DISCOVERY);
+  if ((mode_bitmask & all_modes_mask) == all_modes_mask) {
+    return "all modes";
+  }
+
+  // Build a list of specific modes
+  static char mode_str[256];
+  mode_str[0] = '\0';
+  int pos = 0;
+
+  if (mode_bitmask & (1 << MODE_SERVER)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "server");
+  }
+  if (mode_bitmask & (1 << MODE_CLIENT)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
+  }
+  if (mode_bitmask & (1 << MODE_MIRROR)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smirror", pos > 0 ? ", " : "");
+  }
+  if (mode_bitmask & (1 << MODE_DISCOVERY_SERVER)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
+  }
+  if (mode_bitmask & (1 << MODE_DISCOVERY)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery", pos > 0 ? ", " : "");
+  }
+
+  return pos > 0 ? mode_str : NULL;
+}
+
+/**
  * @brief Write OPTIONS section from option descriptors
  */
 static void write_options_section(FILE *f, const options_config_t *config) {
@@ -468,9 +508,17 @@ static void write_options_section(FILE *f, const options_config_t *config) {
         }
       }
 
+      // Add mode information if not all modes
+      if (!(desc->mode_bitmask & OPTION_MODE_BINARY)) {
+        const char *modes = format_mode_names(desc->mode_bitmask);
+        if (modes && strcmp(modes, "all modes") != 0) {
+          fprintf(f, "(modes: %s)\n", modes);
+        }
+      }
+
       // Add environment variable note if present
       if (desc->env_var_name) {
-        fprintf(f, "Env: \\fB%s\\fR\n", desc->env_var_name);
+        fprintf(f, "(env: \\fB%s\\fR)\n", desc->env_var_name);
       }
 
       // Add REQUIRED note if applicable
