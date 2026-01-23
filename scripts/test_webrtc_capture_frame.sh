@@ -1,6 +1,7 @@
 #!/bin/bash
-cd /home/zfogg/src/github.com/zfogg/ascii-chat
-BIN="./build/bin"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+BIN="$REPO_DIR/build/bin"
 SERVER_PORT=27224
 DISCOVERY_PORT=27225
 FRAME_FILE="/tmp/webrtc_ascii_frame.txt"
@@ -11,70 +12,60 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Clean up old logs and databases
-rm -f /tmp/server.log /tmp/client_stderr.log "$FRAME_FILE"
+# Clean up old output files
+rm -f /tmp/server_startup.txt /tmp/client_stderr.log "$FRAME_FILE"
+
 echo "Starting discovery server..."
 ssh sidechain "pkill -9 ascii-chat 2>/dev/null || true; sleep 1; rm -f ~/.ascii-chat/acds.db* /tmp/acds.log 2>/dev/null || true"
-ssh sidechain "nohup bash -c 'timeout 120 /opt/ascii-chat/build/bin/ascii-chat --log-file /tmp/acds.log discovery-service 0.0.0.0 :: --port $DISCOVERY_PORT 2>&1' > /dev/null 2>&1 &"
+ssh sidechain "nohup bash -c 'timeout 120 /opt/ascii-chat/build/bin/ascii-chat discovery-service 0.0.0.0 :: --port $DISCOVERY_PORT 2>&1' > /dev/null 2>&1 &"
 sleep 5
 
 echo "Starting server..."
 echo "y" | timeout 25 $BIN/ascii-chat \
-  --log-file /tmp/server.log \
   server 127.0.0.1 :: \
   --port $SERVER_PORT \
   --acds \
-  --acds-expose-ip \
-  --acds-server discovery-service.ascii-chat.com \
-  --acds-port $DISCOVERY_PORT \
-  2>&1 &
+  --discovery-expose-ip \
+  --discovery-server discovery-service.ascii-chat.com \
+  --discovery-port $DISCOVERY_PORT \
+  2>&1 | tee /tmp/server_startup.txt &
 
-sleep 5
+sleep 2
 
-# Wait for log file to exist
+# Wait for session string to appear in server output
+SESSION=""
 for i in {1..10}; do
-  if [ -f /tmp/server.log ]; then
+  SESSION=$(grep -oE "Session String: [a-z-]+" /tmp/server_startup.txt | tail -1 | awk '{print $NF}')
+  if [ -n "$SESSION" ]; then
     break
   fi
-  echo "Waiting for server log... ($i/10)"
+  echo "Waiting for session string... ($i/10)"
   sleep 1
 done
 
-if [ ! -f /tmp/server.log ]; then
-  echo "ERROR: Server log file not created"
-  ps aux | grep ascii-chat | grep -v grep
-  exit 1
-fi
-
-SESSION=$(grep -oE "Session created: [a-z-]+" /tmp/server.log | tail -1 | awk '{print $NF}')
 if [ -z "$SESSION" ]; then
-  echo "ERROR: No session created"
-  echo "=== Server log contents ==="
-  cat /tmp/server.log
+  echo "ERROR: No session string found"
+  echo "=== Server output ==="
+  cat /tmp/server_startup.txt
   exit 1
 fi
 
 echo "Server session: $SESSION"
-sleep 2
+sleep 1
 echo "Capturing frame via WebRTC snapshot..."
 
 # Run client and capture frame output
 # Snapshot mode will output ASCII frame to stdout, errors to stderr
-timeout 6 $BIN/ascii-chat --log-file /tmp/client.log \
+timeout 6 $BIN/ascii-chat \
   "$SESSION" \
   --test-pattern \
   --prefer-webrtc \
-  --acds-insecure \
-  --acds-server discovery-service.ascii-chat.com \
-  --acds-port $DISCOVERY_PORT \
+  --discovery-insecure \
+  --discovery-server discovery-service.ascii-chat.com \
+  --discovery-port $DISCOVERY_PORT \
   --snapshot \
   --snapshot-delay 0 \
-  | tee "$FRAME_FILE" 2>/tmp/client_stderr.log
-
-#WAIT_PID=$!
-#sleep 6
-#kill -9 $WAIT_PID 2>/dev/null || true
-#sleep 0.25
+  2>/tmp/client_stderr.log | tee "$FRAME_FILE"
 
 echo ""
 echo "=== ASCII FRAME TRANSMITTED OVER WEBRTC ==="
