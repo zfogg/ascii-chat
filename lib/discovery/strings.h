@@ -16,17 +16,37 @@
 #include <stddef.h>
 #include "common.h"
 
+// ============================================================================
+// Session String Size Constants (Calculated from wordlists)
+// ============================================================================
+
+/**
+ * @brief Maximum length of a session string (without null terminator)
+ *
+ * Calculated from longest words:
+ * - Longest adjective: 12 chars (e.g., "affectionate")
+ * - Longest noun: 12 chars (e.g., "acquaintance")
+ * - Format: adjective-noun-noun = 12 + 1 + 12 + 1 + 12 = 38 chars
+ */
+#define SESSION_STRING_MAX_LEN 38
+
+/**
+ * @brief Buffer size needed for session string storage (with null terminator)
+ * Used for static character array declarations.
+ */
+#define SESSION_STRING_BUFFER_SIZE (SESSION_STRING_MAX_LEN + 1)
+
 /**
  * @brief Generate random session string
  * @param output Output buffer for session string
- * @param output_size Size of output buffer (should be at least 48 bytes)
+ * @param output_size Size of output buffer (should be at least SESSION_STRING_BUFFER_SIZE bytes)
  * @return ASCIICHAT_OK on success, error code otherwise
  *
  * Generates strings in format: adjective-noun-noun
- * Example: "swift-river-mountain" (20 characters)
+ * Example: "affectionate-acquaintance-acquaintance" (38 characters max)
  *
- * Entropy: ~100 adjectives * 100 nouns * 100 nouns = 1 million combinations
- * (Full wordlist version will have ~10 million combinations)
+ * Use acds_string_get_max_length() to get the maximum possible length.
+ * Entropy: 2500 adjectives * 5000 nouns * 5000 nouns = 62.5 billion combinations
  */
 asciichat_error_t acds_string_generate(char *output, size_t output_size);
 

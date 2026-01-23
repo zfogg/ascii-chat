@@ -14,6 +14,7 @@
 #include "common.h"
 #include "network/acip/acds.h"
 #include "discovery-service/main.h"
+#include "discovery/strings.h"
 
 /**
  * @brief Maximum participants per session
@@ -49,7 +50,7 @@ typedef struct {
  * Contains all session metadata. Stored in SQLite database.
  */
 typedef struct session_entry {
-  char session_string[48]; ///< e.g., "swift-river-mountain"
+  char session_string[SESSION_STRING_BUFFER_SIZE]; ///< e.g., "affectionate-acquaintance-acquaintance"
   uint8_t session_id[16];  ///< UUID
 
   uint8_t host_pubkey[32];      ///< Host's Ed25519 key

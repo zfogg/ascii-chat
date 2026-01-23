@@ -206,6 +206,7 @@
 #include <stdio.h>
 #include "platform/terminal.h"
 #include "video/palette.h"
+#include "discovery/strings.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -666,11 +667,11 @@ typedef struct options_state {
   // ============================================================================
   // Network Options
   // ============================================================================
-  char address[OPTIONS_BUFF_SIZE];  ///< Server address (client) or bind address (server)
-  char address6[OPTIONS_BUFF_SIZE]; ///< IPv6 bind address (server only)
-  char port[OPTIONS_BUFF_SIZE];     ///< Server port number
-  int max_clients;                  ///< Maximum concurrent clients (server only)
-  char session_string[64];          ///< Session string for ACDS discovery (client only)
+  char address[OPTIONS_BUFF_SIZE];       ///< Server address (client) or bind address (server)
+  char address6[OPTIONS_BUFF_SIZE];      ///< IPv6 bind address (server only)
+  char port[OPTIONS_BUFF_SIZE];          ///< Server port number
+  int max_clients;                       ///< Maximum concurrent clients (server only)
+  char session_string[SESSION_STRING_BUFFER_SIZE];  ///< Session string for ACDS discovery (calculated max size: 38 chars + null)
 
   // ============================================================================
   // Discovery Service Options (server only)

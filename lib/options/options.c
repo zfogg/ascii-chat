@@ -370,7 +370,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
     *out_mode = MODE_DISCOVERY;
     *out_mode_index = first_positional_idx;
     if (out_session_string) {
-      SAFE_STRNCPY(out_session_string, positional, 64);
+      SAFE_STRNCPY(out_session_string, positional, SESSION_STRING_BUFFER_SIZE);
     }
     return ASCIICHAT_OK;
   }
@@ -659,7 +659,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // This ensures that --help for an invalid mode like "discovery" properly fails
 
   asciichat_mode_t detected_mode = MODE_DISCOVERY; // Default mode
-  char detected_session_string[64] = {0};
+  char detected_session_string[SESSION_STRING_BUFFER_SIZE] = {0};
   int mode_index = -1;
 
   asciichat_error_t mode_detect_result =

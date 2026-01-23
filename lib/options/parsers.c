@@ -405,11 +405,11 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   }
 
   // Check if this is a session string (format: adjective-noun-noun)
-  // Session strings have exactly 2 hyphens, only lowercase letters, length 1-47
+  // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
   if (is_session_string(arg)) {
     // This is a session string, not a server address
     char *session_string = (char *)config + offsetof(struct options_state, session_string);
-    SAFE_SNPRINTF(session_string, 64, "%s", arg);
+    SAFE_SNPRINTF(session_string, SESSION_STRING_BUFFER_SIZE, "%s", arg);
     log_debug("Detected session string: %s", arg);
     return 1; // Consumed 1 arg
   }

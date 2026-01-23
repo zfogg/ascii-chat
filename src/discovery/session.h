@@ -18,6 +18,7 @@
 #include "platform/socket.h"
 #include "session/host.h"
 #include "session/participant.h"
+#include "discovery/strings.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -116,7 +117,7 @@ typedef struct {
   uint8_t session_id[16];
   uint8_t participant_id[16];
   uint8_t initiator_id[16];
-  char session_string[64];
+  char session_string[SESSION_STRING_BUFFER_SIZE];
   bool is_initiator;
   bool is_host;
 

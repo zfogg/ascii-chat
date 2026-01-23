@@ -68,7 +68,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   }
 
   // Generate a random session string for examples
-  char generated_session_buffer[64]; // Buffer for the generated string
+  char generated_session_buffer[SESSION_STRING_BUFFER_SIZE]; // Static buffer for generated string
   char *example_session_string = NULL;
 
   if (acds_string_generate(generated_session_buffer, sizeof(generated_session_buffer)) == ASCIICHAT_OK) {

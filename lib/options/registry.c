@@ -18,6 +18,7 @@
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "video/palette.h"
+#include "discovery/strings.h" // For SESSION_STRING_BUFFER_SIZE
 
 #include <stdlib.h>
 #include <string.h>
@@ -216,7 +217,7 @@ static const registry_entry_t g_options_registry[] = {
      "Increase log verbosity (stackable: -VV, -VVV, or --verbose)", "LOGGING", false, NULL, NULL, parse_verbose_flag,
      false, true, OPTION_MODE_BINARY},
     {"quiet", 'q', OPTION_TYPE_BOOL, offsetof(options_t, quiet), OPT_QUIET_DEFAULT, sizeof(bool),
-     "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, NULL, NULL, false, false,
+     "Disable console logging (log to file only)", "LOGGING", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_BINARY},
 
     // TERMINAL GROUP (client, mirror, discovery)
