@@ -654,7 +654,7 @@ options_builder_t *options_builder_from_preset(const options_config_t *preset) {
     const positional_arg_descriptor_t *pos_arg = &preset->positional_args[i];
     options_builder_add_positional(builder, pos_arg->name, pos_arg->help_text, pos_arg->required,
                                    pos_arg->section_heading, pos_arg->examples, pos_arg->num_examples,
-                                   pos_arg->parse_fn);
+                                   pos_arg->mode_bitmask, pos_arg->parse_fn);
   }
 
   return builder;
@@ -1255,6 +1255,7 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
 
 void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
                                     const char *section_heading, const char **examples, size_t num_examples,
+                                    option_mode_bitmask_t mode_bitmask,
                                     int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
                                                     char **error_msg)) {
   if (!builder || !name || !parse_fn)
@@ -1268,6 +1269,7 @@ void options_builder_add_positional(options_builder_t *builder, const char *name
                                          .section_heading = section_heading,
                                          .examples = examples,
                                          .num_examples = num_examples,
+                                         .mode_bitmask = mode_bitmask,
                                          .parse_fn = parse_fn};
 
   builder->positional_args[builder->num_positional_args++] = pos_arg;
@@ -1547,6 +1549,20 @@ static asciichat_error_t parse_single_flag(const options_config_t *config, char 
     return SET_ERRNO(ERROR_USAGE, "Unknown option: %s", arg);
   }
 
+  // Check if option applies to current mode based on mode_bitmask
+  if (desc->mode_bitmask != 0 && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
+    // Option has specific mode restrictions
+    asciichat_mode_t detected_mode = ((options_t *)options_struct)->detected_mode;
+    if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
+      option_mode_bitmask_t mode_bit = (1 << detected_mode);
+      if (!(desc->mode_bitmask & mode_bit)) {
+        if (equals)
+          *equals = '='; // Restore
+        return SET_ERRNO(ERROR_USAGE, "Option %s is not supported for this mode", arg);
+      }
+    }
+  }
+
   void *field = (char *)options_struct + desc->offset;
   const char *opt_value = NULL;
 
@@ -1596,9 +1612,15 @@ static asciichat_error_t parse_single_flag(const options_config_t *config, char 
  * and flag arguments in a single pass, allowing them to be intermixed in any order.
  *
  * Special case: `--` stops all option parsing and treats remaining args as positional.
+ *
+ * @param config Options configuration
+ * @param argc Argument count
+ * @param argv Argument vector
+ * @param options_struct Options struct to populate
+ * @param detected_mode Detected mode for filtering positional args by mode_bitmask
  */
 static asciichat_error_t options_config_parse_unified(const options_config_t *config, int argc, char **argv,
-                                                      void *options_struct) {
+                                                      void *options_struct, option_mode_bitmask_t detected_mode) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
@@ -1641,10 +1663,15 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
 
   // Now parse positional arguments
   if (config->num_positional_args > 0) {
-    // Parse positional arguments in order
+    // Parse positional arguments in order, filtering by mode_bitmask
     int arg_index = 0;
     for (size_t pos_idx = 0; pos_idx < config->num_positional_args && arg_index < positional_count; pos_idx++) {
       const positional_arg_descriptor_t *pos_arg = &config->positional_args[pos_idx];
+
+      // Skip positional args that don't apply to the detected mode
+      if (pos_arg->mode_bitmask != 0 && !(pos_arg->mode_bitmask & detected_mode)) {
+        continue;
+      }
 
       const char *arg = positional_args[arg_index];
       char **remaining = (arg_index + 1 < positional_count) ? &positional_args[arg_index + 1] : NULL;
@@ -1695,13 +1722,14 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
 }
 
 asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct,
-                                       int *remaining_argc, char ***remaining_argv) {
+                                       option_mode_bitmask_t detected_mode, int *remaining_argc,
+                                       char ***remaining_argv) {
   if (!config || !options_struct) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Config or options struct is NULL");
   }
 
   // Use the new unified parser that handles mixed positional and flag arguments
-  asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct);
+  asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct, detected_mode);
   if (result != ASCIICHAT_OK) {
     return result;
   }

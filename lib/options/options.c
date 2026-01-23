@@ -1023,14 +1023,26 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 3: Set Mode-Specific Defaults
   // ========================================================================
 
-  // Save detected_mode before creating new opts struct
+  // Save binary-level options parsed in STAGE 1 before creating new opts struct
+  // These are restored after options_t_new() zeros them
   asciichat_mode_t saved_detected_mode = opts.detected_mode;
+  bool binary_level_quiet = opts.quiet;
+  log_level_t binary_level_log_level = opts.log_level;
+  unsigned short int binary_level_verbose = opts.verbose_level;
+  char binary_level_log_file[OPTIONS_BUFF_SIZE];
+  SAFE_STRNCPY(binary_level_log_file, opts.log_file, sizeof(binary_level_log_file));
 
   // Initialize all defaults using options_t_new()
   opts = options_t_new();
 
-  // Restore detected_mode (was zeroed by options_t_new)
+  // Restore detected_mode and binary-level options (were zeroed/reset by options_t_new)
   opts.detected_mode = saved_detected_mode;
+  opts.quiet = binary_level_quiet;
+  opts.log_level = binary_level_log_level;
+  opts.verbose_level = binary_level_verbose;
+  if (binary_level_log_file[0] != '\0') {
+    SAFE_STRNCPY(opts.log_file, binary_level_log_file, sizeof(opts.log_file));
+  }
 
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
@@ -1170,6 +1182,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   log_level_t saved_log_level = opts.log_level;
   char saved_log_file[OPTIONS_BUFF_SIZE];
   SAFE_STRNCPY(saved_log_file, opts.log_file, sizeof(saved_log_file));
+  bool saved_binary_quiet = opts.quiet;
 
   // Get unified config
   const options_config_t *config = options_preset_unified(NULL, NULL);
@@ -1190,8 +1203,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Parse mode-specific arguments
+  option_mode_bitmask_t mode_bitmask = (1 << detected_mode);
   asciichat_error_t result =
-      options_config_parse(config, mode_argc, mode_argv, &opts, &remaining_argc, &remaining_argv);
+      options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
@@ -1254,6 +1268,8 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (binary_level_log_file_set) {
     SAFE_STRNCPY(opts.log_file, saved_log_file, sizeof(opts.log_file));
   }
+  // Always restore quiet flag if it was set at binary level
+  opts.quiet = saved_binary_quiet;
 
   options_config_destroy(config);
 

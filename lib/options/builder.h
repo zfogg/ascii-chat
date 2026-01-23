@@ -253,6 +253,9 @@ typedef struct {
    * @return Number of args consumed (usually 1), or -1 on error
    */
   int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
+
+  // Mode applicability
+  option_mode_bitmask_t mode_bitmask; ///< Which modes this positional arg applies to
 } positional_arg_descriptor_t;
 
 /**
@@ -762,11 +765,13 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
  * @param section_heading Optional section heading for examples (e.g., "ADDRESS FORMATS")
  * @param examples Optional array of example strings with descriptions
  * @param num_examples Number of examples in array
+ * @param mode_bitmask Which modes this positional arg applies to
  * @param parse_fn Custom parser (receives arg, config, remaining args, error_msg)
  *                 Returns number of args consumed (usually 1), or -1 on error
  */
 void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
                                     const char *section_heading, const char **examples, size_t num_examples,
+                                    option_mode_bitmask_t mode_bitmask,
                                     int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
                                                     char **error_msg));
 
@@ -916,7 +921,8 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
  * @return ASCIICHAT_OK on success, ERROR_USAGE on parse errors
  */
 asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct,
-                                       int *remaining_argc, char ***remaining_argv);
+                                       option_mode_bitmask_t detected_mode, int *remaining_argc,
+                                       char ***remaining_argv);
 
 /**
  * @brief Validate options struct

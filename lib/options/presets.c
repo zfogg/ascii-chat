@@ -71,20 +71,23 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // These allow parsing of positional arguments like "192.168.1.1" for client mode
   // and "[bind-address]" for server mode
 
-  // Client mode: [address] - e.g., "192.168.1.1", "example.com", "example.com:8080"
+  // Client/Discovery mode: [address] - e.g., "192.168.1.1", "example.com", "example.com:8080"
   const char *client_examples[] = {"192.168.1.1", "example.com:8080"};
   options_builder_add_positional(b, "address", "Server address (optional, defaults to localhost:27224)", false,
-                                 "Positional Arguments", client_examples, 2, parse_client_address);
+                                 "Positional Arguments", client_examples, 2, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+                                 parse_client_address);
 
   // Server mode: [bind-address] [bind-address] - up to 2 addresses for IPv4 and IPv6
   const char *server_examples[] = {"0.0.0.0", "0.0.0.0 ::"};
   options_builder_add_positional(b, "bind-address", "Bind address (optional, can specify 0-2 addresses for IPv4/IPv6)",
-                                 false, "Positional Arguments", server_examples, 2, parse_server_bind_address);
+                                 false, "Positional Arguments", server_examples, 2,
+                                 OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
   // Discovery service mode: [bind-address] [bind-address]
   const char *discovery_svc_examples[] = {"0.0.0.0"};
   options_builder_add_positional(b, "bind-address", "Bind address (optional, can specify 0-2 addresses for IPv4/IPv6)",
-                                 false, "Positional Arguments", discovery_svc_examples, 1, parse_server_bind_address);
+                                 false, "Positional Arguments", discovery_svc_examples, 1, OPTION_MODE_DISCOVERY_SVC,
+                                 parse_server_bind_address);
 
   // Generate random session strings for examples
   // Use static buffers so they persist after the function returns
