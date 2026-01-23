@@ -187,7 +187,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     }
 
     // Extract value based on type
-    char value_str[512] = {0};
+    char value_str[BUFFER_SIZE_MEDIUM] = {0};
     bool has_value = false;
     int int_val = 0;
     bool bool_val = false;
@@ -278,7 +278,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
 
     // Parse and validate string values using validation functions from validation.h
     // These are the same functions used by the options builder
-    char error_msg[256] = {0};
+    char error_msg[BUFFER_SIZE_SMALL] = {0};
     char parsed_buffer[OPTIONS_BUFF_SIZE] = {0};
     int parsed_int = 0;
     float parsed_float = 0.0f;
@@ -630,7 +630,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       // For strict mode, return detailed error message directly
       // Note: SET_ERRNO stores the message in context, but asciichat_error_string() only returns generic codes
       // So we need to format the error message ourselves here
-      char error_buffer[512];
+      char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }

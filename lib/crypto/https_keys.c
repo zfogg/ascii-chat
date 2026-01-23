@@ -51,7 +51,7 @@ static asciichat_error_t https_fetch_keys(const char *url, char **response_text,
     return ERROR_INVALID_PARAM;
   }
 
-  char hostname[256];
+  char hostname[BUFFER_SIZE_SMALL];
   memcpy(hostname, hostname_start, hostname_len);
   hostname[hostname_len] = '\0';
 
@@ -125,7 +125,7 @@ asciichat_error_t build_github_gpg_url(const char *username, char *url_out, size
   }
 
   // Strip .gpg suffix if user already included it (e.g., "github:zfogg.gpg")
-  char clean_username[256];
+  char clean_username[BUFFER_SIZE_SMALL];
   SAFE_STRNCPY(clean_username, username, sizeof(clean_username) - 1);
   size_t len = strlen(clean_username);
   if (len > 4 && strcmp(clean_username + len - 4, ".gpg") == 0) {
@@ -154,7 +154,7 @@ asciichat_error_t build_gitlab_gpg_url(const char *username, char *url_out, size
   }
 
   // Strip .gpg suffix if user already included it (e.g., "gitlab:zfogg.gpg")
-  char clean_username[256];
+  char clean_username[BUFFER_SIZE_SMALL];
   SAFE_STRNCPY(clean_username, username, sizeof(clean_username) - 1);
   size_t len = strlen(clean_username);
   if (len > 4 && strcmp(clean_username + len - 4, ".gpg") == 0) {
@@ -183,7 +183,7 @@ asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitHub SSH keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_github_ssh_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -215,7 +215,7 @@ asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitLab SSH keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_gitlab_ssh_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -247,7 +247,7 @@ asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitHub GPG keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_github_gpg_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -279,7 +279,7 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitLab GPG keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_gitlab_gpg_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -438,7 +438,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   }
 
   // Import the key using gpg --import
-  char import_cmd[512];
+  char import_cmd[BUFFER_SIZE_MEDIUM];
   snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
   FILE *import_fp = popen(import_cmd, "r");
   if (!import_fp) {
@@ -497,7 +497,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   size_t valid_keys = 0;
   for (size_t k = 0; k < key_count; k++) {
     // Get full fingerprint from gpg --list-keys output
-    char list_cmd[256];
+    char list_cmd[BUFFER_SIZE_SMALL];
     snprintf(list_cmd, sizeof(list_cmd), "gpg --list-keys --with-colons --fingerprint '%s' 2>/dev/null", key_ids[k]);
     FILE *list_fp = popen(list_cmd, "r");
     if (!list_fp) {

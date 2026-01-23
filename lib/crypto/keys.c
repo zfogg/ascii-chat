@@ -58,7 +58,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
     // Extract hostname and path
     size_t hostname_len = (size_t)(slash - url);
-    char hostname[256];
+    char hostname[BUFFER_SIZE_SMALL];
     if (hostname_len >= sizeof(hostname)) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "HTTPS hostname too long: %s", input);
     }

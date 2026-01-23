@@ -367,7 +367,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   }
 
   // Send READKEY command with keygrip to get the public key S-expression
-  char readkey_cmd[256];
+  char readkey_cmd[BUFFER_SIZE_SMALL];
   safe_snprintf(readkey_cmd, sizeof(readkey_cmd), "READKEY %s\n", found_keygrip);
 
   ssize_t bytes_written = platform_pipe_write(agent_sock, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));

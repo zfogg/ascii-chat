@@ -211,7 +211,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
   }
 
   // Use gpg --list-keys with colon-separated output to check expiry
-  char cmd[512];
+  char cmd[BUFFER_SIZE_MEDIUM];
   safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-colons %s 2>/dev/null", key_id);
 
   FILE *fp = SAFE_POPEN(cmd, "r");
@@ -221,7 +221,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
     return ASCIICHAT_OK;
   }
 
-  char line[1024];
+  char line[BUFFER_SIZE_LARGE];
   bool found_pub = false;
   *is_expired = false;
 

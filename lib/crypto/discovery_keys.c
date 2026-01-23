@@ -43,7 +43,7 @@ static asciichat_error_t ensure_directory_exists(const char *path) {
     return ASCIICHAT_OK;
   }
 
-  char tmp[512];
+  char tmp[BUFFER_SIZE_MEDIUM];
   SAFE_STRNCPY(tmp, path, sizeof(tmp));
 
   // Determine directory separator based on platform
@@ -109,7 +109,7 @@ static bool is_official_server(const char *acds_server) {
   }
 
   // Case-insensitive comparison
-  char server_lower[256];
+  char server_lower[BUFFER_SIZE_SMALL];
   SAFE_STRNCPY(server_lower, acds_server, sizeof(server_lower));
   for (char *p = server_lower; *p; p++) {
     *p = (char)tolower((unsigned char)*p);
@@ -185,7 +185,7 @@ asciichat_error_t discovery_keys_fetch_github(const char *username, bool is_gpg,
   log_debug("Fetching ACDS key from GitHub for user: %s", username);
 
   // Use existing parse_public_key infrastructure
-  char key_spec[512];
+  char key_spec[BUFFER_SIZE_MEDIUM];
   if (is_gpg) {
     snprintf(key_spec, sizeof(key_spec), "github:%s.gpg", username);
   } else {
@@ -210,7 +210,7 @@ asciichat_error_t discovery_keys_fetch_gitlab(const char *username, uint8_t pubk
   log_debug("Fetching ACDS key from GitLab for user: %s", username);
 
   // Use existing parse_public_key infrastructure
-  char key_spec[512];
+  char key_spec[BUFFER_SIZE_MEDIUM];
   snprintf(key_spec, sizeof(key_spec), "gitlab:%s.gpg", username);
 
   public_key_t key;

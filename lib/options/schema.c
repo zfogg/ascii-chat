@@ -455,7 +455,7 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
 
   // Build schema entries
   g_dynamic_schema_count = 0;
-  char toml_key_buffer[256];
+  char toml_key_buffer[BUFFER_SIZE_SMALL];
   char cli_flag_buffer[256];
   char category_buffer[64];
 
