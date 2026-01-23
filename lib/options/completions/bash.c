@@ -231,7 +231,7 @@ static void bash_write_completion_logic(FILE *output)
     "\n"
     "  case \"$prev\" in\n"
     "  # Options that take file paths\n"
-    "  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config | -d | --database | -k)\n"
+    "  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config | -k)\n"
     "    _filedir\n"
     "    return\n"
     "    ;;\n");
