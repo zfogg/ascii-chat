@@ -739,9 +739,9 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
     offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [");
 
     // Append colored frame number
-    if (offset + colored_len < (int)buffer_size) {
+    if (offset + colored_len < buffer_size) {
       memcpy(buffer + offset, colored_frame, colored_len);
-      offset += (int)colored_len;
+      offset += colored_len;
     }
 
     // Append "] symbol\n"
