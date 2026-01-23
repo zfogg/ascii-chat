@@ -90,24 +90,10 @@ static void restore_options(const options_backup_t *backup) {
 // Helper function to test options_init with fork/exec to avoid exit() calls
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
-  // Open debug log BEFORE forking so both parent and child can write
-  FILE *debug_log = fopen("/tmp/options_test_debug.log", "a");
-
   pid_t pid = fork();
   if (pid == 0) {
-    // Child process
-    // Log result BEFORE redirecting output
-    if (debug_log) {
-      fprintf(debug_log, "Child %d: argv: ", getpid());
-      for (int i = 0; i < argc; i++)
-        fprintf(debug_log, "%s ", argv[i]);
-      fprintf(debug_log, "\n");
-      fflush(debug_log);
-    }
-
-    // Redirect all output to /dev/null
-    // TEMPORARILY DISABLED FOR DEBUG
-    // platform_stdio_redirect_to_null_permanent();
+    // Child process - redirect all output to /dev/null
+    platform_stdio_redirect_to_null_permanent();
 
     // Also suppress logging
     log_set_level(LOG_FATAL);
@@ -131,18 +117,11 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     }
 
     // Clear any inherited options state from parent fork
+    // This is critical to avoid RCU state conflicts when forking for tests
     options_state_shutdown();
 
     // options_init now auto-detects mode from argv
-    if (debug_log) {
-      fprintf(debug_log, "Child %d: calling options_init with argc=%d\n", getpid(), argc);
-      fflush(debug_log);
-    }
     asciichat_error_t result = options_init(argc, argv_with_null);
-    if (debug_log) {
-      fprintf(debug_log, "Child %d: options_init returned %d\n", getpid(), result);
-      fflush(debug_log);
-    }
 
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {
@@ -155,15 +134,9 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     int status;
     waitpid(pid, &status, 0);
     int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
-    if (debug_log) {
-      fprintf(debug_log, "Parent: child exit code = %d\n", exit_code);
-      fclose(debug_log);
-    }
     return exit_code;
   } else {
     // Fork failed
-    if (debug_log)
-      fclose(debug_log);
     return -1;
   }
 }
