@@ -137,6 +137,39 @@ const option_descriptor_t *options_registry_find_by_short(char short_name);
  */
 const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, size_t *num_options);
 
+/**
+ * @brief Get all binary-level options
+ *
+ * Returns an array of all binary-level options (those with OPTION_MODE_BINARY).
+ * The array is allocated and must be freed by the caller.
+ *
+ * @param num_options OUTPUT: Number of options returned
+ * @return Array of option descriptors (caller must free), or NULL on error
+ */
+const option_descriptor_t *options_registry_get_binary_options(size_t *num_options);
+
+/**
+ * @brief Get options for help/completions display with unified filtering
+ *
+ * Returns options filtered using the same logic as the help system.
+ * This ensures help output and completions are always in sync.
+ *
+ * Uses the same filtering rules as options_print_help_for_mode():
+ * - For binary-level help (mode == MODE_DISCOVERY): shows all options that apply to any mode
+ * - For mode-specific help: shows only options for that mode (binary options excluded unless also mode-specific)
+ * - Respects hide_from_binary_help and hide_from_mode_help flags
+ *
+ * @param mode Mode to filter for (use MODE_DISCOVERY for binary-level help)
+ * @param for_binary_help If true, use binary-help filtering; if false, use mode-specific filtering
+ * @param num_options OUTPUT: Number of options returned
+ * @return Array of option descriptors (caller must free), or NULL on error
+ *
+ * @note This is the AUTHORITATIVE filtering function for both help and completions.
+ *       Always use this function to ensure consistency across the application.
+ */
+const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help,
+                                                             size_t *num_options);
+
 #ifdef __cplusplus
 }
 #endif

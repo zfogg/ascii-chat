@@ -104,3 +104,15 @@ void action_create_manpage(void);
  * (or specified path if extended). Exits with code 0 on success, 1 on error.
  */
 void action_create_config(void);
+
+/**
+ * @brief Generate shell completions and output to stdout
+ *
+ * Generates shell completion script for the specified shell (bash, fish, zsh, powershell).
+ * Output is dynamically generated from the options registry, ensuring completions are
+ * always in sync with current options.
+ * Exits with code 0 on success, 1 on error.
+ *
+ * @param shell_name Shell name: "bash", "fish", "zsh", or "powershell"
+ */
+void action_completions(const char *shell_name);

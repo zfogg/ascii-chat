@@ -513,6 +513,63 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
   return ASCIICHAT_OK;
 }
 
+/**
+ * @brief Get a registry entry by long name
+ * @note This is used internally for option lookup
+ */
+static const registry_entry_t *registry_find_entry_by_name(const char *long_name) {
+  if (!long_name) {
+    return NULL;
+  }
+
+  for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+    if (strcmp(g_options_registry[i].long_name, long_name) == 0) {
+      return &g_options_registry[i];
+    }
+  }
+  return NULL;
+}
+
+/**
+ * @brief Get a registry entry by short name
+ * @note This is used internally for option lookup
+ */
+static const registry_entry_t *registry_find_entry_by_short(char short_name) {
+  if (short_name == '\0') {
+    return NULL;
+  }
+
+  for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+    if (g_options_registry[i].short_name == short_name) {
+      return &g_options_registry[i];
+    }
+  }
+  return NULL;
+}
+
+/**
+ * @brief Get raw access to registry for completions filtering
+ *
+ * Returns a pointer to the internal registry array. The array is NULL-terminated
+ * (final entry has long_name == NULL). Used by completions generators.
+ *
+ * @return Pointer to registry array (read-only), or NULL on error
+ */
+const registry_entry_t *options_registry_get_raw(void) {
+  registry_init_size();
+  return g_options_registry;
+}
+
+/**
+ * @brief Get total number of registry entries
+ *
+ * @return Number of options in registry (not including NULL terminator)
+ */
+size_t options_registry_get_count(void) {
+  registry_init_size();
+  return g_registry_size;
+}
+
 const option_descriptor_t *options_registry_find_by_name(const char *long_name) {
   if (!long_name) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
@@ -521,10 +578,33 @@ const option_descriptor_t *options_registry_find_by_name(const char *long_name) 
 
   registry_init_size();
 
-  // This would need to search through a built config, not the registry directly
-  // For now, return NULL - will be implemented when we have access to built configs
-  (void)long_name;
-  return NULL;
+  const registry_entry_t *entry = registry_find_entry_by_name(long_name);
+  if (!entry) {
+    SET_ERRNO(ERROR_NOT_FOUND, "Option not found: %s", long_name);
+    return NULL;
+  }
+
+  /* Create descriptor from registry entry */
+  static option_descriptor_t desc;
+  desc.long_name = entry->long_name;
+  desc.short_name = entry->short_name;
+  desc.type = entry->type;
+  desc.offset = entry->offset;
+  desc.help_text = entry->help_text;
+  desc.group = entry->group;
+  desc.hide_from_mode_help = false;
+  desc.hide_from_binary_help = false;
+  desc.default_value = entry->default_value;
+  desc.required = entry->required;
+  desc.env_var_name = entry->env_var_name;
+  desc.validate = entry->validate_fn;
+  desc.parse_fn = entry->parse_fn;
+  desc.action_fn = NULL;
+  desc.owns_memory = entry->owns_memory;
+  desc.optional_arg = entry->optional_arg;
+  desc.mode_bitmask = entry->mode_bitmask;
+
+  return &desc;
 }
 
 const option_descriptor_t *options_registry_find_by_short(char short_name) {
@@ -535,10 +615,60 @@ const option_descriptor_t *options_registry_find_by_short(char short_name) {
 
   registry_init_size();
 
-  // This would need to search through a built config, not the registry directly
-  // For now, return NULL - will be implemented when we have access to built configs
-  (void)short_name;
-  return NULL;
+  const registry_entry_t *entry = registry_find_entry_by_short(short_name);
+  if (!entry) {
+    SET_ERRNO(ERROR_NOT_FOUND, "Option with short name '%c' not found", short_name);
+    return NULL;
+  }
+
+  /* Create descriptor from registry entry */
+  static option_descriptor_t desc;
+  desc.long_name = entry->long_name;
+  desc.short_name = entry->short_name;
+  desc.type = entry->type;
+  desc.offset = entry->offset;
+  desc.help_text = entry->help_text;
+  desc.group = entry->group;
+  desc.hide_from_mode_help = false;
+  desc.hide_from_binary_help = false;
+  desc.default_value = entry->default_value;
+  desc.required = entry->required;
+  desc.env_var_name = entry->env_var_name;
+  desc.validate = entry->validate_fn;
+  desc.parse_fn = entry->parse_fn;
+  desc.action_fn = NULL;
+  desc.owns_memory = entry->owns_memory;
+  desc.optional_arg = entry->optional_arg;
+  desc.mode_bitmask = entry->mode_bitmask;
+
+  return &desc;
+}
+
+/**
+ * @brief Convert registry entry to option descriptor
+ */
+static option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *entry) {
+  option_descriptor_t desc = {0};
+  if (entry) {
+    desc.long_name = entry->long_name;
+    desc.short_name = entry->short_name;
+    desc.type = entry->type;
+    desc.offset = entry->offset;
+    desc.help_text = entry->help_text;
+    desc.group = entry->group;
+    desc.hide_from_mode_help = false;
+    desc.hide_from_binary_help = false;
+    desc.default_value = entry->default_value;
+    desc.required = entry->required;
+    desc.env_var_name = entry->env_var_name;
+    desc.validate = entry->validate_fn;
+    desc.parse_fn = entry->parse_fn;
+    desc.action_fn = NULL;
+    desc.owns_memory = entry->owns_memory;
+    desc.optional_arg = entry->optional_arg;
+    desc.mode_bitmask = entry->mode_bitmask;
+  }
+  return desc;
 }
 
 const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, size_t *num_options) {
@@ -549,9 +679,197 @@ const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, 
 
   registry_init_size();
 
-  // This would filter registry by mode bitmask and return array
-  // For now, return NULL - will be implemented when we have access to built configs
-  (void)mode;
-  *num_options = 0;
-  return NULL;
+  /* Convert mode to bitmask */
+  option_mode_bitmask_t mode_bitmask = 0;
+  switch (mode) {
+    case MODE_SERVER:
+      mode_bitmask = OPTION_MODE_SERVER;
+      break;
+    case MODE_CLIENT:
+      mode_bitmask = OPTION_MODE_CLIENT;
+      break;
+    case MODE_MIRROR:
+      mode_bitmask = OPTION_MODE_MIRROR;
+      break;
+    case MODE_DISCOVERY_SERVER:
+      mode_bitmask = OPTION_MODE_DISCOVERY_SVC;
+      break;
+    case MODE_DISCOVERY:
+      mode_bitmask = OPTION_MODE_DISCOVERY;
+      break;
+    default:
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
+      *num_options = 0;
+      return NULL;
+  }
+
+  /* Count matching options */
+  size_t count = 0;
+  for (size_t i = 0; i < g_registry_size; i++) {
+    if (g_options_registry[i].mode_bitmask & mode_bitmask) {
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    *num_options = 0;
+    return NULL;
+  }
+
+  /* Allocate array for matching options */
+  option_descriptor_t *filtered = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+  if (!filtered) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to allocate filtered options array");
+    *num_options = 0;
+    return NULL;
+  }
+
+  /* Copy matching options */
+  size_t idx = 0;
+  for (size_t i = 0; i < g_registry_size; i++) {
+    if (g_options_registry[i].mode_bitmask & mode_bitmask) {
+      filtered[idx++] = registry_entry_to_descriptor(&g_options_registry[i]);
+    }
+  }
+
+  *num_options = count;
+  return filtered;
+}
+
+const option_descriptor_t *options_registry_get_binary_options(size_t *num_options) {
+  if (!num_options) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Number of options is NULL");
+    return NULL;
+  }
+
+  registry_init_size();
+
+  /* Count binary-level options */
+  size_t count = 0;
+  for (size_t i = 0; i < g_registry_size; i++) {
+    if (g_options_registry[i].mode_bitmask & OPTION_MODE_BINARY) {
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    *num_options = 0;
+    return NULL;
+  }
+
+  /* Allocate array for binary options */
+  option_descriptor_t *binary_opts = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+  if (!binary_opts) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to allocate binary options array");
+    *num_options = 0;
+    return NULL;
+  }
+
+  /* Copy binary options */
+  size_t idx = 0;
+  for (size_t i = 0; i < g_registry_size; i++) {
+    if (g_options_registry[i].mode_bitmask & OPTION_MODE_BINARY) {
+      binary_opts[idx++] = registry_entry_to_descriptor(&g_options_registry[i]);
+    }
+  }
+
+  *num_options = count;
+  return binary_opts;
+}
+
+/**
+ * @brief Check if an option applies to the given mode for display purposes
+ *
+ * This implements the same filtering logic as the help system's option_applies_to_mode().
+ * Used by options_registry_get_for_display() to ensure completions match help output.
+ *
+ * @param entry Registry entry to check
+ * @param mode Mode to check (use MODE_DISCOVERY for binary help)
+ * @param for_binary_help If true, show all options for any mode; if false, filter by mode
+ * @return true if option should be displayed for this mode
+ */
+static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode,
+                                            bool for_binary_help) {
+  if (!entry) {
+    return false;
+  }
+
+  // Hardcoded list of options to hide from binary help (matches builder.c line 752)
+  // These are options that have hide_from_binary_help=true set in builder.c
+  const char *hidden_from_binary[] = {
+    "create-man-page",  // Development tool, hidden from help
+    NULL
+  };
+
+  // When for_binary_help is true (i.e., for 'ascii-chat --help'),
+  // we want to show all options that apply to any mode, plus binary-level options.
+  if (for_binary_help) {
+    // Check if this option is explicitly hidden from binary help
+    for (int i = 0; hidden_from_binary[i] != NULL; i++) {
+      if (strcmp(entry->long_name, hidden_from_binary[i]) == 0) {
+        return false;  // Hidden from binary help
+      }
+    }
+
+    // An option applies if its mode_bitmask has any bit set for any valid mode.
+    // OPTION_MODE_ALL is a bitmask of all modes (including OPTION_MODE_BINARY).
+    return (entry->mode_bitmask & OPTION_MODE_ALL) != 0;
+  }
+
+  // For mode-specific help, show only options for that mode.
+  // Do not show binary options here unless it also specifically applies to the mode.
+  if (mode < 0 || mode > MODE_DISCOVERY) {
+    return false;
+  }
+  option_mode_bitmask_t mode_bit = (1 << mode);
+
+  // Check if it's a binary option. If so, only show if it also explicitly applies to this mode.
+  if ((entry->mode_bitmask & OPTION_MODE_BINARY) && !(entry->mode_bitmask & mode_bit)) {
+    return false; // Binary options not shown in mode-specific help unless also mode-specific
+  }
+
+  return (entry->mode_bitmask & mode_bit) != 0;
+}
+
+const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help,
+                                                             size_t *num_options) {
+  if (!num_options) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "num_options is NULL");
+    return NULL;
+  }
+
+  registry_init_size();
+
+  // Count matching options
+  size_t count = 0;
+  for (size_t i = 0; i < g_registry_size; i++) {
+    if (registry_entry_applies_to_mode(&g_options_registry[i], mode, for_binary_help)) {
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    *num_options = 0;
+    return NULL;
+  }
+
+  // Allocate array
+  option_descriptor_t *descriptors =
+      SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+  if (!descriptors) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate descriptors array");
+    *num_options = 0;
+    return NULL;
+  }
+
+  // Copy matching options
+  size_t idx = 0;
+  for (size_t i = 0; i < g_registry_size; i++) {
+    if (registry_entry_applies_to_mode(&g_options_registry[i], mode, for_binary_help)) {
+      descriptors[idx++] = registry_entry_to_descriptor(&g_options_registry[i]);
+    }
+  }
+
+  *num_options = count;
+  return descriptors;
 }

@@ -1,0 +1,132 @@
+/**
+ * @file powershell.c
+ * @brief PowerShell completion script generator
+ * @ingroup options
+ */
+
+#include <string.h>
+#include <stdio.h>
+#include "options/completions/powershell.h"
+#include "options/registry.h"
+#include "common.h"
+
+static void ps_write_option(FILE *output, const option_descriptor_t *opt)
+{
+  if (!opt) {
+    return;
+  }
+
+  if (opt->short_name != '\0') {
+    fprintf(output, "    @{ Name = '-%c'; Description = '%s' }\n", opt->short_name, opt->help_text);
+  }
+  fprintf(output, "    @{ Name = '--%s'; Description = '%s' }\n", opt->long_name, opt->help_text);
+}
+
+asciichat_error_t completions_generate_powershell(FILE *output)
+{
+  if (!output) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
+  }
+
+  fprintf(output,
+    "# PowerShell completion script for ascii-chat\n"
+    "# Generated from options registry - DO NOT EDIT MANUALLY\n"
+    "# Usage: ascii-chat --completions powershell | Out-String | Invoke-Expression\n"
+    "\n"
+    "$script:AsciiChatCompleter = {\n"
+    "  param($wordToComplete, $commandAst, $cursorPosition)\n"
+    "\n"
+    "  $words = @($commandAst.CommandElements | ForEach-Object { $_.Value })\n"
+    "  $mode = $null\n"
+    "\n"
+    "  foreach ($word in $words) {\n"
+    "    if ($word -in @('server', 'client', 'mirror')) {\n"
+    "      $mode = $word\n"
+    "      break\n"
+    "    }\n"
+    "  }\n"
+    "\n"
+    "  $binaryOptions = @(\n");
+
+  /* Binary options - use unified display API matching help system */
+  size_t binary_count = 0;
+  const option_descriptor_t *binary_opts =
+      options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
+
+  if (binary_opts) {
+    for (size_t i = 0; i < binary_count; i++) {
+      ps_write_option(output, &binary_opts[i]);
+    }
+    SAFE_FREE(binary_opts);
+  }
+
+  fprintf(output, "  )\n\n  $serverOptions = @(\n");
+
+  /* Server options - use unified display API matching help system */
+  size_t server_count = 0;
+  const option_descriptor_t *server_opts =
+      options_registry_get_for_display(MODE_SERVER, false, &server_count);
+
+  if (server_opts) {
+    for (size_t i = 0; i < server_count; i++) {
+      ps_write_option(output, &server_opts[i]);
+    }
+    SAFE_FREE(server_opts);
+  }
+
+  fprintf(output, "  )\n\n  $clientOptions = @(\n");
+
+  /* Client options - use unified display API matching help system */
+  size_t client_count = 0;
+  const option_descriptor_t *client_opts =
+      options_registry_get_for_display(MODE_CLIENT, false, &client_count);
+
+  if (client_opts) {
+    for (size_t i = 0; i < client_count; i++) {
+      ps_write_option(output, &client_opts[i]);
+    }
+    SAFE_FREE(client_opts);
+  }
+
+  fprintf(output, "  )\n\n  $mirrorOptions = @(\n");
+
+  /* Mirror options - use unified display API matching help system */
+  size_t mirror_count = 0;
+  const option_descriptor_t *mirror_opts =
+      options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
+
+  if (mirror_opts) {
+    for (size_t i = 0; i < mirror_count; i++) {
+      ps_write_option(output, &mirror_opts[i]);
+    }
+    SAFE_FREE(mirror_opts);
+  }
+
+  fprintf(output,
+    "  )\n"
+    "\n"
+    "  $options = $binaryOptions\n"
+    "  \n"
+    "  if ($mode -eq 'server') {\n"
+    "    $options += $serverOptions\n"
+    "  } elseif ($mode -eq 'client') {\n"
+    "    $options += $clientOptions\n"
+    "  } elseif ($mode -eq 'mirror') {\n"
+    "    $options += $mirrorOptions\n"
+    "  }\n"
+    "\n"
+    "  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n"
+    "    @('server', 'client', 'mirror') | Where-Object { $_ -like \"$wordToComplete*\" } | ForEach-Object {\n"
+    "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \"Mode: $_\")\n"
+    "    }\n"
+    "  } else {\n"
+    "    $options | Where-Object { $_.Name -like \"$wordToComplete*\" } | ForEach-Object {\n"
+    "      [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', $_.Description)\n"
+    "    }\n"
+    "  }\n"
+    "}\n"
+    "\n"
+    "Register-ArgumentCompleter -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n");
+
+  return ASCIICHAT_OK;
+}

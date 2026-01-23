@@ -16,6 +16,7 @@
 #include "options/manpage.h"
 #include "options/presets.h"
 #include "options/config.h"
+#include "options/completions/completions.h"
 #include "platform/terminal.h"
 #include "version.h"
 #include "video/webcam/webcam.h"
@@ -353,6 +354,32 @@ void action_create_config(void) {
   }
 
   (void)fprintf(stdout, "Created default config file at: %s\n", config_path);
+  (void)fflush(stdout);
+  _exit(0);
+}
+
+// ============================================================================
+// Shell Completions Action
+// ============================================================================
+
+void action_completions(const char *shell_name) {
+  if (!shell_name || strlen(shell_name) == 0) {
+    (void)fprintf(stderr, "Error: --completions requires shell name (bash, fish, zsh, powershell)\n");
+    _exit(1);
+  }
+
+  completion_format_t format = completions_parse_shell_name(shell_name);
+  if (format == COMPLETION_FORMAT_UNKNOWN) {
+    (void)fprintf(stderr, "Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)\n", shell_name);
+    _exit(1);
+  }
+
+  asciichat_error_t result = completions_generate_for_shell(format, stdout);
+  if (result != ASCIICHAT_OK) {
+    (void)fprintf(stderr, "Error: Failed to generate %s completions\n", completions_get_shell_name(format));
+    _exit(1);
+  }
+
   (void)fflush(stdout);
   _exit(0);
 }

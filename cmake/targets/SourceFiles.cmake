@@ -325,6 +325,12 @@ set(CORE_SRCS
     lib/options/actions.c          # Action option callbacks (NEW)
     lib/options/layout.c           # Two-column layout helpers (NEW)
     lib/options/manpage.c          # Man page template generation (NEW)
+    lib/options/enums.c            # Enum value registry (NEW)
+    lib/options/completions/completions.c  # Shell completion dispatcher (NEW)
+    lib/options/completions/bash.c         # Bash completion generator (NEW)
+    lib/options/completions/fish.c         # Fish completion generator (NEW)
+    lib/options/completions/zsh.c          # Zsh completion generator (NEW)
+    lib/options/completions/powershell.c   # PowerShell completion generator (NEW)
     lib/version.c
     # Discovery Service core (reused by discovery-service executable and tests)
     lib/discovery/session.c

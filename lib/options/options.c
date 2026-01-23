@@ -81,6 +81,7 @@
 #include "options/validation.h"
 #include "options/manpage.h"
 #include "options/presets.h"
+#include "options/actions.h"
 #include "network/mdns/discovery.h"
 
 #include "options/config.h"
@@ -568,6 +569,17 @@ asciichat_error_t options_init(int argc, char **argv) {
           }
         }
         break;
+      }
+      if (strcmp(argv[i], "--completions") == 0) {
+        // Handle --completions: generate shell completion scripts
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          action_completions(argv[i + 1]);
+          // action_completions() calls exit(), so we don't reach here
+        } else {
+          (void)fprintf(stderr, "Error: --completions requires shell name (bash, fish, zsh, powershell)\n");
+          _exit(1);
+        }
+        break; // Unreachable, but for clarity
       }
     }
   }
