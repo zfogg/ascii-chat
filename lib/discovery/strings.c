@@ -70,14 +70,12 @@ static void acds_strings_cleanup(void) {
   log_debug("Session string word cache cleaned up");
 }
 
-asciichat_error_t acds_string_init(void) {
-  // libsodium's randombytes is already initialized by sodium_init()
-  // which should be called at program startup
-  if (sodium_init() < 0) {
-    return SET_ERRNO(ERROR_CRYPTO_INIT, "Failed to initialize libsodium");
-  }
-
-  // Only initialize cache once
+/**
+ * @brief Build hashtable caches for word validation (lazy initialization)
+ * Called on first validation, not during init - avoids 7500+ slow HASH_ADD_KEYPTR calls
+ */
+static asciichat_error_t build_validation_caches(void) {
+  // Only build once
   if (g_cache_initialized) {
     return ASCIICHAT_OK;
   }
@@ -126,6 +124,15 @@ asciichat_error_t acds_string_init(void) {
   }
 
   log_debug("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t acds_string_init(void) {
+  // Fast initialization - only init libsodium
+  // Hashtable building is deferred until actually needed for validation
+  if (sodium_init() < 0) {
+    return SET_ERRNO(ERROR_CRYPTO_INIT, "Failed to initialize libsodium");
+  }
   return ASCIICHAT_OK;
 }
 
@@ -209,10 +216,10 @@ bool is_session_string(const char *str) {
     return false;
   }
 
-  // Lazy initialization: initialize cache on first use
+  // Lazy initialization: build validation caches on first use
   if (!g_cache_initialized) {
-    asciichat_error_t init_err = acds_string_init();
-    if (init_err != ASCIICHAT_OK) {
+    asciichat_error_t cache_err = build_validation_caches();
+    if (cache_err != ASCIICHAT_OK) {
       log_warn("Failed to initialize session string cache; using format-only validation");
       // Fall back to format validation
       bool valid = acds_string_validate(str);
