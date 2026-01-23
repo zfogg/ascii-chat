@@ -716,7 +716,7 @@ asciichat_error_t options_init(int argc, char **argv) {
           // action_completions() calls exit(), so we don't reach here
         } else {
           log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
-          exit(1);
+          exit(ERROR_USAGE);
         }
         break; // Unreachable, but for clarity
       }

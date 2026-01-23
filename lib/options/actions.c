@@ -39,7 +39,7 @@ void action_list_webcams(void) {
   asciichat_error_t result = webcam_list_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to enumerate webcam devices");
-    exit(1);
+    exit(ERROR_WEBCAM);
   }
 
   if (device_count == 0) {
@@ -68,7 +68,7 @@ void action_list_microphones(void) {
   asciichat_error_t result = audio_list_input_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to enumerate audio input devices");
-    exit(1);
+    exit(ERROR_AUDIO);
   }
 
   if (device_count == 0) {
@@ -103,7 +103,7 @@ void action_list_speakers(void) {
   asciichat_error_t result = audio_list_output_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to enumerate audio output devices");
-    exit(1);
+    exit(ERROR_AUDIO);
   }
 
   if (device_count == 0) {
@@ -293,7 +293,7 @@ void action_create_manpage(void) {
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     log_plain_stderr("Error: Failed to get binary options config");
-    _exit(1);
+    exit(ERROR_FILE_OPERATION);
   }
 
   // Generate merged man page from embedded or filesystem resources
@@ -310,10 +310,10 @@ void action_create_manpage(void) {
     } else {
       log_plain_stderr("Error: Failed to generate man page");
     }
-    _exit(1);
+    exit(ERROR_FILE_OPERATION);
   }
 
-  _exit(0);
+  exit(0);
 }
 
 // ============================================================================
@@ -325,7 +325,7 @@ void action_create_config(void) {
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
     log_plain_stderr("Error: Failed to get binary options config");
-    exit(1);
+    exit(ERROR_CONFIG);
   }
 
   // Parse just to get the config path if provided
@@ -338,7 +338,7 @@ void action_create_config(void) {
   char *config_dir = get_config_dir();
   if (!config_dir) {
     log_plain_stderr("Error: Failed to determine default config directory");
-    exit(1);
+    exit(ERROR_CONFIG);
   }
   snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
   SAFE_FREE(config_dir);
@@ -352,7 +352,7 @@ void action_create_config(void) {
     } else {
       log_plain_stderr("Error: Failed to create config file at %s", config_path);
     }
-    exit(1);
+    exit(ERROR_CONFIG);
   }
 
   log_plain_stderr("Created default config file at: %s", config_path);
@@ -366,19 +366,19 @@ void action_create_config(void) {
 void action_completions(const char *shell_name) {
   if (!shell_name || strlen(shell_name) == 0) {
     log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
-    exit(1);
+    exit(ERROR_USAGE);
   }
 
   completion_format_t format = completions_parse_shell_name(shell_name);
   if (format == COMPLETION_FORMAT_UNKNOWN) {
     log_plain_stderr("Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
-    exit(1);
+    exit(ERROR_USAGE);
   }
 
   asciichat_error_t result = completions_generate_for_shell(format, stdout);
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to generate %s completions", completions_get_shell_name(format));
-    exit(1);
+    exit(ERROR_USAGE);
   }
 
   exit(0);
