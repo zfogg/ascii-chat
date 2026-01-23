@@ -626,30 +626,26 @@ asciichat_error_t options_init(int argc, char **argv) {
       return ASCIICHAT_OK;
     }
     if (create_config) {
-      // Handle --config-create: create default config file and exit
-      char config_path[PLATFORM_MAX_PATH_LENGTH];
-      if (config_create_path) {
-        SAFE_STRNCPY(config_path, config_create_path, sizeof(config_path));
-      } else {
-        char *config_dir = get_config_dir();
-        if (!config_dir) {
-          fprintf(stderr, "Error: Failed to determine default config directory\n");
-          return ERROR_CONFIG;
-        }
-        snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
-        SAFE_FREE(config_dir);
-      }
-      asciichat_error_t result = config_create_default(config_path, &opts);
+      // Handle --config-create: create default config file or output to stdout
+      // If a path was provided, write to that file (error if it fails)
+      // If no path was provided, write to stdout
+      asciichat_error_t result = config_create_default(config_create_path, &opts);
       if (result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
         if (HAS_ERRNO(&err_ctx)) {
           fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+        } else if (config_create_path) {
+          fprintf(stderr, "Error: Failed to create config file at %s\n", config_create_path);
         } else {
-          fprintf(stderr, "Error: Failed to create config file at %s\n", config_path);
+          fprintf(stderr, "Error: Failed to generate config\n");
         }
         return result;
       }
-      printf("Created default config file at: %s\n", config_path);
+      if (config_create_path) {
+        // File was created successfully
+        printf("Created default config file at: %s\n", config_create_path);
+      }
+      // If config_create_path was NULL, config was written to stdout, so no message needed
       exit(0);
     }
     if (create_manpage) {

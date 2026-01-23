@@ -665,106 +665,100 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
 
 asciichat_error_t config_create_default(const char *config_path, const options_t *opts) {
   char *config_path_expanded = NULL;
-  defer(SAFE_FREE(config_path_expanded));
+  FILE *output_file = NULL;
+  bool use_file = false;
 
-  if (config_path) {
+  defer(SAFE_FREE(config_path_expanded));
+  // Don't use defer for output_file - we'll handle it manually
+
+  // Determine if we're writing to a file or stdout
+  if (config_path && strlen(config_path) > 0) {
+    // User provided a filepath - we must write to that file or error
+    use_file = true;
+
     // Use custom path provided
     config_path_expanded = expand_path(config_path);
     if (!config_path_expanded) {
       // If expansion fails, try using as-is (might already be absolute)
       config_path_expanded = platform_strdup(config_path);
     }
-  } else {
-    // Use default location with XDG support
-    char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
-    if (config_dir) {
-      size_t len = strlen(config_dir) + strlen("config.toml") + 1;
-      config_path_expanded = SAFE_MALLOC(len, char *);
-      if (config_path_expanded) {
-        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-      }
-    }
 
-    // Fallback to ~/.ascii-chat/config.toml
     if (!config_path_expanded) {
-      config_path_expanded = expand_path("~/.ascii-chat/config.toml");
+      return SET_ERRNO(ERROR_CONFIG, "Failed to resolve config file path");
     }
-  }
 
-  if (!config_path_expanded) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to resolve config file path");
-  }
-
-  char *validated_config_path = NULL;
-  asciichat_error_t validate_result =
-      path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  if (validate_result != ASCIICHAT_OK) {
+    char *validated_config_path = NULL;
+    asciichat_error_t validate_result =
+        path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+    if (validate_result != ASCIICHAT_OK) {
+      SAFE_FREE(config_path_expanded);
+      return validate_result;
+    }
     SAFE_FREE(config_path_expanded);
-    return validate_result;
-  }
-  SAFE_FREE(config_path_expanded);
-  config_path_expanded = validated_config_path;
+    config_path_expanded = validated_config_path;
 
-  // Check if file already exists
-  struct stat st;
-  if (stat(config_path_expanded, &st) == 0) {
-    // File exists - ask user if they want to overwrite
-    log_plain_stderr("Config file already exists: %s", config_path_expanded);
+    // Check if file already exists
+    struct stat st;
+    if (stat(config_path_expanded, &st) == 0) {
+      // File exists - ask user if they want to overwrite
+      log_plain_stderr("Config file already exists: %s", config_path_expanded);
 
-    bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
-    if (!overwrite) {
-      log_plain_stderr("Config file creation cancelled.");
-      return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
-    }
-
-    // User confirmed overwrite - continue to create file (will overwrite existing)
-    log_plain_stderr("Overwriting existing config file...");
-  }
-
-  // Create directory if needed
-  char *dir_path = platform_strdup(config_path_expanded);
-  if (!dir_path) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
-  }
-
-  // Find the last path separator
-  char *last_sep = strrchr(dir_path, PATH_DELIM);
-
-  if (last_sep) {
-    *last_sep = '\0';
-    // Create directory (similar to known_hosts.c approach)
-    int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
-    if (mkdir_result != 0 && errno != EEXIST) {
-      // mkdir failed and it's not because the directory already exists
-      // Verify if directory actually exists despite the error (Windows compatibility)
-      struct stat test_st;
-      if (stat(dir_path, &test_st) != 0) {
-        // Directory doesn't exist and we couldn't create it
-        asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
-        SAFE_FREE(dir_path);
-        return err;
+      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      if (!overwrite) {
+        log_plain_stderr("Config file creation cancelled.");
+        return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
       }
-      // Directory exists despite error, proceed
-    }
-  }
-  SAFE_FREE(dir_path);
 
-  // Create file with default values
-  FILE *f = platform_fopen(config_path_expanded, "w");
-  defer(SAFE_FCLOSE(f));
-  if (!f) {
-    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
+      // User confirmed overwrite - continue to create file (will overwrite existing)
+      log_plain_stderr("Overwriting existing config file...");
+    }
+
+    // Create directory if needed
+    char *dir_path = platform_strdup(config_path_expanded);
+    if (!dir_path) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
+    }
+
+    // Find the last path separator
+    char *last_sep = strrchr(dir_path, PATH_DELIM);
+
+    if (last_sep) {
+      *last_sep = '\0';
+      // Create directory (similar to known_hosts.c approach)
+      int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
+      if (mkdir_result != 0 && errno != EEXIST) {
+        // mkdir failed and it's not because the directory already exists
+        // Verify if directory actually exists despite the error (Windows compatibility)
+        struct stat test_st;
+        if (stat(dir_path, &test_st) != 0) {
+          // Directory doesn't exist and we couldn't create it
+          asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
+          SAFE_FREE(dir_path);
+          return err;
+        }
+        // Directory exists despite error, proceed
+      }
+    }
+    SAFE_FREE(dir_path);
+
+    // Open file for writing
+    output_file = platform_fopen(config_path_expanded, "w");
+    if (!output_file) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
+    }
+  } else {
+    // No filepath provided - write to stdout
+    output_file = stdout;
   }
 
   // Write version comment
-  (void)fprintf(f, "# ascii-chat configuration file\n");
-  (void)fprintf(f, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+  (void)fprintf(output_file, "# ascii-chat configuration file\n");
+  (void)fprintf(output_file, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
                 ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION);
-  (void)fprintf(f, "#\n");
-  (void)fprintf(f, "# If you upgrade ascii-chat and this version comment changes, you may need to\n");
-  (void)fprintf(f, "# delete and regenerate this file with: ascii-chat --config-create\n");
-  (void)fprintf(f, "#\n\n");
+  (void)fprintf(output_file, "#\n");
+  (void)fprintf(output_file, "# If you upgrade ascii-chat and this version comment changes, you may need to\n");
+  (void)fprintf(output_file, "# delete and regenerate this file with: ascii-chat --config-create\n");
+  (void)fprintf(output_file, "#\n\n");
 
   // Get all options from schema
   size_t metadata_count = 0;
@@ -810,7 +804,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     }
 
     // Write section header
-    (void)fprintf(f, "[%s]\n", category);
+    (void)fprintf(output_file, "[%s]\n", category);
 
     // Track which options we've written (to avoid duplicates like log_file vs logging.log_file)
     bool written_flags[64] = {0}; // Max options per category
@@ -852,7 +846,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
 
       // Write description comment if available
       if (meta->description && strlen(meta->description) > 0) {
-        (void)fprintf(f, "# %s\n", meta->description);
+        (void)fprintf(output_file, "# %s\n", meta->description);
       }
 
       // Format and write the option value based on type
@@ -860,9 +854,9 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
       case OPTION_TYPE_STRING: {
         const char *str_value = (const char *)field_ptr;
         if (str_value && strlen(str_value) > 0) {
-          (void)fprintf(f, "#%s = \"%s\"\n", key_name, str_value);
+          (void)fprintf(output_file, "#%s = \"%s\"\n", key_name, str_value);
         } else {
-          (void)fprintf(f, "#%s = \"\"\n", key_name);
+          (void)fprintf(output_file, "#%s = \"\"\n", key_name);
         }
         break;
       }
@@ -873,7 +867,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         } else {
           int_value = *(int *)field_ptr;
         }
-        (void)fprintf(f, "#%s = %d\n", key_name, int_value);
+        (void)fprintf(output_file, "#%s = %d\n", key_name, int_value);
         break;
       }
       case OPTION_TYPE_BOOL: {
@@ -883,17 +877,17 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         } else {
           bool_value = *(bool *)field_ptr;
         }
-        (void)fprintf(f, "#%s = %s\n", key_name, bool_value ? "true" : "false");
+        (void)fprintf(output_file, "#%s = %s\n", key_name, bool_value ? "true" : "false");
         break;
       }
       case OPTION_TYPE_DOUBLE: {
         // Check field_size to distinguish float from double
         if (meta->field_size == sizeof(float)) {
           float float_value = *(float *)field_ptr;
-          (void)fprintf(f, "#%s = %.1f\n", key_name, (double)float_value);
+          (void)fprintf(output_file, "#%s = %.1f\n", key_name, (double)float_value);
         } else {
           double double_value = *(double *)field_ptr;
-          (void)fprintf(f, "#%s = %.1f\n", key_name, double_value);
+          (void)fprintf(output_file, "#%s = %.1f\n", key_name, double_value);
         }
         break;
       }
@@ -904,7 +898,12 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     }
 
     // Add blank line between sections
-    (void)fprintf(f, "\n");
+    (void)fprintf(output_file, "\n");
+  }
+
+  // Close file if we opened one (but not stdout)
+  if (use_file && output_file) {
+    SAFE_FCLOSE(output_file);
   }
 
   return ASCIICHAT_OK;
