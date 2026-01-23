@@ -22,11 +22,14 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # -Wno-unterminated-string-initialization was added in Clang 20
 check_c_compiler_flag("-Wno-unterminated-string-initialization" HAVE_WNO_UNTERMINATED_STRING_INIT)
 
-# Check if we're building OBJECT libraries (Windows dev builds)
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
-    set(BUILDING_OBJECT_LIBS TRUE)
-else()
+# Check if we're building OBJECT libraries (debug builds)
+# OBJECT libraries eliminate duplicate compilation: modules compile once,
+# shared library and tests both link to the same object files
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     set(BUILDING_OBJECT_LIBS FALSE)
+else()
+    # Debug/Dev builds use OBJECT libraries to avoid duplication
+    set(BUILDING_OBJECT_LIBS TRUE)
 endif()
 
 # In CMakeLists.txt - for macOS
@@ -37,17 +40,20 @@ endif()
 
 # Helper macro to create a module with common settings
 macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
-    # For Windows Debug/Dev builds: use OBJECT libraries so we can build a proper DLL
-    # For other platforms/builds: use STATIC libraries
+    # Use OBJECT libraries in debug builds to eliminate duplication
+    # (shared library and tests both link to the same object files, compiled once)
+    # Use STATIC libraries in release builds
     if(BUILDING_OBJECT_LIBS)
         add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
+        # OBJECT libraries need PIC for linking into shared libraries
+        set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         # Mark all symbols for export when building DLL from OBJECT libraries
         target_compile_definitions(${MODULE_NAME} PRIVATE
             _WIN32_WINNT=0x0A00  # Windows 10
             BUILDING_ASCIICHAT_DLL=1
         )
     else()
-        # Module libraries are intermediate build artifacts
+        # Release builds: use STATIC libraries (intermediate build artifacts)
         # They should not be in the 'all' target by default
         add_library(${MODULE_NAME} STATIC EXCLUDE_FROM_ALL ${MODULE_SRCS})
         # For static library builds on Windows, define BUILDING_STATIC_LIB
@@ -426,10 +432,12 @@ endif()
 # =============================================================================
 
 # Shared unified library (libasciichat.so / libasciichat.dylib / asciichat.dll)
-# For Windows Debug/Dev: Build from OBJECT libraries to enable proper symbol export
-# For other platforms/builds: Link static libraries together
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
-    # Windows dev builds: Create DLL from OBJECT libraries (modules compiled as OBJECT)
+# Debug builds: Create from OBJECT libraries (eliminates duplication, tests link to same objects)
+# Release builds: Create from sources (no duplication risk)
+if(BUILDING_OBJECT_LIBS)
+    # Debug builds: Create shared library from OBJECT libraries (modules compiled as OBJECT)
+    # This eliminates duplication: both the shared library and test executables
+    # link to the same compiled object files.
     # Note: ascii-chat-panic is always included as it provides runtime logging functions
     # that may be called by panic-instrumented code
     add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
@@ -463,8 +471,10 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
 
-    # Explicitly set import library location for Windows
-    target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+    # Windows: Explicitly set import library location for Windows
+    if(WIN32)
+        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+    endif()
 
     # Auto-generate .def file from OBJECT libraries
     # Use a wrapper script to collect object files and generate .def
@@ -484,33 +494,36 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     )
 
     # Generate the .def file using a custom command
-    # Convert list to string for passing to script
-    string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
+    # Windows: Auto-generate .def file for symbol export
+    if(WIN32)
+        # Convert list to string for passing to script
+        string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
 
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
-        COMMAND ${CMAKE_COMMAND}
-            -DNM_TOOL=${CMAKE_NM}
-            -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
-            -DMODULE_TARGETS=${MODULE_TARGETS_STR}
-            -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
-            -DLIBRARY_NAME=asciichat
-            -P ${CMAKE_SOURCE_DIR}/cmake/targets/GenerateDefFile.cmake
-        DEPENDS ${MODULE_TARGETS}
-        COMMENT "Generating Windows .def file from object files"
-        VERBATIM
-    )
+        add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
+            COMMAND ${CMAKE_COMMAND}
+                -DNM_TOOL=${CMAKE_NM}
+                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                -DMODULE_TARGETS=${MODULE_TARGETS_STR}
+                -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
+                -DLIBRARY_NAME=asciichat
+                -P ${CMAKE_SOURCE_DIR}/cmake/targets/GenerateDefFile.cmake
+            DEPENDS ${MODULE_TARGETS}
+            COMMENT "Generating Windows .def file from object files"
+            VERBATIM
+        )
 
-    # Create a target for the .def file generation
-    add_custom_target(generate-def-file DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def)
+        # Create a target for the .def file generation
+        add_custom_target(generate-def-file DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def)
 
-    # Make the DLL depend on the .def file generation
-    add_dependencies(ascii-chat-shared generate-def-file)
+        # Make the DLL depend on the .def file generation
+        add_dependencies(ascii-chat-shared generate-def-file)
 
-    # Use the generated .def file for linking
-    target_link_options(ascii-chat-shared PRIVATE
-        "LINKER:/DEF:${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
-    )
+        # Use the generated .def file for linking
+        target_link_options(ascii-chat-shared PRIVATE
+            "LINKER:/DEF:${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
+        )
+    endif()
 
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
@@ -521,10 +534,63 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
+    # Unix: Set proper visibility and TLS model for shared library
+    if(NOT WIN32)
+        target_compile_options(ascii-chat-shared PRIVATE
+            -fvisibility=default
+            -ftls-model=global-dynamic
+            -fno-pie
+        )
+    endif()
+
     # Add dependencies from modules
     add_dependencies(ascii-chat-shared generate_version)
     if(DEFINED LIBSODIUM_BUILD_TARGET)
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
+    endif()
+
+    # Link external dependencies (libsodium, zstd, opus, etc.)
+    # These are needed because shared library is created from OBJECT files,
+    # which don't automatically bring in their module dependencies
+    target_link_libraries(ascii-chat-shared PRIVATE
+        ${LIBSODIUM_LIBRARIES}
+        ${ZSTD_LIBRARIES}
+        ${OPUS_LIBRARIES}
+        ${SQLITE3_LIBRARIES}
+    )
+
+    # Link PortAudio with platform-specific dependencies
+    if(APPLE)
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_LIBRARIES}
+            ${COREAUDIO_FRAMEWORK}
+            ${AUDIOUNIT_FRAMEWORK}
+            ${AUDIOTOOLBOX_FRAMEWORK}
+            ${CORESERVICES_FRAMEWORK}
+        )
+    elseif(PLATFORM_LINUX AND JACK_LIB)
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_LIBRARIES}
+            ${JACK_LIB}
+        )
+    else()
+        target_link_libraries(ascii-chat-shared PRIVATE ${PORTAUDIO_LIBRARIES})
+    endif()
+
+    # Link WebRTC and other network libraries
+    target_link_libraries(ascii-chat-shared PRIVATE
+        libdatachannel
+        OpenSSL::Crypto
+    )
+    if(MINIUPNPC_FOUND)
+        target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
+        target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
+        if(NATPMP_LIBRARY)
+            target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
+        endif()
+    endif()
+    if(BEARSSL_FOUND)
+        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
 
     # Note: System library dependencies will be added below

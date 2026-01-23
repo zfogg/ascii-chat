@@ -310,58 +310,55 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_compile_definitions(${test_exe_name} PRIVATE CRITERION_NO_EARLY_EXIT=1)
         endif()
 
-        # Link test dependencies (order matters for linking)
-        # Handle circular dependencies between libraries
-        # This is needed because core→network→core and core→crypto have circular refs
-        if(NOT WIN32 AND NOT APPLE)
-            # Linux: Use --start-group/--end-group to resolve circular dependencies
-            # IMPORTANT: All internal libraries must be inside the group, otherwise
-            # the linker will process libraries outside the group first and fail
-            # to resolve circular references
-            set(_linux_test_libs
-                ascii-chat-simd
-                ascii-chat-video
-                ascii-chat-audio
-                ascii-chat-core
-                ascii-chat-panic
-                ascii-chat-network
-                ascii-chat-crypto
-                ascii-chat-platform
-                ascii-chat-data-structures
-                ascii-chat-util
-            )
-            # Add query runtime if available (must be in group for symbol resolution)
-            if(TARGET ascii-query-runtime)
-                list(APPEND _linux_test_libs ascii-query-runtime)
-            endif()
+        # Link test dependencies via shared library + external dependencies
+        # Ensure shared library is built first
+        add_dependencies(${test_exe_name} ascii-chat-shared)
+
+        # Link against shared library which contains all code
+        target_link_libraries(${test_exe_name}
+            ascii-chat-shared
+            ${TEST_LDFLAGS}
+        )
+
+        # External dependencies needed because shared library has them as undefined symbols
+        # (normal for dylibs - symbols resolved at runtime)
+        target_link_libraries(${test_exe_name}
+            ${LIBSODIUM_LIBRARIES}
+            ${ZSTD_LIBRARIES}
+            ${OPUS_LIBRARIES}
+            ${SQLITE3_LIBRARIES}
+            libdatachannel
+            OpenSSL::Crypto
+            -lc++  # C++ stdlib needed for libdatachannel
+        )
+        if(APPLE)
             target_link_libraries(${test_exe_name}
-                -Wl,--start-group
-                ${_linux_test_libs}
-                -Wl,--end-group
-                ${TEST_LDFLAGS}
+                ${PORTAUDIO_LIBRARIES}
+                ${COREAUDIO_FRAMEWORK}
+                ${AUDIOUNIT_FRAMEWORK}
+                ${AUDIOTOOLBOX_FRAMEWORK}
+                ${CORESERVICES_FRAMEWORK}
             )
-        elseif(APPLE)
-            # macOS: List libraries multiple times (ld64 doesn't have --start-group)
+        elseif(PLATFORM_LINUX AND JACK_LIB)
             target_link_libraries(${test_exe_name}
-                ascii-chat-lib
-                ${TEST_LDFLAGS}
-                ascii-chat-core
-                ascii-chat-panic
-                ascii-chat-util
-                ascii-chat-network
-                ascii-chat-crypto
+                ${PORTAUDIO_LIBRARIES}
+                ${JACK_LIB}
             )
         else()
-            # Windows
-            target_link_libraries(${test_exe_name}
-                ascii-chat-lib
-                ascii-chat-panic
-                ${TEST_LDFLAGS}
-            )
+            target_link_libraries(${test_exe_name} ${PORTAUDIO_LIBRARIES})
+        endif()
+        if(MINIUPNPC_FOUND)
+            target_link_libraries(${test_exe_name} ${MINIUPNPC_LIBRARIES})
+            if(NATPMP_LIBRARY)
+                target_link_libraries(${test_exe_name} ${NATPMP_LIBRARY})
+            endif()
+        endif()
+        if(BEARSSL_FOUND)
+            target_link_libraries(${test_exe_name} ${BEARSSL_LIBRARIES})
         endif()
 
-        # Add query runtime library for macOS and Windows (Linux handled in --start-group above)
-        if(TARGET ascii-query-runtime AND (APPLE OR WIN32))
+        # Add query runtime library if available
+        if(TARGET ascii-query-runtime)
             target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
