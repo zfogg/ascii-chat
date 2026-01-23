@@ -249,50 +249,42 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   }
 
   bool is_interactive = platform_is_interactive();
-  bool previous_terminal_state = false;
 
-  // Only lock terminal and show prompt if interactive
-  if (is_interactive) {
-    // Lock terminal so only this thread can output to terminal
-    previous_terminal_state = log_lock_terminal();
+  // Only prompt if interactive (avoid blocking on non-TTY stdin)
+  if (!is_interactive) {
+    return default_yes;
+  }
 
-    // Display prompt with default indicator
-    if (default_yes) {
-      log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
-    } else {
-      log_plain_stderr_nonewline("%s (y/N)? ", prompt);
-    }
+  // Display prompt with default indicator
+  if (default_yes) {
+    log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+  } else {
+    log_plain_stderr_nonewline("%s (y/N)? ", prompt);
   }
 
   bool result = default_yes;
 
-  // Only read from stdin if interactive (avoid blocking on non-TTY stdin)
-  if (is_interactive) {
-    char response[16];
-    if (fgets(response, sizeof(response), stdin) != NULL) {
-      // Remove trailing newline
-      size_t len = strlen(response);
-      if (len > 0 && response[len - 1] == '\n') {
-        response[len - 1] = '\0';
-        len--;
-      }
-
-      // Check for explicit yes/no, otherwise use default
-      if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0) {
-        result = true;
-      } else if (strcasecmp(response, "no") == 0 || strcasecmp(response, "n") == 0) {
-        result = false;
-      } else {
-        // Empty response or invalid input = use default
-        result = default_yes;
-      }
-    } else {
-      // fgets failed (EOF or error) - return default
-      result = default_yes;
+  char response[16];
+  if (fgets(response, sizeof(response), stdin) != NULL) {
+    // Remove trailing newline
+    size_t len = strlen(response);
+    if (len > 0 && response[len - 1] == '\n') {
+      response[len - 1] = '\0';
+      len--;
     }
 
-    // Unlock terminal
-    log_unlock_terminal(previous_terminal_state);
+    // Check for explicit yes/no, otherwise use default
+    if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0) {
+      result = true;
+    } else if (strcasecmp(response, "no") == 0 || strcasecmp(response, "n") == 0) {
+      result = false;
+    } else {
+      // Empty response or invalid input = use default
+      result = default_yes;
+    }
+  } else {
+    // fgets failed (EOF or error) - return default
+    result = default_yes;
   }
 
   return result;

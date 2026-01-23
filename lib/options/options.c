@@ -93,6 +93,7 @@
 #include "platform/terminal.h"
 #include "platform/util.h"
 #include "util/path.h"
+#include "util/time.h"
 #include "network/mdns/discovery.h"
 #include "version.h"
 
@@ -556,6 +557,16 @@ asciichat_error_t options_init(int argc, char **argv) {
   asciichat_error_t rcu_init_result = options_state_init();
   if (rcu_init_result != ASCIICHAT_OK) {
     return rcu_init_result;
+  }
+
+  // Initialize logging system early so prompts display properly (e.g., for --config-create)
+  // This must happen before config_create_default is called
+  if (!timer_system_init()) {
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
+  }
+  asciichat_error_t logging_init_result = asciichat_shared_init("options-early.log", false);
+  if (logging_init_result != ASCIICHAT_OK) {
+    return logging_init_result;
   }
 
   // Create local options struct and initialize with defaults
