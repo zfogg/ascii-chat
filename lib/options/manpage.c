@@ -580,6 +580,7 @@ static void write_positional_section(FILE *f, const options_config_t *config) {
     // Add examples if present
     if (pos_arg->num_examples > 0) {
       fprintf(f, ".RS\n");
+      fprintf(f, ".PP\n");
       fprintf(f, ".B Examples:\n");
       fprintf(f, ".RS\n");
       for (size_t j = 0; j < pos_arg->num_examples; j++) {
