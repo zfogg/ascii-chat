@@ -193,9 +193,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // NOTE: Do NOT free 'image':
-    // - Synchronous mode: owned by capture context and reused on next read
-    // - Event-driven mode: owned by caller (capture callback)
+    // Clean up image if it's from a webcam source (they allocate fresh frames)
+    // Decoder images are cached and owned by the decoder, so we must NOT free those
+    if (is_synchronous && capture) {
+      media_source_t *source = session_capture_get_media_source(capture);
+      if (source && media_source_get_type(source) == MEDIA_SOURCE_WEBCAM && image) {
+        image_destroy(image);
+      }
+    }
   }
 
   return ASCIICHAT_OK;
