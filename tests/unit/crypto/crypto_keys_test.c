@@ -584,3 +584,60 @@ Theory((key_type_t key_type), crypto_keys, key_type_validation) {
     cr_assert_eq(result, ASCIICHAT_OK, "Valid key type should succeed conversion");
   }
 }
+
+// =============================================================================
+// Comma-Separated Key Specifiers Tests
+// =============================================================================
+
+Test(crypto_keys, parse_public_keys_comma_separated_hex_keys) {
+  // Test parsing comma-separated raw hex keys
+  char hex1[65] = "0000000000000000000000000000000000000000000000000000000000000001";
+  char hex2[65] = "0000000000000000000000000000000000000000000000000000000000000002";
+  char hex3[65] = "0000000000000000000000000000000000000000000000000000000000000003";
+
+  char input[256];
+  snprintf(input, sizeof(input), "%s, %s, %s", hex1, hex2, hex3);
+
+  public_key_t keys[10];
+  size_t num_keys = 0;
+
+  asciichat_error_t result = parse_public_keys(input, keys, &num_keys, 10);
+
+  cr_assert_eq(result, ASCIICHAT_OK, "Parsing comma-separated hex keys should succeed");
+  cr_assert_eq(num_keys, 3, "Should parse 3 comma-separated hex keys");
+
+  // Verify each key is X25519 type
+  for (size_t i = 0; i < num_keys; i++) {
+    cr_assert_eq(keys[i].type, KEY_TYPE_X25519, "Each key should be X25519 type");
+  }
+}
+
+Test(crypto_keys, parse_public_keys_comma_separated_with_whitespace) {
+  // Test parsing with whitespace around commas
+  char hex1[65] = "0000000000000000000000000000000000000000000000000000000000000001";
+  char hex2[65] = "0000000000000000000000000000000000000000000000000000000000000002";
+
+  char input[256];
+  snprintf(input, sizeof(input), "%s , %s", hex1, hex2);
+
+  public_key_t keys[10];
+  size_t num_keys = 0;
+
+  asciichat_error_t result = parse_public_keys(input, keys, &num_keys, 10);
+
+  cr_assert_eq(result, ASCIICHAT_OK, "Parsing comma-separated keys with whitespace should succeed");
+  cr_assert_eq(num_keys, 2, "Should parse 2 comma-separated hex keys despite whitespace");
+}
+
+Test(crypto_keys, parse_public_keys_single_key_no_comma) {
+  // Test that single keys without comma still work
+  char hex1[65] = "0000000000000000000000000000000000000000000000000000000000000001";
+
+  public_key_t keys[10];
+  size_t num_keys = 0;
+
+  asciichat_error_t result = parse_public_keys(hex1, keys, &num_keys, 10);
+
+  cr_assert_eq(result, ASCIICHAT_OK, "Parsing single hex key should succeed");
+  cr_assert_eq(num_keys, 1, "Should parse exactly 1 key");
+}
