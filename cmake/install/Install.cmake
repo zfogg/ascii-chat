@@ -458,25 +458,31 @@ endif()
 # This replaces the static completion files with auto-generated ones
 # =============================================================================
 
-# Create output directory for generated completions
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/completions")
+# Create output directories for generated completions in proper share locations
+file(MAKE_DIRECTORY
+    "${CMAKE_BINARY_DIR}/share/bash-completion/completions"
+    "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d"
+    "${CMAKE_BINARY_DIR}/share/zsh/site-functions"
+    "${CMAKE_BINARY_DIR}/share/powershell/Completions"
+)
 
 # Generate completions at build time using the binary itself
 # These custom commands run after the ascii-chat binary is built
+# Completions are generated directly to their proper share subdirectories
 add_custom_command(
     OUTPUT
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+        "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+        "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+        "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+        "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
     COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions bash
-            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
+            > "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
     COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions fish
-            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
+            > "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
     COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions zsh
-            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
+            > "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
     COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions powershell
-            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+            > "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
     DEPENDS ascii-chat
     COMMENT "Generating shell completions from options registry..."
     VERBATIM
@@ -485,10 +491,10 @@ add_custom_command(
 # Create target for generating all completions
 add_custom_target(generate-completions ALL
     DEPENDS
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
-        "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+        "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+        "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+        "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+        "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
 )
 
 message(STATUS "${BoldGreen}Configured${ColorReset} completion generation: All shell completions will be generated from options registry at build time")
@@ -501,29 +507,26 @@ if(UNIX)
     # Bash completions - generated at build time
     # Standard location: /usr/share/bash-completion/completions/
     # User location: ~/.local/share/bash-completion/completions/
-    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
+    install(FILES "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
         DESTINATION share/bash-completion/completions
-        RENAME ascii-chat
         COMPONENT Runtime
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat.bash${ColorReset} (generated) → ${BoldYellow}share/bash-completion/completions/ascii-chat${ColorReset}")
+    message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat${ColorReset} (generated) → ${BoldYellow}share/bash-completion/completions/ascii-chat${ColorReset}")
 
     # Zsh completions - generated at build time
     # Standard location: /usr/share/zsh/site-functions/
     # User location: ~/.local/share/zsh/site-functions/ or a directory in $fpath
-    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
+    install(FILES "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
         DESTINATION share/zsh/site-functions
-        RENAME _ascii-chat
         COMPONENT Runtime
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}ascii-chat.zsh${ColorReset} (generated) → ${BoldYellow}share/zsh/site-functions/_ascii-chat${ColorReset}")
+    message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii-chat${ColorReset} (generated) → ${BoldYellow}share/zsh/site-functions/_ascii-chat${ColorReset}")
 
     # Fish completions - generated at build time
     # Standard location: /usr/share/fish/vendor_completions.d/
     # User location: ~/.config/fish/completions/
-    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
+    install(FILES "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
         DESTINATION share/fish/vendor_completions.d
-        RENAME ascii-chat.fish
         COMPONENT Runtime
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} (generated) → ${BoldYellow}share/fish/vendor_completions.d/ascii-chat.fish${ColorReset}")
@@ -531,9 +534,8 @@ if(UNIX)
     # PowerShell completions (cross-platform) - generated at build time
     # Standard location: /usr/local/share/powershell/Completions/
     # User location: ~/.local/share/powershell/Completions/
-    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+    install(FILES "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
         DESTINATION share/powershell/Completions
-        RENAME ascii-chat.ps1
         COMPONENT Runtime
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}share/powershell/Completions/ascii-chat.ps1${ColorReset}")
@@ -547,9 +549,8 @@ if(WIN32)
     # PowerShell completions - generated at build time
     # Standard location varies, but doc/completions is accessible
     # User can source from: $HOME\Documents\PowerShell\Completions\
-    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+    install(FILES "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
         DESTINATION doc/completions
-        RENAME ascii-chat.ps1
         COMPONENT Runtime
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}doc/completions/ascii-chat.ps1${ColorReset}")
