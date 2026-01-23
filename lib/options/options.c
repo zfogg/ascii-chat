@@ -1137,6 +1137,20 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
 
+  // ========================================================================
+  // STAGE 6.5: Publish Parsed Options Early
+  // ========================================================================
+  // Publish options to RCU as soon as they're parsed
+  // This ensures GET_OPTION() works during cleanup even if validation fails
+  log_debug("Publishing parsed options to RCU before validation");
+  asciichat_error_t early_publish = options_state_set(&opts);
+  if (early_publish != ASCIICHAT_OK) {
+    log_error("Failed to publish parsed options to RCU state early");
+    options_config_destroy(config);
+    return early_publish;
+  }
+  log_debug("Successfully published options to RCU");
+
   // Validate options
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {
