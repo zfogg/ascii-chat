@@ -2498,8 +2498,6 @@ void options_config_print_options_sections_with_width(const options_config_t *co
 
   // Cleanup
   SAFE_FREE(unique_groups);
-
-  fprintf(stream, "\n");
 }
 
 /**
