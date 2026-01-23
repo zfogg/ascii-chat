@@ -1170,15 +1170,24 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
-  // Save binary-level quiet flag BEFORE config loading (config may set it to false)
+  // Save binary-level flags BEFORE config loading (config may reset them to defaults)
   bool binary_quiet_before_config = opts.quiet;
+  log_level_t binary_log_level_before_config = opts.log_level;
+  char binary_log_file_before_config[OPTIONS_BUFF_SIZE];
+  SAFE_STRNCPY(binary_log_file_before_config, opts.log_file, sizeof(binary_log_file_before_config));
 
   // Load config files - now uses detected_mode directly for bitmask validation
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
-  // Restore binary-level quiet flag if it was set (don't let config override --quiet)
+  // Restore binary-level flags if they were set (don't let config override binary-level options)
   opts.quiet = binary_quiet_before_config;
+  if (binary_level_log_level_set) {
+    opts.log_level = binary_log_level_before_config;
+  }
+  if (binary_level_log_file_set) {
+    SAFE_STRNCPY(opts.log_file, binary_log_file_before_config, sizeof(opts.log_file));
+  }
 
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
