@@ -388,6 +388,9 @@ int main(int argc, char *argv[]) {
   // Mode entry points use options_get() to access parsed options
   int exit_code = mode->entry_point();
 
+  // Clean up options state before exiting
+  options_state_shutdown();
+
   if (exit_code == ERROR_USAGE) {
     _exit(ERROR_USAGE);
   }
