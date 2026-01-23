@@ -96,6 +96,17 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg);
  */
 bool parse_log_level(const char *arg, void *dest, char **error_msg);
 
+/**
+ * @brief Parse and validate port option for CLI
+ * @param arg Port string to parse
+ * @param dest Destination pointer (char* for port string storage)
+ * @param error_msg Error message output (set on failure, caller must free)
+ * @return true on success, false on error
+ *
+ * Validates port is a number in the range 1-65535.
+ */
+bool parse_port_option(const char *arg, void *dest, char **error_msg);
+
 // ============================================================================
 // Positional Argument Parsers
 // ============================================================================

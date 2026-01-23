@@ -12,6 +12,7 @@
 #include "common.h"
 #include "options/options.h"
 #include "discovery/strings.h" // For is_session_string() validation
+#include "util/parsing.h"      // For parse_port() validation
 
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
@@ -249,6 +250,36 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
     }
   }
   return false;
+}
+
+bool parse_port_option(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = SAFE_MALLOC(256, char *);
+      if (*error_msg) {
+        snprintf(*error_msg, 256, "Internal error: NULL argument or destination");
+      }
+    }
+    return false;
+  }
+
+  char *port_str = (char *)dest;
+  uint16_t port_num;
+
+  // Use the existing parse_port function for validation
+  asciichat_error_t err = parse_port(arg, &port_num);
+  if (err != ASCIICHAT_OK) {
+    if (error_msg) {
+      *error_msg = SAFE_MALLOC(256, char *);
+      if (*error_msg) {
+        snprintf(*error_msg, 256, "Invalid port '%s'. Port must be a number between 1 and 65535.", arg);
+      }
+    }
+    return false;
+  }
+
+  SAFE_STRNCPY(port_str, arg, OPTIONS_BUFF_SIZE);
+  return true;
 }
 
 // ============================================================================

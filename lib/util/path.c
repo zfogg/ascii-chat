@@ -671,6 +671,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   append_base_if_valid("/usr/local/etc/ascii-chat", bases, &base_count);
   append_base_if_valid("/var/log", bases, &base_count);
   append_base_if_valid("/var/tmp", bases, &base_count);
+  append_base_if_valid("/tmp", bases, &base_count);
 #endif
 
   // Validate that the path is within allowed directories
