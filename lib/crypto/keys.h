@@ -53,6 +53,7 @@
  *
  * Supported formats:
  * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment" (direct key string)
+ * - HTTPS URL: "https://example.com/key.pub" or "https://example.com/key.gpg" (fetches from URL, parses response)
  * - GitHub SSH: "github:username" (fetches from https://github.com/username.keys, returns first Ed25519 key)
  * - GitLab SSH: "gitlab:username" (fetches from https://gitlab.com/username.keys, returns first Ed25519 key)
  * - GitHub GPG: "github:username.gpg" (fetches GPG key from https://github.com/username.gpg)
@@ -72,6 +73,11 @@
  *
  * @note GPG support: GPG Ed25519 keys are fully supported. Accepts 8, 16, or 40 character
  *       key IDs (short/long/full fingerprint). Requires `gpg` binary in PATH and gpg-agent running.
+ *
+ * @note HTTPS URLs: Can be any HTTPS URL (e.g., https://discovery.ascii-chat.com/key.pub).
+ *       Response content is parsed as key format. Uses BearSSL with system CA certificates.
+ *       Requires network connectivity. Only first key is returned; for multiple keys,
+ *       store them one per line in the response and use `parse_public_keys()` instead.
  *
  * @note GitHub/GitLab fetching: Uses BearSSL for HTTPS requests. Requires network connectivity.
  *       Only first Ed25519 key is returned. For multiple keys, use `parse_public_keys()` instead.
