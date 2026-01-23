@@ -86,7 +86,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // Add usage lines for all modes
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
   options_builder_add_usage(b, NULL, "<session-string>", true, "Join an existing session");
-  options_builder_add_usage(b, "<mode>", NULL, true, "Run in a specific mode");
+  options_builder_add_usage(b, NULL, "<mode>", true, "Run in a specific mode");
   options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
                             "Start server (can specify 0-2 bind addresses for IPv4/IPv6)");
   options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");

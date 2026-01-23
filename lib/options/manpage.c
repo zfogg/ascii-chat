@@ -279,22 +279,25 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
     }
   } else {
     // Generate complete USAGE section from all modes
-    // Binary-level usage (from binary preset)
+    // Binary-level usage (from binary preset) - only include lines where mode is NULL
     const options_config_t *binary_config = options_preset_unified(NULL, NULL);
     if (binary_config && binary_config->num_usage_lines > 0) {
       for (size_t i = 0; i < binary_config->num_usage_lines; i++) {
         const usage_descriptor_t *usage = &binary_config->usage_lines[i];
-        fprintf(f, ".TP\n");
-        fprintf(f, ".B ascii-chat");
-        if (usage->positional) {
-          fprintf(f, " %s", usage->positional);
-        }
-        if (usage->show_options) {
-          fprintf(f, " [options...]");
-        }
-        fprintf(f, "\n");
-        if (usage->description) {
-          fprintf(f, "%s\n", escape_groff_special(usage->description));
+        // Only include binary-level usage (no mode specified)
+        if (usage->mode == NULL) {
+          fprintf(f, ".TP\n");
+          fprintf(f, ".B ascii-chat");
+          if (usage->positional) {
+            fprintf(f, " %s", usage->positional);
+          }
+          if (usage->show_options) {
+            fprintf(f, " [options...]");
+          }
+          fprintf(f, "\n");
+          if (usage->description) {
+            fprintf(f, "%s\n", escape_groff_special(usage->description));
+          }
         }
       }
     }
@@ -302,8 +305,8 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
       options_config_destroy(binary_config);
     }
 
-    // Mode-specific usage (server, client, mirror, discovery-service)
-    const char *modes[] = {"server", "client", "mirror", "discovery-service", NULL};
+    // Mode-specific usage (server, client, mirror, discovery-service, discovery)
+    const char *modes[] = {"server", "client", "mirror", "discovery-service", "discovery", NULL};
     const options_config_t *unified_config = options_preset_unified(NULL, NULL);
 
     for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
@@ -319,6 +322,8 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
         mode_enum = MODE_MIRROR;
       } else if (strcmp(mode, "discovery-service") == 0) {
         mode_enum = MODE_DISCOVERY_SERVER;
+      } else if (strcmp(mode, "discovery") == 0) {
+        mode_enum = MODE_DISCOVERY;
       } else {
         continue;
       }

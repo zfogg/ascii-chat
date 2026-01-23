@@ -435,14 +435,19 @@ endif()
 # auto-generates option documentation from the options builder.
 if(UNIX)
     # Install man pages to share/man/man1/ (section 1 = user commands)
-    # Note: Man pages are installed uncompressed in build directory for direct use with 'man' command.
-    # During package installation (via CPack), gzip compression is handled by install scripts.
-    install(FILES
-        "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-        DESTINATION share/man/man1
-        COMPONENT Runtime
-    )
-    message(STATUS "${BoldGreen}Configured${ColorReset} manpage installation: ${BoldBlue}ascii-chat.1${ColorReset} → ${BoldYellow}share/man/man1/${ColorReset}")
+    # Compress at install time for packaging; gzip is standard for system packages
+    install(CODE "
+        message(STATUS \"Compressing and installing man page...\")
+        execute_process(
+            COMMAND gzip -9 -c \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"
+            OUTPUT_FILE \"${CMAKE_INSTALL_PREFIX}/share/man/man1/ascii-chat.1.gz\"
+            RESULT_VARIABLE gzip_result
+        )
+        if(NOT gzip_result EQUAL 0)
+            message(WARNING \"Failed to compress man page during installation\")
+        endif()
+    " COMPONENT Runtime)
+    message(STATUS "${BoldGreen}Configured${ColorReset} manpage installation: ${BoldBlue}ascii-chat.1${ColorReset} → ${BoldYellow}share/man/man1/ascii-chat.1.gz${ColorReset}")
 endif()
 
 # =============================================================================
