@@ -32,362 +32,6 @@
 #define INITIAL_OWNED_STRINGS_CAPACITY 32
 
 // ============================================================================
-// Type Handler Registry for Builder Operations
-// ============================================================================
-// TECHNICAL DEBT FIX: The code had 8 parallel switch(desc->type) blocks
-// for different operations (is_set, apply_env, apply_cli, format_help).
-// This registry consolidates them into 4 handler function pointers.
-
-/**
- * @brief Type handler for builder operations
- */
-typedef struct {
-  // Check if option value differs from default
-  bool (*is_set)(const void *field, const option_descriptor_t *desc);
-  // Apply environment variable and set defaults
-  void (*apply_env)(void *field, const char *env_value, const option_descriptor_t *desc);
-  // Parse CLI argument value
-  asciichat_error_t (*apply_cli)(void *field, const char *opt_value, const option_descriptor_t *desc);
-  // Format value for help text placeholder (e.g., "NUM", "STR")
-  void (*format_help_placeholder)(char *buf, size_t bufsize);
-} option_builder_handler_t;
-
-// Forward declarations
-static bool is_set_bool(const void *field, const option_descriptor_t *desc);
-static bool is_set_int(const void *field, const option_descriptor_t *desc);
-static bool is_set_string(const void *field, const option_descriptor_t *desc);
-static bool is_set_double(const void *field, const option_descriptor_t *desc);
-static bool is_set_callback(const void *field, const option_descriptor_t *desc);
-static bool is_set_action(const void *field, const option_descriptor_t *desc);
-
-static void apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc);
-static void apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc);
-
-static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc);
-static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const option_descriptor_t *desc);
-static asciichat_error_t apply_cli_string(void *field, const char *opt_value, const option_descriptor_t *desc);
-static asciichat_error_t apply_cli_double(void *field, const char *opt_value, const option_descriptor_t *desc);
-static asciichat_error_t apply_cli_callback(void *field, const char *opt_value, const option_descriptor_t *desc);
-static asciichat_error_t apply_cli_action(void *field, const char *opt_value, const option_descriptor_t *desc);
-
-static void format_help_placeholder_bool(char *buf, size_t bufsize);
-static void format_help_placeholder_int(char *buf, size_t bufsize);
-static void format_help_placeholder_string(char *buf, size_t bufsize);
-static void format_help_placeholder_double(char *buf, size_t bufsize);
-static void format_help_placeholder_callback(char *buf, size_t bufsize);
-static void format_help_placeholder_action(char *buf, size_t bufsize);
-
-// Handler registry - indexed by option_type_t
-static const option_builder_handler_t g_builder_handlers[] = {
-    [OPTION_TYPE_BOOL] = {is_set_bool, apply_env_bool, apply_cli_bool, format_help_placeholder_bool},
-    [OPTION_TYPE_INT] = {is_set_int, apply_env_int, apply_cli_int, format_help_placeholder_int},
-    [OPTION_TYPE_STRING] = {is_set_string, apply_env_string, apply_cli_string, format_help_placeholder_string},
-    [OPTION_TYPE_DOUBLE] = {is_set_double, apply_env_double, apply_cli_double, format_help_placeholder_double},
-    [OPTION_TYPE_CALLBACK] = {is_set_callback, apply_env_callback, apply_cli_callback,
-                              format_help_placeholder_callback},
-    [OPTION_TYPE_ACTION] = {is_set_action, apply_env_action, apply_cli_action, format_help_placeholder_action},
-};
-
-// ============================================================================
-// Handler Function Implementations
-// ============================================================================
-
-// --- is_set handlers ---
-static bool is_set_bool(const void *field, const option_descriptor_t *desc) {
-  bool value = *(const bool *)field;
-  bool default_val = desc->default_value ? *(const bool *)desc->default_value : false;
-  return value != default_val;
-}
-
-static bool is_set_int(const void *field, const option_descriptor_t *desc) {
-  int value = *(const int *)field;
-  int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
-  return value != default_val;
-}
-
-static bool is_set_string(const void *field, const option_descriptor_t *desc) {
-  const char *value = (const char *)field;
-  const char *default_val = NULL;
-  if (desc->default_value) {
-    default_val = *(const char *const *)desc->default_value;
-  }
-  if (!default_val) {
-    return (value && value[0] != '\0');
-  }
-  return strcmp(value, default_val) != 0;
-}
-
-static bool is_set_double(const void *field, const option_descriptor_t *desc) {
-  double value = 0.0;
-  double default_val = 0.0;
-  memcpy(&value, field, sizeof(double));
-  if (desc->default_value) {
-    memcpy(&default_val, desc->default_value, sizeof(double));
-  }
-  return value != default_val;
-}
-
-static bool is_set_callback(const void *field, const option_descriptor_t *desc) {
-  (void)desc;
-  return *(const void **)field != NULL;
-}
-
-static bool is_set_action(const void *field, const option_descriptor_t *desc) {
-  (void)field;
-  (void)desc;
-  return false;
-}
-
-// --- apply_env handlers ---
-static void apply_env_bool(void *field, const char *env_value, const option_descriptor_t *desc) {
-  bool current_value = *(const bool *)field;
-  bool default_val = desc->default_value ? *(const bool *)desc->default_value : false;
-  if (current_value != default_val) {
-    return; // Already set, skip env var
-  }
-  bool value = false;
-  if (env_value) {
-    value = (strcmp(env_value, "1") == 0 || strcmp(env_value, "true") == 0 || strcmp(env_value, "yes") == 0 ||
-             strcmp(env_value, "on") == 0);
-  } else if (desc->default_value) {
-    value = *(const bool *)desc->default_value;
-  }
-  *(bool *)field = value;
-}
-
-static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {
-  int current_value = 0;
-  memcpy(&current_value, field, sizeof(int));
-  int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
-  if (current_value != default_val) {
-    return; // Already set, skip env var
-  }
-  int value = 0;
-  if (env_value) {
-    char *endptr;
-    long parsed = strtol(env_value, &endptr, 10);
-    if (*endptr == '\0' && parsed >= INT_MIN && parsed <= INT_MAX) {
-      value = (int)parsed;
-    }
-  } else if (desc->default_value) {
-    value = *(const int *)desc->default_value;
-  }
-  memcpy(field, &value, sizeof(int));
-}
-
-static void apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc) {
-  const char *current_value = (const char *)field;
-  const char *default_val = NULL;
-  if (desc->default_value) {
-    default_val = *(const char *const *)desc->default_value;
-  }
-  if (current_value && current_value[0] != '\0') {
-    if (!default_val || strcmp(current_value, default_val) != 0) {
-      return; // Already set, skip
-    }
-  }
-  const char *value = NULL;
-  if (env_value) {
-    value = env_value;
-  } else if (desc->default_value) {
-    value = *(const char *const *)desc->default_value;
-  }
-  if (value && value[0] != '\0') {
-    char *dest = (char *)field;
-    snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
-    dest[OPTIONS_BUFF_SIZE - 1] = '\0';
-  }
-}
-
-static void apply_env_double(void *field, const char *env_value, const option_descriptor_t *desc) {
-  double current_value = 0.0;
-  memcpy(&current_value, field, sizeof(double));
-  double default_val = 0.0;
-  if (desc->default_value) {
-    memcpy(&default_val, desc->default_value, sizeof(double));
-  }
-  if (current_value != default_val) {
-    return; // Already set, skip env var
-  }
-  double value = 0.0;
-  if (env_value) {
-    char *endptr;
-    value = strtod(env_value, &endptr);
-    if (*endptr != '\0') {
-      value = 0.0; // Parse failed
-    }
-  } else if (desc->default_value) {
-    value = *(const double *)desc->default_value;
-  }
-  memcpy(field, &value, sizeof(double));
-}
-
-static void apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc) {
-  (void)field;
-  (void)env_value;
-  // For callbacks, would need parse_fn - handled separately in options_config_set_defaults
-  (void)desc;
-}
-
-static void apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc) {
-  (void)field;
-  (void)env_value;
-  (void)desc;
-}
-
-// --- apply_cli handlers ---
-static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)opt_value;
-  (void)desc;
-  *(bool *)field = true;
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)desc;
-  char *endptr;
-  long value = strtol(opt_value, &endptr, 10);
-  if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
-    return ERROR_USAGE;
-  }
-  int int_value = (int)value;
-  memcpy(field, &int_value, sizeof(int));
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t apply_cli_string(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)desc;
-  char *dest = (char *)field;
-  snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
-  dest[OPTIONS_BUFF_SIZE - 1] = '\0';
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t apply_cli_double(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)desc;
-  char *endptr;
-  double value = strtod(opt_value, &endptr);
-  if (*endptr != '\0') {
-    return ERROR_USAGE;
-  }
-  memcpy(field, &value, sizeof(double));
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t apply_cli_callback(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  if (desc->parse_fn) {
-    char *error_msg = NULL;
-    if (!desc->parse_fn(opt_value, field, &error_msg)) {
-      asciichat_error_t err = SET_ERRNO(ERROR_USAGE, "Parse error: %s", error_msg ? error_msg : "unknown");
-      free(error_msg);
-      return err;
-    }
-  }
-  return ASCIICHAT_OK;
-}
-
-static asciichat_error_t apply_cli_action(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)field;
-  (void)opt_value;
-  if (desc->action_fn) {
-    desc->action_fn();
-  }
-  return ASCIICHAT_OK;
-}
-
-// --- format_help_placeholder handlers ---
-static void format_help_placeholder_bool(char *buf, size_t bufsize) {
-  (void)buf;
-  (void)bufsize;
-  // Bools don't have placeholders
-}
-
-static void format_help_placeholder_int(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "NUM");
-}
-
-static void format_help_placeholder_string(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "STR");
-}
-
-static void format_help_placeholder_double(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "NUM");
-}
-
-static void format_help_placeholder_callback(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "VAL");
-}
-
-static void format_help_placeholder_action(char *buf, size_t bufsize) {
-  (void)buf;
-  (void)bufsize;
-  // Actions don't have placeholders
-}
-
-// ============================================================================
-// Help Formatting Helper Functions
-// ============================================================================
-
-/**
- * @brief Get help placeholder string for an option type
- * @param desc Option descriptor
- * @return Pointer to string literal ("NUM", "STR", "VAL") or empty string
- */
-static const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
-  if (!desc)
-    return "";
-  switch (desc->type) {
-  case OPTION_TYPE_INT:
-  case OPTION_TYPE_DOUBLE:
-    return "NUM";
-  case OPTION_TYPE_STRING:
-    return "STR";
-  case OPTION_TYPE_CALLBACK:
-    return "VAL";
-  case OPTION_TYPE_BOOL:
-  case OPTION_TYPE_ACTION:
-  default:
-    return "";
-  }
-}
-
-/**
- * @brief Format option default value as a string
- * @param desc Option descriptor
- * @param buf Output buffer
- * @param bufsize Size of buffer
- * @return Number of characters written to buf
- */
-static int format_option_default_value_str(const option_descriptor_t *desc, char *buf, size_t bufsize) {
-  if (!desc || !desc->default_value || !buf || bufsize == 0) {
-    return 0;
-  }
-
-  switch (desc->type) {
-  case OPTION_TYPE_BOOL:
-    return snprintf(buf, bufsize, "%s", *(const bool *)desc->default_value ? "true" : "false");
-  case OPTION_TYPE_INT: {
-    int int_val = 0;
-    memcpy(&int_val, desc->default_value, sizeof(int));
-    return snprintf(buf, bufsize, "%d", int_val);
-  }
-  case OPTION_TYPE_STRING:
-    return snprintf(buf, bufsize, "%s", *(const char *const *)desc->default_value);
-  case OPTION_TYPE_DOUBLE: {
-    double double_val = 0.0;
-    memcpy(&double_val, desc->default_value, sizeof(double));
-    return snprintf(buf, bufsize, "%.2f", double_val);
-  }
-  default:
-    return 0;
-  }
-}
-
-// ============================================================================
 // Internal Helper Functions
 // ============================================================================
 
@@ -592,11 +236,53 @@ static bool is_option_set(const options_config_t *config, const void *options_st
   const char *base = (const char *)options_struct;
   const void *field = base + desc->offset;
 
-  // Use handler registry to check if option is set
-  if (desc->type >= 0 && desc->type < (int)(sizeof(g_builder_handlers) / sizeof(g_builder_handlers[0]))) {
-    if (g_builder_handlers[desc->type].is_set) {
-      return g_builder_handlers[desc->type].is_set(field, desc);
+  switch (desc->type) {
+  case OPTION_TYPE_BOOL: {
+    bool value = *(const bool *)field;
+    bool default_val = desc->default_value ? *(const bool *)desc->default_value : false;
+    return value != default_val;
+  }
+  case OPTION_TYPE_INT: {
+    int value = *(const int *)field;
+    int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
+    return value != default_val;
+  }
+  case OPTION_TYPE_STRING: {
+    // String fields are char[SIZE] arrays, not pointers
+    const char *value = (const char *)field;
+    const char *default_val = NULL;
+
+    // default_value is a pointer-to-pointer (address of a slot in the static defaults array)
+    if (desc->default_value) {
+      default_val = *(const char *const *)desc->default_value;
     }
+
+    // Handle NULL default
+    if (!default_val) {
+      // No default specified - check if the string is non-empty
+      return (value && value[0] != '\0');
+    }
+
+    // Both are strings - compare them
+    return strcmp(value, default_val) != 0;
+  }
+  case OPTION_TYPE_DOUBLE: {
+    double value = 0.0;
+    double default_val = 0.0;
+    // Use memcpy to safely handle potentially misaligned memory
+    memcpy(&value, field, sizeof(double));
+    if (desc->default_value) {
+      memcpy(&default_val, desc->default_value, sizeof(double));
+    }
+    return value != default_val;
+  }
+  case OPTION_TYPE_CALLBACK:
+    // For callbacks, assume set if not NULL
+    return *(const void **)field != NULL;
+
+  case OPTION_TYPE_ACTION:
+    // Actions execute immediately and don't store values
+    return false;
   }
 
   return false;
@@ -1465,18 +1151,141 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
       env_value = SAFE_GETENV(desc->env_var_name);
     }
 
-    // Use handler registry to apply environment variables and defaults
-    if (desc->type >= 0 && desc->type < (int)(sizeof(g_builder_handlers) / sizeof(g_builder_handlers[0]))) {
-      if (g_builder_handlers[desc->type].apply_env) {
-        g_builder_handlers[desc->type].apply_env(field, env_value, desc);
+    switch (desc->type) {
+    case OPTION_TYPE_BOOL: {
+      // Check if value is already set (different from default)
+      bool current_value = *(const bool *)field;
+      bool default_val = false;
+      if (desc->default_value) {
+        default_val = *(const bool *)desc->default_value;
       }
-    } else if (desc->type == OPTION_TYPE_CALLBACK && desc->parse_fn && desc->default_value) {
-      // Special handling for callbacks with parse_fn
-      char *error_msg = NULL;
-      desc->parse_fn(NULL, field, &error_msg);
-      if (error_msg) {
-        free(error_msg);
+
+      // If current value differs from default, assume it came from config file and preserve it
+      if (current_value != default_val) {
+        // Value is already set (likely from config), skip env var
+        break;
       }
+
+      bool value = false;
+      if (env_value) {
+        // Parse env var as bool
+        value = (strcmp(env_value, "1") == 0 || strcmp(env_value, "true") == 0 || strcmp(env_value, "yes") == 0 ||
+                 strcmp(env_value, "on") == 0);
+      } else if (desc->default_value) {
+        value = *(const bool *)desc->default_value;
+      }
+      *(bool *)field = value;
+      break;
+    }
+
+    case OPTION_TYPE_INT: {
+      // Check if value is already set (different from default)
+      int current_value = 0;
+      memcpy(&current_value, field, sizeof(int));
+      int default_val = 0;
+      if (desc->default_value) {
+        default_val = *(const int *)desc->default_value;
+      }
+
+      // If current value differs from default, assume it came from config file and preserve it
+      if (current_value != default_val) {
+        // Value is already set (likely from config), skip env var
+        break;
+      }
+
+      int value = 0;
+      if (env_value) {
+        // Parse env var as int
+        char *endptr;
+        long parsed = strtol(env_value, &endptr, 10);
+        if (*endptr == '\0' && parsed >= INT_MIN && parsed <= INT_MAX) {
+          value = (int)parsed;
+        }
+      } else if (desc->default_value) {
+        value = *(const int *)desc->default_value;
+      }
+      // Use memcpy to handle potentially misaligned memory safely
+      memcpy(field, &value, sizeof(int));
+      break;
+    }
+
+    case OPTION_TYPE_STRING: {
+      // Check if value is already set (non-empty and different from default)
+      const char *current_value = (const char *)field;
+      const char *default_val = NULL;
+      if (desc->default_value) {
+        default_val = *(const char *const *)desc->default_value;
+      }
+
+      // If current value is set and different from default, skip setting default
+      if (current_value && current_value[0] != '\0') {
+        if (!default_val || strcmp(current_value, default_val) != 0) {
+          // Value is already set, skip
+          break;
+        }
+      }
+
+      const char *value = NULL;
+      if (env_value) {
+        value = env_value;
+      } else if (desc->default_value) {
+        value = *(const char *const *)desc->default_value;
+      }
+
+      // Copy into fixed-size buffer (same as parsing logic in options_config_parse)
+      // String fields in options_t are char[OPTIONS_BUFF_SIZE] arrays, not pointers
+      if (value && value[0] != '\0') {
+        char *dest = (char *)field;
+        snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
+        dest[OPTIONS_BUFF_SIZE - 1] = '\0'; // Ensure null termination
+      }
+      break;
+    }
+
+    case OPTION_TYPE_DOUBLE: {
+      // Check if value is already set (different from default)
+      double current_value = 0.0;
+      memcpy(&current_value, field, sizeof(double));
+      double default_val = 0.0;
+      if (desc->default_value) {
+        default_val = *(const double *)desc->default_value;
+      }
+
+      // If current value differs from default, assume it came from config file and preserve it
+      if (current_value != default_val) {
+        // Value is already set (likely from config), skip env var
+        break;
+      }
+
+      double value = 0.0;
+      if (env_value) {
+        char *endptr;
+        value = strtod(env_value, &endptr);
+        if (*endptr != '\0') {
+          value = 0.0; // Parse failed
+        }
+      } else if (desc->default_value) {
+        value = *(const double *)desc->default_value;
+      }
+      // Use memcpy to handle potentially misaligned memory safely
+      memcpy(field, &value, sizeof(double));
+      break;
+    }
+
+    case OPTION_TYPE_CALLBACK:
+      // For callbacks, call parse_fn with NULL to apply default value
+      if (desc->parse_fn && desc->default_value) {
+        char *error_msg = NULL;
+        desc->parse_fn(NULL, field, &error_msg);
+        if (error_msg) {
+          free(error_msg);
+        }
+      }
+      break;
+
+    case OPTION_TYPE_ACTION:
+      // Actions don't store defaults - they execute when encountered
+      break;
     }
   }
 
@@ -1598,19 +1407,63 @@ static asciichat_error_t parse_single_flag(const options_config_t *config, char 
     }
   }
 
-  // Parse value based on type using handler registry
-  asciichat_error_t parse_err = ASCIICHAT_OK;
-  if (desc->type >= 0 && desc->type < (int)(sizeof(g_builder_handlers) / sizeof(g_builder_handlers[0]))) {
-    parse_err = g_builder_handlers[desc->type].apply_cli(field, opt_value, desc);
-    if (parse_err != ASCIICHAT_OK) {
+  // Parse value based on type
+  switch (desc->type) {
+  case OPTION_TYPE_BOOL:
+    *(bool *)field = true;
+    break;
+
+  case OPTION_TYPE_INT: {
+    char *endptr;
+    long value = strtol(opt_value, &endptr, 10);
+    if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
       if (equals)
-        *equals = '='; // Restore
-      return parse_err;
+        *equals = '=';
+      return SET_ERRNO(ERROR_USAGE, "Invalid integer value for %s", arg);
     }
-  } else {
-    if (equals)
-      *equals = '='; // Restore
-    return SET_ERRNO(ERROR_USAGE, "Invalid option type for %s", arg);
+    int int_value = (int)value;
+    memcpy(field, &int_value, sizeof(int));
+    break;
+  }
+
+  case OPTION_TYPE_STRING: {
+    char *dest = (char *)field;
+    snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
+    dest[OPTIONS_BUFF_SIZE - 1] = '\0';
+    break;
+  }
+
+  case OPTION_TYPE_DOUBLE: {
+    char *endptr;
+    double value = strtod(opt_value, &endptr);
+    if (*endptr != '\0') {
+      if (equals)
+        *equals = '=';
+      return SET_ERRNO(ERROR_USAGE, "Invalid double value for %s", arg);
+    }
+    memcpy(field, &value, sizeof(double));
+    break;
+  }
+
+  case OPTION_TYPE_CALLBACK:
+    if (desc->parse_fn) {
+      char *error_msg = NULL;
+      if (!desc->parse_fn(opt_value, field, &error_msg)) {
+        asciichat_error_t err =
+            SET_ERRNO(ERROR_USAGE, "Parse error for %s: %s", arg, error_msg ? error_msg : "unknown");
+        free(error_msg);
+        if (equals)
+          *equals = '=';
+        return err;
+      }
+    }
+    break;
+
+  case OPTION_TYPE_ACTION:
+    if (desc->action_fn) {
+      desc->action_fn();
+    }
+    break;
   }
 
   if (equals)
@@ -1762,12 +1615,27 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
       continue;
 
     const void *field = base + desc->offset;
-    // Use handler registry to check if option is set (for required field validation)
-    bool is_set = true;
-    if (desc->type >= 0 && desc->type < (int)(sizeof(g_builder_handlers) / sizeof(g_builder_handlers[0]))) {
-      if (g_builder_handlers[desc->type].is_set) {
-        is_set = g_builder_handlers[desc->type].is_set(field, desc);
-      }
+    bool is_set = false;
+
+    switch (desc->type) {
+    case OPTION_TYPE_BOOL:
+      is_set = true; // Bools are always set
+      break;
+    case OPTION_TYPE_INT:
+      is_set = true; // Ints are always set
+      break;
+    case OPTION_TYPE_STRING:
+      is_set = (*(const char *const *)field != NULL);
+      break;
+    case OPTION_TYPE_DOUBLE:
+      is_set = true; // Doubles are always set
+      break;
+    case OPTION_TYPE_CALLBACK:
+      is_set = (*(const void *const *)field != NULL);
+      break;
+    case OPTION_TYPE_ACTION:
+      is_set = true; // Actions are never required
+      break;
     }
 
     if (!is_set) {
@@ -2284,10 +2152,25 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       // Value placeholder (colored green)
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
         option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
-        const char *placeholder = get_option_help_placeholder_str(desc);
-        if (placeholder[0] != '\0') {
+        switch (desc->type) {
+        case OPTION_TYPE_INT:
           option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                 colored_string(LOG_COLOR_INFO, placeholder));
+                                 colored_string(LOG_COLOR_INFO, "NUM"));
+          break;
+        case OPTION_TYPE_STRING:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "STR"));
+          break;
+        case OPTION_TYPE_DOUBLE:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "NUM"));
+          break;
+        case OPTION_TYPE_CALLBACK:
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, "VAL"));
+          break;
+        default:
+          break;
         }
       }
 
@@ -2306,10 +2189,35 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       if (desc->default_value && !description_has_default) {
         desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
                              colored_string(LOG_COLOR_FATAL, "default:"));
-        char default_buf[32];
-        if (format_option_default_value_str(desc, default_buf, sizeof(default_buf)) > 0) {
+        switch (desc->type) {
+        case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL, default_buf));
+                               colored_string(LOG_COLOR_FATAL, *(const bool *)desc->default_value ? "true" : "false"));
+          break;
+        case OPTION_TYPE_INT: {
+          int int_val = 0;
+          memcpy(&int_val, desc->default_value, sizeof(int));
+          char int_buf[32];
+          snprintf(int_buf, sizeof(int_buf), "%d", int_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, int_buf));
+          break;
+        }
+        case OPTION_TYPE_STRING:
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, *(const char *const *)desc->default_value));
+          break;
+        case OPTION_TYPE_DOUBLE: {
+          double double_val = 0.0;
+          memcpy(&double_val, desc->default_value, sizeof(double));
+          char double_buf[32];
+          snprintf(double_buf, sizeof(double_buf), "%.2f", double_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, double_buf));
+          break;
+        }
+        default:
+          break;
         }
         desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
       }
@@ -2503,10 +2411,25 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       // Value placeholder (colored green)
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
         colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, " ");
-        const char *placeholder = get_option_help_placeholder_str(desc);
-        if (placeholder[0] != '\0') {
+        switch (desc->type) {
+        case OPTION_TYPE_INT:
           colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
-                                  colored_string(LOG_COLOR_INFO, placeholder));
+                                  colored_string(LOG_COLOR_INFO, "NUM"));
+          break;
+        case OPTION_TYPE_STRING:
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "STR"));
+          break;
+        case OPTION_TYPE_DOUBLE:
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "NUM"));
+          break;
+        case OPTION_TYPE_CALLBACK:
+          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                  colored_string(LOG_COLOR_INFO, "VAL"));
+          break;
+        default:
+          break;
         }
       }
 
@@ -2525,10 +2448,35 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       if (desc->default_value && !description_has_default) {
         desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
                              colored_string(LOG_COLOR_FATAL, "default:"));
-        char default_buf[32];
-        if (format_option_default_value_str(desc, default_buf, sizeof(default_buf)) > 0) {
+        switch (desc->type) {
+        case OPTION_TYPE_BOOL:
           desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL, default_buf));
+                               colored_string(LOG_COLOR_FATAL, *(const bool *)desc->default_value ? "true" : "false"));
+          break;
+        case OPTION_TYPE_INT: {
+          int int_val = 0;
+          memcpy(&int_val, desc->default_value, sizeof(int));
+          char int_buf[32];
+          snprintf(int_buf, sizeof(int_buf), "%d", int_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, int_buf));
+          break;
+        }
+        case OPTION_TYPE_STRING:
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, *(const char *const *)desc->default_value));
+          break;
+        case OPTION_TYPE_DOUBLE: {
+          double double_val = 0.0;
+          memcpy(&double_val, desc->default_value, sizeof(double));
+          char double_buf[32];
+          snprintf(double_buf, sizeof(double_buf), "%.2f", double_val);
+          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                               colored_string(LOG_COLOR_FATAL, double_buf));
+          break;
+        }
+        default:
+          break;
         }
         desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
       }
