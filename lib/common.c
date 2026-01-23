@@ -93,8 +93,8 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   //   Debug/Dev builds: LOG_DEBUG
   //   Release/RelWithDebInfo builds: LOG_INFO
   // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
-  // use_mmap=true: Lock-free mmap logging for performance and crash safety
-  log_init(log_file, GET_OPTION(log_level), is_client, true /* use_mmap */);
+  // use_mmap=false: Regular file logging (default for developers, allows tail -f for log monitoring)
+  log_init(log_file, GET_OPTION(log_level), is_client, false /* use_mmap */);
 
   // Initialize palette based on command line options
   const char *custom_chars = opts && opts->palette_custom_set ? opts->palette_custom : NULL;
