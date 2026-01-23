@@ -24,22 +24,6 @@ if(ASCIICHAT_ENABLE_IPO)
     set_property(TARGET ascii-chat PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-# Suppress linker warnings from third-party static libraries (duplicate symbols, alignment issues)
-# These are not actionable warnings and cluttering the build output
-if(APPLE)
-    # macOS Clang: suppress ld warnings about duplicate libraries and alignment reductions
-    # -Wl,-w suppresses all linker warnings (too broad)
-    # Instead, use specific suppression: we accept that third-party deps have duplicate symbols
-    target_link_options(ascii-chat PRIVATE
-        "LINKER:-w"  # Suppress linker warnings
-    )
-elseif(UNIX)
-    # GNU ld: suppress duplicate symbol warnings from third-party static libraries
-    target_link_options(ascii-chat PRIVATE
-        "LINKER:--allow-multiple-definition"  # Allow duplicate symbols from static libs
-    )
-endif()
-
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
