@@ -79,7 +79,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
   const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0 ::", "[2001:db8::1]:9000"};
-  options_builder_add_positional(b, "bind-address", "Bind address (optional, can specify 0-2 addresses for IPv4/IPv6)",
+  options_builder_add_positional(b, "bind-address",
+                                 "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
                                  false, "Positional Arguments", server_examples, 4,
                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
@@ -143,11 +144,11 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_usage(b, NULL, "<session-string>", true, "Join an existing session");
   options_builder_add_usage(b, NULL, "<mode>", true, "Run in a specific mode");
   options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
-                            "Start server (can specify 0-2 bind addresses for IPv4/IPv6)");
+                            "Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");
   options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
   options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
-                            "Start discovery service (can specify 0-2 bind addresses for IPv4/IPv6)");
+                            "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
 
   // Add examples for binary-level help (implicitly discovery mode)
   options_builder_add_example(b, NULL, NULL, "Start new session (share the session string)", false);
