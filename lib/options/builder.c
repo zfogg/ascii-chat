@@ -545,7 +545,7 @@ static void ensure_mode_capacity(options_builder_t *builder) {
 /**
  * @brief Track an owned string for cleanup
  */
-__attribute__((unused)) static void track_owned_string(options_config_t *config, char *str) {
+static void track_owned_string(options_config_t *config, char *str) {
   if (!str)
     return;
 

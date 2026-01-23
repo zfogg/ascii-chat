@@ -198,7 +198,7 @@ static cond_t g_audio_send_queue_cond;
 static bool g_audio_send_queue_initialized = false;
 
 /** Audio sender thread */
-__attribute__((unused)) static asciichat_thread_t g_audio_sender_thread;
+static asciichat_thread_t g_audio_sender_thread;
 static bool g_audio_sender_thread_created = false;
 static atomic_bool g_audio_sender_should_exit = false;
 

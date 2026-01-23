@@ -79,17 +79,6 @@
  * ============================================================================ */
 
 /**
- * @brief Ping/keepalive thread handle
- *
- * Thread handle for the background thread that sends periodic PING packets
- * to detect connection health. Created during connection establishment,
- * joined during shutdown.
- *
- * @ingroup client_keepalive
- */
-__attribute__((unused)) static asciichat_thread_t g_ping_thread;
-
-/**
  * @brief Flag indicating if ping thread was successfully created
  *
  * Used during shutdown to determine whether the thread handle is valid and

@@ -69,7 +69,7 @@ static int send_compressed_frame(int sockfd, const char *frame_data, size_t fram
 static int mock_send_packet_calls = 0;
 static int mock_send_packet_result = 1; // Default to success
 
-__attribute__((unused)) static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size) {
+static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size) {
   (void)sockfd; // Suppress unused parameter warning
   (void)type;
   (void)data;

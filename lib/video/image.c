@@ -722,7 +722,7 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 
 // Capability-aware image printing function
 char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
-                                    const char luminance_palette[256] __attribute__((unused))) {
+                                    const char luminance_palette[256]) {
 
   if (!image || !image->pixels || !caps || !palette) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or caps=%p or palette=%p is NULL", image,

@@ -301,7 +301,7 @@ void print_simd_capabilities(void) {
 
 // High-resolution adaptive timing for small workloads
 // Returns the number of iterations needed to achieve target_duration_ms minimum
-static int calculate_adaptive_iterations(int pixel_count, double __attribute__((unused)) target_duration_ms) {
+static int calculate_adaptive_iterations(int pixel_count, double target_duration_ms) {
   // Base iterations: scale with image size for consistent measurement accuracy
   int base_iterations = 100; // Minimum iterations for good statistics
 
@@ -323,7 +323,7 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
   return (base_iterations > minimum_iterations) ? base_iterations : minimum_iterations;
 }
 
-simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
+simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations) {
   simd_benchmark_t result = {0};
 
   // Check for integer overflow in pixel count calculation
@@ -849,8 +849,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 }
 
 // Enhanced color benchmark function with image source support
-simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height,
-                                                             int __attribute__((unused)) iterations,
+simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
                                                              bool use_256color) {
   simd_benchmark_t result = {0};

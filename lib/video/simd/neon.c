@@ -314,8 +314,7 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
 // Continue to actual NEON functions (helper functions already defined above)
 
 // NEON helper: True vectorized UTF-8 compaction - eliminate NUL bytes completely
-static inline void __attribute__((unused)) compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths,
-                                                                   char **pos) {
+static inline void compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths, char **pos) {
   // Calculate total valid bytes using NEON horizontal sum
   uint8_t total_bytes = (uint8_t)neon_horizontal_sum_u8(lengths);
 
@@ -355,7 +354,7 @@ static inline void __attribute__((unused)) compact_utf8_vectorized(uint8_t *padd
 
 // ------------------------------------------------------------
 // Map luminance [0..255] → 4-bit index [0..15] using top nibble
-static inline uint8x16_t __attribute__((unused)) luma_to_idx_nibble_neon(uint8x16_t y) {
+static inline uint8x16_t luma_to_idx_nibble_neon(uint8x16_t y) {
   return vshrq_n_u8(y, 4);
 }
 
@@ -392,7 +391,7 @@ static inline uint8x16_t simd_luma_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b
 // ===== SIMD helpers for 256-color quantization =====
 
 // NEON: cr=(r*5+127)/255  (nearest of 0..5)
-static inline uint8x16_t __attribute__((unused)) quant6_neon(uint8x16_t x) {
+static inline uint8x16_t quant6_neon(uint8x16_t x) {
   uint16x8_t xl = vmovl_u8(vget_low_u8(x));
   uint16x8_t xh = vmovl_u8(vget_high_u8(x));
   uint16x8_t tl = vaddq_u16(vmulq_n_u16(xl, 5), vdupq_n_u16(127));
@@ -407,7 +406,7 @@ static inline uint8x16_t __attribute__((unused)) quant6_neon(uint8x16_t x) {
 }
 
 // Build 6x6x6 index: cr*36 + cg*6 + cb  (0..215)
-static inline uint8x16_t __attribute__((unused)) cube216_index_neon(uint8x16_t r6, uint8x16_t g6, uint8x16_t b6) {
+static inline uint8x16_t cube216_index_neon(uint8x16_t r6, uint8x16_t g6, uint8x16_t b6) {
   uint16x8_t rl = vmovl_u8(vget_low_u8(r6));
   uint16x8_t rh = vmovl_u8(vget_high_u8(r6));
   uint16x8_t gl = vmovl_u8(vget_low_u8(g6));

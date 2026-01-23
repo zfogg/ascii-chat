@@ -28,8 +28,7 @@
  * @deprecated This function is deprecated. Use options_registry_add_all_to_builder() instead.
  * All option definitions are now centralized in the registry.
  */
-__attribute__((deprecated("Use options_registry_add_all_to_builder instead"))) void
-options_builder_add_logging_group(options_builder_t *b) {
+void options_builder_add_logging_group(options_builder_t *b) {
   (void)b;
   // Kept for backward compatibility but no longer used
 }

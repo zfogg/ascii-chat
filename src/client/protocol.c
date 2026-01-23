@@ -142,7 +142,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  *
  * @ingroup client_protocol
  */
-__attribute__((unused)) static asciichat_thread_t g_data_thread;
+static asciichat_thread_t g_data_thread;
 
 /**
  * @brief Flag indicating if data thread was successfully created
@@ -564,7 +564,7 @@ static void handle_audio_packet(const void *data, size_t len) {
  *
  * @ingroup client_protocol
  */
-__attribute__((unused)) static void handle_audio_batch_packet(const void *data, size_t len) {
+static void handle_audio_batch_packet(const void *data, size_t len) {
   if (!data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch packet data");
     return;
