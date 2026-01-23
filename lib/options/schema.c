@@ -170,8 +170,7 @@ static size_t get_field_size(option_type_t type, size_t offset) {
  */
 static bool should_add_descriptor(const option_descriptor_t *desc, const option_descriptor_t **existing, size_t count) {
   if (!desc || desc->type == OPTION_TYPE_ACTION || desc->type == OPTION_TYPE_CALLBACK) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid descriptor");
-    return false; // Skip actions and callbacks
+    return false; // Skip actions and callbacks (not an error, just filtering)
   }
 
   // Check if we already have this exact offset
