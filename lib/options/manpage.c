@@ -936,138 +936,113 @@ static void write_section_marker(FILE *f, const char *type, const char *section_
 }
 
 /**
- * @brief Write merged ENVIRONMENT section
+ * @brief Environment variable entry for sorting
+ */
+typedef struct {
+  char *name;        ///< Variable name
+  char *description; ///< Full description including formatting
+  bool is_manual;    ///< True if from manual content, false if auto-generated
+} env_var_entry_t;
+
+/**
+ * @brief Comparison function for qsort
+ */
+static int compare_env_vars(const void *a, const void *b) {
+  const env_var_entry_t *ea = (const env_var_entry_t *)a;
+  const env_var_entry_t *eb = (const env_var_entry_t *)b;
+  return strcmp(ea->name, eb->name);
+}
+
+/**
+ * @brief Write merged ENVIRONMENT section with all variables sorted alphabetically
  */
 static void write_environment_section_merged(FILE *f, const options_config_t *config,
                                              const parsed_section_t *existing_section) {
   write_section_marker(f, "MERGE", "ENVIRONMENT", true);
   fprintf(f, ".SH ENVIRONMENT\n");
 
-  // Extract existing env var names from manual content
-  char **manual_vars = NULL;
-  size_t num_manual_vars = 0;
-  if (existing_section && existing_section->content) {
-    // Create null-terminated copy for extraction function
-    char *content_copy = SAFE_MALLOC(existing_section->content_len + 1, char *);
-    memcpy(content_copy, existing_section->content, existing_section->content_len);
-    content_copy[existing_section->content_len] = '\0';
-    asciichat_error_t extract_err = extract_env_var_names_from_content(content_copy, &manual_vars, &num_manual_vars);
-    SAFE_FREE(content_copy);
-    if (extract_err != ASCIICHAT_OK) {
-      // If extraction fails, just proceed without manual vars list (will add duplicates)
-      // This is non-fatal - worst case is duplicate entries
-      manual_vars = NULL;
-      num_manual_vars = 0;
-    }
-  }
+  // Collect all environment variables (both manual and auto-generated)
+  env_var_entry_t *all_vars = NULL;
+  size_t num_all_vars = 0;
+  size_t capacity = 32;
+  all_vars = SAFE_MALLOC(capacity * sizeof(env_var_entry_t), env_var_entry_t *);
 
-  // Also extract from what we're about to write (manual content) to catch any vars
-  // that extraction might have missed
-  char **written_vars = NULL;
-  size_t num_written_vars = 0;
-
-  // Write manual env vars first (preserve their full descriptions)
+  // Extract and collect manual environment variables from content
   if (existing_section && existing_section->content) {
     const char *content = existing_section->content;
     const char *content_limit = content + existing_section->content_len;
     const char *p = content;
 
-    // Skip .SH ENVIRONMENT line and any markers
+    // Parse environment variable entries from manual content
+    // Looking for .TP followed by .B <VAR_NAME>
     while (p < content_limit) {
-      if (p + 3 <= content_limit && strncmp(p, ".SH", 3) == 0) {
-        // Skip .SH line
+      if (p + 3 <= content_limit && strncmp(p, ".TP", 3) == 0 &&
+          (p + 3 >= content_limit || p[3] == '\n' || isspace((unsigned char)p[3]))) {
+        // Found .TP, look for following .B with variable name
+        const char *tp_start = p;
         p += 3;
-        while (p < content_limit && *p != '\n') {
+        while (p < content_limit && (*p == '\n' || isspace((unsigned char)*p))) {
           p++;
         }
-        if (p < content_limit && *p == '\n') {
-          p++;
+
+        // Look for .B directive
+        if (p + 3 <= content_limit && strncmp(p, ".B ", 3) == 0) {
+          p += 3;
+          while (p < content_limit && isspace((unsigned char)*p) && *p != '\n') {
+            p++;
+          }
+
+          // Extract variable name
+          const char *var_start = p;
+          while (p < content_limit && !isspace((unsigned char)*p) && *p != '\n') {
+            p++;
+          }
+          const char *var_end = p;
+
+          if (var_end > var_start) {
+            size_t var_len = var_end - var_start;
+            char var_name[256];
+            if (var_len < sizeof(var_name)) {
+              memcpy(var_name, var_start, var_len);
+              var_name[var_len] = '\0';
+
+              // Collect the full .TP block until next .TP or end
+              const char *block_start = tp_start;
+              const char *block_end = p;
+              while (block_end < content_limit) {
+                if (block_end + 3 <= content_limit && strncmp(block_end, ".TP", 3) == 0 &&
+                    (block_end + 3 >= content_limit || block_end[3] == '\n' || isspace((unsigned char)block_end[3]))) {
+                  break;
+                }
+                block_end++;
+              }
+
+              // Add to array
+              if (num_all_vars >= capacity) {
+                capacity *= 2;
+                all_vars = SAFE_REALLOC(all_vars, capacity * sizeof(env_var_entry_t), env_var_entry_t *);
+              }
+
+              size_t block_len = block_end - block_start;
+              all_vars[num_all_vars].name = SAFE_MALLOC(var_len + 1, char *);
+              memcpy(all_vars[num_all_vars].name, var_name, var_len + 1);
+              all_vars[num_all_vars].description = SAFE_MALLOC(block_len + 1, char *);
+              memcpy(all_vars[num_all_vars].description, block_start, block_len);
+              all_vars[num_all_vars].description[block_len] = '\0';
+              all_vars[num_all_vars].is_manual = true;
+              num_all_vars++;
+
+              p = block_end;
+              continue;
+            }
+          }
         }
-        break;
-      }
-      // Skip marker comments
-      if ((p + 3 <= content_limit && strncmp(p, ".\\\"", 3) == 0) ||
-          (p + 2 <= content_limit && strncmp(p, ".\"", 2) == 0)) {
-        while (p < content_limit && *p != '\n') {
-          p++;
-        }
-        if (p < content_limit && *p == '\n') {
-          p++;
-        }
-        continue;
       }
       p++;
     }
-
-    // Write all content until next .SH or MERGE-END marker (preserving manual env var entries)
-    // Stop before MERGE-END so auto-generated vars can be added before the closing marker
-    const char *content_start = p;
-    const char *content_end = content_limit;
-
-    // Create a null-terminated copy for strstr search
-    size_t search_len = content_limit - p;
-    char *search_buf = SAFE_MALLOC(search_len + 1, char *);
-    memcpy(search_buf, p, search_len);
-    search_buf[search_len] = '\0';
-
-    // Find MERGE-END marker using strstr
-    const char *merge_end_pos = strstr(search_buf, "MERGE-END:");
-    if (merge_end_pos) {
-      // Calculate offset from start
-      size_t offset = merge_end_pos - search_buf;
-      content_end = p + offset;
-      // Back up to start of MERGE-END line
-      while (content_end > content_start && content_end[-1] != '\n') {
-        content_end--;
-      }
-      // Back up one more to skip the newline before MERGE-END line
-      if (content_end > content_start) {
-        content_end--;
-      }
-    } else {
-      // No MERGE-END found, check for next .SH section
-      const char *sh_pos = strstr(search_buf, ".SH");
-      if (sh_pos) {
-        size_t offset = sh_pos - search_buf;
-        content_end = p + offset;
-      }
-    }
-
-    SAFE_FREE(search_buf);
-
-    // Trim trailing whitespace (but keep at least one newline if content ends with text)
-    // First, trim spaces/tabs
-    while (content_end > content_start && (content_end[-1] == ' ' || content_end[-1] == '\t')) {
-      content_end--;
-    }
-    // Then ensure we end with exactly one newline
-    if (content_end > content_start && content_end[-1] != '\n') {
-      // Content doesn't end with newline - this shouldn't happen, but add one
-      // Actually, don't modify content_end, we'll add newline after writing
-    } else {
-      // Trim extra newlines, but keep one
-      while (content_end > content_start + 1 && content_end[-1] == '\n' && content_end[-2] == '\n') {
-        content_end--;
-      }
-    }
-
-    if (content_end > content_start) {
-      // Extract vars from this content before writing
-      char *write_content_copy = SAFE_MALLOC(content_end - content_start + 1, char *);
-      memcpy(write_content_copy, content_start, content_end - content_start);
-      write_content_copy[content_end - content_start] = '\0';
-      extract_env_var_names_from_content(write_content_copy, &written_vars, &num_written_vars);
-      SAFE_FREE(write_content_copy);
-
-      fwrite(content_start, 1, content_end - content_start, f);
-      // Ensure exactly one newline after manual content (for proper spacing before auto-generated vars)
-      if (content_end == content_start || content_end[-1] != '\n') {
-        fprintf(f, "\n");
-      }
-    }
   }
 
-  // Add builder env vars that aren't in manual list
+  // Add auto-generated environment variables from options
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
 
@@ -1075,58 +1050,57 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
       continue;
     }
 
-    // Check if already in manual list (case-sensitive match)
-    // Check both the extracted manual vars and the vars we just wrote
-    bool is_manual = false;
-    if (desc->env_var_name) {
-      // Check extracted manual vars
-      if (manual_vars) {
-        for (size_t j = 0; j < num_manual_vars; j++) {
-          if (manual_vars[j] && strcmp(manual_vars[j], desc->env_var_name) == 0) {
-            is_manual = true;
-            break;
-          }
-        }
-      }
-      // Also check vars we just wrote (in case extraction missed them)
-      if (!is_manual && written_vars) {
-        for (size_t j = 0; j < num_written_vars; j++) {
-          if (written_vars[j] && strcmp(written_vars[j], desc->env_var_name) == 0) {
-            is_manual = true;
-            break;
-          }
-        }
+    // Check if already in manual list
+    bool already_exists = false;
+    for (size_t j = 0; j < num_all_vars; j++) {
+      if (strcmp(all_vars[j].name, desc->env_var_name) == 0) {
+        already_exists = true;
+        break;
       }
     }
 
-    if (!is_manual) {
-      fprintf(f, ".TP\n");
-      fprintf(f, ".B %s\n", desc->env_var_name);
-      if (desc->help_text) {
-        fprintf(f, "%s\n", escape_groff_special(desc->help_text));
-      } else {
-        fprintf(f, "Set to override .B \\-\\-%s\n", desc->long_name);
+    if (!already_exists) {
+      if (num_all_vars >= capacity) {
+        capacity *= 2;
+        all_vars = SAFE_REALLOC(all_vars, capacity * sizeof(env_var_entry_t), env_var_entry_t *);
       }
+
+      all_vars[num_all_vars].name = SAFE_MALLOC(strlen(desc->env_var_name) + 1, char *);
+      strcpy(all_vars[num_all_vars].name, desc->env_var_name);
+
+      // Generate description for auto-generated variable
+      size_t desc_len = strlen(".TP\n.B ") + strlen(desc->env_var_name) + 1 + strlen("Set to override .B \\-\\--") +
+                        strlen(desc->long_name) + 20;
+      all_vars[num_all_vars].description = SAFE_MALLOC(desc_len, char *);
+      snprintf(all_vars[num_all_vars].description, desc_len, ".TP\n.B %s\nSet to override .B \\-\\-%s",
+               desc->env_var_name, desc->long_name);
+
+      all_vars[num_all_vars].is_manual = false;
+      num_all_vars++;
     }
   }
 
-  // Free manual vars arrays
-  if (manual_vars) {
-    for (size_t i = 0; i < num_manual_vars; i++) {
-      if (manual_vars[i]) {
-        SAFE_FREE(manual_vars[i]);
-      }
+  // Sort all variables alphabetically
+  qsort(all_vars, num_all_vars, sizeof(env_var_entry_t), compare_env_vars);
+
+  // Write sorted variables
+  for (size_t i = 0; i < num_all_vars; i++) {
+    fprintf(f, "%s", all_vars[i].description);
+    if (all_vars[i].description[strlen(all_vars[i].description) - 1] != '\n') {
+      fprintf(f, "\n");
     }
-    SAFE_FREE(manual_vars);
   }
-  if (written_vars) {
-    for (size_t i = 0; i < num_written_vars; i++) {
-      if (written_vars[i]) {
-        SAFE_FREE(written_vars[i]);
-      }
+
+  // Free all variables
+  for (size_t i = 0; i < num_all_vars; i++) {
+    if (all_vars[i].name) {
+      SAFE_FREE(all_vars[i].name);
     }
-    SAFE_FREE(written_vars);
+    if (all_vars[i].description) {
+      SAFE_FREE(all_vars[i].description);
+    }
   }
+  SAFE_FREE(all_vars);
 
   fprintf(f, "\n");
   write_section_marker(f, "MERGE", "ENVIRONMENT", false);
