@@ -1021,12 +1021,17 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
       auto_vars[num_auto_vars].name = SAFE_MALLOC(strlen(desc->env_var_name) + 1, char *);
       strcpy(auto_vars[num_auto_vars].name, desc->env_var_name);
 
-      // Generate description for auto-generated variable
-      size_t desc_len = strlen(".TP\n.B ") + strlen(desc->env_var_name) + 1 + strlen("Set to override .B \\-\\--") +
-                        strlen(desc->long_name) + 20;
+      // Generate description for auto-generated variable (use help_text if available)
+      const char *var_help = desc->help_text ? desc->help_text : "";
+      size_t desc_len = strlen(".TP\n.B ") + strlen(desc->env_var_name) + 1 + strlen(var_help) + 50;
       auto_vars[num_auto_vars].description = SAFE_MALLOC(desc_len, char *);
-      snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\nSet to override .B \\-\\-%s",
-               desc->env_var_name, desc->long_name);
+      if (desc->help_text) {
+        snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\n%s", desc->env_var_name,
+                 escape_groff_special(desc->help_text));
+      } else {
+        snprintf(auto_vars[num_auto_vars].description, desc_len, ".TP\n.B %s\nSet to override .B \\-\\-%s",
+                 desc->env_var_name, desc->long_name);
+      }
 
       auto_vars[num_auto_vars].is_manual = false;
       num_auto_vars++;
@@ -1410,8 +1415,14 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   // Release: Parse from embedded memory
   existing_sections = parse_manpage_sections_from_memory(template_str, template_len, &num_existing_sections);
 #else
-  // Debug: Parse from filesystem path
-  existing_sections = parse_manpage_sections("share/man/man1/ascii-chat.1.in", &num_existing_sections);
+  // Debug: Parse from filesystem path using absolute path
+  char template_file_path[PATH_MAX];
+#ifdef ASCIICHAT_RESOURCE_DIR
+  snprintf(template_file_path, sizeof(template_file_path), "%s/share/man/man1/ascii-chat.1.in", ASCIICHAT_RESOURCE_DIR);
+#else
+  snprintf(template_file_path, sizeof(template_file_path), "share/man/man1/ascii-chat.1.in");
+#endif
+  existing_sections = parse_manpage_sections(template_file_path, &num_existing_sections);
 #endif
 
   if (!existing_sections && num_existing_sections > 0) {
@@ -1426,8 +1437,15 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   // Release: Parse from embedded memory
   content_sections = parse_manpage_sections_from_memory(content_str, content_len, &num_content_sections);
 #else
-  // Debug: Parse from filesystem path
-  content_sections = parse_manpage_sections("share/man/man1/ascii-chat.1.content", &num_content_sections);
+  // Debug: Parse from filesystem path using absolute path
+  char content_file_path[PATH_MAX];
+#ifdef ASCIICHAT_RESOURCE_DIR
+  snprintf(content_file_path, sizeof(content_file_path), "%s/share/man/man1/ascii-chat.1.content",
+           ASCIICHAT_RESOURCE_DIR);
+#else
+  snprintf(content_file_path, sizeof(content_file_path), "share/man/man1/ascii-chat.1.content");
+#endif
+  content_sections = parse_manpage_sections(content_file_path, &num_content_sections);
 #endif
 
   if (!content_sections && num_content_sections > 0) {
