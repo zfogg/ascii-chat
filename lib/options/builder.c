@@ -2652,6 +2652,13 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     }
   }
 
+  // Determine if this is binary-level help (called for 'ascii-chat --help')
+  // Binary help uses MODE_DISCOVERY as the mode value
+  bool for_binary_help = (mode == MODE_DISCOVERY);
+
+  // Print EXAMPLES section (if any examples exist for this mode)
+  print_examples_section(config, desc, term_width, global_max_col_width, mode, for_binary_help);
+
   // Print options sections (with mode-specific filtering)
   options_config_print_options_sections_with_width(config, desc, global_max_col_width, mode);
 }
