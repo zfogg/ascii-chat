@@ -43,16 +43,14 @@
  */
 
 /**
- * @brief Print configuration warning to stderr
+ * @brief Print configuration warning using the logging system
  *
- * Config warnings are printed directly to stderr because logging may not be
- * initialized yet when configuration is loaded. This ensures users see
- * validation errors immediately.
+ * Uses log_warn so that config warnings respect the --quiet flag and
+ * are routed through the logging system for proper filtering.
  */
 #define CONFIG_WARN(fmt, ...)                                                                                          \
   do {                                                                                                                 \
-    (void)fprintf(stderr, "WARNING: Config file: " fmt "\n", ##__VA_ARGS__);                                           \
-    (void)fflush(stderr);                                                                                              \
+    log_warn("Config file: " fmt, ##__VA_ARGS__);                                                                      \
   } while (0)
 
 /**
@@ -597,7 +595,7 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
   for (size_t i = 0; i < metadata_count; i++) {
     const config_option_metadata_t *meta = &metadata[i];
 
-    // Skip if not applicable to current mode - validate using mode_bitmask
+    // Validate mode compatibility using mode_bitmask
     // If mode_bitmask is 0 or BINARY, option applies to all modes
     if (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY)) {
       // Option has specific mode restrictions - check if current mode matches
@@ -608,6 +606,10 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
 
       if (!applies_to_mode) {
+        log_debug("Config: Option '%s' is not supported for this mode (skipping)", meta->toml_key);
+        if (strict) {
+          return SET_ERRNO(ERROR_CONFIG, "Option '%s' is not supported for this mode", meta->toml_key);
+        }
         continue;
       }
     }
