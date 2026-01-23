@@ -49,12 +49,12 @@ static bool option_applies_to_mode(const option_descriptor_t *desc, asciichat_mo
   }
 
   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
-  // we want to show all options that apply to any mode, plus binary-level options.
+  // show options that apply to the default mode (DISCOVERY) or binary-level options only.
+  // Don't show mode-specific options for other modes (server, client, mirror, discovery-service).
   if (for_binary_help) {
-    // An option applies if its mode_bitmask has any bit set for any valid mode,
-    // or if it's a binary option.
-    // OPTION_MODE_ALL is a bitmask of all modes (including OPTION_MODE_BINARY).
-    return (desc->mode_bitmask & OPTION_MODE_ALL) != 0 && !desc->hide_from_binary_help;
+    // Binary-level options or options that apply to discovery mode (the default)
+    option_mode_bitmask_t default_modes = OPTION_MODE_BINARY | OPTION_MODE_DISCOVERY;
+    return (desc->mode_bitmask & default_modes) != 0 && !desc->hide_from_binary_help;
   }
 
   // For mode-specific help (non-discovery modes), show only options for that mode.

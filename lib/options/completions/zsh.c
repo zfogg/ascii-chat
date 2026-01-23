@@ -53,7 +53,7 @@ asciichat_error_t completions_generate_zsh(FILE *output)
   }
 
   fprintf(output,
-    "    '1:mode:(server client mirror)' \\\n"
+    "    '1:mode:(server client mirror discovery-service)' \\\n"
     "    '*::mode args:_ascii_chat_subcommand'\n"
     "}\n"
     "\n"
@@ -108,6 +108,24 @@ asciichat_error_t completions_generate_zsh(FILE *output)
       zsh_write_option(output, &mirror_opts[i]);
     }
     SAFE_FREE(mirror_opts);
+  }
+
+  fprintf(output,
+    "      && return 0\n"
+    "    ;;\n"
+    "  discovery-service)\n"
+    "    _arguments \\\n");
+
+  /* Discovery-service options */
+  size_t discovery_svc_count = 0;
+  const option_descriptor_t *discovery_svc_opts =
+      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+
+  if (discovery_svc_opts) {
+    for (size_t i = 0; i < discovery_svc_count; i++) {
+      zsh_write_option(output, &discovery_svc_opts[i]);
+    }
+    SAFE_FREE(discovery_svc_opts);
   }
 
   fprintf(output,

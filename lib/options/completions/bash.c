@@ -153,6 +153,20 @@ static asciichat_error_t bash_write_all_options(FILE *output)
   }
   fprintf(output, "  )\n\n");
 
+  /* Discovery-service options */
+  size_t discovery_svc_count = 0;
+  const option_descriptor_t *discovery_svc_opts =
+      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+
+  fprintf(output, "  # Discovery-service options (same as 'ascii-chat discovery-service --help')\n  local -a discovery_svc_opts=(\n");
+  if (discovery_svc_opts) {
+    for (size_t i = 0; i < discovery_svc_count; i++) {
+      bash_write_option(output, &discovery_svc_opts[i]);
+    }
+    SAFE_FREE(discovery_svc_opts);
+  }
+  fprintf(output, "  )\n\n");
+
   return ASCIICHAT_OK;
 }
 
@@ -215,14 +229,14 @@ static void bash_write_completion_logic(FILE *output)
 {
   fprintf(output,
     "  # Modes\n"
-    "  local modes=\"server client mirror\"\n"
+    "  local modes=\"server client mirror discovery-service\"\n"
     "\n"
     "  # Detect which mode we're in\n"
     "  local mode=\"\"\n"
     "  local i\n"
     "  for ((i = 1; i < cword; i++)); do\n"
     "    case \"${words[i]}\" in\n"
-    "    server | client | mirror)\n"
+    "    server | client | mirror | discovery-service)\n"
     "      mode=\"${words[i]}\"\n"
     "      break\n"
     "      ;;\n"
@@ -231,7 +245,7 @@ static void bash_write_completion_logic(FILE *output)
     "\n"
     "  case \"$prev\" in\n"
     "  # Options that take file paths\n"
-    "  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config | -k)\n"
+    "  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config | -d | --database | -k)\n"
     "    _filedir\n"
     "    return\n"
     "    ;;\n");

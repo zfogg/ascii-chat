@@ -102,6 +102,20 @@ asciichat_error_t completions_generate_powershell(FILE *output)
     SAFE_FREE(mirror_opts);
   }
 
+  fprintf(output, "  )\n\n  $discoverySvcOptions = @(\n");
+
+  /* Discovery-service options */
+  size_t discovery_svc_count = 0;
+  const option_descriptor_t *discovery_svc_opts =
+      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+
+  if (discovery_svc_opts) {
+    for (size_t i = 0; i < discovery_svc_count; i++) {
+      ps_write_option(output, &discovery_svc_opts[i]);
+    }
+    SAFE_FREE(discovery_svc_opts);
+  }
+
   fprintf(output,
     "  )\n"
     "\n"
@@ -113,10 +127,12 @@ asciichat_error_t completions_generate_powershell(FILE *output)
     "    $options += $clientOptions\n"
     "  } elseif ($mode -eq 'mirror') {\n"
     "    $options += $mirrorOptions\n"
+    "  } elseif ($mode -eq 'discovery-service') {\n"
+    "    $options += $discoverySvcOptions\n"
     "  }\n"
     "\n"
     "  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n"
-    "    @('server', 'client', 'mirror') | Where-Object { $_ -like \"$wordToComplete*\" } | ForEach-Object {\n"
+    "    @('server', 'client', 'mirror', 'discovery-service') | Where-Object { $_ -like \"$wordToComplete*\" } | ForEach-Object {\n"
     "      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \"Mode: $_\")\n"
     "    }\n"
     "  } else {\n"

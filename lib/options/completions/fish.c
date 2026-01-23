@@ -114,6 +114,20 @@ asciichat_error_t completions_generate_fish(FILE *output)
     }
     SAFE_FREE(mirror_opts);
   }
+  fprintf(output, "\n");
+
+  /* Discovery-service options */
+  size_t discovery_svc_count = 0;
+  const option_descriptor_t *discovery_svc_opts =
+      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+
+  fprintf(output, "# Discovery-service options (same as 'ascii-chat discovery-service --help')\n");
+  if (discovery_svc_opts) {
+    for (size_t i = 0; i < discovery_svc_count; i++) {
+      fish_write_option(output, &discovery_svc_opts[i], "-n '__fish_seen_subcommand_from discovery-service'");
+    }
+    SAFE_FREE(discovery_svc_opts);
+  }
 
   return ASCIICHAT_OK;
 }

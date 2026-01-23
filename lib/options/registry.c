@@ -532,11 +532,6 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
 
     // Set mode bitmask on the last added descriptor
     options_builder_set_mode_bitmask(builder, entry->mode_bitmask);
-
-    // Hide discovery service options from binary-level help
-    if (entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC) {
-      builder->descriptors[builder->num_descriptors - 1].hide_from_binary_help = true;
-    }
   }
 
   return ASCIICHAT_OK;
@@ -622,8 +617,7 @@ const option_descriptor_t *options_registry_find_by_name(const char *long_name) 
   desc.help_text = entry->help_text;
   desc.group = entry->group;
   desc.hide_from_mode_help = false;
-  // Hide discovery service options from binary-level help (they're for discovery-service mode only)
-  desc.hide_from_binary_help = (entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC);
+  desc.hide_from_binary_help = false;
   desc.default_value = entry->default_value;
   desc.required = entry->required;
   desc.env_var_name = entry->env_var_name;
@@ -660,8 +654,7 @@ const option_descriptor_t *options_registry_find_by_short(char short_name) {
   desc.help_text = entry->help_text;
   desc.group = entry->group;
   desc.hide_from_mode_help = false;
-  // Hide discovery service options from binary-level help
-  desc.hide_from_binary_help = (entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC);
+  desc.hide_from_binary_help = false;
   desc.default_value = entry->default_value;
   desc.required = entry->required;
   desc.env_var_name = entry->env_var_name;
@@ -825,19 +818,14 @@ static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciic
     return false;
   }
 
+  // Hardcoded list of options to hide from binary help (matches builder.c line 752)
+  // These are options that have hide_from_binary_help=true set in builder.c
+  const char *hidden_from_binary[] = {"create-man-page", // Development tool, hidden from help
+                                      NULL};
+
   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
   // we want to show all options that apply to any mode, plus binary-level options.
   if (for_binary_help) {
-    // Hide discovery service options from binary help (they're for discovery-service mode only)
-    if (entry->mode_bitmask == OPTION_MODE_DISCOVERY_SVC) {
-      return false;
-    }
-
-    // Hardcoded list of options to hide from binary help (matches builder.c line 752)
-    // These are options that have hide_from_binary_help=true set in builder.c
-    const char *hidden_from_binary[] = {"create-man-page", // Development tool, hidden from help
-                                        NULL};
-
     // Check if this option is explicitly hidden from binary help
     for (int i = 0; hidden_from_binary[i] != NULL; i++) {
       if (strcmp(entry->long_name, hidden_from_binary[i]) == 0) {

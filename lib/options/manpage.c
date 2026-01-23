@@ -683,11 +683,6 @@ static void write_environment_section(FILE *f, const options_config_t *config) {
       continue;
     }
 
-    // Skip options hidden from binary help (e.g., discovery-service only options)
-    if (desc->hide_from_binary_help) {
-      continue;
-    }
-
     fprintf(f, ".TP\n");
     fprintf(f, ".B %s\n", desc->env_var_name);
     fprintf(f, "Set to override ");
@@ -1171,11 +1166,6 @@ static void write_environment_section_merged(FILE *f, const options_config_t *co
     const option_descriptor_t *desc = &config->descriptors[i];
 
     if (!desc->env_var_name) {
-      continue;
-    }
-
-    // Skip options hidden from binary help (e.g., discovery-service only options)
-    if (desc->hide_from_binary_help) {
       continue;
     }
 
