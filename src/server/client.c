@@ -253,11 +253,7 @@ client_info_t *find_client_by_id(uint32_t client_id) {
 
   client_info_t *result = NULL;
   uint32_t search_id = client_id; // uthash needs an lvalue for the key
-  // uthash uses intentional unsigned overflow in hash computation (standard practice)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winteger-overflow"
   HASH_FIND_INT(g_client_manager.clients_by_id, &search_id, result);
-#pragma GCC diagnostic pop
 
   rwlock_rdunlock(&g_client_manager_rwlock);
 
@@ -605,11 +601,7 @@ int add_client(server_context_t *server_ctx, socket_t socket, const char *client
   // Add client to uthash table for O(1) lookup
   // Note: HASH_ADD_INT uses the client_id field directly from the client structure
   uint32_t cid = atomic_load(&client->client_id);
-  // uthash uses intentional unsigned overflow in hash computation (standard practice)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winteger-overflow"
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
-#pragma GCC diagnostic pop
   log_debug("Added client %u to uthash table", cid);
 
   // Register this client's audio buffer with the mixer
@@ -934,11 +926,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
 
   // Add client to uthash table for O(1) lookup
   uint32_t cid = atomic_load(&client->client_id);
-  // uthash uses intentional unsigned overflow in hash computation (standard practice)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winteger-overflow"
   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
-#pragma GCC diagnostic pop
   log_debug("Added WebRTC client %u to uthash table", cid);
 
   // Register this client's audio buffer with the mixer
@@ -1263,9 +1251,6 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   // Another thread might have already removed it
   if (target_client) {
     client_info_t *hash_entry = NULL;
-    // uthash uses intentional unsigned overflow in hash computation (standard practice)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winteger-overflow"
     HASH_FIND(hh, g_client_manager.clients_by_id, &client_id, sizeof(client_id), hash_entry);
     if (hash_entry == target_client) {
       HASH_DELETE(hh, g_client_manager.clients_by_id, target_client);
@@ -1274,7 +1259,6 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
       log_warn("Client %u already removed from hash table by another thread (found=%p, expected=%p)", client_id,
                (void *)hash_entry, (void *)target_client);
     }
-#pragma GCC diagnostic pop
   } else {
     log_warn("Failed to remove client %u from hash table (client not found)", client_id);
   }

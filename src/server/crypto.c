@@ -419,10 +419,13 @@ int server_crypto_handshake(client_info_t *client) {
     return -1;
   }
 
+  // Copy and validate payload immediately after NULL check to ensure analyzer understands safety
   crypto_capabilities_packet_t client_caps;
-  // NOLINTNEXTLINE(clang-analyzer-unix.cstring.NullArg) - payload checked above, FATAL never returns
   memcpy(&client_caps, payload, sizeof(crypto_capabilities_packet_t));
+
+  // Free the buffer after use
   buffer_pool_free(NULL, payload, payload_len);
+  payload = NULL; // Clear reference to prevent use-after-free
 
   // Convert from network byte order
   uint16_t supported_kex = NET_TO_HOST_U16(client_caps.supported_kex_algorithms);
