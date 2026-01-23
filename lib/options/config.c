@@ -595,22 +595,18 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     const config_option_metadata_t *meta = &metadata[i];
 
     // Skip if not applicable to current mode - validate using mode_bitmask
-    bool applies_to_mode = false;
-    if (meta->mode_bitmask & OPTION_MODE_BINARY) {
-      // Binary options are always valid
-      applies_to_mode = true;
-    } else if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
-      // Check if option applies to detected mode
-      option_mode_bitmask_t mode_bit = (1 << detected_mode);
-      applies_to_mode = (meta->mode_bitmask & mode_bit) != 0;
-    }
-
-    if (!applies_to_mode) {
-      // Option doesn't apply to this mode - skip it
-      if (strict) {
-        CONFIG_WARN("Option '%s' is not valid for mode %d (skipping)", meta->toml_key, detected_mode);
+    // If mode_bitmask is 0 or BINARY, option applies to all modes
+    if (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY)) {
+      // Option has specific mode restrictions - check if current mode matches
+      bool applies_to_mode = false;
+      if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
+        option_mode_bitmask_t mode_bit = (1 << detected_mode);
+        applies_to_mode = (meta->mode_bitmask & mode_bit) != 0;
       }
-      continue;
+
+      if (!applies_to_mode) {
+        continue;
+      }
     }
 
     // Skip if already set (avoid processing duplicates like log_file vs logging.log_file)
@@ -939,16 +935,17 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     struct stat st;
     if (stat(config_path_expanded, &st) == 0) {
       // File exists - ask user if they want to overwrite
-      log_plain_stderr("Config file already exists: %s", config_path_expanded);
+      // Use fprintf directly so prompts display even when logging is suppressed
+      (void)fprintf(stderr, "Config file already exists: %s\n", config_path_expanded);
 
       bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
       if (!overwrite) {
-        log_plain_stderr("Config file creation cancelled.");
+        (void)fprintf(stderr, "Config file creation cancelled.\n");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
       }
 
       // User confirmed overwrite - continue to create file (will overwrite existing)
-      log_plain_stderr("Overwriting existing config file...");
+      (void)fprintf(stderr, "Overwriting existing config file...\n");
     }
 
     // Create directory if needed

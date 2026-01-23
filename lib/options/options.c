@@ -559,19 +559,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     return rcu_init_result;
   }
 
-  // Initialize logging system early so prompts display properly (e.g., for --config-create)
-  // This must happen before config_create_default is called
-  if (!timer_system_init()) {
-    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
-  }
-  asciichat_error_t logging_init_result = asciichat_shared_init("options-early.log", false);
-  if (logging_init_result != ASCIICHAT_OK) {
-    return logging_init_result;
-  }
-
-  // Create local options struct and initialize with defaults
-  options_t opts = {0}; // Zero-initialize all fields
-
   // ========================================================================
   // STAGE 1: Mode Detection and Binary-Level Option Handling
   // ========================================================================
@@ -582,6 +569,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool show_version = false;
   bool create_config = false;
   bool create_manpage = false;
+  bool has_action = false; // Track if any action flag is present
   const char *config_create_path = NULL;
   const char *manpage_template_file = NULL; // Template file path (.1.in)
   const char *manpage_content_file = NULL;  // Content file path (.1.content)
@@ -590,14 +578,17 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
   // ========================================================================
   // Quick scan for action flags (they may have arguments)
+  // This must happen BEFORE logging initialization so we can suppress logs before shared_init()
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
+        has_action = true;
         break;
       }
       if (strcmp(argv[i], "--config-create") == 0) {
         create_config = true;
+        has_action = true;
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           config_create_path = argv[i + 1];
         }
@@ -605,6 +596,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
       if (strcmp(argv[i], "--create-man-page") == 0) {
         create_manpage = true;
+        has_action = true;
         // First arg: template file path (.1.in)
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           manpage_template_file = argv[i + 1];
@@ -618,6 +610,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         break;
       }
       if (strcmp(argv[i], "--completions") == 0) {
+        has_action = true;
         // Handle --completions: generate shell completion scripts
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           action_completions(argv[i + 1]);
@@ -630,6 +623,23 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
     }
   }
+
+  // Initialize logging system early so prompts display properly (e.g., for --config-create)
+  // This must happen before config_create_default is called
+  // If an action flag is detected, silence logs BEFORE logging init so shared_init() output is suppressed
+  if (!timer_system_init()) {
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
+  }
+  if (has_action) {
+    log_set_terminal_output(false); // Suppress console logging BEFORE shared_init
+  }
+  asciichat_error_t logging_init_result = asciichat_shared_init("options-early.log", false);
+  if (logging_init_result != ASCIICHAT_OK) {
+    return logging_init_result;
+  }
+
+  // Create local options struct and initialize with defaults
+  options_t opts = {0}; // Zero-initialize all fields
 
   // If we found version/config-create/create-manpage, handle them immediately (before mode detection)
   if (show_version || create_config || create_manpage) {
@@ -663,14 +673,18 @@ asciichat_error_t options_init(int argc, char **argv) {
         } else {
           fprintf(stderr, "Error: Failed to generate config\n");
         }
-        return result;
+        (void)fflush(stderr); // Flush stderr before exiting
+        // Use _exit to bypass atexit handlers (no memory report for clean action output)
+        _exit(result);
       }
       if (config_create_path) {
         // File was created successfully
         printf("Created default config file at: %s\n", config_create_path);
+        (void)fflush(stdout); // Flush before _exit to ensure message is printed
       }
       // If config_create_path was NULL, config was written to stdout, so no message needed
-      exit(0);
+      // Use _exit to bypass atexit handlers (no memory report for clean action output)
+      _exit(0);
     }
     if (create_manpage) {
       // Handle --create-man-page: generate merged man page template to stdout
