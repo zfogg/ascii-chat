@@ -27,13 +27,13 @@ if(NOT EXISTS "${BINARY}")
     message(FATAL_ERROR "Binary not found: ${BINARY}")
 endif()
 
-# Run llvm-strings on the binary
+# Run llvm-strings on the binary with timeout protection
+# Uses: timeout -k 5 10 = 10 second timeout, kill -9 after 5 more seconds if needed
 execute_process(
-    COMMAND "${LLVM_STRINGS}" "${BINARY}"
+    COMMAND timeout -k 5 10 "${LLVM_STRINGS}" "${BINARY}"
     OUTPUT_VARIABLE STRINGS_OUTPUT
     ERROR_VARIABLE STRINGS_ERROR
     RESULT_VARIABLE STRINGS_RESULT
-    TIMEOUT 10  # 10 second timeout for large binaries
 )
 
 # Handle timeout (exit code 124 from timeout command, or CMake timeout)
