@@ -1149,6 +1149,8 @@ static void registry_populate_metadata_for_critical_options(void) {
   option_descriptor_t *config_desc = (option_descriptor_t *)options_registry_find_by_name("config");
   if (config_desc) {
     config_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
+  } else {
+    CLEAR_ERRNO(); // "config" is a binary-level option, not in registry - suppress spurious error
   }
 
   // STUN servers and TURN servers are lists

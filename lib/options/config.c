@@ -477,10 +477,13 @@ static asciichat_error_t write_double(const option_parsed_value_t *parsed, const
   char *field_ptr = ((char *)opts) + meta->field_offset;
 
   // Check field_size to distinguish float from double
+  // Use memcpy for alignment-safe writes
   if (meta->field_size == sizeof(float)) {
-    *(float *)field_ptr = parsed->float_value;
+    float float_val = (float)parsed->float_value;
+    memcpy(field_ptr, &float_val, sizeof(float));
   } else {
-    *(double *)field_ptr = (double)parsed->float_value;
+    double double_val = (double)parsed->float_value;
+    memcpy(field_ptr, &double_val, sizeof(double));
   }
 
   return ASCIICHAT_OK;
@@ -731,11 +734,16 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     opts->encrypt_enabled = 0;
   }
 
-  // Handle password warning
+  // Handle password warning (check both crypto and security sections)
   toml_datum_t password = toml_seek(toptab, "crypto.password");
-  const char *password_str = get_toml_string_validated(password);
-  if (password_str && strlen(password_str) > 0) {
-    CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
+  if (password.type == TOML_UNKNOWN) {
+    password = toml_seek(toptab, "security.password");
+  }
+  if (password.type == TOML_STRING) {
+    const char *password_str = get_toml_string_validated(password);
+    if (password_str && strlen(password_str) > 0) {
+      CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
+    }
   }
 
   return first_error;
