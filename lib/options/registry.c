@@ -325,22 +325,22 @@ static const registry_entry_t g_options_registry[] = {
     {"reconnect-attempts", '\0', OPTION_TYPE_INT, offsetof(options_t, reconnect_attempts),
      &default_reconnect_attempts_value, sizeof(int), "Number of reconnection attempts (-1=infinite, 0=none)", "NETWORK",
      false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
+    {"port-forwarding", '\0', OPTION_TYPE_BOOL, offsetof(options_t, enable_upnp), &default_enable_upnp_value,
+     sizeof(bool), "Enable UPnP/NAT-PMP port mapping for direct TCP", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
+    {"scan", '\0', OPTION_TYPE_BOOL, offsetof(options_t, lan_discovery), &default_lan_discovery_value, sizeof(bool),
+     "Scan for servers on local network via mDNS", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // WebRTC options
     {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &default_webrtc_value, sizeof(bool),
      "Use WebRTC P2P mode (default: Direct TCP)", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"upnp", '\0', OPTION_TYPE_BOOL, offsetof(options_t, enable_upnp), &default_enable_upnp_value, sizeof(bool),
-     "Enable UPnP/NAT-PMP port mapping for direct TCP", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
-    {"scan", '\0', OPTION_TYPE_BOOL, offsetof(options_t, lan_discovery), &default_lan_discovery_value, sizeof(bool),
-     "Scan for servers on local network via mDNS", "NETWORK", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &default_prefer_webrtc_value,
-     sizeof(bool), "Try WebRTC before Direct TCP (useful when Direct TCP fails)", "NETWORK", false, NULL, NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_webrtc), &default_no_webrtc_value, sizeof(bool),
      "Disable WebRTC, use Direct TCP only", "NETWORK", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &default_prefer_webrtc_value,
+     sizeof(bool), "Try WebRTC before direct TCP", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &default_webrtc_skip_stun_value,
      sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, NULL, NULL, NULL, false,
@@ -348,7 +348,6 @@ static const registry_entry_t g_options_registry[] = {
     {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
      &default_webrtc_disable_turn_value, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false,
      NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-
     {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
      "Comma-separated list of STUN server URLs", "NETWORK", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
@@ -370,33 +369,34 @@ static const registry_entry_t g_options_registry[] = {
      "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"url", 'u', OPTION_TYPE_STRING, offsetof(options_t, media_url), "", 0,
-     "Stream from network URL (HTTP/HTTPS/YouTube/RTSP) - takes priority over --file", "MEDIA", false, NULL, NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     "Stream from network URL (HTTP/HTTPS/YouTube/RTSP)", "MEDIA", false, NULL, NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &default_media_loop_value, sizeof(bool),
-     "Loop media file playback (not supported for network URLs)", "MEDIA", false, NULL, NULL, NULL, false, false,
+     "Loop media file playback (not supported for --url)", "MEDIA", false, NULL, NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &default_media_seek_value,
      sizeof(double), "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false, NULL,
      NULL, parse_timestamp, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"cookies-from-browser", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, cookies_from_browser), NULL, 0,
-     "Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, vivaldi, whale). "
+     "yt-dlp option (man yt-dlp). Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, "
+     "vivaldi, whale). "
      "Use without argument to default to chrome.",
      "MEDIA", false, NULL, NULL, parse_cookies_from_browser, false, true,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"no-cookies-from-browser", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_cookies_from_browser), false,
-     sizeof(bool), "Explicitly disable reading cookies from browser", "MEDIA", false, NULL, NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     sizeof(bool), "yt-dlp option (man yt-dlp). Explicitly disable reading cookies from browser", "MEDIA", false, NULL,
+     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
     // AUDIO GROUP (client, discovery)
     {"audio", 'A', OPTION_TYPE_BOOL, offsetof(options_t, audio_enabled), &default_audio_enabled_value, sizeof(bool),
      "Enable audio streaming", "AUDIO", false, "ASCII_CHAT_AUDIO", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"microphone-index", '\0', OPTION_TYPE_INT, offsetof(options_t, microphone_index), &default_microphone_index_value,
-     sizeof(int), "Microphone device index", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     sizeof(int), "Microphone device index", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX", NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"speakers-index", '\0', OPTION_TYPE_INT, offsetof(options_t, speakers_index), &default_speakers_index_value,
-     sizeof(int), "Speakers device index", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     sizeof(int), "Speakers device index", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"microphone-sensitivity", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, microphone_sensitivity),
      &default_microphone_sensitivity_value, sizeof(float), "Microphone volume multiplier (0.0-1.0)", "AUDIO", false,
      "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
@@ -407,8 +407,8 @@ static const registry_entry_t g_options_registry[] = {
      &default_audio_analysis_value, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
      "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback),
-     &default_no_audio_playback_value, sizeof(bool), "Disable speaker playback", "AUDIO", false, NULL, NULL,
-     NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     &default_no_audio_playback_value, sizeof(bool), "Disable speaker playback", "AUDIO", false, NULL, NULL, NULL,
+     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_encode_audio_value,
      sizeof(bool), "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
@@ -706,25 +706,25 @@ const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, 
   /* Convert mode to bitmask */
   option_mode_bitmask_t mode_bitmask = 0;
   switch (mode) {
-    case MODE_SERVER:
-      mode_bitmask = OPTION_MODE_SERVER;
-      break;
-    case MODE_CLIENT:
-      mode_bitmask = OPTION_MODE_CLIENT;
-      break;
-    case MODE_MIRROR:
-      mode_bitmask = OPTION_MODE_MIRROR;
-      break;
-    case MODE_DISCOVERY_SERVER:
-      mode_bitmask = OPTION_MODE_DISCOVERY_SVC;
-      break;
-    case MODE_DISCOVERY:
-      mode_bitmask = OPTION_MODE_DISCOVERY;
-      break;
-    default:
-      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
-      *num_options = 0;
-      return NULL;
+  case MODE_SERVER:
+    mode_bitmask = OPTION_MODE_SERVER;
+    break;
+  case MODE_CLIENT:
+    mode_bitmask = OPTION_MODE_CLIENT;
+    break;
+  case MODE_MIRROR:
+    mode_bitmask = OPTION_MODE_MIRROR;
+    break;
+  case MODE_DISCOVERY_SERVER:
+    mode_bitmask = OPTION_MODE_DISCOVERY_SVC;
+    break;
+  case MODE_DISCOVERY:
+    mode_bitmask = OPTION_MODE_DISCOVERY;
+    break;
+  default:
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid mode: %d", mode);
+    *num_options = 0;
+    return NULL;
   }
 
   /* Count matching options */
@@ -812,18 +812,15 @@ const option_descriptor_t *options_registry_get_binary_options(size_t *num_optio
  * @param for_binary_help If true, show all options for any mode; if false, filter by mode
  * @return true if option should be displayed for this mode
  */
-static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode,
-                                            bool for_binary_help) {
+static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help) {
   if (!entry) {
     return false;
   }
 
   // Hardcoded list of options to hide from binary help (matches builder.c line 752)
   // These are options that have hide_from_binary_help=true set in builder.c
-  const char *hidden_from_binary[] = {
-    "create-man-page",  // Development tool, hidden from help
-    NULL
-  };
+  const char *hidden_from_binary[] = {"create-man-page", // Development tool, hidden from help
+                                      NULL};
 
   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
   // we want to show all options that apply to any mode, plus binary-level options.
@@ -831,7 +828,7 @@ static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciic
     // Check if this option is explicitly hidden from binary help
     for (int i = 0; hidden_from_binary[i] != NULL; i++) {
       if (strcmp(entry->long_name, hidden_from_binary[i]) == 0) {
-        return false;  // Hidden from binary help
+        return false; // Hidden from binary help
       }
     }
 
@@ -856,7 +853,7 @@ static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciic
 }
 
 const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mode, bool for_binary_help,
-                                                             size_t *num_options) {
+                                                            size_t *num_options) {
   if (!num_options) {
     SET_ERRNO(ERROR_INVALID_PARAM, "num_options is NULL");
     return NULL;
@@ -878,8 +875,7 @@ const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mod
   }
 
   // Allocate array
-  option_descriptor_t *descriptors =
-      SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+  option_descriptor_t *descriptors = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
   if (!descriptors) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate descriptors array");
     *num_options = 0;
@@ -1034,7 +1030,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   if (fps_desc) {
     fps_desc->metadata.numeric_range.min = 1;
     fps_desc->metadata.numeric_range.max = 144;
-    fps_desc->metadata.numeric_range.step = 0;  // Continuous (no step)
+    fps_desc->metadata.numeric_range.step = 0; // Continuous (no step)
     fps_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
     static const char *fps_examples[] = {"30", "60", "144"};
     fps_desc->metadata.examples = fps_examples;
@@ -1043,12 +1039,9 @@ static void registry_populate_metadata_for_critical_options(void) {
 
   // Palette enum values
   static const char *palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
-  static const char *palette_descs[] = {"Standard ASCII palette",
-                                         "Block characters (full/half/quarter blocks)",
-                                         "Digital/computer style",
-                                         "Minimal palette (light aesthetic)",
-                                         "Cool/modern style",
-                                         "Custom user-defined characters"};
+  static const char *palette_descs[] = {"Standard ASCII palette", "Block characters (full/half/quarter blocks)",
+                                        "Digital/computer style", "Minimal palette (light aesthetic)",
+                                        "Cool/modern style",      "Custom user-defined characters"};
 
   option_descriptor_t *palette_desc = (option_descriptor_t *)options_registry_find_by_name("palette");
   if (palette_desc) {
@@ -1060,11 +1053,10 @@ static void registry_populate_metadata_for_critical_options(void) {
 
   // Render mode enum values
   static const char *render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
-  static const char *render_descs[] = {"Render using foreground characters only",
-                                        "Render using foreground characters only (alias)",
-                                        "Render using background colors only",
-                                        "Render using background colors only (alias)",
-                                        "Use half-block characters for 2x vertical resolution"};
+  static const char *render_descs[] = {
+      "Render using foreground characters only", "Render using foreground characters only (alias)",
+      "Render using background colors only", "Render using background colors only (alias)",
+      "Use half-block characters for 2x vertical resolution"};
 
   option_descriptor_t *render_desc = (option_descriptor_t *)options_registry_find_by_name("render-mode");
   if (render_desc) {
@@ -1124,7 +1116,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   option_descriptor_t *mic_idx_desc = (option_descriptor_t *)options_registry_find_by_name("microphone-index");
   if (mic_idx_desc) {
     mic_idx_desc->metadata.numeric_range.min = -1;
-    mic_idx_desc->metadata.numeric_range.max = 0;  // 0 for max (no real limit)
+    mic_idx_desc->metadata.numeric_range.max = 0; // 0 for max (no real limit)
     mic_idx_desc->metadata.numeric_range.step = 1;
     mic_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
@@ -1132,7 +1124,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   option_descriptor_t *speaker_idx_desc = (option_descriptor_t *)options_registry_find_by_name("speakers-index");
   if (speaker_idx_desc) {
     speaker_idx_desc->metadata.numeric_range.min = -1;
-    speaker_idx_desc->metadata.numeric_range.max = 0;  // 0 for max (no real limit)
+    speaker_idx_desc->metadata.numeric_range.max = 0; // 0 for max (no real limit)
     speaker_idx_desc->metadata.numeric_range.step = 1;
     speaker_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
@@ -1141,7 +1133,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   option_descriptor_t *webcam_idx_desc = (option_descriptor_t *)options_registry_find_by_name("webcam-index");
   if (webcam_idx_desc) {
     webcam_idx_desc->metadata.numeric_range.min = 0;
-    webcam_idx_desc->metadata.numeric_range.max = 0;  // 0 for max (no real limit)
+    webcam_idx_desc->metadata.numeric_range.max = 0; // 0 for max (no real limit)
     webcam_idx_desc->metadata.numeric_range.step = 1;
     webcam_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
@@ -1151,7 +1143,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   if (port_desc) {
     port_desc->metadata.numeric_range.min = 1;
     port_desc->metadata.numeric_range.max = 65535;
-    port_desc->metadata.numeric_range.step = 0;  // Continuous
+    port_desc->metadata.numeric_range.step = 0; // Continuous
     port_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
 
@@ -1160,7 +1152,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   if (width_desc) {
     width_desc->metadata.numeric_range.min = 20;
     width_desc->metadata.numeric_range.max = 512;
-    width_desc->metadata.numeric_range.step = 0;  // Continuous
+    width_desc->metadata.numeric_range.step = 0; // Continuous
     width_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
 
@@ -1168,7 +1160,7 @@ static void registry_populate_metadata_for_critical_options(void) {
   if (height_desc) {
     height_desc->metadata.numeric_range.min = 10;
     height_desc->metadata.numeric_range.max = 256;
-    height_desc->metadata.numeric_range.step = 0;  // Continuous
+    height_desc->metadata.numeric_range.step = 0; // Continuous
     height_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
 
@@ -1184,8 +1176,8 @@ static void registry_populate_metadata_for_critical_options(void) {
   // Reconnect attempts
   option_descriptor_t *reconnect_desc = (option_descriptor_t *)options_registry_find_by_name("reconnect-attempts");
   if (reconnect_desc) {
-    reconnect_desc->metadata.numeric_range.min = -1;  // -1 for infinite
-    reconnect_desc->metadata.numeric_range.max = 0;   // No limit
+    reconnect_desc->metadata.numeric_range.min = -1; // -1 for infinite
+    reconnect_desc->metadata.numeric_range.max = 0;  // No limit
     reconnect_desc->metadata.numeric_range.step = 1;
     reconnect_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
   }
