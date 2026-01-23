@@ -140,20 +140,19 @@ Common development targets (run with `cmake --build build --target <name>`):
 | Target | Description |
 |--------|-------------|
 | `ascii-chat` | Build the main executable (default) |
-| `completions` | Generate shell completions (bash, fish, zsh, powershell) |
 | `shared-lib` | Build shared library (`libasciichat.so`/`.dylib`/`.dll`) |
 | `static-lib` | Build static library (`libasciichat.a`) |
 | `tests` | Build and run all unit and integration tests |
-| `format` | Format all C/C++ code with clang-format |
-| `format-check` | Check code formatting without modifying files |
-| `clang-tidy` | Run Clang static analyzer for code quality issues |
+| `man1` | Generate man page for `ascii-chat(1)` |
+| `completions` | Generate shell completions (bash, fish, zsh, powershell) |
 | `docs` | Generate API documentation with Doxygen |
 | `docs-open` | Generate documentation and open in browser |
-| `package` | Create platform-specific installer packages |
-| `package-tar`, `package-deb`, `package-rpm`, `package-dmg`, `package-zip` | Create specific package formats (`.tar.gz` on Unix/Linux, `.deb` on Debian/Ubuntu, `.rpm` on RedHat/Fedora, `.dmg` on macOS, `.zip` on Windows/all platforms) |
+| `format` | Format all C/C++ code with clang-format |
+| `format-check` | Check code formatting without modifying files |
 | `scan-build` | Run Clang static analyzer with detailed reports |
 | `scan-build-view` | Run Clang analyzer and open report in browser |
-| `man1` | Generate man page for `ascii-chat(1)` |
+| `package` | Create platform-specific installer packages |
+| `package-tar`, `package-deb`, `package-rpm`, `package-dmg`, `package-zip` | Create specific package formats (`.tar.gz` on Unix/Linux, `.deb` on Debian/Ubuntu, `.rpm` on RedHat/Fedora, `.dmg` on macOS, `.zip` on Windows/all platforms) |
 
 ## Usage
 
