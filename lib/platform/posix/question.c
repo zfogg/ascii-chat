@@ -256,10 +256,21 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   }
 
   // Display prompt with default indicator
-  if (default_yes) {
-    log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+  // Use logging system if enabled, otherwise use fprintf directly (for when logs are suppressed)
+  bool logging_enabled = log_get_terminal_output();
+  if (logging_enabled) {
+    if (default_yes) {
+      log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+    } else {
+      log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+    }
   } else {
-    log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+    if (default_yes) {
+      (void)fprintf(stderr, "%s (Y/n)? ", prompt);
+    } else {
+      (void)fprintf(stderr, "%s (y/N)? ", prompt);
+    }
+    (void)fflush(stderr); // Flush immediately so prompt appears
   }
 
   bool result = default_yes;
