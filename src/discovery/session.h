@@ -27,7 +27,9 @@ extern "C" {
 #endif
 
 // Forward declarations
+#if !defined(MAX_PARTICIPANTS)
 #define MAX_PARTICIPANTS 16
+#endif
 
 /**
  * @brief Ring consensus state (Host-Mediated Proactive Election)

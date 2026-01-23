@@ -79,7 +79,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Frame rate timing
   uint64_t frame_count = 0;
   uint64_t frame_start_ns = 0;
-  uint64_t last_loop_time_ns = 0;
+  uint64_t prev_frame_start_ns = 0;
 
   // Main render loop - works for both synchronous and event-driven modes
   while (!should_exit(user_data)) {
@@ -87,13 +87,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     frame_start_ns = time_get_ns();
     uint64_t current_time_ns = frame_start_ns;
 
-    // Log actual loop iteration time (time since last frame started)
-    if (last_loop_time_ns > 0 && frame_count % 30 == 0) {
-      uint64_t loop_time_ns = time_elapsed_ns(last_loop_time_ns, frame_start_ns);
+    // Log actual loop iteration time (time between frame starts)
+    if (prev_frame_start_ns > 0 && frame_count % 30 == 0) {
+      uint64_t loop_time_ns = time_elapsed_ns(prev_frame_start_ns, frame_start_ns);
       double loop_time_ms = (double)loop_time_ns / 1000000.0;
       log_info("LOOP_TIME: frame-to-frame time %.2f ms (target %.2f ms)", loop_time_ms, 1000.0 / GET_OPTION(fps));
     }
-    last_loop_time_ns = frame_start_ns;
+    prev_frame_start_ns = frame_start_ns;
 
     // Snapshot mode: check if delay has elapsed
     if (snapshot_mode && !snapshot_done) {
