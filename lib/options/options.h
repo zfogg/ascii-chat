@@ -509,6 +509,24 @@
 #define OPT_TURN_CREDENTIAL_DEFAULT "0aa9917b4dad1b01631e87a32b875e09"
 #endif
 
+/** @brief Default verbose level (0 = not verbose) */
+#define OPT_VERBOSE_LEVEL_DEFAULT 0
+
+/** @brief Default log level (LOG_INFO) */
+#define OPT_LOG_LEVEL_DEFAULT LOG_INFO
+
+/** @brief Default media from stdin flag (false = not reading from stdin) */
+#define OPT_MEDIA_FROM_STDIN_DEFAULT false
+
+/** @brief Default custom palette set flag (false = not set) */
+#define OPT_PALETTE_CUSTOM_SET_DEFAULT false
+
+/** @brief Default require server verify flag (false = not required) */
+#define OPT_REQUIRE_SERVER_VERIFY_DEFAULT false
+
+/** @brief Default require client verify flag (false = not required) */
+#define OPT_REQUIRE_CLIENT_VERIFY_DEFAULT false
+
 // ============================================================================
 // Static Default Value Variables
 // ============================================================================
