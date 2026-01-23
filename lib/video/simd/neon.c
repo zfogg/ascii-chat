@@ -105,14 +105,6 @@ void neon_caches_destroy(void) {
   // Tables are now built inline (30ns) which is faster than cache lookup (50ns)
 }
 
-// NEON helper: Horizontal sum of 16 uint8_t values
-static inline uint16_t neon_horizontal_sum_u8(uint8x16_t vec) {
-  uint16x8_t sum16_lo = vpaddlq_u8(vec);
-  uint32x4_t sum32 = vpaddlq_u16(sum16_lo);
-  uint64x2_t sum64 = vpaddlq_u32(sum32);
-  return (uint16_t)(vgetq_lane_u64(sum64, 0) + vgetq_lane_u64(sum64, 1));
-}
-
 // NEON-optimized RLE detection: find run length for char+color pairs
 static inline int find_rle_run_length_neon(const uint8_t *char_buf, const uint8_t *color_buf, int start_pos,
                                            int max_len, uint8_t target_char, uint8_t target_color) {

@@ -300,7 +300,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
   // Call the standard ASCII conversion using context's palette and capabilities
   return ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
-                                         ctx->palette_chars, ctx->luminance_palette);
+                                         ctx->palette_chars);
 }
 
 /* ============================================================================

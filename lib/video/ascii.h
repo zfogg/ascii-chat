@@ -212,7 +212,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  */
 char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                      const bool stretch, const char *palette_chars, const char luminance_palette[256]);
+                                      const bool stretch, const char *palette_chars);
 
 /** @} */
 

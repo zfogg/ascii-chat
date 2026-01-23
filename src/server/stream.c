@@ -858,9 +858,8 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
     log_warn("DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
   }
 
-  char *ascii_frame =
-      ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
-                                      render_client->client_palette_chars, render_client->client_luminance_palette);
+  char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,
+                                                      render_client->client_palette_chars);
 
   return ascii_frame;
 }
