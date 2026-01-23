@@ -141,7 +141,7 @@ asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[
   }
 
   // Extract directory path and create all parent directories
-  char dir_path[512];
+  char dir_path[PLATFORM_MAX_PATH_LENGTH];
   SAFE_STRNCPY(dir_path, path, sizeof(dir_path));
 
   // Find last directory separator

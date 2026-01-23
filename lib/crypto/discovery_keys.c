@@ -250,7 +250,7 @@ asciichat_error_t discovery_keys_load_cached(const char *acds_server, uint8_t pu
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_load_cached");
   }
 
-  char cache_path[1024];
+  char cache_path[PLATFORM_MAX_PATH_LENGTH];
   asciichat_error_t result = discovery_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
   if (result != ASCIICHAT_OK) {
     return result;
@@ -270,14 +270,14 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_save_cached");
   }
 
-  char cache_path[1024];
+  char cache_path[PLATFORM_MAX_PATH_LENGTH];
   asciichat_error_t result = discovery_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
   // Create cache directory if it doesn't exist
-  char dir_path[1024];
+  char dir_path[PLATFORM_MAX_PATH_LENGTH];
   snprintf(dir_path, sizeof(dir_path), "%s", cache_path);
 #ifdef _WIN32
   char *last_sep = strrchr(dir_path, '\\');
@@ -319,7 +319,7 @@ asciichat_error_t discovery_keys_clear_cache(const char *acds_server) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_clear_cache");
   }
 
-  char cache_path[1024];
+  char cache_path[PLATFORM_MAX_PATH_LENGTH];
   asciichat_error_t result = discovery_keys_get_cache_path(acds_server, cache_path, sizeof(cache_path));
   if (result != ASCIICHAT_OK) {
     return result;

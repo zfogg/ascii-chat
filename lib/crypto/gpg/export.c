@@ -52,7 +52,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   }
 
   // Create temp file for exported key
-  char temp_path[256];
+  char temp_path[PLATFORM_MAX_PATH_LENGTH];
   safe_snprintf(temp_path, sizeof(temp_path), "/tmp/asciichat_gpg_export_%d_XXXXXX", getpid());
   int temp_fd = mkstemp(temp_path);
   if (temp_fd < 0) {

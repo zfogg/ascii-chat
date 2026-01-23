@@ -278,7 +278,7 @@ char *get_log_dir(void) {
 #ifdef NDEBUG
   // Release builds: Use $TMPDIR/ascii-chat/
   // Get system temp directory
-  char temp_dir[256];
+  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
     // Fallback: Use current working directory if temp dir unavailable
     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];

@@ -48,14 +48,14 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
     return -1;
   }
 
-  char msg_path[512];
-  char sig_path[512];
+  char msg_path[PLATFORM_MAX_PATH_LENGTH];
+  char sig_path[PLATFORM_MAX_PATH_LENGTH];
   int msg_fd = -1;
   int result = -1;
 
 #ifdef _WIN32
   // Windows: use GetTempPath + GetTempFileName with process ID
-  char temp_dir[MAX_PATH];
+  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
   if (GetTempPathA(sizeof(temp_dir), temp_dir) == 0) {
     log_error("Failed to get temp directory");
     return -1;

@@ -922,7 +922,7 @@ asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, co
 #endif
 
   // Build system config path: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml
-  char system_config_path[1024];
+  char system_config_path[PLATFORM_MAX_PATH_LENGTH];
   SAFE_SNPRINTF(system_config_path, sizeof(system_config_path),
                 "%s" PATH_SEPARATOR_STR "etc" PATH_SEPARATOR_STR "ascii-chat" PATH_SEPARATOR_STR "config.toml",
                 ASCIICHAT_INSTALL_PREFIX);

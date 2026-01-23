@@ -220,7 +220,7 @@ int query_init(int preferred_port) {
   }
 
   // Find the query server executable
-  char server_path[1024];
+  char server_path[PLATFORM_MAX_PATH_LENGTH];
   if (!find_query_server_path(server_path, sizeof(server_path))) {
     fprintf(stderr, "[query] Could not find ascii-query-server executable\n");
     fprintf(stderr, "[query] Set ASCIICHAT_QUERY_SERVER environment variable or ensure "
