@@ -370,26 +370,27 @@ static const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return "all modes";
   }
 
-  // Build a list of specific modes
+  // Build a list of specific modes in consistent order:
+  // binary, client, server, mirror, discovery-service
   static char mode_str[256];
   mode_str[0] = '\0';
   int pos = 0;
 
-  if (mode_bitmask & (1 << MODE_SERVER)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "server");
+  // MODE_DISCOVERY is the unified binary mode - show as "binary" to users
+  if (mode_bitmask & (1 << MODE_DISCOVERY)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "binary");
   }
   if (mode_bitmask & (1 << MODE_CLIENT)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
+  }
+  if (mode_bitmask & (1 << MODE_SERVER)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sserver", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_MIRROR)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smirror", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_DISCOVERY_SERVER)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
-  }
-  if (mode_bitmask & (1 << MODE_DISCOVERY)) {
-    // MODE_DISCOVERY is the unified binary mode - show as "binary" to users
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sbinary", pos > 0 ? ", " : "");
   }
 
   return pos > 0 ? mode_str : NULL;
