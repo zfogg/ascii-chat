@@ -445,71 +445,159 @@ if(UNIX)
 endif()
 
 # =============================================================================
+# Shell Completion Scripts Generation and Installation
+# =============================================================================
+# Generate tab-completion scripts at build time from the options registry
+# instead of maintaining static files. This ensures completions are always
+# in sync with the current options and help system.
+#
+# The completions are generated using the unified API:
+#   - options_registry_get_for_display() provides options to all generators
+#   - Both help system and all shell generators use identical filtering logic
+#
+# This replaces the static completion files with auto-generated ones
+# =============================================================================
+
+# Create output directory for generated completions
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/completions")
+
+# Generate completions at build time using the binary itself
+# These custom commands run after the ascii-chat binary is built
+add_custom_command(
+    OUTPUT
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions bash
+            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
+    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions fish
+            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
+    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions zsh
+            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
+    COMMAND "${CMAKE_BINARY_DIR}/bin/ascii-chat" --completions powershell
+            > "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+    DEPENDS ascii-chat
+    COMMENT "Generating shell completions from options registry..."
+    VERBATIM
+)
+
+# Create target for generating all completions
+add_custom_target(generate-completions ALL
+    DEPENDS
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
+        "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+)
+
+message(STATUS "${BoldGreen}Configured${ColorReset} completion generation: All shell completions will be generated from options registry at build time")
+
+# =============================================================================
 # Shell Completion Scripts Installation (Unix only)
 # =============================================================================
-# Install tab-completion scripts for bash, zsh, and fish shells
+# Install auto-generated tab-completion scripts for bash, zsh, and fish shells
 if(UNIX)
-    # Bash completions
+    # Bash completions - generated at build time
     # Standard location: /usr/share/bash-completion/completions/
     # User location: ~/.local/share/bash-completion/completions/
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/bash-completion/completions/ascii-chat")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/bash-completion/completions/ascii-chat"
-            DESTINATION share/bash-completion/completions
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat${ColorReset} → ${BoldYellow}share/bash-completion/completions/${ColorReset}")
-    endif()
+    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.bash"
+        DESTINATION share/bash-completion/completions
+        RENAME ascii-chat
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat.bash${ColorReset} (generated) → ${BoldYellow}share/bash-completion/completions/ascii-chat${ColorReset}")
 
-    # Zsh completions
+    # Zsh completions - generated at build time
     # Standard location: /usr/share/zsh/site-functions/
     # User location: ~/.local/share/zsh/site-functions/ or a directory in $fpath
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/zsh/site-functions/_ascii-chat")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/zsh/site-functions/_ascii-chat"
-            DESTINATION share/zsh/site-functions
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii-chat${ColorReset} → ${BoldYellow}share/zsh/site-functions/${ColorReset}")
-    endif()
+    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.zsh"
+        DESTINATION share/zsh/site-functions
+        RENAME _ascii-chat
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}ascii-chat.zsh${ColorReset} (generated) → ${BoldYellow}share/zsh/site-functions/_ascii-chat${ColorReset}")
 
-    # Fish completions
+    # Fish completions - generated at build time
     # Standard location: /usr/share/fish/vendor_completions.d/
     # User location: ~/.config/fish/completions/
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/fish/vendor_completions.d/ascii-chat.fish")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-            DESTINATION share/fish/vendor_completions.d
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} → ${BoldYellow}share/fish/vendor_completions.d/${ColorReset}")
-    endif()
+    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.fish"
+        DESTINATION share/fish/vendor_completions.d
+        RENAME ascii-chat.fish
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} (generated) → ${BoldYellow}share/fish/vendor_completions.d/ascii-chat.fish${ColorReset}")
 
-    # PowerShell completions (cross-platform)
+    # PowerShell completions (cross-platform) - generated at build time
     # Standard location: /usr/local/share/powershell/Completions/
     # User location: ~/.local/share/powershell/Completions/
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1"
-            DESTINATION share/powershell/Completions
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} → ${BoldYellow}share/powershell/Completions/${ColorReset}")
-    endif()
+    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+        DESTINATION share/powershell/Completions
+        RENAME ascii-chat.ps1
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}share/powershell/Completions/ascii-chat.ps1${ColorReset}")
 endif()
 
 # =============================================================================
 # Shell Completion Scripts Installation (Windows)
 # =============================================================================
-# Install PowerShell completion script on Windows
+# Install auto-generated PowerShell completion script on Windows
 if(WIN32)
-    # PowerShell completions
+    # PowerShell completions - generated at build time
     # Standard location varies, but doc/completions is accessible
     # User can source from: $HOME\Documents\PowerShell\Completions\
-    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1")
-        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1"
-            DESTINATION doc/completions
-            COMPONENT Runtime
-        )
-        message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} → ${BoldYellow}doc/completions/${ColorReset}")
-    endif()
+    install(FILES "${CMAKE_BINARY_DIR}/completions/ascii-chat.ps1"
+        DESTINATION doc/completions
+        RENAME ascii-chat.ps1
+        COMPONENT Runtime
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} (generated) → ${BoldYellow}doc/completions/ascii-chat.ps1${ColorReset}")
 endif()
+
+# Clean up old static completion files (they're now auto-generated)
+install(CODE "
+    message(STATUS \"Removing old static completion files...\")
+
+    # Check and remove bash completion
+    if(DEFINED ENV{DESTDIR})
+        set(_install_root \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
+    else()
+        set(_install_root \"\${CMAKE_INSTALL_PREFIX}\")
+    endif()
+
+    set(_bash_completion \"\${_install_root}/share/bash-completion/completions/ascii-chat\")
+    if(EXISTS \"\${_bash_completion}\")
+        message(STATUS \"  Removing old bash completion: \${_bash_completion}\")
+        file(REMOVE \"\${_bash_completion}\")
+        if(EXISTS \"\${_install_root}/share/bash-completion/completions\" AND NOT EXISTS \"\${_install_root}/share/bash-completion/completions/ascii-chat\")
+            # Directory is empty, try to remove it
+            file(REMOVE_RECURSE \"\${_install_root}/share/bash-completion\")
+        endif()
+    endif()
+
+    set(_zsh_completion \"\${_install_root}/share/zsh/site-functions/_ascii-chat\")
+    if(EXISTS \"\${_zsh_completion}\")
+        message(STATUS \"  Removing old zsh completion: \${_zsh_completion}\")
+        file(REMOVE \"\${_zsh_completion}\")
+        if(EXISTS \"\${_install_root}/share/zsh/site-functions\" AND NOT EXISTS \"\${_install_root}/share/zsh/site-functions/_ascii-chat\")
+            # Directory is empty, try to remove it
+            file(REMOVE_RECURSE \"\${_install_root}/share/zsh\")
+        endif()
+    endif()
+
+    set(_fish_completion \"\${_install_root}/share/fish/vendor_completions.d/ascii-chat.fish\")
+    if(EXISTS \"\${_fish_completion}\")
+        message(STATUS \"  Removing old fish completion: \${_fish_completion}\")
+        file(REMOVE \"\${_fish_completion}\")
+        if(EXISTS \"\${_install_root}/share/fish/vendor_completions.d\" AND NOT EXISTS \"\${_install_root}/share/fish/vendor_completions.d/ascii-chat.fish\")
+            # Directory is empty, try to remove it
+            file(REMOVE_RECURSE \"\${_install_root}/share/fish\")
+        endif()
+    endif()
+
+    message(STATUS \"Finished removing old static completion files\")
+" COMPONENT Runtime)
 
 # =============================================================================
 # Desktop Entry Installation (Linux only)
