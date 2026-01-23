@@ -281,7 +281,7 @@ static const registry_entry_t g_options_registry[] = {
 
     // SNAPSHOT GROUP (client, mirror, discovery)
     {"snapshot", 'S', OPTION_TYPE_BOOL, offsetof(options_t, snapshot_mode), &default_snapshot_mode_value, sizeof(bool),
-     "Snapshot mode (one frame and exit)", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT", NULL, NULL, NULL, false, false,
+     "Snapshot mode (one frame and exit)", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"snapshot-delay", 'D', OPTION_TYPE_DOUBLE, offsetof(options_t, snapshot_delay), &default_snapshot_delay_value,
      sizeof(double), "Snapshot delay in seconds", "SNAPSHOT", false, "ASCII_CHAT_SNAPSHOT_DELAY", NULL, NULL, false,

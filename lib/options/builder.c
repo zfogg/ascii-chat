@@ -1568,9 +1568,9 @@ static asciichat_error_t parse_single_flag(const options_config_t *config, char 
   }
 
   // Check if option applies to current mode based on mode_bitmask
+  asciichat_mode_t detected_mode = ((options_t *)options_struct)->detected_mode;
   if (desc->mode_bitmask != 0 && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
     // Option has specific mode restrictions
-    asciichat_mode_t detected_mode = ((options_t *)options_struct)->detected_mode;
     if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
       option_mode_bitmask_t mode_bit = (1 << detected_mode);
       if (!(desc->mode_bitmask & mode_bit)) {
