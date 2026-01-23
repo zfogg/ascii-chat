@@ -249,6 +249,10 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
       break;
     }
+    case OPTION_TYPE_CALLBACK:
+    case OPTION_TYPE_ACTION:
+      // These types are not loaded from config files - skip them
+      break;
     }
 
     if (!has_value) {
@@ -352,6 +356,11 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
     }
     case OPTION_TYPE_BOOL:
       // Already parsed above
+      break;
+    case OPTION_TYPE_CALLBACK:
+    case OPTION_TYPE_ACTION:
+      // These types are not loaded from config files - skip them
+      parse_success = false;
       break;
     }
 
@@ -464,6 +473,10 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
       }
       break;
     }
+    case OPTION_TYPE_CALLBACK:
+    case OPTION_TYPE_ACTION:
+      // These types are not loaded from config files - skip them
+      break;
       // Enums are OPTION_TYPE_INT, handled above in the INT case
     }
 
@@ -891,6 +904,10 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         }
         break;
       }
+      case OPTION_TYPE_CALLBACK:
+      case OPTION_TYPE_ACTION:
+        // These types are not saved to config files - skip them
+        break;
         // Enums are OPTION_TYPE_INT, handled above in the INT case
       }
 

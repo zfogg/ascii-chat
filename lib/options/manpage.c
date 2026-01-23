@@ -311,20 +311,10 @@ static void write_usage_section(FILE *f, const options_config_t *config) {
 
     for (const char **mode_ptr = modes; *mode_ptr && unified_config; mode_ptr++) {
       const char *mode = *mode_ptr;
-      asciichat_mode_t mode_enum;
 
-      // Map mode name to enum
-      if (strcmp(mode, "server") == 0) {
-        mode_enum = MODE_SERVER;
-      } else if (strcmp(mode, "client") == 0) {
-        mode_enum = MODE_CLIENT;
-      } else if (strcmp(mode, "mirror") == 0) {
-        mode_enum = MODE_MIRROR;
-      } else if (strcmp(mode, "discovery-service") == 0) {
-        mode_enum = MODE_DISCOVERY_SERVER;
-      } else if (strcmp(mode, "discovery") == 0) {
-        mode_enum = MODE_DISCOVERY;
-      } else {
+      // Validate mode name
+      if (strcmp(mode, "server") != 0 && strcmp(mode, "client") != 0 && strcmp(mode, "mirror") != 0 &&
+          strcmp(mode, "discovery-service") != 0 && strcmp(mode, "discovery") != 0) {
         continue;
       }
 
@@ -1841,7 +1831,6 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
   size_t line_capacity = 0;
   ssize_t line_len;
   const char *current_section_name = NULL;
-  bool in_merge_section = false;
   bool wrote_content_for_current_section = false;
 
   while ((line_len = getline(&line, &line_capacity, template_file)) != -1) {
@@ -1857,7 +1846,6 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
       }
       section_name[name_len] = '\0';
       current_section_name = NULL;
-      in_merge_section = false;
       wrote_content_for_current_section = false;
 
       // Check if we have content for this section from the file
@@ -1870,7 +1858,6 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
             const parsed_section_t *template_section =
                 find_section(template_sections, num_template_sections, section_name);
             if (template_section && template_section->type == SECTION_TYPE_MERGE) {
-              in_merge_section = true;
             }
           }
         }
@@ -1879,7 +1866,7 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
 
     // Check for MERGE section markers
     if (strstr(line, "MERGE-START:") != NULL) {
-      in_merge_section = true;
+      // MERGE-START detected (for reference, no action needed)
     } else if (strstr(line, "MERGE-END:") != NULL) {
       // Before MERGE-END, insert content from file if we have it
       if (current_section_name && content_sections && !wrote_content_for_current_section) {
@@ -1921,7 +1908,6 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
           wrote_content_for_current_section = true;
         }
       }
-      in_merge_section = false;
     }
 
     // Substitute @PROJECT_VERSION@ with version_string
