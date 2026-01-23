@@ -142,7 +142,6 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  *
  * @ingroup client_protocol
  */
-static asciichat_thread_t g_data_thread;
 
 /**
  * @brief Flag indicating if data thread was successfully created
@@ -550,93 +549,6 @@ static void handle_audio_packet(const void *data, size_t len) {
 #ifdef DEBUG_AUDIO
   log_debug("Processed %d audio samples", num_samples);
 #endif
-}
-
-/**
- * @brief Handle incoming audio batch packet from server
- *
- * Processes batched audio packets more efficiently than individual packets.
- * Parses the audio batch header, converts quantized samples to float, and
- * processes them through the audio subsystem.
- *
- * @param data Packet payload containing audio batch header + quantized samples
- * @param len Total packet length in bytes
- *
- * @ingroup client_protocol
- */
-static void handle_audio_batch_packet(const void *data, size_t len) {
-  if (!data) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch packet data");
-    return;
-  }
-
-  if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(1000000, "Received audio batch packet but audio is disabled");
-    return;
-  }
-
-  if (len < sizeof(audio_batch_packet_t)) {
-    log_warn("Audio batch packet too small: %zu bytes", len);
-    return;
-  }
-
-  // Parse batch header
-  const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t batch_count = NET_TO_HOST_U32(batch_header->batch_count);
-  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
-  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
-  uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
-
-  (void)batch_count;
-  (void)sample_rate;
-  (void)channels;
-
-  if (batch_count == 0 || total_samples == 0) {
-    log_warn("Empty audio batch: batch_count=%u, total_samples=%u", batch_count, total_samples);
-    return;
-  }
-
-  // Validate packet size
-  size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
-  if (len != expected_size) {
-    log_warn("Audio batch size mismatch: got %zu expected %zu", len, expected_size);
-    return;
-  }
-
-  if (total_samples > AUDIO_BATCH_SAMPLES * 2) {
-    log_warn("Audio batch too large: %u samples", total_samples);
-    return;
-  }
-
-  // Extract quantized samples (uint32_t network byte order)
-  const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
-
-  // Convert quantized samples to float
-  float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
-  if (!samples) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio batch conversion");
-    return;
-  }
-
-  // Use helper function to dequantize samples
-  asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
-  if (dq_result != ASCIICHAT_OK) {
-    SAFE_FREE(samples);
-    return;
-  }
-
-  // Track received packet for analysis
-  if (GET_OPTION(audio_analysis_enabled)) {
-    audio_analysis_track_received_packet(len);
-  }
-
-  // Process through audio subsystem
-  audio_process_received_samples(samples, (int)total_samples);
-
-  // Clean up
-  SAFE_FREE(samples);
-
-  log_debug_every(LOG_RATE_DEFAULT, "Processed audio batch: %u samples from server", total_samples);
 }
 
 /**

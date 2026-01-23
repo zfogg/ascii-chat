@@ -543,30 +543,6 @@ static void ensure_mode_capacity(options_builder_t *builder) {
 }
 
 /**
- * @brief Track an owned string for cleanup
- */
-static void track_owned_string(options_config_t *config, char *str) {
-  if (!str)
-    return;
-
-  if (config->num_owned_strings >= config->owned_strings_capacity) {
-    size_t new_capacity = config->owned_strings_capacity * 2;
-    if (new_capacity == 0)
-      new_capacity = INITIAL_OWNED_STRINGS_CAPACITY;
-
-    char **new_owned = SAFE_REALLOC(config->owned_strings, new_capacity * sizeof(char *), char **);
-    if (!new_owned) {
-      log_fatal("Failed to reallocate owned_strings array");
-      return;
-    }
-    config->owned_strings = new_owned;
-    config->owned_strings_capacity = new_capacity;
-  }
-
-  config->owned_strings[config->num_owned_strings++] = str;
-}
-
-/**
  * @brief Find option descriptor by long name
  */
 static const option_descriptor_t *find_option(const options_config_t *config, const char *long_name) {

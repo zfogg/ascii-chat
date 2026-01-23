@@ -375,8 +375,7 @@ char *image_print_color(const image_t *p, const char *palette);
  *
  * @ingroup video
  */
-char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
-                                    const char luminance_palette[256]);
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette);
 
 /**
  * @brief Print image using 256-color ANSI mode

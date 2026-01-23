@@ -313,50 +313,8 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
 
 // Continue to actual NEON functions (helper functions already defined above)
 
-// NEON helper: True vectorized UTF-8 compaction - eliminate NUL bytes completely
-static inline void compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths, char **pos) {
-  // Calculate total valid bytes using NEON horizontal sum
-  uint8_t total_bytes = (uint8_t)neon_horizontal_sum_u8(lengths);
-
-  // The fundamental insight: For mixed UTF-8, we need to compact interleaved data
-  // vst4q_u8 created: [char0_b0, char0_b1, char0_b2, char0_b3, char1_b0, char1_b1, ...]
-  // We need: consecutive valid UTF-8 bytes only, no NULs
-
-  // Use NEON horizontal compaction: process entire 64 bytes vectorially
-  uint8x16_t chunk1 = vld1q_u8(&padded_data[0]);
-  uint8x16_t chunk2 = vld1q_u8(&padded_data[16]);
-  uint8x16_t chunk3 = vld1q_u8(&padded_data[32]);
-  uint8x16_t chunk4 = vld1q_u8(&padded_data[48]);
-
-  // Write the exact number of valid bytes calculated
-  // For UTF-8 correctness, we must preserve byte sequence integrity
-  if (total_bytes <= 16) {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-  } else if (total_bytes <= 32) {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-    vst1q_u8((uint8_t *)*pos + 16, chunk2);
-  } else if (total_bytes <= 48) {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-    vst1q_u8((uint8_t *)*pos + 16, chunk2);
-    vst1q_u8((uint8_t *)*pos + 32, chunk3);
-  } else {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-    vst1q_u8((uint8_t *)*pos + 16, chunk2);
-    vst1q_u8((uint8_t *)*pos + 32, chunk3);
-    vst1q_u8((uint8_t *)*pos + 48, chunk4);
-  }
-
-  *pos += total_bytes;
-}
-
 // Definitions are in ascii_simd.h - just use them
 // REMOVED: #define luminance_palette g_ascii_cache.luminance_palette (causes macro expansion issues)
-
-// ------------------------------------------------------------
-// Map luminance [0..255] → 4-bit index [0..15] using top nibble
-static inline uint8x16_t luma_to_idx_nibble_neon(uint8x16_t y) {
-  return vshrq_n_u8(y, 4);
-}
 
 // SIMD luma and helpers:
 
@@ -389,34 +347,6 @@ static inline uint8x16_t simd_luma_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b
 }
 
 // ===== SIMD helpers for 256-color quantization =====
-
-// NEON: cr=(r*5+127)/255  (nearest of 0..5)
-static inline uint8x16_t quant6_neon(uint8x16_t x) {
-  uint16x8_t xl = vmovl_u8(vget_low_u8(x));
-  uint16x8_t xh = vmovl_u8(vget_high_u8(x));
-  uint16x8_t tl = vaddq_u16(vmulq_n_u16(xl, 5), vdupq_n_u16(127));
-  uint16x8_t th = vaddq_u16(vmulq_n_u16(xh, 5), vdupq_n_u16(127));
-  uint32x4_t tl0 = vmull_n_u16(vget_low_u16(tl), 257);
-  uint32x4_t tl1 = vmull_n_u16(vget_high_u16(tl), 257);
-  uint32x4_t th0 = vmull_n_u16(vget_low_u16(th), 257);
-  uint32x4_t th1 = vmull_n_u16(vget_high_u16(th), 257);
-  uint16x8_t ql = vcombine_u16(vshrn_n_u32(tl0, 16), vshrn_n_u32(tl1, 16));
-  uint16x8_t qh = vcombine_u16(vshrn_n_u32(th0, 16), vshrn_n_u32(th1, 16));
-  return vcombine_u8(vqmovn_u16(ql), vqmovn_u16(qh)); // 0..5
-}
-
-// Build 6x6x6 index: cr*36 + cg*6 + cb  (0..215)
-static inline uint8x16_t cube216_index_neon(uint8x16_t r6, uint8x16_t g6, uint8x16_t b6) {
-  uint16x8_t rl = vmovl_u8(vget_low_u8(r6));
-  uint16x8_t rh = vmovl_u8(vget_high_u8(r6));
-  uint16x8_t gl = vmovl_u8(vget_low_u8(g6));
-  uint16x8_t gh = vmovl_u8(vget_high_u8(g6));
-  uint16x8_t bl = vmovl_u8(vget_low_u8(b6));
-  uint16x8_t bh = vmovl_u8(vget_high_u8(b6));
-  uint16x8_t il = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rl, 36), gl, 6), bl, 1);
-  uint16x8_t ih = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rh, 36), gh, 6), bh, 1);
-  return vcombine_u8(vqmovn_u16(il), vqmovn_u16(ih)); // 0..215
-}
 
 // Approximate quantize 0..255 -> 0..5 : q ≈ round(x*5/255) = (x*5 + 128)>>8
 static inline uint8x16_t q6_from_u8(uint8x16_t x) {
