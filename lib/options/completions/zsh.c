@@ -30,6 +30,9 @@ asciichat_error_t completions_generate_zsh(FILE *output)
 
   fprintf(output,
     "#compdef _ascii_chat ascii-chat\n"
+#ifndef NDEBUG
+    "#compdef _ascii_chat build/bin/ascii-chat ./build/bin/ascii-chat\n"
+#endif
     "# Zsh completion script for ascii-chat\n"
     "# Generated from options registry - DO NOT EDIT MANUALLY\n"
     "\n"
