@@ -9,7 +9,7 @@
 #include "asciichat_errno.h"
 #include "util/utf8.h"
 #include "crypto/crypto.h" // Includes <sodium.h>
-#include "platform/file.h"
+#include "platform/filesystem.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

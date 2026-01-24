@@ -13,7 +13,7 @@
 #include "common.h"
 #include "crypto/keys.h"
 #include "log/logging.h"
-#include "platform/fs.h"
+#include "platform/filesystem.h"
 #include "platform/question.h"
 #include "platform/system.h"
 #include "util/path.h"

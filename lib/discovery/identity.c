@@ -7,7 +7,7 @@
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
-#include "platform/fs.h"
+#include "platform/filesystem.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <string.h>

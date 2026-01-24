@@ -111,7 +111,12 @@ asciichat_error_t manpage_merger_generate_usage(const options_config_t *config, 
       offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
     }
     if (usage->show_options) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
+      // Use mode-specific options suffix for mode commands, regular options for binary-level
+      if (usage->mode && strcmp(usage->mode, "<mode>") != 0) {
+        offset += snprintf(buffer + offset, buffer_capacity - offset, " [mode-options...]");
+      } else {
+        offset += snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
+      }
     }
     offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
 

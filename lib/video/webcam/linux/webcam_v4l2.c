@@ -18,7 +18,7 @@
 
 #include "video/webcam/webcam.h"
 #include "common.h"
-#include "platform/file.h"
+#include "platform/filesystem.h"
 #include "platform/util.h"
 #include "util/overflow.h"
 #include "util/image.h"

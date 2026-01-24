@@ -9,7 +9,7 @@
 #include "common/error_codes.h"
 #include "platform/system.h"
 #include "platform/path.h"
-#include "platform/fs.h"
+#include "platform/filesystem.h"
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>

@@ -12,7 +12,7 @@
 #include "util/validation.h"
 #include "log/logging.h"
 #include "platform/system.h"
-#include "platform/tempfile.h"
+#include "platform/filesystem.h"
 #include "platform/process.h"
 
 #include <ctype.h>
