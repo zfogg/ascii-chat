@@ -32,7 +32,7 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#include <ws2tcpip.h>
+#include <ws2tcpip.h> // Includes TCP_NODELAY and other TCP options
 /** @brief Socket handle type (Windows: SOCKET) */
 typedef SOCKET socket_t;
 /** @brief Invalid socket value (Windows: INVALID_SOCKET) */
@@ -44,6 +44,7 @@ typedef unsigned long nfds_t;
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h> // For TCP_NODELAY and other TCP options
 #include <arpa/inet.h>
 #include <poll.h>
 /** @brief Socket handle type (POSIX: int) */

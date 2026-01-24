@@ -26,13 +26,14 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
+#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop(), TCP_NODELAY
 #include <mmsystem.h> // For timeEndPeriod() (audio/timing)
 #else
 #include <netdb.h>     // For getaddrinfo(), gai_strerror(), freeaddrinfo()
 #include <arpa/inet.h> // For inet_ntop(), inet_pton()
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h> // For TCP_NODELAY and other TCP options
 #endif
 
 /** @} */

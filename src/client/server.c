@@ -83,11 +83,7 @@
 #include <sys/types.h>
 #include <stdatomic.h>
 
-#include "platform/network.h" // Consolidates platform-specific network headers
-
-#ifndef _WIN32
-#include <netinet/tcp.h> // TCP socket options (POSIX only)
-#endif
+#include "platform/network.h" // Consolidates platform-specific network headers (includes TCP options)
 
 // Debug flags
 #define DEBUG_NETWORK 1

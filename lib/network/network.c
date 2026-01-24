@@ -17,10 +17,6 @@
 #include <string.h>
 #include <stdatomic.h>
 
-#ifndef _WIN32
-#include <netinet/tcp.h>
-#endif
-
 /* ============================================================================
  * Core Network I/O Operations
  * ============================================================================
