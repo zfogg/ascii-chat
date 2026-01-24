@@ -21,6 +21,7 @@
 #include "util/format.h"
 #include "util/path.h"
 #include "util/string.h"
+#include "util/time.h"
 #include "log/logging.h"
 
 typedef struct mem_block {
@@ -229,7 +230,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
     if (!found) {
       log_warn_every(LOG_RATE_FAST, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
-      platform_print_backtrace(1);
+      RUN_BURST_AND_THROTTLE(500 * NS_PER_MS_INT, 10 * NS_PER_SEC_INT, { platform_print_backtrace(1); });
     }
 
     mutex_unlock(&g_mem.mutex);

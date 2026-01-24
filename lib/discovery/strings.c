@@ -88,12 +88,14 @@ static asciichat_error_t build_validation_caches(void) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate adjectives cache entry");
     }
 
-    entry->word = strdup(adjectives[i]);
+    size_t word_len = strlen(adjectives[i]) + 1;
+    entry->word = SAFE_MALLOC(word_len, char *);
     if (!entry->word) {
       SAFE_FREE(entry);
       acds_strings_cleanup();
-      return SET_ERRNO(ERROR_MEMORY, "Failed to duplicate adjective word");
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for adjective word");
     }
+    strcpy(entry->word, adjectives[i]);
 
     HASH_ADD_KEYPTR(hh, g_adjectives_cache, entry->word, strlen(entry->word), entry);
   }
@@ -106,12 +108,14 @@ static asciichat_error_t build_validation_caches(void) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate nouns cache entry");
     }
 
-    entry->word = strdup(nouns[i]);
+    size_t word_len = strlen(nouns[i]) + 1;
+    entry->word = SAFE_MALLOC(word_len, char *);
     if (!entry->word) {
       SAFE_FREE(entry);
       acds_strings_cleanup();
-      return SET_ERRNO(ERROR_MEMORY, "Failed to duplicate noun word");
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for noun word");
     }
+    strcpy(entry->word, nouns[i]);
 
     HASH_ADD_KEYPTR(hh, g_nouns_cache, entry->word, strlen(entry->word), entry);
   }

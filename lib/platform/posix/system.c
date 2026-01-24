@@ -662,23 +662,8 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    // Build colored frame number string and manually embed it in buffer
-    char frame_str[16];
-    snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
-    const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_str);
-    size_t colored_len = strlen(colored_frame);
-
-    // Append "  ["
-    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [");
-
-    // Append colored frame number
-    if (offset + colored_len < sizeof(buffer)) {
-      memcpy(buffer + offset, colored_frame, colored_len);
-      offset += (int)colored_len;
-    }
-
-    // Append "] symbol\n"
-    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "] %s\n", symbol);
+    // Append frame number and symbol
+    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%d] %s\n", frame_num, symbol);
     frame_num++;
   }
 
