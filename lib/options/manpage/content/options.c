@@ -30,9 +30,6 @@ char *manpage_content_generate_options(const options_config_t *config) {
   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
   size_t offset = 0;
 
-  // Write section header
-  offset += snprintf(buffer + offset, buffer_capacity - offset, ".SH OPTIONS\n");
-
   // Build list of unique groups in order of first appearance
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;

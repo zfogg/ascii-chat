@@ -25,9 +25,6 @@ char *manpage_content_generate_positional(const options_config_t *config) {
   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
   size_t offset = 0;
 
-  // Add section header
-  offset += snprintf(buffer + offset, buffer_capacity - offset, ".SH POSITIONAL ARGUMENTS\n");
-
   for (size_t i = 0; i < config->num_positional_args; i++) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[i];
 

@@ -241,10 +241,13 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
                                                          const char *mode_name, const char *output_path,
                                                          const char *brief_description) {
-  (void)config;            // Not used - template is complete
   (void)mode_name;         // Not used
   (void)program_name;      // Not used
   (void)brief_description; // Not used
+
+  if (!config) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "config is required for man page generation");
+  }
 
   FILE *f = NULL;
   bool should_close = false;
@@ -259,7 +262,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     f = stdout;
   }
 
-  // Load and output template resources as-is
+  // Load template resources
   manpage_resources_t resources;
   memset(&resources, 0, sizeof(resources));
   asciichat_error_t err = manpage_resources_load(&resources);
@@ -276,8 +279,135 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
     return SET_ERRNO(ERROR_CONFIG, "Man page resources are not valid");
   }
 
-  // Output template content directly to preserve all manual sections and placeholder content
-  fwrite(resources.template_content, 1, resources.template_len, f);
+  // Process template and merge AUTO sections with generated content
+  const char *template_content = resources.template_content;
+  const char *p = template_content;
+
+  bool in_auto_section = false;
+  char current_auto_section[128] = "";
+  bool found_section_header = false;
+
+  while (*p) {
+    // Find next line
+    const char *line_end = strchr(p, '\n');
+    if (!line_end) {
+      // Last line without newline
+      if (!in_auto_section) {
+        fputs(p, f);
+      }
+      break;
+    }
+
+    size_t line_len = (size_t)(line_end - p);
+
+    // Check for AUTO-START marker (only in current line)
+    bool has_auto_start = false;
+    const char *temp = p;
+    while (temp < line_end) {
+      if (strstr(temp, "AUTO-START:") != NULL) {
+        const char *found = strstr(temp, "AUTO-START:");
+        if (found < line_end) {
+          has_auto_start = true;
+          break;
+        }
+        // strstr() found it but it's beyond this line, so keep looking
+        temp = found + 1;
+      } else {
+        break;
+      }
+    }
+
+    if (has_auto_start) {
+      in_auto_section = true;
+      found_section_header = false;
+
+      // Extract section name (e.g., "SYNOPSIS" from "AUTO-START: SYNOPSIS")
+      const char *section_start = strstr(p, "AUTO-START:");
+      if (section_start && section_start < line_end) {
+        section_start += strlen("AUTO-START:");
+        while (*section_start && section_start < line_end && isspace(*section_start))
+          section_start++;
+
+        const char *section_name_end = section_start;
+        // Extract section name: everything until end of line, then trim trailing whitespace
+        while (section_name_end < line_end && *section_name_end && *section_name_end != '\n') {
+          section_name_end++;
+        }
+
+        // Now trim trailing whitespace from the section name
+        while (section_name_end > section_start && isspace(*(section_name_end - 1))) {
+          section_name_end--;
+        }
+
+        size_t section_name_len = (size_t)(section_name_end - section_start);
+        if (section_name_len > 0 && section_name_len < sizeof(current_auto_section)) {
+          strncpy(current_auto_section, section_start, section_name_len);
+          current_auto_section[section_name_len] = '\0';
+        }
+      }
+
+      // Write the AUTO-START marker line
+      fwrite(p, 1, line_len + 1, f);
+
+    } else if (strstr(p, "AUTO-END:") != NULL && strstr(p, "AUTO-END:") < line_end) {
+      in_auto_section = false;
+      // Write the AUTO-END marker line
+      fwrite(p, 1, line_len + 1, f);
+      memset(current_auto_section, 0, sizeof(current_auto_section));
+      found_section_header = false;
+
+    } else if (in_auto_section) {
+      // If this is the section header line (.SH ...), write it and generate content
+      if (!found_section_header && strstr(p, ".SH ") != NULL && strstr(p, ".SH ") < line_end) {
+        fwrite(p, 1, line_len + 1, f);
+        found_section_header = true;
+
+        // Generate content for this AUTO section
+        if (strcmp(current_auto_section, "SYNOPSIS") == 0) {
+          char *synopsis_content = NULL;
+          size_t synopsis_len = 0;
+          asciichat_error_t gen_err = manpage_merger_generate_synopsis(NULL, &synopsis_content, &synopsis_len);
+          if (gen_err == ASCIICHAT_OK && synopsis_content && synopsis_len > 0) {
+            fprintf(f, "%s", synopsis_content);
+            manpage_merger_free_content(synopsis_content);
+          }
+        } else if (strcmp(current_auto_section, "POSITIONAL ARGUMENTS") == 0) {
+          char *pos_content = manpage_content_generate_positional(config);
+          if (pos_content && *pos_content != '\0') {
+            fprintf(f, "%s", pos_content);
+          }
+          manpage_content_free_positional(pos_content);
+        } else if (strcmp(current_auto_section, "USAGE") == 0) {
+          char *usage_content = NULL;
+          size_t usage_len = 0;
+          if (manpage_merger_generate_usage(config, &usage_content, &usage_len) == ASCIICHAT_OK && usage_content &&
+              usage_len > 0) {
+            fprintf(f, "%s", usage_content);
+            manpage_merger_free_content(usage_content);
+          }
+        } else if (strcmp(current_auto_section, "EXAMPLES") == 0) {
+          char *examples_content = manpage_content_generate_examples(config);
+          if (examples_content && *examples_content != '\0') {
+            fprintf(f, "%s", examples_content);
+          }
+          manpage_content_free_examples(examples_content);
+        } else if (strcmp(current_auto_section, "OPTIONS") == 0) {
+          char *options_content = manpage_content_generate_options(config);
+          if (options_content && *options_content != '\0') {
+            fprintf(f, "%s", options_content);
+          }
+          manpage_content_free_options(options_content);
+        }
+      }
+      // Otherwise skip old content between section header and AUTO-END
+    } else {
+      // Write all manual content (not in AUTO section)
+      fwrite(p, 1, line_len + 1, f);
+    }
+
+    // Move to next line
+    p = line_end + 1;
+  }
 
   manpage_resources_cleanup(&resources);
 

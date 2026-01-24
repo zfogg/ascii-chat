@@ -13,6 +13,7 @@
 .\" AUTO-START: POSITIONAL ARGUMENTS
 .\" This section is auto-generated. Manual edits will be lost.
 .SH POSITIONAL ARGUMENTS
+.\" placeholder
 .\" AUTO-END: POSITIONAL ARGUMENTS
 .\" MANUAL-START: DESCRIPTION
 .SH DESCRIPTION
@@ -51,12 +52,19 @@ instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connec
 aren't possible.
 .\" MANUAL-END: DESCRIPTION
 .\" AUTO-START: USAGE
+.\" This section is auto-generated. Manual edits will be lost.
+.SH USAGE
+.\" placeholder
 .\" AUTO-END: USAGE
 .\" AUTO-START: EXAMPLES
 .\" This section is auto-generated. Manual edits will be lost.
 .SH EXAMPLES
+.\" placeholder
 .\" AUTO-END: EXAMPLES
 .\" AUTO-START: OPTIONS
+.\" This section is auto-generated. Manual edits will be lost.
+.SH OPTIONS
+.\" placeholder
 .\" AUTO-END: OPTIONS
 .\" MANUAL-START: PALETTES
 .SH PALETTES
