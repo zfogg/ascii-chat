@@ -583,6 +583,7 @@ static const bool default_audio_analysis_value = OPT_AUDIO_ANALYSIS_ENABLED_DEFA
 static const bool default_no_audio_playback_value = OPT_AUDIO_NO_PLAYBACK_DEFAULT;
 static const bool default_encode_audio_value = OPT_ENCODE_AUDIO_DEFAULT;
 static const bool default_no_encode_audio_value = !OPT_ENCODE_AUDIO_DEFAULT;
+static const bool default_no_audio_mixer_value = OPT_NO_AUDIO_MIXER_DEFAULT;
 static const bool default_discovery_expose_ip_value = OPT_ACDS_EXPOSE_IP_DEFAULT;
 static const bool default_discovery_insecure_value = OPT_ACDS_INSECURE_DEFAULT;
 static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
