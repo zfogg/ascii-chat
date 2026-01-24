@@ -443,13 +443,13 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     acip_error_t *error = (acip_error_t *)data;
     log_error("ACDS error: %s", error->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, error->error_message);
-    SAFE_FREE(data);
+    POOL_FREE(data, len);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   if (type != PACKET_TYPE_ACIP_SESSION_JOINED || len < sizeof(acip_session_joined_t)) {
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_JOIN");
-    SAFE_FREE(data);
+    POOL_FREE(data, len);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -458,7 +458,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   if (!joined->success) {
     log_error("Failed to join session: %s", joined->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, joined->error_message);
-    SAFE_FREE(data);
+    POOL_FREE(data, len);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -474,7 +474,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     session->is_host = false;
 
     log_info("Host already established: %s:%u", session->host_address, session->host_port);
-    SAFE_FREE(data);
+    POOL_FREE(data, len);
 
     set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
     return ASCIICHAT_OK;
@@ -482,7 +482,7 @@ static asciichat_error_t join_session(discovery_session_t *session) {
 
   // No host yet - need to negotiate
   log_info("No host established, starting negotiation...");
-  SAFE_FREE(data);
+  POOL_FREE(data, len);
 
   set_state(session, DISCOVERY_STATE_NEGOTIATING);
   return ASCIICHAT_OK;

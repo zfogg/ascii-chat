@@ -417,13 +417,18 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return -1;
   }
 
+  log_debug("parse_client_address: Processing argument: '%s'", arg);
+
   // Check if this is a session string (format: adjective-noun-noun)
   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
-  if (is_session_string(arg)) {
+  bool is_session = is_session_string(arg);
+  log_debug("parse_client_address: is_session_string('%s') = %s", arg, is_session ? "true" : "false");
+
+  if (is_session) {
     // This is a session string, not a server address
     char *session_string = (char *)config + offsetof(struct options_state, session_string);
     SAFE_SNPRINTF(session_string, SESSION_STRING_BUFFER_SIZE, "%s", arg);
-    log_debug("Detected session string: %s", arg);
+    log_debug("parse_client_address: Stored session string: %s", arg);
     return 1; // Consumed 1 arg
   }
 
@@ -431,6 +436,7 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // Access address and port fields from options_state struct
   char *address = (char *)config + offsetof(struct options_state, address);
   char *port = (char *)config + offsetof(struct options_state, port);
+  log_debug("parse_client_address: Parsing as server address (not a session string)");
 
   // Check for port in address (format: address:port or [ipv6]:port)
   const char *colon = strrchr(arg, ':');
@@ -533,6 +539,9 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
   // Note: Port conflict checking would require additional state
   // (checking if --port flag was used). For now, this is a simplified version.
   // Full implementation would need to track whether port was set via flag.
+
+  log_debug("parse_client_address: Set address='%s', port='%s'", address[0] ? address : "(empty)",
+            port[0] ? port : "(empty)");
 
   return 1; // Consumed 1 arg
 }

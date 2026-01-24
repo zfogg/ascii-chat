@@ -1082,6 +1082,13 @@ asciichat_error_t options_init(int argc, char **argv) {
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   opts = options_t_new_preserve_binary(&opts);
 
+  // If a session string was detected during mode detection, restore it after options reset
+  // This ensures discovery mode knows which session to join
+  if (detected_session_string[0] != '\0') {
+    SAFE_STRNCPY(opts.session_string, detected_session_string, sizeof(opts.session_string));
+    log_info("options_init: Detected session string from argv: '%s'", detected_session_string);
+  }
+
   // Set default log file paths based on build type
   // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
   // Debug: MODE.log in current working directory (e.g., ./server.log)
