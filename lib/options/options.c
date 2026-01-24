@@ -209,6 +209,10 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
       *out_takes_optional_arg = true;
     return true;
   }
+  if (strcmp(opt_name, "color") == 0) {
+    // --color is a boolean flag (no argument)
+    return true;
+  }
 
   return false;
 }
