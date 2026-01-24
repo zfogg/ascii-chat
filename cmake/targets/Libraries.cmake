@@ -242,8 +242,9 @@ endif()
 # Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
 # Add FFmpeg include directories BEFORE creating the module (for media file streaming)
+# Use SYSTEM to suppress warnings from third-party headers (e.g., FFmpeg's undefined bit shift behavior)
 if(FFMPEG_FOUND)
-    include_directories(${FFMPEG_INCLUDE_DIRS})
+    include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
 endif()
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
@@ -912,7 +913,11 @@ else()
     endif()
 endif()
 
-# Link WebRTC audio processing library (AEC3) to shared library
+# Link external module dependencies to shared library
+# These are needed for:
+# - Debug builds: linking OBJECT libraries
+# - Release builds: compilation and linking of source files that #include their headers
+# The linker automatically deduplicates any multiple references
 if(TARGET webrtc_audio_processing)
     target_link_libraries(ascii-chat-shared PRIVATE webrtc_audio_processing)
 endif()
