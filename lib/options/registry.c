@@ -311,13 +311,13 @@ static const registry_entry_t g_options_registry[] = {
      "DISPLAY", false, "ASCII_CHAT_SNAPSHOT_DELAY", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
 
-    // PERFORMANCE GROUP (client, server, discovery)
+    // NETWORK GROUP - compression options (client, server, discovery)
     {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level),
-     &default_compression_level_value, sizeof(int), "zstd compression level (1-9)", "PERFORMANCE", false,
+     &default_compression_level_value, sizeof(int), "zstd compression level (1-9)", "NETWORK", false,
      "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
     {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &default_no_compress_value, sizeof(bool),
-     "Disable compression", "PERFORMANCE", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, false, false,
+     "Disable compression", "NETWORK", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
 
     // SECURITY GROUP (client, server, discovery)
