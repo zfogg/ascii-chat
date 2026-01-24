@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
   options_cleanup_schema();
 
   if (exit_code == ERROR_USAGE) {
-    _exit(ERROR_USAGE);
+    exit(ERROR_USAGE);
   }
 
   return exit_code;

@@ -128,9 +128,9 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {
       // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
-      _exit((result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result);
+      exit((result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result);
     }
-    _exit(0);
+    exit(0);
   } else if (pid > 0) {
     // Parent process
     int status;

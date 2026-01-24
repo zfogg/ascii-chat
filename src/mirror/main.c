@@ -102,7 +102,7 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
 #ifdef _WIN32
     TerminateProcess(GetCurrentProcess(), 1);
 #else
-    _exit(1);
+    exit(1);
 #endif
   }
 

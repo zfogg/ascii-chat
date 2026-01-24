@@ -788,17 +788,15 @@ asciichat_error_t options_init(int argc, char **argv) {
           fprintf(stderr, "Error: Failed to generate config\n");
         }
         (void)fflush(stderr); // Flush stderr before exiting
-        // Use _exit to bypass atexit handlers (no memory report for clean action output)
-        _exit(result);
+        exit(result);
       }
       if (config_create_path) {
         // File was created successfully
         printf("Created default config file at: %s\n", config_create_path);
-        (void)fflush(stdout); // Flush before _exit to ensure message is printed
+        (void)fflush(stdout);
       }
       // If config_create_path was NULL, config was written to stdout, so no message needed
-      // Use _exit to bypass atexit handlers (no memory report for clean action output)
-      _exit(0);
+      exit(0);
     }
     if (create_manpage) {
       // Handle --create-man-page: generate merged man page template to stdout
@@ -824,7 +822,8 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         return err;
       }
-      _exit(0);
+      (void)fflush(stdout); // Flush stdout before exiting to ensure output is printed
+      exit(0);
     }
   }
 
@@ -990,7 +989,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
 
     printf("Generated man page: %s\n", existing_template_path);
-    _exit(0); // Exit successfully after generating man page
+    exit(0); // Exit successfully after generating man page
   }
 
   // ========================================================================
