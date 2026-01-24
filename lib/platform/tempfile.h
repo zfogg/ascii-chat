@@ -16,6 +16,11 @@
  */
 
 #include <stddef.h>
+#include "../asciichat_errno.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Create a temporary file with a given prefix.
@@ -40,5 +45,40 @@ int platform_create_temp_file(char *path_out, size_t path_size, const char *pref
  * @return 0 on success, -1 on error
  */
 int platform_delete_temp_file(const char *path);
+
+/**
+ * Create a temporary directory with a given prefix.
+ *
+ * Windows: Creates directory in temp dir with process-specific prefix
+ * Unix: Creates directory via mkdtemp with prefix in /tmp
+ *
+ * @param path_out Buffer to store the created temp directory path (must be at least 256 bytes)
+ * @param path_size Size of path_out buffer
+ * @param prefix Prefix for the temp directory name (e.g., "ascii-chat-gpg")
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Note: Caller must delete the directory when done using platform_rmdir_recursive()
+ */
+asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char *prefix);
+
+/**
+ * Recursively delete a directory and all its contents.
+ *
+ * Safely removes a directory and all files/subdirectories within it.
+ * Safe to call on non-existent paths (returns ASCIICHAT_OK, no-op).
+ *
+ * Windows: Uses FindFirstFile/DeleteFile/RemoveDirectory
+ * Unix: Uses opendir/readdir/rmdir with recursion
+ *
+ * @param path Path to the directory to delete
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Note: Path must be a directory, not a file
+ */
+asciichat_error_t platform_rmdir_recursive(const char *path);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

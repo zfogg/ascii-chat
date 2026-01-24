@@ -5,11 +5,13 @@
  */
 
 #include "openpgp.h"
+#include "homedir.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../log/logging.h"
 #include "../../platform/question.h"
 #include "../../platform/util.h"
+#include "../../platform/abstraction.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sodium.h>
@@ -482,10 +484,16 @@ asciichat_error_t openpgp_parse_secret_key_packet(const uint8_t *packet_body, si
 }
 
 /**
- * @brief Decrypt GPG armored secret key using gpg binary
+ * @brief Decrypt GPG armored secret key using gpg binary with temporary homedir
  * @param armored_text Encrypted GPG armored text
  * @param decrypted_out Output buffer for decrypted armored text (caller must free)
  * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Uses a temporary GPG homedir to import, decrypt, and re-export the key.
+ * This approach is safer than importing into the user's keyring because:
+ * - No risk of deleting the wrong key
+ * - Automatic cleanup via directory deletion
+ * - Better error handling and no race conditions
  */
 static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char **decrypted_out) {
   if (!armored_text || !decrypted_out) {
@@ -512,12 +520,20 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
     }
   }
 
-  // Create temporary files for input and output
-  char input_path[] = "/tmp/ascii-chat-gpg-XXXXXX";
+  // Create a temporary GPG homedir (isolated from user's keyring)
+  gpg_homedir_t *homedir = gpg_homedir_create();
+  if (!homedir) {
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary GPG homedir");
+  }
+
+  // Create temporary files for input (armored key) and output (decrypted key)
+  char input_path[] = "/tmp/ascii-chat-gpg-input-XXXXXX";
   int input_fd = mkstemp(input_path);
   if (input_fd < 0) {
+    gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary file for GPG decryption");
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary input file");
   }
 
   // Write armored key to temp file
@@ -527,42 +543,46 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   if (written != (ssize_t)armored_len) {
     platform_unlink(input_path);
+    gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write armored key to temp file");
   }
 
-  // Create output file for decrypted key
-  char output_path[] = "/tmp/ascii-chat-gpg-out-XXXXXX";
+  // Create temporary output file for decrypted key
+  char output_path[] = "/tmp/ascii-chat-gpg-output-XXXXXX";
   int output_fd = mkstemp(output_path);
   if (output_fd < 0) {
     platform_unlink(input_path);
+    gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary output file");
   }
   close(output_fd);
 
-  // Build gpg command to import, decrypt, and re-export as unencrypted
-  // We need to:
-  // 1. Import the key to gpg keyring
-  // 2. Export it unencrypted with the passphrase
+  // Build GPG command using temporary homedir for isolation
+  // Steps:
+  // 1. Import the key into the temporary homedir (not the user's keyring)
+  // 2. Get the key fingerprint from the temporary homedir
+  // 3. Export the key unencrypted with the provided passphrase
+  const char *homedir_path = gpg_homedir_path(homedir);
   char command[4096];
-  safe_snprintf(command, sizeof(command),
-                "gpg --batch --import '%s' " PLATFORM_SHELL_NULL_REDIRECT " && "
-                "KEY_FPR=$(gpg --list-secret-keys --with-colons " PLATFORM_SHELL_NULL_REDIRECT
-                " | grep '^fpr' | head -1 | cut -d: -f10) && "
-                "gpg --batch --pinentry-mode loopback --passphrase '%s' --armor --export-secret-keys --export-options "
-                "export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' " PLATFORM_SHELL_NULL_REDIRECT,
-                input_path, passphrase, output_path);
+  safe_snprintf(
+      command, sizeof(command),
+      "gpg --homedir '%s' --batch --import '%s' " PLATFORM_SHELL_NULL_REDIRECT " && "
+      "KEY_FPR=$(gpg --homedir '%s' --list-secret-keys --with-colons " PLATFORM_SHELL_NULL_REDIRECT
+      " | grep '^fpr' | head -1 | cut -d: -f10) && "
+      "gpg --homedir '%s' --batch --pinentry-mode loopback --passphrase '%s' --armor --export-secret-keys "
+      "--export-options export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' " PLATFORM_SHELL_NULL_REDIRECT,
+      homedir_path, input_path, homedir_path, homedir_path, passphrase, output_path);
 
   int status = system(command);
 
+  // Clean up input file (no longer needed)
+  platform_unlink(input_path);
+
   if (status != 0) {
-    platform_unlink(input_path);
     platform_unlink(output_path);
-    // Clean up the imported key
-    system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys "
-           "--with-colons " PLATFORM_SHELL_NULL_REDIRECT " | "
-           "grep '^fpr' | tail -1 | cut -d: -f10) " PLATFORM_SHELL_NULL_REDIRECT);
+    gpg_homedir_destroy(homedir); // Auto-cleanup the temp homedir
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "GPG decryption failed. Check passphrase and key format.");
   }
@@ -570,8 +590,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   // Read the decrypted output
   FILE *output_file = platform_fopen(output_path, "r");
   if (!output_file) {
-    platform_unlink(input_path);
     platform_unlink(output_path);
+    gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read decrypted GPG output");
   }
@@ -582,23 +602,23 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   if (output_size <= 0 || output_size > 1024 * 1024) {
     fclose(output_file);
-    platform_unlink(input_path);
     platform_unlink(output_path);
+    gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid decrypted GPG output size: %ld bytes", output_size);
   }
 
+  // Read the decrypted key data
   *decrypted_out = SAFE_MALLOC((size_t)output_size + 1, char *);
   size_t bytes_read = fread(*decrypted_out, 1, (size_t)output_size, output_file);
   (*decrypted_out)[bytes_read] = '\0';
   fclose(output_file);
 
-  // Clean up temporary files and imported key
-  platform_unlink(input_path);
+  // Clean up temporary output file
   platform_unlink(output_path);
-  system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys "
-         "--with-colons " PLATFORM_SHELL_NULL_REDIRECT " | "
-         "grep '^fpr' | tail -1 | cut -d: -f10) " PLATFORM_SHELL_NULL_REDIRECT);
+
+  // Clean up temporary GPG homedir (automatic: deletes entire directory)
+  gpg_homedir_destroy(homedir);
 
   // Securely erase passphrase from memory
   sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
