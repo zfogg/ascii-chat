@@ -516,27 +516,30 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
-  // Destroy shared UTF-8 palette cache (write lock for cleanup)
-  rwlock_wrlock(&g_utf8_cache_rwlock);
-  if (g_utf8_cache_table) {
-    // Free all UTF-8 cache entries using HASH_ITER
-    utf8_palette_cache_t *cache, *tmp;
-    HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
-      HASH_DEL(g_utf8_cache_table, cache);
-      SAFE_FREE(cache);
+  // Only destroy caches if they were ever initialized
+  if (atomic_load(&g_utf8_cache_initialized)) {
+    // Destroy shared UTF-8 palette cache (write lock for cleanup)
+    rwlock_wrlock(&g_utf8_cache_rwlock);
+    if (g_utf8_cache_table) {
+      // Free all UTF-8 cache entries using HASH_ITER
+      utf8_palette_cache_t *cache, *tmp;
+      HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
+        HASH_DEL(g_utf8_cache_table, cache);
+        SAFE_FREE(cache);
+      }
+      g_utf8_cache_table = NULL;
+      log_debug("UTF8_CACHE: Destroyed shared UTF-8 palette cache");
     }
-    g_utf8_cache_table = NULL;
-    log_debug("UTF8_CACHE: Destroyed shared UTF-8 palette cache");
+    // Clean up heap arrays
+    if (g_utf8_heap) {
+      SAFE_FREE(g_utf8_heap);
+      g_utf8_heap = NULL;
+      g_utf8_heap_size = 0;
+    }
+    // Reset initialization flag so system can be reinitialized
+    atomic_store(&g_utf8_cache_initialized, false);
+    rwlock_wrunlock(&g_utf8_cache_rwlock);
   }
-  // Clean up heap arrays
-  if (g_utf8_heap) {
-    SAFE_FREE(g_utf8_heap);
-    g_utf8_heap = NULL;
-    g_utf8_heap_size = 0;
-  }
-  // Reset initialization flag so system can be reinitialized
-  atomic_store(&g_utf8_cache_initialized, false);
-  rwlock_wrunlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
   // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
