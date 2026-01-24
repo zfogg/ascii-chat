@@ -27,6 +27,24 @@
 char *manpage_content_generate_environment(const options_config_t *config);
 
 /**
+ * @brief Generate ENVIRONMENT section with manual and auto variables
+ *
+ * Combines manual environment variables (from template) with ASCII_CHAT_*
+ * variables from config, sorts them all alphabetically, and generates
+ * formatted ENVIRONMENT section content.
+ *
+ * @param[in] config Options configuration with descriptors
+ * @param[in] manual_vars Array of manual variable names (can be NULL)
+ * @param[in] manual_count Number of manual variables
+ * @param[in] manual_descs Array of manual variable descriptions (can be NULL)
+ * @return Newly allocated content string (caller must free)
+ *
+ * @ingroup options_manpage
+ */
+char *manpage_content_generate_environment_with_manual(const options_config_t *config, const char **manual_vars,
+                                                       size_t manual_count, const char **manual_descs);
+
+/**
  * @brief Free generated environment content
  *
  * @param[in] content Content to free (can be NULL)

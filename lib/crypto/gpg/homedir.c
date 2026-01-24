@@ -8,7 +8,7 @@
 #include "../../common.h"
 #include "../../log/logging.h"
 #include "../../platform/util.h"
-#include "../../platform/tempfile.h"
+#include "../../platform/filesystem.h"
 #include <string.h>
 #include <stdlib.h>
 
