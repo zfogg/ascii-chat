@@ -74,6 +74,18 @@ asciichat_error_t platform_popen(const char *command, const char *mode, FILE **o
  */
 asciichat_error_t platform_pclose(FILE **stream_ptr);
 
+/**
+ * @name Platform-Specific popen/pclose Macros
+ * @{
+ *
+ * Cross-platform macros for popen/pclose that wrap platform-specific functions.
+ * Use these instead of calling popen/pclose directly for consistent behavior.
+ *
+ * @ingroup platform
+ */
+
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif

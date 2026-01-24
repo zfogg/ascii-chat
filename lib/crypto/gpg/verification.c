@@ -14,6 +14,7 @@
 #include "platform/system.h"
 #include "platform/tempfile.h"
 #include "platform/util.h"
+#include "platform/process.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -24,14 +25,6 @@
 
 #ifdef HAVE_LIBGCRYPT
 #include <gcrypt.h>
-#endif
-
-#ifdef _WIN32
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
-#else
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
 #endif
 
 int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
@@ -99,9 +92,10 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   // Call gpg --verify
   char cmd[1024];
   snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
-
   log_debug("Running: %s", cmd);
-  FILE *fp = popen(cmd, "r");
+
+  FILE *fp;
+  platform_popen(cmd, "r", &fp);
   if (!fp) {
     log_error("Failed to run gpg --verify");
     platform_unlink(msg_path);
@@ -111,7 +105,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
 
   char output[4096] = {0};
   size_t output_len = fread(output, 1, sizeof(output) - 1, fp);
-  int exit_code = pclose(fp);
+  int exit_code = platform_pclose(&fp);
 
   // Cleanup temp files
   platform_delete_temp_file(msg_path);
@@ -324,7 +318,8 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
   log_debug("Running GPG verify command: %s", cmd);
 
   // Execute gpg --verify command
-  FILE *fp = SAFE_POPEN(cmd, "r");
+  FILE *fp;
+  platform_popen(cmd, "r", &fp);
   if (!fp) {
     log_error("Failed to execute gpg --verify command");
     goto cleanup;
@@ -354,14 +349,14 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
     // Check for signature errors
     if (strstr(line, "BAD signature")) {
       log_error("GPG reports BAD signature");
-      SAFE_PCLOSE(fp);
+      platform_pclose(&fp);
       fp = NULL;
       goto cleanup;
     }
   }
 
   // Check exit code
-  int status = SAFE_PCLOSE(fp);
+  int status = platform_pclose(&fp);
   fp = NULL;
 
 #ifdef _WIN32
@@ -397,7 +392,7 @@ cleanup:
   platform_delete_temp_file(msg_path);
 
   if (fp) {
-    SAFE_PCLOSE(fp);
+    pclose(fp);
   }
 
   return result;
