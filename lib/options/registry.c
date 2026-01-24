@@ -274,9 +274,9 @@ static const char *g_cookies_descs[] = {"Google Chrome",   "Mozilla Firefox", "M
                                         "Vivaldi Browser", "Naver Whale",     NULL};
 
 // ============================================================================
-// Complete Options Registry
+// LOGGING CATEGORY - Binary-level logging options
 // ============================================================================
-static const registry_entry_t g_options_registry[] = {
+static const registry_entry_t g_logging_entries[] = {
     // LOGGING GROUP (binary-level)
     {"log-file",
      'L',
@@ -345,7 +345,27 @@ static const registry_entry_t g_options_registry[] = {
      false,
      OPTION_MODE_BINARY,
      {0}},
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
 
+// ============================================================================
+// CONFIGURATION CATEGORY - Configuration file options
+// ============================================================================
+static const registry_entry_t g_configuration_entries[] = {
     // CONFIGURATION GROUP (binary-level)
     {"config",
      '\0',
@@ -379,7 +399,27 @@ static const registry_entry_t g_options_registry[] = {
      false,
      OPTION_MODE_BINARY,
      {0}},
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
 
+// ============================================================================
+// SHELL CATEGORY - Shell integration options
+// ============================================================================
+static const registry_entry_t g_shell_entries[] = {
     // SHELL GROUP (binary-level)
     {"completions",
      '\0',
@@ -414,6 +454,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_BINARY,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// TERMINAL CATEGORY - Terminal display options
+// ============================================================================
+static const registry_entry_t g_terminal_entries[] = {
     // TERMINAL GROUP (client, mirror, discovery)
     {"width",
      'x',
@@ -448,6 +509,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {.numeric_range = {10, 256, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// WEBCAM CATEGORY - Webcam capture options
+// ============================================================================
+static const registry_entry_t g_webcam_entries[] = {
     // WEBCAM GROUP (client, mirror, discovery)
     {"webcam-index",
      'c',
@@ -546,6 +628,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// DISPLAY CATEGORY - Display layout options
+// ============================================================================
+static const registry_entry_t g_display_entries[] = {
     // DISPLAY GROUP (client, mirror, discovery)
     {"color",
      '\0',
@@ -753,6 +856,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// NETWORK CATEGORY - Network protocol options
+// ============================================================================
+static const registry_entry_t g_network_entries[] = {
     // NETWORK GROUP - compression options (client, server, discovery)
     {"compression-level",
      '\0',
@@ -787,6 +911,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// SECURITY CATEGORY - Security and authentication options
+// ============================================================================
+static const registry_entry_t g_security_entries[] = {
     // SECURITY GROUP (client, server, discovery)
     {"encrypt",
      'E',
@@ -1183,6 +1328,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// MEDIA CATEGORY - Media file and stream options
+// ============================================================================
+static const registry_entry_t g_media_entries[] = {
     // Media File Streaming Options
     {"file",
      'f',
@@ -1284,6 +1450,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// AUDIO CATEGORY - Audio processing options
+// ============================================================================
+static const registry_entry_t g_audio_entries[] = {
     // AUDIO GROUP (client, discovery)
     {"audio",
      'A',
@@ -1448,6 +1635,27 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_SERVER,
      {0}},
 
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
+
+// ============================================================================
+// DATABASE CATEGORY - Discovery service database options
+// ============================================================================
+static const registry_entry_t g_database_entries[] = {
     // ACDS Server Specific Options
     {"database",
      '\0',
@@ -1564,6 +1772,31 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_NONE,
      {0}}};
 
+// ============================================================================
+// Master Registry - Composition of all category arrays
+// ============================================================================
+// Array of pointers to each category's entries for organized access
+static struct {
+  const registry_entry_t *entries;
+  size_t count;
+  const char *name;
+} g_category_builders[] = {
+    {g_logging_entries, sizeof(g_logging_entries) / sizeof(g_logging_entries[0]), "LOGGING"},
+    {g_configuration_entries, sizeof(g_configuration_entries) / sizeof(g_configuration_entries[0]), "CONFIGURATION"},
+    {g_shell_entries, sizeof(g_shell_entries) / sizeof(g_shell_entries[0]), "SHELL"},
+    {g_terminal_entries, sizeof(g_terminal_entries) / sizeof(g_terminal_entries[0]), "TERMINAL"},
+    {g_webcam_entries, sizeof(g_webcam_entries) / sizeof(g_webcam_entries[0]), "WEBCAM"},
+    {g_audio_entries, sizeof(g_audio_entries) / sizeof(g_audio_entries[0]), "AUDIO"},
+    {g_display_entries, sizeof(g_display_entries) / sizeof(g_display_entries[0]), "DISPLAY"},
+    {g_network_entries, sizeof(g_network_entries) / sizeof(g_network_entries[0]), "NETWORK"},
+    {g_security_entries, sizeof(g_security_entries) / sizeof(g_security_entries[0]), "SECURITY"},
+    {g_media_entries, sizeof(g_media_entries) / sizeof(g_media_entries[0]), "MEDIA"},
+    {g_database_entries, sizeof(g_database_entries) / sizeof(g_database_entries[0]), "DATABASE"},
+    {NULL, 0, NULL}};
+
+// Unified view of all registry entries (for backward compatibility)
+static registry_entry_t g_options_registry[2048];
+
 static size_t g_registry_size = 0;
 static bool g_metadata_populated = false;
 
@@ -1593,9 +1826,55 @@ static const option_metadata_t *get_cached_metadata(const char *long_name) {
 // Metadata is now initialized compile-time in registry entries
 
 /**
+ * @brief Initialize registry from category builders
+ * Populates g_options_registry by concatenating all category arrays
+ */
+static void registry_init_from_builders(void) {
+  static bool initialized = false;
+  if (initialized) {
+    return;
+  }
+
+  size_t offset = 0;
+  for (int i = 0; g_category_builders[i].entries != NULL; i++) {
+    size_t count = g_category_builders[i].count;
+    // Copy category entries, excluding the null terminator
+    size_t copy_count = count - 1; // Exclude null terminator from each category
+    if (offset + copy_count <= 2048) {
+      memcpy(&g_options_registry[offset], g_category_builders[i].entries, copy_count * sizeof(registry_entry_t));
+      offset += copy_count;
+    }
+  }
+
+  // Add final null terminator
+  if (offset < 2048) {
+    g_options_registry[offset] = (registry_entry_t){.long_name = NULL,
+                                                    .short_name = '\0',
+                                                    .type = OPTION_TYPE_BOOL,
+                                                    .offset = 0,
+                                                    .default_value = NULL,
+                                                    .default_value_size = 0,
+                                                    .help_text = NULL,
+                                                    .group = NULL,
+                                                    .required = false,
+                                                    .env_var_name = NULL,
+                                                    .validate_fn = NULL,
+                                                    .parse_fn = NULL,
+                                                    .owns_memory = false,
+                                                    .optional_arg = false,
+                                                    .mode_bitmask = OPTION_MODE_NONE,
+                                                    .metadata = {0}};
+  }
+
+  initialized = true;
+}
+
+/**
  * @brief Initialize registry size and metadata
  */
 static void registry_init_size(void) {
+  registry_init_from_builders();
+
   if (g_registry_size == 0) {
     for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
       g_registry_size++;
