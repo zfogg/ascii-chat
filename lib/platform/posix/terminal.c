@@ -7,7 +7,7 @@
 #ifndef _WIN32
 
 #include "../terminal.h"
-#include "../file.h"
+#include "../filesystem.h"
 #include "../internal.h"
 #include "../../options/options.h"
 #include "../../options/rcu.h" // For RCU-based options access

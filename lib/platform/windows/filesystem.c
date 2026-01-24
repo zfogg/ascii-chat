@@ -150,6 +150,7 @@ asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
  */
 int platform_is_regular_file(const char *path) {
   if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: path=%p", path);
     return 0;
   }
 
@@ -166,6 +167,7 @@ int platform_is_regular_file(const char *path) {
  */
 int platform_is_directory(const char *path) {
   if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: path=%p", path);
     return 0;
   }
 
