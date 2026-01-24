@@ -40,7 +40,7 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
     } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
       // File paths use default fish file completion
       exclusive = false;
-    } else if (meta->examples && meta->example_count > 0) {
+    } else if (meta->examples && meta->examples[0] != NULL) {
       exclusive = true;
       // Example values as completions (practical values, higher priority than calculated ranges)
       // Output short option once with first example
@@ -49,7 +49,7 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
                 meta->examples[0], opt->help_text);
       }
       // Output long option with all examples
-      for (size_t i = 0; i < meta->example_count; i++) {
+      for (size_t i = 0; meta->examples[i] != NULL; i++) {
         fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n", condition, opt->long_name,
                 meta->examples[i], opt->help_text);
       }

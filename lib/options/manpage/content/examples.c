@@ -15,13 +15,10 @@ extern const char *escape_groff_special(const char *str);
 
 char *manpage_content_generate_examples(const options_config_t *config) {
   if (!config || config->num_examples == 0) {
-    log_debug("[EXAMPLES] Config has 0 examples");
     char *buffer = SAFE_MALLOC(1, char *);
     buffer[0] = '\0';
     return buffer;
   }
-
-  log_debug("[EXAMPLES] Config has %zu examples", config->num_examples);
 
   // Allocate growing buffer for examples section
   size_t buffer_capacity = 8192;
@@ -36,9 +33,6 @@ char *manpage_content_generate_examples(const options_config_t *config) {
       buffer_capacity *= 2;
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
-
-    log_debug("[EXAMPLES] %zu: mode=%s, args=%s, desc=%s", i, example->mode ? example->mode : "NULL",
-              example->args ? example->args : "NULL", example->description ? example->description : "NULL");
 
     offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
     offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
@@ -57,7 +51,6 @@ char *manpage_content_generate_examples(const options_config_t *config) {
 
   offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
-  log_debug("Generated EXAMPLES section (%zu examples, %zu bytes)", config->num_examples, offset);
   return buffer;
 }
 

@@ -33,10 +33,10 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
     } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
       // File path completion
       strcpy(completion_spec, ":_files");
-    } else if (meta->examples && meta->example_count > 0) {
+    } else if (meta->examples && meta->examples[0] != NULL) {
       // Examples: "(example1 example2)" - practical values, higher priority than calculated ranges
       strcpy(completion_spec, ":(");
-      for (size_t i = 0; i < meta->example_count; i++) {
+      for (size_t i = 0; meta->examples[i] != NULL; i++) {
         if (i > 0)
           strcat(completion_spec, " ");
         strcat(completion_spec, meta->examples[i]);

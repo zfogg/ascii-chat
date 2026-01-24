@@ -181,7 +181,8 @@ static void bash_write_enum_cases(FILE *output) {
     }
 
     // Skip options with no enum or examples
-    if (meta->input_type != OPTION_INPUT_ENUM && meta->example_count == 0 && meta->numeric_range.max == 0) {
+    bool has_examples = meta->examples && meta->examples[0] != NULL;
+    if (meta->input_type != OPTION_INPUT_ENUM && !has_examples && meta->numeric_range.max == 0) {
       continue;
     }
 
@@ -202,10 +203,10 @@ static void bash_write_enum_cases(FILE *output) {
       }
     }
     // Check for examples first (more practical than calculated ranges)
-    else if (meta->examples && meta->example_count > 0) {
-      for (size_t j = 0; j < meta->example_count; j++) {
+    else if (has_examples) {
+      for (size_t j = 0; meta->examples[j] != NULL; j++) {
         fprintf(output, "%s", meta->examples[j]);
-        if (j < meta->example_count - 1) {
+        if (meta->examples[j + 1] != NULL) {
           fprintf(output, " ");
         }
       }

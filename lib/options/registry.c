@@ -184,7 +184,7 @@ static bool parse_cookies_from_browser(const char *arg, void *dest, char **error
 // corresponding OPT_*_DEFAULT constants for single source of truth.
 
 /**
- * @brief Registry entry - stores option definition with mode bitmask
+ * @brief Registry entry - stores option definition with mode bitmask and metadata
  */
 typedef struct {
   const char *long_name;
@@ -202,302 +202,1333 @@ typedef struct {
   bool owns_memory;
   bool optional_arg;
   option_mode_bitmask_t mode_bitmask;
+  option_metadata_t metadata; ///< Enum values, numeric ranges, examples
 } registry_entry_t;
+
+// ============================================================================
+// Static Metadata Arrays (Enum Values, Descriptions, Ranges)
+// ============================================================================
+
+// Log level metadata
+static const char *g_log_level_values[] = {"dev", "debug", "info", "warn", "error", "fatal"};
+static const char *g_log_level_descs[] = {"Development (most verbose, includes function traces)",
+                                          "Debug (includes internal state tracking)",
+                                          "Informational (key lifecycle events)",
+                                          "Warnings (unusual conditions)",
+                                          "Errors only",
+                                          "Fatal errors only"};
+
+// Color mode metadata
+static const char *g_color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
+static const char *g_color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
+                                           "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
+
+// Palette metadata
+static const char *g_palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
+static const char *g_palette_descs[] = {"Standard ASCII palette", "Block characters (full/half/quarter blocks)",
+                                        "Digital/computer style", "Minimal palette (light aesthetic)",
+                                        "Cool/modern style",      "Custom user-defined characters"};
+
+// Render mode metadata
+static const char *g_render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
+static const char *g_render_descs[] = {
+    "Render using foreground characters only", "Render using foreground characters only (alias)",
+    "Render using background colors only", "Render using background colors only (alias)",
+    "Use half-block characters for 2x vertical resolution"};
+
+// Compression level examples (null-terminated)
+static const char *g_compression_examples[] = {"1", "3", "9", NULL};
+
+// FPS examples (null-terminated)
+static const char *g_fps_examples[] = {"30", "60", "144", NULL};
+
+// Width examples (null-terminated)
+static const char *g_width_examples[] = {"80", "120", "160", NULL};
+
+// Height examples (null-terminated)
+static const char *g_height_examples[] = {"24", "40", "60", NULL};
+
+// Max clients examples (null-terminated)
+static const char *g_maxclients_examples[] = {"2", "4", "8", NULL};
+
+// Reconnect attempts examples (null-terminated)
+static const char *g_reconnect_examples[] = {"0", "5", "10", NULL};
+
+// Webcam index examples (null-terminated)
+static const char *g_webcam_examples[] = {"0", "1", "2", NULL};
+
+// Microphone index examples (null-terminated)
+static const char *g_mic_examples[] = {"-1", "0", "1", NULL};
+
+// Speakers index examples (null-terminated)
+static const char *g_speakers_examples[] = {"-1", "0", "1", NULL};
+
+// Seek examples (null-terminated)
+static const char *g_seek_examples[] = {"0", "60", "3:45", NULL};
+
+// Cookies from browser values (null-terminated)
+static const char *g_cookies_values[] = {"chrome", "firefox", "edge",  "safari", "brave",
+                                         "opera",  "vivaldi", "whale", NULL};
+static const char *g_cookies_descs[] = {"Google Chrome",   "Mozilla Firefox", "Microsoft Edge",
+                                        "Apple Safari",    "Brave Browser",   "Opera Browser",
+                                        "Vivaldi Browser", "Naver Whale",     NULL};
 
 // ============================================================================
 // Complete Options Registry
 // ============================================================================
 static const registry_entry_t g_options_registry[] = {
     // LOGGING GROUP (binary-level)
-    {"log-file", 'L', OPTION_TYPE_STRING, offsetof(options_t, log_file), "", 0, "Set FILE as path for log file",
-     "LOGGING", false, "ASCII_CHAT_LOG_FILE", NULL, NULL, false, false, OPTION_MODE_BINARY},
-    {"log-level", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, log_level), &default_log_level_value,
-     sizeof(log_level_t), "Set log level: dev, debug, info, warn, error, fatal", "LOGGING", false,
-     "ASCII_CHAT_LOG_LEVEL", NULL, parse_log_level, false, false, OPTION_MODE_BINARY},
-    {"verbose", 'V', OPTION_TYPE_CALLBACK, offsetof(options_t, verbose_level), 0, sizeof(unsigned short int),
-     "Increase log verbosity (stackable: -VV, -VVV)", "LOGGING", false, "ASCII_CHAT_VERBOSE", NULL, parse_verbose_flag,
-     false, true, OPTION_MODE_BINARY},
-    {"quiet", 'q', OPTION_TYPE_BOOL, offsetof(options_t, quiet), OPT_QUIET_DEFAULT, sizeof(bool),
-     "Disable console logging (log to file only)", "LOGGING", false, "ASCII_CHAT_QUIET", NULL, NULL, false, false,
-     OPTION_MODE_BINARY},
+    {"log-file",
+     'L',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, log_file),
+     "",
+     0,
+     "Set FILE as path for log file",
+     "LOGGING",
+     false,
+     "ASCII_CHAT_LOG_FILE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
+    {"log-level",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, log_level),
+     &default_log_level_value,
+     sizeof(log_level_t),
+     "Set log level: dev, debug, info, warn, error, fatal",
+     "LOGGING",
+     false,
+     "ASCII_CHAT_LOG_LEVEL",
+     NULL,
+     parse_log_level,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {.enum_values = g_log_level_values,
+      .enum_count = 6,
+      .enum_descriptions = g_log_level_descs,
+      .input_type = OPTION_INPUT_ENUM}},
+    {"verbose",
+     'V',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, verbose_level),
+     0,
+     sizeof(unsigned short int),
+     "Increase log verbosity (stackable: -VV, -VVV)",
+     "LOGGING",
+     false,
+     "ASCII_CHAT_VERBOSE",
+     NULL,
+     parse_verbose_flag,
+     false,
+     true,
+     OPTION_MODE_BINARY,
+     {0}},
+    {"quiet",
+     'q',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, quiet),
+     OPT_QUIET_DEFAULT,
+     sizeof(bool),
+     "Disable console logging (log to file only)",
+     "LOGGING",
+     false,
+     "ASCII_CHAT_QUIET",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
 
     // CONFIGURATION GROUP (binary-level)
-    {"config", '\0', OPTION_TYPE_STRING, offsetof(options_t, config_file), "", 0, "Load configuration from toml FILE",
-     "CONFIGURATION", false, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY},
-    {"config-create", '\0', OPTION_TYPE_BOOL, 0, NULL, 0,
-     "Create default config file and exit (optionally specify output path)", "CONFIGURATION", false, NULL, NULL, NULL,
-     false, false, OPTION_MODE_BINARY},
+    {"config",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, config_file),
+     "",
+     0,
+     "Load configuration from toml FILE",
+     "CONFIGURATION",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
+    {"config-create",
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     "Create default config file and exit (optionally specify output path)",
+     "CONFIGURATION",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
 
     // SHELL GROUP (binary-level)
-    {"completions", '\0', OPTION_TYPE_STRING, 0, NULL, 0, "Generate shell completions (bash, fish, zsh, powershell)",
-     "SHELL", false, NULL, NULL, NULL, false, false, OPTION_MODE_BINARY},
-    {"create-man-page", '\0', OPTION_TYPE_BOOL, 0, NULL, 0, "Create man page for ascii-chat", "SHELL", false, NULL,
-     NULL, NULL, false, false, OPTION_MODE_BINARY},
+    {"completions",
+     '\0',
+     OPTION_TYPE_STRING,
+     0,
+     NULL,
+     0,
+     "Generate shell completions (bash, fish, zsh, powershell)",
+     "SHELL",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
+    {"create-man-page",
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     "Create man page for ascii-chat",
+     "SHELL",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
 
     // TERMINAL GROUP (client, mirror, discovery)
-    {"width", 'x', OPTION_TYPE_INT, offsetof(options_t, width), &default_width_value, sizeof(int),
-     "Terminal width in characters. Can be controlled using $COLUMNS.", "TERMINAL", false, "ASCII_CHAT_WIDTH", NULL,
-     NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"height", 'y', OPTION_TYPE_INT, offsetof(options_t, height), &default_height_value, sizeof(int),
-     "Terminal height in characters. Can be controlled using $ROWS.", "TERMINAL", false, "ASCII_CHAT_HEIGHT", NULL,
-     NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"width",
+     'x',
+     OPTION_TYPE_INT,
+     offsetof(options_t, width),
+     &default_width_value,
+     sizeof(int),
+     "Terminal width in characters. Can be controlled using $COLUMNS.",
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_WIDTH",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {20, 512, 0}, .examples = g_width_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"height",
+     'y',
+     OPTION_TYPE_INT,
+     offsetof(options_t, height),
+     &default_height_value,
+     sizeof(int),
+     "Terminal height in characters. Can be controlled using $ROWS.",
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_HEIGHT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {10, 256, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC}},
 
     // WEBCAM GROUP (client, mirror, discovery)
-    {"webcam-index", 'c', OPTION_TYPE_INT, offsetof(options_t, webcam_index), &default_webcam_index_value,
-     sizeof(unsigned short int), "Webcam device index to use for video input", "WEBCAM", false,
-     "ASCII_CHAT_WEBCAM_INDEX", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"webcam-flip", 'g', OPTION_TYPE_BOOL, offsetof(options_t, webcam_flip), &default_webcam_flip_value, sizeof(bool),
-     "Flip webcam output horizontally before using it", "WEBCAM", false, "ASCII_CHAT_WEBCAM_FLIP", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"test-pattern", '\0', OPTION_TYPE_BOOL, offsetof(options_t, test_pattern), &default_test_pattern_value,
-     sizeof(bool), "Use test pattern instead of webcam", "WEBCAM", false, "WEBCAM_DISABLED", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"list-webcams", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available webcam devices and exit", "WEBCAM", false,
-     NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"list-microphones", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available audio input devices and exit", "AUDIO",
-     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"list-speakers", '\0', OPTION_TYPE_ACTION, 0, NULL, 0, "List available audio output devices and exit", "AUDIO",
-     false, NULL, NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+    {"webcam-index",
+     'c',
+     OPTION_TYPE_INT,
+     offsetof(options_t, webcam_index),
+     &default_webcam_index_value,
+     sizeof(unsigned short int),
+     "Webcam device index to use for video input",
+     "WEBCAM",
+     false,
+     "ASCII_CHAT_WEBCAM_INDEX",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {0, 10, 1}, .examples = g_webcam_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"webcam-flip",
+     'g',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, webcam_flip),
+     &default_webcam_flip_value,
+     sizeof(bool),
+     "Flip webcam output horizontally before using it",
+     "WEBCAM",
+     false,
+     "ASCII_CHAT_WEBCAM_FLIP",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"test-pattern",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, test_pattern),
+     &default_test_pattern_value,
+     sizeof(bool),
+     "Use test pattern instead of webcam",
+     "WEBCAM",
+     false,
+     "WEBCAM_DISABLED",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"list-webcams",
+     '\0',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "List available webcam devices and exit",
+     "WEBCAM",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"list-microphones",
+     '\0',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "List available audio input devices and exit",
+     "AUDIO",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"list-speakers",
+     '\0',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "List available audio output devices and exit",
+     "AUDIO",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // DISPLAY GROUP (client, mirror, discovery)
-    {"color-mode", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, color_mode), &default_color_mode_value,
+    {"color-mode",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, color_mode),
+     &default_color_mode_value,
      sizeof(terminal_color_mode_t),
      "Terminal color level (auto, none, 16, 256, truecolor). This controls what ANSI escape codes ascii-chat will use.",
-     "TERMINAL", false, "ASCII_CHAT_COLOR_MODE", NULL, parse_color_mode, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"render-mode", 'M', OPTION_TYPE_CALLBACK, offsetof(options_t, render_mode), &default_render_mode_value,
-     sizeof(render_mode_t), "ascii render mode (foreground, background, half-block)", "DISPLAY", false,
-     "ASCII_CHAT_RENDER_MODE", NULL, parse_render_mode, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"palette", 'P', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_type), &default_palette_type_value,
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_COLOR_MODE",
+     NULL,
+     parse_color_mode,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_color_mode_values,
+      .enum_count = 5,
+      .enum_descriptions = g_color_mode_descs,
+      .input_type = OPTION_INPUT_ENUM}},
+    {"render-mode",
+     'M',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, render_mode),
+     &default_render_mode_value,
+     sizeof(render_mode_t),
+     "ascii render mode (foreground, background, half-block)",
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_RENDER_MODE",
+     NULL,
+     parse_render_mode,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_render_values,
+      .enum_count = 5,
+      .enum_descriptions = g_render_descs,
+      .input_type = OPTION_INPUT_ENUM}},
+    {"palette",
+     'P',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, palette_type),
+     &default_palette_type_value,
      sizeof(palette_type_t),
      "ascii palette type (standard, blocks, digital, minimal, cool, custom). All but custom are built-in presets that "
      "look nice. Try them out!",
-     "DISPLAY", false, "ASCII_CHAT_PALETTE", NULL, parse_palette_type, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"palette-chars", 'C', OPTION_TYPE_CALLBACK, offsetof(options_t, palette_custom), "", 0,
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_PALETTE",
+     NULL,
+     parse_palette_type,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_palette_values,
+      .enum_count = 6,
+      .enum_descriptions = g_palette_descs,
+      .input_type = OPTION_INPUT_ENUM}},
+    {"palette-chars",
+     'C',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, palette_custom),
+     "",
+     0,
      "Custom palette characters (implies --palette=custom) for rendering images to ascii. These characters only will "
      "be used to create the rendered output. Can be UTF-8 content (see --utf8).",
-     "DISPLAY", false, "ASCII_CHAT_PALETTE_CHARS", NULL, parse_palette_chars, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities),
-     &default_show_capabilities_value, sizeof(bool), "Show detected terminal capabilities and exit", "TERMINAL", false,
-     "ASCII_CHAT_SHOW_CAPABILITIES", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"utf8", '\0', OPTION_TYPE_BOOL, offsetof(options_t, force_utf8), &default_force_utf8_value, sizeof(bool),
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_PALETTE_CHARS",
+     NULL,
+     parse_palette_chars,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"show-capabilities",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, show_capabilities),
+     &default_show_capabilities_value,
+     sizeof(bool),
+     "Show detected terminal capabilities and exit",
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_SHOW_CAPABILITIES",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"utf8",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, force_utf8),
+     &default_force_utf8_value,
+     sizeof(bool),
      "Force UTF-8 support. By default UTF-8 is automatically detected and enabled if the terminal supports it.",
-     "TERMINAL", false, "ASCII_CHAT_UTF8", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"stretch", 's', OPTION_TYPE_BOOL, offsetof(options_t, stretch), &default_stretch_value, sizeof(bool),
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_UTF8",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"stretch",
+     's',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, stretch),
+     &default_stretch_value,
+     sizeof(bool),
      "Allow aspect ratio distortion of image for rendering ascii output. This can allow the rendered ascii to fill "
      "your terminal.",
-     "DISPLAY", false, "ASCII_CHAT_STRETCH", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"strip-ansi", '\0', OPTION_TYPE_BOOL, offsetof(options_t, strip_ansi), &default_strip_ansi_value, sizeof(bool),
-     "Strip ANSI escape sequences from output before printing. Useful for scripting and debugging.", "TERMINAL", false,
-     "ASCII_CHAT_STRIP_ANSI", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"fps", '\0', OPTION_TYPE_INT, offsetof(options_t, fps), 0, sizeof(int),
-     "Target framerate for rendering ascii (1-144, 0=use default).", "DISPLAY", false, "ASCII_CHAT_FPS", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"snapshot", 'S', OPTION_TYPE_BOOL, offsetof(options_t, snapshot_mode), &default_snapshot_mode_value, sizeof(bool),
-     "Snapshot mode (one frame and exit)", "DISPLAY", false, "ASCII_CHAT_SNAPSHOT", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"snapshot-delay", 'D', OPTION_TYPE_DOUBLE, offsetof(options_t, snapshot_delay), &default_snapshot_delay_value,
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_STRETCH",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"strip-ansi",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, strip_ansi),
+     &default_strip_ansi_value,
+     sizeof(bool),
+     "Strip ANSI escape sequences from output before printing. Useful for scripting and debugging.",
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_STRIP_ANSI",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"fps",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, fps),
+     0,
+     sizeof(int),
+     "Target framerate for rendering ascii (1-144, 0=use default).",
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_FPS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {1, 144, 0}, .examples = g_fps_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"snapshot",
+     'S',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, snapshot_mode),
+     &default_snapshot_mode_value,
+     sizeof(bool),
+     "Snapshot mode (one frame and exit)",
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_SNAPSHOT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"snapshot-delay",
+     'D',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, snapshot_delay),
+     &default_snapshot_delay_value,
      sizeof(double),
      "Snapshot delay in seconds. The timer starts right before the client-side program prints the first frame. "
      "--snapshot --snapshot-delay=0 will print the first frame and exit.",
-     "DISPLAY", false, "ASCII_CHAT_SNAPSHOT_DELAY", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     "DISPLAY",
+     false,
+     "ASCII_CHAT_SNAPSHOT_DELAY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // NETWORK GROUP - compression options (client, server, discovery)
-    {"compression-level", '\0', OPTION_TYPE_INT, offsetof(options_t, compression_level),
-     &default_compression_level_value, sizeof(int), "zstd compression level (1-9)", "NETWORK", false,
-     "ASCII_CHAT_COMPRESSION_LEVEL", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"no-compress", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_compress), &default_no_compress_value, sizeof(bool),
-     "Disable compression", "NETWORK", false, "ASCII_CHAT_NO_COMPRESS", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
+    {"compression-level",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, compression_level),
+     &default_compression_level_value,
+     sizeof(int),
+     "zstd compression level (1-9)",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_COMPRESSION_LEVEL",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {1, 9, 1}, .examples = g_compression_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"no-compress",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, no_compress),
+     &default_no_compress_value,
+     sizeof(bool),
+     "Disable compression",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_NO_COMPRESS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // SECURITY GROUP (client, server, discovery)
-    {"encrypt", 'E', OPTION_TYPE_BOOL, offsetof(options_t, encrypt_enabled), &default_encrypt_enabled_value,
-     sizeof(bool), "Enable end-to-end encryption (requires the other party to be encrypted as well)", "SECURITY", false,
-     "ASCII_CHAT_ENCRYPT", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0,
+    {"encrypt",
+     'E',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, encrypt_enabled),
+     &default_encrypt_enabled_value,
+     sizeof(bool),
+     "Enable end-to-end encryption (requires the other party to be encrypted as well)",
+     "SECURITY",
+     false,
+     "ASCII_CHAT_ENCRYPT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"key",
+     'K',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, encrypt_key),
+     "",
+     0,
      "Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], or "
      "HTTPS URL like https://example.com/key.pub or .gpg)",
-     "SECURITY", false, "ASCII_CHAT_KEY", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"password", '\0', OPTION_TYPE_STRING, offsetof(options_t, password), "", 0,
-     "Shared password for authentication (8-256 characters)", "SECURITY", false, "ASCII_CHAT_PASSWORD", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"no-encrypt", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_encrypt), &default_no_encrypt_value, sizeof(bool),
-     "Disable encryption (requires the other party to be unencrypted as well)", "SECURITY", false,
-     "ASCII_CHAT_NO_ENCRYPT", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, server_key), "", 0,
+     "SECURITY",
+     false,
+     "ASCII_CHAT_KEY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"password",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, password),
+     "",
+     0,
+     "Shared password for authentication (8-256 characters)",
+     "SECURITY",
+     false,
+     "ASCII_CHAT_PASSWORD",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"no-encrypt",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, no_encrypt),
+     &default_no_encrypt_value,
+     sizeof(bool),
+     "Disable encryption (requires the other party to be unencrypted as well)",
+     "SECURITY",
+     false,
+     "ASCII_CHAT_NO_ENCRYPT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"server-key",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, server_key),
+     "",
+     0,
      "Expected server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], "
      "gitlab:USER[.gpg], or HTTPS URL like https://example.com/key.pub or .gpg)",
-     "SECURITY", false, "ASCII_CHAT_SERVER_KEY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0,
+     "SECURITY",
+     false,
+     "ASCII_CHAT_SERVER_KEY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"client-keys",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, client_keys),
+     "",
+     0,
      "Allowed client keys (comma-separated: file paths with one key per line, github:USER[.gpg], gitlab:USER[.gpg], "
      "gpg:KEYID, or HTTPS URLs)",
-     "SECURITY", false, "ASCII_CHAT_CLIENT_KEYS", NULL, NULL, false, false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure),
-     &default_discovery_insecure_value, sizeof(bool),
-     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)", "SECURITY", false,
-     "ASCII_CHAT_DISCOVERY_INSECURE", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"discovery-server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_service_key), "", 0,
+     "SECURITY",
+     false,
+     "ASCII_CHAT_CLIENT_KEYS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"discovery-insecure",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, discovery_insecure),
+     &default_discovery_insecure_value,
+     sizeof(bool),
+     "Skip server key verification (MITM-vulnerable, requires explicit opt-in)",
+     "SECURITY",
+     false,
+     "ASCII_CHAT_DISCOVERY_INSECURE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"discovery-server-key",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, discovery_service_key),
+     "",
+     0,
      "Discovery server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER, "
      "gitlab:USER, or HTTPS URL like https://discovery.ascii-chat.com/key.pub)",
-     "SECURITY", false, "ASCII_CHAT_DISCOVERY_SERVER_KEY", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     "SECURITY",
+     false,
+     "ASCII_CHAT_DISCOVERY_SERVER_KEY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // NETWORK GROUP (general network options, various modes)
-    {"port", 'p', OPTION_TYPE_CALLBACK, offsetof(options_t, port), OPT_PORT_DEFAULT, OPTIONS_BUFF_SIZE,
-     "Port to host a server or discovery-service on, or port to connect to a server as a client", "NETWORK", false,
-     "ASCII_CHAT_PORT", NULL, parse_port_option, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"max-clients", '\0', OPTION_TYPE_INT, offsetof(options_t, max_clients), &default_max_clients_value, sizeof(int),
-     "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL, NULL, false, false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC}, // Server and Discovery Service
-    {"reconnect-attempts", '\0', OPTION_TYPE_INT, offsetof(options_t, reconnect_attempts),
-     &default_reconnect_attempts_value, sizeof(int),
-     "Number of reconnection attempts before giving up (-1=infinite, 0=none)", "NETWORK", false,
-     "ASCII_CHAT_RECONNECT_ATTEMPTS", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY}, // Client and Discovery
-    {"port-forwarding", '\0', OPTION_TYPE_BOOL, offsetof(options_t, enable_upnp), &default_enable_upnp_value,
+    {"port",
+     'p',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, port),
+     OPT_PORT_DEFAULT,
+     OPTIONS_BUFF_SIZE,
+     "Port to host a server or discovery-service on, or port to connect to a server as a client",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_PORT",
+     NULL,
+     parse_port_option,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"max-clients",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, max_clients),
+     &default_max_clients_value,
+     sizeof(int),
+     "Maximum concurrent clients",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_MAX_CLIENTS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, // Server and Discovery Service
+     {.numeric_range = {1, 99, 1}, .examples = g_maxclients_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"reconnect-attempts",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, reconnect_attempts),
+     &default_reconnect_attempts_value,
+     sizeof(int),
+     "Number of reconnection attempts before giving up (-1=infinite, 0=none)",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_RECONNECT_ATTEMPTS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY, // Client and Discovery
+     {.numeric_range = {-1, 99, 1}, .examples = g_reconnect_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"port-forwarding",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, enable_upnp),
+     &default_enable_upnp_value,
      sizeof(bool),
      "Use UPnP/NAT-PMP port mapping to open a port in your router to ascii-chat (might fail with some routers)",
-     "NETWORK", false, "ASCII_CHAT_PORT_FORWARDING", NULL, NULL, false, false,
-     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC},
-    {"scan", '\0', OPTION_TYPE_BOOL, offsetof(options_t, lan_discovery), &default_lan_discovery_value, sizeof(bool),
-     "Scan for servers on local network via mDNS", "NETWORK", false, "ASCII_CHAT_SCAN", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+     "NETWORK",
+     false,
+     "ASCII_CHAT_PORT_FORWARDING",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"scan",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, lan_discovery),
+     &default_lan_discovery_value,
+     sizeof(bool),
+     "Scan for servers on local network via mDNS",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_SCAN",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // WebRTC options
-    {"webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc), &default_webrtc_value, sizeof(bool),
-     "Make calls using WebRTC p2p connections", "NETWORK", false, "ASCII_CHAT_WEBRTC", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"no-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_webrtc), &default_no_webrtc_value, sizeof(bool),
-     "Disable WebRTC, use direct TCP only", "NETWORK", false, "ASCII_CHAT_NO_WEBRTC", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"prefer-webrtc", '\0', OPTION_TYPE_BOOL, offsetof(options_t, prefer_webrtc), &default_prefer_webrtc_value,
-     sizeof(bool), "Try WebRTC before direct TCP", "NETWORK", false, "ASCII_CHAT_PREFER_WEBRTC", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"webrtc-skip-stun", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_skip_stun), &default_webrtc_skip_stun_value,
-     sizeof(bool), "Skip WebRTC+STUN stage, go straight to TURN relay", "NETWORK", false, "ASCII_CHAT_WEBRTC_SKIP_STUN",
-     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"webrtc-disable-turn", '\0', OPTION_TYPE_BOOL, offsetof(options_t, webrtc_disable_turn),
-     &default_webrtc_disable_turn_value, sizeof(bool), "Disable WebRTC+TURN relay, use STUN only", "NETWORK", false,
-     "ASCII_CHAT_WEBRTC_DISABLE_TURN", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"stun-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, stun_servers), OPT_STUN_SERVERS_DEFAULT, 0,
-     "Comma-separated list of WebRTC+STUN server URLs", "NETWORK", false, "ASCII_CHAT_STUN_SERVERS", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"turn-servers", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_servers), OPT_TURN_SERVERS_DEFAULT, 0,
-     "Comma-separated list of WebRTC+TURN server URLs", "NETWORK", false, "ASCII_CHAT_TURN_SERVERS", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"turn-username", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_username), OPT_TURN_USERNAME_DEFAULT, 0,
-     "Username for WebRTC+TURN authentication", "NETWORK", false, "ASCII_CHAT_TURN_USERNAME", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"turn-credential", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_credential), OPT_TURN_CREDENTIAL_DEFAULT, 0,
-     "Credential/password for WebRTC+TURN authentication", "NETWORK", false, "ASCII_CHAT_TURN_CREDENTIAL", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
-    {"turn-secret", '\0', OPTION_TYPE_STRING, offsetof(options_t, turn_secret), "", 0,
-     "Shared secret for dynamic WebRTC+TURN credential generation (HMAC-SHA1)", "NETWORK", false,
-     "ASCII_CHAT_TURN_SECRET", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
+    {"webrtc",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, webrtc),
+     &default_webrtc_value,
+     sizeof(bool),
+     "Make calls using WebRTC p2p connections",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_WEBRTC",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"no-webrtc",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, no_webrtc),
+     &default_no_webrtc_value,
+     sizeof(bool),
+     "Disable WebRTC, use direct TCP only",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_NO_WEBRTC",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"prefer-webrtc",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, prefer_webrtc),
+     &default_prefer_webrtc_value,
+     sizeof(bool),
+     "Try WebRTC before direct TCP",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_PREFER_WEBRTC",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"webrtc-skip-stun",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, webrtc_skip_stun),
+     &default_webrtc_skip_stun_value,
+     sizeof(bool),
+     "Skip WebRTC+STUN stage, go straight to TURN relay",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_WEBRTC_SKIP_STUN",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"webrtc-disable-turn",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, webrtc_disable_turn),
+     &default_webrtc_disable_turn_value,
+     sizeof(bool),
+     "Disable WebRTC+TURN relay, use STUN only",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_WEBRTC_DISABLE_TURN",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"stun-servers",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, stun_servers),
+     OPT_STUN_SERVERS_DEFAULT,
+     0,
+     "Comma-separated list of WebRTC+STUN server URLs",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_STUN_SERVERS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"turn-servers",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, turn_servers),
+     OPT_TURN_SERVERS_DEFAULT,
+     0,
+     "Comma-separated list of WebRTC+TURN server URLs",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_TURN_SERVERS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"turn-username",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, turn_username),
+     OPT_TURN_USERNAME_DEFAULT,
+     0,
+     "Username for WebRTC+TURN authentication",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_TURN_USERNAME",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"turn-credential",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, turn_credential),
+     OPT_TURN_CREDENTIAL_DEFAULT,
+     0,
+     "Credential/password for WebRTC+TURN authentication",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_TURN_CREDENTIAL",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"turn-secret",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, turn_secret),
+     "",
+     0,
+     "Shared secret for dynamic WebRTC+TURN credential generation (HMAC-SHA1)",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_TURN_SECRET",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // Media File Streaming Options
-    {"file", 'f', OPTION_TYPE_STRING, offsetof(options_t, media_file), "", 0,
+    {"file",
+     'f',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, media_file),
+     "",
+     0,
      "Stream from media file or stdin (use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man "
      "ffmpeg-codecs",
-     "MEDIA", false, "ASCII_CHAT_FILE", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"url", 'u', OPTION_TYPE_STRING, offsetof(options_t, media_url), "", 0,
+     "MEDIA",
+     false,
+     "ASCII_CHAT_FILE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"url",
+     'u',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, media_url),
+     "",
+     0,
      "Stream from network URL (HTTP/HTTPS/YouTube/RTSP). URL handler: see man yt-dlp; supported formats: see man "
      "ffmpeg-formats; codecs: see man ffmpeg-codecs",
-     "MEDIA", false, "ASCII_CHAT_URL", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &default_media_loop_value, sizeof(bool),
-     "Loop media file playback (not supported for --url)", "MEDIA", false, "ASCII_CHAT_LOOP", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"seek", 's', OPTION_TYPE_CALLBACK, offsetof(options_t, media_seek_timestamp), &default_media_seek_value,
-     sizeof(double), "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)", "MEDIA", false,
-     "ASCII_CHAT_SEEK", NULL, parse_timestamp, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"cookies-from-browser", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, cookies_from_browser), NULL, 0,
+     "MEDIA",
+     false,
+     "ASCII_CHAT_URL",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"loop",
+     'l',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, media_loop),
+     &default_media_loop_value,
+     sizeof(bool),
+     "Loop media file playback (not supported for --url)",
+     "MEDIA",
+     false,
+     "ASCII_CHAT_LOOP",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"seek",
+     's',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, media_seek_timestamp),
+     &default_media_seek_value,
+     sizeof(double),
+     "Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms)",
+     "MEDIA",
+     false,
+     "ASCII_CHAT_SEEK",
+     NULL,
+     parse_timestamp,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.examples = g_seek_examples, .input_type = OPTION_INPUT_STRING}},
+    {"cookies-from-browser",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, cookies_from_browser),
+     NULL,
+     0,
      "yt-dlp option (man yt-dlp). Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, "
      "vivaldi, whale). Use without argument to default to chrome.",
-     "MEDIA", false, "ASCII_CHAT_COOKIES_FROM_BROWSER", NULL, parse_cookies_from_browser, false, true,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
-    {"no-cookies-from-browser", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_cookies_from_browser), false,
-     sizeof(bool), "yt-dlp option (man yt-dlp). Explicitly disable reading cookies from browser", "MEDIA", false,
-     "ASCII_CHAT_NO_COOKIES_FROM_BROWSER", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     "MEDIA",
+     false,
+     "ASCII_CHAT_COOKIES_FROM_BROWSER",
+     NULL,
+     parse_cookies_from_browser,
+     false,
+     true,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_cookies_values, .enum_descriptions = g_cookies_descs, .input_type = OPTION_INPUT_ENUM}},
+    {"no-cookies-from-browser",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, no_cookies_from_browser),
+     false,
+     sizeof(bool),
+     "yt-dlp option (man yt-dlp). Explicitly disable reading cookies from browser",
+     "MEDIA",
+     false,
+     "ASCII_CHAT_NO_COOKIES_FROM_BROWSER",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {0}},
 
     // AUDIO GROUP (client, discovery)
-    {"audio", 'A', OPTION_TYPE_BOOL, offsetof(options_t, audio_enabled), &default_audio_enabled_value, sizeof(bool),
-     "Enable audio streaming", "AUDIO", false, "ASCII_CHAT_AUDIO", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"microphone-index", '\0', OPTION_TYPE_INT, offsetof(options_t, microphone_index), &default_microphone_index_value,
-     sizeof(int), "Microphone device index for audio input", "AUDIO", false, "ASCII_CHAT_MICROPHONE_INDEX", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"speakers-index", '\0', OPTION_TYPE_INT, offsetof(options_t, speakers_index), &default_speakers_index_value,
-     sizeof(int), "Speakers device index to use for audio output", "AUDIO", false, "ASCII_CHAT_SPEAKERS_INDEX", NULL,
-     NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"microphone-sensitivity", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, microphone_sensitivity),
-     &default_microphone_sensitivity_value, sizeof(float), "Microphone volume multiplier (0.0-1.0)", "AUDIO", false,
-     "ASCII_CHAT_MICROPHONE_SENSITIVITY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"speakers-volume", '\0', OPTION_TYPE_DOUBLE, offsetof(options_t, speakers_volume), &default_speakers_volume_value,
-     sizeof(float), "Speaker volume multiplier (0.0-1.0)", "AUDIO", false, "ASCII_CHAT_SPEAKERS_VOLUME", NULL, NULL,
-     false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"audio",
+     'A',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, audio_enabled),
+     &default_audio_enabled_value,
+     sizeof(bool),
+     "Enable audio streaming",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_AUDIO",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"microphone-index",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, microphone_index),
+     &default_microphone_index_value,
+     sizeof(int),
+     "Microphone device index for audio input",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_MICROPHONE_INDEX",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {-1, 10, 1}, .examples = g_mic_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"speakers-index",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, speakers_index),
+     &default_speakers_index_value,
+     sizeof(int),
+     "Speakers device index to use for audio output",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_SPEAKERS_INDEX",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {.numeric_range = {-1, 10, 1}, .examples = g_speakers_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"microphone-sensitivity",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, microphone_sensitivity),
+     &default_microphone_sensitivity_value,
+     sizeof(float),
+     "Microphone volume multiplier (0.0-1.0)",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_MICROPHONE_SENSITIVITY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"speakers-volume",
+     '\0',
+     OPTION_TYPE_DOUBLE,
+     offsetof(options_t, speakers_volume),
+     &default_speakers_volume_value,
+     sizeof(float),
+     "Speaker volume multiplier (0.0-1.0)",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_SPEAKERS_VOLUME",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
 #ifdef DEBUG
-    {"audio-analysis", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_analysis_enabled),
-     &default_audio_analysis_value, sizeof(bool), "Enable audio analysis (debug)", "AUDIO", false,
-     "ASCII_CHAT_AUDIO_ANALYSIS", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
+    {"audio-analysis",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, audio_analysis_enabled),
+     &default_audio_analysis_value,
+     sizeof(bool),
+     "Enable audio analysis (debug)",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_AUDIO_ANALYSIS",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
 #endif
-    {"no-audio-playback", '\0', OPTION_TYPE_BOOL, offsetof(options_t, audio_no_playback),
-     &default_no_audio_playback_value, sizeof(bool), "Disable speakers output", "AUDIO", false,
-     "ASCII_CHAT_NO_AUDIO_PLAYBACK", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_encode_audio_value,
-     sizeof(bool), "Enable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_ENCODE_AUDIO", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-encode-audio", '\0', OPTION_TYPE_BOOL, offsetof(options_t, encode_audio), &default_no_encode_audio_value,
-     sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
-    {"no-audio-mixer", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_audio_mixer), &default_no_audio_mixer_value,
-     sizeof(bool), "Use simple audio mixing without ducking or compression (debug mode only)", "AUDIO", false,
-     "ASCII_CHAT_NO_AUDIO_MIXER", NULL, NULL, false, false, OPTION_MODE_SERVER},
+    {"no-audio-playback",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, audio_no_playback),
+     &default_no_audio_playback_value,
+     sizeof(bool),
+     "Disable speakers output",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_NO_AUDIO_PLAYBACK",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"encode-audio",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, encode_audio),
+     &default_encode_audio_value,
+     sizeof(bool),
+     "Enable Opus audio encoding",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_ENCODE_AUDIO",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"no-encode-audio",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, encode_audio),
+     &default_no_encode_audio_value,
+     sizeof(bool),
+     "Disable Opus audio encoding",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_NO_ENCODE_AUDIO",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"no-audio-mixer",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, no_audio_mixer),
+     &default_no_audio_mixer_value,
+     sizeof(bool),
+     "Use simple audio mixing without ducking or compression (debug mode only)",
+     "AUDIO",
+     false,
+     "ASCII_CHAT_NO_AUDIO_MIXER",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER,
+     {0}},
 
     // ACDS Server Specific Options
-    {"database", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_database_path), "", 0,
-     "Path to SQLite database for discovery session storage", "DATABASE", false, "ASCII_CHAT_DATABASE", NULL, NULL,
-     false, false, OPTION_MODE_DISCOVERY_SVC},
-    {"discovery-server", '\0', OPTION_TYPE_STRING, offsetof(options_t, discovery_server),
-     OPT_ENDPOINT_DISCOVERY_SERVICE, 0, "Discovery service endpoint (IP address or hostname).", "NETWORK", false,
-     "ASCII_CHAT_DISCOVERY_SERVER", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"discovery-port", '\0', OPTION_TYPE_INT, offsetof(options_t, discovery_port), &default_discovery_port_value,
-     sizeof(int), "Discovery service port (1-65535)", "NETWORK", false, "ASCII_CHAT_DISCOVERY_PORT", NULL, NULL, false,
-     false, OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"discovery-expose-ip", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_expose_ip),
-     &default_discovery_expose_ip_value, sizeof(bool),
-     "Allow public IP disclosure in discovery sessions (requires confirmation)", "NETWORK", false,
-     "ASCII_CHAT_DISCOVERY_EXPOSE_IP", NULL, NULL, false, false,
-     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY},
-    {"require-server-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_server_identity), false,
-     sizeof(bool), "Require servers to provide signed Ed25519 identity", "SECURITY", false,
-     "ASCII_CHAT_REQUIRE_SERVER_IDENTITY", NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
-    {"require-client-identity", '\0', OPTION_TYPE_BOOL, offsetof(options_t, require_client_identity), false,
-     sizeof(bool), "Require clients to provide signed Ed25519 identity", "SECURITY", false,
-     "ASCII_CHAT_REQUIRE_CLIENT_IDENTITY", NULL, NULL, false, false, OPTION_MODE_DISCOVERY_SVC},
+    {"database",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, discovery_database_path),
+     "",
+     0,
+     "Path to SQLite database for discovery session storage",
+     "DATABASE",
+     false,
+     "ASCII_CHAT_DATABASE",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"discovery-server",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, discovery_server),
+     OPT_ENDPOINT_DISCOVERY_SERVICE,
+     0,
+     "Discovery service endpoint (IP address or hostname).",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_DISCOVERY_SERVER",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"discovery-port",
+     '\0',
+     OPTION_TYPE_INT,
+     offsetof(options_t, discovery_port),
+     &default_discovery_port_value,
+     sizeof(int),
+     "Discovery service port (1-65535)",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_DISCOVERY_PORT",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"discovery-expose-ip",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, discovery_expose_ip),
+     &default_discovery_expose_ip_value,
+     sizeof(bool),
+     "Allow public IP disclosure in discovery sessions (requires confirmation)",
+     "NETWORK",
+     false,
+     "ASCII_CHAT_DISCOVERY_EXPOSE_IP",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+     {0}},
+    {"require-server-identity",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, require_server_identity),
+     false,
+     sizeof(bool),
+     "Require servers to provide signed Ed25519 identity",
+     "SECURITY",
+     false,
+     "ASCII_CHAT_REQUIRE_SERVER_IDENTITY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"require-client-identity",
+     '\0',
+     OPTION_TYPE_BOOL,
+     offsetof(options_t, require_client_identity),
+     false,
+     sizeof(bool),
+     "Require clients to provide signed Ed25519 identity",
+     "SECURITY",
+     false,
+     "ASCII_CHAT_REQUIRE_CLIENT_IDENTITY",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_DISCOVERY_SVC,
+     {0}},
 
     // Generic placeholder to mark end of array
-    {NULL, '\0', OPTION_TYPE_BOOL, 0, NULL, 0, NULL, NULL, false, NULL, NULL, NULL, false, false, OPTION_MODE_NONE}};
+    {NULL,
+     '\0',
+     OPTION_TYPE_BOOL,
+     0,
+     NULL,
+     0,
+     NULL,
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_NONE,
+     {0}}};
 
 static size_t g_registry_size = 0;
 static bool g_metadata_populated = false;
@@ -512,25 +1543,9 @@ typedef struct {
 static cached_metadata_t g_metadata_cache[MAX_CACHED_METADATA];
 static size_t g_metadata_cache_count = 0;
 
-static void cache_metadata(const char *long_name, const option_metadata_t *meta) {
-  if (!long_name || !meta || g_metadata_cache_count >= MAX_CACHED_METADATA) {
-    return;
-  }
-  // Check if already cached
-  for (size_t i = 0; i < g_metadata_cache_count; i++) {
-    if (strcmp(g_metadata_cache[i].long_name, long_name) == 0) {
-      g_metadata_cache[i].metadata = *meta;
-      return;
-    }
-  }
-  // Add new entry
-  g_metadata_cache[g_metadata_cache_count].long_name = long_name;
-  g_metadata_cache[g_metadata_cache_count].metadata = *meta;
-  g_metadata_cache_count++;
-}
-
 static const option_metadata_t *get_cached_metadata(const char *long_name) {
   if (!long_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
     return NULL;
   }
   for (size_t i = 0; i < g_metadata_cache_count; i++) {
@@ -541,24 +1556,7 @@ static const option_metadata_t *get_cached_metadata(const char *long_name) {
   return NULL;
 }
 
-// ============================================================================
-// Metadata Initialization for Critical Options (forward implementation)
-// ============================================================================
-
-/**
- * @brief Populate metadata for critical options
- *
- * This function initializes completion metadata for options that benefit
- * from smart completion generation (enums, numeric ranges, examples).
- *
- * Called during registry initialization to set up metadata for:
- * - color-mode: enum values with descriptions
- * - compression-level: numeric range (1-9)
- * - fps: numeric range with examples
- * - palette: enum values
- * - etc.
- */
-static void registry_populate_metadata_for_critical_options(void);
+// Metadata is now initialized compile-time in registry entries
 
 /**
  * @brief Initialize registry size and metadata
@@ -568,8 +1566,8 @@ static void registry_init_size(void) {
     for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
       g_registry_size++;
     }
-    // Populate metadata after registry is sized
-    registry_populate_metadata_for_critical_options();
+    // DEPRECATED: Metadata is now initialized compile-time in registry entries
+    // registry_populate_metadata_for_critical_options();
     g_metadata_populated = true;
   }
 }
@@ -651,6 +1649,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
  */
 static const registry_entry_t *registry_find_entry_by_name(const char *long_name) {
   if (!long_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
     return NULL;
   }
 
@@ -803,6 +1802,7 @@ static option_descriptor_t registry_entry_to_descriptor(const registry_entry_t *
     desc.owns_memory = entry->owns_memory;
     desc.optional_arg = entry->optional_arg;
     desc.mode_bitmask = entry->mode_bitmask;
+    desc.metadata = entry->metadata;
   }
   return desc;
 }
@@ -926,6 +1926,7 @@ const option_descriptor_t *options_registry_get_binary_options(size_t *num_optio
  */
 static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciichat_mode_t mode, bool for_binary_help) {
   if (!entry) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Entry is NULL");
     return false;
   }
 
@@ -1011,12 +2012,14 @@ const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mod
 
 const option_metadata_t *options_registry_get_metadata(const char *long_name) {
   if (!long_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
     return NULL;
   }
 
   // Check cache first (faster and preserves metadata across calls)
   const option_metadata_t *cached = get_cached_metadata(long_name);
   if (cached) {
+    SET_ERRNO(ERROR_NOT_FOUND, "Option '%s' not found", long_name);
     return cached;
   }
 
@@ -1027,13 +2030,15 @@ const option_metadata_t *options_registry_get_metadata(const char *long_name) {
 
 const char **options_registry_get_enum_values(const char *option_name, const char ***descriptions, size_t *count) {
   if (!option_name || !count) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL or count is NULL");
     if (count)
       *count = 0;
     return NULL;
   }
 
   const option_metadata_t *meta = options_registry_get_metadata(option_name);
-  if (!meta || meta->input_type != OPTION_INPUT_ENUM || meta->enum_count == 0) {
+  if (!meta || meta->input_type != OPTION_INPUT_ENUM || !meta->enum_values || meta->enum_values[0] == NULL) {
+    SET_ERRNO(ERROR_NOT_FOUND, "Option '%s' not found", option_name);
     *count = 0;
     if (descriptions)
       *descriptions = NULL;
@@ -1049,6 +2054,7 @@ const char **options_registry_get_enum_values(const char *option_name, const cha
 
 bool options_registry_get_numeric_range(const char *option_name, int *min_out, int *max_out, int *step_out) {
   if (!option_name || !min_out || !max_out || !step_out) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL or min_out, max_out, or step_out is NULL");
     return false;
   }
 
@@ -1068,28 +2074,37 @@ bool options_registry_get_numeric_range(const char *option_name, int *min_out, i
 
 const char **options_registry_get_examples(const char *option_name, size_t *count) {
   if (!option_name || !count) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL or count is NULL");
     if (count)
       *count = 0;
     return NULL;
   }
 
   const option_metadata_t *meta = options_registry_get_metadata(option_name);
-  if (!meta || meta->example_count == 0) {
+  if (!meta || !meta->examples || meta->examples[0] == NULL) {
     *count = 0;
     return NULL;
   }
 
-  *count = meta->example_count;
+  // Count examples by finding NULL terminator
+  size_t example_count = 0;
+  for (size_t i = 0; meta->examples[i] != NULL; i++) {
+    example_count++;
+  }
+
+  *count = example_count;
   return meta->examples;
 }
 
 option_input_type_t options_registry_get_input_type(const char *option_name) {
   if (!option_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Option name is NULL");
     return OPTION_INPUT_NONE;
   }
 
   const option_metadata_t *meta = options_registry_get_metadata(option_name);
   if (!meta) {
+    SET_ERRNO(ERROR_NOT_FOUND, "Option '%s' not found", option_name);
     return OPTION_INPUT_NONE;
   }
 
@@ -1099,280 +2114,3 @@ option_input_type_t options_registry_get_input_type(const char *option_name) {
 // ============================================================================
 // Metadata Initialization for Critical Options
 // ============================================================================
-
-/**
- * @brief Populate metadata for critical options
- *
- * This function initializes completion metadata for options that benefit
- * from smart completion generation (enums, numeric ranges, examples).
- *
- * Called during registry initialization to set up metadata for:
- * - color-mode: enum values with descriptions
- * - compression-level: numeric range (1-9)
- * - fps: numeric range with examples
- * - palette: enum values
- * - etc.
- */
-static void registry_populate_metadata_for_critical_options(void) {
-  // Color mode enum values
-  {
-    static const char *color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
-    static const char *color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
-                                             "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
-    option_metadata_t meta = {0};
-    meta.enum_values = color_mode_values;
-    meta.enum_count = 5;
-    meta.enum_descriptions = color_mode_descs;
-    meta.input_type = OPTION_INPUT_ENUM;
-    cache_metadata("color-mode", &meta);
-  }
-
-  // Compression level numeric range
-  {
-    static const char *compress_examples[] = {"1", "3", "9"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = 1;
-    meta.numeric_range.max = 9;
-    meta.numeric_range.step = 1;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = compress_examples;
-    meta.example_count = 3;
-    cache_metadata("compression-level", &meta);
-  }
-
-  // FPS numeric range
-  {
-    static const char *fps_examples[] = {"30", "60", "144"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = 1;
-    meta.numeric_range.max = 144;
-    meta.numeric_range.step = 0;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = fps_examples;
-    meta.example_count = 3;
-    cache_metadata("fps", &meta);
-  }
-
-  // Palette enum values
-  {
-    static const char *palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
-    static const char *palette_descs[] = {"Standard ASCII palette", "Block characters (full/half/quarter blocks)",
-                                          "Digital/computer style", "Minimal palette (light aesthetic)",
-                                          "Cool/modern style",      "Custom user-defined characters"};
-    option_metadata_t meta = {0};
-    meta.enum_values = palette_values;
-    meta.enum_count = 6;
-    meta.enum_descriptions = palette_descs;
-    meta.input_type = OPTION_INPUT_ENUM;
-    cache_metadata("palette", &meta);
-  }
-
-  // Render mode enum values
-  {
-    static const char *render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
-    static const char *render_descs[] = {
-        "Render using foreground characters only", "Render using foreground characters only (alias)",
-        "Render using background colors only", "Render using background colors only (alias)",
-        "Use half-block characters for 2x vertical resolution"};
-    option_metadata_t meta = {0};
-    meta.enum_values = render_values;
-    meta.enum_count = 5;
-    meta.enum_descriptions = render_descs;
-    meta.input_type = OPTION_INPUT_ENUM;
-    cache_metadata("render-mode", &meta);
-  }
-
-  // Log level enum values
-  {
-    static const char *log_level_values[] = {"dev", "debug", "info", "warn", "error", "fatal"};
-    static const char *log_level_descs[] = {"Development (most verbose, includes function traces)",
-                                            "Debug (includes internal state tracking)",
-                                            "Informational (key lifecycle events)",
-                                            "Warnings (unusual conditions)",
-                                            "Errors only",
-                                            "Fatal errors only"};
-    option_metadata_t meta = {0};
-    meta.enum_values = log_level_values;
-    meta.enum_count = 6;
-    meta.enum_descriptions = log_level_descs;
-    meta.input_type = OPTION_INPUT_ENUM;
-    cache_metadata("log-level", &meta);
-  }
-
-  // File path options
-  option_descriptor_t *logfile_desc = (option_descriptor_t *)options_registry_find_by_name("log-file");
-  if (logfile_desc) {
-    logfile_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
-  }
-
-  option_descriptor_t *keyfile_desc = (option_descriptor_t *)options_registry_find_by_name("key");
-  if (keyfile_desc) {
-    keyfile_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
-  }
-
-  option_descriptor_t *config_desc = (option_descriptor_t *)options_registry_find_by_name("config");
-  if (config_desc) {
-    config_desc->metadata.input_type = OPTION_INPUT_FILEPATH;
-  } else {
-    CLEAR_ERRNO(); // "config" is a binary-level option, not in registry - suppress spurious error
-  }
-
-  // STUN servers and TURN servers are lists
-  option_descriptor_t *stun_desc = (option_descriptor_t *)options_registry_find_by_name("stun-servers");
-  if (stun_desc) {
-    stun_desc->metadata.input_type = OPTION_INPUT_STRING;
-    stun_desc->metadata.is_list = true;
-  }
-
-  option_descriptor_t *turn_desc = (option_descriptor_t *)options_registry_find_by_name("turn-servers");
-  if (turn_desc) {
-    turn_desc->metadata.input_type = OPTION_INPUT_STRING;
-    turn_desc->metadata.is_list = true;
-  }
-
-  // Microphone and speaker indices
-  option_descriptor_t *mic_idx_desc = (option_descriptor_t *)options_registry_find_by_name("microphone-index");
-  if (mic_idx_desc) {
-    mic_idx_desc->metadata.numeric_range.min = -1;
-    mic_idx_desc->metadata.numeric_range.max = 0; // 0 for max (no real limit)
-    mic_idx_desc->metadata.numeric_range.step = 1;
-    mic_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
-  }
-
-  option_descriptor_t *speaker_idx_desc = (option_descriptor_t *)options_registry_find_by_name("speakers-index");
-  if (speaker_idx_desc) {
-    speaker_idx_desc->metadata.numeric_range.min = -1;
-    speaker_idx_desc->metadata.numeric_range.max = 0; // 0 for max (no real limit)
-    speaker_idx_desc->metadata.numeric_range.step = 1;
-    speaker_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
-  }
-
-  // Webcam device index
-  option_descriptor_t *webcam_idx_desc = (option_descriptor_t *)options_registry_find_by_name("webcam-index");
-  if (webcam_idx_desc) {
-    webcam_idx_desc->metadata.numeric_range.min = 0;
-    webcam_idx_desc->metadata.numeric_range.max = 0; // 0 for max (no real limit)
-    webcam_idx_desc->metadata.numeric_range.step = 1;
-    webcam_idx_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
-  }
-
-  // Port option
-  option_descriptor_t *port_desc = (option_descriptor_t *)options_registry_find_by_name("port");
-  if (port_desc) {
-    port_desc->metadata.numeric_range.min = 1;
-    port_desc->metadata.numeric_range.max = 65535;
-    port_desc->metadata.numeric_range.step = 0; // Continuous
-    port_desc->metadata.input_type = OPTION_INPUT_NUMERIC;
-  }
-
-  // Width with practical examples
-  {
-    static const char *width_examples[] = {"80", "120", "160"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = 20;
-    meta.numeric_range.max = 512;
-    meta.numeric_range.step = 0;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = width_examples;
-    meta.example_count = 3;
-    cache_metadata("width", &meta);
-  }
-
-  // Height with practical examples
-  {
-    static const char *height_examples[] = {"24", "40", "60"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = 10;
-    meta.numeric_range.max = 256;
-    meta.numeric_range.step = 0;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = height_examples;
-    meta.example_count = 3;
-    cache_metadata("height", &meta);
-  }
-
-  // Max clients with practical examples
-  {
-    static const char *maxclients_examples[] = {"2", "4", "8"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = 1;
-    meta.numeric_range.max = 99;
-    meta.numeric_range.step = 1;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = maxclients_examples;
-    meta.example_count = 3;
-    cache_metadata("max-clients", &meta);
-  }
-
-  // Reconnect attempts with practical examples
-  {
-    static const char *reconnect_examples[] = {"0", "5", "10"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = -1;
-    meta.numeric_range.max = 99;
-    meta.numeric_range.step = 1;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = reconnect_examples;
-    meta.example_count = 3;
-    cache_metadata("reconnect-attempts", &meta);
-  }
-
-  // Webcam index with practical examples
-  {
-    static const char *webcam_examples[] = {"0", "1", "2"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = 0;
-    meta.numeric_range.max = 10;
-    meta.numeric_range.step = 1;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = webcam_examples;
-    meta.example_count = 3;
-    cache_metadata("webcam-index", &meta);
-  }
-
-  // Microphone index with practical examples
-  {
-    static const char *mic_examples[] = {"-1", "0", "1"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = -1;
-    meta.numeric_range.max = 10;
-    meta.numeric_range.step = 1;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = mic_examples;
-    meta.example_count = 3;
-    cache_metadata("microphone-index", &meta);
-  }
-
-  // Speakers index with practical examples
-  {
-    static const char *speakers_examples[] = {"-1", "0", "1"};
-    option_metadata_t meta = {0};
-    meta.numeric_range.min = -1;
-    meta.numeric_range.max = 10;
-    meta.numeric_range.step = 1;
-    meta.input_type = OPTION_INPUT_NUMERIC;
-    meta.examples = speakers_examples;
-    meta.example_count = 3;
-    cache_metadata("speakers-index", &meta);
-  }
-
-  // Cookies from browser enum
-  {
-    static const char *cookies_values[] = {"chrome", "firefox", "edge", "safari", "brave", "opera", "vivaldi", "whale"};
-    option_metadata_t meta = {0};
-    meta.enum_values = cookies_values;
-    meta.enum_count = 8;
-    meta.input_type = OPTION_INPUT_ENUM;
-    cache_metadata("cookies-from-browser", &meta);
-  }
-
-  // Seek timestamp examples
-  {
-    static const char *seek_examples[] = {"0", "60", "3:45"};
-    option_metadata_t meta = {0};
-    meta.input_type = OPTION_INPUT_STRING;
-    meta.examples = seek_examples;
-    meta.example_count = 3;
-    cache_metadata("seek", &meta);
-  }
-}

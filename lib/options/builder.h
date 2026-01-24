@@ -87,9 +87,8 @@ typedef struct {
     int step; ///< Step size (0 = no step, continuous)
   } numeric_range;
 
-  // Examples
-  const char **examples; ///< Example values or command invocations
-  size_t example_count;  ///< Number of examples
+  // Examples (must be null-terminated)
+  const char **examples; ///< Example values or command invocations (null-terminated array)
 
   // Default value (informational, may be duplicated from descriptor)
   const char *default_value; ///< Default value as string for display
@@ -595,17 +594,15 @@ void options_builder_set_numeric_range(options_builder_t *builder, const char *o
  *
  * @param builder Options builder
  * @param option_name Long name of option to set metadata for
- * @param examples Array of example strings (may be values or full commands)
- * @param count Number of examples
+ * @param examples Array of example strings (must be null-terminated, may be values or full commands)
  *
  * Example:
  * ```c
- * const char *fps_examples[] = {"30", "60", "144"};
- * options_builder_set_examples(builder, "fps", fps_examples, 3);
+ * const char *fps_examples[] = {"30", "60", "144", NULL};
+ * options_builder_set_examples(builder, "fps", fps_examples);
  * ```
  */
-void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples,
-                                  size_t count);
+void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples);
 
 /**
  * @brief Set input type for an option

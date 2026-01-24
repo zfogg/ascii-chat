@@ -39,11 +39,11 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
       }
       fprintf(output, ") }\n");
       return;
-    } else if (meta->examples && meta->example_count > 0) {
+    } else if (meta->examples && meta->examples[0] != NULL) {
       // Example values (practical values, higher priority than calculated ranges)
       if (opt->short_name != '\0') {
         fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
-        for (size_t i = 0; i < meta->example_count; i++) {
+        for (size_t i = 0; meta->examples[i] != NULL; i++) {
           if (i > 0)
             fprintf(output, ", ");
           fprintf(output, "'%s'", meta->examples[i]);
@@ -51,7 +51,7 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
         fprintf(output, ") }\n");
       }
       fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
-      for (size_t i = 0; i < meta->example_count; i++) {
+      for (size_t i = 0; meta->examples[i] != NULL; i++) {
         if (i > 0)
           fprintf(output, ", ");
         fprintf(output, "'%s'", meta->examples[i]);

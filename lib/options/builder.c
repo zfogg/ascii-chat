@@ -1121,8 +1121,7 @@ void options_builder_set_numeric_range(options_builder_t *builder, const char *o
   desc->metadata.numeric_range.step = step;
 }
 
-void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples,
-                                  size_t count) {
+void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples) {
   if (!builder || !option_name || !examples) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Builder or arguments are NULL");
     return;
@@ -1136,7 +1135,7 @@ void options_builder_set_examples(options_builder_t *builder, const char *option
 
   option_descriptor_t *desc = &builder->descriptors[idx];
   desc->metadata.examples = examples;
-  desc->metadata.example_count = count;
+  // Note: examples array must be null-terminated
 }
 
 void options_builder_set_input_type(options_builder_t *builder, const char *option_name,
