@@ -352,10 +352,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
       x = j;
     }
 
-    // Add clear to EOL, reset sequence, and newline after each row (except last)
-    *pos++ = '\x1b';
-    *pos++ = '[';
-    *pos++ = 'K';
+    // Add reset sequence and newline after each row (except last)
     *pos++ = '\x1b';
     *pos++ = '[';
     *pos++ = '0';
@@ -645,10 +642,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
       }
     }
 
-    // Add clear to EOL, reset sequence, and newline after each row (except last)
-    *pos++ = '\x1b';
-    *pos++ = '[';
-    *pos++ = 'K';
+    // Add reset sequence and newline after each row (except last)
     *pos++ = '\x1b';
     *pos++ = '[';
     *pos++ = '0';

@@ -555,15 +555,13 @@ char *image_print_color(const image_t *p, const char *palette) {
 
   const size_t pixel_bytes = total_pixels * bytes_per_pixel;
 
-  // Per row: clear-to-eol + newline (except last row)
+  // Per row: newline (except last row)
   // Final reset added once by ansi_rle_finish()
-  const size_t clear_to_eol_len = 3; // \033[K
-  const size_t total_clear_to_eol = h_sz * clear_to_eol_len;
   const size_t total_newlines = (h_sz > 0) ? (h_sz - 1) : 0;
   const size_t final_reset = reset_len; // One reset at end (from ansi_rle_finish)
 
-  // Final buffer size: pixel bytes + per-row extras + final reset + null terminator
-  const size_t extra_bytes = total_clear_to_eol + total_newlines + final_reset + 1;
+  // Final buffer size: pixel bytes + per-row newlines + final reset + null terminator
+  const size_t extra_bytes = total_newlines + final_reset + 1;
 
   if (pixel_bytes > SIZE_MAX - extra_bytes) {
     SET_ERRNO(ERROR_INVALID_STATE, "Final buffer size would overflow: %d x %d", h, w);
@@ -605,17 +603,7 @@ char *image_print_color(const image_t *p, const char *palette) {
       ansi_rle_add_pixel(&rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
     }
 
-    // Add clear-to-end-of-line sequence to prevent leftover characters from previous frames
-    // This is critical when frame content varies (e.g., webcam movement causes different pixel counts)
-    // Reserve space for ESC[K (3 bytes) plus null terminator (1 byte)
-    if (rle_ctx.length + 4 <= rle_ctx.capacity) {
-      rle_ctx.buffer[rle_ctx.length++] = '\033';
-      rle_ctx.buffer[rle_ctx.length++] = '[';
-      rle_ctx.buffer[rle_ctx.length++] = 'K';
-    }
-
     // Add newline after each row (except the last row)
-    // The last line's clear-to-EOL is followed directly by the reset sequence
     if (y != h - 1 && rle_ctx.length < rle_ctx.capacity - 1) {
       rle_ctx.buffer[rle_ctx.length++] = '\n';
     }
