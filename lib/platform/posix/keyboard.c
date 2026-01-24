@@ -78,7 +78,9 @@ void keyboard_cleanup(void) {
   }
 
   // Restore original terminal settings
-  if (tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios) < 0) {
+  // Use TCSADRAIN to avoid clearing the display when restoring from raw mode
+  // TCSADRAIN waits for pending output to be sent before changing terminal attributes
+  if (tcsetattr(STDIN_FILENO, TCSADRAIN, &g_original_termios) < 0) {
     log_error("Failed to restore terminal attributes");
   }
 
