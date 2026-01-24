@@ -1087,12 +1087,19 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         }
       }
 
+      // Add blank line after each option
+      if (!config_builder_append(&builder, "\n")) {
+        return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+      }
+
       written_flags[opt_idx] = true;
     }
 
-    // Add blank line between sections
-    if (!config_builder_append(&builder, "\n")) {
-      return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+    // Add blank line between sections (but not after the last section)
+    if (cat_idx < category_count - 1) {
+      if (!config_builder_append(&builder, "\n")) {
+        return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+      }
     }
   }
 
