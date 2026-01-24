@@ -639,8 +639,12 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
 
   case DISCOVERY_STATE_CONNECTING_HOST: {
     // Connect to host as participant
-    log_debug("discovery_session_process: CONNECTING_HOST state (participant_ctx=%p)", session->participant_ctx);
+    log_info("discovery_session_process: CONNECTING_HOST case START - session->participant_ctx=%p (NULL=%d)",
+             session->participant_ctx, session->participant_ctx == NULL);
+
     if (!session->participant_ctx) {
+      log_info("discovery_session_process: CONNECTING_HOST - participant_ctx is NULL, will create");
+      log_debug("discovery_session_process: CONNECTING_HOST - creating participant context");
       // Create participant context for this session
       log_info("discovery_session_process: Creating participant context to connect to %s:%u", session->host_address,
                session->host_port);
@@ -669,7 +673,26 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
       }
 
       log_info("Connected to host as participant");
+    }
+
+    // Check if connection is established
+    bool ctx_valid = session->participant_ctx != NULL;
+    bool is_connected = ctx_valid ? session_participant_is_connected(session->participant_ctx) : false;
+    log_debug("discovery_session_process: CONNECTING_HOST - participant_ctx=%p, ctx_valid=%d, is_connected=%d",
+              session->participant_ctx, ctx_valid, is_connected);
+
+    if (ctx_valid && !is_connected) {
+      // Log more details about why it's not connected
+      log_debug("discovery_session_process: CONNECTING_HOST - context exists but not connected yet");
+    }
+
+    if (is_connected) {
+      log_info("Participant connection confirmed, transitioning to ACTIVE state");
       set_state(session, DISCOVERY_STATE_ACTIVE);
+    } else {
+      log_debug("discovery_session_process: CONNECTING_HOST - awaiting connection establishment (ctx_valid=%d, "
+                "is_connected=%d)",
+                ctx_valid, is_connected);
     }
     break;
   }

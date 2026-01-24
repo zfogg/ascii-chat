@@ -123,13 +123,17 @@ struct session_participant {
  * ============================================================================ */
 
 session_participant_t *session_participant_create(const session_participant_config_t *config) {
+  log_info("session_participant_create: START - config=%p", config);
+
   if (!config) {
+    log_error("session_participant_create: config is NULL");
     SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_create: NULL config");
     return NULL;
   }
 
   // Allocate participant
   session_participant_t *p = SAFE_CALLOC(1, sizeof(session_participant_t), session_participant_t *);
+  log_info("session_participant_create: allocated p=%p", p);
 
   // Copy configuration
   if (config->address) {
@@ -140,6 +144,8 @@ session_participant_t *session_participant_create(const session_participant_conf
 
   p->port = config->port > 0 ? config->port : OPT_PORT_INT_DEFAULT;
   p->encryption_enabled = config->encryption_enabled;
+
+  log_info("session_participant_create: address=%s, port=%d", p->address, p->port);
 
   if (config->password) {
     SAFE_STRNCPY(p->password, config->password, sizeof(p->password));
@@ -165,6 +171,8 @@ session_participant_t *session_participant_create(const session_participant_conf
   session_settings_init(&p->settings);
 
   p->initialized = true;
+  log_info("session_participant_create: DONE - returning p=%p (initialized=%d, connected=%d)", p, p->initialized,
+           p->connected);
   return p;
 }
 
@@ -265,16 +273,26 @@ static socket_t connect_to_server(const char *address, int port) {
 }
 
 asciichat_error_t session_participant_connect(session_participant_t *p) {
+  log_debug("session_participant_connect: enter - p=%p", p);
+
   if (!p || !p->initialized) {
+    log_debug("session_participant_connect: invalid param or not initialized");
     return SET_ERRNO(ERROR_INVALID_PARAM, "session_participant_connect: invalid participant");
   }
 
+  log_debug("session_participant_connect: p->initialized=%d, p->connected=%d", p->initialized, p->connected);
+
   if (p->connected) {
+    log_debug("session_participant_connect: already connected, returning OK");
     return ASCIICHAT_OK; // Already connected
   }
 
   // Create TCP connection to server
+  log_debug("session_participant_connect: calling connect_to_server(%s, %d)", p->address, p->port);
   p->socket = connect_to_server(p->address, p->port);
+  log_debug("session_participant_connect: connect_to_server returned socket=%d (INVALID=%d)", p->socket,
+            INVALID_SOCKET_VALUE);
+
   if (p->socket == INVALID_SOCKET_VALUE) {
     log_error("Failed to connect to server at %s:%d", p->address, p->port);
     if (p->callbacks.on_error) {
@@ -283,16 +301,19 @@ asciichat_error_t session_participant_connect(session_participant_t *p) {
     return GET_ERRNO();
   }
 
+  log_debug("session_participant_connect: setting p->connected=true");
   p->connected = true;
   p->client_id = 0; // Will be assigned by server
 
-  log_info("Connected to server at %s:%d", p->address, p->port);
+  log_info("Connected to server at %s:%d (socket=%d)", p->address, p->port, p->socket);
+  log_debug("session_participant_connect: p->connected=%d after setting", p->connected);
 
   // Invoke callback
   if (p->callbacks.on_connected) {
     p->callbacks.on_connected(p, p->client_id, p->user_data);
   }
 
+  log_debug("session_participant_connect: returning ASCIICHAT_OK");
   return ASCIICHAT_OK;
 }
 

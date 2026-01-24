@@ -834,8 +834,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   // Log that we're attempting to load config (before logging is initialized, use stderr)
   // Only print if terminal output is enabled (suppress with --quiet)
   if (config_path && log_get_terminal_output()) {
-    (void)fprintf(stderr, "Loading configuration from: %s\n", display_path);
-    (void)fflush(stderr);
+    log_info("Loading configuration from: %s", display_path);
   }
 
   // Check if config file exists
@@ -889,9 +888,8 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   // Log successful config load (use stderr since logging may not be initialized yet)
   // Only print if terminal output is enabled (suppress with --quiet)
   if (log_get_terminal_output()) {
-    (void)fprintf(stderr, "Loaded configuration from: %s\n", display_path);
+    log_info("Loaded configuration from: %s", display_path);
   }
-  (void)fflush(stderr);
 
   // Update RCU system with modified options (for test compatibility)
   // In real usage, options_state_set is called later after CLI parsing
@@ -944,16 +942,16 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     if (stat(config_path_expanded, &st) == 0) {
       // File exists - ask user if they want to overwrite
       // Use fprintf directly so prompts display even when logging is suppressed
-      (void)fprintf(stderr, "Config file already exists: %s\n", config_path_expanded);
+      log_plain("Config file already exists: %s\n", config_path_expanded);
 
       bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
       if (!overwrite) {
-        (void)fprintf(stderr, "Config file creation cancelled.\n");
+        log_plain("Config file creation cancelled.\n");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
       }
 
       // User confirmed overwrite - continue to create file (will overwrite existing)
-      (void)fprintf(stderr, "Overwriting existing config file...\n");
+      log_plain("Overwriting existing config file...\n");
     }
 
     // Create directory if needed
@@ -1043,7 +1041,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     }
 
     // Write section header
-    (void)fprintf(output_file, "[%s]\n", category);
+    log_plain("[%s]\n", category);
 
     // Track which options we've written (to avoid duplicates like log_file vs logging.log_file)
     bool written_flags[64] = {0}; // Max options per category
@@ -1085,7 +1083,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
 
       // Write description comment if available
       if (meta->description && strlen(meta->description) > 0) {
-        (void)fprintf(output_file, "# %s\n", meta->description);
+        log_plain("# %s\n", meta->description);
       }
 
       // Format and write the option value using handler (commented out to avoid conflicts)
@@ -1093,14 +1091,14 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
         g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value,
                                                   sizeof(formatted_value));
-        (void)fprintf(output_file, "# %s = %s\n", key_name, formatted_value);
+        log_plain("# %s = %s\n", key_name, formatted_value);
       }
 
       written_flags[opt_idx] = true;
     }
 
     // Add blank line between sections
-    (void)fprintf(output_file, "\n");
+    log_plain("\n");
   }
 
   // Close file if we opened one (but not stdout)

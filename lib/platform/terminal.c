@@ -30,42 +30,37 @@ extern bool g_color_flag_value;
  * @return true if colors should be used, false otherwise
  */
 bool terminal_should_color_output(int fd) {
-  // Priority 1: Check --color flag (before RCU is initialized via global flags)
-  // If --color was explicitly passed in argv, use that value
-  if (g_color_flag_passed) {
-    if (g_color_flag_value) {
-      return true; // --color was passed, ALWAYS colorize
-    }
-  } else {
-    // After RCU is initialized, check GET_OPTION(color) for programmatic setting
-    if (GET_OPTION(color)) {
-      return true; // ALWAYS colorize when --color is set
-    }
+  // Get current color setting (auto/true/false)
+  int color_setting = GET_OPTION(color);
+
+  // Priority 1: --color=true - Force colors ON (overrides everything)
+  if (color_setting == COLOR_SETTING_TRUE) {
+    return true; // ALWAYS colorize
   }
 
-  // Priority 2: Check environment variable overrides
+  // Priority 2: --color=false - Force colors OFF (overrides everything)
+  if (color_setting == COLOR_SETTING_FALSE) {
+    return false; // NEVER colorize
+  }
+
+  // Priority 3: --color=auto (default) - Smart detection
+  // Check environment variable overrides first
   if (SAFE_GETENV("ASCII_CHAT_COLOR")) {
     return true; // ASCII_CHAT_COLOR env var forces colors
   }
 
-  // Priority 3: CLAUDECODE environment variable (LLM automation)
+  // CLAUDECODE environment variable (LLM automation) - disable colors
   if (SAFE_GETENV("CLAUDECODE")) {
     return false; // NO colors in Claude Code environment
   }
 
-  // Priority 4: Check if output is a TTY (pipe detection)
+  // Check if output is a TTY (pipe detection)
   int is_tty = platform_isatty(fd);
   if (!is_tty) {
     return false; // NO colors when piping/redirecting
   }
 
-  // Priority 5: Check --color-mode override for explicit 'none' (only matters on TTY)
-  // NOTE: We skip checking color_mode here during early initialization because RCU might
-  // not be initialized yet. Once RCU is initialized, GET_OPTION(color_mode) will work
-  // correctly. For now, we let colors show by default on TTY.
-  // TODO: Consider deferring color_mode check to later in program lifecycle if needed.
-
-  // Default: Use colors (we have TTY and no overrides)
+  // Default: Use colors (we have TTY and no environment overrides)
   return true;
 }
 

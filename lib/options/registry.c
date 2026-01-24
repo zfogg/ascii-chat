@@ -66,6 +66,12 @@ static const char *g_log_level_descs[] = {"Development (most verbose, includes f
                                           "Errors only",
                                           "Fatal errors only"};
 
+// Color setting metadata (--color flag values)
+static const char *g_color_setting_values[] = {"auto", "true", "false"};
+static const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not piping/CLAUDECODE)",
+                                              "Force colors ON (override TTY/pipe/CLAUDECODE)",
+                                              "Force colors OFF (disable all colors)"};
+
 // Color mode metadata
 static const char *g_color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
 static const char *g_color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
@@ -193,6 +199,25 @@ static const registry_entry_t g_logging_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {0}},
+    {"color",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, color),
+     &default_color_value,
+     sizeof(int),
+     "Color output setting: 'auto' (default, smart detection), 'true' (force colors on), or 'false' (force colors off)",
+     "TERMINAL",
+     false,
+     "ASCII_CHAT_COLOR",
+     NULL,
+     parse_color_setting,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {.enum_values = g_color_setting_values,
+      .enum_count = 3,
+      .enum_descriptions = g_color_setting_descs,
+      .input_type = OPTION_INPUT_ENUM}},
     {NULL,
      '\0',
      OPTION_TYPE_BOOL,
@@ -500,22 +525,6 @@ static const registry_entry_t g_webcam_entries[] = {
 // ============================================================================
 static const registry_entry_t g_display_entries[] = {
     // DISPLAY GROUP (client, mirror, discovery)
-    {"color",
-     '\0',
-     OPTION_TYPE_BOOL,
-     offsetof(options_t, color),
-     &default_color_value,
-     sizeof(bool),
-     "Force enable color output even when piping or TTY detection fails. Implies --color-mode=auto.",
-     "TERMINAL",
-     false,
-     "ASCII_CHAT_COLOR",
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_BINARY | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
-     {0}},
     {"color-mode",
      '\0',
      OPTION_TYPE_CALLBACK,
