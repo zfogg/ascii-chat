@@ -24,7 +24,7 @@ echo "Starting server..."
 echo "y" | timeout 25 $BIN/ascii-chat \
   server 127.0.0.1 :: \
   --port $SERVER_PORT \
-  --acds \
+  --discovery \
   --discovery-expose-ip \
   --discovery-server discovery-service.ascii-chat.com \
   --discovery-port $DISCOVERY_PORT \
