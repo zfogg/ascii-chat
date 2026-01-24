@@ -16,10 +16,10 @@
  * ============================================================================ */
 
 /** Maximum width for first column before description moves to next line */
-#define LAYOUT_COLUMN_WIDTH 28
+#define LAYOUT_COLUMN_WIDTH 45
 
-/** Starting column for description text (column 30 = 2 spaces + 28 chars) */
-#define LAYOUT_DESCRIPTION_START_COL 30
+/** Starting column for description text (column 49 = 2 spaces + 45 chars + 2 spacing) */
+#define LAYOUT_DESCRIPTION_START_COL 49
 
 /** Terminal width threshold for switching to vertical layout */
 #define LAYOUT_NARROW_TERMINAL_THRESHOLD 55
@@ -45,7 +45,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
  * @brief Print two-column row with automatic wrapping
  *
  * Prints first column text, then second column description with proper alignment.
- * If first column is too long (>28 chars), description moves to next line.
+ * If first column is too long (>45 chars), description moves to next line.
  * Second column wraps at description start column.
  *
  * @param stream Output file stream

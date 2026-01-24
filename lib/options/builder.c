@@ -1890,7 +1890,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   int max_col_width = 0;
   char temp_buf[BUFFER_SIZE_MEDIUM];
 
-  // Check USAGE entries
+  // Check USAGE entries (capped at 45 chars for max first column)
   for (size_t i = 0; i < config->num_usage_lines; i++) {
     const usage_descriptor_t *usage = &config->usage_lines[i];
     int len = 0;
@@ -1915,6 +1915,9 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     }
 
     int w = utf8_display_width(temp_buf);
+    if (w > LAYOUT_COLUMN_WIDTH) {
+      w = LAYOUT_COLUMN_WIDTH;
+    }
     if (w > max_col_width)
       max_col_width = w;
   }
@@ -1937,14 +1940,20 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     }
 
     int w = utf8_display_width(temp_buf);
+    if (w > LAYOUT_COLUMN_WIDTH) {
+      w = LAYOUT_COLUMN_WIDTH;
+    }
     if (w > max_col_width)
       max_col_width = w;
   }
 
-  // Check MODES entries
+  // Check MODES entries (capped at 45 chars)
   for (size_t i = 0; i < config->num_modes; i++) {
     const char *colored_name = colored_string(LOG_COLOR_FATAL, config->modes[i].name);
     int w = utf8_display_width(colored_name);
+    if (w > LAYOUT_COLUMN_WIDTH) {
+      w = LAYOUT_COLUMN_WIDTH;
+    }
     if (w > max_col_width)
       max_col_width = w;
   }
@@ -1973,8 +1982,16 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     const char *colored_opts = opts_buf;
 
     int w = utf8_display_width(colored_opts);
+    if (w > LAYOUT_COLUMN_WIDTH) {
+      w = LAYOUT_COLUMN_WIDTH;
+    }
     if (w > max_col_width)
       max_col_width = w;
+  }
+
+  // Enforce maximum column width of 45 characters
+  if (max_col_width > 45) {
+    max_col_width = 45;
   }
 
   return max_col_width;
@@ -2407,9 +2424,9 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     max_col_width = options_config_calculate_max_col_width(config);
   }
 
-  // CAP max_col_width at 60 as per user request for first column wrapping
-  if (max_col_width > 60) {
-    max_col_width = 60;
+  // CAP max_col_width at 45 for narrow first column with description wrapping
+  if (max_col_width > 45) {
+    max_col_width = 45;
   }
 
   // Determine if this is binary-level help
@@ -2682,9 +2699,9 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   if (global_max_col_width < 20)
     global_max_col_width = 20;
 
-  // CAP global_max_col_width at 60 as per user request for first column wrapping
-  if (global_max_col_width > 60) {
-    global_max_col_width = 60;
+  // CAP global_max_col_width at 45 for narrow first column with description wrapping
+  if (global_max_col_width > 45) {
+    global_max_col_width = 45;
   }
 
   // Print USAGE section
