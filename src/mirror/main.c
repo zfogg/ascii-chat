@@ -242,6 +242,10 @@ int mirror_main(void) {
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
     log_fatal("Failed to initialize capture source");
+    if (probe_source) {
+      media_source_destroy(probe_source);
+      probe_source = NULL;
+    }
     return ERROR_MEDIA_INIT;
   }
 
@@ -306,7 +310,16 @@ int mirror_main(void) {
   session_display_ctx_t *display = session_display_create(&display_config);
   if (!display) {
     log_fatal("Failed to initialize display");
+    if (audio_ctx) {
+      audio_stop_duplex(audio_ctx);
+      audio_destroy(audio_ctx);
+      SAFE_FREE(audio_ctx);
+    }
     session_capture_destroy(capture);
+    if (probe_source) {
+      media_source_destroy(probe_source);
+      probe_source = NULL;
+    }
     return ERROR_DISPLAY;
   }
 
