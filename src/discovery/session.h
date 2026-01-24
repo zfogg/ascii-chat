@@ -19,6 +19,8 @@
 #include "session/host.h"
 #include "session/participant.h"
 #include "discovery/strings.h"
+#include "network/webrtc/stun.h"
+#include "network/webrtc/turn.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -146,6 +148,18 @@ typedef struct {
 
   // Migration state (host failover)
   migration_ctx_t migration;
+
+  // WebRTC support (NEW)
+  struct webrtc_peer_manager *peer_manager; ///< WebRTC peer connection manager (NULL for TCP sessions)
+  bool webrtc_transport_ready;              ///< True when DataChannel is open and transport created
+
+  // WebRTC ICE servers (for STUN/TURN support)
+  // These must be stored in the session to keep memory valid for peer manager lifetime
+  // Forward declare - actual types defined in network/webrtc/stun.h and network/webrtc/turn.h
+  stun_server_t *stun_servers; ///< STUN servers from ACDS
+  size_t stun_count;           ///< Number of STUN servers
+  turn_server_t *turn_servers; ///< TURN servers from ACDS
+  size_t turn_count;           ///< Number of TURN servers
 
   // Role contexts (only one is active at a time)
   session_host_t *host_ctx;

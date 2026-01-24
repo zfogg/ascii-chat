@@ -35,6 +35,7 @@ DISCOVERY_CONNECT="127.0.0.1"
 echo "Starting server..."
 # Bind to 0.0.0.0 and :: (all interfaces) so ACDS can auto-detect the public IP
 # Use --discovery-expose-ip flag to allow public IP disclosure (required for non-interactive mode)
+# WebRTC is now the default for discovery sessions
 timeout 25 $BIN/ascii-chat \
   server 0.0.0.0 :: \
   --port $SERVER_PORT \
@@ -100,10 +101,13 @@ echo ""
 # Discovery mode with session string, snapshot mode will output ASCII frame to stdout, errors to stderr
 # Use DISCOVERY_CONNECT (sidechain) to connect to same ACDS server as the server
 # Use --prefer-webrtc to use WebRTC instead of direct TCP
+# Use --snapshot-delay 2 to give WebRTC connection time to establish (SDP exchange + ICE candidates + DataChannel setup)
+# Use --log-level debug to see detailed WebRTC connection logs
 timeout 6 $BIN/ascii-chat \
+  --log-level debug \
   "$SESSION" \
   --snapshot \
-  --snapshot-delay 0 \
+  --snapshot-delay 2 \
   --discovery-server "$DISCOVERY_CONNECT" \
   --discovery-port $DISCOVERY_PORT \
   --prefer-webrtc \

@@ -13,6 +13,7 @@
 #include "network/acip/send.h"
 #include "network/packet.h"
 #include "network/webrtc/stun.h"
+#include "network/webrtc/peer_manager.h"
 #include "negotiate.h"
 #include "nat.h"
 #include "platform/abstraction.h"
@@ -54,6 +55,12 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
 
   session->state = DISCOVERY_STATE_INIT;
   session->acds_socket = INVALID_SOCKET_VALUE;
+  session->peer_manager = NULL;
+  session->webrtc_transport_ready = false;
+  session->stun_servers = NULL;
+  session->stun_count = 0;
+  session->turn_servers = NULL;
+  session->turn_count = 0;
 
   log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,
            session->host_ctx);
@@ -108,6 +115,25 @@ void discovery_session_destroy(discovery_session_t *session) {
   if (session->participant_ctx) {
     session_participant_destroy(session->participant_ctx);
     session->participant_ctx = NULL;
+  }
+
+  // Clean up WebRTC peer manager (NEW)
+  if (session->peer_manager) {
+    webrtc_peer_manager_destroy(session->peer_manager);
+    session->peer_manager = NULL;
+  }
+
+  // Clean up STUN/TURN server arrays (NEW)
+  if (session->stun_servers) {
+    SAFE_FREE(session->stun_servers);
+    session->stun_servers = NULL;
+    session->stun_count = 0;
+  }
+
+  if (session->turn_servers) {
+    SAFE_FREE(session->turn_servers);
+    session->turn_servers = NULL;
+    session->turn_count = 0;
   }
 
   SAFE_FREE(session);
@@ -418,6 +444,346 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   return ASCIICHAT_OK;
 }
 
+// ============================================================================
+// WebRTC Support Functions (NEW)
+// ============================================================================
+
+/**
+ * @brief Send SDP via ACDS signaling
+ */
+static asciichat_error_t discovery_send_sdp_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
+                                                     const char *sdp_type, const char *sdp, void *user_data) {
+  discovery_session_t *session = (discovery_session_t *)user_data;
+
+  if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
+  }
+
+  // Build ACIP SDP packet
+  size_t sdp_len = strlen(sdp);
+  size_t total_len = sizeof(acip_webrtc_sdp_t) + sdp_len;
+
+  uint8_t *packet_data = SAFE_MALLOC(total_len, uint8_t *);
+  acip_webrtc_sdp_t *sdp_msg = (acip_webrtc_sdp_t *)packet_data;
+
+  memcpy(sdp_msg->session_id, session_id, 16);
+  memcpy(sdp_msg->sender_id, session->participant_id, 16);
+  memcpy(sdp_msg->recipient_id, recipient_id, 16);
+  sdp_msg->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
+  sdp_msg->sdp_len = HOST_TO_NET_U16(sdp_len);
+  memcpy(packet_data + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
+
+  // Send to ACDS
+  asciichat_error_t result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_WEBRTC_SDP, packet_data, total_len);
+
+  SAFE_FREE(packet_data);
+
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send SDP to ACDS");
+  }
+
+  log_info("Sent SDP %s to ACDS (len=%zu)", sdp_type, sdp_len);
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Send ICE candidate via ACDS signaling
+ */
+static asciichat_error_t discovery_send_ice_via_acds(const uint8_t session_id[16], const uint8_t recipient_id[16],
+                                                     const char *candidate, const char *mid __attribute__((unused)),
+                                                     void *user_data) {
+  discovery_session_t *session = (discovery_session_t *)user_data;
+
+  if (!session || session->acds_socket == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid session or ACDS socket");
+  }
+
+  // Build ACIP ICE packet
+  size_t candidate_len = strlen(candidate);
+  size_t total_len = sizeof(acip_webrtc_ice_t) + candidate_len;
+
+  uint8_t *packet_data = SAFE_MALLOC(total_len, uint8_t *);
+  acip_webrtc_ice_t *ice_msg = (acip_webrtc_ice_t *)packet_data;
+
+  memcpy(ice_msg->session_id, session_id, 16);
+  memcpy(ice_msg->sender_id, session->participant_id, 16);
+  memcpy(ice_msg->recipient_id, recipient_id, 16);
+  ice_msg->candidate_len = HOST_TO_NET_U16(candidate_len);
+  memcpy(packet_data + sizeof(acip_webrtc_ice_t), candidate, candidate_len);
+
+  // Send to ACDS
+  asciichat_error_t result = packet_send(session->acds_socket, PACKET_TYPE_ACIP_WEBRTC_ICE, packet_data, total_len);
+
+  SAFE_FREE(packet_data);
+
+  if (result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send ICE to ACDS");
+  }
+
+  log_debug("Sent ICE candidate to ACDS (len=%zu)", candidate_len);
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Callback when WebRTC DataChannel is ready
+ *
+ * This callback is invoked by the WebRTC peer manager when a DataChannel
+ * successfully opens and is wrapped in an ACIP transport. At this point,
+ * frames can be transmitted over the WebRTC DataChannel instead of TCP.
+ *
+ * IMPLEMENTATION NOTES:
+ * - The transport is ready for use immediately
+ * - Current implementation keeps TCP connection open as fallback
+ * - Future: Could implement graceful TCP->WebRTC switchover
+ * - Security: DataChannel uses DTLS encryption (automatic from libdatachannel)
+ * - Encryption: ACIP layer may add additional encryption on top if needed
+ */
+static void discovery_on_transport_ready(acip_transport_t *transport, const uint8_t participant_id[16],
+                                         void *user_data) {
+  discovery_session_t *session = (discovery_session_t *)user_data;
+
+  if (!session) {
+    log_error("discovery_on_transport_ready: session is NULL");
+    return;
+  }
+
+  log_info("========== WebRTC DataChannel READY ==========");
+  log_info("WebRTC DataChannel successfully established and wrapped in ACIP transport");
+  log_debug("  Remote participant: %02x%02x%02x%02x-...", participant_id[0], participant_id[1], participant_id[2],
+            participant_id[3]);
+  log_info("  Transport status: READY for media transmission");
+  log_info("  Encryption: DTLS (automatic) + optional ACIP layer encryption");
+
+  // Mark transport as ready
+  session->webrtc_transport_ready = true;
+
+  if (session->session_type != SESSION_TYPE_WEBRTC) {
+    log_warn("WebRTC transport ready but session type is not WebRTC!");
+    return;
+  }
+
+  log_info("========== WebRTC Media Channel ACTIVE ==========");
+  log_info("Switching to WebRTC transport for media transmission...");
+
+  // Implement transport switching for participant/host
+  if (session->is_host && session->host_ctx) {
+    // We are the host - set transport for the remote client
+    // participant_id contains the client's ID
+    uint32_t client_id = 0;
+    // Extract client ID from participant_id (use first 4 bytes as uint32)
+    memcpy(&client_id, participant_id, sizeof(uint32_t));
+
+    asciichat_error_t result = session_host_set_client_transport(session->host_ctx, client_id, transport);
+    if (result == ASCIICHAT_OK) {
+      log_info("✓ Host: Successfully switched client %u to WebRTC transport", client_id);
+    } else {
+      log_error("✗ Host: Failed to set WebRTC transport for client %u: %d", client_id, result);
+    }
+  } else if (session->participant_ctx) {
+    // We are a participant - set transport for ourselves
+    asciichat_error_t result = session_participant_set_transport(session->participant_ctx, transport);
+    if (result == ASCIICHAT_OK) {
+      log_info("✓ Participant: Successfully switched to WebRTC transport");
+      log_info("  TCP connection remains open as control/signaling channel");
+      log_info("  Media frames will now be transmitted over WebRTC DataChannel");
+    } else {
+      log_error("✗ Participant: Failed to set WebRTC transport: %d", result);
+    }
+  } else {
+    log_warn("transport_ready: No participant or host context available for transport switching");
+  }
+}
+
+/**
+ * @brief Initialize WebRTC peer manager for a discovery session
+ *
+ * Creates STUN/TURN server arrays and stores them in the session.
+ * These arrays must persist for the lifetime of the peer manager.
+ */
+static asciichat_error_t initialize_webrtc_peer_manager(discovery_session_t *session) {
+  if (!session) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
+  }
+
+  // Initialize WebRTC library (idempotent)
+  asciichat_error_t init_result = webrtc_init();
+  if (init_result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to initialize WebRTC library");
+  }
+
+  // Set up STUN servers
+  // Allocate array for 1 STUN server (can be expanded for redundancy)
+  session->stun_servers = SAFE_MALLOC(sizeof(stun_server_t), stun_server_t *);
+  if (!session->stun_servers) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate STUN server array");
+  }
+  session->stun_count = 1;
+
+  // Configure primary STUN server
+  // STUN URL format: "stun:hostname:port"
+  const char *stun_url = "stun:stun.l.google.com:19302";
+  session->stun_servers[0].host_len = strlen(stun_url);
+  SAFE_STRNCPY(session->stun_servers[0].host, stun_url, sizeof(session->stun_servers[0].host));
+
+  // Set up TURN servers (if credentials available from ACDS)
+  if (session->turn_username[0] != '\0' && session->turn_password[0] != '\0') {
+    // Allocate array for 1 TURN server
+    session->turn_servers = SAFE_MALLOC(sizeof(turn_server_t), turn_server_t *);
+    if (!session->turn_servers) {
+      SAFE_FREE(session->stun_servers);
+      session->stun_servers = NULL;
+      session->stun_count = 0;
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate TURN server array");
+    }
+    session->turn_count = 1;
+
+    // Configure TURN server with ACDS-provided credentials
+    const char *turn_url = "turn:turn.ascii-chat.com:3478";
+    session->turn_servers[0].url_len = strlen(turn_url);
+    SAFE_STRNCPY(session->turn_servers[0].url, turn_url, sizeof(session->turn_servers[0].url));
+
+    session->turn_servers[0].username_len = strlen(session->turn_username);
+    SAFE_STRNCPY(session->turn_servers[0].username, session->turn_username, sizeof(session->turn_servers[0].username));
+
+    session->turn_servers[0].credential_len = strlen(session->turn_password);
+    SAFE_STRNCPY(session->turn_servers[0].credential, session->turn_password,
+                 sizeof(session->turn_servers[0].credential));
+
+    log_info("Using ACDS-provided TURN credentials for symmetric NAT relay (username_len=%d, credential_len=%d)",
+             session->turn_servers[0].username_len, session->turn_servers[0].credential_len);
+  } else {
+    log_info("No TURN credentials from ACDS - will rely on direct P2P + STUN (sufficient for most NAT scenarios)");
+    session->turn_servers = NULL;
+    session->turn_count = 0;
+  }
+
+  // Determine our role for WebRTC peer connection
+  // Participants always use JOINER role (they initiate connections)
+  webrtc_peer_role_t role = WEBRTC_ROLE_JOINER;
+
+  log_info("Initializing WebRTC peer manager (role=%s, stun_count=%zu, turn_count=%zu)",
+           role == WEBRTC_ROLE_JOINER ? "JOINER" : "CREATOR", session->stun_count, session->turn_count);
+
+  // Create peer manager configuration
+  webrtc_peer_manager_config_t pm_config = {
+      .role = role,
+      .stun_servers = session->stun_servers,
+      .stun_count = session->stun_count,
+      .turn_servers = session->turn_servers,
+      .turn_count = session->turn_count,
+      .on_transport_ready = discovery_on_transport_ready,
+      .user_data = session,
+      .crypto_ctx = NULL // Crypto happens at ACIP layer
+  };
+
+  // Create signaling callbacks
+  webrtc_signaling_callbacks_t signaling = {
+      .send_sdp = discovery_send_sdp_via_acds, .send_ice = discovery_send_ice_via_acds, .user_data = session};
+
+  // Create peer manager
+  asciichat_error_t result = webrtc_peer_manager_create(&pm_config, &signaling, &session->peer_manager);
+  if (result != ASCIICHAT_OK) {
+    // Clean up on error
+    SAFE_FREE(session->stun_servers);
+    session->stun_servers = NULL;
+    session->stun_count = 0;
+    if (session->turn_servers) {
+      SAFE_FREE(session->turn_servers);
+      session->turn_servers = NULL;
+    }
+    session->turn_count = 0;
+  }
+
+  return result;
+}
+
+/**
+ * @brief Handle incoming WebRTC SDP from ACDS
+ */
+static void handle_discovery_webrtc_sdp(discovery_session_t *session, void *data, size_t len) {
+  if (len < sizeof(acip_webrtc_sdp_t)) {
+    log_error("Invalid SDP packet size: %zu", len);
+    return;
+  }
+
+  const acip_webrtc_sdp_t *sdp_msg = (const acip_webrtc_sdp_t *)data;
+  uint16_t sdp_len = NET_TO_HOST_U16(sdp_msg->sdp_len);
+
+  if (len != sizeof(acip_webrtc_sdp_t) + sdp_len) {
+    log_error("SDP packet size mismatch: expected %zu, got %zu", sizeof(acip_webrtc_sdp_t) + sdp_len, len);
+    return;
+  }
+
+  // Extract SDP string
+  char *sdp_str = SAFE_MALLOC(sdp_len + 1, char *);
+  memcpy(sdp_str, (const uint8_t *)data + sizeof(acip_webrtc_sdp_t), sdp_len);
+  sdp_str[sdp_len] = '\0';
+
+  const char *sdp_type = (sdp_msg->sdp_type == 0) ? "offer" : "answer";
+  log_info("Received SDP %s from ACDS (len=%u)", sdp_type, sdp_len);
+
+  // Forward to peer manager
+  if (session->peer_manager) {
+    asciichat_error_t result = webrtc_peer_manager_handle_sdp(session->peer_manager, sdp_msg);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to handle SDP: %d", result);
+    }
+  } else {
+    log_error("Received SDP but peer manager not initialized");
+  }
+
+  SAFE_FREE(sdp_str);
+}
+
+/**
+ * @brief Handle incoming WebRTC ICE candidate from ACDS
+ */
+static void handle_discovery_webrtc_ice(discovery_session_t *session, void *data, size_t len) {
+  if (len < sizeof(acip_webrtc_ice_t)) {
+    log_error("Invalid ICE packet size: %zu", len);
+    return;
+  }
+
+  const acip_webrtc_ice_t *ice_msg = (const acip_webrtc_ice_t *)data;
+  uint16_t candidate_len = NET_TO_HOST_U16(ice_msg->candidate_len);
+
+  if (len != sizeof(acip_webrtc_ice_t) + candidate_len) {
+    log_error("ICE packet size mismatch: expected %zu, got %zu", sizeof(acip_webrtc_ice_t) + candidate_len, len);
+    return;
+  }
+
+  log_debug("Received ICE candidate from ACDS (len=%u)", candidate_len);
+
+  // Forward to peer manager
+  if (session->peer_manager) {
+    asciichat_error_t result = webrtc_peer_manager_handle_ice(session->peer_manager, ice_msg);
+    if (result != ASCIICHAT_OK) {
+      log_error("Failed to handle ICE candidate: %d", result);
+    }
+  } else {
+    log_error("Received ICE but peer manager not initialized");
+  }
+}
+
+/**
+ * @brief Dispatch incoming ACDS packets for WebRTC signaling
+ */
+static void handle_acds_webrtc_packet(discovery_session_t *session, packet_type_t type, void *data, size_t len) {
+  switch (type) {
+  case PACKET_TYPE_ACIP_WEBRTC_SDP:
+    handle_discovery_webrtc_sdp(session, data, len);
+    break;
+  case PACKET_TYPE_ACIP_WEBRTC_ICE:
+    handle_discovery_webrtc_ice(session, data, len);
+    break;
+  default:
+    log_debug("Unhandled WebRTC packet type: 0x%04x", type);
+  }
+}
+
+/**
+ * @brief Join an existing discovery session
+ */
 static asciichat_error_t join_session(discovery_session_t *session) {
   log_info("join_session: START - participant_ctx=%p", session->participant_ctx);
 
@@ -489,6 +855,15 @@ static asciichat_error_t join_session(discovery_session_t *session) {
     SAFE_STRNCPY(session->turn_username, joined->turn_username, sizeof(session->turn_username));
     SAFE_STRNCPY(session->turn_password, joined->turn_password, sizeof(session->turn_password));
     log_info("WebRTC session detected - TURN username: %s", session->turn_username);
+
+    // Initialize WebRTC peer manager for WebRTC sessions (NEW)
+    asciichat_error_t webrtc_result = initialize_webrtc_peer_manager(session);
+    if (webrtc_result != ASCIICHAT_OK) {
+      log_error("Failed to initialize WebRTC peer manager: %d", webrtc_result);
+      POOL_FREE(data, len);
+      return webrtc_result;
+    }
+    log_info("WebRTC peer manager initialized successfully");
   }
 
   // Check if host is already established
@@ -690,6 +1065,30 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
     log_warn("*** CONNECTING_HOST: session=%p, participant_ctx=%p, size=%zu, (int)ptr=%ld", session,
              session->participant_ctx, sizeof(session->participant_ctx), (long)session->participant_ctx);
 
+    // For WebRTC sessions, initiate WebRTC connection (NEW)
+    log_info(
+        "CONNECTING_HOST: Checking WebRTC conditions - session_type=%u (need 1), peer_manager=%p, participant_ctx=%p",
+        session->session_type, session->peer_manager, session->participant_ctx);
+    if (session->session_type == SESSION_TYPE_WEBRTC && session->peer_manager && !session->participant_ctx) {
+      log_info("Initiating WebRTC connection to host...");
+
+      // Initiate connection (generates offer, triggers SDP exchange)
+      asciichat_error_t conn_result =
+          webrtc_peer_manager_connect(session->peer_manager, session->session_id, session->host_id);
+
+      if (conn_result != ASCIICHAT_OK) {
+        log_error("Failed to initiate WebRTC connection: %d", conn_result);
+        set_error(session, conn_result, "Failed to initiate WebRTC connection");
+        break;
+      }
+
+      log_info("WebRTC connection initiated, waiting for DataChannel...");
+
+      // Transition to ACTIVE state - will receive SDP/ICE via ACDS packet loop
+      set_state(session, DISCOVERY_STATE_ACTIVE);
+      break;
+    }
+
     if (!session->participant_ctx) {
       log_warn("*** CONDITION TRUE - CREATING PARTICIPANT ***");
       log_info("discovery_session_process: CONNECTING_HOST - participant_ctx is NULL, will create");
@@ -839,6 +1238,29 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
   }
 
   case DISCOVERY_STATE_ACTIVE:
+    // Receive and handle ACDS packets for WebRTC signaling (NEW)
+    if (session->session_type == SESSION_TYPE_WEBRTC && session->acds_socket != INVALID_SOCKET_VALUE) {
+      // Use non-blocking polling to check for incoming ACDS packets
+      struct pollfd pfd = {.fd = session->acds_socket, .events = POLLIN, .revents = 0};
+
+      int poll_result = socket_poll(&pfd, 1, 0); // Non-blocking poll (timeout=0)
+
+      if (poll_result > 0 && (pfd.revents & POLLIN)) {
+        // Data available to read
+        packet_type_t type;
+        void *data = NULL;
+        size_t len = 0;
+
+        asciichat_error_t recv_result = packet_receive(session->acds_socket, &type, &data, &len);
+
+        if (recv_result == ASCIICHAT_OK) {
+          // Dispatch to appropriate handler
+          handle_acds_webrtc_packet(session, type, data, len);
+          POOL_FREE(data, len);
+        }
+      }
+    }
+
     // Session is active - check for host disconnect
     if (!session->is_host) {
       // We are a participant - check if host is still alive

@@ -417,4 +417,68 @@ socket_t session_participant_get_socket(session_participant_t *p);
 
 /** @} */
 
+/* ============================================================================
+ * Session Participant Transport Functions (WebRTC Integration)
+ * @{
+ */
+
+/**
+ * @brief Forward declaration of ACIP transport
+ *
+ * Opaque transport interface for send/receive operations.
+ * Used for WebRTC DataChannels, WebSockets, and other transports.
+ *
+ * @see acip_transport_t in network/acip/transport.h
+ *
+ * @ingroup session
+ */
+typedef struct acip_transport acip_transport_t;
+
+/**
+ * @brief Set an alternative transport for the participant
+ *
+ * Allows replacing the default TCP socket transport with an alternative
+ * transport such as WebRTC DataChannel. Once set, the participant will
+ * use this transport for send/receive operations.
+ *
+ * @param p Participant handle (must not be NULL)
+ * @param transport Alternative transport to use (can be NULL to clear)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note This is used for WebRTC integration when DataChannel becomes ready
+ * @note Transport ownership remains with caller (participant does not free it)
+ * @note If both socket and transport exist, transport takes precedence
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport);
+
+/**
+ * @brief Get the current transport for the participant
+ *
+ * Returns the currently active transport, if any. May return NULL if only
+ * socket transport is in use.
+ *
+ * @param p Participant handle (must not be NULL)
+ * @return Transport pointer if set, NULL if using socket transport
+ *
+ * @ingroup session
+ */
+acip_transport_t *session_participant_get_transport(session_participant_t *p);
+
+/**
+ * @brief Check if participant has an active alternative transport
+ *
+ * Convenient way to check if the participant is using an alternative
+ * transport (WebRTC, WebSocket, etc.) instead of raw TCP socket.
+ *
+ * @param p Participant handle (can be NULL)
+ * @return true if alternative transport is set, false otherwise
+ *
+ * @ingroup session
+ */
+bool session_participant_has_transport(session_participant_t *p);
+
+/** @} */
+
 /** @} */

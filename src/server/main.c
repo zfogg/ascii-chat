@@ -1719,20 +1719,22 @@ int server_main(void) {
       const char *bind_addr = GET_OPTION(address);
       bool bind_all_interfaces = (strcmp(bind_addr, "0.0.0.0") == 0);
 
+      // Determine session type: prefer WebRTC by default (unless explicitly disabled)
+      // Priority: explicit --webrtc flag > connection type detection > UPnP > default
       if (GET_OPTION(webrtc)) {
         // Explicit WebRTC request
         create_params.session_type = SESSION_TYPE_WEBRTC;
         log_info("ACDS session type: WebRTC (explicitly requested via --webrtc)");
       } else if (bind_all_interfaces) {
-        // Bind to 0.0.0.0 means server is publicly accessible
-        create_params.session_type = SESSION_TYPE_DIRECT_TCP;
-        log_info("ACDS session type: Direct TCP (bind address 0.0.0.0, server is publicly accessible)");
+        // Bind to 0.0.0.0: use WebRTC as default (better NAT compatibility)
+        create_params.session_type = SESSION_TYPE_WEBRTC;
+        log_info("ACDS session type: WebRTC (default for 0.0.0.0 binding, provides NAT-agnostic connections)");
       } else if (upnp_succeeded) {
-        // UPnP port mapping worked
+        // UPnP port mapping worked - can use direct TCP
         create_params.session_type = SESSION_TYPE_DIRECT_TCP;
         log_info("ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)");
       } else {
-        // UPnP failed and not on public IP - use WebRTC
+        // UPnP failed and not on public IP - use WebRTC for NAT traversal
         create_params.session_type = SESSION_TYPE_WEBRTC;
         log_info("ACDS session type: WebRTC (UPnP failed, server behind NAT)");
       }

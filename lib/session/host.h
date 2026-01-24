@@ -385,4 +385,72 @@ void session_host_stop_render(session_host_t *host);
 
 /** @} */
 
+/* ============================================================================
+ * Session Host Transport Functions (WebRTC Integration)
+ * @{
+ */
+
+/**
+ * @brief Forward declaration of ACIP transport
+ *
+ * Opaque transport interface for send/receive operations.
+ * Used for WebRTC DataChannels, WebSockets, and other transports.
+ *
+ * @see acip_transport_t in network/acip/transport.h
+ *
+ * @ingroup session
+ */
+typedef struct acip_transport acip_transport_t;
+
+/**
+ * @brief Set an alternative transport for a specific client in the host
+ *
+ * Allows replacing a client's default TCP socket transport with an alternative
+ * transport such as WebRTC DataChannel. Once set, the host will use this
+ * transport for send/receive operations with the specified client.
+ *
+ * @param host Host handle (must not be NULL)
+ * @param client_id Client ID whose transport should be replaced
+ * @param transport Alternative transport to use (can be NULL to clear)
+ * @return ASCIICHAT_OK on success, ERROR_NOT_FOUND if client not found, other error on failure
+ *
+ * @note This is used for WebRTC integration when DataChannel becomes ready
+ * @note Transport ownership remains with caller (host does not free it)
+ * @note If both socket and transport exist, transport takes precedence
+ *
+ * @ingroup session
+ */
+asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id,
+                                                    acip_transport_t *transport);
+
+/**
+ * @brief Get the current transport for a specific client in the host
+ *
+ * Returns the currently active transport for the client, if any. May return NULL
+ * if only socket transport is in use.
+ *
+ * @param host Host handle (must not be NULL)
+ * @param client_id Client ID whose transport should be retrieved
+ * @return Transport pointer if set, NULL if using socket transport or client not found
+ *
+ * @ingroup session
+ */
+acip_transport_t *session_host_get_client_transport(session_host_t *host, uint32_t client_id);
+
+/**
+ * @brief Check if a specific client has an active alternative transport
+ *
+ * Convenient way to check if a client is using an alternative transport
+ * (WebRTC, WebSocket, etc.) instead of raw TCP socket.
+ *
+ * @param host Host handle (must not be NULL)
+ * @param client_id Client ID to check
+ * @return true if alternative transport is set, false otherwise
+ *
+ * @ingroup session
+ */
+bool session_host_client_has_transport(session_host_t *host, uint32_t client_id);
+
+/** @} */
+
 /** @} */

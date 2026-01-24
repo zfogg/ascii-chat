@@ -449,8 +449,8 @@ typedef enum {
 /** @brief Default no encrypt flag (false = allow encryption) */
 #define OPT_NO_ENCRYPT_DEFAULT false
 
-/** @brief Default WebRTC mode flag (false = direct TCP) */
-#define OPT_WEBRTC_DEFAULT false
+/** @brief Default WebRTC mode flag (true = P2P WebRTC, false = direct TCP) */
+#define OPT_WEBRTC_DEFAULT true
 
 /** @brief Default audio enabled flag (false = audio disabled) */
 #define OPT_AUDIO_ENABLED_DEFAULT false
@@ -511,6 +511,9 @@ typedef enum {
 
 /** @brief Default loop media flag (false = play once) */
 #define OPT_MEDIA_LOOP_DEFAULT false
+
+/** @brief Default pause media flag (false = play immediately) */
+#define OPT_PAUSE_DEFAULT false
 
 /** @brief Default STUN server URLs (comma-separated) */
 #define OPT_STUN_SERVERS_DEFAULT OPT_ENDPOINT_STUN_SERVERS_DEFAULT
@@ -596,6 +599,7 @@ static const bool default_no_webrtc_value = OPT_NO_WEBRTC_DEFAULT;
 static const bool default_webrtc_skip_stun_value = OPT_WEBRTC_SKIP_STUN_DEFAULT;
 static const bool default_webrtc_disable_turn_value = OPT_WEBRTC_DISABLE_TURN_DEFAULT;
 static const bool default_media_loop_value = OPT_MEDIA_LOOP_DEFAULT;
+static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
 static const bool default_no_cookies_value = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
 static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
@@ -734,7 +738,7 @@ typedef struct options_state {
   int discovery_port;                            ///< discovery server port (default: 27225)
   char discovery_service_key[OPTIONS_BUFF_SIZE]; ///< discovery server public key for trust verification (SSH/GPG key or
                                                  ///< HTTPS URL)
-  bool webrtc; ///< Enable WebRTC mode for discovery session (default: false, Direct TCP)
+  bool webrtc; ///< Enable WebRTC mode for discovery session (default: true, P2P WebRTC)
   char discovery_database_path[OPTIONS_BUFF_SIZE]; ///< discovery database file path (default:
                                                    ///< ~/.ascii-chat/discovery.db)
 
@@ -772,6 +776,7 @@ typedef struct options_state {
   bool media_loop;                    ///< Loop media file playback
   bool media_from_stdin;              ///< Reading from stdin (detected from "--file -")
   double media_seek_timestamp;        ///< Seek to timestamp in seconds before playback
+  bool pause;                         ///< Start playback paused (toggle with spacebar)
   char cookies_from_browser[256]; ///< Browser/keyring for cookies: empty=default, or "chrome"/"firefox"/etc to specify
   bool no_cookies_from_browser;   ///< Disable reading cookies from browser (--no-cookies-from-browser flag)
 

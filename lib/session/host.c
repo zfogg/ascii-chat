@@ -65,6 +65,9 @@ typedef struct {
   bool audio_active;
   uint64_t connected_at;
 
+  /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
+  struct acip_transport *transport;
+
   /** @brief Incoming video frame buffer (for host render thread) */
   image_t *incoming_video;
 
@@ -954,6 +957,7 @@ uint32_t session_host_add_client(session_host_t *host, socket_t socket, const ch
       host->clients[i].video_active = false;
       host->clients[i].audio_active = false;
       host->clients[i].connected_at = (uint64_t)time(NULL);
+      host->clients[i].transport = NULL; // No alternative transport initially
 
       // Allocate media buffers
       host->clients[i].incoming_video = image_new(480, 270);                        // Network-optimal size (HD preview)
@@ -1236,4 +1240,80 @@ void session_host_stop_render(session_host_t *host) {
   }
 
   log_info("Host render thread stopped");
+}
+
+/* ============================================================================
+ * Session Host Transport Functions (WebRTC Integration)
+ * ============================================================================ */
+
+asciichat_error_t session_host_set_client_transport(session_host_t *host, uint32_t client_id,
+                                                    acip_transport_t *transport) {
+  if (!host || !host->initialized) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Host is NULL or not initialized");
+  }
+
+  mutex_lock(&host->clients_mutex);
+
+  // Find client with matching ID
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].client_id == client_id) {
+      log_info("session_host_set_client_transport: Setting transport=%p for client %u (was=%p)", transport, client_id,
+               host->clients[i].transport);
+
+      host->clients[i].transport = transport;
+
+      if (transport) {
+        log_info("WebRTC transport now active for client %u", client_id);
+      } else {
+        log_info("WebRTC transport cleared for client %u, reverting to socket", client_id);
+      }
+
+      mutex_unlock(&host->clients_mutex);
+      return ASCIICHAT_OK;
+    }
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  log_warn("Client %u not found", client_id);
+  return SET_ERRNO(ERROR_NOT_FOUND, "Client not found");
+}
+
+acip_transport_t *session_host_get_client_transport(session_host_t *host, uint32_t client_id) {
+  if (!host || !host->initialized) {
+    return NULL;
+  }
+
+  mutex_lock(&host->clients_mutex);
+
+  // Find client with matching ID
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].client_id == client_id) {
+      acip_transport_t *transport = host->clients[i].transport;
+      mutex_unlock(&host->clients_mutex);
+      return transport;
+    }
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  return NULL;
+}
+
+bool session_host_client_has_transport(session_host_t *host, uint32_t client_id) {
+  if (!host || !host->initialized) {
+    return false;
+  }
+
+  mutex_lock(&host->clients_mutex);
+
+  // Find client with matching ID
+  for (int i = 0; i < host->max_clients; i++) {
+    if (host->clients[i].active && host->clients[i].client_id == client_id) {
+      bool has_transport = host->clients[i].transport != NULL;
+      mutex_unlock(&host->clients_mutex);
+      return has_transport;
+    }
+  }
+
+  mutex_unlock(&host->clients_mutex);
+  return false;
 }

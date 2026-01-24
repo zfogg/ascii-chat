@@ -78,6 +78,9 @@ struct session_participant {
   /** @brief Connection socket */
   socket_t socket;
 
+  /** @brief Alternative transport (WebRTC, WebSocket, etc.) - NULL if using socket only */
+  struct acip_transport *transport;
+
   /** @brief Currently connected */
   bool connected;
 
@@ -162,6 +165,7 @@ session_participant_t *session_participant_create(const session_participant_conf
 
   // Initialize socket to invalid
   p->socket = INVALID_SOCKET_VALUE;
+  p->transport = NULL; // No alternative transport initially
   p->connected = false;
   p->client_id = 0;
   p->video_active = false;
@@ -720,4 +724,42 @@ void session_participant_stop_audio_capture(session_participant_t *p) {
   }
 
   log_info("Audio capture stopped");
+}
+
+/* ============================================================================
+ * Session Participant Transport Functions (WebRTC Integration)
+ * ============================================================================ */
+
+asciichat_error_t session_participant_set_transport(session_participant_t *p, acip_transport_t *transport) {
+  if (!p || !p->initialized) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Participant is NULL or not initialized");
+  }
+
+  log_info("session_participant_set_transport: Setting transport=%p (was=%p)", transport, p->transport);
+
+  p->transport = transport;
+
+  if (transport) {
+    log_info("WebRTC transport now active for participant");
+  } else {
+    log_info("WebRTC transport cleared, reverting to socket");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+acip_transport_t *session_participant_get_transport(session_participant_t *p) {
+  if (!p || !p->initialized) {
+    return NULL;
+  }
+
+  return p->transport;
+}
+
+bool session_participant_has_transport(session_participant_t *p) {
+  if (!p) {
+    return false;
+  }
+
+  return p->transport != NULL;
 }
