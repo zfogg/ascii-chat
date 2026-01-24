@@ -66,19 +66,14 @@ asciichat_error_t acip_server_receive_and_dispatch(acip_transport_t *transport, 
     void *allocated_buffer = NULL;
     size_t packet_len = 0;
 
-    log_error("★ ACIP_SERVER_DISPATCH: About to call transport->methods->recv() for WebRTC");
     asciichat_error_t recv_result = transport->methods->recv(transport, &packet_data, &packet_len, &allocated_buffer);
-    log_error("★ ACIP_SERVER_DISPATCH: recv() returned %d, packet_len=%zu, packet_data=%p", recv_result, packet_len,
-              packet_data);
 
     if (recv_result != ASCIICHAT_OK) {
-      log_error("ACIP_SERVER_DISPATCH: recv() failed, returning error");
       return SET_ERRNO(ERROR_NETWORK, "Transport recv() failed");
     }
 
     // Parse packet header
     if (packet_len < sizeof(packet_header_t)) {
-      log_error("ACIP_SERVER_DISPATCH: Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
       buffer_pool_free(NULL, allocated_buffer, packet_len);
       return SET_ERRNO(ERROR_NETWORK, "Packet too small: %zu < %zu", packet_len, sizeof(packet_header_t));
     }

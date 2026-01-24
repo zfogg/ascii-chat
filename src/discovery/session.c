@@ -867,8 +867,6 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   }
 
   // Check if host is already established
-  log_info("DEBUG: join_session checking host - server_address[0]='%c' (ord=%d), server_port=%u, session_type=%u",
-           joined->server_address[0], (int)joined->server_address[0], joined->server_port, joined->session_type);
   if (joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
@@ -933,14 +931,6 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 }
 
 asciichat_error_t discovery_session_process(discovery_session_t *session, int timeout_ms) {
-  static int process_call_count = 0;
-  process_call_count++;
-
-  if (process_call_count <= 5 || process_call_count % 50 == 0) {
-    log_warn("*** discovery_session_process() CALLED *** count=%d, state=%d, participant_ctx=%p", process_call_count,
-             session->state, session->participant_ctx);
-  }
-
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
@@ -1062,13 +1052,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
 
   case DISCOVERY_STATE_CONNECTING_HOST: {
     // Connect to host as participant
-    log_warn("*** CONNECTING_HOST: session=%p, participant_ctx=%p, size=%zu, (int)ptr=%ld", session,
-             session->participant_ctx, sizeof(session->participant_ctx), (long)session->participant_ctx);
-
     // For WebRTC sessions, initiate WebRTC connection (NEW)
-    log_info(
-        "CONNECTING_HOST: Checking WebRTC conditions - session_type=%u (need 1), peer_manager=%p, participant_ctx=%p",
-        session->session_type, session->peer_manager, session->participant_ctx);
     if (session->session_type == SESSION_TYPE_WEBRTC && session->peer_manager && !session->participant_ctx) {
       log_info("Initiating WebRTC connection to host...");
 
@@ -1090,12 +1074,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
     }
 
     if (!session->participant_ctx) {
-      log_warn("*** CONDITION TRUE - CREATING PARTICIPANT ***");
-      log_info("discovery_session_process: CONNECTING_HOST - participant_ctx is NULL, will create");
-      log_debug("discovery_session_process: CONNECTING_HOST - creating participant context");
       // Create participant context for this session
-      log_info("discovery_session_process: Creating participant context to connect to %s:%u", session->host_address,
-               session->host_port);
       session_participant_config_t pconfig = {
           .address = session->host_address,
           .port = session->host_port,
@@ -1104,9 +1083,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
           .encryption_enabled = true,
       };
 
-      log_warn("*** ABOUT TO CALL session_participant_create() ***");
       session->participant_ctx = session_participant_create(&pconfig);
-      log_warn("*** session_participant_create() RETURNED - new participant_ctx=%p ***", session->participant_ctx);
       if (!session->participant_ctx) {
         log_error("Failed to create participant context");
         set_error(session, ERROR_MEMORY, "Failed to create participant context");
@@ -1114,9 +1091,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
       }
 
       // Attempt connection
-      log_warn("*** ABOUT TO CALL session_participant_connect() ***");
       asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
-      log_warn("*** session_participant_connect() RETURNED: result=%d ***", pconn);
       if (pconn != ASCIICHAT_OK) {
         log_error("Failed to connect as participant: %d", pconn);
         // Stay in this state, will retry on next process() call

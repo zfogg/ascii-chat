@@ -1404,10 +1404,6 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // Log before attempting to receive packet
-    log_error("RECV_LOOP_ITER_START: Client %u, about to call acip_server_receive_and_dispatch, transport=%p",
-              atomic_load(&client->client_id), (void *)client->transport);
-
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     asciichat_error_t acip_result =
@@ -1421,7 +1417,6 @@ void *client_receive_thread(void *arg) {
 
     // Handle receive errors
     if (acip_result != ASCIICHAT_OK) {
-      log_error("RECV_ERROR: Client %u got error %d from dispatch", atomic_load(&client->client_id), acip_result);
       // Check error type to determine if we should disconnect
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
@@ -1519,17 +1514,6 @@ void *client_send_thread_func(void *arg) {
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     loop_iteration_count++;
-
-    // Log client state every iteration (so we can debug why loop exits)
-    bool is_shutting_down = atomic_load(&client->shutting_down);
-    bool is_active = atomic_load(&client->active);
-    bool is_running = atomic_load(&client->send_thread_running);
-
-    if (loop_iteration_count <= 5 || loop_iteration_count % 100 == 0) {
-      log_info("SEND_DEBUG: client=%u iter=%d active=%d shutting=%d running=%d queue=%p",
-               atomic_load(&client->client_id), loop_iteration_count, is_active, is_shutting_down, is_running,
-               client->audio_queue);
-    }
 
     bool sent_something = false;
 

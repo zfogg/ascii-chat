@@ -180,7 +180,6 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
  */
 ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds) {
   if (sockfd == INVALID_SOCKET_VALUE) {
-    log_error("NETWORK_DEBUG: recv_with_timeout called with INVALID_SOCKET_VALUE");
     errno = EBADF;
     return -1;
   }
@@ -222,13 +221,9 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
 
     if (received < 0) {
       int error = errno;
-      log_error("NETWORK_DEBUG: socket_recv failed with error %d (errno=%d), sockfd=%d, buf=%p, len=%zu", received,
-                error, sockfd, data + total_received, bytes_to_recv);
       if (network_handle_recv_error(error)) {
-        log_debug("NETWORK_DEBUG: retrying after error %d", error);
         continue; // Retry
       }
-      log_error("NETWORK_DEBUG: fatal error %d, giving up", error);
       return -1; // Fatal error
     }
 

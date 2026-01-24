@@ -332,40 +332,20 @@ int discovery_main(void) {
   }
 
   log_info("Discovery mode running - press Ctrl+C to exit");
-  log_info("DEBUG: Session state before main loop: state=%d, is_active=%d, is_host=%d",
-           discovery_session_get_state(discovery), discovery_session_is_active(discovery),
-           discovery_session_is_host(discovery));
   // NOTE: Temporarily skipping log_set_terminal_output(false) to diagnose WebRTC connection issues
-  // log_warn("*** ABOUT TO CALL log_set_terminal_output(false) ***");
   // log_set_terminal_output(false);
-  // log_warn("*** RETURNED FROM log_set_terminal_output(false) ***");
 
   // Main loop: wait for session to become active, then handle media based on role
-  log_warn("*** ABOUT TO ENTER MAIN EVENT LOOP ***");
-  int loop_count = 0;
   while (!discovery_should_exit()) {
-    loop_count++;
-    if (loop_count <= 3 || loop_count % 20 == 0) {
-      log_info("discovery_main: Main loop iteration %d", loop_count);
-    }
-    log_debug("LOOP_DEBUG: Before discovery_session_process, state=%d, should_exit=%d",
-              discovery_session_get_state(discovery), discovery_should_exit());
-
     // Process discovery session events (state transitions, negotiations, etc)
     result = discovery_session_process(discovery, 50); // 50ms timeout for responsiveness
     if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
       log_error("Discovery session process failed: %d", result);
       break;
     }
-    log_debug("LOOP_DEBUG: After discovery_session_process, state=%d", discovery_session_get_state(discovery));
 
     // Check if session is active (host negotiation complete)
     if (!discovery_session_is_active(discovery)) {
-      if (loop_count % 20 == 0) {
-        log_debug("discovery_main: Session not active yet, continuing (state=%d)",
-                  discovery_session_get_state(discovery));
-      }
-      log_debug("LOOP_DEBUG: Session not active, continuing to next iteration");
       continue; // Still negotiating, keep processing events
     }
 
@@ -420,9 +400,6 @@ int discovery_main(void) {
   // Re-enable terminal output for shutdown message if --quiet wasn't passed
   if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);
-    log_info("DEBUG: Final session state: state=%d, is_active=%d, is_host=%d, loop_count=%d",
-             discovery_session_get_state(discovery), discovery_session_is_active(discovery),
-             discovery_session_is_host(discovery), loop_count);
     log_info("Discovery mode shutting down");
   }
 

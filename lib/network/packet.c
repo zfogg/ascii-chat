@@ -358,10 +358,8 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Read packet header into memory from network socket
   packet_header_t header;
-  log_debug("★ PACKET_RECV: Waiting for header on sockfd=%d, timeout=%d seconds...", sockfd, RECV_TIMEOUT);
   ssize_t received =
       recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
-  log_debug("★ PACKET_RECV: recv_with_timeout returned %zd bytes", received);
   if (received < 0) {
     // Error context is already set by recv_with_timeout
     return ERROR_NETWORK;
