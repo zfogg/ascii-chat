@@ -27,10 +27,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#ifdef _WIN32
-#include <direct.h> // For _mkdir
-#endif
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -43,61 +39,8 @@ static asciichat_error_t ensure_directory_exists(const char *path) {
     return ASCIICHAT_OK;
   }
 
-  char tmp[BUFFER_SIZE_MEDIUM];
-  SAFE_STRNCPY(tmp, path, sizeof(tmp));
-
-  // Determine directory separator based on platform
-  const char sep =
-#ifdef _WIN32
-      '\\'
-#else
-      '/'
-#endif
-      ;
-
-  // Create each directory in the path
-  for (char *p = tmp + 1; *p; p++) {
-    if (*p == sep || *p == '/' || *p == '\\') {
-      char orig = *p;
-      *p = '\0';
-
-      // Skip empty components and root
-      if (tmp[0] != '\0' && strcmp(tmp, ".") != 0) {
-#ifdef _WIN32
-        if (_mkdir(tmp) != 0 && errno != EEXIST) {
-          if (errno != ENOENT) {
-            log_debug("Failed to create directory: %s (errno=%d)", tmp, errno);
-          }
-        }
-#else
-        if (mkdir(tmp, 0700) != 0 && errno != EEXIST) {
-          if (errno != ENOENT) {
-            log_debug("Failed to create directory: %s (errno=%d)", tmp, errno);
-          }
-        }
-#endif
-      }
-
-      *p = orig;
-    }
-  }
-
-  // Create the final directory
-#ifdef _WIN32
-  if (_mkdir(tmp) != 0 && errno != EEXIST) {
-    if (errno != ENOENT) {
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
-    }
-  }
-#else
-  if (mkdir(tmp, 0700) != 0 && errno != EEXIST) {
-    if (errno != ENOENT) {
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
-    }
-  }
-#endif
-
-  return ASCIICHAT_OK;
+  // Use platform abstraction for directory creation
+  return platform_mkdir(path, 0700);
 }
 
 /**
@@ -279,14 +222,13 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   // Create cache directory if it doesn't exist
   char dir_path[PLATFORM_MAX_PATH_LENGTH];
   snprintf(dir_path, sizeof(dir_path), "%s", cache_path);
-#ifdef _WIN32
+
+  // Find the last path separator (handle both / and \ for cross-platform compatibility)
   char *last_sep = strrchr(dir_path, '\\');
   if (!last_sep) {
     last_sep = strrchr(dir_path, '/');
   }
-#else
-  char *last_sep = strrchr(dir_path, '/');
-#endif
+
   if (last_sep) {
     *last_sep = '\0';
     if (!platform_is_directory(dir_path)) {
