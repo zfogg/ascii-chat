@@ -678,6 +678,12 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
         user_quiet = true;
       }
+      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+        show_help = true;
+        has_action = true;
+        // Don't break here - continue scanning for other quick actions in case there are multiple
+        // (though --help is usually the only one passed)
+      }
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
         has_action = true;
@@ -843,18 +849,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // ========================================================================
-  // STAGE 1C: Check for --help (now that mode is detected)
+  // STAGE 1C: Process detected mode and flags
   // ========================================================================
-  for (int i = 1; i < argc; i++) {
-    if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-        show_help = true;
-        break;
-      }
-    }
-  }
-
-  // If --help was found, handle it with the detected mode
+  // If --help was found in STAGE 1A, handle it with the detected mode
   if (show_help) {
     opts.help = true;
     opts.detected_mode = detected_mode;
@@ -913,12 +910,6 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
       }
     }
-  }
-  if (show_help) {
-    // Show binary-level help from src/main.c
-    opts.help = true;
-    options_state_set(&opts);
-    return ASCIICHAT_OK;
   }
 
   if (show_version) {
