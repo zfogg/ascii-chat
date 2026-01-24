@@ -82,8 +82,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
+  // Disable keyboard in snapshot mode - don't put stdin into raw mode
   bool keyboard_enabled = false;
-  if (keyboard_handler && platform_isatty(STDIN_FILENO)) {
+  if (keyboard_handler && platform_isatty(STDIN_FILENO) && !snapshot_mode) {
     if (keyboard_init() == 0) {
       keyboard_enabled = true;
       log_debug("Keyboard input enabled");
@@ -221,9 +222,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // When paused with snapshot mode, output the initial frame immediately
       bool output_paused_frame = snapshot_mode && initial_paused_frame_rendered && is_paused;
 
-      // When piping/redirecting in snapshot mode, only output the final frame
-      // When outputting to TTY, show live preview frames
-      bool should_write = !snapshot_mode || session_display_has_tty(display) || snapshot_done || output_paused_frame;
+      // In snapshot mode, only render when snapshot is done or when outputting paused frame
+      // In normal mode, always render
+      bool should_write = !snapshot_mode || snapshot_done || output_paused_frame;
       if (should_write) {
         session_display_render_frame(display, ascii_frame, snapshot_done || output_paused_frame);
       }

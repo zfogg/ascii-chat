@@ -77,12 +77,9 @@ void keyboard_cleanup(void) {
     return;
   }
 
-  // Restore original terminal settings
-  // Use TCSADRAIN to avoid clearing the display when restoring from raw mode
-  // TCSADRAIN waits for pending output to be sent before changing terminal attributes
-  if (tcsetattr(STDIN_FILENO, TCSADRAIN, &g_original_termios) < 0) {
-    log_error("Failed to restore terminal attributes");
-  }
+  // Note: Do NOT restore terminal settings here - tcsetattr() causes terminal
+  // to clear or reset display even with TCSADRAIN/TCSAFLUSH, corrupting snapshot output.
+  // The shell will restore terminal settings when the process exits.
 
   g_keyboard_initialized = false;
 }
