@@ -22,15 +22,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef _WIN32
-#include <io.h>
-#include <sys/stat.h>
-#define unlink _unlink
-#else
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 #include <unistd.h>
 #include <sys/stat.h>
-#endif
 
 // =============================================================================
 // Helper Functions

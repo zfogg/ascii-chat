@@ -13,6 +13,7 @@
 #include "log/logging.h"
 #include "platform/system.h"
 #include "platform/tempfile.h"
+#include "platform/util.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -103,8 +104,8 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   FILE *fp = popen(cmd, "r");
   if (!fp) {
     log_error("Failed to run gpg --verify");
-    unlink(msg_path);
-    unlink(sig_path);
+    platform_unlink(msg_path);
+    platform_unlink(sig_path);
     return -1;
   }
 

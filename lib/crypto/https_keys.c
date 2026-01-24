@@ -8,6 +8,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/string.h"
+#include "platform/util.h"
 #include "network/http_client.h"
 #include <string.h>
 #include <stdlib.h>
@@ -433,7 +434,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   close(fd);
 
   if (written != (ssize_t)response_len) {
-    unlink(temp_file);
+    platform_unlink(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write GPG key to temp file");
   }
 
@@ -442,7 +443,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
   FILE *import_fp = popen(import_cmd, "r");
   if (!import_fp) {
-    unlink(temp_file);
+    platform_unlink(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to run gpg --import");
   }
 
@@ -450,7 +451,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   size_t import_len = fread(import_output, 1, sizeof(import_output) - 1, import_fp);
   import_output[import_len] = '\0';
   pclose(import_fp);
-  unlink(temp_file);
+  platform_unlink(temp_file);
 
   // Extract ALL key IDs from import output (format: "gpg: key KEYID: ...")
   // GitHub often returns multiple keys in one armored block

@@ -9,6 +9,7 @@
 #include "../../asciichat_errno.h"
 #include "../../log/logging.h"
 #include "../../platform/question.h"
+#include "../../platform/util.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sodium.h>
@@ -525,7 +526,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   close(input_fd);
 
   if (written != (ssize_t)armored_len) {
-    unlink(input_path);
+    platform_unlink(input_path);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write armored key to temp file");
   }
@@ -534,7 +535,7 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   char output_path[] = "/tmp/ascii-chat-gpg-out-XXXXXX";
   int output_fd = mkstemp(output_path);
   if (output_fd < 0) {
-    unlink(input_path);
+    platform_unlink(input_path);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary output file");
   }
@@ -555,8 +556,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   int status = system(command);
 
   if (status != 0) {
-    unlink(input_path);
-    unlink(output_path);
+    platform_unlink(input_path);
+    platform_unlink(output_path);
     // Clean up the imported key
     system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys --with-colons 2>/dev/null | "
            "grep '^fpr' | tail -1 | cut -d: -f10) 2>/dev/null");
@@ -567,8 +568,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   // Read the decrypted output
   FILE *output_file = platform_fopen(output_path, "r");
   if (!output_file) {
-    unlink(input_path);
-    unlink(output_path);
+    platform_unlink(input_path);
+    platform_unlink(output_path);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read decrypted GPG output");
   }
@@ -579,8 +580,8 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
 
   if (output_size <= 0 || output_size > 1024 * 1024) {
     fclose(output_file);
-    unlink(input_path);
-    unlink(output_path);
+    platform_unlink(input_path);
+    platform_unlink(output_path);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid decrypted GPG output size: %ld bytes", output_size);
   }
