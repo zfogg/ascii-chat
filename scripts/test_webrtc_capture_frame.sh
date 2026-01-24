@@ -93,18 +93,20 @@ echo ""
 echo "Capturing frame via WebRTC snapshot..."
 echo "DEBUG: SESSION='$SESSION' DISCOVERY_CONNECT='$DISCOVERY_CONNECT' DISCOVERY_PORT='$DISCOVERY_PORT'"
 echo "DEBUG: Client command:"
-echo "  timeout 6 $BIN/ascii-chat '$SESSION' --snapshot --snapshot-delay 0 --discovery-server '$DISCOVERY_CONNECT' --discovery-port $DISCOVERY_PORT"
+echo "  timeout 6 $BIN/ascii-chat '$SESSION' --snapshot --snapshot-delay 0 --discovery-server '$DISCOVERY_CONNECT' --discovery-port $DISCOVERY_PORT --prefer-webrtc"
 echo ""
 
 # Run client and capture frame output
 # Discovery mode with session string, snapshot mode will output ASCII frame to stdout, errors to stderr
 # Use DISCOVERY_CONNECT (sidechain) to connect to same ACDS server as the server
+# Use --prefer-webrtc to use WebRTC instead of direct TCP
 timeout 6 $BIN/ascii-chat \
   "$SESSION" \
   --snapshot \
   --snapshot-delay 0 \
   --discovery-server "$DISCOVERY_CONNECT" \
   --discovery-port $DISCOVERY_PORT \
+  --prefer-webrtc \
   2>/tmp/client_stderr.log | tee "$FRAME_FILE"
 
 echo ""

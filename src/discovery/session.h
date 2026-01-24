@@ -132,6 +132,11 @@ typedef struct {
   uint8_t host_id[16];
   char host_address[64];
   uint16_t host_port;
+  uint8_t session_type; ///< 0 = DIRECT_TCP, 1 = WEBRTC
+
+  // WebRTC credentials (for WebRTC sessions)
+  char turn_username[128];
+  char turn_password[128];
 
   // Negotiation (initial host negotiation)
   negotiate_ctx_t negotiate;

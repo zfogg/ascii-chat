@@ -341,7 +341,17 @@ static asciichat_error_t create_session(discovery_session_t *session) {
   // For now, use zero key (anonymous session)
   create_msg.capabilities = 0x03; // Video + Audio
   create_msg.max_participants = 8;
-  create_msg.session_type = SESSION_TYPE_DIRECT_TCP;
+
+  // Check if WebRTC is preferred
+  const options_t *opts = options_get();
+  if (opts && opts->prefer_webrtc) {
+    log_info("DISCOVERY: WebRTC preferred, using SESSION_TYPE_WEBRTC");
+    create_msg.session_type = SESSION_TYPE_WEBRTC;
+  } else {
+    log_info("DISCOVERY: Using direct TCP (SESSION_TYPE_DIRECT_TCP)");
+    create_msg.session_type = SESSION_TYPE_DIRECT_TCP;
+  }
+
   create_msg.has_password = 0;
   create_msg.expose_ip_publicly = 0;
   create_msg.reserved_string_len = 0;
@@ -473,17 +483,25 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   memcpy(session->session_id, joined->session_id, 16);
   memcpy(session->participant_id, joined->participant_id, 16);
 
+  // Store session type and WebRTC credentials (if WebRTC)
+  session->session_type = joined->session_type;
+  if (joined->session_type == 1) { // SESSION_TYPE_WEBRTC
+    SAFE_STRNCPY(session->turn_username, joined->turn_username, sizeof(session->turn_username));
+    SAFE_STRNCPY(session->turn_password, joined->turn_password, sizeof(session->turn_password));
+    log_info("WebRTC session detected - TURN username: %s", session->turn_username);
+  }
+
   // Check if host is already established
-  log_info("DEBUG: join_session checking host - server_address[0]='%c' (ord=%d), server_port=%u",
-           joined->server_address[0], (int)joined->server_address[0], joined->server_port);
+  log_info("DEBUG: join_session checking host - server_address[0]='%c' (ord=%d), server_port=%u, session_type=%u",
+           joined->server_address[0], (int)joined->server_address[0], joined->server_port, joined->session_type);
   if (joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
     session->host_port = joined->server_port;
     session->is_host = false;
 
-    log_info("Host already established: %s:%u (participant_ctx=%p before transition)", session->host_address,
-             session->host_port, session->participant_ctx);
+    log_info("Host already established: %s:%u (session_type=%u, participant_ctx=%p before transition)",
+             session->host_address, session->host_port, session->session_type, session->participant_ctx);
     POOL_FREE(data, len);
 
     log_info("join_session: About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
