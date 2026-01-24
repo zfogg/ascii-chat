@@ -500,7 +500,8 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   for (size_t k = 0; k < key_count; k++) {
     // Get full fingerprint from gpg --list-keys output
     char list_cmd[BUFFER_SIZE_SMALL];
-    snprintf(list_cmd, sizeof(list_cmd), "gpg --list-keys --with-colons --fingerprint '%s' 2>/dev/null", key_ids[k]);
+    snprintf(list_cmd, sizeof(list_cmd),
+             "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
     FILE *list_fp = NULL;
     if (platform_popen(list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
       continue; // Skip this key if we can't list it

@@ -547,10 +547,11 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   // 2. Export it unencrypted with the passphrase
   char command[4096];
   safe_snprintf(command, sizeof(command),
-                "gpg --batch --import '%s' 2>/dev/null && "
-                "KEY_FPR=$(gpg --list-secret-keys --with-colons 2>/dev/null | grep '^fpr' | head -1 | cut -d: -f10) && "
+                "gpg --batch --import '%s' " PLATFORM_SHELL_NULL_REDIRECT " && "
+                "KEY_FPR=$(gpg --list-secret-keys --with-colons " PLATFORM_SHELL_NULL_REDIRECT
+                " | grep '^fpr' | head -1 | cut -d: -f10) && "
                 "gpg --batch --pinentry-mode loopback --passphrase '%s' --armor --export-secret-keys --export-options "
-                "export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' 2>/dev/null",
+                "export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' " PLATFORM_SHELL_NULL_REDIRECT,
                 input_path, passphrase, output_path);
 
   int status = system(command);
@@ -559,8 +560,9 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
     platform_unlink(input_path);
     platform_unlink(output_path);
     // Clean up the imported key
-    system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys --with-colons 2>/dev/null | "
-           "grep '^fpr' | tail -1 | cut -d: -f10) 2>/dev/null");
+    system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys "
+           "--with-colons " PLATFORM_SHELL_NULL_REDIRECT " | "
+           "grep '^fpr' | tail -1 | cut -d: -f10) " PLATFORM_SHELL_NULL_REDIRECT);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "GPG decryption failed. Check passphrase and key format.");
   }
@@ -592,10 +594,11 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   fclose(output_file);
 
   // Clean up temporary files and imported key
-  unlink(input_path);
-  unlink(output_path);
-  system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys --with-colons 2>/dev/null | "
-         "grep '^fpr' | tail -1 | cut -d: -f10) 2>/dev/null");
+  platform_unlink(input_path);
+  platform_unlink(output_path);
+  system("gpg --batch --yes --delete-secret-and-public-keys $(gpg --list-secret-keys "
+         "--with-colons " PLATFORM_SHELL_NULL_REDIRECT " | "
+         "grep '^fpr' | tail -1 | cut -d: -f10) " PLATFORM_SHELL_NULL_REDIRECT);
 
   // Securely erase passphrase from memory
   sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));

@@ -204,7 +204,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
 
   // Use gpg --list-keys with colon-separated output to check expiry
   char cmd[BUFFER_SIZE_MEDIUM];
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-colons %s 2>/dev/null", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-colons %s " PLATFORM_SHELL_NULL_REDIRECT, key_id);
 
   FILE *fp = NULL;
   if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
