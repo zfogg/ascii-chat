@@ -152,7 +152,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // Build session string examples dynamically for discovery mode
   // These appear at the beginning of the examples section, right after "start new session"
   char example_buf1[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
-  char example_buf2[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf3[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf4[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf5[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
@@ -160,7 +159,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   char example_buf7[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
 
   snprintf(example_buf1, sizeof(example_buf1), "%s", example_session_string8);
-  snprintf(example_buf2, sizeof(example_buf2), "%s --color", example_session_string2);
   snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-server discovery.example.com", example_session_string3);
   snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
   snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
@@ -172,7 +170,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // Note: Discovery/session examples appear first, then mode-specific examples
   options_builder_add_example(b, NULL, NULL, "Start new session (share the session string)", false);
   options_builder_add_example(b, NULL, example_buf1, "Join a session using the session string", true);
-  options_builder_add_example(b, NULL, example_buf2, "Join session with color support", true);
   options_builder_add_example(b, NULL, example_buf3, "Join session via custom discovery server", true);
   options_builder_add_example(b, NULL, example_buf4, "Join session and stream from local video file", true);
   options_builder_add_example(b, NULL, example_buf5, "Join session and stream from YouTube video", true);
