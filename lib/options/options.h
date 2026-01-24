@@ -364,6 +364,9 @@
 /** @brief Default webcam flip state (true = horizontally flipped) */
 #define OPT_WEBCAM_FLIP_DEFAULT true
 
+/** @brief Default force color flag (false = auto-detect) */
+#define OPT_COLOR_DEFAULT false
+
 /** @brief Default color mode (auto-detect terminal capabilities) */
 #define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
 
@@ -548,6 +551,7 @@ static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
 static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
+static const bool default_color_value = OPT_COLOR_DEFAULT;
 static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
 static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
 static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
@@ -564,6 +568,7 @@ static const bool default_no_encrypt_value = OPT_NO_ENCRYPT_DEFAULT;
 static const int default_max_clients_value = OPT_MAX_CLIENTS_DEFAULT;
 static const int default_reconnect_attempts_value = OPT_RECONNECT_ATTEMPTS_DEFAULT;
 static const int default_discovery_port_value = OPT_ACDS_PORT_INT_DEFAULT;
+static const bool default_discovery_value = OPT_ACDS_DEFAULT;
 static const bool default_webrtc_value = OPT_WEBRTC_DEFAULT;
 static const bool default_enable_upnp_value = OPT_ENABLE_UPNP_DEFAULT;
 static const bool default_lan_discovery_value = OPT_LAN_DISCOVERY_DEFAULT;
@@ -754,6 +759,7 @@ typedef struct options_state {
   // ============================================================================
   // Display Options
   // ============================================================================
+  bool color;                           ///< Force color output (overrides auto-detection)
   terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
