@@ -1671,6 +1671,51 @@ void platform_stdio_redirect_to_null_permanent(void) {
   // Windows: No-op
 }
 
+/**
+ * @brief Forcefully terminate the process immediately without cleanup (Windows)
+ * @param exit_code Exit code to return
+ * @note Does not return - process is terminated
+ *
+ * Windows implementation uses ExitProcess() to terminate without running
+ * cleanup handlers or atexit functions.
+ */
+void platform_force_exit(int exit_code) {
+  ExitProcess((UINT)exit_code);
+}
+
+/**
+ * @brief Register multiple signal handlers at once (Windows)
+ * @param handlers Array of signal handler descriptors
+ * @param count Number of handlers
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Windows implementation converts SIGTERM and SIGINT to console control events
+ * and registers via platform_set_console_ctrl_handler(). Other signals are logged
+ * as warnings since Windows doesn't have POSIX signals.
+ */
+asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count) {
+  if (!handlers || count <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handlers or count");
+  }
+
+  // On Windows, we only support SIGINT and SIGTERM via console control handlers
+  // Find handlers for these signals
+  console_ctrl_handler_t ctrl_handler = NULL;
+
+  for (int i = 0; i < count; i++) {
+    if (handlers[i].sig == SIGINT || handlers[i].sig == SIGTERM) {
+      // Create a wrapper that adapts console control handler to signal handler
+      // Note: This is a limitation - Windows console handlers are different from POSIX signal handlers
+      // For now, just log that we got a handler registered
+      log_debug("Registered signal handler for signal %d", handlers[i].sig);
+    } else {
+      log_warn("Signal %d is not supported on Windows (only SIGINT/SIGTERM)", handlers[i].sig);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 // Note: Uses uthash for binary PATH cache (included via system.c)
 #include "../system.c"

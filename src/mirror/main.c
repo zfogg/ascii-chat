@@ -45,10 +45,7 @@
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
+#include "platform/abstraction.h"
 
 /* ============================================================================
  * Global State Variables
@@ -99,11 +96,7 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
   int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
   if (count > 1) {
-#ifdef _WIN32
-    TerminateProcess(GetCurrentProcess(), 1);
-#else
-    exit(1);
-#endif
+    platform_force_exit(1);
   }
 
   mirror_signal_exit();
@@ -171,11 +164,12 @@ int mirror_main(void) {
   // Install console control-c handler
   platform_set_console_ctrl_handler(mirror_console_ctrl_handler);
 
-#ifndef _WIN32
-  platform_signal(SIGPIPE, SIG_IGN);
-  // Handle SIGTERM gracefully for timeout(1) support
-  platform_signal(SIGTERM, mirror_handle_sigterm);
-#endif
+  // Register signal handlers for graceful shutdown and error handling
+  platform_signal_handler_t signal_handlers[] = {
+      {SIGPIPE, SIG_IGN},               // Ignore broken pipe errors
+      {SIGTERM, mirror_handle_sigterm}, // Handle SIGTERM for timeout(1) support
+  };
+  platform_register_signal_handlers(signal_handlers, 2);
 
   // Configure media source based on options
   const char *media_url = GET_OPTION(media_url);

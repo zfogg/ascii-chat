@@ -63,27 +63,19 @@ static void *attempt_connection_thread(void *arg) {
   mutex_unlock(attempt->lock);
 
   // Set socket to non-blocking
-#ifdef _WIN32
-  u_long mode = 1;
-  ioctlsocket(attempt->socket, FIONBIO, &mode);
-#else
-  int flags = fcntl(attempt->socket, F_GETFL, 0);
-  if (flags >= 0) {
-    fcntl(attempt->socket, F_SETFL, flags | O_NONBLOCK);
+  if (socket_set_nonblocking(attempt->socket, true) != ASCIICHAT_OK) {
+    log_debug("PCONN: [%s] Failed to set non-blocking mode", attempt->family_name);
+    socket_close(attempt->socket);
+    attempt->socket = INVALID_SOCKET_VALUE;
+    goto done;
   }
-#endif
 
   // Attempt non-blocking connect
   log_debug("PCONN: [%s] Attempting connect with %dms timeout", attempt->family_name, attempt->timeout_ms);
   int connect_result = connect(attempt->socket, (struct sockaddr *)&attempt->addr, attempt->addr_len);
 
-#ifdef _WIN32
-  int connect_error = WSAGetLastError();
-  bool is_in_progress = (connect_error == WSAEWOULDBLOCK);
-#else
-  int connect_error = errno;
-  bool is_in_progress = (connect_error == EINPROGRESS);
-#endif
+  int connect_error = socket_get_last_error();
+  bool is_in_progress = socket_is_in_progress_error(connect_error) || socket_is_would_block_error(connect_error);
 
   if (connect_result == 0) {
     // Immediate success (rare)

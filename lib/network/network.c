@@ -127,30 +127,23 @@ static int network_handle_send_error(int error) {
  * @return 1 if should retry, 0 if fatal error
  */
 static int network_handle_recv_error(int error) {
-#ifdef _WIN32
-  if (error == WSAEWOULDBLOCK) {
+  // Check for "would block" - retry operation
+  if (socket_is_would_block_error(error)) {
     return 1; // Retry
   }
-  if (error == WSAEINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
-    log_debug("recv interrupted by signal, retrying");
-    return 1; // Retry
-  }
-#else
-  if (error == EAGAIN || error == EWOULDBLOCK) {
-    return 1; // Retry
-  }
+
+  // Check for signal interruption - recoverable, retry
   if (error == EINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
     log_debug("recv interrupted by signal, retrying");
     return 1; // Retry
   }
-  if (error == EBADF) {
-    // Socket is not a socket (WSAENOTSOCK on Windows) - socket was closed
+
+  // Check for invalid/closed socket - fatal
+  if (socket_is_invalid_socket_error(error)) {
     SET_ERRNO_SYS(ERROR_NETWORK, "Socket is not a socket (closed by another thread)");
     return 0; // Fatal
   }
-#endif
+
   SET_ERRNO_SYS(ERROR_NETWORK, "recv_with_timeout failed: %s", network_get_error_string(error));
   return 0; // Fatal
 }
@@ -170,22 +163,16 @@ static int network_handle_select_error(int result) {
     return 0; // Not an error, but don't retry
   }
 
-#ifdef _WIN32
-  int error = WSAGetLastError();
-  if (error == WSAEINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
+  // Get error code (cross-platform)
+  int error = socket_get_last_error();
+
+  // Check for signal interruption - recoverable, retry
+  if (error == EINTR) {
     log_debug("select interrupted by signal, retrying");
     return 1; // Retry
   }
+
   SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(error));
-#else
-  if (errno == EINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
-    log_debug("select interrupted by signal, retrying");
-    return 1; // Retry
-  }
-  SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(errno));
-#endif
   return 0; // Fatal
 }
 
@@ -390,37 +377,16 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 
   if (accept_result == INVALID_SOCKET_VALUE) {
     // Check if this is a socket closed error (common during shutdown)
-#ifdef _WIN32
-    // On Windows, use WSAGetLastError() instead of errno
-    int error_code = WSAGetLastError();
-    // Windows-specific error codes for closed/invalid sockets
-    // WSAENOTSOCK = 10038, WSAEBADF = 10009, WSAENOTCONN = 10057
-    if (error_code == WSAENOTSOCK || error_code == WSAEBADF || error_code == WSAENOTCONN) {
+    int error_code = socket_get_last_error();
+
+    if (socket_is_invalid_socket_error(error_code)) {
       // During shutdown, don't log this as an error since it's expected behavior
       asciichat_errno = ERROR_NETWORK;
       asciichat_errno_context.code = ERROR_NETWORK;
       asciichat_errno_context.has_system_error = false;
     } else {
-      // Save Windows socket error to WSA error field for debugging
-      errno = EIO; // Set a generic errno
-#ifdef NDEBUG
-      asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, NULL, 0, NULL, error_code);
-#else
-      asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, __FILE__, __LINE__, __func__, error_code);
-#endif
+      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", network_get_error_string(error_code));
     }
-#else
-    // POSIX error codes for closed/invalid sockets
-    int error_code = errno;
-    if (error_code == EBADF || error_code == ENOTSOCK) {
-      // During shutdown, don't log this as an error since it's expected behavior
-      asciichat_errno = ERROR_NETWORK;
-      asciichat_errno_context.code = ERROR_NETWORK;
-      asciichat_errno_context.has_system_error = false;
-    } else {
-      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", network_get_error_string(errno));
-    }
-#endif
     return -1;
   }
 
@@ -563,16 +529,11 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
     return true;
   }
 
-#ifdef _WIN32
-  int error = WSAGetLastError();
-  if (error != WSAEWOULDBLOCK && error != WSAEINPROGRESS) {
+  // Check if connection is in progress (expected for non-blocking sockets)
+  int error = socket_get_last_error();
+  if (!socket_is_in_progress_error(error) && !socket_is_would_block_error(error)) {
     return false;
   }
-#else
-  if (errno != EINPROGRESS && errno != EWOULDBLOCK) {
-    return false;
-  }
-#endif
 
   // Use select to wait for connection with timeout
   fd_set write_fds;

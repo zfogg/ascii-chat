@@ -69,6 +69,25 @@ asciichat_error_t platform_init(void);
 void platform_cleanup(void);
 
 /**
+ * @brief Forcefully terminate the process immediately without cleanup
+ * @param exit_code Exit code to return to the operating system
+ *
+ * Forcefully terminates the current process immediately without running atexit handlers
+ * or cleanup code. Used when normal exit() won't suffice (e.g., handling
+ * second Ctrl+C during shutdown).
+ *
+ * Platform-specific implementations:
+ *   - Windows: ExitProcess(exit_code)
+ *   - POSIX: _exit(exit_code)
+ *
+ * @note This function does not return. Process is terminated immediately.
+ * @note Use this sparingly - prefer normal exit() whenever possible.
+ *
+ * @ingroup platform
+ */
+void platform_force_exit(int exit_code);
+
+/**
  * @brief Sleep for a specified number of milliseconds
  * @param ms Number of milliseconds to sleep
  *
@@ -172,6 +191,38 @@ const char *platform_get_username(void);
  * @ingroup platform
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
+
+/**
+ * @brief Signal handler descriptor for bulk registration
+ * @ingroup platform
+ */
+typedef struct {
+  int sig;                  /**< Signal number to handle */
+  signal_handler_t handler; /**< Handler function */
+} platform_signal_handler_t;
+
+/**
+ * @brief Register multiple signal handlers at once
+ * @param handlers Array of signal handler descriptors
+ * @param count Number of handlers in the array
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Registers multiple signal handlers in one call, reducing repeated
+ * #ifdef _WIN32 blocks. On Windows, this handles SIGINT and SIGTERM
+ * via console control handlers. On POSIX, uses platform_signal() for each.
+ *
+ * @par Example:
+ * @code{.c}
+ * platform_signal_handler_t handlers[] = {
+ *     {SIGTERM, sigterm_handler},
+ *     {SIGINT, sigint_handler},
+ * };
+ * platform_register_signal_handlers(handlers, 2);
+ * @endcode
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count);
 
 /**
  * @brief Console control event types (cross-platform Ctrl+C handling)

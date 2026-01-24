@@ -366,4 +366,40 @@ int socket_fd_isset(socket_t sock, fd_set *set) {
   return FD_ISSET(sock, set);
 }
 
+/**
+ * @brief Check if error indicates "would block" (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAEWOULDBLOCK
+ */
+bool socket_is_would_block_error(int error_code) {
+  return error_code == WSAEWOULDBLOCK;
+}
+
+/**
+ * @brief Check if error indicates connection reset (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAECONNRESET
+ */
+bool socket_is_connection_reset_error(int error_code) {
+  return error_code == WSAECONNRESET;
+}
+
+/**
+ * @brief Check if error indicates invalid/closed socket (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAENOTSOCK or WSAEBADF
+ */
+bool socket_is_invalid_socket_error(int error_code) {
+  return error_code == WSAENOTSOCK || error_code == WSAEBADF;
+}
+
+/**
+ * @brief Check if error indicates operation in progress (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAEINPROGRESS
+ */
+bool socket_is_in_progress_error(int error_code) {
+  return error_code == WSAEINPROGRESS;
+}
+
 #endif // _WIN32

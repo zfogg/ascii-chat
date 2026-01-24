@@ -1174,6 +1174,40 @@ void platform_stdio_redirect_to_null_permanent(void) {
   }
 }
 
+/**
+ * @brief Forcefully terminate the process immediately without cleanup (POSIX)
+ * @param exit_code Exit code to return
+ * @note Does not return - process is terminated
+ */
+void platform_force_exit(int exit_code) {
+  _exit(exit_code);
+}
+
+/**
+ * @brief Register multiple signal handlers at once (POSIX)
+ * @param handlers Array of signal handler descriptors
+ * @param count Number of handlers
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * POSIX implementation registers each signal using platform_signal().
+ * Windows implementation handles this differently via console control handlers.
+ */
+asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count) {
+  if (!handlers || count <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handlers or count");
+  }
+
+  for (int i = 0; i < count; i++) {
+    signal_handler_t old_handler = platform_signal(handlers[i].sig, handlers[i].handler);
+    if (old_handler == SIG_ERR) {
+      log_warn("Failed to register signal handler for signal %d", handlers[i].sig);
+      // Continue registering others instead of failing completely
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 #include "../system.c"
 

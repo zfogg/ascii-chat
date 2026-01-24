@@ -291,7 +291,7 @@ int query_init(int preferred_port) {
 
     // If exec fails
     fprintf(stderr, "[query] exec(%s) failed: %s\n", server_path, strerror(errno));
-    _exit(1);
+    exit(1);
   }
 
   // Parent process

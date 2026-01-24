@@ -77,11 +77,7 @@ static bool discovery_console_ctrl_handler(console_ctrl_event_t event) {
   int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
   if (count > 1) {
-#ifdef _WIN32
-    TerminateProcess(GetCurrentProcess(), 1);
-#else
-    _exit(1);
-#endif
+    platform_force_exit(1);
   }
 
   discovery_signal_exit();
@@ -244,11 +240,12 @@ int discovery_main(void) {
   // Install console control-c handler
   platform_set_console_ctrl_handler(discovery_console_ctrl_handler);
 
-#ifndef _WIN32
-  // Handle SIGTERM gracefully for timeout(1) support
-  platform_signal(SIGTERM, discovery_handle_sigterm);
-  platform_signal(SIGPIPE, SIG_IGN);
-#endif
+  // Register signal handlers for graceful shutdown and error handling
+  platform_signal_handler_t signal_handlers[] = {
+      {SIGTERM, discovery_handle_sigterm}, // SIGTERM for timeout(1) support
+      {SIGPIPE, SIG_IGN},                  // Ignore broken pipe errors
+  };
+  platform_register_signal_handlers(signal_handlers, 2);
 
   // Get session string from options (command-line argument)
   const char *session_string = GET_OPTION(session_string);

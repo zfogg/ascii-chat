@@ -1088,7 +1088,7 @@ int query_init(int preferred_port) {
                "--attach", pid_str,
                "--port", port_str,
                NULL);
-        _exit(1);
+        exit(1);
     }
 
     g_controller_pid = child;

@@ -296,4 +296,40 @@ int socket_fd_isset(socket_t sock, fd_set *set) {
   return FD_ISSET(sock, set);
 }
 
+/**
+ * @brief Check if error indicates "would block" (POSIX)
+ * @param error_code Platform-specific error code
+ * @return true if error is EAGAIN or EWOULDBLOCK
+ */
+bool socket_is_would_block_error(int error_code) {
+  return error_code == EAGAIN || error_code == EWOULDBLOCK;
+}
+
+/**
+ * @brief Check if error indicates connection reset (POSIX)
+ * @param error_code Platform-specific error code
+ * @return true if error is ECONNRESET
+ */
+bool socket_is_connection_reset_error(int error_code) {
+  return error_code == ECONNRESET;
+}
+
+/**
+ * @brief Check if error indicates invalid/closed socket (POSIX)
+ * @param error_code Platform-specific error code
+ * @return true if error is EBADF or ENOTSOCK
+ */
+bool socket_is_invalid_socket_error(int error_code) {
+  return error_code == EBADF || error_code == ENOTSOCK;
+}
+
+/**
+ * @brief Check if error indicates operation in progress (POSIX)
+ * @param error_code Platform-specific error code
+ * @return true if error is EINPROGRESS
+ */
+bool socket_is_in_progress_error(int error_code) {
+  return error_code == EINPROGRESS;
+}
+
 #endif // !_WIN32

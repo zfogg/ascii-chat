@@ -111,10 +111,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 /* ============================================================================
  * Global State Variables
  * ============================================================================ */
@@ -193,11 +189,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
   if (count > 1) {
-#ifdef _WIN32
-    TerminateProcess(GetCurrentProcess(), 1);
-#else
-    _exit(1);
-#endif
+    platform_force_exit(1);
   }
 
   // Signal all subsystems to shutdown (async-signal-safe operations only)
@@ -553,15 +545,13 @@ int client_main(void) {
   // Uses SetConsoleCtrlHandler on Windows, sigaction on Unix - more reliable than CRT signal()
   platform_set_console_ctrl_handler(console_ctrl_handler);
 
-  // Install SIGWINCH handler for terminal resize (Unix only, no-op on Windows)
-  platform_signal(SIGWINCH, sigwinch_handler);
-
-#ifndef _WIN32
-  // Handle SIGTERM gracefully for timeout(1) support
-  platform_signal(SIGTERM, sigterm_handler);
-  // Ignore SIGPIPE - we'll handle write errors ourselves (not available on Windows)
-  platform_signal(SIGPIPE, SIG_IGN);
-#endif
+  // Register signal handlers for graceful shutdown, terminal resize, and error handling
+  platform_signal_handler_t signal_handlers[] = {
+      {SIGWINCH, sigwinch_handler}, // Terminal resize (Unix only)
+      {SIGTERM, sigterm_handler},   // SIGTERM for timeout(1) support
+      {SIGPIPE, SIG_IGN},           // Ignore broken pipe (we handle write errors ourselves)
+  };
+  platform_register_signal_handlers(signal_handlers, 3);
 
   // Keep terminal logging enabled so user can see connection attempts
   // It will be disabled after first successful connection
