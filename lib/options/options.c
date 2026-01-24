@@ -168,11 +168,22 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
   if (out_takes_optional_arg)
     *out_takes_optional_arg = false;
 
-  // Extract option name (without leading dashes)
+  // Extract option name (without leading dashes and without value after '=')
   const char *opt_name = arg;
   if (arg[0] == '-') {
     opt_name = arg + (arg[1] == '-' ? 2 : 1); // Skip - or --
   }
+
+  // For --option=value format, stop at the '=' sign
+  const char *equals = strchr(opt_name, '=');
+  size_t opt_len = equals ? (size_t)(equals - opt_name) : strlen(opt_name);
+  char opt_buffer[64];
+  if (opt_len >= sizeof(opt_buffer)) {
+    opt_len = sizeof(opt_buffer) - 1;
+  }
+  strncpy(opt_buffer, opt_name, opt_len);
+  opt_buffer[opt_len] = '\0';
+  opt_name = opt_buffer;
 
   // Check option against binary-level options
   if (strcmp(opt_name, "help") == 0 || strcmp(arg, "-h") == 0) {
@@ -210,7 +221,9 @@ static bool is_binary_level_option_with_args(const char *arg, bool *out_takes_ar
     return true;
   }
   if (strcmp(opt_name, "color") == 0) {
-    // --color is a boolean flag (no argument)
+    // --color takes a required argument (auto/true/false)
+    if (out_takes_arg)
+      *out_takes_arg = true;
     return true;
   }
 
@@ -299,31 +312,36 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
       // Check if this is a binary-level option
       if (is_binary_level_option_with_args(argv[i], &takes_arg, &takes_optional_arg)) {
-        // Skip the argument if needed
-        if (takes_arg && i + 1 < argc) {
-          i++; // Skip required argument
-        } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
-          // For optional arguments, skip if it doesn't look like a mode/session string
-          const char *next_arg = argv[i + 1];
-          bool looks_like_mode_or_session = false;
+        // For --option=value format, don't skip the next argument
+        // (the value is part of the current argument)
+        const char *equals = strchr(argv[i], '=');
+        if (!equals) {
+          // No equals sign, so value might be in next argument
+          if (takes_arg && i + 1 < argc) {
+            i++; // Skip required argument
+          } else if (takes_optional_arg && i + 1 < argc && argv[i + 1][0] != '-') {
+            // For optional arguments, skip if it doesn't look like a mode/session string
+            const char *next_arg = argv[i + 1];
+            bool looks_like_mode_or_session = false;
 
-          // Check if it looks like a mode name
-          const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", NULL};
-          for (int j = 0; mode_names[j] != NULL; j++) {
-            if (strcmp(next_arg, mode_names[j]) == 0) {
-              looks_like_mode_or_session = true;
-              break;
+            // Check if it looks like a mode name
+            const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", NULL};
+            for (int j = 0; mode_names[j] != NULL; j++) {
+              if (strcmp(next_arg, mode_names[j]) == 0) {
+                looks_like_mode_or_session = true;
+                break;
+              }
             }
-          }
 
-          // Check if it looks like a session string (word-word-word)
-          if (!looks_like_mode_or_session && is_session_string(next_arg)) {
-            looks_like_mode_or_session = true;
-          }
+            // Check if it looks like a session string (word-word-word)
+            if (!looks_like_mode_or_session && is_session_string(next_arg)) {
+              looks_like_mode_or_session = true;
+            }
 
-          // If it doesn't look like a mode/session, it's the optional argument for this option
-          if (!looks_like_mode_or_session) {
-            i++; // Skip optional argument
+            // If it doesn't look like a mode/session, it's the optional argument for this option
+            if (!looks_like_mode_or_session) {
+              i++; // Skip optional argument
+            }
           }
         }
       } else {
@@ -436,6 +454,7 @@ typedef struct {
   bool version;
   char config_file[OPTIONS_BUFF_SIZE];
   asciichat_mode_t detected_mode;
+  int color; // Color setting (COLOR_SETTING_AUTO/TRUE/FALSE) - binary-level option parsed early
 } binary_level_opts_t;
 
 static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
@@ -450,6 +469,7 @@ static inline binary_level_opts_t extract_binary_level(const options_t *opts) {
   binary.version = opts->version;
   SAFE_STRNCPY(binary.config_file, opts->config_file, sizeof(binary.config_file));
   binary.detected_mode = opts->detected_mode;
+  binary.color = opts->color; // Save color setting (parsed in STAGE 1A)
   return binary;
 }
 
@@ -464,6 +484,7 @@ static inline void restore_binary_level(options_t *opts, const binary_level_opts
   opts->version = binary->version;
   SAFE_STRNCPY(opts->config_file, binary->config_file, sizeof(opts->config_file));
   opts->detected_mode = binary->detected_mode;
+  opts->color = binary->color; // Restore color setting (parsed in STAGE 1A)
 }
 
 options_t options_t_new(void) {
@@ -676,7 +697,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Quick scan for action flags (they may have arguments)
   // This must happen BEFORE logging initialization so we can suppress logs before shared_init()
   // Also scan for --quiet / -q so we can suppress logging from the start
+  // Also scan for --color early so it affects help output colors
   bool user_quiet = false;
+  int parsed_color_setting = COLOR_SETTING_AUTO; // Store parsed color value until opts is created
+  bool color_setting_found = false;
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
@@ -687,6 +711,34 @@ asciichat_error_t options_init(int argc, char **argv) {
         has_action = true;
         // Don't break here - continue scanning for other quick actions in case there are multiple
         // (though --help is usually the only one passed)
+      }
+      // Parse --color early so it affects help output colors
+      if (strcmp(argv[i], "--color") == 0) {
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          char *error_msg = NULL;
+          if (parse_color_setting(argv[i + 1], &parsed_color_setting, &error_msg)) {
+            color_setting_found = true;
+            i++; // Skip the setting argument
+          } else {
+            if (error_msg) {
+              fprintf(stderr, "Error parsing --color: %s\n", error_msg);
+              free(error_msg);
+            }
+          }
+        }
+      }
+      // Check for --color=value format
+      if (strncmp(argv[i], "--color=", 8) == 0) {
+        const char *value = argv[i] + 8;
+        char *error_msg = NULL;
+        if (parse_color_setting(value, &parsed_color_setting, &error_msg)) {
+          color_setting_found = true;
+        } else {
+          if (error_msg) {
+            fprintf(stderr, "Error parsing --color: %s\n", error_msg);
+            free(error_msg);
+          }
+        }
       }
       if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
         show_version = true;
@@ -777,11 +829,16 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Create local options struct and initialize with defaults
-  options_t opts = {0}; // Zero-initialize all fields
+  options_t opts = options_t_new(); // Initialize with all defaults
 
-  // Mark --color in opts if it was found in argv
-  if (g_color_flag_passed && g_color_flag_value) {
-    opts.color = true;
+  // Set log file default for config file generation
+  SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
+
+  // Apply parsed color setting from STAGE 1A
+  if (color_setting_found) {
+    opts.color = parsed_color_setting;
+  } else {
+    opts.color = OPT_COLOR_DEFAULT; // Apply default
   }
 
   // If we found version/config-create/create-manpage, handle them immediately (before mode detection)
@@ -932,6 +989,8 @@ asciichat_error_t options_init(int argc, char **argv) {
           i++; // Skip the file argument
         }
       }
+      // NOTE: --color is now parsed in STAGE 1A (early, before help processing)
+      // to ensure help output colors are applied correctly
     }
   }
 
@@ -1217,6 +1276,13 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Extract binary-level options BEFORE config loading (config may reset them)
   binary_level_opts_t binary_before_config = extract_binary_level(&opts);
+
+  // Publish options to RCU before config loading so that config logs get proper colors
+  // from the parsed --color setting (e.g., --color=true)
+  asciichat_error_t config_publish_result = options_state_set(&opts);
+  if (config_publish_result != ASCIICHAT_OK) {
+    log_warn("Failed to publish options before config loading (non-fatal)");
+  }
 
   // Load config files - now uses detected_mode directly for bitmask validation
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
