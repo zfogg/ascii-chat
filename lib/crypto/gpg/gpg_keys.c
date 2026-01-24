@@ -10,21 +10,13 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/string.h"
+#include "platform/process.h"
 #include "export.h" // For gpg_get_public_key()
 #include <sodium.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-
-// Platform-specific popen/pclose
-#ifdef _WIN32
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
-#else
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
-#endif
 
 // =============================================================================
 // GPG Key Parsing Implementation
@@ -214,8 +206,8 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
   char cmd[BUFFER_SIZE_MEDIUM];
   safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-colons %s 2>/dev/null", key_id);
 
-  FILE *fp = SAFE_POPEN(cmd, "r");
-  if (!fp) {
+  FILE *fp = NULL;
+  if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to run gpg --list-keys for key %s", key_id);
     *is_expired = false; // Assume not expired if we can't check
     return ASCIICHAT_OK;
@@ -269,7 +261,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
     }
   }
 
-  SAFE_PCLOSE(fp);
+  platform_pclose(&fp);
 
   if (!found_pub) {
     log_warn("Could not find GPG key %s in keyring", key_id);

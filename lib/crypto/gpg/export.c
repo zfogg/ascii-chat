@@ -12,6 +12,8 @@
 #include "util/validation.h"
 #include "log/logging.h"
 #include "platform/system.h"
+#include "platform/tempfile.h"
+#include "platform/process.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -19,14 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#ifdef _WIN32
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
-#else
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
-#endif
 
 /**
  * @brief Extract Ed25519 public key from GPG using gpg --export (fallback when agent unavailable)
@@ -53,13 +47,14 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
 
   // Create temp file for exported key
   char temp_path[PLATFORM_MAX_PATH_LENGTH];
-  safe_snprintf(temp_path, sizeof(temp_path), "/tmp/asciichat_gpg_export_%d_XXXXXX", getpid());
-  int temp_fd = mkstemp(temp_path);
-  if (temp_fd < 0) {
-    log_error("Failed to create temp file for GPG export: %s", SAFE_STRERROR(errno));
+  int temp_fd = -1;
+  if (platform_create_temp_file(temp_path, sizeof(temp_path), "asciichat_gpg_export", &temp_fd) != 0) {
+    log_error("Failed to create temp file for GPG export");
     return -1;
   }
-  close(temp_fd);
+  if (temp_fd >= 0) {
+    close(temp_fd);
+  }
 
   // Use gpg --export to export the public key in binary format
   char cmd[BUFFER_SIZE_LARGE];
@@ -69,7 +64,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   int result = system(cmd);
   if (result != 0) {
     log_error("Failed to export GPG public key for key ID: %s (exit code: %d)", key_id, result);
-    unlink(temp_path);
+    platform_delete_temp_file(temp_path);
     return -1;
   }
   log_debug("GPG export completed successfully");
@@ -78,7 +73,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   FILE *fp = fopen(temp_path, "rb");
   if (!fp) {
     log_error("Failed to open exported GPG key file");
-    unlink(temp_path);
+    platform_delete_temp_file(temp_path);
     return -1;
   }
 
@@ -86,7 +81,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   uint8_t packet_data[8192];
   size_t bytes_read = fread(packet_data, 1, sizeof(packet_data), fp);
   fclose(fp);
-  unlink(temp_path);
+  platform_delete_temp_file(temp_path);
 
   if (bytes_read == 0) {
     log_error("GPG export produced empty output - key may not exist");
@@ -283,8 +278,9 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 #else
   safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", escaped_key_id);
 #endif
-  FILE *fp = SAFE_POPEN(cmd, "r");
-  if (!fp) {
+
+  FILE *fp = NULL;
+  if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to run gpg command - GPG may not be installed");
 #ifdef _WIN32
     log_error("To install GPG on Windows, download Gpg4win from:");
@@ -343,7 +339,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     }
   }
 
-  SAFE_PCLOSE(fp);
+  platform_pclose(&fp);
 
   if (!found_key || strlen(found_keygrip) == 0) {
     log_error("Could not find GPG key with ID: %s", key_id);

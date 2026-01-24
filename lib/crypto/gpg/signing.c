@@ -12,6 +12,8 @@
 #include "util/validation.h"
 #include "log/logging.h"
 #include "platform/system.h"
+#include "platform/tempfile.h"
+#include "platform/process.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -19,14 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#ifdef _WIN32
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
-#else
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
-#endif
 
 /**
  * @brief Sign a message using GPG key (via gpg --detach-sign)
@@ -51,59 +45,26 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
   char msg_path[PLATFORM_MAX_PATH_LENGTH];
   char sig_path[PLATFORM_MAX_PATH_LENGTH];
   int msg_fd = -1;
+  int sig_fd = -1;
   int result = -1;
 
-#ifdef _WIN32
-  // Windows: use GetTempPath + GetTempFileName with process ID
-  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
-  if (GetTempPathA(sizeof(temp_dir), temp_dir) == 0) {
-    log_error("Failed to get temp directory");
-    return -1;
-  }
-
-  char msg_prefix[32];
-  char sig_prefix[32];
-  safe_snprintf(msg_prefix, sizeof(msg_prefix), "asc_msg_%lu_", GetCurrentProcessId());
-  safe_snprintf(sig_prefix, sizeof(sig_prefix), "asc_sig_%lu_", GetCurrentProcessId());
-
-  if (GetTempFileNameA(temp_dir, msg_prefix, 0, msg_path) == 0) {
+  // Create temp files using platform abstraction
+  if (platform_create_temp_file(msg_path, sizeof(msg_path), "asciichat_msg", &msg_fd) != 0) {
     log_error("Failed to create temp message file");
     return -1;
   }
-  if (GetTempFileNameA(temp_dir, sig_prefix, 0, sig_path) == 0) {
+
+  if (platform_create_temp_file(sig_path, sizeof(sig_path), "asciichat_sig", &sig_fd) != 0) {
     log_error("Failed to create temp signature file");
-    unlink(msg_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
 
-  msg_fd = platform_open(msg_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-#else
-  // Unix: use mkstemp with process ID in template
-  safe_snprintf(msg_path, sizeof(msg_path), "/tmp/asciichat_msg_%d_XXXXXX", getpid());
-  safe_snprintf(sig_path, sizeof(sig_path), "/tmp/asciichat_sig_%d_XXXXXX", getpid());
-
-  msg_fd = mkstemp(msg_path);
-  if (msg_fd < 0) {
-    log_error("Failed to create temp message file: %s", SAFE_STRERROR(errno));
-    return -1;
+  // Close signature file descriptor (will be created by gpg)
+  if (sig_fd >= 0) {
+    close(sig_fd);
   }
-
-  // Create signature file path (will be created by gpg)
-  int sig_fd = mkstemp(sig_path);
-  if (sig_fd < 0) {
-    log_error("Failed to create temp signature file: %s", SAFE_STRERROR(errno));
-    close(msg_fd);
-    unlink(msg_path);
-    return -1;
-  }
-  close(sig_fd);    // Close and let gpg overwrite it
-  unlink(sig_path); // Remove it so gpg can create it fresh
-#endif
-
-  if (msg_fd < 0) {
-    log_error("Failed to open temp message file");
-    goto cleanup;
-  }
+  platform_delete_temp_file(sig_path); // Remove it so gpg can create it fresh
 
   // Write message to temp file
   ssize_t written = write(msg_fd, message, message_len);
@@ -172,8 +133,8 @@ cleanup:
   if (msg_fd >= 0) {
     close(msg_fd);
   }
-  unlink(msg_path);
-  unlink(sig_path);
+  platform_delete_temp_file(msg_path);
+  platform_delete_temp_file(sig_path);
   return result;
 }
 
