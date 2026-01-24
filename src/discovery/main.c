@@ -318,7 +318,14 @@ int discovery_main(void) {
   log_set_terminal_output(false);
 
   // Main loop: wait for session to become active, then handle media based on role
+  log_info("discovery_main: Starting main event loop...");
+  int loop_count = 0;
   while (!discovery_should_exit()) {
+    loop_count++;
+    if (loop_count <= 3 || loop_count % 20 == 0) {
+      log_info("discovery_main: Main loop iteration %d", loop_count);
+    }
+
     // Process discovery session events (state transitions, negotiations, etc)
     result = discovery_session_process(discovery, 50); // 50ms timeout for responsiveness
     if (result != ASCIICHAT_OK && result != ERROR_NETWORK_TIMEOUT) {
@@ -328,6 +335,9 @@ int discovery_main(void) {
 
     // Check if session is active (host negotiation complete)
     if (!discovery_session_is_active(discovery)) {
+      if (loop_count % 20 == 0) {
+        log_debug("discovery_main: Session not active yet, continuing");
+      }
       continue; // Still negotiating, keep processing events
     }
 

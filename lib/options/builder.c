@@ -2434,9 +2434,10 @@ void options_config_print_options_sections_with_width(const options_config_t *co
     max_col_width = options_config_calculate_max_col_width(config);
   }
 
-  // CAP max_col_width at 45 for narrow first column with description wrapping
-  if (max_col_width > 45) {
-    max_col_width = 45;
+  // CAP max_col_width: 86 if terminal wide, otherwise 45 for narrow first column
+  int max_col_cap = (term_width > 170) ? 86 : 45;
+  if (max_col_width > max_col_cap) {
+    max_col_width = max_col_cap;
   }
 
   // Determine if this is binary-level help
@@ -2645,7 +2646,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   print_project_links(desc);
   (void)fprintf(desc, "\n");
 
-  // Detect terminal width (capped at 140 for readability)
+  // Detect terminal width
   int term_width = 80;
   terminal_size_t term_size;
   if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
@@ -2658,10 +2659,6 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
         term_width = cols;
     }
   }
-
-  // Cap terminal width at 140 for readability
-  if (term_width > 140)
-    term_width = 140;
 
   // Calculate global max column width
   int global_max_col_width = 0;

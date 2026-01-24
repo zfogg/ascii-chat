@@ -20,162 +20,11 @@
 #include "platform/terminal.h"
 #include "video/palette.h"
 #include "discovery/strings.h" // For SESSION_STRING_BUFFER_SIZE
+#include "options/parsers.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h> // For islower in parse_cookies_from_browser
-
-// ============================================================================
-// Static Parser Functions (Moved from presets.c)
-// ============================================================================
-
-/**
- * @brief Custom parser for --verbose flag
- *
- * Allows --verbose to work both as a flag (without argument) and with an optional
- * count argument. Increments verbose_level each time called.
- */
-static bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
-  (void)error_msg; // Unused but required by function signature
-
-  // If arg is NULL or starts with a flag, just increment
-  // Otherwise try to parse as integer count
-  unsigned short int *verbose_level = (unsigned short int *)dest;
-
-  if (!arg || arg[0] == '\0') {
-    // No argument provided, just increment
-    (*verbose_level)++;
-    return true;
-  }
-
-  // Try to parse as integer count
-  char *endptr;
-  long value = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' && value >= 0 && value <= 100) {
-    *verbose_level = (unsigned short int)value;
-    return true;
-  }
-
-  // If it didn't parse as int, treat as flag increment
-  (*verbose_level)++;
-  return true;
-}
-
-/**
- * @brief Custom parser for --seek flag
- *
- * Accepts both "hh:mm:ss.ms" format and plain seconds format.
- * Examples:
- * - "30" = 30 seconds
- * - "30.5" = 30.5 seconds
- * - "1:30" = 1 minute 30 seconds (90 seconds)
- * - "1:30.5" = 1 minute 30.5 seconds (90.5 seconds)
- * - "0:1:30.5" = 1 minute 30.5 seconds (90.5 seconds)
- * - "1:2:30.5" = 1 hour 2 minutes 30.5 seconds (3750.5 seconds)
- */
-static bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
-  if (!arg || arg[0] == '\0') {
-    if (error_msg) {
-      *error_msg = strdup("--seek requires a timestamp argument");
-    }
-    return false;
-  }
-
-  double *timestamp = (double *)dest;
-  char *endptr;
-  long strtol_result;
-
-  // Count colons to determine format
-  int colon_count = 0;
-  for (const char *p = arg; *p; p++) {
-    if (*p == ':')
-      colon_count++;
-  }
-
-  if (colon_count == 0) {
-    // Plain seconds format: "30" or "30.5"
-    *timestamp = strtod(arg, &endptr);
-    if (*endptr != '\0' || *timestamp < 0.0) {
-      if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected non-negative seconds");
-      }
-      return false;
-    }
-    return true;
-  } else if (colon_count == 1) {
-    // MM:SS or MM:SS.ms format
-    strtol_result = strtol(arg, &endptr, 10);
-    if (*endptr != ':' || strtol_result < 0) {
-      if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
-      }
-      return false;
-    }
-    long minutes = strtol_result;
-    double seconds = strtod(endptr + 1, &endptr);
-    if (*endptr != '\0' && *endptr != '.' && *endptr != '\0') {
-      if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
-      }
-      return false;
-    }
-    *timestamp = minutes * 60.0 + seconds;
-    return true;
-  } else if (colon_count == 2) {
-    // HH:MM:SS or HH:MM:SS.ms format
-    strtol_result = strtol(arg, &endptr, 10);
-    if (*endptr != ':' || strtol_result < 0) {
-      if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
-      }
-      return false;
-    }
-    long hours = strtol_result;
-
-    strtol_result = strtol(endptr + 1, &endptr, 10);
-    if (*endptr != ':' || strtol_result < 0 || strtol_result >= 60) {
-      if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: minutes must be 0-59");
-      }
-      return false;
-    }
-    long minutes = strtol_result;
-
-    double seconds = strtod(endptr + 1, &endptr);
-    if (*endptr != '\0') {
-      if (error_msg) {
-        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
-      }
-      return false;
-    }
-    *timestamp = hours * 3600.0 + minutes * 60.0 + seconds;
-    return true;
-  } else {
-    if (error_msg) {
-      *error_msg = strdup("Invalid timestamp format: too many colons");
-    }
-    return false;
-  }
-}
-
-static bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
-  (void)error_msg; // Unused but required by function signature
-
-  char *browser_buf = (char *)dest;
-  const size_t max_size = 256;
-
-  if (!arg || arg[0] == '\0') {
-    // No argument provided, default to chrome
-    strncpy(browser_buf, "chrome", max_size - 1);
-    browser_buf[max_size - 1] = '\0';
-    return true;
-  }
-
-  // Copy the provided browser name
-  strncpy(browser_buf, arg, max_size - 1);
-  browser_buf[max_size - 1] = '\0';
-  return true;
-}
 
 // ============================================================================
 // Registry Entry Structure Definition
@@ -204,7 +53,6 @@ typedef struct {
   option_mode_bitmask_t mode_bitmask;
   option_metadata_t metadata; ///< Enum values, numeric ranges, examples
 } registry_entry_t;
-
 // ============================================================================
 // Static Metadata Arrays (Enum Values, Descriptions, Ranges)
 // ============================================================================
@@ -300,7 +148,7 @@ static const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, log_level),
      &default_log_level_value,
      sizeof(log_level_t),
-     "Set log level: dev, debug, info, warn, error, fatal",
+     "Set log level: dev, debug, info, warn, error, fatal. Logs at or above this level are written.",
      "LOGGING",
      false,
      "ASCII_CHAT_LOG_LEVEL",
@@ -482,7 +330,8 @@ static const registry_entry_t g_terminal_entries[] = {
      offsetof(options_t, width),
      &default_width_value,
      sizeof(int),
-     "Terminal width in characters. Can be controlled using $COLUMNS.",
+     "Terminal width in characters. Can be controlled using $COLUMNS. By default your terminal width is detected at "
+     "runtime.",
      "TERMINAL",
      false,
      "ASCII_CHAT_WIDTH",
@@ -498,7 +347,8 @@ static const registry_entry_t g_terminal_entries[] = {
      offsetof(options_t, height),
      &default_height_value,
      sizeof(int),
-     "Terminal height in characters. Can be controlled using $ROWS.",
+     "Terminal height in characters. Can be controlled using $ROWS. By default your terminal height is detected at "
+     "runtime.",
      "TERMINAL",
      false,
      "ASCII_CHAT_HEIGHT",

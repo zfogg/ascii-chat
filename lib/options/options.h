@@ -218,6 +218,25 @@
 #define COLOR_MODE_TRUECOLOR TERM_COLOR_TRUECOLOR ///< 24-bit truecolor mode
 
 /**
+ * @brief Color output setting (--color flag values)
+ *
+ * Enumeration for the --color option which controls color output behavior:
+ * - COLOR_SETTING_AUTO: Smart detection (default) - colors if TTY, not piping, not CLAUDECODE
+ * - COLOR_SETTING_TRUE: Force colors ON - always colorize regardless of TTY/piping/CLAUDECODE
+ * - COLOR_SETTING_FALSE: Force colors OFF - disable all colors and logging colors
+ *
+ * @ingroup options
+ */
+typedef enum {
+  /** @brief Smart detection (default): colors if TTY and not CLAUDECODE and not piping */
+  COLOR_SETTING_AUTO = 0,
+  /** @brief Force colors ON: always colorize regardless of TTY/piping/CLAUDECODE */
+  COLOR_SETTING_TRUE = 1,
+  /** @brief Force colors OFF: disable all colors and logging colors */
+  COLOR_SETTING_FALSE = -1
+} color_setting_t;
+
+/**
  * @name Configuration Constants
  * @{
  */
@@ -364,8 +383,8 @@
 /** @brief Default webcam flip state (true = horizontally flipped) */
 #define OPT_WEBCAM_FLIP_DEFAULT true
 
-/** @brief Default force color flag (false = auto-detect) */
-#define OPT_COLOR_DEFAULT false
+/** @brief Default color setting (COLOR_SETTING_AUTO = smart detection) */
+#define OPT_COLOR_DEFAULT COLOR_SETTING_AUTO
 
 /** @brief Default color mode (auto-detect terminal capabilities) */
 #define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
@@ -551,7 +570,7 @@ static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
 static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
-static const bool default_color_value = OPT_COLOR_DEFAULT;
+static const int default_color_value = OPT_COLOR_DEFAULT;
 static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
 static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
 static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
@@ -759,7 +778,7 @@ typedef struct options_state {
   // ============================================================================
   // Display Options
   // ============================================================================
-  bool color;                           ///< Force color output (overrides auto-detection)
+  int color;                            ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
   terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit

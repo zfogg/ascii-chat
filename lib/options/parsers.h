@@ -19,6 +19,23 @@
 #include "log/logging.h"
 
 /**
+ * @brief Parse color setting option (--color flag)
+ * @param arg String argument (e.g., "auto", "true", "false")
+ * @param dest Destination pointer (int*, will store color_setting_t value)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto", "a", "0" - Smart detection (COLOR_SETTING_AUTO, default)
+ * - "true", "yes", "1", "on" - Force colors ON (COLOR_SETTING_TRUE)
+ * - "false", "no", "-1", "off" - Force colors OFF (COLOR_SETTING_FALSE)
+ *
+ * This controls whether colors are enabled ("auto"), always on ("true"),
+ * or always off ("false") regardless of TTY detection or environment variables.
+ */
+bool parse_color_setting(const char *arg, void *dest, char **error_msg);
+
+/**
  * @brief Parse terminal color level option
  * @param arg String argument (e.g., "auto", "none", "16", "256", "truecolor")
  * @param dest Destination pointer (terminal_color_mode_t*)
@@ -176,3 +193,32 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
  * ```
  */
 int parse_client_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
+
+/**
+ * @brief Custom parser for --verbose flag
+ *
+ * Allows --verbose to work both as a flag (without argument) and with an optional
+ * count argument. Increments verbose_level each time called.
+ */
+bool parse_verbose_flag(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for --cookies-from-browser flag
+ *
+ * Allows --cookies-from-browser to work both as a flag (without argument) and with an optional
+ * argument. Sets cookies_from_browser to the provided browser name.
+ */
+bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for --no-cookies-from-browser flag
+ */
+bool parse_no_cookies_from_browser(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for --timestamp flag
+ *
+ * Allows --timestamp to work both as a flag with an argument.
+ * Sets media_seek_timestamp to the provided timestamp in seconds.
+ */
+bool parse_timestamp(const char *arg, void *dest, char **error_msg);

@@ -67,8 +67,12 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   if (term_width <= 0)
     term_width = 80;
 
-  // Available width for text after indentation
+  // Available width for text after indentation, capped at 130 for readability
+  // This allows the description column itself to be up to 130 chars wide,
+  // starting from indent_width, for a max total line of indent_width + 130
   int available_width = term_width - indent_width;
+  if (available_width > 130)
+    available_width = 130;
   if (available_width < 20)
     available_width = 20;
 

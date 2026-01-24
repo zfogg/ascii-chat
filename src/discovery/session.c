@@ -639,8 +639,11 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
 
   case DISCOVERY_STATE_CONNECTING_HOST: {
     // Connect to host as participant
+    log_debug("discovery_session_process: CONNECTING_HOST state (participant_ctx=%p)", session->participant_ctx);
     if (!session->participant_ctx) {
       // Create participant context for this session
+      log_info("discovery_session_process: Creating participant context to connect to %s:%u", session->host_address,
+               session->host_port);
       session_participant_config_t pconfig = {
           .address = session->host_address,
           .port = session->host_port,
@@ -657,6 +660,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
       }
 
       // Attempt connection
+      log_info("discovery_session_process: Attempting to connect as participant...");
       asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
       if (pconn != ASCIICHAT_OK) {
         log_error("Failed to connect as participant: %d", pconn);

@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stddef.h>
 #include "common.h"
+#include "options/builder.h"
 #include "options/options.h"
 #include "discovery/strings.h" // For is_session_string() validation
 #include "util/parsing.h"      // For parse_port() validation
@@ -27,6 +28,45 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
 // NOTE: is_session_string() is now imported from lib/discovery/strings.h
 // and provides enhanced validation against actual wordlists via hashtable lookup.
 // See that module for the full implementation.
+
+bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  int *color_setting = (int *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Auto-detect (default)
+  if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0 || strcmp(lower, "0") == 0) {
+    *color_setting = COLOR_SETTING_AUTO;
+    return true;
+  }
+
+  // Force ON
+  if (strcmp(lower, "true") == 0 || strcmp(lower, "yes") == 0 || strcmp(lower, "1") == 0 || strcmp(lower, "on") == 0 ||
+      strcmp(lower, "enabled") == 0 || strcmp(lower, "enable") == 0) {
+    *color_setting = COLOR_SETTING_TRUE;
+    return true;
+  }
+
+  // Force OFF
+  if (strcmp(lower, "false") == 0 || strcmp(lower, "no") == 0 || strcmp(lower, "-1") == 0 ||
+      strcmp(lower, "off") == 0 || strcmp(lower, "disabled") == 0 || strcmp(lower, "disable") == 0) {
+    *color_setting = COLOR_SETTING_FALSE;
+    return true;
+  }
+
+  if (error_msg) {
+    *error_msg = strdup("Color setting must be 'auto' (or 'a', '0'), 'true' (or 'yes', '1', 'on'), "
+                        "or 'false' (or 'no', '-1', 'off')");
+  }
+  return false;
+}
 
 bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
@@ -582,5 +622,147 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
   // to set palette_custom_set and palette_type, but the callback interface doesn't provide that.
   // The palette_type should be handled separately or via a dependency.
 
+  return true;
+}
+
+bool parse_verbose_flag(const char *arg, void *dest, char **error_msg) {
+  (void)error_msg; // Unused but required by function signature
+
+  // If arg is NULL or starts with a flag, just increment
+  // Otherwise try to parse as integer count
+  unsigned short int *verbose_level = (unsigned short int *)dest;
+
+  if (!arg || arg[0] == '\0') {
+    // No argument provided, just increment
+    (*verbose_level)++;
+    return true;
+  }
+
+  // Try to parse as integer count
+  char *endptr;
+  long value = strtol(arg, &endptr, 10);
+  if (*endptr == '\0' && value >= 0 && value <= 100) {
+    *verbose_level = (unsigned short int)value;
+    return true;
+  }
+
+  // If it didn't parse as int, treat as flag increment
+  (*verbose_level)++;
+  return true;
+}
+
+/**
+ * @brief Custom parser for --seek flag
+ *
+ * Accepts both "hh:mm:ss.ms" format and plain seconds format.
+ * Examples:
+ * - "30" = 30 seconds
+ * - "30.5" = 30.5 seconds
+ * - "1:30" = 1 minute 30 seconds (90 seconds)
+ * - "1:30.5" = 1 minute 30.5 seconds (90.5 seconds)
+ * - "0:1:30.5" = 1 minute 30.5 seconds (90.5 seconds)
+ * - "1:2:30.5" = 1 hour 2 minutes 30.5 seconds (3750.5 seconds)
+ */
+bool parse_timestamp(const char *arg, void *dest, char **error_msg) {
+  if (!arg || arg[0] == '\0') {
+    if (error_msg) {
+      *error_msg = strdup("--seek requires a timestamp argument");
+    }
+    return false;
+  }
+
+  double *timestamp = (double *)dest;
+  char *endptr;
+  long strtol_result;
+
+  // Count colons to determine format
+  int colon_count = 0;
+  for (const char *p = arg; *p; p++) {
+    if (*p == ':')
+      colon_count++;
+  }
+
+  if (colon_count == 0) {
+    // Plain seconds format: "30" or "30.5"
+    *timestamp = strtod(arg, &endptr);
+    if (*endptr != '\0' || *timestamp < 0.0) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected non-negative seconds");
+      }
+      return false;
+    }
+    return true;
+  } else if (colon_count == 1) {
+    // MM:SS or MM:SS.ms format
+    strtol_result = strtol(arg, &endptr, 10);
+    if (*endptr != ':' || strtol_result < 0) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
+      }
+      return false;
+    }
+    long minutes = strtol_result;
+    double seconds = strtod(endptr + 1, &endptr);
+    if (*endptr != '\0' && *endptr != '.' && *endptr != '\0') {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected MM:SS or MM:SS.ms format");
+      }
+      return false;
+    }
+    *timestamp = minutes * 60.0 + seconds;
+    return true;
+  } else if (colon_count == 2) {
+    // HH:MM:SS or HH:MM:SS.ms format
+    strtol_result = strtol(arg, &endptr, 10);
+    if (*endptr != ':' || strtol_result < 0) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
+      }
+      return false;
+    }
+    long hours = strtol_result;
+
+    strtol_result = strtol(endptr + 1, &endptr, 10);
+    if (*endptr != ':' || strtol_result < 0 || strtol_result >= 60) {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: minutes must be 0-59");
+      }
+      return false;
+    }
+    long minutes = strtol_result;
+
+    double seconds = strtod(endptr + 1, &endptr);
+    if (*endptr != '\0') {
+      if (error_msg) {
+        *error_msg = strdup("Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format");
+      }
+      return false;
+    }
+    *timestamp = hours * 3600.0 + minutes * 60.0 + seconds;
+    return true;
+  } else {
+    if (error_msg) {
+      *error_msg = strdup("Invalid timestamp format: too many colons");
+    }
+    return false;
+  }
+}
+
+bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
+  (void)error_msg; // Unused but required by function signature
+
+  char *browser_buf = (char *)dest;
+  const size_t max_size = 256;
+
+  if (!arg || arg[0] == '\0') {
+    // No argument provided, default to chrome
+    strncpy(browser_buf, "chrome", max_size - 1);
+    browser_buf[max_size - 1] = '\0';
+    return true;
+  }
+
+  // Copy the provided browser name
+  strncpy(browser_buf, arg, max_size - 1);
+  browser_buf[max_size - 1] = '\0';
   return true;
 }

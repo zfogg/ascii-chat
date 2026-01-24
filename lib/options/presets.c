@@ -70,9 +70,10 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // These allow parsing of positional arguments like "192.168.1.1" for client mode
   // and "[bind-address]" for server mode
 
-  // Client/Discovery mode: [address] - can be IP, hostname, or hostname:port
+  // Client/Discovery mode: [address] - can be IP, hostname, session string, or hostname:port
+  // For discovery mode, can be a session string (adjective-noun-noun) or empty to start new session
   static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080"};
-  options_builder_add_positional(b, "address", "Server address (optional, defaults to localhost:27224)", false,
+  options_builder_add_positional(b, "address", "Server address or session string (optional)", false,
                                  "Positional Arguments", client_examples, 3, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
                                  parse_client_address);
 
@@ -85,8 +86,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
 
   // Generate random session strings for examples
   // Use static buffers so they persist after the function returns
-  static char session_buf1[SESSION_STRING_BUFFER_SIZE];
-  static char session_buf2[SESSION_STRING_BUFFER_SIZE];
   static char session_buf3[SESSION_STRING_BUFFER_SIZE];
   static char session_buf4[SESSION_STRING_BUFFER_SIZE];
   static char session_buf5[SESSION_STRING_BUFFER_SIZE];
@@ -95,8 +94,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   static char session_buf8[SESSION_STRING_BUFFER_SIZE];
 
   // Fallback strings if generation fails
-  char *example_session_string = "invalid-session-string";
-  char *example_session_string2 = "invalid-session-string";
   char *example_session_string3 = "invalid-session-string";
   char *example_session_string4 = "invalid-session-string";
   char *example_session_string5 = "invalid-session-string";
@@ -105,14 +102,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   char *example_session_string8 = "invalid-session-string";
 
   // Generate all session strings (sodium_init called as needed by acds_string_generate)
-  acds_string_generate(session_buf1, sizeof(session_buf1));
-  if (session_buf1[0] != '\0') {
-    example_session_string = session_buf1;
-  }
-  acds_string_generate(session_buf2, sizeof(session_buf2));
-  if (session_buf2[0] != '\0') {
-    example_session_string2 = session_buf2;
-  }
   acds_string_generate(session_buf3, sizeof(session_buf3));
   if (session_buf3[0] != '\0') {
     example_session_string3 = session_buf3;
