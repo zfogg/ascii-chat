@@ -392,7 +392,7 @@ cleanup:
   platform_delete_temp_file(msg_path);
 
   if (fp) {
-    pclose(fp);
+    platform_pclose(&fp);
   }
 
   return result;

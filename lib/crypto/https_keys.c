@@ -9,6 +9,7 @@
 #include "asciichat_errno.h"
 #include "platform/string.h"
 #include "platform/util.h"
+#include "platform/process.h"
 #include "network/http_client.h"
 #include <string.h>
 #include <stdlib.h>
@@ -441,8 +442,8 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   // Import the key using gpg --import
   char import_cmd[BUFFER_SIZE_MEDIUM];
   snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
-  FILE *import_fp = popen(import_cmd, "r");
-  if (!import_fp) {
+  FILE *import_fp = NULL;
+  if (platform_popen(import_cmd, "r", &import_fp) != ASCIICHAT_OK || !import_fp) {
     platform_unlink(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to run gpg --import");
   }
@@ -450,7 +451,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   char import_output[2048];
   size_t import_len = fread(import_output, 1, sizeof(import_output) - 1, import_fp);
   import_output[import_len] = '\0';
-  pclose(import_fp);
+  platform_pclose(&import_fp);
   platform_unlink(temp_file);
 
   // Extract ALL key IDs from import output (format: "gpg: key KEYID: ...")
@@ -500,15 +501,15 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
     // Get full fingerprint from gpg --list-keys output
     char list_cmd[BUFFER_SIZE_SMALL];
     snprintf(list_cmd, sizeof(list_cmd), "gpg --list-keys --with-colons --fingerprint '%s' 2>/dev/null", key_ids[k]);
-    FILE *list_fp = popen(list_cmd, "r");
-    if (!list_fp) {
+    FILE *list_fp = NULL;
+    if (platform_popen(list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
       continue; // Skip this key if we can't list it
     }
 
     char list_output[4096];
     size_t list_len = fread(list_output, 1, sizeof(list_output) - 1, list_fp);
     list_output[list_len] = '\0';
-    pclose(list_fp);
+    platform_pclose(&list_fp);
 
     // Check if it contains an Ed25519 key (algorithm 22)
     if (!strstr(list_output, ":22:") && !strstr(list_output, "ed25519")) {
