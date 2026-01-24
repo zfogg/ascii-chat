@@ -85,13 +85,9 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
 
   // Call gpg --detach-sign
   char cmd[BUFFER_SIZE_LARGE];
-#ifdef _WIN32
-  safe_snprintf(cmd, sizeof(cmd), "gpg --local-user 0x%s --detach-sign --output \"%s\" \"%s\" 2>nul", escaped_key_id,
-                sig_path, msg_path);
-#else
-  safe_snprintf(cmd, sizeof(cmd), "gpg --local-user 0x%s --detach-sign --output \"%s\" \"%s\" 2>/dev/null",
+  safe_snprintf(cmd, sizeof(cmd),
+                "gpg --local-user 0x%s --detach-sign --output \"%s\" \"%s\" " PLATFORM_SHELL_NULL_REDIRECT,
                 escaped_key_id, sig_path, msg_path);
-#endif
 
   log_debug("Signing with GPG: %s", cmd);
   int status = system(cmd);

@@ -58,7 +58,8 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
 
   // Use gpg --export to export the public key in binary format
   char cmd[BUFFER_SIZE_LARGE];
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" 2>/dev/null", escaped_key_id, temp_path);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" " PLATFORM_SHELL_NULL_REDIRECT, escaped_key_id,
+                temp_path);
 
   log_debug("Running GPG export command: gpg --export 0x%s", key_id);
   int result = system(cmd);
@@ -273,11 +274,8 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   // Use gpg to list the key and get the keygrip
   char cmd[BUFFER_SIZE_LARGE];
-#ifdef _WIN32
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", escaped_key_id);
-#else
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", escaped_key_id);
-#endif
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s " PLATFORM_SHELL_NULL_REDIRECT,
+                escaped_key_id);
 
   FILE *fp = NULL;
   if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
