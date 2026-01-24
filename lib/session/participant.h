@@ -406,6 +406,15 @@ asciichat_error_t session_participant_start_audio_capture(session_participant_t 
  */
 void session_participant_stop_audio_capture(session_participant_t *p);
 
+/**
+ * @brief Get the socket from a participant context
+ * @param p Participant handle (must not be NULL)
+ * @return The socket file descriptor, or INVALID_SOCKET_VALUE if not connected
+ *
+ * @ingroup session
+ */
+socket_t session_participant_get_socket(session_participant_t *p);
+
 /** @} */
 
 /** @} */

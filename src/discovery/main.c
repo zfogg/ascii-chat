@@ -315,10 +315,15 @@ int discovery_main(void) {
   }
 
   log_info("Discovery mode running - press Ctrl+C to exit");
+  log_info("DEBUG: Session state before main loop: state=%d, is_active=%d, is_host=%d",
+           discovery_session_get_state(discovery), discovery_session_is_active(discovery),
+           discovery_session_is_host(discovery));
+  log_warn("*** ABOUT TO CALL log_set_terminal_output(false) ***");
   log_set_terminal_output(false);
+  log_warn("*** RETURNED FROM log_set_terminal_output(false) ***");
 
   // Main loop: wait for session to become active, then handle media based on role
-  log_info("discovery_main: Starting main event loop...");
+  log_warn("*** ABOUT TO ENTER MAIN EVENT LOOP ***");
   int loop_count = 0;
   while (!discovery_should_exit()) {
     loop_count++;
@@ -390,6 +395,9 @@ int discovery_main(void) {
   // Re-enable terminal output for shutdown message if --quiet wasn't passed
   if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);
+    log_info("DEBUG: Final session state: state=%d, is_active=%d, is_host=%d, loop_count=%d",
+             discovery_session_get_state(discovery), discovery_session_is_active(discovery),
+             discovery_session_is_host(discovery), loop_count);
     log_info("Discovery mode shutting down");
   }
 

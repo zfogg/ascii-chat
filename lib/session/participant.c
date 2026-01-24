@@ -363,6 +363,13 @@ uint32_t session_participant_get_client_id(session_participant_t *p) {
   return p->client_id;
 }
 
+socket_t session_participant_get_socket(session_participant_t *p) {
+  if (!p || !p->initialized) {
+    return INVALID_SOCKET_VALUE;
+  }
+  return p->socket;
+}
+
 /* ============================================================================
  * Session Participant Media Control Functions
  * ============================================================================ */

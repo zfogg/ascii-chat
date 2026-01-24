@@ -18,6 +18,8 @@
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "util/time.h"
+#include "util/endian.h"
+#include "crypto/keys.h"
 
 #ifdef _WIN32
 #include <ws2tcpip.h> // For getaddrinfo on Windows
@@ -704,6 +706,95 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
         break;
       }
 
+      log_info("Connected to host, performing crypto handshake...");
+
+      // Perform crypto handshake with server
+      // Get the socket from participant context
+      socket_t participant_socket = session_participant_get_socket(session->participant_ctx);
+      if (participant_socket == INVALID_SOCKET_VALUE) {
+        log_error("Failed to get socket from participant context");
+        set_error(session, ERROR_NETWORK, "Failed to get participant socket");
+        session_participant_disconnect(session->participant_ctx);
+        break;
+      }
+
+      // Step 1: Send client protocol version
+      log_debug("Sending protocol version to server...");
+      protocol_version_packet_t client_version = {0};
+      client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
+      client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
+      client_version.supports_encryption = 1;                // We support encryption
+      client_version.compression_algorithms = 0;
+      client_version.compression_threshold = 0;
+      client_version.feature_flags = 0;
+
+      int result = send_protocol_version_packet(participant_socket, &client_version);
+      if (result != 0) {
+        log_error("Failed to send protocol version to server");
+        set_error(session, ERROR_NETWORK, "Failed to send protocol version");
+        session_participant_disconnect(session->participant_ctx);
+        break;
+      }
+
+      // Step 2: Receive server protocol version
+      log_debug("Receiving server protocol version...");
+      packet_type_t packet_type;
+      void *payload = NULL;
+      size_t payload_len = 0;
+
+      int recv_result = receive_packet(participant_socket, &packet_type, &payload, &payload_len);
+      if (recv_result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
+        log_error("Failed to receive server protocol version (got type 0x%x)", packet_type);
+        if (payload) {
+          buffer_pool_free(NULL, payload, payload_len);
+        }
+        set_error(session, ERROR_NETWORK, "Failed to receive protocol version from server");
+        session_participant_disconnect(session->participant_ctx);
+        break;
+      }
+
+      if (payload_len != sizeof(protocol_version_packet_t)) {
+        log_error("Invalid protocol version packet size: %zu", payload_len);
+        buffer_pool_free(NULL, payload, payload_len);
+        set_error(session, ERROR_NETWORK, "Invalid protocol version packet");
+        session_participant_disconnect(session->participant_ctx);
+        break;
+      }
+
+      protocol_version_packet_t server_version;
+      memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
+      buffer_pool_free(NULL, payload, payload_len);
+
+      if (!server_version.supports_encryption) {
+        log_error("Server does not support encryption");
+        set_error(session, ERROR_NETWORK, "Server does not support encryption");
+        session_participant_disconnect(session->participant_ctx);
+        break;
+      }
+
+      log_info("Server protocol version: %u.%u (encryption: yes)", NET_TO_HOST_U16(server_version.protocol_version),
+               NET_TO_HOST_U16(server_version.protocol_revision));
+
+      // Step 3: Send crypto capabilities
+      log_debug("Sending crypto capabilities...");
+      crypto_capabilities_packet_t client_caps = {0};
+      client_caps.supported_kex_algorithms = HOST_TO_NET_U16(0x0001);    // KEX_ALGO_X25519
+      client_caps.supported_auth_algorithms = HOST_TO_NET_U16(0x0003);   // AUTH_ALGO_ED25519 | AUTH_ALGO_NONE
+      client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(0x0001); // CIPHER_ALGO_XSALSA20_POLY1305
+      client_caps.requires_verification = 0;
+      client_caps.preferred_kex = 0x0001;    // KEX_ALGO_X25519
+      client_caps.preferred_auth = 0x0001;   // AUTH_ALGO_ED25519
+      client_caps.preferred_cipher = 0x0001; // CIPHER_ALGO_XSALSA20_POLY1305
+
+      result = send_crypto_capabilities_packet(participant_socket, &client_caps);
+      if (result != 0) {
+        log_error("Failed to send crypto capabilities");
+        set_error(session, ERROR_NETWORK, "Failed to send crypto capabilities");
+        session_participant_disconnect(session->participant_ctx);
+        break;
+      }
+
+      log_info("Crypto handshake initiated successfully");
       log_warn("*** Connected to host as participant - transitioning to ACTIVE ***");
     }
 
