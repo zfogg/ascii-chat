@@ -176,16 +176,8 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  // Set log level to ERROR to suppress INFO logs during options_init
-  // This prevents verbose config loading messages during option parsing
-  log_level_t original_level = log_get_level();
-  log_set_level(LOG_ERROR);
-
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
-    // Silence all terminal logging output on error
-    log_set_terminal_output(false);
-
     asciichat_error_context_t error_ctx;
     if (HAS_ERRNO(&error_ctx)) {
       fprintf(stderr, "Error: %s\n", error_ctx.context_message);
@@ -194,12 +186,12 @@ int main(int argc, char *argv[]) {
     }
     (void)fflush(stderr);
 
-    // Exit immediately with error code (cleanup happens via atexit handlers)
+    // Clean up options state before exiting
+    options_state_shutdown();
+    options_cleanup_schema();
+
     exit(options_result);
   }
-
-  // Restore original log level after successful options_init
-  log_set_level(original_level);
 
   // Get parsed options including detected mode
   const options_t *opts = options_get();
