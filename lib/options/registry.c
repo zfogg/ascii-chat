@@ -467,7 +467,7 @@ static const registry_entry_t g_options_registry[] = {
      sizeof(bool), "Disable Opus audio encoding", "AUDIO", false, "ASCII_CHAT_NO_ENCODE_AUDIO", NULL, NULL, false,
      false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"no-audio-mixer", '\0', OPTION_TYPE_BOOL, offsetof(options_t, no_audio_mixer), &default_no_audio_mixer_value,
-     sizeof(bool), "Disable audio mixer - send silence to all clients (debug mode only)", "AUDIO", false,
+     sizeof(bool), "Use simple audio mixing without ducking or compression (debug mode only)", "AUDIO", false,
      "ASCII_CHAT_NO_AUDIO_MIXER", NULL, NULL, false, false, OPTION_MODE_SERVER},
 
     // ACDS Server Specific Options
