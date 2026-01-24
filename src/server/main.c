@@ -1897,9 +1897,10 @@ skip_acds_session:
     log_debug("No ACDS session string available, generating random session for mDNS");
 
     // Generate a proper word-word-word session string for mDNS discovery
+    // Format: adjective-noun-noun (matching ACDS session string format)
     // This uses simple word lists to create memorable session strings
     static const char *adjectives[] = {
-        "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "proud",
+        "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "fast",
         "quick", "warm",   "wise",   "true", "safe", "keen",  "just",  "fair",
     };
     static const char *nouns[] = {
@@ -1913,10 +1914,10 @@ skip_acds_session:
     uint32_t seed = (uint32_t)time(NULL) ^ (uint32_t)getpid();
     uint32_t adj1_idx = (seed / 1) % adj_count;
     uint32_t noun1_idx = (seed / 13) % noun_count;
-    uint32_t adj2_idx = (seed / 31) % adj_count;
+    uint32_t noun2_idx = (seed / 31) % noun_count; // Second noun (not adjective!)
 
     snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
-             adjectives[adj2_idx]);
+             nouns[noun2_idx]);
 
     log_debug("Generated random session string for mDNS: '%s'", session_string);
 
