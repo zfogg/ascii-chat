@@ -1456,6 +1456,16 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
   }
 
+  // Validate --pause option
+  if (opts.pause) {
+    // Require --file or --url (not webcam, not test pattern)
+    if (opts.media_file[0] == '\0' && opts.media_url[0] == '\0') {
+      log_error("--pause requires --file or --url");
+      SAFE_FREE(allocated_mode_argv);
+      return ERROR_INVALID_PARAM;
+    }
+  }
+
   // ========================================================================
   // STAGE 7: Publish to RCU
   // ========================================================================

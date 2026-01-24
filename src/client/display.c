@@ -73,16 +73,22 @@
 #include "main.h"
 
 #include "session/display.h"
+#include "session/capture.h"
+#include "session/keyboard_handler.h"
 #include "platform/abstraction.h"
+#include "platform/keyboard.h"
 #include "platform/util.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
 #include "video/ascii.h"
+#include "media/source.h"
+#include "common.h"
 
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <unistd.h>
 
 /* ============================================================================
  * Session Display Context
@@ -108,6 +114,26 @@ static session_display_ctx_t *g_display_ctx = NULL;
  * @ingroup client_display
  */
 static atomic_bool g_is_first_frame_of_connection = true;
+
+/**
+ * @brief Keyboard input state for client mode
+ *
+ * Tracks whether keyboard input is initialized and ready to use.
+ *
+ * @ingroup client_display
+ */
+static bool g_keyboard_enabled = false;
+
+/**
+ * @brief Optional local media capture context for client mode
+ *
+ * When client mode is used with --file or --url, this provides access to
+ * the local media source for keyboard controls (seek, pause, play).
+ * NULL when client mode is used for network streaming only.
+ *
+ * @ingroup client_display
+ */
+static session_capture_ctx_t *g_capture_ctx = NULL;
 
 /* TTY detection and terminal reset now handled by session display library */
 
@@ -141,6 +167,52 @@ int display_init() {
   if (!g_display_ctx) {
     SET_ERRNO(ERROR_DISPLAY, "Failed to initialize display");
     return -1;
+  }
+
+  // Check if client mode should load local media (--file or --url)
+  const char *media_url = GET_OPTION(media_url);
+  const char *media_file = GET_OPTION(media_file);
+
+  if ((media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0)) {
+    // Client mode with local media file/URL - create capture context for keyboard controls
+    session_capture_config_t capture_config = {0};
+    capture_config.target_fps = 60;
+    capture_config.resize_for_network = false;
+    capture_config.should_exit_callback = NULL;
+    capture_config.callback_data = NULL;
+
+    if (media_url && strlen(media_url) > 0) {
+      capture_config.type = MEDIA_SOURCE_FILE;
+      capture_config.path = media_url;
+    } else {
+      if (strcmp(media_file, "-") == 0) {
+        capture_config.type = MEDIA_SOURCE_STDIN;
+        capture_config.path = NULL;
+      } else {
+        capture_config.type = MEDIA_SOURCE_FILE;
+        capture_config.path = media_file;
+      }
+    }
+
+    capture_config.loop = GET_OPTION(media_loop);
+    capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+
+    g_capture_ctx = session_capture_create(&capture_config);
+    if (!g_capture_ctx) {
+      log_warn("Failed to create capture context for local media - keyboard seek/pause disabled");
+      g_capture_ctx = NULL;
+    }
+  }
+
+  // Initialize keyboard input for interactive controls (volume, color mode, flip, seek, pause)
+  // Only initialize in TTY mode to avoid interfering with piped/redirected I/O
+  if (platform_isatty(STDIN_FILENO)) {
+    if (keyboard_init() == 0) {
+      g_keyboard_enabled = true;
+    } else {
+      // Non-fatal: client can work without keyboard support
+      g_keyboard_enabled = false;
+    }
   }
 
   return 0;
@@ -203,7 +275,8 @@ void display_disable_logging_for_first_frame() {
  * Render ASCII frame to display
  *
  * Uses session display library for frame output routing based on display
- * mode and snapshot requirements.
+ * mode and snapshot requirements. Also polls for keyboard input for
+ * interactive controls (volume, color mode, flip).
  *
  * @param frame_data ASCII frame data to render
  * @param is_snapshot_frame Whether this is the final snapshot frame
@@ -218,16 +291,40 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
 
   // Use session display library for frame rendering
   session_display_render_frame(g_display_ctx, frame_data, is_snapshot_frame);
+
+  // Poll for keyboard input and handle interactive controls
+  // - If client mode has local media (--file/--url), pass capture context for full controls
+  //   (seek, pause, play, volume, color mode, flip)
+  // - If client mode is network-only, pass NULL (volume, color mode, flip work; seek/pause ignored)
+  if (g_keyboard_enabled) {
+    int key = keyboard_read_nonblocking();
+    if (key != 0) { // 0 is KEY_NONE
+      session_handle_keyboard_input(g_capture_ctx, key);
+    }
+  }
 }
 
 /**
  * @brief Cleanup display subsystem
  *
- * Destroys session display context and releases all resources.
+ * Destroys session display context and releases all resources including
+ * keyboard input handling.
  *
  * @ingroup client_display
  */
 void display_cleanup() {
+  // Cleanup keyboard input if it was initialized
+  if (g_keyboard_enabled) {
+    keyboard_cleanup();
+    g_keyboard_enabled = false;
+  }
+
+  // Cleanup optional local media capture context if it was created
+  if (g_capture_ctx) {
+    session_capture_destroy(g_capture_ctx);
+    g_capture_ctx = NULL;
+  }
+
   if (g_display_ctx) {
     session_display_destroy(g_display_ctx);
     g_display_ctx = NULL;

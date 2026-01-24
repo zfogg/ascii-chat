@@ -798,11 +798,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
       if (config_path_expanded) {
-#ifdef _WIN32
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#else
-        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#endif
       }
     }
 

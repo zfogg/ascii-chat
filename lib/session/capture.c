@@ -226,6 +226,12 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     media_source_set_loop(ctx->source, true);
   }
 
+  // Set initial pause state if requested (only for file sources)
+  if (config->type == MEDIA_SOURCE_FILE && GET_OPTION(pause)) {
+    media_source_pause(ctx->source);
+    log_debug("Media source starting paused (--pause flag)");
+  }
+
   // Perform initial seek if requested
   if (config->initial_seek_timestamp > 0.0) {
     log_debug("Seeking to %.2f seconds", config->initial_seek_timestamp);

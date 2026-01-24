@@ -122,6 +122,7 @@ if(WIN32)
         lib/platform/windows/rwlock.c
         lib/platform/windows/cond.c
         lib/platform/windows/terminal.c
+        lib/platform/windows/keyboard.c
         lib/platform/windows/system.c
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
@@ -147,6 +148,7 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/rwlock.c
         lib/platform/posix/cond.c
         lib/platform/posix/terminal.c
+        lib/platform/posix/keyboard.c
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
@@ -404,6 +406,7 @@ set(SESSION_SRCS
     lib/session/audio.c
     lib/session/participant.c
     lib/session/host.c
+    lib/session/keyboard_handler.c
 )
 
 # =============================================================================

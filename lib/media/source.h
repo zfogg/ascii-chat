@@ -258,6 +258,62 @@ bool media_source_has_audio(media_source_t *source);
 void media_source_set_loop(media_source_t *source, bool loop);
 
 /**
+ * @brief Pause media playback
+ * @param source Media source (must not be NULL)
+ *
+ * Pauses the media source. When paused, read_video and read_audio return
+ * no new data (NULL/silence) while maintaining the current playback position.
+ * Resume with media_source_resume() to continue from the paused position.
+ *
+ * **Behavior:**
+ * - media_source_read_video() returns NULL when paused
+ * - media_source_read_audio() returns 0 (silence) when paused
+ * - Playback position is preserved (no seeking occurs)
+ *
+ * @note All source types support pause (has no effect for WEBCAM/TEST)
+ * @note Pausing is instantaneous (next read will return no data)
+ *
+ * @ingroup media
+ */
+void media_source_pause(media_source_t *source);
+
+/**
+ * @brief Resume media playback after pause
+ * @param source Media source (must not be NULL)
+ *
+ * Resumes playback from where it was paused. Continues reading frames
+ * and audio samples from the current position.
+ *
+ * @note Safe to call if not paused (no-op)
+ * @note Resume is instantaneous (next read will return new data)
+ *
+ * @ingroup media
+ */
+void media_source_resume(media_source_t *source);
+
+/**
+ * @brief Check if media source is paused
+ * @param source Media source (must not be NULL)
+ * @return true if paused, false if playing
+ *
+ * Determines if the media source is currently paused.
+ *
+ * @ingroup media
+ */
+bool media_source_is_paused(media_source_t *source);
+
+/**
+ * @brief Toggle pause state of media source
+ * @param source Media source (must not be NULL)
+ *
+ * Toggles between paused and playing states. If paused, resumes playback.
+ * If playing, pauses playback.
+ *
+ * @ingroup media
+ */
+void media_source_toggle_pause(media_source_t *source);
+
+/**
  * @brief Check if media source reached end of stream
  * @param source Media source (must not be NULL)
  * @return true if end reached, false otherwise

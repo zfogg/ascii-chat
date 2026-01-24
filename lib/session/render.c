@@ -19,10 +19,12 @@
 #include "util/time.h"
 #include "audio/audio.h"
 #include "media/source.h"
+#include "platform/keyboard.h"
 #include "asciichat_errno.h"
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 /* ============================================================================
  * Unified Render Loop Implementation
@@ -30,7 +32,8 @@
 
 asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                       session_should_exit_fn should_exit, session_capture_fn capture_cb,
-                                      session_sleep_for_frame_fn sleep_cb, void *user_data) {
+                                      session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
+                                      void *user_data) {
   // Validate required parameters
   if (!display) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: display context is NULL");
@@ -73,6 +76,24 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     snapshot_start_time_ns = time_get_ns();
   }
 
+  // Pause mode state tracking
+  bool initial_paused_frame_rendered = false;
+  bool was_paused = false;
+  bool is_paused = false;
+
+  // Keyboard input initialization (if keyboard handler is provided)
+  bool keyboard_enabled = false;
+  if (keyboard_handler && platform_isatty(STDIN_FILENO)) {
+    if (keyboard_init() == 0) {
+      keyboard_enabled = true;
+      log_debug("Keyboard input enabled");
+    } else {
+      log_warn("Failed to initialize keyboard input - continuing without keyboard support");
+      // Don't fail the render loop if keyboard init fails
+      keyboard_enabled = false;
+    }
+  }
+
   // Determine mode: synchronous (capture provided) or event-driven (callbacks provided)
   bool is_synchronous = (capture != NULL);
 
@@ -113,6 +134,33 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     if (is_synchronous) {
       // SYNCHRONOUS MODE: Use session_capture context
+
+      // Check pause state and handle initial frame rendering
+      media_source_t *source = session_capture_get_media_source(capture);
+      is_paused = source && media_source_is_paused(source);
+
+      // Detect unpause transition to reset flag
+      if (was_paused && !is_paused) {
+        initial_paused_frame_rendered = false;
+        log_debug("Media unpaused, resuming frame capture");
+      }
+      was_paused = is_paused;
+
+      // If paused and already rendered initial frame, skip frame capture
+      if (is_paused && initial_paused_frame_rendered) {
+        // Sleep briefly to avoid busy-waiting
+        platform_sleep_usec(16666); // ~60 FPS idle rate
+
+        // Still poll keyboard to allow unpausing
+        if (keyboard_enabled && keyboard_handler) {
+          int key = keyboard_read_nonblocking();
+          if (key != 0) {
+            keyboard_handler(capture, key, user_data);
+          }
+        }
+        continue; // Skip frame capture and rendering
+      }
+
       image = session_capture_read_frame(capture);
 
       if (!image) {
@@ -127,6 +175,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       frame_count++;
+
+      // Mark initial frame as rendered if paused
+      if (is_paused && !initial_paused_frame_rendered) {
+        initial_paused_frame_rendered = true;
+        log_debug("Initial paused frame rendered");
+      }
 
     } else {
       // EVENT-DRIVEN MODE: Use custom callbacks
@@ -150,15 +204,18 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     char *ascii_frame = session_display_convert_to_ascii(display, image);
 
     if (ascii_frame) {
+      // When paused with snapshot mode, output the initial frame immediately
+      bool output_paused_frame = snapshot_mode && initial_paused_frame_rendered && is_paused;
+
       // When piping/redirecting in snapshot mode, only output the final frame
       // When outputting to TTY, show live preview frames
-      bool should_write = !snapshot_mode || session_display_has_tty(display) || snapshot_done;
+      bool should_write = !snapshot_mode || session_display_has_tty(display) || snapshot_done || output_paused_frame;
       if (should_write) {
-        session_display_render_frame(display, ascii_frame, snapshot_done);
+        session_display_render_frame(display, ascii_frame, snapshot_done || output_paused_frame);
       }
 
-      // Snapshot mode: exit after capturing the final frame
-      if (snapshot_mode && snapshot_done) {
+      // Snapshot mode: exit after capturing the final frame, or after initial paused frame
+      if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
         // NOTE: Do NOT free 'image' - ownership depends on source:
         // - Synchronous: owned by capture context
@@ -167,6 +224,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       SAFE_FREE(ascii_frame);
+    }
+
+    // Keyboard input polling (if enabled)
+    if (keyboard_enabled && keyboard_handler) {
+      int key = keyboard_read_nonblocking();
+      if (key != 0) { // 0 is KEY_NONE
+        keyboard_handler(capture, key, user_data);
+      }
     }
 
     // Maintain target frame rate by sleeping only for remaining time
@@ -204,6 +269,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         image_destroy(image);
       }
     }
+  }
+
+  // Keyboard input cleanup (if it was initialized)
+  if (keyboard_enabled) {
+    keyboard_cleanup();
+    log_debug("Keyboard input disabled");
   }
 
   return ASCIICHAT_OK;

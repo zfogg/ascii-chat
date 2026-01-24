@@ -895,7 +895,9 @@ void test_terminal_output_modes(void) {
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
-  if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
+  // However, respect --color=true which explicitly forces colors ON
+  if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE") &&
+      GET_OPTION(color) != COLOR_SETTING_TRUE) {
     log_debug("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~((uint32_t)TERM_CAP_COLOR_16 | (uint32_t)TERM_CAP_COLOR_256 | (uint32_t)TERM_CAP_COLOR_TRUE);

@@ -32,6 +32,7 @@
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/render.h"
+#include "session/keyboard_handler.h"
 
 #include "media/source.h"
 #include "media/youtube.h"
@@ -112,6 +113,18 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
 static bool mirror_render_should_exit(void *user_data) {
   (void)user_data; // Unused parameter
   return mirror_should_exit();
+}
+
+/**
+ * Mirror mode keyboard handler callback
+ *
+ * @param capture Capture context for media source control
+ * @param key Keyboard key code
+ * @param user_data Unused (NULL)
+ */
+static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, void *user_data) {
+  (void)user_data; // Unused parameter
+  session_handle_keyboard_input(capture, key);
 }
 
 /**
@@ -328,10 +341,12 @@ int mirror_main(void) {
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
   // Synchronous mode: pass capture context, NULL for callbacks
+  // Keyboard support: pass handler and capture context for interactive controls
   asciichat_error_t result = session_render_loop(capture, display, mirror_render_should_exit,
-                                                 NULL,  // No custom capture callback
-                                                 NULL,  // No custom sleep callback
-                                                 NULL); // No user_data needed
+                                                 NULL,                    // No custom capture callback
+                                                 NULL,                    // No custom sleep callback
+                                                 mirror_keyboard_handler, // Keyboard handler for interactive controls
+                                                 capture); // user_data (capture context for keyboard handler)
 
   if (result != ASCIICHAT_OK) {
     log_error("Render loop failed with error code: %d", result);

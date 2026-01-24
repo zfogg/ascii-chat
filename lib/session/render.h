@@ -73,9 +73,24 @@ typedef image_t *(*session_capture_fn)(void *user_data);
 typedef void (*session_sleep_for_frame_fn)(void *user_data);
 
 /**
+ * @brief Keyboard input handler callback type
+ *
+ * Called when keyboard input is detected during render loop iteration.
+ * Allows applications to respond to interactive keyboard controls.
+ *
+ * @param capture Capture context (may be NULL for client mode)
+ * @param key Keyboard key code from keyboard_read_nonblocking()
+ * @param user_data Opaque pointer provided by caller
+ *
+ * @ingroup session
+ */
+typedef void (*session_keyboard_handler_fn)(session_capture_ctx_t *capture, int key, void *user_data);
+
+/**
  * @brief Unified render loop for all display modes
  *
  * Flexible render loop that supports both synchronous and event-driven modes.
+ * Optionally integrates keyboard input handling for interactive controls.
  *
  * **Synchronous Mode** (capture != NULL, callbacks == NULL):
  * Handles complete render lifecycle:
@@ -83,6 +98,7 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
  * - Frame capture via session_capture_read_frame()
  * - ASCII conversion via session_display_convert_to_ascii()
  * - Terminal rendering via session_display_render_frame()
+ * - Keyboard input polling and handling (if handler provided)
  * - Memory cleanup with SAFE_FREE()
  *
  * Used by: mirror mode, discovery participant mode
@@ -93,15 +109,24 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
  * - Custom timing via sleep_for_frame callback
  * - ASCII conversion via session_display_convert_to_ascii()
  * - Terminal rendering via session_display_render_frame()
+ * - Keyboard input polling and handling (if handler provided)
  * - Memory cleanup with SAFE_FREE()
  *
  * Used by: client mode, async frame sources
+ *
+ * **Keyboard Support:**
+ * - If keyboard_handler is provided, initializes keyboard input at loop start
+ * - Polls for keyboard input each frame iteration
+ * - Calls keyboard_handler callback when keys are pressed
+ * - Cleans up keyboard on loop exit
+ * - Safe to pass NULL for no keyboard support (backward compatible)
  *
  * @param capture Capture context for synchronous mode (NULL if using callbacks)
  * @param display Display context (must not be NULL)
  * @param should_exit Callback to check exit condition each iteration (must not be NULL)
  * @param capture_cb Custom capture callback for event-driven mode (NULL if using capture context)
  * @param sleep_cb Custom sleep callback for event-driven mode (NULL if using capture context)
+ * @param keyboard_handler Optional keyboard handler callback (NULL for no keyboard support)
  * @param user_data Opaque pointer passed to all callbacks
  * @return ASCIICHAT_OK on success, error code on failure
  *
@@ -109,6 +134,7 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
  * @note Caller must free capture and display contexts after this returns
  * @note In synchronous mode, capture callback can return NULL on frame unavailability
  * @note In event-driven mode, capture callback can return NULL gracefully
+ * @note keyboard_handler is optional - pass NULL to disable keyboard support
  *
  * @par Synchronous Example (Mirror Mode)
  * @code
@@ -173,7 +199,8 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
  */
 asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                       session_should_exit_fn should_exit, session_capture_fn capture_cb,
-                                      session_sleep_for_frame_fn sleep_cb, void *user_data);
+                                      session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
+                                      void *user_data);
 
 #ifdef __cplusplus
 }

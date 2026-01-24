@@ -280,8 +280,10 @@ int main(int argc, char *argv[]) {
 
   // Client-specific: auto-detect piping and default to no color mode
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
+  // However, respect --color=true which explicitly forces colors ON
   terminal_color_mode_t color_mode = opts->color_mode;
-  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
+  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
+      opts->color != COLOR_SETTING_TRUE) {
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");

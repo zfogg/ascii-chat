@@ -22,6 +22,7 @@
 struct media_source_t {
   media_source_type_t type;
   bool loop_enabled;
+  bool is_paused;
 
   // Webcam context (for WEBCAM and TEST types)
   webcam_context_t *webcam_ctx;
@@ -59,6 +60,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   memset(source, 0, sizeof(*source));
   source->type = type;
   source->loop_enabled = false;
+  source->is_paused = false;
 
   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
   if (pthread_mutex_init(&source->decoder_mutex, NULL) != 0) {
@@ -267,6 +269,11 @@ image_t *media_source_read_video(media_source_t *source) {
     return NULL;
   }
 
+  // Return NULL immediately if paused (maintaining position)
+  if (source->is_paused) {
+    return NULL;
+  }
+
   switch (source->type) {
   case MEDIA_SOURCE_WEBCAM:
     // Read from webcam
@@ -349,6 +356,12 @@ bool media_source_has_video(media_source_t *source) {
 size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num_samples) {
   if (!source || !buffer || num_samples == 0) {
     return 0;
+  }
+
+  // Return silence immediately if paused (maintaining position)
+  if (source->is_paused) {
+    memset(buffer, 0, num_samples * sizeof(float));
+    return num_samples;
   }
 
   switch (source->type) {
@@ -653,4 +666,36 @@ double media_source_get_video_fps(media_source_t *source) {
   default:
     return 0.0;
   }
+}
+
+/* ============================================================================
+ * Pause/Resume Control
+ * ============================================================================ */
+
+void media_source_pause(media_source_t *source) {
+  if (!source) {
+    return;
+  }
+  source->is_paused = true;
+}
+
+void media_source_resume(media_source_t *source) {
+  if (!source) {
+    return;
+  }
+  source->is_paused = false;
+}
+
+bool media_source_is_paused(media_source_t *source) {
+  if (!source) {
+    return false;
+  }
+  return source->is_paused;
+}
+
+void media_source_toggle_pause(media_source_t *source) {
+  if (!source) {
+    return;
+  }
+  source->is_paused = !source->is_paused;
 }

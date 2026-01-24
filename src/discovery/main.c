@@ -36,6 +36,7 @@
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/render.h"
+#include "session/keyboard_handler.h"
 
 #include <stdatomic.h>
 #include <stdio.h>
@@ -45,6 +46,7 @@
 #include "options/options.h"
 #include "options/common.h"
 #include "platform/abstraction.h"
+#include "platform/keyboard.h"
 
 /* ============================================================================
  * Global State
@@ -223,6 +225,21 @@ static bool discovery_display_should_exit_adapter(void *user_data) {
   return discovery_should_exit();
 }
 
+/**
+ * Discovery mode keyboard handler callback
+ *
+ * Enables interactive media controls during participant role.
+ * Passes keyboard input to the session handler with capture context.
+ *
+ * @param capture Capture context for media source control
+ * @param key Keyboard key code
+ * @param user_data Unused (NULL)
+ */
+static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, void *user_data) {
+  (void)user_data; // Unused parameter
+  session_handle_keyboard_input(capture, key);
+}
+
 /* ============================================================================
  * Main Discovery Mode Loop
  * ============================================================================ */
@@ -318,9 +335,10 @@ int discovery_main(void) {
   log_info("DEBUG: Session state before main loop: state=%d, is_active=%d, is_host=%d",
            discovery_session_get_state(discovery), discovery_session_is_active(discovery),
            discovery_session_is_host(discovery));
-  log_warn("*** ABOUT TO CALL log_set_terminal_output(false) ***");
-  log_set_terminal_output(false);
-  log_warn("*** RETURNED FROM log_set_terminal_output(false) ***");
+  // NOTE: Temporarily skipping log_set_terminal_output(false) to diagnose WebRTC connection issues
+  // log_warn("*** ABOUT TO CALL log_set_terminal_output(false) ***");
+  // log_set_terminal_output(false);
+  // log_warn("*** RETURNED FROM log_set_terminal_output(false) ***");
 
   // Main loop: wait for session to become active, then handle media based on role
   log_warn("*** ABOUT TO ENTER MAIN EVENT LOOP ***");
@@ -330,6 +348,8 @@ int discovery_main(void) {
     if (loop_count <= 3 || loop_count % 20 == 0) {
       log_info("discovery_main: Main loop iteration %d", loop_count);
     }
+    log_debug("LOOP_DEBUG: Before discovery_session_process, state=%d, should_exit=%d",
+              discovery_session_get_state(discovery), discovery_should_exit());
 
     // Process discovery session events (state transitions, negotiations, etc)
     result = discovery_session_process(discovery, 50); // 50ms timeout for responsiveness
@@ -337,12 +357,15 @@ int discovery_main(void) {
       log_error("Discovery session process failed: %d", result);
       break;
     }
+    log_debug("LOOP_DEBUG: After discovery_session_process, state=%d", discovery_session_get_state(discovery));
 
     // Check if session is active (host negotiation complete)
     if (!discovery_session_is_active(discovery)) {
       if (loop_count % 20 == 0) {
-        log_debug("discovery_main: Session not active yet, continuing");
+        log_debug("discovery_main: Session not active yet, continuing (state=%d)",
+                  discovery_session_get_state(discovery));
       }
+      log_debug("LOOP_DEBUG: Session not active, continuing to next iteration");
       continue; // Still negotiating, keep processing events
     }
 
@@ -377,10 +400,12 @@ int discovery_main(void) {
       // Run the unified render loop with discovery session event processing
       // Synchronous mode: pass capture context, discovery as user_data
       // The exit callback integrates discovery processing to keep it responsive
+      // Keyboard handler enables interactive media controls (seek, pause, volume, etc.)
       result = session_render_loop(capture, display, discovery_participant_render_should_exit,
-                                   NULL,       // No custom capture callback
-                                   NULL,       // No custom sleep callback
-                                   discovery); // Pass discovery session as user_data
+                                   NULL,                       // No custom capture callback
+                                   NULL,                       // No custom sleep callback
+                                   discovery_keyboard_handler, // Keyboard handler for interactive controls
+                                   discovery);                 // Pass discovery session as user_data
 
       if (result != ASCIICHAT_OK) {
         log_error("Render loop failed with error code: %d", result);

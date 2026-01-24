@@ -21,6 +21,7 @@
  */
 static const char *normalize_path(const char *path) {
   if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "path is null");
     return "unknown";
   }
 

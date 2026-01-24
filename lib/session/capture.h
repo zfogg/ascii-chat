@@ -295,9 +295,14 @@ bool session_capture_using_file_audio(session_capture_ctx_t *ctx);
 /**
  * @brief Get the underlying media source from capture context
  * @param ctx Capture context (must not be NULL)
- * @return Pointer to media source, or NULL if not available
+ * @return Pointer to media source (cast to media_source_t*), or NULL if not available
  *
- * Used by audio playback to read audio directly from media source at callback time.
+ * Returns the underlying media_source_t for operations like seeking,
+ * pause/resume, or checking media type. Used by audio playback and
+ * interactive controls (keyboard input).
+ *
+ * @note Pointer is owned by the capture context and should not be freed
+ * @note Use for advanced control like pause/resume or seek operations
  *
  * @ingroup session
  */
