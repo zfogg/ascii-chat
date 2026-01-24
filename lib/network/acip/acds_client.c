@@ -188,6 +188,7 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   }
 
   log_debug("Sent SESSION_CREATE request");
+  log_debug("★ ACDS_CLIENT: About to receive SESSION_CREATED on socket %d", client->socket);
 
   // Receive SESSION_CREATED response
   packet_type_t resp_type;
@@ -195,6 +196,7 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   size_t resp_size = 0;
 
   int recv_result = receive_packet(client->socket, &resp_type, &resp_payload, &resp_size);
+  log_debug("★ ACDS_CLIENT: receive_packet returned %d", recv_result);
   if (recv_result < 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to receive SESSION_CREATED response");
   }
