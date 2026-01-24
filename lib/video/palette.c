@@ -351,8 +351,8 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
     return -1;
   }
 
-  log_info("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
-           chars_to_use[0], chars_to_use[len_to_use - 1]);
+  log_debug("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
+            chars_to_use[0], chars_to_use[len_to_use - 1]);
 
   return 0;
 }

@@ -164,8 +164,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
     for (AVCaptureDevice *device in devices) {
       NSUInteger idx = [devices indexOfObject:device];
-      log_info("Found device %lu: %s (type: %s)", (unsigned long)idx, [device.localizedName UTF8String],
-               [device.deviceType UTF8String]);
+      log_debug("Found device %lu: %s (type: %s)", (unsigned long)idx, [device.localizedName UTF8String],
+                [device.deviceType UTF8String]);
     }
 
     if (device_index < [devices count]) {
@@ -242,7 +242,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     }
 
     // Start the session
-    log_info("Starting AVFoundation capture session...");
+    log_debug("Starting AVFoundation capture session...");
     [context->session startRunning];
 
     // Check if session is actually running
@@ -256,15 +256,15 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       SAFE_FREE(context);
       return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
-    log_info("Capture session started successfully");
+    log_debug("Capture session started successfully");
 
     // Wait for first frame to get dimensions
     dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, AVFOUNDATION_INIT_TIMEOUT_NS);
     if (dispatch_semaphore_wait(context->delegate.frameSemaphore, timeout) == 0) {
       context->width = context->delegate.frameWidth;
       context->height = context->delegate.frameHeight;
-      log_info("AVFoundation webcam initialized: %dx%d, delegate isActive=%d", context->width, context->height,
-               context->delegate.isActive);
+      log_debug("AVFoundation webcam initialized: %dx%d, delegate isActive=%d", context->width, context->height,
+                context->delegate.isActive);
     } else {
       log_error("Timeout waiting for first frame");
       [context->session stopRunning];
