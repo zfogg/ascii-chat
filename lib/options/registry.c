@@ -933,8 +933,7 @@ static bool registry_entry_applies_to_mode(const registry_entry_t *entry, asciic
 
   // Hardcoded list of options to hide from binary help (matches builder.c line 752)
   // These are options that have hide_from_binary_help=true set in builder.c
-  const char *hidden_from_binary[] = {"create-man-page", // Development tool, hidden from help
-                                      NULL};
+  const char *hidden_from_binary[] = {NULL};
 
   // When for_binary_help is true (i.e., for 'ascii-chat --help'),
   // we want to show all options that apply to any mode, plus binary-level options.
