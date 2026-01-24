@@ -18,6 +18,7 @@
 #include "util/time.h"
 #include "util/string.h"
 #include "platform/system.h"
+#include "platform/errno.h"
 #include "common.h"
 #include "log/logging.h"
 
@@ -246,13 +247,10 @@ void asciichat_clear_errno(void) {
   asciichat_errno_context.system_errno = 0;
   asciichat_errno_context.has_system_error = false;
   asciichat_errno_context.has_wsa_error = false;
-
-#ifdef _WIN32
-  WSASetLastError(0);
   asciichat_errno_context.wsa_error = 0;
-#endif
 
-  errno = 0;
+  /* Clear platform-specific error state */
+  platform_clear_error_state();
 }
 
 asciichat_error_t asciichat_get_errno(void) {

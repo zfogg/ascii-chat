@@ -133,6 +133,9 @@ if(WIN32)
         lib/platform/windows/cpu.c
         lib/platform/windows/process.c
         lib/platform/windows/fs.c
+        lib/platform/windows/path.c
+        lib/platform/windows/errno.c
+        lib/platform/windows/agent.c
         lib/video/webcam/windows/webcam_mediafoundation.c
     )
 elseif(PLATFORM_POSIX)
@@ -155,6 +158,9 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/cpu.c
         lib/platform/posix/process.c
         lib/platform/posix/fs.c
+        lib/platform/posix/path.c
+        lib/platform/posix/errno.c
+        lib/platform/posix/agent.c
     )
 
     if(PLATFORM_DARWIN)

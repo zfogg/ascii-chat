@@ -10,6 +10,7 @@
 #include "util/string.h"
 #include "log/logging.h"
 #include "platform/system.h"
+#include "platform/agent.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -20,14 +21,10 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
 #else
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
 #endif
 
 // Maximum response size from gpg-agent
@@ -35,64 +32,10 @@
 
 /**
  * Get gpg-agent socket path (Unix) or named pipe path (Windows)
+ * Delegates to platform abstraction layer.
  */
 static int get_agent_socket_path(char *path_out, size_t path_size) {
-#ifdef _WIN32
-  // On Windows, GPG4Win uses a named pipe
-  // Try gpgconf first to get the correct path
-  FILE *fp = SAFE_POPEN("gpgconf --list-dirs agent-socket 2>nul", "r");
-  if (fp) {
-    if (fgets(path_out, path_size, fp)) {
-      // Remove trailing newline
-      size_t len = strlen(path_out);
-      if (len > 0 && path_out[len - 1] == '\n') {
-        path_out[len - 1] = '\0';
-      }
-      SAFE_PCLOSE(fp);
-      return 0;
-    }
-    SAFE_PCLOSE(fp);
-  }
-
-  // Fallback to default GPG4Win location
-  const char *appdata = SAFE_GETENV("APPDATA");
-  if (appdata) {
-    safe_snprintf(path_out, path_size, "%s\\gnupg\\S.gpg-agent", appdata);
-  } else {
-    log_error("Could not determine APPDATA directory");
-    return -1;
-  }
-#else
-  // Try gpgconf first
-  FILE *fp = SAFE_POPEN("gpgconf --list-dirs agent-socket 2>/dev/null", "r");
-  if (fp) {
-    if (fgets(path_out, path_size, fp)) {
-      // Remove trailing newline
-      size_t len = strlen(path_out);
-      if (len > 0 && path_out[len - 1] == '\n') {
-        path_out[len - 1] = '\0';
-      }
-      SAFE_PCLOSE(fp);
-      return 0;
-    }
-    SAFE_PCLOSE(fp);
-  }
-
-  // Fallback to default location
-  const char *gnupg_home = SAFE_GETENV("GNUPGHOME");
-  if (gnupg_home) {
-    safe_snprintf(path_out, path_size, "%s/S.gpg-agent", gnupg_home);
-  } else {
-    const char *home = SAFE_GETENV("HOME");
-    if (!home) {
-      log_error("Could not determine home directory");
-      return -1;
-    }
-    safe_snprintf(path_out, path_size, "%s/.gnupg/S.gpg-agent", home);
-  }
-#endif
-
-  return 0;
+  return platform_get_gpg_agent_socket(path_out, path_size);
 }
 
 /**

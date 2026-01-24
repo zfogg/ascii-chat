@@ -8,55 +8,12 @@
 #include "common.h"
 #include "common/error_codes.h"
 #include "platform/system.h"
+#include "platform/path.h"
 #include "platform/fs.h"
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
-
-/**
- * Get home directory with platform-specific fallback
- * Returns USERPROFILE on Windows (fallback to HOME)
- * Returns HOME on Unix/POSIX
- */
-static const char *get_home_dir(void) {
-  const char *home = platform_getenv("HOME");
-#ifdef _WIN32
-  if (!home) {
-    home = platform_getenv("USERPROFILE");
-  }
-#endif
-  return home;
-}
-
-/**
- * Normalize path separators in-place for the current platform
- * On Windows, converts forward slashes to backslashes
- * On Unix, no change needed
- */
-static void normalize_path_separators(char *path) {
-#ifdef _WIN32
-  for (char *p = path; *p; p++) {
-    if (*p == '/') {
-      *p = '\\';
-    }
-  }
-#else
-  (void)path; // Unused on Unix
-#endif
-}
-
-/**
- * Platform-aware path string comparison
- * Case-insensitive on Windows, case-sensitive on Unix
- */
-static int path_strncmp_case(const char *a, const char *b, size_t n) {
-#ifdef _WIN32
-  return _strnicmp(a, b, n);
-#else
-  return strncmp(a, b, n);
-#endif
-}
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -230,7 +187,7 @@ const char *extract_project_relative_path(const char *file) {
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
-    const char *home = get_home_dir();
+    const char *home = platform_get_home_dir();
     if (!home) {
       return NULL;
     }
@@ -243,7 +200,7 @@ char *expand_path(const char *path) {
     }
     safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
 
-    normalize_path_separators(expanded);
+    platform_normalize_path_separators(expanded);
 
     return expanded;
   }
@@ -251,57 +208,8 @@ char *expand_path(const char *path) {
 }
 
 char *get_config_dir(void) {
-#ifdef _WIN32
-  // Windows: Use %APPDATA%/ascii-chat/
-  const char *appdata = platform_getenv("APPDATA");
-  if (appdata && appdata[0] != '\0') {
-    size_t len = strlen(appdata) + strlen("\\ascii-chat\\") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s\\ascii-chat\\", appdata);
-    return dir;
-  }
-  // Fallback to %USERPROFILE%/.ascii-chat/
-  const char *userprofile = platform_getenv("USERPROFILE");
-  if (userprofile && userprofile[0] != '\0') {
-    size_t len = strlen(userprofile) + strlen("\\.ascii-chat\\") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s\\.ascii-chat\\", userprofile);
-    return dir;
-  }
-  return NULL;
-#else
-  // Unix: Use $XDG_CONFIG_HOME/ascii-chat/ if set
-  const char *xdg_config_home = platform_getenv("XDG_CONFIG_HOME");
-  if (xdg_config_home && xdg_config_home[0] != '\0') {
-    size_t len = strlen(xdg_config_home) + strlen("/ascii-chat/") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s/ascii-chat/", xdg_config_home);
-    return dir;
-  }
-
-  // Fallback: ~/.ascii-chat/
-  const char *home = platform_getenv("HOME");
-  if (home && home[0] != '\0') {
-    size_t len = strlen(home) + strlen("/.ascii-chat/") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s/.ascii-chat/", home);
-    return dir;
-  }
-
-  return NULL;
-#endif
+  /* Delegate to platform abstraction layer */
+  return platform_get_config_dir();
 }
 
 char *get_log_dir(void) {
@@ -433,7 +341,7 @@ bool path_is_within_base(const char *path, const char *base) {
     return false;
   }
 
-  if (path_strncmp_case(normalized_path, normalized_base, base_len) != 0) {
+  if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
     return false;
   }
   char next = normalized_path[base_len];
@@ -655,7 +563,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(config_dir, bases, &base_count);
   }
 
-  const char *home_env = get_home_dir();
+  const char *home_env = platform_get_home_dir();
   if (home_env) {
     append_base_if_valid(home_env, bases, &base_count);
   }
