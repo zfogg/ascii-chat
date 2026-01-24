@@ -624,14 +624,14 @@ static const registry_entry_t g_options_registry[] = {
      {0}},
     {"show-capabilities",
      '\0',
-     OPTION_TYPE_BOOL,
-     offsetof(options_t, show_capabilities),
-     &default_show_capabilities_value,
-     sizeof(bool),
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
      "Show detected terminal capabilities and exit",
      "TERMINAL",
      false,
-     "ASCII_CHAT_SHOW_CAPABILITIES",
+     NULL,
      NULL,
      NULL,
      false,
@@ -1632,6 +1632,9 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
       } else if (strcmp(entry->long_name, "list-speakers") == 0) {
         options_builder_add_action(builder, entry->long_name, entry->short_name, action_list_speakers, entry->help_text,
                                    entry->group);
+      } else if (strcmp(entry->long_name, "show-capabilities") == 0) {
+        options_builder_add_action(builder, entry->long_name, entry->short_name, action_show_capabilities,
+                                   entry->help_text, entry->group);
       }
       break;
     }
