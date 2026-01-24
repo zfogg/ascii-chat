@@ -368,13 +368,13 @@ static asciichat_error_t create_session(discovery_session_t *session) {
     acip_error_t *error = (acip_error_t *)data;
     log_error("ACDS error: %s", error->error_message);
     set_error(session, ERROR_NETWORK_PROTOCOL, error->error_message);
-    SAFE_FREE(data);
+    POOL_FREE(data, len);
     return ERROR_NETWORK_PROTOCOL;
   }
 
   if (type != PACKET_TYPE_ACIP_SESSION_CREATED || len < sizeof(acip_session_created_t)) {
     set_error(session, ERROR_NETWORK_PROTOCOL, "Unexpected response to SESSION_CREATE");
-    SAFE_FREE(data);
+    POOL_FREE(data, len);
     return ERROR_NETWORK_PROTOCOL;
   }
 
@@ -390,7 +390,7 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 
   log_info("Session created: %s", session->session_string);
 
-  SAFE_FREE(data);
+  POOL_FREE(data, len);
 
   // Notify that session is ready
   if (session->on_session_ready) {
