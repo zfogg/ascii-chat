@@ -264,7 +264,7 @@ static const registry_entry_t g_options_registry[] = {
     {"color-mode", '\0', OPTION_TYPE_CALLBACK, offsetof(options_t, color_mode), &default_color_mode_value,
      sizeof(terminal_color_mode_t),
      "Terminal color level (auto, none, 16, 256, truecolor). This controls what ANSI escape codes ascii-chat will use.",
-     "DISPLAY", false, "ASCII_CHAT_COLOR_MODE", NULL, parse_color_mode, false, false,
+     "TERMINAL", false, "ASCII_CHAT_COLOR_MODE", NULL, parse_color_mode, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"render-mode", 'M', OPTION_TYPE_CALLBACK, offsetof(options_t, render_mode), &default_render_mode_value,
      sizeof(render_mode_t), "ascii render mode (foreground, background, half-block)", "DISPLAY", false,
@@ -282,12 +282,12 @@ static const registry_entry_t g_options_registry[] = {
      "DISPLAY", false, "ASCII_CHAT_PALETTE_CHARS", NULL, parse_palette_chars, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"show-capabilities", '\0', OPTION_TYPE_BOOL, offsetof(options_t, show_capabilities),
-     &default_show_capabilities_value, sizeof(bool), "Show detected terminal capabilities and exit", "DISPLAY", false,
+     &default_show_capabilities_value, sizeof(bool), "Show detected terminal capabilities and exit", "TERMINAL", false,
      "ASCII_CHAT_SHOW_CAPABILITIES", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"utf8", '\0', OPTION_TYPE_BOOL, offsetof(options_t, force_utf8), &default_force_utf8_value, sizeof(bool),
      "Force UTF-8 support. By default UTF-8 is automatically detected and enabled if the terminal supports it.",
-     "DISPLAY", false, "ASCII_CHAT_UTF8", NULL, NULL, false, false,
+     "TERMINAL", false, "ASCII_CHAT_UTF8", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"stretch", 's', OPTION_TYPE_BOOL, offsetof(options_t, stretch), &default_stretch_value, sizeof(bool),
      "Allow aspect ratio distortion of image for rendering ascii output. This can allow the rendered ascii to fill "
@@ -295,7 +295,7 @@ static const registry_entry_t g_options_registry[] = {
      "DISPLAY", false, "ASCII_CHAT_STRETCH", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"strip-ansi", '\0', OPTION_TYPE_BOOL, offsetof(options_t, strip_ansi), &default_strip_ansi_value, sizeof(bool),
-     "Strip ANSI escape sequences from output before printing. Useful for scripting and debugging.", "DISPLAY", false,
+     "Strip ANSI escape sequences from output before printing. Useful for scripting and debugging.", "TERMINAL", false,
      "ASCII_CHAT_STRIP_ANSI", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"fps", '\0', OPTION_TYPE_INT, offsetof(options_t, fps), 0, sizeof(int),
@@ -328,8 +328,8 @@ static const registry_entry_t g_options_registry[] = {
      "ASCII_CHAT_ENCRYPT", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"key", 'K', OPTION_TYPE_STRING, offsetof(options_t, encrypt_key), "", 0,
-     "Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER, gitlab:USER, or HTTPS URL like "
-     "https://example.com/key.pub)",
+     "Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], or "
+     "HTTPS URL like https://example.com/key.pub or .gpg)",
      "SECURITY", false, "ASCII_CHAT_KEY", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"password", '\0', OPTION_TYPE_STRING, offsetof(options_t, password), "", 0,
@@ -340,12 +340,12 @@ static const registry_entry_t g_options_registry[] = {
      "ASCII_CHAT_NO_ENCRYPT", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"server-key", '\0', OPTION_TYPE_STRING, offsetof(options_t, server_key), "", 0,
-     "Expected server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER, "
-     "gitlab:USER, or HTTPS URL like https://example.com/key.pub)",
+     "Expected server public key for verification (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], "
+     "gitlab:USER[.gpg], or HTTPS URL like https://example.com/key.pub or .gpg)",
      "SECURITY", false, "ASCII_CHAT_SERVER_KEY", NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
     {"client-keys", '\0', OPTION_TYPE_STRING, offsetof(options_t, client_keys), "", 0,
-     "Allowed client keys (comma-separated: file paths with one key per line, github:USER, gitlab:USER, gpg:KEYID, or "
-     "HTTPS URLs)",
+     "Allowed client keys (comma-separated: file paths with one key per line, github:USER[.gpg], gitlab:USER[.gpg], "
+     "gpg:KEYID, or HTTPS URLs)",
      "SECURITY", false, "ASCII_CHAT_CLIENT_KEYS", NULL, NULL, false, false,
      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC},
     {"discovery-insecure", '\0', OPTION_TYPE_BOOL, offsetof(options_t, discovery_insecure),
