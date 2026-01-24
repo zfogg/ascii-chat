@@ -743,6 +743,20 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Store action flag globally for use during cleanup
   set_action_flag(has_action);
 
+  // ========================================================================
+  // EARLY: Check if --color was in argv and set global flags for color detection
+  // ========================================================================
+  // This must happen VERY EARLY, even before logging init, because the builder
+  // will execute help actions which call colored_string(), and those need to know
+  // whether --color was passed. We can't wait until after builder parsing.
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--color") == 0) {
+      g_color_flag_passed = true;
+      g_color_flag_value = true;
+      break;
+    }
+  }
+
   // Initialize logging system early so prompts display properly (e.g., for --config-create)
   // This must happen before config_create_default is called
   // If an action flag is detected OR user passed --quiet, silence logs BEFORE logging init so shared_init() output is
@@ -760,6 +774,11 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Create local options struct and initialize with defaults
   options_t opts = {0}; // Zero-initialize all fields
+
+  // Mark --color in opts if it was found in argv
+  if (g_color_flag_passed && g_color_flag_value) {
+    opts.color = true;
+  }
 
   // If we found version/config-create/create-manpage, handle them immediately (before mode detection)
   if (show_version || create_config || create_manpage) {

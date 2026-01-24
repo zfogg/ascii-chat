@@ -8,6 +8,8 @@
 #include "util/utf8.h"
 #include "common.h"
 #include "platform/system.h"
+#include "platform/terminal.h"
+#include "options/rcu.h"
 #include "log/logging.h"
 #include <string.h>
 #include <ctype.h>
@@ -272,8 +274,8 @@ const char *colored_string(log_color_t color, const char *text) {
   static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
   static int buffer_idx = 0;
 
-  // Check if we should use colors: TTY output and not in CLAUDECODE mode
-  bool use_colors = platform_isatty(STDOUT_FILENO) && !SAFE_GETENV("CLAUDECODE");
+  // Check if we should use colors
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
 
   if (!text) {
     return "";

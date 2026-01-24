@@ -319,6 +319,7 @@ set(CORE_SRCS
     lib/log/logging.c
     lib/log/colorize.c
     lib/log/mmap.c
+    lib/platform/terminal.c     # Unified color detection system
     lib/options/options.c
     lib/options/common.c
     lib/options/validation.c

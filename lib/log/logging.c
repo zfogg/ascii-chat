@@ -728,7 +728,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Format the header using centralized formatting
   char header_buffer[512];
-  bool use_colors = platform_isatty(fd);
+  bool use_colors = terminal_should_color_output(fd);
 
   int header_len =
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
@@ -822,7 +822,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
         output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
       }
       int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
-      bool use_colors = platform_isatty(fd);
+      bool use_colors = terminal_should_color_output(fd);
 
       char header_buffer[512];
       int header_len =
@@ -953,7 +953,7 @@ void log_plain_msg(const char *fmt, ...) {
   }
 
   // Apply colorization for TTY output
-  if (platform_isatty(STDOUT_FILENO)) {
+  if (terminal_should_color_output(STDOUT_FILENO)) {
     const char *colorized_msg = colorize_log_message(log_buffer);
     safe_fprintf(stdout, "%s\n", colorized_msg);
   } else {
@@ -1003,7 +1003,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   }
 
   // Apply colorization for TTY output
-  if (platform_isatty(STDERR_FILENO)) {
+  if (terminal_should_color_output(STDERR_FILENO)) {
     const char *colorized_msg = colorize_log_message(log_buffer);
     if (add_newline) {
       safe_fprintf(stderr, "%s\n", colorized_msg);

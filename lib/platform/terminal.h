@@ -689,6 +689,37 @@ void test_terminal_output_modes(void);
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
 
+/**
+ * @brief Determine if color output should be used
+ *
+ * Priority order:
+ * 1. If --color flag is set → ALWAYS use colors (force override)
+ * 2. If CLAUDECODE env var is set → NEVER use colors (LLM automation)
+ * 3. If output is not a TTY (piping) → NO colors
+ * 4. If --color-mode=none → NO colors (user choice)
+ * 5. Otherwise → Use colors
+ *
+ * @param fd File descriptor to check (STDOUT_FILENO or STDERR_FILENO)
+ * @return true if colors should be used, false otherwise
+ *
+ * @ingroup platform
+ */
+bool terminal_should_color_output(int fd);
+
+/**
+ * @brief Get current color mode considering all overrides
+ *
+ * Determines effective color mode by checking:
+ * 1. --color flag (force enable)
+ * 2. --color-mode option (none/16/256/truecolor)
+ * 3. Terminal capability detection
+ *
+ * @return Effective terminal_color_mode_t to use
+ *
+ * @ingroup platform
+ */
+terminal_color_mode_t terminal_get_effective_color_mode(void);
+
 /** @} */
 
 /* ============================================================================

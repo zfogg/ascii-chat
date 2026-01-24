@@ -152,14 +152,19 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+  // Set global argc/argv for early argv inspection (e.g., in terminal.c)
+  g_argc = argc;
+  g_argv = argv;
   // Validate basic argument structure
   if (argc < 1 || argv == NULL || argv[0] == NULL) {
     fprintf(stderr, "Error: Invalid argument vector\n");
     return 1;
   }
 
-  // Initialize terminal capabilities for proper color detection in help output
+  // Detect terminal capabilities early so colored help output works
   log_redetect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  caps = apply_color_mode_override(caps);
 
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
@@ -238,13 +243,8 @@ int main(int argc, char *argv[]) {
   bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
                                    opts->detected_mode == MODE_DISCOVERY);
 
-  // Detect terminal capabilities and apply color mode override for all output modes
-  // This must happen before --help/--version to ensure colored help text
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  caps = apply_color_mode_override(caps);
-
   // Handle --help and --version (these are detected and flagged by options_init)
-  // Terminal capabilities already initialized in main() at startup
+  // Terminal capabilities already initialized before options_init() at startup
   if (opts->help) {
     print_usage(opts->detected_mode);
     return 0;

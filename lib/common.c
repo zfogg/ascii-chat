@@ -31,6 +31,21 @@
 #endif
 
 /* ============================================================================
+ * Global Variables for Early Argv Inspection
+ * ============================================================================
+ */
+
+// These globals are used by lib/platform/terminal.c to detect --color flag
+// during early execution phases (e.g., when --help is processed before
+// options are fully parsed and published to RCU)
+int g_argc = 0;
+char **g_argv = NULL;
+
+// Global flags for --color detection (set during options_init before RCU is ready)
+bool g_color_flag_passed = false; // Was --color explicitly passed in argv?
+bool g_color_flag_value = false;  // What was the value of --color?
+
+/* ============================================================================
  * Shutdown Check System Implementation
  * ============================================================================
  */

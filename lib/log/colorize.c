@@ -8,6 +8,8 @@
 #include "logging.h"
 #include "../util/string.h"
 #include "../platform/system.h"
+#include "../platform/terminal.h"
+#include "../options/rcu.h"
 #include "../video/ansi.h"
 #include <ctype.h>
 #include <string.h>
@@ -405,8 +407,8 @@ const char *colorize_log_message(const char *message) {
     return message;
   }
 
-  // Check if stdout is a TTY - only colorize for TTY output
-  if (!platform_isatty(STDOUT_FILENO)) {
+  // Check if colors should be used
+  if (!terminal_should_color_output(STDOUT_FILENO)) {
     return message;
   }
 

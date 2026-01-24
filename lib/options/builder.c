@@ -1868,6 +1868,16 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
     }
   }
 
+  // Cross-field validation: Check for conflicting color options
+  // Cannot use --color with --color-mode none
+  const options_t *opts = (const options_t *)options_struct;
+  if (opts->color && opts->color_mode == TERM_COLOR_NONE) {
+    if (error_message) {
+      asprintf(error_message, "Option --color cannot be used with --color-mode=none (conflicting color settings)");
+    }
+    return ERROR_USAGE;
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -2626,8 +2636,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       (void)fprintf(desc, "%.*s %s - %s\n\n", binary_len, program_name, colored_string(LOG_COLOR_FATAL, space + 1),
                     description);
     } else {
-      // Binary-level help
-      (void)fprintf(desc, "%s - %s\n\n", program_name, description);
+      // Binary-level help: use colored_string for the program name too
+      (void)fprintf(desc, "%s - %s\n\n", colored_string(LOG_COLOR_FATAL, program_name), description);
     }
   }
 
