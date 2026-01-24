@@ -130,7 +130,6 @@ if(WIN32)
         lib/platform/windows/getopt.c
         lib/platform/windows/pipe.c
         lib/platform/windows/memory.c
-        lib/platform/windows/cpu.c
         lib/platform/windows/process.c
         lib/platform/windows/fs.c
         lib/platform/windows/path.c
@@ -157,7 +156,6 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/symbols.c
         lib/platform/posix/pipe.c
         lib/platform/posix/memory.c
-        lib/platform/posix/cpu.c
         lib/platform/posix/process.c
         lib/platform/posix/fs.c
         lib/platform/posix/path.c
