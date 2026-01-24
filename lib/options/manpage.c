@@ -346,8 +346,8 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
         }
       }
 
-      // Write the MERGE-START marker line
-      fwrite(p, 1, line_len + 1, f);
+      // Do NOT write the MERGE-START marker line - it's an internal control marker
+      // The content will be generated when MERGE-END is encountered
 
       // For ENVIRONMENT MERGE sections, check if next line is .SH header and preserve it
       if (strcmp(current_merge_section, "ENVIRONMENT") == 0) {
@@ -386,8 +386,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       }
 
       in_merge_section = false;
-      // Write the MERGE-END marker line
-      fwrite(p, 1, line_len + 1, f);
+      // Do NOT write the MERGE-END marker line - it's an internal control marker
       memset(current_merge_section, 0, sizeof(current_merge_section));
 
       // Free collected manual variables (strings first, then arrays)
