@@ -53,6 +53,9 @@ discovery_session_t *discovery_session_create(const discovery_config_t *config) 
   session->state = DISCOVERY_STATE_INIT;
   session->acds_socket = INVALID_SOCKET_VALUE;
 
+  log_info("discovery_session_create: After CALLOC - participant_ctx=%p, host_ctx=%p", session->participant_ctx,
+           session->host_ctx);
+
   // ACDS connection info
   if (config->acds_address && config->acds_address[0]) {
     SAFE_STRNCPY(session->acds_address, config->acds_address, sizeof(session->acds_address));
@@ -404,11 +407,13 @@ static asciichat_error_t create_session(discovery_session_t *session) {
 }
 
 static asciichat_error_t join_session(discovery_session_t *session) {
+  log_info("join_session: START - participant_ctx=%p", session->participant_ctx);
+
   if (!session)
     return ERROR_INVALID_PARAM;
 
   set_state(session, DISCOVERY_STATE_JOINING_SESSION);
-  log_info("Joining session: %s", session->session_string);
+  log_info("Joining session: %s (participant_ctx still=%p)", session->session_string, session->participant_ctx);
 
   // Build SESSION_JOIN message
   acip_session_join_t join_msg;
@@ -467,21 +472,28 @@ static asciichat_error_t join_session(discovery_session_t *session) {
   memcpy(session->participant_id, joined->participant_id, 16);
 
   // Check if host is already established
+  log_info("DEBUG: join_session checking host - server_address[0]='%c' (ord=%d), server_port=%u",
+           joined->server_address[0], (int)joined->server_address[0], joined->server_port);
   if (joined->server_address[0] && joined->server_port > 0) {
     // Host exists - connect directly
     SAFE_STRNCPY(session->host_address, joined->server_address, sizeof(session->host_address));
     session->host_port = joined->server_port;
     session->is_host = false;
 
-    log_info("Host already established: %s:%u", session->host_address, session->host_port);
+    log_info("Host already established: %s:%u (participant_ctx=%p before transition)", session->host_address,
+             session->host_port, session->participant_ctx);
     POOL_FREE(data, len);
 
+    log_info("join_session: About to transition to CONNECTING_HOST - participant_ctx=%p", session->participant_ctx);
     set_state(session, DISCOVERY_STATE_CONNECTING_HOST);
+    log_info("join_session: Transitioned to CONNECTING_HOST - participant_ctx=%p (returning ASCIICHAT_OK)",
+             session->participant_ctx);
     return ASCIICHAT_OK;
   }
 
   // No host yet - need to negotiate
-  log_info("No host established, starting negotiation...");
+  log_info("No host established (server_address='%s' port=%u), starting negotiation...", joined->server_address,
+           joined->server_port);
   POOL_FREE(data, len);
 
   set_state(session, DISCOVERY_STATE_NEGOTIATING);
@@ -511,13 +523,29 @@ asciichat_error_t discovery_session_start(discovery_session_t *session) {
 
   // Create or join session
   if (session->is_initiator) {
-    return create_session(session);
+    log_info("discovery_session_start: Calling create_session - participant_ctx before=%p", session->participant_ctx);
+    asciichat_error_t result = create_session(session);
+    log_info("discovery_session_start: create_session returned - participant_ctx after=%p, result=%d",
+             session->participant_ctx, result);
+    return result;
   } else {
-    return join_session(session);
+    log_info("discovery_session_start: Calling join_session - participant_ctx before=%p", session->participant_ctx);
+    asciichat_error_t result = join_session(session);
+    log_info("discovery_session_start: join_session returned - participant_ctx after=%p, state=%d, result=%d",
+             session->participant_ctx, session->state, result);
+    return result;
   }
 }
 
 asciichat_error_t discovery_session_process(discovery_session_t *session, int timeout_ms) {
+  static int process_call_count = 0;
+  process_call_count++;
+
+  if (process_call_count <= 5 || process_call_count % 50 == 0) {
+    log_warn("*** discovery_session_process() CALLED *** count=%d, state=%d, participant_ctx=%p", process_call_count,
+             session->state, session->participant_ctx);
+  }
+
   if (!session) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "session is NULL");
   }
@@ -639,10 +667,11 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
 
   case DISCOVERY_STATE_CONNECTING_HOST: {
     // Connect to host as participant
-    log_info("discovery_session_process: CONNECTING_HOST case START - session->participant_ctx=%p (NULL=%d)",
-             session->participant_ctx, session->participant_ctx == NULL);
+    log_warn("*** CONNECTING_HOST: session=%p, participant_ctx=%p, size=%zu, (int)ptr=%ld", session,
+             session->participant_ctx, sizeof(session->participant_ctx), (long)session->participant_ctx);
 
     if (!session->participant_ctx) {
+      log_warn("*** CONDITION TRUE - CREATING PARTICIPANT ***");
       log_info("discovery_session_process: CONNECTING_HOST - participant_ctx is NULL, will create");
       log_debug("discovery_session_process: CONNECTING_HOST - creating participant context");
       // Create participant context for this session
@@ -656,7 +685,9 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
           .encryption_enabled = true,
       };
 
+      log_warn("*** ABOUT TO CALL session_participant_create() ***");
       session->participant_ctx = session_participant_create(&pconfig);
+      log_warn("*** session_participant_create() RETURNED - new participant_ctx=%p ***", session->participant_ctx);
       if (!session->participant_ctx) {
         log_error("Failed to create participant context");
         set_error(session, ERROR_MEMORY, "Failed to create participant context");
@@ -664,15 +695,16 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
       }
 
       // Attempt connection
-      log_info("discovery_session_process: Attempting to connect as participant...");
+      log_warn("*** ABOUT TO CALL session_participant_connect() ***");
       asciichat_error_t pconn = session_participant_connect(session->participant_ctx);
+      log_warn("*** session_participant_connect() RETURNED: result=%d ***", pconn);
       if (pconn != ASCIICHAT_OK) {
         log_error("Failed to connect as participant: %d", pconn);
         // Stay in this state, will retry on next process() call
         break;
       }
 
-      log_info("Connected to host as participant");
+      log_warn("*** Connected to host as participant - transitioning to ACTIVE ***");
     }
 
     // Check if connection is established

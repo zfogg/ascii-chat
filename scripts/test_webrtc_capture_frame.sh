@@ -25,8 +25,10 @@ sleep 3
 DISCOVERY_CONNECT="$DISCOVERY_HOST"
 
 echo "Starting server..."
-echo "y" | timeout 25 $BIN/ascii-chat \
-  server 127.0.0.1 :: \
+# Bind to 0.0.0.0 and :: (all interfaces) so ACDS can auto-detect the public IP
+# Use --discovery-expose-ip flag to allow public IP disclosure (required for non-interactive mode)
+timeout 25 $BIN/ascii-chat \
+  server 0.0.0.0 :: \
   --port $SERVER_PORT \
   --discovery \
   --discovery-expose-ip \
@@ -34,7 +36,7 @@ echo "y" | timeout 25 $BIN/ascii-chat \
   --discovery-port $DISCOVERY_PORT \
   2>&1 | tee /tmp/server_startup.txt &
 
-sleep 2
+sleep 5
 
 # Verify ACDS server is listening on sidechain
 echo "Verifying ACDS server is listening on $DISCOVERY_CONNECT:$DISCOVERY_PORT..."
@@ -73,7 +75,7 @@ if [ -z "$SESSION" ]; then
 fi
 
 echo "Server session: $SESSION"
-sleep 1
+sleep 3
 
 # Check established connections before client attempts connection
 echo ""
@@ -90,18 +92,20 @@ ssh "$DISCOVERY_HOST" "ACDS_PID=\$(pgrep -f 'ascii-chat discovery-service'); lso
 
 echo ""
 echo "Capturing frame via WebRTC snapshot..."
+echo "DEBUG: SESSION='$SESSION' DISCOVERY_CONNECT='$DISCOVERY_CONNECT' DISCOVERY_PORT='$DISCOVERY_PORT'"
+echo "DEBUG: Client command:"
+echo "  timeout 6 $BIN/ascii-chat '$SESSION' --snapshot --snapshot-delay 0 --discovery-server '$DISCOVERY_CONNECT' --discovery-port $DISCOVERY_PORT"
+echo ""
 
 # Run client and capture frame output
-# Snapshot mode will output ASCII frame to stdout, errors to stderr
+# Discovery mode with session string, snapshot mode will output ASCII frame to stdout, errors to stderr
+# Use DISCOVERY_CONNECT (sidechain) to connect to same ACDS server as the server
 timeout 6 $BIN/ascii-chat \
   "$SESSION" \
-  --test-pattern \
-  --prefer-webrtc \
-  --discovery-insecure \
-  --discovery-server "$DISCOVERY_CONNECT" \
-  --discovery-port $DISCOVERY_PORT \
   --snapshot \
   --snapshot-delay 0 \
+  --discovery-server "$DISCOVERY_CONNECT" \
+  --discovery-port $DISCOVERY_PORT \
   2>/tmp/client_stderr.log | tee "$FRAME_FILE"
 
 echo ""

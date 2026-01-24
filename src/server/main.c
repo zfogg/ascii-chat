@@ -1710,6 +1710,8 @@ int server_main(void) {
 
       // Set IP disclosure policy (determined above)
       create_params.acds_expose_ip = acds_expose_ip_flag;
+      log_info("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
+               create_params.acds_expose_ip, explicit_expose, has_password, has_identity);
 
       // Set session type (Direct TCP or WebRTC)
       // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
@@ -1744,6 +1746,11 @@ int server_main(void) {
         SAFE_STRNCPY(create_params.server_address, bind_addr, sizeof(create_params.server_address));
       }
       create_params.server_port = port;
+
+      // DEBUG: Log what we're sending to ACDS
+      log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
+               create_params.acds_expose_ip, create_params.server_address, create_params.server_port,
+               create_params.session_type);
 
       // Create session
       acds_session_create_result_t create_result;

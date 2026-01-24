@@ -355,6 +355,9 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare session insert: %s", sqlite3_errmsg(db));
   }
 
+  log_info("DATABASE_SESSION_CREATE: expose_ip_publicly=%d, server_address='%s' server_port=%u, session_type=%u, "
+           "has_password=%u",
+           req->expose_ip_publicly, req->server_address, req->server_port, req->session_type, req->has_password);
   sqlite3_bind_blob(stmt, 1, session_id, 16, SQLITE_STATIC);
   sqlite3_bind_text(stmt, 2, session_string, -1, SQLITE_STATIC);
   sqlite3_bind_blob(stmt, 3, req->identity_pubkey, 32, SQLITE_STATIC);
@@ -612,11 +615,14 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
 
   // IP disclosure logic
   bool reveal_ip = false;
+  log_info("DATABASE_SESSION_JOIN: has_password=%d, expose_ip_publicly=%d, server_address='%s'", session->has_password,
+           session->expose_ip_publicly, session->server_address);
   if (session->has_password) {
     reveal_ip = true; // Password was verified
   } else if (session->expose_ip_publicly) {
     reveal_ip = true; // Explicit opt-in
   }
+  log_info("DATABASE_SESSION_JOIN: reveal_ip=%d", reveal_ip);
 
   if (reveal_ip) {
     SAFE_STRNCPY(resp->server_address, session->server_address, sizeof(resp->server_address));

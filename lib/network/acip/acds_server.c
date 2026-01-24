@@ -39,10 +39,7 @@ asciichat_error_t acip_server_validate_session_create(const acip_session_create_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid max_participants (must be 1-8)");
   }
 
-  // Validate server address is not empty
-  if (req->server_address[0] == '\0') {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Server address is empty");
-  }
+  // Server address can be empty - ACDS will auto-detect from connection source IP
 
   // Validate server port is non-zero
   if (req->server_port == 0) {
