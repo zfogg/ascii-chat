@@ -871,7 +871,7 @@ int main(int argc, const char **argv) {
 #ifdef CLANG_RESOURCE_DIR
   if (llvm::sys::fs::exists(CLANG_RESOURCE_DIR)) {
     resourceDir = CLANG_RESOURCE_DIR;
-    llvm::errs() << "Using embedded clang resource directory: " << resourceDir << "\n";
+    // llvm::errs() << "Using embedded clang resource directory: " << resourceDir << "\n";
   } else {
     llvm::errs() << "Embedded clang resource directory not found: " << CLANG_RESOURCE_DIR << "\n";
   }
@@ -946,21 +946,21 @@ int main(int argc, const char **argv) {
 #ifdef __arm64__
   prependArgs.push_back("-target");
   prependArgs.push_back("arm64-apple-darwin");
-  llvm::errs() << "Using target: arm64-apple-darwin\n";
+  // llvm::errs() << "Using target: arm64-apple-darwin\n";
 #else
   prependArgs.push_back("-target");
   prependArgs.push_back("x86_64-apple-darwin");
-  llvm::errs() << "Using target: x86_64-apple-darwin\n";
+  // llvm::errs() << "Using target: x86_64-apple-darwin\n";
 #endif
 #elif defined(__linux__)
 #ifdef __aarch64__
   prependArgs.push_back("-target");
   prependArgs.push_back("aarch64-linux-gnu");
-  llvm::errs() << "Using target: aarch64-linux-gnu\n";
+  // llvm::errs() << "Using target: aarch64-linux-gnu\n";
 #else
   prependArgs.push_back("-target");
   prependArgs.push_back("x86_64-linux-gnu");
-  llvm::errs() << "Using target: x86_64-linux-gnu\n";
+  // llvm::errs() << "Using target: x86_64-linux-gnu\n";
 #endif
 #endif
 
@@ -988,7 +988,7 @@ int main(int argc, const char **argv) {
     if (!selectedSDK.empty()) {
       prependArgs.push_back("-isysroot");
       prependArgs.push_back(selectedSDK);
-      llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
+      // llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
     } else {
       llvm::errs() << "Warning: No macOS SDK found, system headers may not be available\n";
     }
@@ -1006,7 +1006,7 @@ int main(int argc, const char **argv) {
     if (llvm::sys::fs::exists(builtinInclude)) {
       appendArgs.push_back("-isystem");
       appendArgs.push_back(builtinInclude);
-      llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
+      // llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
     }
   }
   // NOTE: We intentionally do NOT add SDK's usr/include to the -isystem path.
