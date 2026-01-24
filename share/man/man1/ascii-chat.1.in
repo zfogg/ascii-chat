@@ -10,6 +10,10 @@
 [\fIoptions\fR]
 
 .\" AUTO-END: SYNOPSIS
+.\" AUTO-START: POSITIONAL ARGUMENTS
+.\" This section is auto-generated. Manual edits will be lost.
+.SH POSITIONAL ARGUMENTS
+.\" AUTO-END: POSITIONAL ARGUMENTS
 .\" MANUAL-START: DESCRIPTION
 .SH DESCRIPTION
 .B ascii-chat
@@ -17,7 +21,12 @@ is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
 using a local console, a remote SSH session, or any terminal emulator.
 .PP
-The program operates in four modes:
+The program operates in five modes:
+.TP
+.B ascii-chat
+The binary's default operating mode without additional commands. Starts or joins an
+ascii-chat Discovery Service session with a session string. This mode makes secure
+internet connections and attempts direct tcp and webrtc connections.
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
@@ -34,7 +43,7 @@ the server sends back.
 Displays your local webcam as ASCII art without any network connection.
 Perfect for testing webcam, palette settings, and terminal rendering.
 .TP
-.B discovery-server
+.B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
@@ -43,6 +52,8 @@ aren't possible.
 .\" AUTO-START: USAGE
 .\" AUTO-END: USAGE
 .\" AUTO-START: EXAMPLES
+.\" This section is auto-generated. Manual edits will be lost.
+.SH EXAMPLES
 .\" AUTO-END: EXAMPLES
 .\" AUTO-START: OPTIONS
 .\" AUTO-END: OPTIONS
@@ -356,3 +367,16 @@ GitHub repository: https://github.com/zfogg/ascii-chat
 .PP
 API documentation: https://zfogg.github.io/ascii-chat/
 .\" MANUAL-END: SEE ALSO
+.\" MANUAL-START: LICENSE
+.SH LICENSE
+.B ascii-chat
+is licensed under the MIT License.
+.PP
+Copyright (c) 2013-2026 Zachary Fogg
+.PP
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+.PP
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+.PP
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+.\" MANUAL-END: LICENSE

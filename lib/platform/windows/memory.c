@@ -1,22 +1,15 @@
 /**
  * @file platform/windows/memory.c
- * @ingroup platform
- * @brief Windows memory management utilities
+ * @brief Windows memory utilities implementation
  */
 
-#ifdef _WIN32
-
-#include "../memory.h"
 #include <malloc.h>
+#include "../../common.h"
 
-/**
- * @brief Get the size of an allocated memory block (Windows implementation)
- */
-size_t platform_malloc_size(const void *ptr) {
-  if (ptr == NULL) {
+size_t platform_malloc_size(void *ptr) {
+  if (!ptr) {
     return 0;
   }
-  return _msize((void *)ptr);
+  /* Try _msize for regular malloc allocations */
+  return _msize(ptr);
 }
-
-#endif

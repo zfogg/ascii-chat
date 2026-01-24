@@ -2153,10 +2153,8 @@ cleanup:
 
   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
   // POSIX: minimal cleanup (symbol cache already handled above on Windows)
-#ifdef _WIN32
   socket_cleanup();
-  timeEndPeriod(1); // Restore Windows timer resolution
-#endif
+  platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
 #ifndef NDEBUG
   // Join the lock debug thread as one of the very last things before exit

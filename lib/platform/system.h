@@ -116,6 +116,49 @@ void platform_sleep_ms(unsigned int ms);
  */
 uint64_t platform_get_monotonic_time_us(void);
 
+/**
+ * @brief Request coarse (reduced resolution) timer precision
+ *
+ * Requests the OS to use coarse timer precision, reducing power consumption
+ * and improving system responsiveness at the cost of lower timer accuracy.
+ *
+ * Platform-specific implementations:
+ *   - Windows: Calls timeBeginPeriod(1) to reduce timer resolution from ~15ms to ~1ms
+ *   - POSIX: No-op (POSIX systems don't provide this feature)
+ *
+ * This is typically called during application startup if you need timer precision
+ * (e.g., for real-time audio/video). Must be balanced with platform_restore_timer_resolution().
+ *
+ * @param precision Desired timer precision in milliseconds (typically 1)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note On Windows, this increases power consumption slightly
+ * @note POSIX systems return ASCIICHAT_OK but do nothing
+ * @note Must call platform_restore_timer_resolution() to restore default behavior
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_request_timer_precision(int precision);
+
+/**
+ * @brief Restore default timer precision
+ *
+ * Restores the default system timer precision, undoing a previous call to
+ * platform_request_timer_precision(). Reduces power consumption.
+ *
+ * Platform-specific implementations:
+ *   - Windows: Calls timeEndPeriod(1) to restore default timer resolution
+ *   - POSIX: No-op (POSIX systems don't provide this feature)
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Safe to call without a matching platform_request_timer_precision() call
+ * @note POSIX systems return ASCIICHAT_OK but do nothing
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_restore_timer_resolution(void);
+
 #ifdef _WIN32
 // usleep macro - only define if not already declared (GCC's unistd.h declares it as a function)
 // On Windows with GCC/Clang, usleep may be available via unistd.h, so we check for that

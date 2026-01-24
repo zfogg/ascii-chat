@@ -1208,6 +1208,23 @@ asciichat_error_t platform_register_signal_handlers(const platform_signal_handle
   return ASCIICHAT_OK;
 }
 
+/**
+ * Request coarse timer precision (POSIX no-op)
+ */
+asciichat_error_t platform_request_timer_precision(int precision) {
+  (void)precision; // Unused on POSIX
+  // POSIX systems don't have a timer precision API like Windows
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Restore default timer precision (POSIX no-op)
+ */
+asciichat_error_t platform_restore_timer_resolution(void) {
+  // POSIX systems don't have a timer precision API like Windows
+  return ASCIICHAT_OK;
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 #include "../system.c"
 

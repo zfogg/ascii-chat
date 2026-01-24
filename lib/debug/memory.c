@@ -240,13 +240,6 @@ void debug_free(void *ptr, const char *file, int line) {
   if (found) {
     atomic_fetch_add(&g_mem.total_freed, freed_size);
     atomic_fetch_sub(&g_mem.current_usage, freed_size);
-  } else {
-    size_t real_size = platform_malloc_size(ptr);
-
-    if (real_size > 0) {
-      atomic_fetch_add(&g_mem.total_freed, real_size);
-      atomic_fetch_sub(&g_mem.current_usage, real_size);
-    }
   }
 
 #ifdef _WIN32
