@@ -32,18 +32,6 @@
 // ============================================================================
 
 /**
- * @brief Recursively create directories (mkdir -p equivalent)
- */
-static asciichat_error_t ensure_directory_exists(const char *path) {
-  if (!path || path[0] == '\0') {
-    return ASCIICHAT_OK;
-  }
-
-  // Use platform abstraction for directory creation
-  return platform_mkdir(path, 0700);
-}
-
-/**
  * @brief Check if this is the official ACDS server
  */
 static bool is_official_server(const char *acds_server) {
@@ -232,7 +220,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
   if (last_sep) {
     *last_sep = '\0';
     if (!platform_is_directory(dir_path)) {
-      asciichat_error_t result = ensure_directory_exists(dir_path);
+      asciichat_error_t result = platform_mkdir(dir_path, 0700);
       if (result != ASCIICHAT_OK) {
         return SET_ERRNO(ERROR_FILE_OPERATION, "Failed to create ACDS key cache directory: %s", dir_path);
       }

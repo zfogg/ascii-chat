@@ -30,14 +30,6 @@
 #define GPG_AGENT_MAX_RESPONSE 8192
 
 /**
- * Get gpg-agent socket path (Unix) or named pipe path (Windows)
- * Delegates to platform abstraction layer.
- */
-static int get_agent_socket_path(char *path_out, size_t path_size) {
-  return platform_get_gpg_agent_socket(path_out, path_size);
-}
-
-/**
  * Read a line from gpg-agent (Assuan protocol)
  * Returns: 0 on success, -1 on error
  */
@@ -103,7 +95,7 @@ static bool is_ok_response(const char *line) {
 
 int gpg_agent_connect(void) {
   char agent_path[PLATFORM_MAX_PATH_LENGTH];
-  if (get_agent_socket_path(agent_path, sizeof(agent_path)) != 0) {
+  if (platform_get_gpg_agent_socket(agent_path, sizeof(agent_path)) != 0) {
     log_error("Failed to get GPG agent path");
     return -1;
   }

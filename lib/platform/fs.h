@@ -66,6 +66,35 @@ typedef struct {
 asciichat_error_t platform_mkdir(const char *path, int mode);
 
 /**
+ * @brief Create directories recursively (mkdir -p equivalent)
+ *
+ * Creates all parent directories needed for the given path.
+ *
+ * Platform-specific implementations:
+ *   - POSIX: Uses mkdir() in a loop for each path component
+ *   - Windows: Uses CreateDirectoryA() in a loop for each path component
+ *
+ * @param path Directory path to create (may contain parent directories)
+ * @param mode File permissions (0700 for owner rwx only, ignored on Windows)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Handles both forward slashes (/) and backslashes (\) as separators
+ * @note Safe on Windows drive letters (e.g., C:\path\to\dir)
+ * @note Returns ASCIICHAT_OK if the directory already exists
+ *
+ * @par Example:
+ * @code{.c}
+ * // Create ~/.ascii-chat/config/ and all parent directories
+ * if (platform_mkdir_recursive("~/.ascii-chat/config", 0700) == ASCIICHAT_OK) {
+ *   // Directory and parents created or already exist
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_mkdir_recursive(const char *path, int mode);
+
+/**
  * @brief Get file statistics
  *
  * Retrieves metadata about a file without following symbolic links.

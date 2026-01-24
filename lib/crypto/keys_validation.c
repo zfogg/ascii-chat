@@ -135,7 +135,7 @@ asciichat_error_t validate_key_security(const char *key_path) {
   }
 
   // Check file permissions
-  asciichat_error_t perm_result = validate_key_permissions(key_path);
+  asciichat_error_t perm_result = platform_validate_key_file_permissions(key_path);
   if (perm_result != ASCIICHAT_OK) {
     return perm_result;
   }
@@ -300,18 +300,6 @@ asciichat_error_t check_key_strength(const public_key_t *key, bool *is_weak) {
   // - Check for known weak sequences (see check_key_patterns)
 
   return ASCIICHAT_OK;
-}
-
-asciichat_error_t validate_key_permissions(const char *key_path) {
-  if (!key_path) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Use platform abstraction for cross-platform permission validation
-  // POSIX: Checks file mode bits
-  // Windows: Validates ACL (Access Control List)
-  return platform_validate_key_file_permissions(key_path);
 }
 
 asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_patterns) {

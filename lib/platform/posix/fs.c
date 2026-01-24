@@ -40,6 +40,51 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
 }
 
 /**
+ * @brief Create directories recursively (POSIX implementation)
+ */
+asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
+  if (!path || path[0] == '\0') {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
+    return ERROR_INVALID_PARAM;
+  }
+
+  char tmp[512];
+  size_t len = strlen(path);
+  if (len >= sizeof(tmp)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
+    return ERROR_INVALID_PARAM;
+  }
+
+  strncpy(tmp, path, sizeof(tmp) - 1);
+  tmp[sizeof(tmp) - 1] = '\0';
+
+  // Create each directory in the path
+  for (char *p = tmp + 1; *p; p++) {
+    if (*p == '/' || *p == '\\') {
+      char orig = *p;
+      *p = '\0';
+
+      // Skip empty components
+      if (tmp[0] != '\0' && strcmp(tmp, ".") != 0) {
+        if (mkdir(tmp, mode) != 0 && errno != EEXIST) {
+          // Propagate error if not EEXIST
+          return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create directory: %s", tmp);
+        }
+      }
+
+      *p = orig;
+    }
+  }
+
+  // Create the final directory
+  if (mkdir(tmp, mode) != 0 && errno != EEXIST) {
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create directory: %s", tmp);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Get file statistics (POSIX implementation)
  */
 asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {

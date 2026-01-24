@@ -42,6 +42,65 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
 }
 
 /**
+ * @brief Create directories recursively (Windows implementation)
+ */
+asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
+  UNUSED(mode); // Windows doesn't use Unix-style permissions
+
+  if (!path || path[0] == '\0') {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
+    return ERROR_INVALID_PARAM;
+  }
+
+  char tmp[512];
+  size_t len = strlen(path);
+  if (len >= sizeof(tmp)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
+    return ERROR_INVALID_PARAM;
+  }
+
+  strncpy(tmp, path, sizeof(tmp) - 1);
+  tmp[sizeof(tmp) - 1] = '\0';
+
+  // Create each directory in the path
+  // Skip drive letter on Windows (e.g., C:\ or C:/)
+  char *start = tmp;
+  if (len >= 2 && tmp[1] == ':') {
+    start = tmp + 2;
+  }
+
+  for (char *p = start + 1; *p; p++) {
+    if (*p == '/' || *p == '\\') {
+      char orig = *p;
+      *p = '\0';
+
+      // Skip empty components
+      if (tmp[0] != '\0' && strcmp(tmp, ".") != 0) {
+        if (!CreateDirectoryA(tmp, NULL)) {
+          DWORD error = GetLastError();
+          if (error != ERROR_ALREADY_EXISTS) {
+            *p = orig; // Restore before returning error
+            return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create directory: %s", tmp);
+          }
+        }
+      }
+
+      *p = orig;
+    }
+  }
+
+  // Create the final directory
+  if (!CreateDirectoryA(tmp, NULL)) {
+    DWORD error = GetLastError();
+    if (error != ERROR_ALREADY_EXISTS) {
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to create directory: %s", tmp);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Get file statistics (Windows implementation)
  */
 asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
