@@ -71,13 +71,13 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // and "[bind-address]" for server mode
 
   // Client/Discovery mode: [address] - can be IP, hostname, or hostname:port
-  const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080"};
+  static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080"};
   options_builder_add_positional(b, "address", "Server address (optional, defaults to localhost:27224)", false,
                                  "Positional Arguments", client_examples, 3, OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
                                  parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
-  const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0 ::", "[2001:db8::1]:9000"};
+  static const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0 ::", "[2001:db8::1]:9000"};
   options_builder_add_positional(b, "bind-address",
                                  "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
                                  false, "Positional Arguments", server_examples, 4,

@@ -359,8 +359,9 @@ static const registry_entry_t g_options_registry[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY},
 
     // NETWORK GROUP (general network options, various modes)
-    {"port", 'p', OPTION_TYPE_CALLBACK, offsetof(options_t, port), OPT_PORT_DEFAULT, OPTIONS_BUFF_SIZE, "Server port",
-     "NETWORK", false, "ASCII_CHAT_PORT", NULL, parse_port_option, false, false,
+    {"port", 'p', OPTION_TYPE_CALLBACK, offsetof(options_t, port), OPT_PORT_DEFAULT, OPTIONS_BUFF_SIZE,
+     "Port to host a server or discovery-service on, or port to connect to a server as a client", "NETWORK", false,
+     "ASCII_CHAT_PORT", NULL, parse_port_option, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY},
     {"max-clients", '\0', OPTION_TYPE_INT, offsetof(options_t, max_clients), &default_max_clients_value, sizeof(int),
      "Maximum concurrent clients", "NETWORK", false, "ASCII_CHAT_MAX_CLIENTS", NULL, NULL, false, false,
