@@ -208,8 +208,9 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   }
 
   // Cleanup ASCII rendering if we had a TTY
+  // Don't reset terminal in snapshot mode to preserve the rendered output
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    ascii_write_destroy(ctx->tty_info.fd, true);
+    ascii_write_destroy(ctx->tty_info.fd, !ctx->snapshot_mode);
   }
 
   // Close the controlling terminal if we opened it
@@ -339,7 +340,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Normal TTY mode: always write with cursor control (every frame)
     write_frame_internal(ctx, frame_data, frame_len, true);
   } else if (ctx->snapshot_mode && is_final) {
-    // Snapshot mode (any output type): write final frame WITHOUT cursor control
+    // Snapshot mode: render final frame WITHOUT cursor control
     write_frame_internal(ctx, frame_data, frame_len, false);
     // Add newline at end of snapshot output
     (void)printf("\n");
@@ -365,6 +366,11 @@ void session_display_reset(session_display_ctx_t *ctx) {
     return;
   }
 
+  // Skip terminal reset in snapshot mode to preserve rendered output
+  if (ctx->snapshot_mode) {
+    return;
+  }
+
   // Only perform terminal operations if we have a valid TTY
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
     (void)terminal_reset(ctx->tty_info.fd);
@@ -375,6 +381,11 @@ void session_display_reset(session_display_ctx_t *ctx) {
 
 void session_display_clear(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    return;
+  }
+
+  // Skip terminal clear in snapshot mode to preserve rendered output
+  if (ctx->snapshot_mode) {
     return;
   }
 
