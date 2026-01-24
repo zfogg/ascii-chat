@@ -16,6 +16,8 @@
 #include "platform/terminal.h"
 #include "platform/system.h"
 #include "platform/question.h"
+#include "platform/stat.h"
+#include "platform/fs.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "video/palette.h"
@@ -28,14 +30,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
-#ifdef _WIN32
-#include <io.h>
-#include <direct.h>
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-#define mkdir(path, mode) _mkdir(path)
-#else
-#include <unistd.h>
-#endif
 
 /**
  * @name Internal Macros
@@ -973,19 +967,11 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
 
     if (last_sep) {
       *last_sep = '\0';
-      // Create directory (similar to known_hosts.c approach)
-      int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
-      if (mkdir_result != 0 && errno != EEXIST) {
-        // mkdir failed and it's not because the directory already exists
-        // Verify if directory actually exists despite the error (Windows compatibility)
-        struct stat test_st;
-        if (stat(dir_path, &test_st) != 0) {
-          // Directory doesn't exist and we couldn't create it
-          asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
-          SAFE_FREE(dir_path);
-          return err;
-        }
-        // Directory exists despite error, proceed
+      // Create directory recursively (handles both Windows and POSIX)
+      asciichat_error_t mkdir_result = platform_mkdir_recursive(dir_path, DIR_PERM_PRIVATE);
+      if (mkdir_result != ASCIICHAT_OK) {
+        SAFE_FREE(dir_path);
+        return mkdir_result;
       }
     }
     SAFE_FREE(dir_path);

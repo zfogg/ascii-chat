@@ -16,17 +16,11 @@
 #include "options/validation.h"
 #include "options/builder.h"
 #include "platform/terminal.h"
+#include "platform/stat.h"
 #include "util/parsing.h"
 #include "util/password.h"
 #include "util/path.h"
 #include "util/string.h"
-
-#ifdef _WIN32
-#include <io.h>
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-#else
-#include <unistd.h>
-#endif
 
 #include <limits.h>
 #include <stdio.h>
