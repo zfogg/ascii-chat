@@ -82,12 +82,11 @@
 #include <time.h>
 #include <sys/types.h>
 #include <stdatomic.h>
+
+#include "platform/network.h" // Consolidates platform-specific network headers
+
 #ifndef _WIN32
-#include <netinet/tcp.h>
-#include <netdb.h>     // For getaddrinfo(), gai_strerror()
-#include <arpa/inet.h> // For inet_ntop()
-#else
-#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
+#include <netinet/tcp.h> // TCP socket options (POSIX only)
 #endif
 
 // Debug flags

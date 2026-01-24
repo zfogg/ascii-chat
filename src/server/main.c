@@ -50,14 +50,11 @@
 
 #ifdef _WIN32
 #include <io.h>
-#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
-#include <winsock2.h>
-#include <mmsystem.h> // For timeEndPeriod()
 #else
-#include <unistd.h>    // For write() and STDOUT_FILENO (signal-safe I/O)
-#include <netdb.h>     // For getaddrinfo(), gai_strerror()
-#include <arpa/inet.h> // For inet_ntop()
+#include <unistd.h> // For write() and STDOUT_FILENO (signal-safe I/O)
 #endif
+
+#include "platform/network.h" // Consolidates platform-specific network headers
 
 #include <errno.h>
 #include <limits.h>
