@@ -132,12 +132,10 @@ if(WIN32)
         lib/platform/windows/pipe.c
         lib/platform/windows/memory.c
         lib/platform/windows/process.c
-        lib/platform/windows/fs.c
+        lib/platform/windows/filesystem.c
         lib/platform/windows/path.c
         lib/platform/windows/errno.c
         lib/platform/windows/agent.c
-        lib/platform/windows/tempfile.c
-        lib/platform/windows/file.c
         lib/video/webcam/windows/webcam_mediafoundation.c
     )
 elseif(PLATFORM_POSIX)
@@ -158,12 +156,10 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/pipe.c
         lib/platform/posix/memory.c
         lib/platform/posix/process.c
-        lib/platform/posix/fs.c
+        lib/platform/posix/filesystem.c
         lib/platform/posix/path.c
         lib/platform/posix/errno.c
         lib/platform/posix/agent.c
-        lib/platform/posix/tempfile.c
-        lib/platform/posix/file.c
     )
 
     if(PLATFORM_DARWIN)

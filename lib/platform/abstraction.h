@@ -301,10 +301,10 @@
 #include "platform/system.h"
 #include "platform/memory.h"
 #include "platform/process.h"
-#include "platform/fs.h"
+#include "platform/filesystem.h"
 // NOTE: uthash/uthash.h is NOT included here to avoid circular dependencies
 // Files that need uthash should include it directly AFTER common.h
-#include "platform/file.h"
+#include "platform/filesystem.h"
 #include "platform/pipe.h"
 #ifndef __cplusplus
 #include "debug/lock.h"
