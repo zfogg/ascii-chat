@@ -63,14 +63,6 @@ int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen
   return connect(sock, addr, addrlen);
 }
 
-ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags) {
-  return send(sock, buf, len, flags);
-}
-
-ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags) {
-  return recv(sock, buf, len, flags);
-}
-
 ssize_t socket_sendto(socket_t sock, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
                       socklen_t addrlen) {
   return sendto(sock, buf, len, flags, dest_addr, addrlen);
@@ -330,6 +322,22 @@ bool socket_is_invalid_socket_error(int error_code) {
  */
 bool socket_is_in_progress_error(int error_code) {
   return error_code == EINPROGRESS;
+}
+
+ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags) {
+#if defined(MSG_NOSIGNAL)
+  /* Linux: Use MSG_NOSIGNAL to avoid SIGPIPE */
+  return send(sock, buf, len, flags | MSG_NOSIGNAL);
+#else
+  /* macOS/BSD: No MSG_NOSIGNAL, but we ignore SIGPIPE signal instead */
+  (void)flags; /* Unused on macOS */
+  return send(sock, buf, len, 0);
+#endif
+}
+
+ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags) {
+  (void)flags; /* Unix recv doesn't need special flags for basic operation */
+  return recv(sock, buf, len, 0);
 }
 
 #endif // !_WIN32

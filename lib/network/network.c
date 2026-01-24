@@ -31,80 +31,6 @@
 // Use network_network_is_test_environment() from network.h
 
 /**
- * @brief Platform-specific send operation
- * @param sockfd Socket file descriptor
- * @param data Data to send
- * @param len Length of data
- * @return Number of bytes sent, or -1 on error
- */
-static ssize_t network_platform_send(socket_t sockfd, const void *data, size_t len) {
-#ifdef _WIN32
-  // Windows send() expects int for length and const char* for buffer
-  if (len > INT_MAX) {
-    len = INT_MAX;
-  }
-  int raw_sent = send(sockfd, (const char *)data, (int)len, 0);
-
-  // Check for SOCKET_ERROR before casting to avoid corruption
-  ssize_t sent;
-  if (raw_sent == SOCKET_ERROR) {
-    sent = -1;
-    // On Windows, use WSAGetLastError() and save to WSA error field
-    errno = EIO; // Set a generic errno, but save the real WSA error
-  } else {
-    sent = (ssize_t)raw_sent;
-    // CORRUPTION DETECTION: Check Windows send() return value
-    if (raw_sent > (int)len) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CRITICAL: Windows send() returned more than requested: raw_sent=%d > len=%zu",
-                raw_sent, len);
-    }
-  }
-  return sent;
-#elif defined(MSG_NOSIGNAL)
-  return send(sockfd, data, len, MSG_NOSIGNAL);
-#else
-  // macOS doesn't have MSG_NOSIGNAL, but we ignore SIGPIPE signal instead
-  return send(sockfd, data, len, 0);
-#endif
-}
-
-/**
- * @brief Platform-specific recv operation
- * @param sockfd Socket file descriptor
- * @param buf Buffer to receive data
- * @param len Length of buffer
- * @return Number of bytes received, or -1 on error
- */
-static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
-#ifdef _WIN32
-  int raw_received = recv(sockfd, (char *)buf, (int)len, 0);
-
-  if (raw_received == SOCKET_ERROR) {
-    return -1;
-  }
-  return (ssize_t)raw_received;
-#else
-  return recv(sockfd, buf, len, 0);
-#endif
-}
-
-/**
- * @brief Platform-specific error string retrieval
- * @param error Error code
- * @return Error string
- */
-static const char *network_get_error_string(int error) {
-#ifdef _WIN32
-  // For socket errors, use socket-specific function
-  (void)error; // Windows doesn't use the error parameter
-  return socket_get_error_string();
-#else
-  // For standard errno, use platform abstraction
-  return SAFE_STRERROR(error);
-#endif
-}
-
-/**
  * @brief Platform-specific error handling for send operations
  * @param error Error code
  * @return 1 if should retry, 0 if fatal error
@@ -117,7 +43,7 @@ static int network_handle_send_error(int error) {
     SET_ERRNO_SYS(ERROR_NETWORK, "Connection closed by peer during send");
     return 0; // Fatal
   }
-  SET_ERRNO_SYS(ERROR_NETWORK, "send_with_timeout failed: %s", network_get_error_string(error));
+  SET_ERRNO_SYS(ERROR_NETWORK, "send_with_timeout failed: %s", socket_get_error_string());
   return 0; // Fatal
 }
 
@@ -144,7 +70,7 @@ static int network_handle_recv_error(int error) {
     return 0; // Fatal
   }
 
-  SET_ERRNO_SYS(ERROR_NETWORK, "recv_with_timeout failed: %s", network_get_error_string(error));
+  SET_ERRNO_SYS(ERROR_NETWORK, "recv_with_timeout failed: %s", socket_get_error_string());
   return 0; // Fatal
 }
 
@@ -172,7 +98,7 @@ static int network_handle_select_error(int result) {
     return 1; // Retry
   }
 
-  SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(error));
+  SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", socket_get_error_string());
   return 0; // Fatal
 }
 
@@ -230,7 +156,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
     }
 
     // Use platform-specific send
-    ssize_t sent = network_platform_send(sockfd, data_ptr + total_sent, bytes_to_send);
+    ssize_t sent = socket_send(sockfd, data_ptr + total_sent, bytes_to_send, 0);
 
     if (sent < 0) {
       int error = errno;
@@ -296,12 +222,12 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
 
     // Calculate how much we still need to receive
     size_t bytes_to_recv = len - (size_t)total_received;
-    ssize_t received = network_platform_recv(sockfd, data + total_received, bytes_to_recv);
+    ssize_t received = socket_recv(sockfd, data + total_received, bytes_to_recv, 0);
 
     if (received < 0) {
       int error = errno;
-      log_error("NETWORK_DEBUG: network_platform_recv failed with error %d (errno=%d), sockfd=%d, buf=%p, len=%zu",
-                received, error, sockfd, data + total_received, bytes_to_recv);
+      log_error("NETWORK_DEBUG: socket_recv failed with error %d (errno=%d), sockfd=%d, buf=%p, len=%zu", received,
+                error, sockfd, data + total_received, bytes_to_recv);
       if (network_handle_recv_error(error)) {
         log_debug("NETWORK_DEBUG: retrying after error %d", error);
         continue; // Retry
@@ -385,7 +311,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
       asciichat_errno_context.code = ERROR_NETWORK;
       asciichat_errno_context.has_system_error = false;
     } else {
-      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", network_get_error_string(error_code));
+      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", socket_get_error_string());
     }
     return -1;
   }
