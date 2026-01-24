@@ -51,4 +51,27 @@
 #define PLATFORM_O_BINARY 0 // Not needed on POSIX
 #endif
 
+// ============================================================================
+// File Permission Validation
+// ============================================================================
+
+#include "../asciichat_errno.h"
+
+/**
+ * @brief Validate that a cryptographic key file has appropriate permissions
+ *
+ * Ensures that only the file owner can read the key file, preventing
+ * unauthorized access to private cryptographic material.
+ *
+ * Platform-specific validation:
+ *   - POSIX: Checks file mode permissions and verifies group/other bits are 0
+ *   - Windows: Checks ACL (Access Control List) to ensure only owner has read access
+ *
+ * @param key_path Path to the key file to validate
+ * @return ASCIICHAT_OK if permissions are appropriate, error code if too permissive
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_validate_key_file_permissions(const char *key_path);
+
 /** @} */

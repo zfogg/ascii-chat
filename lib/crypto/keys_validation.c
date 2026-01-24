@@ -9,17 +9,12 @@
 #include "asciichat_errno.h"
 #include "util/utf8.h"
 #include "crypto/crypto.h" // Includes <sodium.h>
+#include "platform/file.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
-
-#ifdef _WIN32
 #include <sys/stat.h>
-#else
-#include <unistd.h>
-#include <sys/stat.h>
-#endif
 
 // =============================================================================
 // Key Validation Implementation
@@ -313,21 +308,10 @@ asciichat_error_t validate_key_permissions(const char *key_path) {
     return ERROR_INVALID_PARAM;
   }
 
-#ifndef _WIN32
-  struct stat st;
-  if (stat(key_path, &st) != 0) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot stat key file: %s", key_path);
-    return ERROR_CRYPTO_KEY;
-  }
-
-  // Check for overly permissive permissions
-  if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Key file has overly permissive permissions: %o (recommended: 600)", st.st_mode & 0777);
-    return ERROR_CRYPTO_KEY;
-  }
-#endif
-
-  return ASCIICHAT_OK;
+  // Use platform abstraction for cross-platform permission validation
+  // POSIX: Checks file mode bits
+  // Windows: Validates ACL (Access Control List)
+  return platform_validate_key_file_permissions(key_path);
 }
 
 asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_patterns) {
