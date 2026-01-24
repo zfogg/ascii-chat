@@ -17,12 +17,20 @@ trap cleanup EXIT INT TERM
 # Clean up old output files
 rm -f /tmp/server_startup.txt /tmp/client_stderr.log "$FRAME_FILE"
 
-echo "Starting discovery server on $DISCOVERY_HOST..."
-ssh "$DISCOVERY_HOST" "pkill -9 ascii-chat 2>/dev/null || true; sleep 1; rm -f ~/.ascii-chat/acds.db* /tmp/acds.log 2>/dev/null || true"
-ssh "$DISCOVERY_HOST" "nohup bash -c 'timeout 120 /opt/ascii-chat/build/bin/ascii-chat discovery-service 0.0.0.0 :: --port $DISCOVERY_PORT 2>&1' > /tmp/acds_debug.log 2>&1 &"
+echo "Starting discovery server locally..."
+# Kill any existing ACDS servers
+pkill -9 -f "ascii-chat discovery-service" 2>/dev/null || true
+sleep 1
+
+# Clean up old ACDS database
+rm -f ~/.ascii-chat/acds.db* /tmp/acds_local.log 2>/dev/null || true
+
+# Start ACDS server locally (127.0.0.1 for testing)
+timeout 120 $BIN/ascii-chat discovery-service 127.0.0.1 :: --port $DISCOVERY_PORT 2>&1 | tee /tmp/acds_local.log &
+ACDS_PID=$!
 sleep 3
 
-DISCOVERY_CONNECT="$DISCOVERY_HOST"
+DISCOVERY_CONNECT="127.0.0.1"
 
 echo "Starting server..."
 # Bind to 0.0.0.0 and :: (all interfaces) so ACDS can auto-detect the public IP
@@ -38,7 +46,7 @@ timeout 25 $BIN/ascii-chat \
 
 sleep 5
 
-# Verify ACDS server is listening on sidechain
+# Verify ACDS server is listening locally
 echo "Verifying ACDS server is listening on $DISCOVERY_CONNECT:$DISCOVERY_PORT..."
 if timeout 2 nc -zv $DISCOVERY_CONNECT $DISCOVERY_PORT 2>&1 | head -3; then
   echo "✓ ACDS server is listening"
@@ -46,15 +54,10 @@ else
   echo "✗ Failed to connect to ACDS server"
 fi
 
-# Check socket state on sidechain
-echo ""
-echo "Socket state on $DISCOVERY_HOST:"
-ssh "$DISCOVERY_HOST" "ss -tlnp | grep -E ':$DISCOVERY_PORT|LISTEN' && echo '---' && lsof -i :$DISCOVERY_PORT 2>/dev/null || echo 'lsof not available'"
-
 # Check socket state locally
 echo ""
 echo "Socket state on local machine:"
-ss -tlnp 2>/dev/null | grep -E ':27224|LISTEN' || echo "ss not available"
+ss -tlnp 2>/dev/null | grep -E ':27224|:27225|LISTEN' || echo "ss not available"
 
 # Wait for session string to appear in server output
 SESSION=""
@@ -79,16 +82,12 @@ sleep 3
 
 # Check established connections before client attempts connection
 echo ""
-echo "All connections on port $DISCOVERY_PORT on $DISCOVERY_HOST (before client):"
-ssh "$DISCOVERY_HOST" "ss -tnp | grep ':$DISCOVERY_PORT' | head -20"
+echo "All connections on ACDS port locally (before client):"
+ss -tnp 2>/dev/null | grep ':27225' | head -20 || echo "ss not available"
 
 echo ""
-echo "All connections on $DISCOVERY_HOST involving 27225:"
-ssh "$DISCOVERY_HOST" "netstat -tan 2>/dev/null | grep 27225 || ss -tan | grep 27225"
-
-echo ""
-echo "All open sockets on ACDS process on $DISCOVERY_HOST:"
-ssh "$DISCOVERY_HOST" "ACDS_PID=\$(pgrep -f 'ascii-chat discovery-service'); lsof -p \$ACDS_PID 2>/dev/null | grep -E 'IPv4|IPv6|TCP|sock|27225' | head -15"
+echo "All open sockets on local ACDS process:"
+lsof -p $ACDS_PID 2>/dev/null | grep -E 'IPv4|IPv6|TCP|sock|27225' | head -15 || echo "lsof not available"
 
 echo ""
 echo "Capturing frame via WebRTC snapshot..."
@@ -113,12 +112,8 @@ echo "=== ASCII FRAME TRANSMITTED OVER WEBRTC ==="
 echo ""
 
 # Check socket state after client timeout
-echo "Socket state on $DISCOVERY_HOST (after client timeout):"
-ssh "$DISCOVERY_HOST" "ss -tnp | grep -E 'ESTAB|TIME_WAIT|100.121' | head -10"
-
-echo ""
 echo "Socket state locally (after client timeout):"
-ss -tnp 2>/dev/null | grep -E 'ESTAB|TIME_WAIT|sidechain' | head -10
+ss -tnp 2>/dev/null | grep -E 'ESTAB|TIME_WAIT|27224|27225' | head -10 || echo "ss not available"
 
 echo ""
 if [ -s "$FRAME_FILE" ]; then

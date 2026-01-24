@@ -383,6 +383,14 @@ static void acds_on_session_create(const acip_session_create_t *req, int client_
 
     log_info("SESSION_CREATE finalize from %s: %zu identity key(s)", client_ip, client_data->num_pending_keys);
 
+    // Auto-detect server's public IP if not provided (empty address)
+    if (client_data->pending_session.server_address[0] == '\0') {
+      log_info("ACDS: Auto-detecting server public IP from connection source: %s", client_ip);
+      SAFE_STRNCPY(client_data->pending_session.server_address, client_ip,
+                   sizeof(client_data->pending_session.server_address));
+      log_info("ACDS: Auto-detected server_address='%s'", client_data->pending_session.server_address);
+    }
+
     // Create session in database with all collected keys
     // For now, database_session_create only supports single key, so use first key
     // TODO: Extend database schema to support multiple keys per session
