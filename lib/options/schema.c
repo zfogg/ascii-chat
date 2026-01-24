@@ -138,6 +138,10 @@ static size_t get_field_size(option_type_t type, size_t offset) {
   case OPTION_TYPE_BOOL:
     return sizeof(bool);
   case OPTION_TYPE_INT:
+    // Check if this is an unsigned short int field
+    if (offset == offsetof(options_t, webcam_index)) {
+      return sizeof(unsigned short int);
+    }
     // Check if this is an enum field by offset
     if (offset == offsetof(options_t, color_mode)) {
       return sizeof(terminal_color_mode_t);
@@ -148,6 +152,12 @@ static size_t get_field_size(option_type_t type, size_t offset) {
     }
     return sizeof(int);
   case OPTION_TYPE_DOUBLE:
+    // Check if this is a float field instead of double
+    if (offset == offsetof(options_t, microphone_sensitivity)) {
+      return sizeof(float);
+    } else if (offset == offsetof(options_t, speakers_volume)) {
+      return sizeof(float);
+    }
     // Check field_size at runtime to distinguish float from double
     // For now, return double size (will be checked when writing)
     return sizeof(double);
