@@ -1699,6 +1699,7 @@ int server_main(void) {
 
       create_params.capabilities = 0x03; // Video + Audio
       create_params.max_participants = GET_OPTION(max_clients);
+      log_debug("ACDS: max_clients option value = %d", GET_OPTION(max_clients));
 
       // Set password if configured
       create_params.has_password = has_password;

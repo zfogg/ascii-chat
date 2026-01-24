@@ -2645,7 +2645,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   print_project_links(desc);
   (void)fprintf(desc, "\n");
 
-  // Detect terminal width
+  // Detect terminal width (capped at 140 for readability)
   int term_width = 80;
   terminal_size_t term_size;
   if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
@@ -2658,6 +2658,10 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
         term_width = cols;
     }
   }
+
+  // Cap terminal width at 140 for readability
+  if (term_width > 140)
+    term_width = 140;
 
   // Calculate global max column width
   int global_max_col_width = 0;
