@@ -337,6 +337,12 @@ int mirror_main(void) {
     log_error("Render loop failed with error code: %d", result);
   }
 
+  // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
+  if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
+    putc('\n', stdout);
+    fflush(stdout);
+  }
+
   // Cleanup
   // Re-enable terminal output for shutdown message if --quiet wasn't passed
   if (!GET_OPTION(quiet)) {
