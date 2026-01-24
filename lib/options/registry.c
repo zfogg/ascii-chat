@@ -415,11 +415,15 @@ static const registry_entry_t g_options_registry[] = {
 
     // Media File Streaming Options
     {"file", 'f', OPTION_TYPE_STRING, offsetof(options_t, media_file), "", 0,
-     "Stream from media file or stdin (use '-' for stdin)", "MEDIA", false, "ASCII_CHAT_FILE", NULL, NULL, false, false,
+     "Stream from media file or stdin (use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man "
+     "ffmpeg-codecs",
+     "MEDIA", false, "ASCII_CHAT_FILE", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"url", 'u', OPTION_TYPE_STRING, offsetof(options_t, media_url), "", 0,
-     "Requires yt-dlp in PATH. Stream from network URL (HTTP/HTTPS/YouTube/RTSP)", "MEDIA", false, "ASCII_CHAT_URL",
-     NULL, NULL, false, false, OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
+     "Stream from network URL (HTTP/HTTPS/YouTube/RTSP). URL handler: see man yt-dlp; supported formats: see man "
+     "ffmpeg-formats; codecs: see man ffmpeg-codecs",
+     "MEDIA", false, "ASCII_CHAT_URL", NULL, NULL, false, false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
     {"loop", 'l', OPTION_TYPE_BOOL, offsetof(options_t, media_loop), &default_media_loop_value, sizeof(bool),
      "Loop media file playback (not supported for --url)", "MEDIA", false, "ASCII_CHAT_LOOP", NULL, NULL, false, false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY},
