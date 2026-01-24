@@ -6,12 +6,57 @@
 
 #include "path.h"
 #include "common.h"
+#include "common/error_codes.h"
 #include "platform/system.h"
 #include "platform/fs.h"
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
+
+/**
+ * Get home directory with platform-specific fallback
+ * Returns USERPROFILE on Windows (fallback to HOME)
+ * Returns HOME on Unix/POSIX
+ */
+static const char *get_home_dir(void) {
+  const char *home = platform_getenv("HOME");
+#ifdef _WIN32
+  if (!home) {
+    home = platform_getenv("USERPROFILE");
+  }
+#endif
+  return home;
+}
+
+/**
+ * Normalize path separators in-place for the current platform
+ * On Windows, converts forward slashes to backslashes
+ * On Unix, no change needed
+ */
+static void normalize_path_separators(char *path) {
+#ifdef _WIN32
+  for (char *p = path; *p; p++) {
+    if (*p == '/') {
+      *p = '\\';
+    }
+  }
+#else
+  (void)path; // Unused on Unix
+#endif
+}
+
+/**
+ * Platform-aware path string comparison
+ * Case-insensitive on Windows, case-sensitive on Unix
+ */
+static int path_strncmp_case(const char *a, const char *b, size_t n) {
+#ifdef _WIN32
+  return _strnicmp(a, b, n);
+#else
+  return strncmp(a, b, n);
+#endif
+}
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -32,19 +77,20 @@ static const char *normalize_path(const char *path) {
   }
 
   const char *pos = path;
-  bool absolute = false;
+  bool absolute = path_is_absolute(path);
 
-  /* Check if path is absolute (Windows drive or Unix root) */
+  /* Skip past the absolute path prefix if present */
+  if (absolute) {
 #ifdef _WIN32
-  if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
-    absolute = true;
-    pos += 3; /* Skip the drive letter and colon and separator (e.g., "C:\") */
-  }
+    if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
+      pos += 3; /* Skip the drive letter and colon and separator (e.g., "C:\") */
+    }
 #else
-  if (path_len >= 1 && path[0] == PATH_DELIM) {
-    absolute = true;
-  }
+    if (path_len >= 1 && path[0] == PATH_DELIM) {
+      pos += 1; /* Skip the root separator */
+    }
 #endif
+  }
 
   /* Parse path into components */
   while (*pos) {
@@ -125,8 +171,10 @@ static const char *normalize_path(const char *path) {
 }
 
 const char *extract_project_relative_path(const char *file) {
-  if (!file)
+  if (!file) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "file is null");
     return "unknown";
+  }
 
   /* First normalize the path to resolve .. and . components */
   const char *normalized = normalize_path(file);
@@ -182,21 +230,10 @@ const char *extract_project_relative_path(const char *file) {
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
-    const char *home = NULL;
-#ifdef _WIN32
-    // On Windows, try USERPROFILE first, then HOME as fallback
-    if (!(home = platform_getenv("USERPROFILE"))) {
-      if (!(home = platform_getenv("HOME"))) {
-        return NULL; // Both USERPROFILE and HOME failed
-      }
-      // HOME found, continue to expansion below
-    }
-    // USERPROFILE found, continue to expansion below
-#else
-    if (!(home = platform_getenv("HOME"))) {
+    const char *home = get_home_dir();
+    if (!home) {
       return NULL;
     }
-#endif
 
     char *expanded;
     size_t total_len = strlen(home) + strlen(path) + 1; // path includes the tilde
@@ -206,14 +243,7 @@ char *expand_path(const char *path) {
     }
     safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
 
-#ifdef _WIN32
-    // Convert Unix forward slashes to Windows backslashes
-    for (char *p = expanded; *p; p++) {
-      if (*p == '/') {
-        *p = '\\';
-      }
-    }
-#endif
+    normalize_path_separators(expanded);
 
     return expanded;
   }
@@ -335,9 +365,7 @@ char *get_log_dir(void) {
   }
 
   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
-  if (!result) {
-    return NULL;
-  }
+
   safe_snprintf(result, strlen(cwd_buf) + 1, "%s", cwd_buf);
   return result;
 #endif
@@ -345,6 +373,7 @@ char *get_log_dir(void) {
 
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
     return false;
   }
 
@@ -404,11 +433,7 @@ bool path_is_within_base(const char *path, const char *base) {
     return false;
   }
 
-#ifdef _WIN32
-  if (_strnicmp(normalized_path, normalized_base, base_len) != 0) {
-#else
-  if (strncmp(normalized_path, normalized_base, base_len) != 0) {
-#endif
+  if (path_strncmp_case(normalized_path, normalized_base, base_len) != 0) {
     return false;
   }
   char next = normalized_path[base_len];
@@ -630,12 +655,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(config_dir, bases, &base_count);
   }
 
-  const char *home_env = platform_getenv("HOME");
-#ifdef _WIN32
-  if (!home_env) {
-    home_env = platform_getenv("USERPROFILE");
-  }
-#endif
+  const char *home_env = get_home_dir();
   if (home_env) {
     append_base_if_valid(home_env, bases, &base_count);
   }
