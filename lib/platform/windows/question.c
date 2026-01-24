@@ -205,31 +205,29 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
 
   bool is_interactive = platform_is_interactive();
 
-  // Only prompt if interactive (avoid blocking on non-TTY stdin)
-  if (!is_interactive) {
-    return default_yes;
-  }
-
-  // Display prompt with default indicator
-  // Use logging system if enabled, otherwise use fprintf directly (for when logs are suppressed)
-  bool logging_enabled = log_get_terminal_output();
-  if (logging_enabled) {
-    if (default_yes) {
-      log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+  // Display prompt with default indicator (only if interactive TTY)
+  // Allow piped input to work by showing prompt only in interactive mode
+  if (is_interactive) {
+    bool logging_enabled = log_get_terminal_output();
+    if (logging_enabled) {
+      if (default_yes) {
+        log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+      } else {
+        log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+      }
     } else {
-      log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+      if (default_yes) {
+        (void)fprintf(stderr, "%s (Y/n)? ", prompt);
+      } else {
+        (void)fprintf(stderr, "%s (y/N)? ", prompt);
+      }
+      (void)fflush(stderr); // Flush immediately so prompt appears
     }
-  } else {
-    if (default_yes) {
-      (void)fprintf(stderr, "%s (Y/n)? ", prompt);
-    } else {
-      (void)fprintf(stderr, "%s (y/N)? ", prompt);
-    }
-    (void)fflush(stderr); // Flush immediately so prompt appears
   }
 
   bool result = default_yes;
 
+  // Try to read response from stdin (works with both interactive TTY and piped input)
   char response[16];
   if (fgets(response, sizeof(response), stdin) != NULL) {
     // Remove trailing newline
