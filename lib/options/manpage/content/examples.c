@@ -11,22 +11,45 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern const char *escape_groff_special(const char *str);
+
 char *manpage_content_generate_examples(const options_config_t *config) {
-  if (!config) {
-    return NULL;
+  if (!config || config->num_examples == 0) {
+    char *buffer = SAFE_MALLOC(1, char *);
+    buffer[0] = '\0';
+    return buffer;
   }
 
-  // Allocate buffer for examples section
-  size_t buffer_size = 4096;
-  char *buffer = SAFE_MALLOC(buffer_size, char *);
+  // Allocate growing buffer for examples section
+  size_t buffer_capacity = 8192;
+  char *buffer = SAFE_MALLOC(buffer_capacity, char *);
   size_t offset = 0;
 
-  // Write section header
-  offset += snprintf(buffer + offset, buffer_size - offset, ".SH EXAMPLES\n");
+  for (size_t i = 0; i < config->num_examples; i++) {
+    const example_descriptor_t *example = &config->examples[i];
 
-  // TODO: Iterate through config->example_descriptors
-  // TODO: Format each example with code block and description
-  // For now, return empty section
+    // Ensure buffer is large enough
+    if (offset + 512 >= buffer_capacity) {
+      buffer_capacity *= 2;
+      buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+    }
+
+    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
+    if (example->mode) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", example->mode);
+    }
+    if (example->args) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", example->args);
+    }
+    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+
+    if (example->description) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(example->description));
+    }
+  }
+
+  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   log_debug("Generated EXAMPLES section (%zu bytes)", offset);
   return buffer;

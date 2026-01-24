@@ -81,16 +81,51 @@ asciichat_error_t manpage_merger_generate_usage(const options_config_t *config, 
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid output parameters for manpage_merger_generate_usage");
   }
 
-  // For now, return empty content. In a full implementation, this would:
-  // 1. Iterate through usage_lines in config
-  // 2. Format each usage line with proper groff directives
-  // 3. Return formatted content
+  if (!config || config->num_usage_lines == 0) {
+    *out_content = SAFE_MALLOC(1, char *);
+    (*out_content)[0] = '\0';
+    *out_len = 0;
+    return ASCIICHAT_OK;
+  }
 
-  *out_content = SAFE_MALLOC(1, char *);
-  (*out_content)[0] = '\0';
-  *out_len = 0;
+  // Allocate growing buffer for usage section
+  size_t buffer_capacity = 4096;
+  char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+  size_t offset = 0;
 
-  log_debug("Generated usage section (currently unimplemented - returns empty)");
+  for (size_t i = 0; i < config->num_usage_lines; i++) {
+    const usage_descriptor_t *usage = &config->usage_lines[i];
+
+    // Ensure buffer is large enough
+    if (offset + 512 >= buffer_capacity) {
+      buffer_capacity *= 2;
+      buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+    }
+
+    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
+    if (usage->mode) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->mode);
+    }
+    if (usage->positional) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
+    }
+    if (usage->show_options) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
+    }
+    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+
+    if (usage->description) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", usage->description);
+    }
+  }
+
+  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+
+  *out_content = buffer;
+  *out_len = offset;
+
+  log_debug("Generated usage section (%zu bytes)", offset);
   return ASCIICHAT_OK;
 }
 

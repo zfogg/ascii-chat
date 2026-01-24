@@ -11,22 +11,48 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern const char *escape_groff_special(const char *str);
+
 char *manpage_content_generate_usage(const options_config_t *config) {
-  if (!config) {
-    return NULL;
+  if (!config || config->num_usage_lines == 0) {
+    char *buffer = SAFE_MALLOC(1, char *);
+    buffer[0] = '\0';
+    return buffer;
   }
 
-  // Allocate buffer for usage section
-  size_t buffer_size = 4096;
-  char *buffer = SAFE_MALLOC(buffer_size, char *);
+  // Allocate growing buffer for usage section
+  size_t buffer_capacity = 4096;
+  char *buffer = SAFE_MALLOC(buffer_capacity, char *);
   size_t offset = 0;
 
-  // Write section header
-  offset += snprintf(buffer + offset, buffer_size - offset, ".SH USAGE\n");
+  for (size_t i = 0; i < config->num_usage_lines; i++) {
+    const usage_descriptor_t *usage = &config->usage_lines[i];
 
-  // TODO: Iterate through config->usage_lines
-  // TODO: Format each usage line with .TP and description
-  // For now, return empty section
+    // Ensure buffer is large enough
+    if (offset + 512 >= buffer_capacity) {
+      buffer_capacity *= 2;
+      buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+    }
+
+    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
+    if (usage->mode) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->mode);
+    }
+    if (usage->positional) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
+    }
+    if (usage->show_options) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
+    }
+    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+
+    if (usage->description) {
+      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(usage->description));
+    }
+  }
+
+  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   log_debug("Generated USAGE section (%zu bytes)", offset);
   return buffer;
