@@ -736,6 +736,26 @@ ssize_t platform_write(int fd, const void *buf, size_t count);
 #define UNUSED(x) ((void)(x))
 #endif
 
+/**
+ * @brief Platform-specific binary executable name with extension
+ *
+ * Expands to "ascii-chat.exe" on Windows, "ascii-chat" on other platforms.
+ * Use this macro instead of hardcoding platform-specific executable names.
+ *
+ * @par Example:
+ * @code{.c}
+ * const char *binary_name = PLATFORM_BINARY_NAME;  // "ascii-chat.exe" or "ascii-chat"
+ * printf("Usage: %s [options]\n", binary_name);
+ * @endcode
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PLATFORM_BINARY_NAME "ascii-chat.exe"
+#else
+#define PLATFORM_BINARY_NAME "ascii-chat"
+#endif
+
 /** @} */
 
 // ============================================================================

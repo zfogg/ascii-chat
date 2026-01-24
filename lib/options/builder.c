@@ -1886,11 +1886,7 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   if (!config)
     return 0;
 
-#ifdef _WIN32
-  const char *binary_name = "ascii-chat.exe";
-#else
-  const char *binary_name = "ascii-chat";
-#endif
+  const char *binary_name = PLATFORM_BINARY_NAME;
 
   int max_col_width = 0;
   char temp_buf[BUFFER_SIZE_MEDIUM];
@@ -1998,11 +1994,7 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
     return;
   }
 
-#ifdef _WIN32
-  const char *binary_name = "ascii-chat.exe";
-#else
-  const char *binary_name = "ascii-chat";
-#endif
+  const char *binary_name = PLATFORM_BINARY_NAME;
 
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
 
@@ -2052,11 +2044,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     return;
   }
 
-#ifdef _WIN32
-  const char *binary_name = "ascii-chat.exe";
-#else
-  const char *binary_name = "ascii-chat";
-#endif
+  const char *binary_name = PLATFORM_BINARY_NAME;
 
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "EXAMPLES:"));
 
@@ -2192,11 +2180,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
  * @brief Print MODE-OPTIONS section programmatically
  */
 static void print_mode_options_section(FILE *stream, int term_width, int max_col_width) {
-#ifdef _WIN32
-  const char *binary_name = "ascii-chat.exe";
-#else
-  const char *binary_name = "ascii-chat";
-#endif
+  const char *binary_name = PLATFORM_BINARY_NAME;
 
   // Print section header with colored "MODE-OPTIONS:" label
   fprintf(stream, "%s\n", colored_string(LOG_COLOR_DEBUG, "MODE-OPTIONS:"));
