@@ -106,7 +106,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   while (!should_exit(user_data)) {
     // Frame timing - measure total time to maintain target FPS
     frame_start_ns = time_get_ns();
-    uint64_t current_time_ns = frame_start_ns;
 
     // Log actual loop iteration time (time between frame starts)
     if (prev_frame_start_ns > 0 && frame_count % 30 == 0) {
@@ -118,16 +117,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
     prev_frame_start_ns = frame_start_ns;
-
-    // Snapshot mode: check if delay has elapsed
-    if (snapshot_mode && !snapshot_done) {
-      double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
-      float snapshot_delay = GET_OPTION(snapshot_delay);
-
-      if (elapsed_sec >= snapshot_delay) {
-        snapshot_done = true;
-      }
-    }
 
     // Frame capture and timing - mode-dependent
     image_t *image;
@@ -176,6 +165,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       frame_count++;
 
+      // Pause after first frame if requested via --pause flag
+      // We read the frame first, then pause, so the initial frame is available for rendering
+      if (!is_paused && frame_count == 1 && GET_OPTION(pause) && source) {
+        media_source_pause(source);
+        is_paused = true;
+        log_debug("Paused media source after first frame");
+      }
+
       // Mark initial frame as rendered if paused
       if (is_paused && !initial_paused_frame_rendered) {
         initial_paused_frame_rendered = true;
@@ -192,6 +189,23 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // No frame available - this is normal in async modes (network latency, etc.)
         // Just continue to next iteration, don't exit
         continue;
+      }
+    }
+
+    // Snapshot mode: check if delay has elapsed (AFTER we have a frame)
+    // This ensures we capture at least one frame before considering snapshot done
+    if (snapshot_mode && !snapshot_done) {
+      uint64_t current_time_ns = time_get_ns();
+      double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
+      float snapshot_delay = GET_OPTION(snapshot_delay);
+
+      // Enforce minimum 300ms delay for snapshot_delay=0 to allow test pattern initialization
+      if (snapshot_delay <= 0.0f) {
+        snapshot_delay = 0.3f; // 300ms minimum
+      }
+
+      if (elapsed_sec >= snapshot_delay) {
+        snapshot_done = true;
       }
     }
 
