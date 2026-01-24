@@ -579,15 +579,11 @@ Client                                    Server
    - Rarely used (Ed25519 preferred)
 
 3. **GitHub/GitLab SSH Keys**
-   - `github:username` → Fetches from `https://github.com/username.keys`
-   - `gitlab:username` → Fetches from `https://gitlab.com/username.keys`
+   - `github:username[.gpg]` → Fetches from `https://github.com/username.keys` or `https://github.com/username.gpg`
+   - `gitlab:username[.gpg]` → Fetches from `https://gitlab.com/username.keys` or `https://gitlab.com/username.gpg`
    - Only Ed25519 keys accepted (RSA filtered out)
-
-4. **GitHub/GitLab GPG Keys**
-   - `github:username.gpg` → Fetches from `https://github.com/username.gpg`
-   - `gitlab:username.gpg` → Fetches from `https://gitlab.com/username.gpg`
-   - Returns PGP public key blocks in armored ASCII format
-   - Supports multiple keys per user
+   - Without `.gpg`: Fetches SSH public keys
+   - With `.gpg`: Fetches PGP public key blocks in armored ASCII format
 
 #### SSH Agent Integration
 

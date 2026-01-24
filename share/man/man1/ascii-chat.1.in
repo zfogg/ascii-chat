@@ -15,9 +15,7 @@
 .SH POSITIONAL ARGUMENTS
 .\" placeholder
 .\" AUTO-END: POSITIONAL ARGUMENTS
-.\" MANUAL-START: DESCRIPTION
 .SH DESCRIPTION
-.\" TEST-MARKER-123
 .B ascii-chat
 is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
@@ -51,6 +49,8 @@ Allows clients and servers to discover each other using memorable session string
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
 aren't possible.
 .\" MANUAL-END: DESCRIPTION
+
+.\" MANUAL-START: PALETTES
 .\" AUTO-START: USAGE
 .\" This section is auto-generated. Manual edits will be lost.
 .SH USAGE
@@ -66,7 +66,7 @@ aren't possible.
 .SH OPTIONS
 .\" placeholder
 .\" AUTO-END: OPTIONS
-.\" MANUAL-START: PALETTES
+
 .SH PALETTES
 Built-in ASCII character palettes for different visual styles.
 Characters are ordered from darkest (leftmost) to brightest (rightmost).
@@ -78,9 +78,13 @@ Characters: \fC   ...',;:clodxkO0KXNWM\fR
 .TP
 .B blocks
 Unicode block shading characters for smooth gradients (requires UTF-8).
+.br
+Characters: \fC   \[u2591]\[u2591]\[u2592]\[u2592]\[u2593]\[u2593]\[u2588]\[u2588]\fR
 .TP
 .B digital
 Digital/tech aesthetic with Unicode characters (requires UTF-8).
+.br
+Characters: \fC   -=\[u2261]\[u2263]\[u25B0]\[u25B1]\[u25FC]\fR
 .TP
 .B minimal
 Minimal palette with basic ASCII characters only.
@@ -89,12 +93,15 @@ Characters: \fC   .-+*#\fR
 .TP
 .B cool
 Vertical bar progression for unique visual effect (requires UTF-8).
+.br
+Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u2588]\fR
 .TP
 .B custom
 User-defined palette via \fB\-\-palette\-chars\fR option.
 .PP
 Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
 .\" MANUAL-END: PALETTES
+
 .\" MANUAL-START: RENDER MODES
 .SH RENDER MODES
 Three rendering modes control how colors are applied:
@@ -108,10 +115,11 @@ Terminal background cells are colored. Characters appear in the default
 foreground color. Creates a blocky, pixel-art appearance.
 .TP
 .B half\-block
-Uses Unicode half-block characters to achieve 2x vertical resolution.
-Each character cell displays two pixels (top and bottom halves).
+Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
+resolution. Each character cell displays two pixels (top and bottom halves).
 Requires UTF-8 support (\fB\-\-utf8\fR).
 .\" MANUAL-END: RENDER MODES
+
 .\" MANUAL-START: CONFIGURATION
 .SH CONFIGURATION
 Configuration can be stored in a TOML file at the default location
@@ -123,22 +131,33 @@ Command-line arguments override config file values.
 Config file values override default values.
 .RE
 .PP
-.B Configuration Sections:
+.B Configuration Keys and Sections:
 .RS
+Configuration keys are command-line option names with dashes converted to underscores.
+The TOML section name is determined by the flag category shown in \fBasciichat \-\-help\fR.
+For example, \fB\-\-color\-mode\fR (under "TERMINAL" in --help) becomes
+\fCcolor_mode\fR under \fB[terminal]\fR in config.
+Similarly, \fB\-\-max\-clients\fR (under "SERVER" section) becomes \fCmax_clients\fR
+under \fB[server]\fR, and \fB\-\-server\-key\fR (under "SECURITY" section) becomes
+\fCserver_key\fR under \fB[security]\fR.
+To find the correct section and key name, locate the flag in \fBasciichat \-\-help\fR,
+note its section heading, convert that to lowercase for the TOML section, and replace
+dashes with underscores in the flag name for the key.
+.RE
+.PP
+.B Conflicting Options:
+.RS
+Some configuration options conflict with each other and will cause the
+config file to fail loading if set simultaneously. Common conflicts include:
 .IP \(bu 2
-\fB[network]\fR: port
+\fB\-\-file\fR and \fB\-\-url\fR cannot both be set (URL takes priority)
 .IP \(bu 2
-\fB[server]\fR: bind_ipv4, bind_ipv6
+\fB\-\-loop\fR cannot be used with \fB\-\-url\fR (network streams cannot be looped)
 .IP \(bu 2
-\fB[client]\fR: address, width, height, webcam_index, webcam_flip, color_mode, render_mode, fps, stretch
-.IP \(bu 2
-\fB[audio]\fR: enabled, microphone_index, speakers_index, microphone_sensitivity, speakers_volume
-.IP \(bu 2
-\fB[palette]\fR: type, chars
-.IP \(bu 2
-\fB[crypto]\fR: encrypt_enabled, key, password, keyfile, server_key (client), client_keys (server)
-.IP \(bu 2
-\fB[logging]\fR: log_file
+\fB\-\-seek\fR requires either \fB\-\-file\fR or \fB\-\-url\fR
+.PP
+If your configuration file fails to load, check the error message for
+conflicting option details and remove one of the conflicting options.
 .RE
 .PP
 .B Security Warning:
@@ -160,6 +179,7 @@ The grid size adjusts based on the number of connected clients.
 .B Frame Rate
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
+.\" MANUAL-START: FILES
 .\" MERGE-START: ENVIRONMENT
 .SH ENVIRONMENT
 .TP
@@ -196,7 +216,6 @@ XDG Base Directory specification config directory on Linux (overrides ~/.config/
 .B XDG_DATA_HOME
 XDG Base Directory specification data directory on Linux (overrides ~/.local/share/). Can be used for application data storage following XDG conventions.
 .\" MERGE-END: ENVIRONMENT
-.\" MANUAL-START: FILES
 .SH FILES
 .SS Configuration and Keys
 .TP
