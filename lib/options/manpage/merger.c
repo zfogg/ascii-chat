@@ -139,8 +139,7 @@ asciichat_error_t manpage_merger_generate_synopsis(const char *mode_name, char *
   char *buffer = SAFE_MALLOC(buffer_size, char *);
   size_t offset = 0;
 
-  // Write section header
-  offset += snprintf(buffer + offset, buffer_size - offset, ".SH SYNOPSIS\n");
+  // Note: Section header is already in template, don't duplicate it
 
   if (mode_name) {
     // Mode-specific synopsis

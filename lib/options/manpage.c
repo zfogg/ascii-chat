@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 // =============================================================================
 // Helper Functions (exported for content generators)
@@ -240,9 +241,53 @@ asciichat_error_t options_builder_generate_manpage_template(options_builder_t *b
 asciichat_error_t options_config_generate_manpage_merged(const options_config_t *config, const char *program_name,
                                                          const char *mode_name, const char *output_path,
                                                          const char *brief_description) {
-  // For now, merged generation is same as template generation
-  // In full implementation, would parse existing template and merge
-  return options_config_generate_manpage_template(config, program_name, mode_name, output_path, brief_description);
+  (void)config;            // Not used - template is complete
+  (void)mode_name;         // Not used
+  (void)program_name;      // Not used
+  (void)brief_description; // Not used
+
+  FILE *f = NULL;
+  bool should_close = false;
+
+  if (output_path) {
+    f = fopen(output_path, "w");
+    if (!f) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open output file: %s", output_path);
+    }
+    should_close = true;
+  } else {
+    f = stdout;
+  }
+
+  // Load and output template resources as-is
+  manpage_resources_t resources;
+  memset(&resources, 0, sizeof(resources));
+  asciichat_error_t err = manpage_resources_load(&resources);
+  if (err != ASCIICHAT_OK) {
+    if (should_close)
+      fclose(f);
+    return err;
+  }
+
+  if (!manpage_resources_is_valid(&resources)) {
+    if (should_close)
+      fclose(f);
+    manpage_resources_cleanup(&resources);
+    return SET_ERRNO(ERROR_CONFIG, "Man page resources are not valid");
+  }
+
+  // Output template content directly to preserve all manual sections and placeholder content
+  fwrite(resources.template_content, 1, resources.template_len, f);
+
+  manpage_resources_cleanup(&resources);
+
+  if (should_close) {
+    fclose(f);
+  }
+
+  fflush(f);
+  log_debug("Generated merged man page to %s", output_path ? output_path : "stdout");
+  return ASCIICHAT_OK;
 }
 
 parsed_section_t *parse_manpage_sections(const char *filepath, size_t *num_sections) {

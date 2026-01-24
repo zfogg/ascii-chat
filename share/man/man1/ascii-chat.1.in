@@ -16,6 +16,7 @@
 .\" AUTO-END: POSITIONAL ARGUMENTS
 .\" MANUAL-START: DESCRIPTION
 .SH DESCRIPTION
+.\" TEST-MARKER-123
 .B ascii-chat
 is a terminal-based video chat application that converts webcam video to ASCII
 art in real-time. It enables video chat directly in your terminal, whether you're
