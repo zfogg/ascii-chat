@@ -562,8 +562,8 @@ void symbol_cache_print_stats(void) {
   uint64_t total = hits + misses;
   double hit_rate = total > 0 ? (100.0 * (double)hits / (double)total) : 0.0;
 
-  log_info("Symbol Cache Stats: %zu entries, %llu hits, %llu misses (%.1f%% hit rate)", entries,
-           (unsigned long long)hits, (unsigned long long)misses, hit_rate);
+  log_debug("Symbol Cache Stats: %zu entries, %llu hits, %llu misses (%.1f%% hit rate)", entries,
+            (unsigned long long)hits, (unsigned long long)misses, hit_rate);
 }
 
 // ============================================================================

@@ -263,7 +263,7 @@ static void *audio_worker_thread(void *arg) {
     }
   }
 
-  log_info("Audio worker thread exiting");
+  log_debug("Audio worker thread exiting");
   return NULL;
 }
 
@@ -1254,7 +1254,7 @@ void audio_destroy(audio_context_t *ctx) {
   mutex_unlock(&ctx->state_mutex);
   mutex_destroy(&ctx->state_mutex);
 
-  log_info("Audio system destroyed (worker thread architecture)");
+  log_debug("Audio system destroyed (worker thread architecture)");
 }
 
 void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
@@ -1589,7 +1589,7 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
     cond_signal(&ctx->worker_cond); // Wake up worker if waiting
     asciichat_thread_join(&ctx->worker_thread, NULL);
     ctx->worker_running = false;
-    log_info("Worker thread stopped successfully");
+    log_debug("Worker thread stopped successfully");
   }
 
   if (ctx->playback_buffer) {
@@ -1629,7 +1629,7 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   ctx->separate_streams = false;
   mutex_unlock(&ctx->state_mutex);
 
-  log_info("Audio stopped");
+  log_debug("Audio stopped");
   return ASCIICHAT_OK;
 }
 
