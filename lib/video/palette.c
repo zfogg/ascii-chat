@@ -251,7 +251,7 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
   // This function is now used only for client-side initialization
   // Server uses initialize_client_palette() for per-client palettes
 
-  log_info("Client palette config: type=%d, custom_chars=%s", type, custom_chars ? custom_chars : "(none)");
+  log_debug("Client palette config: type=%d, custom_chars=%s", type, custom_chars ? custom_chars : "(none)");
 
   // Just validate the palette - no global state changes
   if (type == PALETTE_CUSTOM) {

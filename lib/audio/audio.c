@@ -70,8 +70,8 @@ static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
  */
 static void *audio_worker_thread(void *arg) {
   audio_context_t *ctx = (audio_context_t *)arg;
-  log_info("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
-           WORKER_BATCH_SAMPLES);
+  log_debug("Audio worker thread started (batch size: %d frames = %d samples)", WORKER_BATCH_FRAMES,
+            WORKER_BATCH_SAMPLES);
 
   // Check for AEC3 bypass (static, checked once)
   static int bypass_aec3_worker = -1;
@@ -1334,18 +1334,18 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   ctx->input_device_rate = (has_input && inputInfo) ? inputInfo->defaultSampleRate : 0;
   ctx->output_device_rate = (has_output && outputInfo) ? outputInfo->defaultSampleRate : 0;
 
-  log_info("Opening audio:");
+  log_debug("Opening audio:");
   if (has_input) {
     log_info("  Input:  %s (%.0f Hz)", inputInfo->name, inputInfo->defaultSampleRate);
   } else if (ctx->playback_only) {
-    log_info("  Input:  (playback-only mode - no microphone)");
+    log_debug("  Input:  (playback-only mode - no microphone)");
   } else {
-    log_info("  Input:  (none)");
+    log_debug("  Input:  (none)");
   }
   if (has_output) {
     log_info("  Output: %s (%.0f Hz)", outputInfo->name, outputInfo->defaultSampleRate);
   } else {
-    log_info("  Output: None (input-only mode - will send audio to server)");
+    log_debug("  Output: None (input-only mode - will send audio to server)");
   }
 
   // Check if sample rates differ - ALSA full-duplex doesn't handle this well
@@ -1381,7 +1381,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       log_info("  Will resample: buffer at %.0f Hz → output at %.0f Hz", (double)AUDIO_SAMPLE_RATE,
                outputInfo->defaultSampleRate);
     } else if (has_output) {
-      log_info("Using output-only mode (playback-only for mirror/media)");
+      log_debug("Using output-only mode (playback-only for mirror/media)");
     } else if (has_input) {
       log_info("Using input-only mode (no output device available)");
     }
@@ -1405,7 +1405,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       double preferred_rate = AUDIO_SAMPLE_RATE;
       double native_rate = outputInfo->defaultSampleRate;
 
-      log_info("Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)", preferred_rate, native_rate);
+      log_debug("Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)", preferred_rate, native_rate);
 
       // Try preferred rate first
       err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
@@ -1531,7 +1531,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     }
 
     ctx->separate_streams = true;
-    log_info("Separate streams started successfully");
+    log_debug("Separate streams started successfully");
   } else {
     ctx->separate_streams = false;
     log_info("Full-duplex stream started (single callback, perfect AEC3 timing)");
@@ -1565,7 +1565,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       return SET_ERRNO(ERROR_THREAD, "Failed to create worker thread");
     }
     ctx->worker_running = true;
-    log_info("Worker thread started successfully");
+    log_debug("Worker thread started successfully");
   }
 
   ctx->running = true;
@@ -1840,7 +1840,7 @@ asciichat_error_t audio_set_realtime_priority(void) {
   // Delegate to platform abstraction layer
   asciichat_error_t result = asciichat_thread_set_realtime_priority();
   if (result == ASCIICHAT_OK) {
-    log_info("✓ Audio thread real-time priority set successfully");
+    log_debug("✓ Audio thread real-time priority set successfully");
   }
   return result;
 }

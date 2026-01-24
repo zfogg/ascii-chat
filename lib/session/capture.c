@@ -228,7 +228,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
 
   // Perform initial seek if requested
   if (config->initial_seek_timestamp > 0.0) {
-    log_info("Seeking to %.2f seconds", config->initial_seek_timestamp);
+    log_debug("Seeking to %.2f seconds", config->initial_seek_timestamp);
     asciichat_error_t seek_err = media_source_seek(ctx->source, config->initial_seek_timestamp);
     if (seek_err != ASCIICHAT_OK) {
       log_warn("Failed to seek to %.2f seconds: %d", config->initial_seek_timestamp, seek_err);

@@ -539,17 +539,17 @@ void update_dimensions_to_terminal_size(options_t *opts) {
   asciichat_error_t terminal_result = get_terminal_size(&term_width, &term_height);
   if (terminal_result == ASCIICHAT_OK) {
     // Use INFO level so this is visible without -v flag (important for debugging dimension issues)
-    log_info("Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)", term_width, term_height, opts->auto_width,
-             opts->auto_height);
+    log_debug("Terminal size detected: %ux%u (auto_width=%d, auto_height=%d)", term_width, term_height,
+              opts->auto_width, opts->auto_height);
     if (opts->auto_width) {
       opts->width = term_width;
-      log_info("Auto-width: set width to %u", opts->width);
+      log_debug("Auto-width: set width to %u", opts->width);
     }
     if (opts->auto_height) {
       opts->height = term_height;
-      log_info("Auto-height: set height to %u", opts->height);
+      log_debug("Auto-height: set height to %u", opts->height);
     }
-    log_info("Final dimensions: %ux%u", opts->width, opts->height);
+    log_debug("Final dimensions: %ux%u", opts->width, opts->height);
   } else {
     // Terminal detection failed - keep the default values set in options_init()
     log_warn("TERMINAL_DETECT_FAIL: Could not detect terminal size, using defaults: %ux%u", opts->width, opts->height);

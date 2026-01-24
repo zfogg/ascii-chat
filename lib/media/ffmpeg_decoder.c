@@ -285,8 +285,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     }
   }
 
-  log_info("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
-           decoder->audio_stream_idx >= 0 ? "yes" : "no");
+  log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
+            decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
   return decoder;
 }
@@ -431,8 +431,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     }
   }
 
-  log_info("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
-           decoder->audio_stream_idx >= 0 ? "yes" : "no");
+  log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
+            decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
   return decoder;
 }
