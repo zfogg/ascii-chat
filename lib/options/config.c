@@ -942,16 +942,16 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     if (stat(config_path_expanded, &st) == 0) {
       // File exists - ask user if they want to overwrite
       // Use fprintf directly so prompts display even when logging is suppressed
-      log_plain("Config file already exists: %s\n", config_path_expanded);
+      log_plain("Config file already exists: %s", config_path_expanded);
 
       bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
       if (!overwrite) {
-        log_plain("Config file creation cancelled.\n");
+        log_plain("Config file creation cancelled.");
         return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
       }
 
       // User confirmed overwrite - continue to create file (will overwrite existing)
-      log_plain("Overwriting existing config file...\n");
+      log_plain("Overwriting existing config file...");
     }
 
     // Create directory if needed
@@ -1041,7 +1041,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
     }
 
     // Write section header
-    log_plain("[%s]\n", category);
+    fprintf(output_file, "[%s]\n", category);
 
     // Track which options we've written (to avoid duplicates like log_file vs logging.log_file)
     bool written_flags[64] = {0}; // Max options per category
@@ -1058,15 +1058,8 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         continue;
       }
 
-      // Extract key name from TOML key (e.g., "network.port" -> "port", "client.width" -> "width")
-      const char *key_name = meta->toml_key;
-      const char *dot = strrchr(meta->toml_key, '.');
-      if (dot) {
-        key_name = dot + 1;
-      }
-
-      // Skip if this is a duplicate of another option (e.g., logging.log_file vs log_file)
-      // Check if we've already written an option with the same field_offset
+      // Skip if this is a duplicate of another option (check by field_offset)
+      // This handles cases where the same option appears under different categories
       bool is_duplicate = false;
       for (size_t j = 0; j < opt_idx; j++) {
         if (cat_options[j] && cat_options[j]->field_offset == meta->field_offset) {
@@ -1083,22 +1076,23 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
 
       // Write description comment if available
       if (meta->description && strlen(meta->description) > 0) {
-        log_plain("# %s\n", meta->description);
+        fprintf(output_file, "# %s\n", meta->description);
       }
 
       // Format and write the option value using handler (commented out to avoid conflicts)
+      // Use full toml_key (e.g., "logging.log_file") for the option name
       if (g_type_handlers[meta->type].format_output) {
         char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
         g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value,
                                                   sizeof(formatted_value));
-        log_plain("# %s = %s\n", key_name, formatted_value);
+        fprintf(output_file, "# %s = %s\n", meta->toml_key, formatted_value);
       }
 
       written_flags[opt_idx] = true;
     }
 
     // Add blank line between sections
-    log_plain("\n");
+    fprintf(output_file, "\n");
   }
 
   // Close file if we opened one (but not stdout)
