@@ -86,35 +86,34 @@ struct session_display_ctx {
  * Executes comprehensive terminal reset sequence for clean display state.
  * Skips terminal control operations in snapshot mode.
  *
- * @param fd File descriptor for terminal operations
  * @param snapshot_mode Whether snapshot mode is enabled
  */
-static void full_terminal_reset_internal(int fd, bool snapshot_mode) {
-  if (!snapshot_mode && fd >= 0) {
-    (void)terminal_reset(fd);
+static void full_terminal_reset_internal(bool snapshot_mode) {
+  if (!snapshot_mode) {
+    // Always reset stdout (STDOUT_FILENO), not a separate TTY fd
+    (void)terminal_reset(STDOUT_FILENO);
     (void)terminal_clear_screen();
-    (void)terminal_cursor_home(fd);
-    (void)terminal_clear_scrollback(fd);
-    (void)terminal_hide_cursor(fd, true);
-    (void)terminal_flush(fd);
+    (void)terminal_cursor_home(STDOUT_FILENO);
+    (void)terminal_clear_scrollback(STDOUT_FILENO);
+    (void)terminal_hide_cursor(STDOUT_FILENO, true);
+    (void)terminal_flush(STDOUT_FILENO);
   }
 }
 
 /**
  * @brief Write frame data to the terminal
  *
- * @param ctx Display context
  * @param frame_data Frame data to write
  * @param frame_len Length of frame data
  * @param use_tty Use TTY if true, stdout if false
  */
-static void write_frame_internal(session_display_ctx_t *ctx, const char *frame_data, size_t frame_len, bool use_tty) {
-  if (use_tty && ctx->tty_info.fd >= 0) {
-    // Position cursor at top-left for TTY output (even in snapshot mode, for smooth display)
-    // Snapshot mode only disables terminal reset/clear, not cursor positioning
-    (void)terminal_cursor_home(ctx->tty_info.fd);
-    (void)platform_write(ctx->tty_info.fd, frame_data, frame_len);
-    (void)terminal_flush(ctx->tty_info.fd);
+static void write_frame_internal(const char *frame_data, size_t frame_len, bool use_tty) {
+  if (use_tty && STDOUT_FILENO >= 0) {
+    // Write to stdout with cursor control for TTY output
+    // This ensures frames overwrite each other instead of stacking on new lines
+    (void)terminal_cursor_home(STDOUT_FILENO);
+    (void)platform_write(STDOUT_FILENO, frame_data, frame_len);
+    (void)terminal_flush(STDOUT_FILENO);
   } else {
     // stdout for pipes/redirection/testing - don't send terminal control sequences
     (void)platform_write(STDOUT_FILENO, frame_data, frame_len);
@@ -326,24 +325,28 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Perform initial terminal reset
     if (ctx->has_tty) {
-      full_terminal_reset_internal(ctx->tty_info.fd, ctx->snapshot_mode);
+      full_terminal_reset_internal(ctx->snapshot_mode);
     }
   }
 
   // Output routing logic:
   // - Normal TTY mode: render every frame with cursor control to TTY
-  // - Snapshot mode: render final frame WITHOUT cursor control (even if TTY), to clean stdout
-  // - Piped mode: only render final frame in snapshot mode, without control sequences
+  // - Snapshot mode: render only final frame WITHOUT cursor control
+  // - Piped mode: only render final/paused frames to avoid stacking
   bool use_tty_control = ctx->has_tty && !ctx->snapshot_mode;
 
   if (use_tty_control) {
     // Normal TTY mode: always write with cursor control (every frame)
-    write_frame_internal(ctx, frame_data, frame_len, true);
+    write_frame_internal(frame_data, frame_len, true);
   } else if (ctx->snapshot_mode && is_final) {
-    // Snapshot mode: render final frame WITHOUT cursor control
-    write_frame_internal(ctx, frame_data, frame_len, false);
+    // Snapshot mode: render final frame only WITHOUT cursor control
+    write_frame_internal(frame_data, frame_len, false);
     // Add newline at end of snapshot output
     (void)printf("\n");
+  } else if (!ctx->has_tty && !ctx->snapshot_mode && is_final) {
+    // Piped mode with final frame (pause mode): render WITHOUT cursor control
+    // This allows pause mode to work in non-TTY environments
+    write_frame_internal(frame_data, frame_len, false);
   }
 }
 

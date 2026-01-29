@@ -86,6 +86,12 @@ struct session_capture_ctx {
 
   /** @brief Microphone audio context for fallback (borrowed, not owned) */
   void *mic_audio_ctx;
+
+  /** @brief Pause media source after first frame is read (--pause flag) */
+  bool should_pause_after_first_frame;
+
+  /** @brief Whether we've already paused after the first frame */
+  bool paused_after_first_frame;
 };
 
 /* ============================================================================
@@ -227,9 +233,11 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   }
 
   // Set initial pause state if requested (only for file sources)
+  // Note: We don't pause yet - we'll pause AFTER reading the first frame in the render loop
+  // This is because paused sources return NULL from read_video()
   if (config->type == MEDIA_SOURCE_FILE && GET_OPTION(pause)) {
-    media_source_pause(ctx->source);
-    log_debug("Media source starting paused (--pause flag)");
+    ctx->should_pause_after_first_frame = true;
+    log_debug("Will pause after first frame (--pause flag)");
   }
 
   // Perform initial seek if requested

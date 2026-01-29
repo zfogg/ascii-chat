@@ -9,6 +9,7 @@
 #include "common.h"
 #include "options/options.h"
 #include "log/logging.h"
+#include "buffer_pool.h"
 #include "network/acip/acds.h"
 #include "network/acip/send.h"
 #include "network/packet.h"

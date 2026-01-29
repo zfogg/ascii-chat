@@ -138,7 +138,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // If paused and already rendered initial frame, skip frame capture
       if (is_paused && initial_paused_frame_rendered) {
-        // Sleep briefly to avoid busy-waiting
+        // For non-snapshot pause mode, exit after rendering the paused frame
+        if (!snapshot_mode) {
+          break; // Exit render loop - paused frame already rendered
+        }
+
+        // Sleep briefly to avoid busy-waiting (for snapshot mode pause)
         platform_sleep_usec(16666); // ~60 FPS idle rate
 
         // Still poll keyboard to allow unpausing
@@ -219,17 +224,22 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     char *ascii_frame = session_display_convert_to_ascii(display, image);
 
     if (ascii_frame) {
+      // Detect when we have a paused frame (first frame after pausing)
+      bool is_paused_frame = initial_paused_frame_rendered && is_paused;
+
       // When paused with snapshot mode, output the initial frame immediately
-      bool output_paused_frame = snapshot_mode && initial_paused_frame_rendered && is_paused;
+      bool output_paused_frame = snapshot_mode && is_paused_frame;
 
       // In snapshot mode, only render when snapshot is done or when outputting paused frame
-      // In normal mode, always render
+      // In normal mode: render every frame normally, but also render paused frames in piped mode
       bool should_write = !snapshot_mode || snapshot_done || output_paused_frame;
       if (should_write) {
-        session_display_render_frame(display, ascii_frame, snapshot_done || output_paused_frame);
+        // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
+        bool is_final = snapshot_done || is_paused_frame;
+        session_display_render_frame(display, ascii_frame, is_final);
       }
 
-      // Snapshot mode: exit after capturing the final frame, or after initial paused frame
+      // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
         // NOTE: Do NOT free 'image' - ownership depends on source:

@@ -142,7 +142,9 @@ static bool is_set_double(const void *field, const option_descriptor_t *desc) {
 
 static bool is_set_callback(const void *field, const option_descriptor_t *desc) {
   (void)desc;
-  return *(const void **)field != NULL;
+  const void *value = NULL;
+  memcpy(&value, field, sizeof(const void *));
+  return value != NULL;
 }
 
 static bool is_set_action(const void *field, const option_descriptor_t *desc) {
