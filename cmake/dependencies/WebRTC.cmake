@@ -404,12 +404,31 @@ target_include_directories(webrtc_audio_processing
 # Since we import the static .a files, we need to also link Abseil here for transitive deps
 find_package(absl QUIET CONFIG)
 if(absl_FOUND)
-    target_link_libraries(webrtc_audio_processing INTERFACE
-        absl::strings
-        absl::base
-        absl::optional
-    )
-    message(STATUS "  WebRTC AEC3: Linking against system Abseil")
+    # On Windows with Clang, vcpkg's Abseil CMake targets include MSVC-specific flags
+    # like -ignore:4221 that Clang doesn't understand. Link directly to the DLL instead.
+    if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+        # Find abseil_dll.lib in vcpkg
+        find_library(ABSEIL_DLL_LIB abseil_dll HINTS "${CMAKE_PREFIX_PATH}/lib" "${CMAKE_PREFIX_PATH}/debug/lib")
+        if(ABSEIL_DLL_LIB)
+            target_link_libraries(webrtc_audio_processing INTERFACE ${ABSEIL_DLL_LIB})
+            message(STATUS "  WebRTC AEC3: Linking against Abseil DLL (Clang-compatible)")
+        else()
+            # Fallback: try CMake targets anyway
+            target_link_libraries(webrtc_audio_processing INTERFACE
+                absl::strings
+                absl::base
+                absl::optional
+            )
+            message(STATUS "  WebRTC AEC3: Linking against system Abseil (CMake targets)")
+        endif()
+    else()
+        target_link_libraries(webrtc_audio_processing INTERFACE
+            absl::strings
+            absl::base
+            absl::optional
+        )
+        message(STATUS "  WebRTC AEC3: Linking against system Abseil")
+    endif()
 else()
     # No system Abseil - use bundled Abseil libraries from WebRTC build
     # Collect all absl_absl_*.lib files from the WebRTC build directory

@@ -23,7 +23,8 @@
       "name": "ffmpeg",
       "default-features": false,
       "features": ["avcodec", "avformat", "swscale", "swresample"]
-    }
+    },
+    "abseil"
   ],
   "overrides": [
     { "name": "zstd", "version": "1.5.7" },
