@@ -10,6 +10,7 @@
 
 #include "sdp.h"
 #include "log/logging.h"
+#include "platform/util.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -331,7 +332,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
   SAFE_STRNCPY(line_buffer, sdp_string, sizeof(line_buffer));
 
   char *saveptr = NULL;
-  char *line = strtok_r(line_buffer, "\r\n", &saveptr);
+  char *line = platform_strtok_r(line_buffer, "\r\n", &saveptr);
 
   int in_audio_section = 0;
   int in_video_section = 0;
@@ -341,7 +342,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
     // Parse line format: "key=value"
     char *equals = strchr(line, '=');
     if (!equals) {
-      line = strtok_r(NULL, "\r\n", &saveptr);
+      line = platform_strtok_r(NULL, "\r\n", &saveptr);
       continue;
     }
 
@@ -360,8 +361,8 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
         char o_copy[256];
         SAFE_STRNCPY(o_copy, value, sizeof(o_copy));
         char *o_saveptr = NULL;
-        strtok_r(o_copy, " ", &o_saveptr); // username
-        char *session_id_str = strtok_r(NULL, " ", &o_saveptr);
+        platform_strtok_r(o_copy, " ", &o_saveptr); // username
+        char *session_id_str = platform_strtok_r(NULL, " ", &o_saveptr);
         if (session_id_str) {
           SAFE_STRNCPY(session->session_id, session_id_str, sizeof(session->session_id));
         }
@@ -460,7 +461,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
 
           // Skip PT number
           char *saveptr = NULL;
-          strtok_r(fmtp_copy, " ", &saveptr);
+          platform_strtok_r(fmtp_copy, " ", &saveptr);
           const char *params = fmtp_copy + strcspn(fmtp_copy, " ") + 1;
 
           // Parse width=N
@@ -521,7 +522,7 @@ asciichat_error_t sdp_parse(const char *sdp_string, sdp_session_t *session) {
       break;
     }
 
-    line = strtok_r(NULL, "\r\n", &saveptr);
+    line = platform_strtok_r(NULL, "\r\n", &saveptr);
   }
 
   return ASCIICHAT_OK;

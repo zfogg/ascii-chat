@@ -13,7 +13,6 @@
 #include "common/buffer_sizes.h"
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 
 /* ============================================================================
  * Media Source Structure
@@ -39,7 +38,7 @@ struct media_source_t {
 
   // Mutex to protect shared decoder access from concurrent video/audio threads
   // Only used when is_shared_decoder is true (YouTube URLs)
-  pthread_mutex_t decoder_mutex;
+  mutex_t decoder_mutex;
 
   // Cached path (for FILE type) and original YouTube URL for potential re-extraction
   char *file_path;
@@ -63,7 +62,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   source->is_paused = false;
 
   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
-  if (pthread_mutex_init(&source->decoder_mutex, NULL) != 0) {
+  if (mutex_init(&source->decoder_mutex) != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize mutex");
     SAFE_FREE(source);
     return NULL;
@@ -255,7 +254,7 @@ void media_source_destroy(media_source_t *source) {
   }
 
   // Destroy mutex
-  pthread_mutex_destroy(&source->decoder_mutex);
+  mutex_destroy(&source->decoder_mutex);
 
   SAFE_FREE(source);
 }
@@ -294,7 +293,7 @@ image_t *media_source_read_video(media_source_t *source) {
 
     // Lock shared decoder if YouTube URL (protect against concurrent audio thread access)
     if (source->is_shared_decoder) {
-      pthread_mutex_lock(&source->decoder_mutex);
+      mutex_lock(&source->decoder_mutex);
     }
 
     double pos_before = ffmpeg_decoder_get_position(source->video_decoder);
@@ -319,7 +318,7 @@ image_t *media_source_read_video(media_source_t *source) {
 
     // Unlock shared decoder
     if (source->is_shared_decoder) {
-      pthread_mutex_unlock(&source->decoder_mutex);
+      mutex_unlock(&source->decoder_mutex);
     }
 
     return frame;
@@ -378,7 +377,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
 
     // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
     if (source->is_shared_decoder) {
-      pthread_mutex_lock(&source->decoder_mutex);
+      mutex_lock(&source->decoder_mutex);
     }
 
     size_t samples_read = ffmpeg_decoder_read_audio_samples(source->audio_decoder, buffer, num_samples);
@@ -396,7 +395,7 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
 
     // Unlock shared decoder
     if (source->is_shared_decoder) {
-      pthread_mutex_unlock(&source->decoder_mutex);
+      mutex_unlock(&source->decoder_mutex);
     }
 
     return samples_read;
@@ -485,14 +484,14 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
 
     // Lock shared decoder if YouTube URL (protect against concurrent thread access)
     if (source->is_shared_decoder) {
-      pthread_mutex_lock(&source->decoder_mutex);
+      mutex_lock(&source->decoder_mutex);
     }
 
     // Rewind video decoder
     asciichat_error_t video_result = ffmpeg_decoder_rewind(source->video_decoder);
     if (video_result != ASCIICHAT_OK) {
       if (source->is_shared_decoder) {
-        pthread_mutex_unlock(&source->decoder_mutex);
+        mutex_unlock(&source->decoder_mutex);
       }
       return video_result;
     }
@@ -506,7 +505,7 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
 
     // Unlock shared decoder
     if (source->is_shared_decoder) {
-      pthread_mutex_unlock(&source->decoder_mutex);
+      mutex_unlock(&source->decoder_mutex);
     }
 
     return result;
@@ -571,7 +570,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   // For YouTube URLs with shared decoder, lock during seek
   if (source->is_shared_decoder) {
-    pthread_mutex_lock(&source->decoder_mutex);
+    mutex_lock(&source->decoder_mutex);
   }
 
   // Seek video decoder
@@ -593,7 +592,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
   }
 
   if (source->is_shared_decoder) {
-    pthread_mutex_unlock(&source->decoder_mutex);
+    mutex_unlock(&source->decoder_mutex);
   }
   return result;
 }

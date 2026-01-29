@@ -56,7 +56,7 @@ function(configure_llvm_pre_project)
     set(LLVM_CONFIG_EXECUTABLE "${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
 
     if(LLVM_CONFIG_EXECUTABLE)
-        # Get LLVM root directory from llvm-config (Unix/macOS)
+        # Get LLVM root directory from llvm-config (Unix/macOS/Windows)
         execute_process(
             COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix
             OUTPUT_VARIABLE LLVM_ROOT_PREFIX
@@ -64,11 +64,19 @@ function(configure_llvm_pre_project)
             ERROR_QUIET
         )
 
-        if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${LLVM_ROOT_PREFIX}/bin/clang")
-            message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${LLVM_ROOT_PREFIX}/bin/clang\n"
+        # Check for clang executable (with .exe on Windows)
+        if(WIN32)
+            set(_clang_check_path "${LLVM_ROOT_PREFIX}/bin/clang.exe")
+        else()
+            set(_clang_check_path "${LLVM_ROOT_PREFIX}/bin/clang")
+        endif()
+
+        if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${_clang_check_path}")
+            message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${_clang_check_path}\n"
                             "Verify llvm-config is working correctly:\n"
                             "  ${LLVM_CONFIG_EXECUTABLE} --prefix")
         endif()
+        unset(_clang_check_path)
     elseif(WIN32 AND ASCIICHAT_CLANG_EXECUTABLE)
         # Windows: derive LLVM root from clang executable location
         # Official pre-built LLVM on Windows doesn't include llvm-config

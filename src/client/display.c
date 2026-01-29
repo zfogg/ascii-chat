@@ -88,7 +88,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 /* ============================================================================
  * Session Display Context

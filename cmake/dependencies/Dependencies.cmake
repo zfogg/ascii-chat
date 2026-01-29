@@ -35,6 +35,15 @@
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Vcpkg.cmake)
 
 # =============================================================================
+# Platform-Specific Configuration (EARLY - needed by other dependencies)
+# =============================================================================
+
+# Windows SDK detection and configuration (Windows + Clang only)
+# Must be included early so WINDOWS_SDK_VERSION and WINDOWS_KITS_DIR are available
+# for dependencies like WebRTC that need to pass library paths to subprojects
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WindowsSDK.cmake)
+
+# =============================================================================
 # Core Dependencies
 # =============================================================================
 # These dependencies are required on all platforms
@@ -83,11 +92,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Criterion.cmake)
 
 # =============================================================================
-# Platform-Specific Configuration
+# Platform-Specific Configuration (LATE)
 # =============================================================================
-
-# Windows SDK detection and configuration (Windows + Clang only)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WindowsSDK.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PlatformLibraries.cmake)

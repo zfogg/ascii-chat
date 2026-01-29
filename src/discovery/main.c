@@ -96,6 +96,12 @@ static void discovery_handle_sigterm(int sig) {
   (void)sig; // Unused
   discovery_signal_exit();
 }
+#else
+// Windows-compatible signal handler (no-op implementation)
+static void discovery_handle_sigterm(int sig) {
+  (void)sig;
+  // SIGTERM handled via console_ctrl_handler on Windows
+}
 #endif
 
 /* ============================================================================

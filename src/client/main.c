@@ -108,7 +108,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <fcntl.h>
 
 /* ============================================================================
@@ -214,6 +216,12 @@ static void sigterm_handler(int sig) {
   // Signal all subsystems to shutdown (async-signal-safe operations only)
   atomic_store(&g_should_exit, true);
   server_connection_shutdown(); // Only uses atomics and socket_shutdown
+}
+#else
+// Windows-compatible signal handler (no-op implementation)
+static void sigterm_handler(int sig) {
+  (void)sig;
+  // SIGTERM handled via console_ctrl_handler on Windows
 }
 #endif
 

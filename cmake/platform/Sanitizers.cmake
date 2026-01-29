@@ -120,6 +120,9 @@ function(configure_asan_ubsan_sanitizers)
         add_compiler_flag_if_supported(-fsanitize-undefined-ignore-overflow-pattern=all)
         if(WIN32)
             # Windows with Clang
+            # ASan on Windows requires the dynamic CRT (msvcrtd.dll for debug)
+            # These defines tell MSVC headers to use the DLL runtime, matching WebRTC's configuration
+            # _ITERATOR_DEBUG_LEVEL=0 prevents iterator debugging which causes ABI mismatches
             add_compile_options(
                 -fsanitize=address
                 -fsanitize=undefined
@@ -130,7 +133,13 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize-address-use-after-scope
                 -fno-omit-frame-pointer
                 -fno-optimize-sibling-calls
+                -D_MT
+                -D_DLL
+                -D_DEBUG
+                -D_ITERATOR_DEBUG_LEVEL=0
             )
+            # On Windows, ASan intercepts malloc/free via thunks which can conflict with UCRT
+            # Use /FORCE:MULTIPLE to allow duplicate symbols (ASan takes precedence)
             add_link_options(
                 -fsanitize=address
                 -fsanitize=undefined
@@ -138,8 +147,9 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize=nullability
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
+                -Xlinker /FORCE:MULTIPLE
             )
-            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
+            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (dynamic CRT)")
         elseif(APPLE)
             # macOS - sanitizers except thread and leak (not supported on ARM64)
             add_compile_options(

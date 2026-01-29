@@ -45,6 +45,16 @@ uint64_t time_get_ns(void) {
 }
 
 uint64_t time_get_realtime_ns(void) {
+#ifdef _WIN32
+  // Windows: Use GetSystemTimePreciseAsFileTime (Win8+) for high-precision wall clock
+  // FILETIME is 100-nanosecond intervals since January 1, 1601
+  FILETIME ft;
+  GetSystemTimePreciseAsFileTime(&ft);
+  // Convert FILETIME to nanoseconds
+  uint64_t filetime = ((uint64_t)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
+  // Convert 100-nanosecond intervals to nanoseconds
+  return filetime * 100;
+#else
   // Get wall-clock (real-time) timestamp
   struct timespec ts;
   if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
@@ -52,14 +62,17 @@ uint64_t time_get_realtime_ns(void) {
     return 0;
   }
   return time_timespec_to_ns(&ts);
+#endif
 }
 
 void time_sleep_ns(uint64_t ns) {
-  struct timespec ts;
-  time_ns_to_timespec(ns, &ts);
-  // nanosleep may be interrupted; we don't retry on EINTR to keep it simple
-  // Callers who need precise sleep should implement retry logic
-  nanosleep(&ts, NULL);
+  // Use platform abstraction for cross-platform sleep
+  // Convert nanoseconds to microseconds (1 us = 1000 ns)
+  unsigned int usec = (unsigned int)(ns / 1000);
+  if (usec == 0 && ns > 0) {
+    usec = 1; // Minimum 1 microsecond
+  }
+  platform_sleep_usec(usec);
 }
 
 uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns) {

@@ -251,3 +251,33 @@ int safe_sscanf(const char *str, const char *format, ...) {
   va_end(args);
   return result;
 }
+
+/**
+ * @brief Cross-platform asprintf implementation
+ * @param strp Output pointer for allocated string
+ * @param format Printf-style format string
+ * @param ... Format arguments
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * POSIX implementation wraps native asprintf.
+ */
+int platform_asprintf(char **strp, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  int ret = vasprintf(strp, format, args);
+  va_end(args);
+  return ret;
+}
+
+/**
+ * @brief Cross-platform getline implementation
+ * @param lineptr Pointer to buffer (can be NULL, will be allocated/reallocated)
+ * @param n Pointer to buffer size
+ * @param stream File stream to read from
+ * @return Number of characters read (including newline), or -1 on error/EOF
+ *
+ * POSIX implementation wraps native getline.
+ */
+ssize_t platform_getline(char **lineptr, size_t *n, FILE *stream) {
+  return getline(lineptr, n, stream);
+}

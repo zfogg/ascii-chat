@@ -6,13 +6,14 @@
 #include "parallel_connect.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
-#include <netdb.h>
 #include <string.h>
 #include <errno.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #else
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/select.h>

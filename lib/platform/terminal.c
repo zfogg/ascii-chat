@@ -9,7 +9,9 @@
 #include "../options/options.h"
 #include "../options/rcu.h"
 #include "../common.h"
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <string.h>
 
 // Forward declare global color flag variables set during options_init()

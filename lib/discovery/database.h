@@ -12,7 +12,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include "common.h"
+// NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
+#include "../common.h"
 #include "discovery/session.h"
 #include "discovery-service/main.h"
 #include "network/acip/acds.h"

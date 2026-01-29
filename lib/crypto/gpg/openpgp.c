@@ -12,12 +12,18 @@
 #include "../../platform/question.h"
 #include "../../platform/util.h"
 #include "../../platform/abstraction.h"
+#include "../../platform/filesystem.h"
 #include <string.h>
 #include <stdlib.h>
 #include <sodium.h>
+#ifndef _WIN32
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 // =============================================================================
 // Base64 Decoding for PGP Armor
@@ -528,13 +534,24 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   }
 
   // Create temporary files for input (armored key) and output (decrypted key)
-  char input_path[] = "/tmp/ascii-chat-gpg-input-XXXXXX";
-  int input_fd = mkstemp(input_path);
-  if (input_fd < 0) {
+  char input_path[PLATFORM_MAX_PATH_LENGTH];
+  int input_fd = -1;
+  if (platform_create_temp_file(input_path, sizeof(input_path), "asc_gpg_in", &input_fd) != 0) {
     gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary input file");
   }
+
+#ifdef _WIN32
+  // On Windows, platform_create_temp_file returns fd=-1, need to open separately
+  input_fd = open(input_path, O_WRONLY | O_BINARY);
+  if (input_fd < 0) {
+    platform_delete_temp_file(input_path);
+    gpg_homedir_destroy(homedir);
+    sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open temporary input file");
+  }
+#endif
 
   // Write armored key to temp file
   size_t armored_len = strlen(armored_text);
@@ -549,15 +566,17 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
   }
 
   // Create temporary output file for decrypted key
-  char output_path[] = "/tmp/ascii-chat-gpg-output-XXXXXX";
-  int output_fd = mkstemp(output_path);
-  if (output_fd < 0) {
+  char output_path[PLATFORM_MAX_PATH_LENGTH];
+  int output_fd = -1;
+  if (platform_create_temp_file(output_path, sizeof(output_path), "asc_gpg_out", &output_fd) != 0) {
     platform_unlink(input_path);
     gpg_homedir_destroy(homedir);
     sodium_memzero(passphrase_buffer, sizeof(passphrase_buffer));
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temporary output file");
   }
-  close(output_fd);
+  if (output_fd >= 0) {
+    close(output_fd);
+  }
 
   // Build GPG command using temporary homedir for isolation
   // Steps:

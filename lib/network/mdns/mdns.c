@@ -12,7 +12,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <ascii-chat-deps/mdns/mdns.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <netinet/in.h> /* For struct sockaddr_in, sockaddr_in6 */
+#endif
 
 /** @brief Internal mDNS context structure */
 struct asciichat_mdns_t {

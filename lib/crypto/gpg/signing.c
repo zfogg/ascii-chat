@@ -20,7 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 /**
  * @brief Sign a message using GPG key (via gpg --detach-sign)

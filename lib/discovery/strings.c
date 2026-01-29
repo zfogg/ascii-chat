@@ -14,7 +14,8 @@
 #include "discovery/nouns.h"
 #include "log/logging.h"
 #include "util/utf8.h"
-#include "common.h"
+// NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
+#include "../common.h"
 #include "uthash/uthash.h"
 #include <sodium.h>
 #include <string.h>

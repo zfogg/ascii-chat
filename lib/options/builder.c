@@ -25,6 +25,10 @@
 #include <getopt.h>
 #endif
 
+// Use platform asprintf
+#include "platform/util.h"
+#define asprintf platform_asprintf
+
 // Initial capacities for dynamic arrays
 #define INITIAL_DESCRIPTOR_CAPACITY 32
 #define INITIAL_DEPENDENCY_CAPACITY 16

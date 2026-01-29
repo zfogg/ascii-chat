@@ -10,6 +10,7 @@
 #include "parser.h"
 #include "../../log/logging.h"
 #include "../../common.h"
+#include "../../platform/util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -215,7 +216,7 @@ static asciichat_error_t parse_sections_internal(FILE *f, parsed_section_t **out
   char *current_marker_section = NULL;
   bool in_marked_section = false;
 
-  while (getline(&line, &line_len, f) != -1) {
+  while (platform_getline(&line, &line_len, f) != -1) {
     line_num++;
 
     const char *marker_type = NULL;
@@ -358,7 +359,7 @@ asciichat_error_t manpage_parser_parse_memory(const char *content, size_t conten
   // Write content to temporary file
   // CRITICAL: Write content_len + 1 to include the null terminator!
   // The embedded string is content_len + 1 bytes (content_len chars + null terminator)
-  // getline() needs the null terminator to properly handle EOF
+  // platform_getline() needs the null terminator to properly handle EOF
   size_t bytes_to_write = content_len + 1;
   size_t written = fwrite(content, 1, bytes_to_write, tmp);
   if (written != bytes_to_write) {

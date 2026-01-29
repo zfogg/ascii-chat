@@ -331,3 +331,103 @@ int safe_sscanf(const char *str, const char *format, ...) {
   va_end(args);
   return result;
 }
+
+/**
+ * @brief Cross-platform asprintf implementation
+ * @param strp Output pointer for allocated string
+ * @param format Printf-style format string
+ * @param ... Format arguments
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Windows implementation using _vscprintf and vsprintf_s.
+ */
+int platform_asprintf(char **strp, const char *format, ...) {
+  if (!strp || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  // Get required buffer size
+  int len = _vscprintf(format, args);
+  va_end(args);
+
+  if (len < 0) {
+    *strp = NULL;
+    return -1;
+  }
+
+  // Allocate buffer
+  *strp = (char *)malloc((size_t)len + 1);
+  if (!*strp) {
+    return -1;
+  }
+
+  // Format the string
+  va_start(args, format);
+  int ret = vsprintf_s(*strp, (size_t)len + 1, format, args);
+  va_end(args);
+
+  if (ret < 0) {
+    free(*strp);
+    *strp = NULL;
+    return -1;
+  }
+
+  return ret;
+}
+
+/**
+ * @brief Cross-platform getline implementation
+ * @param lineptr Pointer to buffer (can be NULL, will be allocated/reallocated)
+ * @param n Pointer to buffer size
+ * @param stream File stream to read from
+ * @return Number of characters read (including newline), or -1 on error/EOF
+ *
+ * Windows implementation using fgets with dynamic buffer resizing.
+ */
+ssize_t platform_getline(char **lineptr, size_t *n, FILE *stream) {
+  if (!lineptr || !n || !stream) {
+    return -1;
+  }
+
+  // Initial allocation if needed
+  if (*lineptr == NULL || *n == 0) {
+    *n = 128;
+    *lineptr = (char *)malloc(*n);
+    if (!*lineptr) {
+      return -1;
+    }
+  }
+
+  size_t pos = 0;
+  int c;
+
+  while ((c = fgetc(stream)) != EOF) {
+    // Ensure buffer has space (need room for char + null)
+    if (pos + 2 > *n) {
+      size_t new_size = *n * 2;
+      char *new_ptr = (char *)realloc(*lineptr, new_size);
+      if (!new_ptr) {
+        return -1;
+      }
+      *lineptr = new_ptr;
+      *n = new_size;
+    }
+
+    (*lineptr)[pos++] = (char)c;
+
+    if (c == '\n') {
+      break;
+    }
+  }
+
+  // Handle EOF with no characters read
+  if (pos == 0 && c == EOF) {
+    return -1;
+  }
+
+  (*lineptr)[pos] = '\0';
+  return (ssize_t)pos;
+}

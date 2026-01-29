@@ -209,6 +209,19 @@ if(NOT webrtc_aec3_POPULATED)
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
 
+            # For Debug builds, add sanitizer flags and debug settings to match the main project
+            # This ensures ABI compatibility (especially for annotate_string ASAN feature and iterator debug level)
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                set(_webrtc_sanitizer_flags "-fsanitize=address -fsanitize=undefined -fsanitize=integer -fsanitize=nullability -fsanitize=implicit-conversion -fsanitize=float-divide-by-zero")
+                # Disable MSVC iterator debugging to match Clang's defaults (prevents /failifmismatch)
+                # Use dynamic debug CRT (/MDd) - required for ASan on Windows
+                # The _MT _DLL _DEBUG defines tell MSVC headers to use msvcrtd.dll
+                set(_webrtc_debug_flags "-D_ITERATOR_DEBUG_LEVEL=0 -D_MT -D_DLL -D_DEBUG")
+                string(APPEND _webrtc_win_c_flags " ${_webrtc_sanitizer_flags} ${_webrtc_debug_flags}")
+                string(APPEND _webrtc_win_cxx_flags " ${_webrtc_sanitizer_flags} ${_webrtc_debug_flags}")
+                message(STATUS "WebRTC Windows Debug build: Adding sanitizer flags and /MDd runtime for ABI compatibility")
+            endif()
+
             # On Windows ARM64, explicitly set the processor so Abseil doesn't try
             # to use x86 SIMD intrinsics (-maes, -msse4.1) which fail on ARM64
             # NEON SIMD is still supported and enabled for ARM64
@@ -229,6 +242,53 @@ if(NOT webrtc_aec3_POPULATED)
                 message(STATUS "WebRTC Windows ARM64 build: disabling x86 SIMD and Abseil HWAES x64 flags, NEON still enabled")
             endif()
 
+            # Pass Windows SDK and MSVC library paths to WebRTC build
+            # These are set by WindowsSDK.cmake via link_directories() but that doesn't
+            # propagate to external CMake invocations - we need to set LIB environment variable
+            if(WINDOWS_KITS_DIR AND WINDOWS_SDK_VERSION)
+                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                    set(_win_arch x64)
+                else()
+                    set(_win_arch x86)
+                endif()
+                set(_webrtc_lib_paths "")
+                # Windows SDK lib paths
+                set(_ucrt_lib "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${_win_arch}")
+                set(_um_lib "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/um/${_win_arch}")
+                if(EXISTS "${_ucrt_lib}")
+                    list(APPEND _webrtc_lib_paths "${_ucrt_lib}")
+                endif()
+                if(EXISTS "${_um_lib}")
+                    list(APPEND _webrtc_lib_paths "${_um_lib}")
+                endif()
+                # Find MSVC lib path (same logic as WindowsSDK.cmake)
+                set(_msvc_base_paths
+                    "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC"
+                    "C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC"
+                )
+                foreach(_msvc_base IN LISTS _msvc_base_paths)
+                    if(EXISTS "${_msvc_base}")
+                        file(GLOB _msvc_versions "${_msvc_base}/*")
+                        if(_msvc_versions)
+                            list(SORT _msvc_versions COMPARE NATURAL ORDER DESCENDING)
+                            list(GET _msvc_versions 0 _msvc_latest)
+                            set(_msvc_lib_candidate "${_msvc_latest}/lib/${_win_arch}")
+                            if(EXISTS "${_msvc_lib_candidate}")
+                                list(APPEND _webrtc_lib_paths "${_msvc_lib_candidate}")
+                                break()
+                            endif()
+                        endif()
+                    endif()
+                endforeach()
+                # Convert to Windows-style path list (semicolons) for LIB env var
+                string(REPLACE "/" "\\" _webrtc_lib_paths_win "${_webrtc_lib_paths}")
+                string(REPLACE ";" ";" WEBRTC_LIB_ENV "${_webrtc_lib_paths_win}")
+                message(STATUS "WebRTC Windows build: LIB paths set for linker")
+            endif()
+
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_win_c_flags}")
@@ -237,6 +297,10 @@ if(NOT webrtc_aec3_POPULATED)
         endif()
 
         # Build WebRTC at configure time (not part of main build)
+        # On Windows, set LIB environment variable so lld-link can find SDK/MSVC libs
+        if(WIN32 AND WEBRTC_LIB_ENV)
+            set(ENV{LIB} "${WEBRTC_LIB_ENV}")
+        endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND}
                 ${WEBRTC_CMAKE_ARGS}
@@ -273,10 +337,17 @@ endif()
 # This way, WebRTC targets are NOT part of the main project's target list
 set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
 
-set(WEBRTC_AUDIO_PROCESS_LIB "${WEBRTC_BUILD_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}AudioProcess${CMAKE_STATIC_LIBRARY_SUFFIX}")
-set(WEBRTC_AEC3_LIB "${WEBRTC_BUILD_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}aec3${CMAKE_STATIC_LIBRARY_SUFFIX}")
-set(WEBRTC_API_LIB "${WEBRTC_BUILD_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}api${CMAKE_STATIC_LIBRARY_SUFFIX}")
-set(WEBRTC_BASE_LIB "${WEBRTC_BUILD_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}base${CMAKE_STATIC_LIBRARY_SUFFIX}")
+# Windows doesn't use "lib" prefix, Unix does
+if(WIN32)
+    set(_webrtc_lib_prefix "")
+else()
+    set(_webrtc_lib_prefix "lib")
+endif()
+
+set(WEBRTC_AUDIO_PROCESS_LIB "${WEBRTC_BUILD_DIR}/lib/${_webrtc_lib_prefix}AudioProcess${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(WEBRTC_AEC3_LIB "${WEBRTC_BUILD_DIR}/lib/${_webrtc_lib_prefix}aec3${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(WEBRTC_API_LIB "${WEBRTC_BUILD_DIR}/lib/${_webrtc_lib_prefix}api${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(WEBRTC_BASE_LIB "${WEBRTC_BUILD_DIR}/lib/${_webrtc_lib_prefix}base${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
 add_library(webrtc_audio_processing INTERFACE)
 
@@ -339,6 +410,17 @@ if(absl_FOUND)
         absl::optional
     )
     message(STATUS "  WebRTC AEC3: Linking against system Abseil")
+else()
+    # No system Abseil - use bundled Abseil libraries from WebRTC build
+    # Collect all absl_absl_*.lib files from the WebRTC build directory
+    file(GLOB WEBRTC_BUNDLED_ABSL_LIBS "${WEBRTC_BUILD_DIR}/lib/absl_absl_*${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    if(WEBRTC_BUNDLED_ABSL_LIBS)
+        target_link_libraries(webrtc_audio_processing INTERFACE ${WEBRTC_BUNDLED_ABSL_LIBS})
+        list(LENGTH WEBRTC_BUNDLED_ABSL_LIBS _absl_count)
+        message(STATUS "  WebRTC AEC3: Linking against ${_absl_count} bundled Abseil libraries")
+    else()
+        message(WARNING "  WebRTC AEC3: No Abseil libraries found (bundled or system)")
+    endif()
 endif()
 
 message(STATUS "  ${BoldGreen}✓ WebRTC AEC3 configured and built successfully${ColorReset}")

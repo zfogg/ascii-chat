@@ -114,6 +114,10 @@ endmacro()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
 
+# utf8proc: Define UTF8PROC_STATIC to avoid dllexport/dllimport issues on Windows
+# We build utf8proc as part of our library, not as a separate DLL
+target_compile_definitions(ascii-chat-util PRIVATE UTF8PROC_STATIC)
+
 # -----------------------------------------------------------------------------
 # Module 2: Data Structures (depends on: util)
 # -----------------------------------------------------------------------------

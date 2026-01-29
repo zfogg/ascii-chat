@@ -16,7 +16,9 @@
 #include "util/time.h"
 
 #include <string.h>
+#ifndef _WIN32
 #include <netdb.h>
+#endif
 #include <stdio.h>
 
 // Bandwidth override threshold: 10x difference can override NAT priority

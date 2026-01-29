@@ -18,7 +18,7 @@ int platform_get_ssh_agent_socket(char *path_out, size_t path_size) {
       log_error("SSH_AUTH_SOCK path too long");
       return -1;
     }
-    safe_strncpy(path_out, auth_sock, path_size);
+    SAFE_STRNCPY(path_out, auth_sock, path_size);
     return 0;
   }
 
@@ -28,7 +28,7 @@ int platform_get_ssh_agent_socket(char *path_out, size_t path_size) {
     log_error("Default SSH agent pipe path too long");
     return -1;
   }
-  safe_strncpy(path_out, default_pipe, path_size);
+  SAFE_STRNCPY(path_out, default_pipe, path_size);
   return 0;
 }
 

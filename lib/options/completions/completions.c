@@ -102,7 +102,7 @@ option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
   size_t combined_count = 0;
 
   /* All completion modes to iterate through */
-  mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
+  asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
 
   for (size_t m = 0; m < modes_len; m++) {

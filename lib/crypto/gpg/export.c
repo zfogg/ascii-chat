@@ -20,7 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 /**
  * @brief Extract Ed25519 public key from GPG using gpg --export (fallback when agent unavailable)
@@ -364,7 +366,9 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   char readkey_cmd[BUFFER_SIZE_SMALL];
   safe_snprintf(readkey_cmd, sizeof(readkey_cmd), "READKEY %s\n", found_keygrip);
 
-  ssize_t bytes_written = platform_pipe_write(agent_sock, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
+  // Cast agent_sock back to pipe_t (gpg_agent_connect returns pipe_t cast to int for portability)
+  pipe_t agent_pipe = (pipe_t)(intptr_t)agent_sock;
+  ssize_t bytes_written = platform_pipe_write(agent_pipe, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
   if (bytes_written != (ssize_t)strlen(readkey_cmd)) {
     log_error("Failed to send READKEY command to GPG agent");
     gpg_agent_disconnect(agent_sock);
@@ -374,7 +378,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Read the response (public key S-expression)
   char response[BUFFER_SIZE_XXXLARGE];
   memset(response, 0, sizeof(response));
-  ssize_t bytes_read = platform_pipe_read(agent_sock, (unsigned char *)response, sizeof(response) - 1);
+  ssize_t bytes_read = platform_pipe_read(agent_pipe, (unsigned char *)response, sizeof(response) - 1);
 
   gpg_agent_disconnect(agent_sock);
 

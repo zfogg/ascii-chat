@@ -18,7 +18,12 @@
       "name": "mimalloc",
       "platform": "windows | (linux & !static) | osx"
     },
-    "libdatachannel"
+    "libdatachannel",
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": ["avcodec", "avformat", "swscale", "swresample"]
+    }
   ],
   "overrides": [
     { "name": "zstd", "version": "1.5.7" },
@@ -29,6 +34,7 @@
     { "name": "openssl", "version": "3.6.0" },
     { "name": "sqlite3", "version": "3.51.1" },
     { "name": "mimalloc", "version": "2.2.4" },
-    { "name": "libdatachannel", "version": "0.24.0" }
+    { "name": "libdatachannel", "version": "0.24.0" },
+    { "name": "ffmpeg", "version": "7.1" }
   ]
 }

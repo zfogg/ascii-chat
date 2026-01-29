@@ -88,7 +88,12 @@
 #pragma once
 
 #include "options/options.h"
+// Platform-specific getopt
+#ifdef _WIN32
+#include "platform/windows/getopt.h"
+#else
 #include <getopt.h>
+#endif
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -10,11 +10,14 @@
 #include "platform/string.h"
 #include "platform/util.h"
 #include "platform/process.h"
+#include "platform/filesystem.h"
 #include "network/http_client.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <fcntl.h>
 
 // =============================================================================
@@ -425,11 +428,20 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   }
 
   // Write armored block to temp file
-  char temp_file[] = "/tmp/asciichat_gpg_import_XXXXXX";
-  int fd = mkstemp(temp_file);
-  if (fd < 0) {
+  char temp_file[PLATFORM_MAX_PATH_LENGTH];
+  int fd = -1;
+  if (platform_create_temp_file(temp_file, sizeof(temp_file), "asc_gpg_import", &fd) != 0) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temp file for GPG import");
   }
+
+#ifdef _WIN32
+  // On Windows, platform_create_temp_file returns fd=-1, need to open separately
+  fd = open(temp_file, O_WRONLY | O_BINARY);
+  if (fd < 0) {
+    platform_delete_temp_file(temp_file);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open temp file for writing");
+  }
+#endif
 
   ssize_t written = write(fd, response_text, response_len);
   close(fd);

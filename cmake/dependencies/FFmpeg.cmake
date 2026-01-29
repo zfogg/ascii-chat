@@ -13,6 +13,36 @@ if(USE_MUSL)
 endif()
 
 # =============================================================================
+# Windows: Use vcpkg-provided FFmpeg
+# =============================================================================
+if(WIN32)
+    # vcpkg integrates with CMake and provides FFmpeg via find_package
+    # vcpkg's FindFFMPEG.cmake sets: FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, FFMPEG_LIBRARY_DIRS
+    find_package(FFMPEG QUIET)
+
+    if(FFMPEG_FOUND)
+        # vcpkg sets these variables:
+        # - FFMPEG_LIBRARIES: list of library paths
+        # - FFMPEG_INCLUDE_DIRS: include directories
+        # - FFMPEG_LIBRARY_DIRS: library search paths
+
+        # Set link libraries for target_link_libraries
+        set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LIBRARIES})
+
+        message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found (Windows vcpkg)")
+        message(STATUS "  - FFMPEG_INCLUDE_DIRS: ${FFMPEG_INCLUDE_DIRS}")
+        message(STATUS "  - FFMPEG_LIBRARY_DIRS: ${FFMPEG_LIBRARY_DIRS}")
+        message(STATUS "  - FFMPEG_LIBRARIES: ${FFMPEG_LIBRARIES}")
+        return()
+    else()
+        message(WARNING "FFmpeg not found via vcpkg - media file streaming will be disabled")
+        message(STATUS "Make sure ffmpeg is in vcpkg.json and vcpkg install has been run")
+        set(FFMPEG_FOUND FALSE)
+        return()
+    endif()
+endif()
+
+# =============================================================================
 # macOS Release: Build FFmpeg from source when ASCIICHAT_SHARED_DEPS is OFF
 # =============================================================================
 # Homebrew's FFmpeg links against codec libraries (svt-av1, dav1d) that don't

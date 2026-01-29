@@ -19,8 +19,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <time.h>
 
 /* ============================================================================

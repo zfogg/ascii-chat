@@ -24,7 +24,9 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 /* ============================================================================
  * Unified Render Loop Implementation

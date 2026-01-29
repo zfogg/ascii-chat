@@ -27,6 +27,7 @@
 #include "options/rcu.h" // For RCU-based options access
 #include "platform/abstraction.h"
 #include "platform/init.h"
+#include "platform/util.h"
 #include "util/path.h"
 #include "network/nat/upnp.h"
 #include "network/mdns/mdns.h"
@@ -181,7 +182,7 @@ int acds_main(void) {
     SAFE_STRNCPY(stun_copy, stun_servers_str, sizeof(stun_copy));
 
     char *saveptr = NULL;
-    char *token = strtok_r(stun_copy, ",", &saveptr);
+    char *token = platform_strtok_r(stun_copy, ",", &saveptr);
     while (token && config.stun_count < 4) {
       // Trim whitespace
       while (*token == ' ' || *token == '\t')
@@ -201,7 +202,7 @@ int acds_main(void) {
         log_warn("STUN server URL too long (max 63 chars): %s", token);
       }
 
-      token = strtok_r(NULL, ",", &saveptr);
+      token = platform_strtok_r(NULL, ",", &saveptr);
     }
   }
 
@@ -217,7 +218,7 @@ int acds_main(void) {
     SAFE_STRNCPY(turn_copy, turn_servers_str, sizeof(turn_copy));
 
     char *saveptr = NULL;
-    char *token = strtok_r(turn_copy, ",", &saveptr);
+    char *token = platform_strtok_r(turn_copy, ",", &saveptr);
     while (token && config.turn_count < 4) {
       // Trim whitespace
       while (*token == ' ' || *token == '\t')
@@ -259,7 +260,7 @@ int acds_main(void) {
         log_warn("TURN server URL too long (max 63 chars): %s", token);
       }
 
-      token = strtok_r(NULL, ",", &saveptr);
+      token = platform_strtok_r(NULL, ",", &saveptr);
     }
   }
 

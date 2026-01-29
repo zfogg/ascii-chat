@@ -11,6 +11,7 @@
 #include "ice.h"
 #include "webrtc.h"
 #include "log/logging.h"
+#include "platform/util.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,20 +105,20 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
   char *token = NULL;
 
   // 1. Parse foundation
-  token = strtok_r(line_copy, " ", &saveptr);
+  token = platform_strtok_r(line_copy, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing foundation in candidate");
   }
   SAFE_STRNCPY(candidate->foundation, token, sizeof(candidate->foundation));
 
   // 2. Parse component ID
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || sscanf(token, "%u", &candidate->component_id) != 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid component ID");
   }
 
   // 3. Parse protocol (udp/tcp)
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing protocol");
   }
@@ -130,32 +131,32 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
   }
 
   // 4. Parse priority
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || sscanf(token, "%u", &candidate->priority) != 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid priority");
   }
 
   // 5. Parse IP address
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing IP address");
   }
   SAFE_STRNCPY(candidate->ip_address, token, sizeof(candidate->ip_address));
 
   // 6. Parse port
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || sscanf(token, "%hu", &candidate->port) != 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port");
   }
 
   // 7. Expect "typ" keyword
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || strcmp(token, "typ") != 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing 'typ' keyword");
   }
 
   // 8. Parse candidate type
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing candidate type");
   }
@@ -175,20 +176,20 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
   // 9. If srflx/prflx/relay: parse raddr and rport
   if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX ||
       candidate->type == ICE_CANDIDATE_RELAY) {
-    token = strtok_r(NULL, " ", &saveptr);
+    token = platform_strtok_r(NULL, " ", &saveptr);
     if (token && strcmp(token, "raddr") == 0) {
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
       if (!token) {
         return SET_ERRNO(ERROR_INVALID_PARAM, "Missing raddr value");
       }
       SAFE_STRNCPY(candidate->raddr, token, sizeof(candidate->raddr));
 
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
       if (!token || strcmp(token, "rport") != 0) {
         return SET_ERRNO(ERROR_INVALID_PARAM, "Missing 'rport' keyword");
       }
 
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
       if (!token || sscanf(token, "%hu", &candidate->rport) != 1) {
         return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rport value");
       }
@@ -197,10 +198,10 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
 
   // 10. Parse any extensions (tcptype for TCP candidates)
   if (candidate->protocol == ICE_PROTOCOL_TCP) {
-    token = strtok_r(NULL, " ", &saveptr);
+    token = platform_strtok_r(NULL, " ", &saveptr);
     while (token) {
       if (strcmp(token, "tcptype") == 0) {
-        token = strtok_r(NULL, " ", &saveptr);
+        token = platform_strtok_r(NULL, " ", &saveptr);
         if (token) {
           if (strcmp(token, "active") == 0) {
             candidate->tcp_type = ICE_TCP_TYPE_ACTIVE;
@@ -211,7 +212,7 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
           }
         }
       }
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
     }
   }
 

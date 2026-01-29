@@ -273,28 +273,56 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
     endif()
 
     # Override CMake's Windows-Clang platform settings that add -nostartfiles -nostdlib
-    # These flags prevent linking to oldnames.lib and cause link errors
+    # These flags prevent AddressSanitizer from linking correctly (ASan needs CRT startup)
     # CMake automatically adds these in the Windows-Clang toolchain but they're incorrect for our use case
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         # Clear the CMake flags that cause -nostartfiles -nostdlib to be added
+        # Must override both C and CXX versions since CMake may use either for linking
         set(CMAKE_C_CREATE_SHARED_LIBRARY "<CMAKE_C_COMPILER> <CMAKE_SHARED_LIBRARY_C_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
         set(CMAKE_C_CREATE_SHARED_MODULE "${CMAKE_C_CREATE_SHARED_LIBRARY}")
         set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 
-        # Disable runtime library selection that adds libcmt.lib and oldnames.lib
-        # These are legacy compatibility libraries not needed for modern C code with Clang
+        # Also override CXX linking rules (ascii-chat uses C++ for linking shared libs)
+        set(CMAKE_CXX_CREATE_SHARED_LIBRARY "<CMAKE_CXX_COMPILER> <CMAKE_SHARED_LIBRARY_CXX_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS> <SONAME_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
+        set(CMAKE_CXX_CREATE_SHARED_MODULE "${CMAKE_CXX_CREATE_SHARED_LIBRARY}")
+        set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+
+        # Configure CRT linking for Clang on Windows
+        # External libraries (WebRTC Abseil, FFmpeg) need CRT symbols
+        # For Debug builds with dynamic CRT (-D_MT -D_DLL -D_DEBUG), we need debug CRT libs
         set(CMAKE_MSVC_RUNTIME_LIBRARY "")
-        set(CMAKE_C_STANDARD_LIBRARIES "")
 
-        # Also clear any runtime library flags that might be set by CMake for Windows
-        set(CMAKE_C_STANDARD_LIBRARIES_INIT "")
-        set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
+        # Build the list of required CRT libraries based on build type
+        # Use full paths from the Windows SDK and MSVC directories we already located
+        set(UCRT_LIB_DIR "${WINDOWS_KITS_DIR}/Lib/${WINDOWS_SDK_VERSION}/ucrt/${WIN_ARCH}")
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+            # Debug CRT (dynamic)
+            set(WIN_CRT_LIBS
+                "${UCRT_LIB_DIR}/ucrtd.lib"
+                "${MSVC_LIB_DIR}/vcruntimed.lib"
+                "${MSVC_LIB_DIR}/msvcrtd.lib"
+            )
+        else()
+            # Release CRT (dynamic for now, but could be static for fully static builds)
+            set(WIN_CRT_LIBS
+                "${UCRT_LIB_DIR}/ucrt.lib"
+                "${MSVC_LIB_DIR}/vcruntime.lib"
+                "${MSVC_LIB_DIR}/msvcrt.lib"
+            )
+        endif()
 
-        # Don't add any additional runtime libraries - let Clang use its defaults
-        # The key fix was removing -nostartfiles -nostdlib, now standard linking should work
+        # Add CRT libraries to all link operations via add_link_options
+        # This ensures they're linked for both shared libs and executables
+        foreach(_crt_lib ${WIN_CRT_LIBS})
+            if(EXISTS "${_crt_lib}")
+                add_link_options("${_crt_lib}")
+            else()
+                message(WARNING "CRT library not found: ${_crt_lib}")
+            endif()
+        endforeach()
 
         message(STATUS "Overrode CMake Windows-Clang linking rules to prevent -nostartfiles -nostdlib")
-        message(STATUS "Removed oldnames.lib from standard libraries (legacy compatibility library not needed)")
+        message(STATUS "Configured CRT linking: ${WIN_CRT_LIBS}")
     endif()
 
 endif()

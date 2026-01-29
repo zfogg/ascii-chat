@@ -9,6 +9,7 @@
 #include "../util/string.h"
 #include "../platform/system.h"
 #include "../platform/terminal.h"
+#include "../platform/util.h"
 #include "../options/rcu.h"
 #include "../video/ansi.h"
 #include <ctype.h>
@@ -104,7 +105,7 @@ static bool is_known_unit(const char *str, size_t max_len) {
       continue;
     }
     // Case-insensitive comparison for units
-    if (strncasecmp(str, known_units[i], unit_len) == 0 && (unit_len == max_len || !isalpha(str[unit_len]))) {
+    if (platform_strncasecmp(str, known_units[i], unit_len) == 0 && (unit_len == max_len || !isalpha(str[unit_len]))) {
       return true;
     }
   }
