@@ -36,6 +36,64 @@
 static unsigned int g_pa_init_refcount = 0;
 static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 
+/**
+ * @brief Ensure PortAudio is initialized with reference counting
+ *
+ * This is the single centralized function that initializes PortAudio.
+ * All code paths (audio_init, device enumeration) call this to prevent
+ * multiple independent Pa_Initialize() calls and duplicate ALSA/PulseAudio probing.
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t audio_ensure_portaudio_initialized(void) {
+  static_mutex_lock(&g_pa_refcount_mutex);
+
+  // If already initialized, just increment refcount
+  if (g_pa_init_refcount > 0) {
+    g_pa_init_refcount++;
+    static_mutex_unlock(&g_pa_refcount_mutex);
+    return ASCIICHAT_OK;
+  }
+
+  // First initialization - call Pa_Initialize() exactly once
+  // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
+  // These are harmless - PortAudio tries multiple backends until one works
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
+  PaError err = Pa_Initialize();
+
+  // Restore stderr before checking errors
+  platform_stderr_restore(stderr_handle);
+
+  if (err != paNoError) {
+    static_mutex_unlock(&g_pa_refcount_mutex);
+    return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+  }
+
+  g_pa_init_refcount = 1;
+  static_mutex_unlock(&g_pa_refcount_mutex);
+
+  log_debug("PortAudio initialized successfully (probe warnings suppressed)");
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Release PortAudio, terminating when refcount reaches zero
+ *
+ * Counterpart to audio_ensure_portaudio_initialized().
+ * Decrements refcount and calls Pa_Terminate() only when it reaches zero.
+ */
+static void audio_release_portaudio(void) {
+  static_mutex_lock(&g_pa_refcount_mutex);
+  if (g_pa_init_refcount > 0) {
+    g_pa_init_refcount--;
+    if (g_pa_init_refcount == 0) {
+      Pa_Terminate();
+    }
+  }
+  static_mutex_unlock(&g_pa_refcount_mutex);
+}
+
 // Worker thread batch size (in frames, not samples)
 // Reduced from 480 (10ms) to 128 (2.7ms) for lower latency and less jitter
 // Smaller batches mean more frequent processing, reducing audio gaps
@@ -947,28 +1005,12 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize audio context mutex");
   }
 
-  // Initialize PortAudio with reference counting
-  static_mutex_lock(&g_pa_refcount_mutex);
-  if (g_pa_init_refcount == 0) {
-    // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
-    // These are harmless - PortAudio tries multiple backends until one works
-    platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
-
-    PaError err = Pa_Initialize();
-
-    // Restore stderr before checking errors
-    platform_stderr_restore(stderr_handle);
-
-    if (err != paNoError) {
-      static_mutex_unlock(&g_pa_refcount_mutex);
-      mutex_destroy(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
-    }
-
-    log_debug("PortAudio initialized successfully (probe warnings suppressed)");
+  // Initialize PortAudio (centralized to prevent duplicate initialization)
+  asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
+  if (pa_result != ASCIICHAT_OK) {
+    mutex_destroy(&ctx->state_mutex);
+    return pa_result;
   }
-  g_pa_init_refcount++;
-  static_mutex_unlock(&g_pa_refcount_mutex);
 
   // Enumerate all audio devices for debugging
   int numDevices = Pa_GetDeviceCount();
@@ -1239,15 +1281,8 @@ void audio_destroy(audio_context_t *ctx) {
   cond_destroy(&ctx->worker_cond);
   mutex_destroy(&ctx->worker_mutex);
 
-  // Terminate PortAudio only when last context is destroyed
-  static_mutex_lock(&g_pa_refcount_mutex);
-  if (g_pa_init_refcount > 0) {
-    g_pa_init_refcount--;
-    if (g_pa_init_refcount == 0) {
-      Pa_Terminate();
-    }
-  }
-  static_mutex_unlock(&g_pa_refcount_mutex);
+  // Release PortAudio (centralized refcount management)
+  audio_release_portaudio();
 
   ctx->initialized = false;
 
@@ -1670,57 +1705,20 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   *out_devices = NULL;
   *out_count = 0;
 
-  // Check if PortAudio is already initialized by another audio context
-  static_mutex_lock(&g_pa_refcount_mutex);
-  bool pa_was_initialized = (g_pa_init_refcount > 0);
-
-  // Initialize PortAudio only if not already initialized
-  if (!pa_was_initialized) {
-    // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
-    // These are harmless - PortAudio tries multiple backends until one works
-    platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
-
-    PaError err = Pa_Initialize();
-
-    // Restore stderr before checking errors
-    platform_stderr_restore(stderr_handle);
-
-    if (err != paNoError) {
-      static_mutex_unlock(&g_pa_refcount_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
-    }
-    g_pa_init_refcount = 1; // Set refcount to 1 for temporary initialization
-  } else {
-    // PortAudio is already initialized - increment refcount to prevent
-    // termination while we're using it
-    g_pa_init_refcount++;
+  // Ensure PortAudio is initialized (centralized initialization)
+  asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
+  if (pa_result != ASCIICHAT_OK) {
+    return pa_result;
   }
-  static_mutex_unlock(&g_pa_refcount_mutex);
 
   int num_devices = Pa_GetDeviceCount();
   if (num_devices < 0) {
-    // Decrement refcount and terminate only if we initialized PortAudio ourselves
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (!pa_was_initialized && g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     return SET_ERRNO(ERROR_AUDIO, "Failed to get device count: %s", Pa_GetErrorText(num_devices));
   }
 
   if (num_devices == 0) {
-    // Decrement refcount and terminate only if we initialized PortAudio ourselves
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (!pa_was_initialized && g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     return ASCIICHAT_OK; // No devices found
   }
 
@@ -1741,30 +1739,14 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   }
 
   if (device_count == 0) {
-    // Decrement refcount and terminate only if we initialized PortAudio ourselves
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (!pa_was_initialized && g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     return ASCIICHAT_OK; // No matching devices
   }
 
   // Allocate device array
   audio_device_info_t *devices = SAFE_CALLOC(device_count, sizeof(audio_device_info_t), audio_device_info_t *);
   if (!devices) {
-    // Decrement refcount and terminate only if we initialized PortAudio ourselves
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (!pa_was_initialized && g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio device info array");
   }
 
@@ -1793,15 +1775,8 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
     idx++;
   }
 
-  // Decrement refcount and terminate only if we initialized PortAudio ourselves
-  static_mutex_lock(&g_pa_refcount_mutex);
-  if (g_pa_init_refcount > 0) {
-    g_pa_init_refcount--;
-    if (!pa_was_initialized && g_pa_init_refcount == 0) {
-      Pa_Terminate();
-    }
-  }
-  static_mutex_unlock(&g_pa_refcount_mutex);
+  // Release PortAudio (centralized refcount management)
+  audio_release_portaudio();
 
   *out_devices = devices;
   *out_count = idx;
