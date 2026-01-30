@@ -347,6 +347,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Piped mode: render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
     write_frame_internal(frame_data, frame_len, false);
+    // Add newline after each frame to separate frames when captured to files
+    (void)printf("\n");
   }
 }
 
