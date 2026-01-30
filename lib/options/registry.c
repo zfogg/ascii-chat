@@ -68,18 +68,22 @@ static const char *g_log_level_descs[] = {"Development (most verbose, includes f
 
 // Color setting metadata (--color flag values)
 static const char *g_color_setting_values[] = {"auto", "true", "false"};
+static const int g_color_setting_integers[] = {COLOR_SETTING_AUTO, COLOR_SETTING_TRUE, COLOR_SETTING_FALSE};
 static const char *g_color_setting_descs[] = {"Smart detection (colors if TTY and not piping/CLAUDECODE)",
                                               "Force colors ON (override TTY/pipe/CLAUDECODE)",
                                               "Force colors OFF (disable all colors)"};
 
 // UTF-8 setting metadata (--utf8 flag values)
 static const char *g_utf8_setting_values[] = {"auto", "true", "false"};
+static const int g_utf8_setting_integers[] = {UTF8_SETTING_AUTO, UTF8_SETTING_TRUE, UTF8_SETTING_FALSE};
 static const char *g_utf8_setting_descs[] = {"Auto-detect UTF-8 support from terminal capabilities",
                                              "Force UTF-8 ON (always use UTF-8 regardless of terminal)",
                                              "Force UTF-8 OFF (disable UTF-8 support)"};
 
 // Color mode metadata
 static const char *g_color_mode_values[] = {"auto", "none", "16", "256", "truecolor"};
+static const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TERM_COLOR_16, TERM_COLOR_256,
+                                            TERM_COLOR_TRUECOLOR};
 static const char *g_color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
                                            "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
 
@@ -223,6 +227,7 @@ static const registry_entry_t g_logging_entries[] = {
      {.enum_values = g_color_setting_values,
       .enum_count = 3,
       .enum_descriptions = g_color_setting_descs,
+      .enum_integer_values = g_color_setting_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {NULL,
      '\0',
@@ -362,7 +367,7 @@ static const registry_entry_t g_terminal_entries[] = {
      &default_width_value,
      sizeof(int),
      "Terminal width in characters. Can be controlled using $COLUMNS. By default your terminal width is detected at "
-     "runtime.",
+     "runtime and this value is updated automatically.",
      "TERMINAL",
      false,
      "ASCII_CHAT_WIDTH",
@@ -379,7 +384,7 @@ static const registry_entry_t g_terminal_entries[] = {
      &default_height_value,
      sizeof(int),
      "Terminal height in characters. Can be controlled using $ROWS. By default your terminal height is detected at "
-     "runtime.",
+     "runtime and this value is updated automatically.",
      "TERMINAL",
      false,
      "ASCII_CHAT_HEIGHT",
@@ -550,6 +555,7 @@ static const registry_entry_t g_display_entries[] = {
      {.enum_values = g_color_mode_values,
       .enum_count = 5,
       .enum_descriptions = g_color_mode_descs,
+      .enum_integer_values = g_color_mode_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {"render-mode",
      'M',
@@ -642,9 +648,10 @@ static const registry_entry_t g_display_entries[] = {
      {.enum_values = g_utf8_setting_values,
       .enum_count = 3,
       .enum_descriptions = g_utf8_setting_descs,
+      .enum_integer_values = g_utf8_setting_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {"stretch",
-     's',
+     '\0',
      OPTION_TYPE_BOOL,
      offsetof(options_t, stretch),
      &default_stretch_value,
