@@ -199,7 +199,8 @@ int mirror_main(void) {
 
   if (media_url && strlen(media_url) > 0) {
     // User specified a network URL (takes priority over --file)
-    log_info("Using network URL: %s", media_url);
+    // Don't open webcam when streaming from URL
+    log_info("Using network URL: %s (webcam disabled)", media_url);
     capture_config.type = MEDIA_SOURCE_FILE;
     capture_config.path = media_url;
 
@@ -214,11 +215,13 @@ int mirror_main(void) {
     }
     capture_config.loop = false; // Network URLs cannot be looped
   } else if (media_file && strlen(media_file) > 0) {
-    // User specified a media file or stdin
+    // User specified a media file or stdin - don't open webcam
     if (strcmp(media_file, "-") == 0) {
+      log_info("Using stdin for media streaming (webcam disabled)");
       capture_config.type = MEDIA_SOURCE_STDIN;
       capture_config.path = NULL;
     } else {
+      log_info("Using media file: %s (webcam disabled)", media_file);
       capture_config.type = MEDIA_SOURCE_FILE;
       capture_config.path = media_file;
 
@@ -234,7 +237,8 @@ int mirror_main(void) {
     }
     capture_config.loop = GET_OPTION(media_loop);
   } else {
-    // Default to webcam
+    // Default to webcam (no --file or --url specified)
+    log_info("Using local webcam");
     capture_config.type = MEDIA_SOURCE_WEBCAM;
     capture_config.path = NULL;
     capture_config.loop = false;

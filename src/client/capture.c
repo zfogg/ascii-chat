@@ -320,20 +320,21 @@ int capture_init() {
   const char *media_file = GET_OPTION(media_file);
   bool media_from_stdin = GET_OPTION(media_from_stdin);
 
-  if (media_url[0] != '\0') {
+  if (media_url && media_url[0] != '\0') {
     // Network URL streaming (takes priority over --file)
+    // Don't open webcam when streaming from URL
     config.type = MEDIA_SOURCE_FILE;
     config.path = media_url;
     config.loop = false; // Network URLs cannot be looped
-    log_debug("Using network URL: %s", media_url);
-  } else if (media_file[0] != '\0') {
-    // File or stdin streaming
+    log_debug("Using network URL: %s (webcam disabled)", media_url);
+  } else if (media_file && media_file[0] != '\0') {
+    // File or stdin streaming - don't open webcam
     config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
     config.path = media_file;
     config.loop = GET_OPTION(media_loop) && !media_from_stdin;
-    log_debug("Using media %s: %s", media_from_stdin ? "stdin" : "file", media_file);
+    log_debug("Using media %s: %s (webcam disabled)", media_from_stdin ? "stdin" : "file", media_file);
   } else if (GET_OPTION(test_pattern)) {
-    // Test pattern mode
+    // Test pattern mode - don't open real webcam
     config.type = MEDIA_SOURCE_TEST;
     config.path = NULL;
     log_debug("Using test pattern mode");
