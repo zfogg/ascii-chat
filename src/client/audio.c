@@ -92,6 +92,7 @@
 #include <math.h>
 
 #include "platform/abstraction.h"
+#include "platform/init.h"
 #include "thread_pool.h"
 
 /* ============================================================================
@@ -196,6 +197,7 @@ static int g_audio_send_queue_tail = 0; // Read position
 static mutex_t g_audio_send_queue_mutex;
 static cond_t g_audio_send_queue_cond;
 static bool g_audio_send_queue_initialized = false;
+static static_mutex_t g_audio_send_queue_init_mutex = STATIC_MUTEX_INIT;
 
 /** Audio sender thread */
 static bool g_audio_sender_thread_created = false;
@@ -310,12 +312,20 @@ static void *audio_sender_thread_func(void *arg) {
 
 /**
  * @brief Initialize async audio sender queue and thread
+ *
+ * Uses mutex protection to prevent TOCTOU race conditions where multiple
+ * threads might attempt initialization simultaneously.
  */
 static void audio_sender_init(void) {
+  static_mutex_lock(&g_audio_send_queue_init_mutex);
+
+  // Check again under lock to prevent race condition
   if (g_audio_send_queue_initialized) {
+    static_mutex_unlock(&g_audio_send_queue_init_mutex);
     return;
   }
 
+  // Initialize queue structures under lock
   mutex_init(&g_audio_send_queue_mutex);
   cond_init(&g_audio_send_queue_cond);
   g_audio_send_queue_head = 0;
@@ -323,7 +333,9 @@ static void audio_sender_init(void) {
   g_audio_send_queue_initialized = true;
   atomic_store(&g_audio_sender_should_exit, false);
 
-  // Start sender thread
+  static_mutex_unlock(&g_audio_send_queue_init_mutex);
+
+  // Start sender thread (after lock release to avoid blocking other threads)
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
     log_debug("Audio sender thread created");

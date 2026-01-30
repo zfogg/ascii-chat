@@ -11,6 +11,7 @@
 #include <stdarg.h>
 
 #include "platform/abstraction.h"
+#include "platform/init.h"
 #include "common.h"
 #include "ascii_simd.h"
 #include "video/palette.h"
@@ -33,11 +34,16 @@ size_t write_rgb_triplet(uint8_t value, char *dst) {
 // Default luminance palette for legacy functions
 char g_default_luminance_palette[256];
 static bool g_default_palette_initialized = false;
+static static_mutex_t g_default_palette_mutex = STATIC_MUTEX_INIT;
 
-// Initialize default luminance palette
+// Initialize default luminance palette (thread-safe with mutex protection)
 void init_default_luminance_palette(void) {
-  if (g_default_palette_initialized)
+  static_mutex_lock(&g_default_palette_mutex);
+
+  if (g_default_palette_initialized) {
+    static_mutex_unlock(&g_default_palette_mutex);
     return;
+  }
 
   // Build default luminance mapping using standard palette
   const size_t len = DEFAULT_ASCII_PALETTE_LEN;
@@ -49,6 +55,7 @@ void init_default_luminance_palette(void) {
     g_default_luminance_palette[i] = DEFAULT_ASCII_PALETTE[palette_index];
   }
   g_default_palette_initialized = true;
+  static_mutex_unlock(&g_default_palette_mutex);
 }
 
 // Helper function for benchmarks and fallback cases

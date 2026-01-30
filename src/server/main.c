@@ -1826,24 +1826,30 @@ int server_main(void) {
 
             // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
             static stun_server_t stun_servers[4] = {0};
-            static int stun_count_initialized = 0;
-            if (!stun_count_initialized) {
+            static unsigned int g_stun_init_refcount = 0;
+            static static_mutex_t g_stun_init_mutex = STATIC_MUTEX_INIT;
+            static int stun_count = 0; // Store actual count separately
+
+            static_mutex_lock(&g_stun_init_mutex);
+            if (g_stun_init_refcount == 0) {
               int count =
                   stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
               if (count > 0) {
-                stun_count_initialized = count;
+                stun_count = count;
               } else {
                 log_warn("Failed to parse STUN servers, using defaults");
-                stun_count_initialized = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
-                                                            OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+                stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
+                                                stun_servers, 4);
               }
+              g_stun_init_refcount = 1;
             }
+            static_mutex_unlock(&g_stun_init_mutex);
 
             // Configure peer_manager
             webrtc_peer_manager_config_t pm_config = {
                 .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
                 .stun_servers = stun_servers,
-                .stun_count = stun_count_initialized,
+                .stun_count = stun_count,
                 .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
                 .turn_count = 0,
                 .on_transport_ready = on_webrtc_transport_ready,

@@ -19,6 +19,7 @@
 #include "util/string.h"
 #include "platform/system.h"
 #include "platform/errno.h"
+#include "platform/init.h"
 #include "common.h"
 #include "log/logging.h"
 
@@ -51,6 +52,7 @@ static bool g_suppress_error_context = false;
 
 static asciichat_error_stats_t error_stats = {0};
 static bool stats_initialized = false;
+static static_mutex_t g_error_stats_mutex = STATIC_MUTEX_INIT;
 
 /* ============================================================================
  * Thread-Safe Error Storage
@@ -361,15 +363,22 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
  */
 
 void asciichat_error_stats_init(void) {
+  static_mutex_lock(&g_error_stats_mutex);
+
   if (!stats_initialized) {
     memset(&error_stats, 0, sizeof(error_stats));
     stats_initialized = true;
   }
+
+  static_mutex_unlock(&g_error_stats_mutex);
 }
 
 void asciichat_error_stats_record(asciichat_error_t code) {
+  static_mutex_lock(&g_error_stats_mutex);
+
   if (!stats_initialized) {
-    asciichat_error_stats_init();
+    memset(&error_stats, 0, sizeof(error_stats));
+    stats_initialized = true;
   }
 
   if (code >= 0 && code < 256) {
@@ -378,46 +387,64 @@ void asciichat_error_stats_record(asciichat_error_t code) {
   error_stats.total_errors++;
   error_stats.last_error_time = time_ns_to_us(time_get_realtime_ns());
   error_stats.last_error_code = code;
+
+  static_mutex_unlock(&g_error_stats_mutex);
 }
 
 void asciichat_error_stats_print(void) {
+  static_mutex_lock(&g_error_stats_mutex);
+
   if (!stats_initialized || error_stats.total_errors == 0) {
+    static_mutex_unlock(&g_error_stats_mutex);
     log_plain("No errors recorded.\n");
     return;
   }
 
-  log_plain("\n=== ascii-chat Error Statistics ===\n");
-  log_plain("Total errors: %llu\n", (unsigned long long)error_stats.total_errors);
+  // Copy stats to local variable to minimize lock hold time
+  asciichat_error_stats_t local_stats = error_stats;
+  static_mutex_unlock(&g_error_stats_mutex);
 
-  if (error_stats.last_error_time > 0) {
-    time_t sec = (time_t)(error_stats.last_error_time / NS_PER_MS_INT);
+  log_plain("\n=== ascii-chat Error Statistics ===\n");
+  log_plain("Total errors: %llu\n", (unsigned long long)local_stats.total_errors);
+
+  if (local_stats.last_error_time > 0) {
+    time_t sec = (time_t)(local_stats.last_error_time / NS_PER_MS_INT);
     struct tm tm_info;
     if (platform_localtime(&sec, &tm_info) == ASCIICHAT_OK) {
       char time_str[64];
       strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &tm_info);
-      log_plain("Last error: %s (code %d)\n", time_str, (int)error_stats.last_error_code);
+      log_plain("Last error: %s (code %d)\n", time_str, (int)local_stats.last_error_code);
     }
   }
 
   log_plain("\nError breakdown:\n");
   for (int i = 0; i < 256; i++) {
-    if (error_stats.error_counts[i] > 0) {
+    if (local_stats.error_counts[i] > 0) {
       log_plain("  %3d (%s): %llu\n", i, asciichat_error_string((asciichat_error_t)i),
-                (unsigned long long)error_stats.error_counts[i]);
+                (unsigned long long)local_stats.error_counts[i]);
     }
   }
   log_plain("\n");
 }
 
 void asciichat_error_stats_reset(void) {
+  static_mutex_lock(&g_error_stats_mutex);
   memset(&error_stats, 0, sizeof(error_stats));
+  static_mutex_unlock(&g_error_stats_mutex);
 }
 
 asciichat_error_stats_t asciichat_error_stats_get(void) {
+  static_mutex_lock(&g_error_stats_mutex);
+
   if (!stats_initialized) {
-    asciichat_error_stats_init();
+    memset(&error_stats, 0, sizeof(error_stats));
+    stats_initialized = true;
   }
-  return error_stats;
+
+  asciichat_error_stats_t result = error_stats;
+  static_mutex_unlock(&g_error_stats_mutex);
+
+  return result;
 }
 
 /* ============================================================================

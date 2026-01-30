@@ -18,6 +18,7 @@
 #include "network/acip/send.h"
 #include "network/packet.h"
 #include "platform/abstraction.h"
+#include "platform/init.h"
 
 #include <string.h>
 
@@ -51,6 +52,7 @@ static struct {
  */
 static mutex_t g_webrtc_mutex;
 static bool g_webrtc_mutex_initialized = false;
+static static_mutex_t g_webrtc_init_mutex = STATIC_MUTEX_INIT;
 
 // =============================================================================
 // Internal Helpers
@@ -58,12 +60,20 @@ static bool g_webrtc_mutex_initialized = false;
 
 /**
  * @brief Initialize mutex (called once)
+ *
+ * Uses static mutex to prevent TOCTOU race condition where multiple threads
+ * might attempt to initialize the main mutex simultaneously.
  */
 static void ensure_mutex_initialized(void) {
+  static_mutex_lock(&g_webrtc_init_mutex);
+
+  // Check again under lock to prevent race condition
   if (!g_webrtc_mutex_initialized) {
     mutex_init(&g_webrtc_mutex);
     g_webrtc_mutex_initialized = true;
   }
+
+  static_mutex_unlock(&g_webrtc_init_mutex);
 }
 
 // =============================================================================
