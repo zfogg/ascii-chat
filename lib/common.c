@@ -82,7 +82,19 @@ static void print_mimalloc_stats(void);
 // But allow subsystem reinitialization for tests and other use cases
 static bool g_atexit_handlers_registered = false;
 
-asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client) {
+asciichat_error_t asciichat_shared_init(bool is_client) {
+  // Initialize logging with default filename
+  // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
+  const options_t *opts = options_get();
+  const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "ascii-chat.log";
+  // Use log_level from parsed options (set by options_init)
+  // Default levels (when no --log-level arg or LOG_LEVEL env var):
+  //   Debug/Dev builds: LOG_DEBUG
+  //   Release/RelWithDebInfo builds: LOG_INFO
+  // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
+  // use_mmap=false: Regular file logging (default for developers, allows tail -f for log monitoring)
+  log_init(log_file, GET_OPTION(log_level), is_client, false /* don't use_mmap */);
+
   // Register memory debugging stats FIRST so it runs LAST at exit
   // (atexit callbacks run in LIFO order - last registered runs first)
   // This ensures all cleanup handlers run before the memory report is printed
@@ -131,18 +143,6 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   if (GET_OPTION(quiet)) {
     log_set_terminal_output(false);
   }
-
-  // Initialize logging with default filename
-  // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
-  const options_t *opts = options_get();
-  const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : default_log_filename;
-  // Use log_level from parsed options (set by options_init)
-  // Default levels (when no --log-level arg or LOG_LEVEL env var):
-  //   Debug/Dev builds: LOG_DEBUG
-  //   Release/RelWithDebInfo builds: LOG_INFO
-  // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
-  // use_mmap=false: Regular file logging (default for developers, allows tail -f for log monitoring)
-  log_init(log_file, GET_OPTION(log_level), is_client, false /* use_mmap */);
 
   // Initialize palette based on command line options
   const char *custom_chars = opts && opts->palette_custom_set ? opts->palette_custom : NULL;

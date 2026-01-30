@@ -84,7 +84,7 @@ completion_format_t completions_parse_shell_name(const char *shell_name) {
  * @brief Collect options from all modes with deduplication
  *
  * Iterates through all completion modes (MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT,
- * MODE_MIRROR, MODE_DISCOVERY_SERVER) and collects unique options by long_name.
+ * MODE_MIRROR, MODE_DISCOVERY_SERVICE) and collects unique options by long_name.
  * Useful for generators that need to show completions for options across multiple modes.
  *
  * @param[out] count Pointer to receive the count of unique options
@@ -102,7 +102,7 @@ option_descriptor_t *completions_collect_all_modes_unique(size_t *count) {
   size_t combined_count = 0;
 
   /* All completion modes to iterate through */
-  asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
+  asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
 
   for (size_t m = 0; m < modes_len; m++) {

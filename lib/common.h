@@ -548,7 +548,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @param is_client true for client mode (routes all logs to stderr), false for server mode
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client);
+asciichat_error_t asciichat_shared_init(bool is_client);
 
 /* ============================================================================
  * Error Handling Macros

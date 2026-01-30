@@ -222,3 +222,11 @@ bool parse_no_cookies_from_browser(const char *arg, void *dest, char **error_msg
  * Sets media_seek_timestamp to the provided timestamp in seconds.
  */
 bool parse_timestamp(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for volume options (--volume, --speakers-volume, --microphone-volume)
+ *
+ * Validates that the volume is a float value between 0.0 and 1.0.
+ * Sets the destination float to the parsed volume value.
+ */
+bool parse_volume(const char *arg, void *dest, char **error_msg);

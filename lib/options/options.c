@@ -291,7 +291,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   // Check if argv[0] itself is a mode name (for test compatibility)
   // This handles the case where tests pass ["client", "-p", "80"] without a binary name
   const char *const mode_names_check[] = {"server", "client", "mirror", "discovery-service", NULL};
-  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER};
+  const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
       *out_mode = mode_values_check[i];
@@ -400,7 +400,7 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
 
   // Try to match against known modes
   const char *const mode_names[] = {"server", "client", "mirror", "discovery-service", "discovery", NULL};
-  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVER, MODE_INVALID};
+  const asciichat_mode_t mode_values[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE, MODE_INVALID};
 
   for (int i = 0; mode_names[i] != NULL; i++) {
     if (strcmp(positional, mode_names[i]) == 0) {
@@ -652,6 +652,61 @@ options_t options_t_new_preserve_binary(const options_t *source) {
   return opts;
 }
 
+char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
+  // Determine log filename based on mode
+  const char *log_filename = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
+  switch (detected_mode) {
+  case MODE_SERVER:
+    strcpy((char *)log_filename, "server.log");
+    break;
+  case MODE_CLIENT:
+    strcpy((char *)log_filename, "client.log");
+    break;
+  case MODE_MIRROR:
+    strcpy((char *)log_filename, "mirror.log");
+    break;
+  case MODE_DISCOVERY_SERVICE:
+    strcpy((char *)log_filename, "acds.log");
+    break;
+  case MODE_DISCOVERY:
+    strcpy((char *)log_filename, "discovery.log");
+    break;
+  default:
+    strcpy((char *)log_filename, "ascii-chat.log");
+    break;
+  }
+
+  char *log_dir = get_log_dir();
+  char *tmp_dir = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
+
+  if (log_dir) {
+    // Build full log file path: log_dir + separator + log_filename
+    char *default_log_path = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
+    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
+
+    // Validate and normalize the path
+    char *normalized_default_log = NULL;
+    if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
+      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
+      SAFE_FREE(normalized_default_log);
+    } else {
+      // Validation failed - use the path as-is (validation may fail in debug builds)
+      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
+    }
+
+    SAFE_FREE(log_dir);
+    return default_log_path;
+
+  } else if (platform_get_temp_dir(tmp_dir, PLATFORM_MAX_PATH_LENGTH)) {
+    char *default_log_path = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
+    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", tmp_dir, PATH_SEPARATOR_STR, "ascii-chat.log");
+    SAFE_FREE(tmp_dir);
+    return default_log_path;
+  } else {
+    return log_filename;
+  }
+}
+
 // ============================================================================
 // Main Option Parser Entry Point
 // ============================================================================
@@ -725,6 +780,10 @@ asciichat_error_t options_init(int argc, char **argv) {
               free(error_msg);
             }
           }
+        } else {
+          // --color without argument defaults to true (enable colors)
+          parsed_color_setting = COLOR_SETTING_TRUE;
+          color_setting_found = true;
         }
       }
       // Check for --color=value format
@@ -823,7 +882,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (user_quiet || has_action) {
     log_set_terminal_output(false); // Suppress console logging BEFORE shared_init for clean action output
   }
-  asciichat_error_t logging_init_result = asciichat_shared_init("options-early.log", false);
+  asciichat_error_t logging_init_result = asciichat_shared_init(false);
   if (logging_init_result != ASCIICHAT_OK) {
     return logging_init_result;
   }
@@ -944,7 +1003,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Check for binary-level options that can appear before or after mode
   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
   // These are documented as binary-level options that can appear anywhere
-  bool binary_level_log_file_set = false; // Track if user explicitly set --log-file
   for (int i = 1; i < argc; i++) {
     if (argv[i][0] == '-') {
       // Handle -V and --verbose (stackable verbosity)
@@ -985,7 +1043,6 @@ asciichat_error_t options_init(int argc, char **argv) {
       if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
         if (i + 1 < argc && argv[i + 1][0] != '-') {
           SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
-          binary_level_log_file_set = true;
           i++; // Skip the file argument
         }
       }
@@ -1148,77 +1205,9 @@ asciichat_error_t options_init(int argc, char **argv) {
     log_info("options_init: Detected session string from argv: '%s'", detected_session_string);
   }
 
-  // Set default log file paths based on build type
-  // Release: $tmpdir/ascii-chat/MODE.log (e.g., /tmp/ascii-chat/server.log)
-  // Debug: MODE.log in current working directory (e.g., ./server.log)
-  // SKIP this if user already set --log-file or -L at binary level
-  if (!binary_level_log_file_set) {
-    char *log_dir = get_log_dir();
-    if (log_dir) {
-      // Determine log filename based on mode
-      const char *log_filename;
-      switch (detected_mode) {
-      case MODE_SERVER:
-        log_filename = "server.log";
-        break;
-      case MODE_CLIENT:
-        log_filename = "client.log";
-        break;
-      case MODE_MIRROR:
-        log_filename = "mirror.log";
-        break;
-      case MODE_DISCOVERY_SERVER:
-        log_filename = "acds.log";
-        break;
-      case MODE_DISCOVERY:
-        log_filename = "discovery.log";
-        break;
-      default:
-        log_filename = "ascii-chat.log";
-        break;
-      }
-
-      // Build full log file path: log_dir + separator + log_filename
-      char default_log_path[PLATFORM_MAX_PATH_LENGTH];
-      safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
-
-      // Validate and normalize the path
-      char *normalized_default_log = NULL;
-      if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
-        SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
-        SAFE_FREE(normalized_default_log);
-      } else {
-        // Validation failed - use the path as-is (validation may fail in debug builds)
-        SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
-      }
-
-      SAFE_FREE(log_dir);
-    } else {
-      // Fallback if get_log_dir() fails - use simple filename in CWD
-      const char *log_filename;
-      switch (detected_mode) {
-      case MODE_SERVER:
-        log_filename = "server.log";
-        break;
-      case MODE_CLIENT:
-        log_filename = "client.log";
-        break;
-      case MODE_MIRROR:
-        log_filename = "mirror.log";
-        break;
-      case MODE_DISCOVERY_SERVER:
-        log_filename = "acds.log";
-        break;
-      case MODE_DISCOVERY:
-        log_filename = "discovery.log";
-        break;
-      default:
-        log_filename = "ascii-chat.log";
-        break;
-      }
-      SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
-    }
-  } // Close: if (!binary_level_log_file_set)
+  char *log_filename = options_get_log_filepath(detected_mode, opts);
+  SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
+  SAFE_FREE(log_filename);
 
   // Encryption options default to disabled/empty
   opts.no_encrypt = 0;
@@ -1239,7 +1228,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "127.0.0.1");
     // address6 is now a positional argument, not an option
     opts.address6[0] = '\0';
-  } else if (detected_mode == MODE_DISCOVERY_SERVER) {
+  } else if (detected_mode == MODE_DISCOVERY_SERVICE) {
     // ACDS: binds to all interfaces by default
     SAFE_SNPRINTF(opts.address, OPTIONS_BUFF_SIZE, "0.0.0.0");
     opts.address6[0] = '\0';
@@ -1369,7 +1358,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Mode-specific post-processing
-  if (detected_mode == MODE_DISCOVERY_SERVER) {
+  if (detected_mode == MODE_DISCOVERY_SERVICE) {
     // Set default paths if not specified
     if (opts.discovery_database_path[0] == '\0') {
       char *config_dir = get_config_dir();
@@ -1392,7 +1381,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Collect multiple --key flags for multi-key support (server/ACDS only)
   // This enables servers to load both SSH and GPG keys and select the right one
   // during handshake based on what the client expects
-  if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVER) {
+  if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
     int num_keys = options_collect_identity_keys(&opts, argc, argv);
     if (num_keys < 0) {
       SAFE_FREE(allocated_mode_argv);

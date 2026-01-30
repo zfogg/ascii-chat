@@ -157,6 +157,20 @@ ASCIICHAT_API int validate_opt_ip_address(const char *value_str, char *parsed_ad
 ASCIICHAT_API float validate_opt_float_non_negative(const char *value_str, char *error_msg, size_t error_msg_size);
 
 /**
+ * @brief Validate volume value (0.0-1.0)
+ * @param value_str Volume value as string
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed volume value on success, -1.0f on error
+ *
+ * Validates that the string is a valid volume in the range 0.0 to 1.0.
+ * Used for --volume, --microphone-volume, and similar audio options.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API float validate_opt_volume(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
  * @brief Validate FPS value (1-144)
  * @param value_str FPS value as string
  * @param error_msg Buffer for error message (can be NULL)

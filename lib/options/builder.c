@@ -1474,17 +1474,38 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
 // ============================================================================
 
 /**
+ * @brief Check if an argument is a known mode keyword
+ *
+ * Mode keywords should not be consumed as option values.
+ */
+static bool is_mode_keyword(const char *arg) {
+  if (!arg || arg[0] == '\0')
+    return false;
+
+  // Known mode keywords that should not be consumed as values
+  static const char *mode_keywords[] = {"server", "client", "mirror", "acds", "discovery", "discovery-service", NULL};
+
+  for (int i = 0; mode_keywords[i] != NULL; i++) {
+    if (strcmp(arg, mode_keywords[i]) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * @brief Check if an argument looks like a flag
  *
- * An argument is considered a flag if it starts with `-`.
+ * An argument is considered a flag if it starts with `-` or is a mode keyword.
  * Special cases:
  * - `--` is treated as the end-of-options marker
  * - Numbers starting with `-` (like `-5`) could be ambiguous, but we treat them as flags
+ * - Mode keywords (server, client, mirror, etc.) should not be consumed as values
  */
 static bool is_flag_argument(const char *arg) {
   if (!arg || arg[0] == '\0')
     return false;
-  return arg[0] == '-';
+  return arg[0] == '-' || is_mode_keyword(arg);
 }
 
 /**
@@ -1607,9 +1628,14 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       *consumed_count = 2;
     } else {
       // No value provided
-      if (equals)
-        *equals = '='; // Restore
-      return SET_ERRNO(ERROR_USAGE, "Option %s requires a value", arg);
+      // Check if this option allows optional arguments
+      if (!desc->optional_arg) {
+        if (equals)
+          *equals = '='; // Restore
+        return SET_ERRNO(ERROR_USAGE, "Option %s requires a value", arg);
+      }
+      // For optional arguments, pass NULL to the parser
+      opt_value = NULL;
     }
   }
 
@@ -2047,37 +2073,74 @@ static int calculate_section_max_col_width(const options_config_t *config, const
   char temp_buf[BUFFER_SIZE_MEDIUM];
 
   if (strcmp(section_type, "usage") == 0) {
-    // Calculate max width for USAGE section
+    // Calculate max width for USAGE section (use plain text, no ANSI codes)
     if (config->num_usage_lines == 0)
       return 20;
 
+    // Get mode name for filtering usage lines (same logic as options_print_help_for_mode)
+    const char *mode_name = NULL;
+    if (!for_binary_help) {
+      switch (mode) {
+      case MODE_SERVER:
+        mode_name = "server";
+        break;
+      case MODE_CLIENT:
+        mode_name = "client";
+        break;
+      case MODE_MIRROR:
+        mode_name = "mirror";
+        break;
+      case MODE_DISCOVERY_SERVICE:
+        mode_name = "discovery-service";
+        break;
+      case MODE_DISCOVERY:
+        mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows all usage lines
+        break;
+      default:
+        mode_name = NULL;
+        break;
+      }
+    }
+
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
+
+      // Filter usage lines by mode (same logic as options_print_help_for_mode)
+      if (!for_binary_help) {
+        // For mode-specific help, show ONLY the current mode's usage line
+        // Don't show generic binary-level or placeholder lines
+        if (!usage->mode || strcmp(usage->mode, mode_name) != 0) {
+          continue;
+        }
+      }
+
       int len = 0;
 
+      // Build plain text version for width calculation (no ANSI codes)
       len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
       if (usage->mode) {
-        const char *colored_mode = colored_string(LOG_COLOR_FATAL, usage->mode);
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", usage->mode);
       }
 
       if (usage->positional) {
-        const char *colored_pos = colored_string(LOG_COLOR_INFO, usage->positional);
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_pos);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", usage->positional);
       }
 
       if (usage->show_options) {
         const char *options_text =
             (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-        const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_opts);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", options_text);
       }
 
-      int w = utf8_display_width(temp_buf);
+      int w = utf8_display_width_n(temp_buf, len);
       if (w > max_width)
         max_width = w;
     }
+
+    // Cap USAGE section at 50 chars max (usage lines are inherently shorter)
+    if (max_width > 50)
+      max_width = 50;
   } else if (strcmp(section_type, "examples") == 0) {
     // Calculate max width for EXAMPLES section
     if (config->num_examples == 0)
@@ -2095,7 +2158,7 @@ static int calculate_section_max_col_width(const options_config_t *config, const
     case MODE_MIRROR:
       mode_name = "mirror";
       break;
-    case MODE_DISCOVERY_SERVER:
+    case MODE_DISCOVERY_SERVICE:
       mode_name = "discovery-service";
       break;
     case MODE_DISCOVERY:
@@ -2122,29 +2185,36 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
       if (example->mode) {
-        const char *colored_mode = colored_string(LOG_COLOR_FATAL, example->mode);
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->mode);
       }
 
       if (example->args) {
         len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->args);
       }
 
-      int w = utf8_display_width(temp_buf);
+      int w = utf8_display_width_n(temp_buf, len);
       if (w > max_width)
         max_width = w;
     }
+
+    // Cap EXAMPLES section at 75 chars max
+    if (max_width > 75)
+      max_width = 75;
   } else if (strcmp(section_type, "modes") == 0) {
     // Calculate max width for MODES section
     if (config->num_modes == 0)
       return 20;
 
     for (size_t i = 0; i < config->num_modes; i++) {
-      const char *colored_name = colored_string(LOG_COLOR_FATAL, config->modes[i].name);
-      int w = utf8_display_width(colored_name);
+      // Use plain text for width calculation (no ANSI codes)
+      int w = utf8_display_width(config->modes[i].name);
       if (w > max_width)
         max_width = w;
     }
+
+    // Cap MODES section at 30 chars max (mode names are short)
+    if (max_width > 30)
+      max_width = 30;
   } else if (strcmp(section_type, "options") == 0) {
     // Calculate max width for OPTIONS section
     if (config->num_descriptors == 0)
@@ -2326,7 +2396,7 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
       case MODE_MIRROR:
         mode_name = "mirror";
         break;
-      case MODE_DISCOVERY_SERVER:
+      case MODE_DISCOVERY_SERVICE:
         mode_name = "discovery-service";
         break;
       case MODE_DISCOVERY:
@@ -2911,7 +2981,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     case MODE_MIRROR:
       mode_name = "mirror";
       break;
-    case MODE_DISCOVERY_SERVER:
+    case MODE_DISCOVERY_SERVICE:
       mode_name = "discovery-service";
       break;
     case MODE_DISCOVERY:
@@ -2929,11 +2999,9 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
 
       // Filter usage lines by mode
       if (!for_binary_help) {
-        // For mode-specific help, show only:
-        // - NULL mode (generic binary-level usage like "ascii-chat [options...]")
-        // - "<mode>" placeholder
-        // - Current mode (e.g., "server" when in server help)
-        if (usage->mode && strcmp(usage->mode, "<mode>") != 0 && strcmp(usage->mode, mode_name) != 0) {
+        // For mode-specific help, show ONLY the current mode's usage line
+        // Don't show generic binary-level or placeholder lines
+        if (!usage->mode || strcmp(usage->mode, mode_name) != 0) {
           continue;
         }
       }

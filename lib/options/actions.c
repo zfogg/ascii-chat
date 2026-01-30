@@ -275,7 +275,7 @@ void action_help_mirror(void) {
 }
 
 void action_help_acds(void) {
-  usage(stdout, MODE_DISCOVERY_SERVER);
+  usage(stdout, MODE_DISCOVERY_SERVICE);
   exit(0);
 }
 

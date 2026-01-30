@@ -570,7 +570,7 @@ static const mode_metadata_t mode_info[] = {
     {MODE_SERVER, "ascii-chat server", "host a server mixing video and audio for ascii-chat clients"},
     {MODE_CLIENT, "ascii-chat client", "connect to an ascii-chat server"},
     {MODE_MIRROR, "ascii-chat mirror", "use the webcam or files or urls without network connections"},
-    {MODE_DISCOVERY_SERVER, "ascii-chat discovery-service", "secure p2p session signalling"},
+    {MODE_DISCOVERY_SERVICE, "ascii-chat discovery-service", "secure p2p session signalling"},
     {MODE_DISCOVERY, "💻📸 ascii-chat 🔡💬", "Video chat in your terminal"},
 };
 

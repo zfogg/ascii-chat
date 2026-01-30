@@ -209,6 +209,7 @@ static console_ctrl_handler_t g_console_ctrl_handler = NULL;
  */
 static void posix_console_ctrl_signal_handler(int sig) {
   if (!g_console_ctrl_handler) {
+    SET_ERRNO(ERROR_INVALID_STATE, "No console control handler registered");
     return;
   }
 
@@ -516,6 +517,7 @@ int platform_chmod(const char *pathname, int mode) {
  */
 static int manual_backtrace(void **buffer, int size) {
   if (!buffer || size <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid buffer or size: buffer=%p, size=%d", buffer, size);
     return 0;
   }
 
@@ -604,6 +606,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  */
 void platform_backtrace_symbols_free(char **strings) {
   if (!strings) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: strings=%p", strings);
     return;
   }
 
@@ -635,6 +638,7 @@ void platform_backtrace_symbols_free(char **strings) {
 void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
                                       backtrace_frame_filter_t filter) {
   if (!symbols || count <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: symbols=%p, count=%d", symbols, count);
     return;
   }
 
@@ -1046,6 +1050,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  */
 bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
   if (temp_dir == NULL || path_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: temp_dir=%s, path_size=%zu", temp_dir, path_size);
     return false;
   }
 
@@ -1070,6 +1075,7 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
 
 bool platform_get_cwd(char *cwd, size_t path_size) {
   if (!cwd || path_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: cwd=%s, path_size=%zu", cwd, path_size);
     return false;
   }
 
@@ -1082,6 +1088,7 @@ bool platform_get_cwd(char *cwd, size_t path_size) {
 
 int platform_access(const char *path, int mode) {
   if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: path=%s", path);
     return -1;
   }
 

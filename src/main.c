@@ -132,7 +132,7 @@ static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
       if (strcmp(m->name, "mirror") == 0)
         return m;
       break;
-    case MODE_DISCOVERY_SERVER:
+    case MODE_DISCOVERY_SERVICE:
       if (strcmp(m->name, "discovery-service") == 0)
         return m;
       break;
@@ -200,54 +200,10 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Determine default log filename based on detected mode
-  const char *default_log_filename;
-  switch (opts->detected_mode) {
-  case MODE_SERVER:
-    default_log_filename = "server.log";
-    break;
-  case MODE_CLIENT:
-    default_log_filename = "client.log";
-    break;
-  case MODE_MIRROR:
-    default_log_filename = "mirror.log";
-    break;
-  case MODE_DISCOVERY_SERVER:
-    default_log_filename = "acds.log";
-    break;
-  case MODE_DISCOVERY:
-    default_log_filename = "discovery.log";
-    break;
-  default:
-    default_log_filename = "ascii-chat.log";
-    break;
-  }
-
-  // Validate log file path if specified (security: prevent path traversal)
-  const char *log_file_from_opts = (opts->log_file[0] != '\0') ? opts->log_file : NULL;
-  if (log_file_from_opts && strlen(log_file_from_opts) > 0) {
-    char *validated_log_file = NULL;
-    asciichat_error_t log_path_result =
-        path_validate_user_path(log_file_from_opts, PATH_ROLE_LOG_FILE, &validated_log_file);
-    if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
-      // Invalid log file path - warn and fall back to default
-      fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
-              default_log_filename);
-      options_set_string("log_file", "");
-      opts = options_get(); // Refresh pointer after update
-      SAFE_FREE(validated_log_file);
-    } else {
-      // Replace log_file with validated path
-      options_set_string("log_file", validated_log_file);
-      opts = options_get(); // Refresh pointer after update
-      SAFE_FREE(validated_log_file);
-    }
-  }
-
   // Determine if this mode uses client-like initialization (client and mirror modes)
   // Discovery mode is client-like (uses terminal display, webcam, etc.)
-  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
-                                   opts->detected_mode == MODE_DISCOVERY);
+  bool is_client_like_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
+                              opts->detected_mode == MODE_DISCOVERY);
 
   // Handle --help and --version (these are detected and flagged by options_init)
   // Terminal capabilities already initialized before options_init() at startup
@@ -271,18 +227,18 @@ int main(int argc, char *argv[]) {
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr
-  asciichat_error_t init_result = asciichat_shared_init(default_log_filename, is_client_or_mirror_mode);
+  asciichat_error_t init_result = asciichat_shared_init(is_client_like_mode);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
-  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : default_log_filename;
+  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_warn("Logging initialized to %s", final_log_file);
 
   // Client-specific: auto-detect piping and default to no color mode
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
   // However, respect --color=true which explicitly forces colors ON
   terminal_color_mode_t color_mode = opts->color_mode;
-  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
+  if (is_client_like_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
       opts->color != COLOR_SETTING_TRUE) {
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update

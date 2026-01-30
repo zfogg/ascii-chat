@@ -47,7 +47,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   }
 
   option_mode_bitmask_t user_modes_mask =
-      (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) | (1 << MODE_DISCOVERY_SERVER);
+      (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) | (1 << MODE_DISCOVERY_SERVICE);
   if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
     return "all modes";
   }
@@ -65,7 +65,7 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   if (mode_bitmask & (1 << MODE_MIRROR)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smirror", pos > 0 ? ", " : "");
   }
-  if (mode_bitmask & (1 << MODE_DISCOVERY_SERVER)) {
+  if (mode_bitmask & (1 << MODE_DISCOVERY_SERVICE)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
   }
 

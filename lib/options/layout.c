@@ -59,6 +59,43 @@ static int calculate_segment_display_width(const char *text, int len) {
   return width < 0 ? 0 : width;
 }
 
+/**
+ * @brief Check if we're at a metadata marker, accounting for ANSI codes
+ *
+ * Handles cases where metadata like "(default:" or "(env:" has ANSI color codes
+ * mixed in, like "(\x1b[..mdefault:\x1b[0m"
+ */
+static bool is_metadata_start(const char *p) {
+  if (!p || *p != '(')
+    return false;
+
+  // Strip ANSI codes to check the actual text
+  char buf[256];
+  const char *src = p;
+  char *dst = buf;
+  int remaining = sizeof(buf) - 1;
+
+  // Copy up to 20 chars, stripping ANSI codes
+  int count = 0;
+  while (*src && count < 20 && remaining > 0) {
+    if (*src == '\x1b') {
+      // Skip ANSI escape sequence
+      src++;
+      while (*src && *src != 'm')
+        src++;
+      if (*src == 'm')
+        src++;
+    } else {
+      *dst++ = *src++;
+      remaining--;
+      count++;
+    }
+  }
+  *dst = '\0';
+
+  return strncmp(buf, "(default:", 9) == 0 || strncmp(buf, "(env:", 5) == 0;
+}
+
 void layout_print_wrapped_description(FILE *stream, const char *text, int indent_width, int term_width) {
   if (!text || !stream)
     return;
@@ -79,6 +116,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
   const char *line_start = text;
   const char *last_space = NULL;
   const char *p = text;
+  bool inside_metadata = false;
 
   while (*p) {
     // Check for explicit newline
@@ -100,12 +138,26 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       p++;
       line_start = p;
       last_space = NULL;
+      inside_metadata = false;
       continue;
     }
 
-    // Track spaces for word wrapping
-    if (*p == ' ')
+    // Check for start of metadata blocks (must check before space tracking)
+    // Use helper that accounts for ANSI codes in the metadata
+    if (!inside_metadata && is_metadata_start(p)) {
+      inside_metadata = true;
+    }
+
+    // Check for end of metadata blocks - always exit on )
+    // We'll re-enter when we see the next metadata marker
+    if (inside_metadata && *p == ')') {
+      inside_metadata = false;
+    }
+
+    // Track spaces for word wrapping (but NOT inside metadata blocks)
+    if (*p == ' ' && !inside_metadata) {
       last_space = p;
+    }
 
     // Decode UTF-8 character using utf8proc_iterate
     utf8proc_int32_t codepoint;
@@ -124,29 +176,8 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
 
     // Check if we need to wrap
     if (actual_width >= available_width && last_space && last_space > line_start) {
-      // Check if the text after this break point starts with metadata markers
-      // If so, find the previous space to keep metadata together on next line
-      const char *break_at = last_space;
-      const char *next_word = last_space + 1;
-
-      // Skip leading spaces to see what comes next
-      while (*next_word == ' ')
-        next_word++;
-
-      // If next word is a metadata marker, break at the previous space instead
-      if ((strncmp(next_word, "(default:", 9) == 0 || strncmp(next_word, "(env:", 5) == 0) && last_space > line_start) {
-        // Find the space before last_space to break earlier
-        const char *prev_space = last_space - 1;
-        while (prev_space > line_start && *prev_space != ' ')
-          prev_space--;
-
-        if (prev_space > line_start && *prev_space == ' ') {
-          break_at = prev_space;
-        }
-      }
-
       // Print text up to break point with colors applied
-      int text_len = break_at - line_start;
+      int text_len = last_space - line_start;
       char seg[BUFFER_SIZE_MEDIUM];
       strncpy(seg, line_start, text_len);
       seg[text_len] = '\0';
@@ -156,7 +187,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       for (int i = 0; i < indent_width; i++)
         fprintf(stream, " ");
 
-      p = break_at + 1;
+      p = last_space + 1;
       line_start = p;
       last_space = NULL;
       continue;

@@ -668,12 +668,12 @@ int strtoint_safe(const char *str);
  * Determines which set of options to use when parsing command-line arguments.
  */
 typedef enum {
-  MODE_SERVER,           ///< Server mode - network server options
-  MODE_CLIENT,           ///< Client mode - network client options
-  MODE_MIRROR,           ///< Mirror mode - local webcam viewing (no network)
-  MODE_DISCOVERY_SERVER, ///< Discovery server mode - session management and WebRTC signaling
-  MODE_DISCOVERY,        ///< Discovery mode - participant that can dynamically become host
-  MODE_INVALID           ///< Invalid mode
+  MODE_SERVER,            ///< Server mode - network server options
+  MODE_CLIENT,            ///< Client mode - network client options
+  MODE_MIRROR,            ///< Mirror mode - local webcam viewing (no network)
+  MODE_DISCOVERY_SERVICE, ///< Discovery server mode - session management and WebRTC signaling
+  MODE_DISCOVERY,         ///< Discovery mode - participant that can dynamically become host
+  MODE_INVALID            ///< Invalid mode
 } asciichat_mode_t;
 
 /**
@@ -683,14 +683,14 @@ typedef enum {
  * modes by combining bitmasks with bitwise OR.
  */
 typedef enum {
-  OPTION_MODE_NONE = 0,                                     ///< No modes (invalid)
-  OPTION_MODE_SERVER = (1 << MODE_SERVER),                  ///< Server mode (bit 0)
-  OPTION_MODE_CLIENT = (1 << MODE_CLIENT),                  ///< Client mode (bit 1)
-  OPTION_MODE_MIRROR = (1 << MODE_MIRROR),                  ///< Mirror mode (bit 2)
-  OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVER), ///< Discovery server mode (bit 3)
-  OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),            ///< Discovery mode (bit 4)
-  OPTION_MODE_BINARY = 0x100,                               ///< Binary-level options (parsed before mode detection)
-  OPTION_MODE_ALL = 0x1F | 0x100                            ///< All modes + binary
+  OPTION_MODE_NONE = 0,                                      ///< No modes (invalid)
+  OPTION_MODE_SERVER = (1 << MODE_SERVER),                   ///< Server mode (bit 0)
+  OPTION_MODE_CLIENT = (1 << MODE_CLIENT),                   ///< Client mode (bit 1)
+  OPTION_MODE_MIRROR = (1 << MODE_MIRROR),                   ///< Mirror mode (bit 2)
+  OPTION_MODE_DISCOVERY_SVC = (1 << MODE_DISCOVERY_SERVICE), ///< Discovery server mode (bit 3)
+  OPTION_MODE_DISCOVERY = (1 << MODE_DISCOVERY),             ///< Discovery mode (bit 4)
+  OPTION_MODE_BINARY = 0x100,                                ///< Binary-level options (parsed before mode detection)
+  OPTION_MODE_ALL = 0x1F | 0x100                             ///< All modes + binary
 } option_mode_bitmask_t;
 
 /**
@@ -1202,7 +1202,7 @@ options_t options_t_new(void);
  * ./ascii-chat server --port 8080        # MODE_SERVER
  * ./ascii-chat client example.com:9000   # MODE_CLIENT
  * ./ascii-chat mirror --color            # MODE_MIRROR
- * ./ascii-chat acds --port 27225         # MODE_DISCOVERY_SERVER
+ * ./ascii-chat acds --port 27225         # MODE_DISCOVERY_SERVICE
  *
  * # Session strings (implicit client mode)
  * ./ascii-chat word-word-word            # MODE_CLIENT (session string)

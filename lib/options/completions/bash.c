@@ -146,7 +146,7 @@ static asciichat_error_t bash_write_all_options(FILE *output) {
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
   const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   fprintf(output, "  # Discovery-service options (same as 'ascii-chat discovery-service --help')\n  local -a "
                   "discovery_svc_opts=(\n");

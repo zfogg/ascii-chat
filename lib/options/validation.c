@@ -320,6 +320,35 @@ float validate_opt_float_non_negative(const char *value_str, char *error_msg, si
 }
 
 /**
+ * Validate volume value (0.0-1.0)
+ * Returns parsed value on success, -1.0f on error
+ */
+float validate_opt_volume(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Volume value is required");
+    }
+    return -1.0f;
+  }
+
+  char *endptr;
+  float val = strtof(value_str, &endptr);
+  if (*endptr != '\0' || value_str == endptr) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid volume value '%s'. Must be a number.", value_str);
+    }
+    return -1.0f;
+  }
+  if (val < 0.0f || val > 1.0f) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Volume must be between 0.0 and 1.0 (got %.2f)", val);
+    }
+    return -1.0f;
+  }
+  return val;
+}
+
+/**
  * Validate max clients (1-32)
  * Returns parsed value on success, -1 on error
  */

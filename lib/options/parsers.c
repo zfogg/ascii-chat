@@ -30,14 +30,21 @@ static void to_lower(const char *src, char *dst, size_t max_len) {
 // See that module for the full implementation.
 
 bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
-  if (!arg || !dest) {
+  if (!dest) {
     if (error_msg) {
-      *error_msg = strdup("Internal error: NULL argument or destination");
+      *error_msg = strdup("Internal error: NULL destination");
     }
     return false;
   }
 
   int *color_setting = (int *)dest;
+
+  // Handle optional argument - default to 'true' (force colors ON) if not provided
+  if (!arg || arg[0] == '\0') {
+    *color_setting = COLOR_SETTING_TRUE;
+    return true;
+  }
+
   char lower[32];
   to_lower(arg, lower, sizeof(lower));
 
@@ -764,5 +771,37 @@ bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg) {
   // Copy the provided browser name
   strncpy(browser_buf, arg, max_size - 1);
   browser_buf[max_size - 1] = '\0';
+  return true;
+}
+
+bool parse_volume(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  float *volume = (float *)dest;
+  char *endptr;
+  float val = strtof(arg, &endptr);
+
+  if (*endptr != '\0' || arg == endptr) {
+    if (error_msg) {
+      *error_msg = strdup("Invalid volume value. Must be a number between 0.0 and 1.0");
+    }
+    return false;
+  }
+
+  if (val < 0.0f || val > 1.0f) {
+    if (error_msg) {
+      char buf[256];
+      SAFE_SNPRINTF(buf, sizeof(buf), "Volume must be between 0.0 and 1.0 (got %.2f)", val);
+      *error_msg = strdup(buf);
+    }
+    return false;
+  }
+
+  *volume = val;
   return true;
 }

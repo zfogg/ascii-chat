@@ -106,7 +106,7 @@ completion_format_t completions_parse_shell_name(const char *shell_name);
  * @brief Collect options from all modes with deduplication
  *
  * Iterates through all completion modes (MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT,
- * MODE_MIRROR, MODE_DISCOVERY_SERVER) and collects unique options by long_name.
+ * MODE_MIRROR, MODE_DISCOVERY_SERVICE) and collects unique options by long_name.
  * Useful for generators that need to show completions for options across multiple modes.
  *
  * @param[out] count Pointer to receive the count of unique options
