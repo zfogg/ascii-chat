@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -429,6 +430,130 @@ static void build_ascii_chat_path(const char *base, const char *suffix, char *ou
   safe_snprintf(out, out_len, "%s%s%s", base, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
 }
 
+/**
+ * Check if a path points to a sensitive system file that should not be overwritten.
+ * This prevents accidental or malicious overwriting of critical OS files.
+ *
+ * @param path The normalized absolute path to check
+ * @return true if the path is a sensitive system file
+ */
+static bool is_sensitive_system_path(const char *path) {
+  if (!path) {
+    return false;
+  }
+
+#ifdef _WIN32
+  // Windows system directories
+  const char *sensitive_paths[] = {"C:\\Windows",                   // System directory
+                                   "C:\\Program Files",             // Program files
+                                   "C:\\Program Files (x86)",       // 32-bit programs
+                                   "C:\\ProgramData",               // All users data
+                                   "C:\\System Volume Information", // System recovery
+                                   "C:\\PerfLogs",                  // Performance logs
+                                   NULL};
+#else
+  // Unix/Linux/macOS system directories
+  const char *sensitive_paths[] = {"/etc",       // System configuration
+                                   "/bin",       // Essential binaries
+                                   "/sbin",      // System binaries
+                                   "/usr/bin",   // User binaries
+                                   "/usr/sbin",  // User system binaries
+                                   "/usr/lib",   // System libraries
+                                   "/lib",       // Libraries
+                                   "/lib64",     // 64-bit libraries
+                                   "/boot",      // Boot files
+                                   "/sys",       // System interface
+                                   "/proc",      // Process interface
+                                   "/dev",       // Devices
+                                   "/root",      // Root home (should not write to)
+                                   "/var/lib",   // Variable library data
+                                   "/var/cache", // Cache data
+                                   "/var/spool", // Spool data
+                                   NULL};
+
+#ifdef __APPLE__
+  // macOS-specific system paths
+  const char *macos_paths[] = {"/System",       // Core system
+                               "/Library",      // System library
+                               "/Applications", // Bundled apps
+                               "/Developer",    // Developer tools
+                               "/Volumes",      // Mounted volumes
+                               NULL};
+#endif
+#endif
+
+  // Check each sensitive path
+  for (int i = 0; sensitive_paths[i] != NULL; i++) {
+    const char *base = sensitive_paths[i];
+    size_t base_len = strlen(base);
+
+    // Match if path equals base or starts with base + separator
+    if (strcmp(path, base) == 0) {
+      return true; // Exact match is sensitive
+    }
+    if (strncmp(path, base, base_len) == 0) {
+      // Make sure it's followed by a path separator, not a partial match
+      if (path[base_len] == PATH_DELIM || path[base_len] == '/' || path[base_len] == '\\') {
+        return true;
+      }
+    }
+  }
+
+#ifdef __APPLE__
+  // Check macOS paths
+  for (int i = 0; macos_paths[i] != NULL; i++) {
+    const char *base = macos_paths[i];
+    size_t base_len = strlen(base);
+
+    if (strcmp(path, base) == 0) {
+      return true;
+    }
+    if (strncmp(path, base, base_len) == 0) {
+      if (path[base_len] == PATH_DELIM || path[base_len] == '/' || path[base_len] == '\\') {
+        return true;
+      }
+    }
+  }
+#endif
+
+  return false;
+}
+
+/**
+ * Check if an existing file is an ascii-chat log file by reading its header.
+ * ascii-chat logs have a distinctive format with timestamps and log levels.
+ *
+ * @param path The path to the file to check
+ * @return true if the file appears to be an ascii-chat log file
+ */
+static bool is_existing_ascii_chat_log(const char *path) {
+  if (!path) {
+    return false;
+  }
+
+  // Try to open and read the first line
+  FILE *f = fopen(path, "r");
+  if (!f) {
+    return false; // File doesn't exist or can't be read
+  }
+
+  char buffer[256];
+  bool is_ascii_chat_log = false;
+
+  // Read first line and check for ascii-chat log signature
+  if (fgets(buffer, sizeof(buffer), f) != NULL) {
+    // ascii-chat logs start with timestamps like: [HH:MM:SS.microseconds] [LEVEL]
+    // Pattern: [digit][digit]:[digit][digit]:[digit][digit].[digits]
+    if (buffer[0] == '[' && isdigit((unsigned char)buffer[1]) && isdigit((unsigned char)buffer[2]) &&
+        buffer[3] == ':') {
+      is_ascii_chat_log = true;
+    }
+  }
+
+  fclose(f);
+  return is_ascii_chat_log;
+}
+
 asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out) {
   if (!normalized_out) {
     return SET_ERRNO(map_role_to_error(role), "path_validate_user_path requires output pointer");
@@ -612,16 +737,45 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 #endif
 #endif
 
-  // Validate that the path is within allowed directories
-  // Note: Simple log filenames without separators are already resolved to safe dirs above
-  bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-
-  if (!allowed) {
+  // Security check: Reject paths that point to sensitive system files
+  // This applies to all path roles, not just logs
+  if (is_sensitive_system_path(normalized_buf)) {
     SAFE_FREE(expanded);
     if (config_dir) {
       SAFE_FREE(config_dir);
     }
-    return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
+    return SET_ERRNO(map_role_to_error(role), "Cannot write to protected system path: %s", normalized_buf);
+  }
+
+  // For log files, apply special validation rules
+  if (role == PATH_ROLE_LOG_FILE) {
+    // Allow if the file is an existing ascii-chat log (safe to overwrite our own logs)
+    if (is_existing_ascii_chat_log(normalized_buf)) {
+      // File exists and is an ascii-chat log - safe to overwrite
+    } else {
+      // For non-existing files or non-ascii-chat files, check against whitelist
+      bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+      if (!allowed) {
+        SAFE_FREE(expanded);
+        if (config_dir) {
+          SAFE_FREE(config_dir);
+        }
+        return SET_ERRNO(ERROR_LOGGING_INIT,
+                         "Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or "
+                         "relative/absolute paths in safe locations)",
+                         normalized_buf);
+      }
+    }
+  } else {
+    // For non-log-file paths, apply standard whitelist validation
+    bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+    if (!allowed) {
+      SAFE_FREE(expanded);
+      if (config_dir) {
+        SAFE_FREE(config_dir);
+      }
+      return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
+    }
   }
 
   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);

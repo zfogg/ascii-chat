@@ -134,7 +134,7 @@ static const registry_entry_t g_logging_entries[] = {
     // LOGGING GROUP (binary-level)
     {"log-file",
      'L',
-     OPTION_TYPE_STRING,
+     OPTION_TYPE_CALLBACK,
      offsetof(options_t, log_file),
      "",
      0,
@@ -143,7 +143,7 @@ static const registry_entry_t g_logging_entries[] = {
      false,
      "ASCII_CHAT_LOG_FILE",
      NULL,
-     NULL,
+     parse_log_file,
      false,
      false,
      OPTION_MODE_BINARY,

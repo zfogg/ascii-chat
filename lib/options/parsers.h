@@ -230,3 +230,14 @@ bool parse_timestamp(const char *arg, void *dest, char **error_msg);
  * Sets the destination float to the parsed volume value.
  */
 bool parse_volume(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for log file paths (--log-file, -L)
+ *
+ * Validates that the log file path is safe:
+ * - Rejects attempts to write to protected system directories (/etc, /System, /Windows, etc.)
+ * - Allows overwriting existing ascii-chat log files
+ * - Allows paths in safe locations (/tmp, /var/log, home directory, cwd, etc.)
+ * - Returns error message if validation fails
+ */
+bool parse_log_file(const char *arg, void *dest, char **error_msg);

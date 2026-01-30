@@ -14,6 +14,7 @@
 #include "options/options.h"
 #include "discovery/strings.h" // For is_session_string() validation
 #include "util/parsing.h"      // For parse_port() validation
+#include "util/path.h"         // For path_validate_user_path()
 
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
@@ -803,5 +804,39 @@ bool parse_volume(const char *arg, void *dest, char **error_msg) {
   }
 
   *volume = val;
+  return true;
+}
+
+bool parse_log_file(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  // Validate and normalize the log file path
+  char *normalized = NULL;
+  asciichat_error_t result = path_validate_user_path(arg, PATH_ROLE_LOG_FILE, &normalized);
+
+  if (result != ASCIICHAT_OK) {
+    if (error_msg) {
+      asciichat_error_context_t err_ctx;
+      if (HAS_ERRNO(&err_ctx)) {
+        *error_msg = strdup(err_ctx.context_message);
+      } else {
+        *error_msg = strdup("Log file path validation failed");
+      }
+    }
+    return false;
+  }
+
+  // Copy validated path to destination
+  char *log_file_buf = (char *)dest;
+  const size_t max_size = 256;
+  strncpy(log_file_buf, normalized, max_size - 1);
+  log_file_buf[max_size - 1] = '\0';
+
+  SAFE_FREE(normalized);
   return true;
 }
