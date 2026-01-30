@@ -221,7 +221,6 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     const char *line_start = first_column;
     const char *last_space = NULL;
     const char *p = first_column;
-    bool first_line = true;
 
     while (*p) {
       // Check for explicit newline
@@ -234,7 +233,6 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
         p++;
         line_start = p;
         last_space = NULL;
-        first_line = false;
         continue;
       }
 
@@ -257,7 +255,6 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
           line_start++;
         p = line_start;
         last_space = NULL;
-        first_line = false;
       }
     }
 

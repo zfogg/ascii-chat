@@ -1509,11 +1509,9 @@ void *client_send_thread_func(void *arg) {
   // High-frequency audio loop - separate from video frame loop
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
-  int loop_iteration_count = 0;
   int silence_log_count = 0;
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
-    loop_iteration_count++;
 
     bool sent_something = false;
 
