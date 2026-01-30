@@ -550,7 +550,7 @@ static const registry_entry_t g_display_entries[] = {
      offsetof(options_t, render_mode),
      &default_render_mode_value,
      sizeof(render_mode_t),
-     "ascii render mode (foreground, background, half-block)",
+     "Render mode of text for your client to display. Values: foreground, background, half-block.",
      "DISPLAY",
      false,
      "ASCII_CHAT_RENDER_MODE",
@@ -569,8 +569,8 @@ static const registry_entry_t g_display_entries[] = {
      offsetof(options_t, palette_type),
      &default_palette_type_value,
      sizeof(palette_type_t),
-     "ascii palette type (standard, blocks, digital, minimal, cool, custom). All but custom are built-in presets that "
-     "look nice. Try them out!",
+     "Palette type with which to render images to text art. Values: standard, blocks, digital, minimal, cool, "
+     "custom. All but \"custom\" are built-in presets that all look different and nice. Try them out!",
      "DISPLAY",
      false,
      "ASCII_CHAT_PALETTE",
@@ -589,8 +589,9 @@ static const registry_entry_t g_display_entries[] = {
      offsetof(options_t, palette_custom),
      "",
      0,
-     "Custom palette characters (implies --palette=custom) for rendering images to ascii. These characters only will "
-     "be used to create the rendered output. Can be UTF-8 content (see --utf8).",
+     "Ordered sequence of characters from darkest to brightest to use with custom palette (--palette=custom) for "
+     "rendering images to text art for your client. These characters only will be used to create the rendered output. "
+     "Can be UTF-8 content (see --utf8).",
      "DISPLAY",
      false,
      "ASCII_CHAT_PALETTE_CHARS",
@@ -606,7 +607,7 @@ static const registry_entry_t g_display_entries[] = {
      0,
      NULL,
      0,
-     "Show detected terminal capabilities and exit",
+     "Show detected terminal capabilities and exit (useful for debugging and scripting)",
      "TERMINAL",
      false,
      NULL,

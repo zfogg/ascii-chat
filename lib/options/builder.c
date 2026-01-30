@@ -2019,6 +2019,222 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
   return max_col_width;
 }
 
+/* ============================================================================
+ * Per-Section Column Width Calculation (Abstract)
+ * ============================================================================ */
+
+/**
+ * @brief Calculate max column width for a specific section type
+ *
+ * Abstract function that calculates the maximum width needed for items
+ * in a specific section (USAGE, EXAMPLES, MODES, OPTIONS, POSITIONAL_ARGUMENTS).
+ * Capped at 75 characters.
+ *
+ * @param config Options configuration
+ * @param section_type Type of section: "usage", "examples", "modes", "options", or "positional"
+ * @param mode Current mode (used for filtering)
+ * @param for_binary_help Whether this is for binary-level help
+ * @return Maximum width needed for this section (minimum 20, maximum 75)
+ */
+static int calculate_section_max_col_width(const options_config_t *config, const char *section_type,
+                                           asciichat_mode_t mode, bool for_binary_help) {
+  if (!config || !section_type) {
+    return 20; // Minimum width
+  }
+
+  int max_width = 0;
+  const char *binary_name = PLATFORM_BINARY_NAME;
+  char temp_buf[BUFFER_SIZE_MEDIUM];
+
+  if (strcmp(section_type, "usage") == 0) {
+    // Calculate max width for USAGE section
+    if (config->num_usage_lines == 0)
+      return 20;
+
+    for (size_t i = 0; i < config->num_usage_lines; i++) {
+      const usage_descriptor_t *usage = &config->usage_lines[i];
+      int len = 0;
+
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+
+      if (usage->mode) {
+        const char *colored_mode = colored_string(LOG_COLOR_FATAL, usage->mode);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
+      }
+
+      if (usage->positional) {
+        const char *colored_pos = colored_string(LOG_COLOR_INFO, usage->positional);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_pos);
+      }
+
+      if (usage->show_options) {
+        const char *options_text =
+            (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
+        const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_opts);
+      }
+
+      int w = utf8_display_width(temp_buf);
+      if (w > max_width)
+        max_width = w;
+    }
+  } else if (strcmp(section_type, "examples") == 0) {
+    // Calculate max width for EXAMPLES section
+    if (config->num_examples == 0)
+      return 20;
+
+    // Get mode name for filtering
+    const char *mode_name = NULL;
+    switch (mode) {
+    case MODE_SERVER:
+      mode_name = "server";
+      break;
+    case MODE_CLIENT:
+      mode_name = "client";
+      break;
+    case MODE_MIRROR:
+      mode_name = "mirror";
+      break;
+    case MODE_DISCOVERY_SERVER:
+      mode_name = "discovery-service";
+      break;
+    case MODE_DISCOVERY:
+      mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows mode=NULL examples
+      break;
+    default:
+      mode_name = NULL;
+      break;
+    }
+
+    for (size_t i = 0; i < config->num_examples; i++) {
+      const example_descriptor_t *example = &config->examples[i];
+
+      // Filter examples by mode
+      if (for_binary_help) {
+        if (example->mode != NULL)
+          continue;
+      } else {
+        if (!example->mode || !mode_name || strcmp(example->mode, mode_name) != 0)
+          continue;
+      }
+
+      int len = 0;
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+
+      if (example->mode) {
+        const char *colored_mode = colored_string(LOG_COLOR_FATAL, example->mode);
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
+      }
+
+      if (example->args) {
+        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->args);
+      }
+
+      int w = utf8_display_width(temp_buf);
+      if (w > max_width)
+        max_width = w;
+    }
+  } else if (strcmp(section_type, "modes") == 0) {
+    // Calculate max width for MODES section
+    if (config->num_modes == 0)
+      return 20;
+
+    for (size_t i = 0; i < config->num_modes; i++) {
+      const char *colored_name = colored_string(LOG_COLOR_FATAL, config->modes[i].name);
+      int w = utf8_display_width(colored_name);
+      if (w > max_width)
+        max_width = w;
+    }
+  } else if (strcmp(section_type, "options") == 0) {
+    // Calculate max width for OPTIONS section
+    if (config->num_descriptors == 0)
+      return 20;
+
+    char option_str[BUFFER_SIZE_MEDIUM];
+
+    for (size_t i = 0; i < config->num_descriptors; i++) {
+      const option_descriptor_t *desc = &config->descriptors[i];
+
+      // Filter by mode and visibility
+      if (!option_applies_to_mode(desc, mode, for_binary_help) || !desc->group || desc->hide_from_mode_help ||
+          desc->hide_from_binary_help) {
+        continue;
+      }
+
+      int option_len = 0;
+
+      if (desc->short_name) {
+        char short_flag[16];
+        snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+        char long_flag[BUFFER_SIZE_SMALL];
+        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
+                               colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+      } else {
+        char long_flag[BUFFER_SIZE_SMALL];
+        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                               colored_string(LOG_COLOR_WARN, long_flag));
+      }
+
+      if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
+        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
+        const char *placeholder = get_option_help_placeholder_str(desc);
+        if (placeholder[0] != '\0') {
+          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                 colored_string(LOG_COLOR_INFO, placeholder));
+        }
+      }
+
+      int w = utf8_display_width(option_str);
+      if (w > max_width)
+        max_width = w;
+    }
+  } else if (strcmp(section_type, "positional") == 0) {
+    // Calculate max width for POSITIONAL ARGUMENTS section
+    if (config->num_positional_args == 0)
+      return 20;
+
+    option_mode_bitmask_t current_mode_bitmask = 1U << mode;
+
+    for (size_t pa_idx = 0; pa_idx < config->num_positional_args; pa_idx++) {
+      const positional_arg_descriptor_t *pos_arg = &config->positional_args[pa_idx];
+
+      // Filter by mode_bitmask
+      if (pos_arg->mode_bitmask != 0 && !(pos_arg->mode_bitmask & current_mode_bitmask)) {
+        continue;
+      }
+
+      if (pos_arg->examples) {
+        for (size_t i = 0; i < pos_arg->num_examples; i++) {
+          const char *example = pos_arg->examples[i];
+          const char *p = example;
+
+          // Skip leading spaces
+          while (*p == ' ')
+            p++;
+          const char *first_part = p;
+
+          // Find double-space delimiter
+          while (*p && !(*p == ' ' && *(p + 1) == ' '))
+            p++;
+          int first_len_bytes = (int)(p - first_part);
+
+          int w = utf8_display_width_n(first_part, first_len_bytes);
+          if (w > max_width)
+            max_width = w;
+        }
+      }
+    }
+  }
+
+  // Cap at 75 characters
+  if (max_width > 75)
+    max_width = 75;
+
+  return max_width > 20 ? max_width : 20;
+}
+
 /**
  * @brief Print USAGE section programmatically
  *
@@ -2254,22 +2470,26 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       term_width = cols;
   }
 
-  // Calculate global max column width across all sections for consistent alignment
-  int max_col_width = options_config_calculate_max_col_width(config);
+  // Binary-level help uses MODE_DISCOVERY internally
+  asciichat_mode_t mode = MODE_DISCOVERY;
+  bool for_binary_help = true;
+
+  // Calculate per-section column widths (each section is independent, capped at 75)
+  int usage_max_col_width = calculate_section_max_col_width(config, "usage", mode, for_binary_help);
+  int modes_max_col_width = calculate_section_max_col_width(config, "modes", mode, for_binary_help);
+  int examples_max_col_width = calculate_section_max_col_width(config, "examples", mode, for_binary_help);
+  int options_max_col_width = calculate_section_max_col_width(config, "options", mode, for_binary_help);
 
   // Print programmatically generated sections (USAGE, MODES, MODE-OPTIONS, EXAMPLES)
-  print_usage_section(config, stream, term_width, max_col_width);
-  print_modes_section(config, stream, term_width, max_col_width);
-  print_mode_options_section(stream, term_width, max_col_width);
-  print_examples_section(config, stream, term_width, max_col_width, MODE_SERVER, true);
+  print_usage_section(config, stream, term_width, usage_max_col_width);
+  print_modes_section(config, stream, term_width, modes_max_col_width);
+  print_mode_options_section(stream, term_width, 40); // Keep reasonable width for mode-options
+  print_examples_section(config, stream, term_width, examples_max_col_width, MODE_SERVER, true);
 
   // Build list of unique groups in order of first appearance
 
   const char **unique_groups = SAFE_MALLOC(config->num_descriptors * sizeof(const char *), const char **);
   size_t num_unique_groups = 0;
-
-  // For binary-level help, we only show binary options
-  bool for_binary_help = true;
 
   for (size_t i = 0; i < config->num_descriptors; i++) {
     const option_descriptor_t *desc = &config->descriptors[i];
@@ -2376,9 +2596,9 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
                      colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
-      // Use layout function with global column width for consistent alignment
+      // Use layout function with section-specific column width for consistent alignment
       // option_str already contains colored_string() results, so pass it directly
-      layout_print_two_column_row(stream, option_str, desc_str, max_col_width, term_width);
+      layout_print_two_column_row(stream, option_str, desc_str, options_max_col_width, term_width);
     }
   }
 
@@ -2672,64 +2892,15 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     }
   }
 
-  // Calculate global max column width
-  int global_max_col_width = 0;
+  // Determine if this is binary-level help (called for 'ascii-chat --help')
+  // Binary help uses MODE_DISCOVERY as the mode value
+  bool for_binary_help = (mode == MODE_DISCOVERY);
 
-  // Include USAGE line widths in max calculation
-  if (config->num_usage_lines > 0) {
-    for (size_t i = 0; i < config->num_usage_lines; i++) {
-      const usage_descriptor_t *usage = &config->usage_lines[i];
-      int est_width = strlen("ascii-chat");
-      if (usage->mode)
-        est_width += strlen(usage->mode) + 1;
-      if (usage->positional)
-        est_width += strlen(usage->positional) + 1;
-      if (usage->show_options)
-        est_width += 20;
-      if (est_width > global_max_col_width)
-        global_max_col_width = est_width;
-    }
-  }
-
-  // Include positional argument examples widths in max calculation
-  if (config->num_positional_args > 0) {
-    for (size_t pa_idx = 0; pa_idx < config->num_positional_args; pa_idx++) {
-      const positional_arg_descriptor_t *pos_arg = &config->positional_args[pa_idx];
-      if (pos_arg->examples) {
-        for (size_t i = 0; i < pos_arg->num_examples; i++) {
-          const char *example = pos_arg->examples[i];
-          const char *p = example;
-          while (*p == ' ')
-            p++;
-          const char *first_part = p;
-          while (*p && !(*p == ' ' && *(p + 1) == ' '))
-            p++;
-          int first_len_bytes = (int)(p - first_part);
-          int col_width = utf8_display_width_n(first_part, first_len_bytes);
-          if (col_width > global_max_col_width)
-            global_max_col_width = col_width;
-        }
-      }
-    }
-  }
-
-  // Include option descriptor widths in max calculation
-  int options_max_col_width = options_config_calculate_max_col_width(config);
-  if (options_max_col_width > global_max_col_width)
-    global_max_col_width = options_max_col_width;
-
-  // Ensure minimum width
-  if (global_max_col_width < 20)
-    global_max_col_width = 20;
-
-  // CAP global_max_col_width at 45 for narrow first column with description wrapping
-  if (global_max_col_width > 45) {
-    global_max_col_width = 45;
-  }
-
-  // Print USAGE section
+  // Print USAGE section (with section-specific column width)
   fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
   if (config->num_usage_lines > 0) {
+    int usage_max_col_width = calculate_section_max_col_width(config, "usage", mode, for_binary_help);
+
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
       char usage_buf[BUFFER_SIZE_MEDIUM];
@@ -2752,59 +2923,86 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
         len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
       }
 
-      layout_print_two_column_row(desc, usage_buf, usage->description, global_max_col_width, term_width);
+      layout_print_two_column_row(desc, usage_buf, usage->description, usage_max_col_width, term_width);
     }
   }
   fprintf(desc, "\n");
 
-  // Print positional argument examples
+  // Print positional argument examples (with mode filtering and section-specific column width)
   if (config->num_positional_args > 0) {
+    // First, check if any positional args apply to this mode
+    option_mode_bitmask_t current_mode_bitmask = 1U << mode;
+    bool has_applicable_positional_args = false;
+
     for (size_t pa_idx = 0; pa_idx < config->num_positional_args; pa_idx++) {
       const positional_arg_descriptor_t *pos_arg = &config->positional_args[pa_idx];
+
+      // Filter by mode_bitmask (matching the parsing code logic)
+      if (pos_arg->mode_bitmask != 0 && !(pos_arg->mode_bitmask & current_mode_bitmask)) {
+        continue;
+      }
+
       if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
-        (void)fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, pos_arg->section_heading));
+        has_applicable_positional_args = true;
+        break;
+      }
+    }
 
-        for (size_t i = 0; i < pos_arg->num_examples; i++) {
-          const char *example = pos_arg->examples[i];
-          const char *p = example;
-          const char *desc_start = NULL;
+    // Only print the section if there are applicable positional args
+    if (has_applicable_positional_args) {
+      int positional_max_col_width = calculate_section_max_col_width(config, "positional", mode, false);
 
-          while (*p == ' ')
-            p++;
-          const char *first_part = p;
+      for (size_t pa_idx = 0; pa_idx < config->num_positional_args; pa_idx++) {
+        const positional_arg_descriptor_t *pos_arg = &config->positional_args[pa_idx];
 
-          while (*p && !(*p == ' ' && *(p + 1) == ' '))
-            p++;
-          int first_len_bytes = (int)(p - first_part);
-
-          while (*p == ' ')
-            p++;
-          if (*p) {
-            desc_start = p;
-          }
-
-          char colored_first_part[256];
-          snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
-          char colored_result[512];
-          snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
-
-          layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", global_max_col_width,
-                                      term_width);
+        // Filter by mode_bitmask (matching the parsing code logic)
+        if (pos_arg->mode_bitmask != 0 && !(pos_arg->mode_bitmask & current_mode_bitmask)) {
+          continue;
         }
-        (void)fprintf(desc, "\n");
+
+        if (pos_arg->section_heading && pos_arg->examples && pos_arg->num_examples > 0) {
+          (void)fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, pos_arg->section_heading));
+
+          for (size_t i = 0; i < pos_arg->num_examples; i++) {
+            const char *example = pos_arg->examples[i];
+            const char *p = example;
+            const char *desc_start = NULL;
+
+            while (*p == ' ')
+              p++;
+            const char *first_part = p;
+
+            while (*p && !(*p == ' ' && *(p + 1) == ' '))
+              p++;
+            int first_len_bytes = (int)(p - first_part);
+
+            while (*p == ' ')
+              p++;
+            if (*p) {
+              desc_start = p;
+            }
+
+            char colored_first_part[256];
+            snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
+            char colored_result[512];
+            snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
+
+            layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", positional_max_col_width,
+                                        term_width);
+          }
+          (void)fprintf(desc, "\n");
+        }
       }
     }
   }
 
-  // Determine if this is binary-level help (called for 'ascii-chat --help')
-  // Binary help uses MODE_DISCOVERY as the mode value
-  bool for_binary_help = (mode == MODE_DISCOVERY);
+  // Print EXAMPLES section (with section-specific column width)
+  int examples_max_col_width = calculate_section_max_col_width(config, "examples", mode, for_binary_help);
+  print_examples_section(config, desc, term_width, examples_max_col_width, mode, for_binary_help);
 
-  // Print EXAMPLES section (if any examples exist for this mode)
-  print_examples_section(config, desc, term_width, global_max_col_width, mode, for_binary_help);
-
-  // Print options sections (with mode-specific filtering)
-  options_config_print_options_sections_with_width(config, desc, global_max_col_width, mode);
+  // Print options sections (with section-specific column width for options)
+  int options_max_col_width = calculate_section_max_col_width(config, "options", mode, for_binary_help);
+  options_config_print_options_sections_with_width(config, desc, options_max_col_width, mode);
 }
 
 void options_config_cleanup(const options_config_t *config, void *options_struct) {

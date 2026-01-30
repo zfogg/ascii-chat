@@ -16,10 +16,10 @@
  * ============================================================================ */
 
 /** Maximum width for first column before description moves to next line */
-#define LAYOUT_COLUMN_WIDTH 45
+#define LAYOUT_COLUMN_WIDTH 75
 
-/** Starting column for description text (column 49 = 2 spaces + 45 chars + 2 spacing) */
-#define LAYOUT_DESCRIPTION_START_COL 49
+/** Starting column for description text (column 79 = 2 spaces + 75 chars + 2 spacing) */
+#define LAYOUT_DESCRIPTION_START_COL 79
 
 /** Terminal width threshold for switching to vertical layout */
 #define LAYOUT_NARROW_TERMINAL_THRESHOLD 55
