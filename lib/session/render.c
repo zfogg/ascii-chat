@@ -264,7 +264,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     }
 
     // Maintain target frame rate by sleeping only for remaining time
-    if (is_synchronous && capture && !snapshot_mode) {
+    // Apply frame rate limiting in all modes, including snapshot (so animation plays at correct speed)
+    if (is_synchronous && capture) {
       uint32_t target_fps = session_capture_get_target_fps(capture);
       if (target_fps > 0) {
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, time_get_ns());
