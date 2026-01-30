@@ -749,11 +749,27 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
   // For log files, apply special validation rules
   if (role == PATH_ROLE_LOG_FILE) {
-    // Allow if the file is an existing ascii-chat log (safe to overwrite our own logs)
-    if (is_existing_ascii_chat_log(normalized_buf)) {
-      // File exists and is an ascii-chat log - safe to overwrite
-    } else {
-      // For non-existing files or non-ascii-chat files, check against whitelist
+    // Check if file already exists
+    FILE *existing_file = fopen(normalized_buf, "r");
+    bool file_exists = (existing_file != NULL);
+    if (existing_file) {
+      fclose(existing_file);
+    }
+
+    // If file exists, it MUST be an ascii-chat log to be overwritten
+    if (file_exists && !is_existing_ascii_chat_log(normalized_buf)) {
+      SAFE_FREE(expanded);
+      if (config_dir) {
+        SAFE_FREE(config_dir);
+      }
+      return SET_ERRNO(ERROR_LOGGING_INIT,
+                       "Cannot overwrite existing non-ascii-chat file: %s\n"
+                       "For safety, ascii-chat will only overwrite its own log files",
+                       normalized_buf);
+    }
+
+    // If file doesn't exist, check that path is in safe locations
+    if (!file_exists) {
       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
       if (!allowed) {
         SAFE_FREE(expanded);
