@@ -1795,6 +1795,44 @@ static void registry_init_from_builders(void) {
 }
 
 /**
+ * @brief Validate that no short or long options appear more than once in the registry
+ * @return Result of SET_ERRNO if duplicates found, ASCIICHAT_OK if valid
+ */
+static asciichat_error_t registry_validate_unique_options(void) {
+  // Check for duplicate long options
+  for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+    const char *long_name = g_options_registry[i].long_name;
+    if (!long_name || long_name[0] == '\0') {
+      continue; // Skip empty long names
+    }
+
+    for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
+      if (strcmp(g_options_registry[j].long_name, long_name) == 0) {
+        return SET_ERRNO(ERROR_CONFIG, "Duplicate long option '--%s' at registry indices %zu and %zu", long_name, i, j);
+      }
+    }
+  }
+
+  // Check for duplicate short options (skip if '\0')
+  for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
+    char short_name = g_options_registry[i].short_name;
+    if (short_name == '\0') {
+      continue; // Skip if no short option
+    }
+
+    for (size_t j = i + 1; g_options_registry[j].long_name != NULL; j++) {
+      if (g_options_registry[j].short_name == short_name) {
+        return SET_ERRNO(ERROR_CONFIG,
+                         "Duplicate short option '-%c' for '--%s' and '--%s' at registry indices %zu and %zu",
+                         short_name, g_options_registry[i].long_name, g_options_registry[j].long_name, i, j);
+      }
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Initialize registry size and metadata
  */
 static void registry_init_size(void) {
@@ -1804,6 +1842,8 @@ static void registry_init_size(void) {
     for (size_t i = 0; g_options_registry[i].long_name != NULL; i++) {
       g_registry_size++;
     }
+    // Validate that all options have unique short and long names
+    registry_validate_unique_options();
     // DEPRECATED: Metadata is now initialized compile-time in registry entries
     // registry_populate_metadata_for_critical_options();
     g_metadata_populated = true;
@@ -1846,17 +1886,11 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
                                  entry->group, entry->required, entry->env_var_name, entry->validate_fn);
       break;
     case OPTION_TYPE_CALLBACK:
-      if (entry->optional_arg) {
-        options_builder_add_callback_optional(builder, entry->long_name, entry->short_name, entry->offset,
-                                              entry->default_value, entry->default_value_size, entry->parse_fn,
-                                              entry->help_text, entry->group, entry->required, entry->env_var_name,
-                                              entry->optional_arg);
-      } else {
-        options_builder_add_callback(builder, entry->long_name, entry->short_name, entry->offset,
-                                     entry->default_value ? entry->default_value : NULL, entry->default_value_size,
-                                     entry->parse_fn, entry->help_text, entry->group, entry->required,
-                                     entry->env_var_name);
-      }
+      // Always use metadata-aware function to preserve enum/metadata information
+      options_builder_add_callback_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
+                                                 entry->default_value, entry->default_value_size, entry->parse_fn,
+                                                 entry->help_text, entry->group, entry->required, entry->env_var_name,
+                                                 entry->optional_arg, &entry->metadata);
       break;
     case OPTION_TYPE_ACTION:
       // Actions are now registered as options with help text
