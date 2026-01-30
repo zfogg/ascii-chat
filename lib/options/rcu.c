@@ -576,12 +576,20 @@ asciichat_error_t options_set_double(const char *field_name, double value) {
     return ERROR_INVALID_PARAM;
   }
 
-  if (strcmp(field_name, "snapshot_delay") != 0 && strcmp(field_name, "microphone_sensitivity") != 0 &&
-      strcmp(field_name, "speakers_volume") != 0) {
+  // Normalize option names to internal field names
+  const char *internal_name = field_name;
+  if (strcmp(field_name, "microphone-volume") == 0 || strcmp(field_name, "ivolume") == 0) {
+    internal_name = "microphone_sensitivity";
+  } else if (strcmp(field_name, "speakers-volume") == 0 || strcmp(field_name, "volume") == 0) {
+    internal_name = "speakers_volume";
+  }
+
+  if (strcmp(internal_name, "snapshot_delay") != 0 && strcmp(internal_name, "microphone_sensitivity") != 0 &&
+      strcmp(internal_name, "speakers_volume") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown double field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }
 
-  struct double_field_ctx ctx = {.field_name = field_name, .value = value};
+  struct double_field_ctx ctx = {.field_name = internal_name, .value = value};
   return options_update(double_field_updater, &ctx);
 }
