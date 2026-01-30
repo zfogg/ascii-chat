@@ -677,7 +677,6 @@ char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
   }
 
   char *log_dir = get_log_dir();
-  char *tmp_dir = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
 
   if (log_dir) {
     // Build full log file path: log_dir + separator + log_filename
@@ -694,16 +693,25 @@ char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
       SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
     }
 
+    SAFE_FREE(log_filename);
     SAFE_FREE(log_dir);
     return default_log_path;
 
-  } else if (platform_get_temp_dir(tmp_dir, PLATFORM_MAX_PATH_LENGTH)) {
-    char *default_log_path = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
-    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", tmp_dir, PATH_SEPARATOR_STR, "ascii-chat.log");
-    SAFE_FREE(tmp_dir);
-    return default_log_path;
   } else {
-    return log_filename;
+    SAFE_FREE(log_filename);
+    SAFE_FREE(log_dir);
+    char *tmp_dir = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
+    if (platform_get_temp_dir(tmp_dir, PLATFORM_MAX_PATH_LENGTH)) {
+      char *default_log_path = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
+      safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", tmp_dir, PATH_SEPARATOR_STR,
+                    "ascii-chat.log");
+      SAFE_FREE(tmp_dir);
+      return default_log_path;
+
+    } else {
+      SAFE_FREE(tmp_dir);
+      return log_filename;
+    }
   }
 }
 
