@@ -89,15 +89,16 @@ struct session_display_ctx {
  * @param snapshot_mode Whether snapshot mode is enabled
  */
 static void full_terminal_reset_internal(bool snapshot_mode) {
+  // Always reset and clear scrollback when rendering to TTY (including snapshot mode)
+  // Only skip when output is piped/redirected (those cases won't call this function with has_tty=true)
+  (void)terminal_reset(STDOUT_FILENO);
+  (void)terminal_clear_screen();
+  (void)terminal_cursor_home(STDOUT_FILENO);
+  (void)terminal_clear_scrollback(STDOUT_FILENO); // Clear history to avoid old logs visible above ASCII
   if (!snapshot_mode) {
-    // Always reset stdout (STDOUT_FILENO), not a separate TTY fd
-    (void)terminal_reset(STDOUT_FILENO);
-    (void)terminal_clear_screen();
-    (void)terminal_cursor_home(STDOUT_FILENO);
-    (void)terminal_clear_scrollback(STDOUT_FILENO);
     (void)terminal_hide_cursor(STDOUT_FILENO, true);
-    (void)terminal_flush(STDOUT_FILENO);
   }
+  (void)terminal_flush(STDOUT_FILENO);
 }
 
 /**
