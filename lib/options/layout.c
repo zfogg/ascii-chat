@@ -124,8 +124,29 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
 
     // Check if we need to wrap
     if (actual_width >= available_width && last_space && last_space > line_start) {
-      // Print text up to last space with colors applied
-      int text_len = last_space - line_start;
+      // Check if the text after this break point starts with metadata markers
+      // If so, find the previous space to keep metadata together on next line
+      const char *break_at = last_space;
+      const char *next_word = last_space + 1;
+
+      // Skip leading spaces to see what comes next
+      while (*next_word == ' ')
+        next_word++;
+
+      // If next word is a metadata marker, break at the previous space instead
+      if ((strncmp(next_word, "(default:", 9) == 0 || strncmp(next_word, "(env:", 5) == 0) && last_space > line_start) {
+        // Find the space before last_space to break earlier
+        const char *prev_space = last_space - 1;
+        while (prev_space > line_start && *prev_space != ' ')
+          prev_space--;
+
+        if (prev_space > line_start && *prev_space == ' ') {
+          break_at = prev_space;
+        }
+      }
+
+      // Print text up to break point with colors applied
+      int text_len = break_at - line_start;
       char seg[BUFFER_SIZE_MEDIUM];
       strncpy(seg, line_start, text_len);
       seg[text_len] = '\0';
@@ -135,7 +156,7 @@ void layout_print_wrapped_description(FILE *stream, const char *text, int indent
       for (int i = 0; i < indent_width; i++)
         fprintf(stream, " ");
 
-      p = last_space + 1;
+      p = break_at + 1;
       line_start = p;
       last_space = NULL;
       continue;
