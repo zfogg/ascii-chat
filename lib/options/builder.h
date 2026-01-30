@@ -79,6 +79,7 @@ typedef struct {
   const char **enum_values;       ///< Enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
   size_t enum_count;              ///< Number of enum values
   const char **enum_descriptions; ///< Descriptions parallel to enum_values (e.g., "Auto-detect from terminal")
+  const int *enum_integer_values; ///< Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for non-sequential enums)
 
   // Numeric range
   struct {
@@ -507,6 +508,33 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
                                            bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
                                            const char *help_text, const char *group, bool required,
                                            const char *env_var_name, bool optional_arg);
+
+/**
+ * @brief Add callback option with full metadata (for enums, ranges, examples, etc.)
+ *
+ * Adds a callback-based option with complete metadata information for help
+ * and shell completions.
+ *
+ * @param builder Builder to add to
+ * @param long_name Long option name
+ * @param short_name Short option char (or '\0')
+ * @param offset offsetof(struct, field)
+ * @param default_value Pointer to default value
+ * @param value_size sizeof(field_type)
+ * @param parse_fn Custom parser function
+ * @param help_text Help description
+ * @param group Group name for help
+ * @param required If true, option must be provided
+ * @param env_var_name Environment variable fallback (or NULL)
+ * @param optional_arg If true, argument is optional for this callback
+ * @param metadata Completion metadata (enums, ranges, examples, etc.)
+ */
+void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                                size_t offset, const void *default_value, size_t value_size,
+                                                bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
+                                                const char *help_text, const char *group, bool required,
+                                                const char *env_var_name, bool optional_arg,
+                                                const option_metadata_t *metadata);
 
 /**
  * @brief Add action option (executes action and may exit)

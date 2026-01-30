@@ -387,6 +387,27 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
   if (!desc || !buf || bufsize == 0) {
     return 0;
   }
+
+  // For callback options with enums, look up the enum string by matching the default value
+  if (desc->type == OPTION_TYPE_CALLBACK && desc->metadata.enum_values && desc->default_value) {
+    int default_int_val = 0;
+    memcpy(&default_int_val, desc->default_value, sizeof(int));
+
+    // Try to find matching enum value
+    if (desc->metadata.enum_integer_values) {
+      for (size_t i = 0; i < desc->metadata.enum_count; i++) {
+        if (desc->metadata.enum_integer_values[i] == default_int_val) {
+          return snprintf(buf, bufsize, "%s", desc->metadata.enum_values[i]);
+        }
+      }
+    } else {
+      // Fallback: assume sequential 0-based indices if integer values not provided
+      if (default_int_val >= 0 && (size_t)default_int_val < desc->metadata.enum_count) {
+        return snprintf(buf, bufsize, "%s", desc->metadata.enum_values[default_int_val]);
+      }
+    }
+  }
+
   return options_format_default_value(desc->type, desc->default_value, buf, bufsize);
 }
 
@@ -1020,6 +1041,33 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
                               .owns_memory = false,
                               .optional_arg = optional_arg,
                               .mode_bitmask = OPTION_MODE_NONE};
+
+  builder->descriptors[builder->num_descriptors++] = desc;
+}
+
+void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                                size_t offset, const void *default_value, size_t value_size,
+                                                bool (*parse_fn)(const char *, void *, char **), const char *help_text,
+                                                const char *group, bool required, const char *env_var_name,
+                                                bool optional_arg, const option_metadata_t *metadata) {
+  (void)value_size; // Unused parameter
+  ensure_descriptor_capacity(builder);
+
+  option_descriptor_t desc = {.long_name = long_name,
+                              .short_name = short_name,
+                              .type = OPTION_TYPE_CALLBACK,
+                              .offset = offset,
+                              .help_text = help_text,
+                              .group = group,
+                              .default_value = default_value,
+                              .required = required,
+                              .env_var_name = env_var_name,
+                              .validate = NULL,
+                              .parse_fn = parse_fn,
+                              .owns_memory = false,
+                              .optional_arg = optional_arg,
+                              .mode_bitmask = OPTION_MODE_NONE,
+                              .metadata = metadata ? *metadata : (option_metadata_t){0}};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }
