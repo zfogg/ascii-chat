@@ -818,7 +818,13 @@ void options_config_destroy(options_config_t *config) {
   SAFE_FREE(config->usage_lines);
   SAFE_FREE(config->examples);
   SAFE_FREE(config->modes);
+
+  // Free all owned strings before freeing the array
+  for (size_t i = 0; i < config->num_owned_strings; i++) {
+    free(config->owned_strings[i]);
+  }
   SAFE_FREE(config->owned_strings);
+
   SAFE_FREE(config);
 }
 
