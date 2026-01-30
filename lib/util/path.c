@@ -456,16 +456,17 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
     // If it's a simple filename, resolve it to a safe base directory
     if (is_simple_filename) {
-      // Use config dir if available, otherwise current directory
-      char *config_dir = get_config_dir();
+      // Always prefer current working directory for simple log filenames
+      // This ensures logs go to where the user is running the command from
       char safe_base[PLATFORM_MAX_PATH_LENGTH];
 
-      if (config_dir) {
-        SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
-        SAFE_FREE(config_dir);
-      } else {
-        // Fallback to current working directory
-        if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+      if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+        // If cwd fails, try config dir as fallback
+        char *config_dir = get_config_dir();
+        if (config_dir) {
+          SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
+          SAFE_FREE(config_dir);
+        } else {
           return SET_ERRNO(ERROR_LOGGING_INIT, "Failed to determine safe directory for log file");
         }
       }
@@ -549,6 +550,8 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   const char *bases[MAX_PATH_BASES] = {0};
   size_t base_count = 0;
 
+  // Always add current working directory as an allowed base
+  // This is critical for log files and other paths relative to where the user runs the command
   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
   if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
     append_base_if_valid(cwd_base, bases, &base_count);
@@ -604,6 +607,8 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 #ifdef __APPLE__
   // On macOS, /tmp is a symlink to /private/tmp
   append_base_if_valid("/private/tmp", bases, &base_count);
+  // On macOS, all user home directories are under /Users
+  append_base_if_valid("/Users", bases, &base_count);
 #endif
 #endif
 
