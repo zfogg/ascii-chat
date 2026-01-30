@@ -524,17 +524,22 @@ static bool is_sensitive_system_path(const char *path) {
  * ascii-chat logs have a distinctive format with timestamps and log levels.
  *
  * @param path The path to the file to check
- * @return true if the file appears to be an ascii-chat log file
+ * @return true if the file appears to be an ascii-chat log file (false for directories or non-files)
  */
 static bool is_existing_ascii_chat_log(const char *path) {
   if (!path) {
     return false;
   }
 
+  // Check if path is a regular file (not a directory) using platform abstraction
+  if (!platform_is_regular_file(path)) {
+    return false; // Not a regular file (could be directory, doesn't exist, symlink, etc.)
+  }
+
   // Try to open and read the first line
   FILE *f = fopen(path, "r");
   if (!f) {
-    return false; // File doesn't exist or can't be read
+    return false; // Can't read file
   }
 
   char buffer[256];
