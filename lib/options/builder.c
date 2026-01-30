@@ -2896,13 +2896,48 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   // Binary help uses MODE_DISCOVERY as the mode value
   bool for_binary_help = (mode == MODE_DISCOVERY);
 
-  // Print USAGE section (with section-specific column width)
+  // Print USAGE section (with section-specific column width and mode filtering)
   fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, "USAGE:"));
   if (config->num_usage_lines > 0) {
+    // Get mode name for filtering usage lines
+    const char *mode_name = NULL;
+    switch (mode) {
+    case MODE_SERVER:
+      mode_name = "server";
+      break;
+    case MODE_CLIENT:
+      mode_name = "client";
+      break;
+    case MODE_MIRROR:
+      mode_name = "mirror";
+      break;
+    case MODE_DISCOVERY_SERVER:
+      mode_name = "discovery-service";
+      break;
+    case MODE_DISCOVERY:
+      mode_name = NULL; // Binary help shows all usage lines
+      break;
+    default:
+      mode_name = NULL;
+      break;
+    }
+
     int usage_max_col_width = calculate_section_max_col_width(config, "usage", mode, for_binary_help);
 
     for (size_t i = 0; i < config->num_usage_lines; i++) {
       const usage_descriptor_t *usage = &config->usage_lines[i];
+
+      // Filter usage lines by mode
+      if (!for_binary_help) {
+        // For mode-specific help, show only:
+        // - NULL mode (generic binary-level usage like "ascii-chat [options...]")
+        // - "<mode>" placeholder
+        // - Current mode (e.g., "server" when in server help)
+        if (usage->mode && strcmp(usage->mode, "<mode>") != 0 && strcmp(usage->mode, mode_name) != 0) {
+          continue;
+        }
+      }
+
       char usage_buf[BUFFER_SIZE_MEDIUM];
       int len = 0;
 
