@@ -754,15 +754,12 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
   // For log files, apply special validation rules
   if (role == PATH_ROLE_LOG_FILE) {
-    // Check if file already exists
-    FILE *existing_file = fopen(normalized_buf, "r");
-    bool file_exists = (existing_file != NULL);
-    if (existing_file) {
-      fclose(existing_file);
-    }
+    // Check if path is a regular file (not a directory, not non-existent)
+    // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
+    bool is_regular_file = platform_is_regular_file(normalized_buf);
 
-    // If file exists, it MUST be an ascii-chat log to be overwritten
-    if (file_exists && !is_existing_ascii_chat_log(normalized_buf)) {
+    // If a regular file exists, it MUST be an ascii-chat log to be overwritten
+    if (is_regular_file && !is_existing_ascii_chat_log(normalized_buf)) {
       SAFE_FREE(expanded);
       if (config_dir) {
         SAFE_FREE(config_dir);
@@ -773,8 +770,8 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
                        normalized_buf);
     }
 
-    // If file doesn't exist, check that path is in safe locations
-    if (!file_exists) {
+    // If file doesn't exist (or is a directory), check that path is in safe locations
+    if (!is_regular_file) {
       bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
       if (!allowed) {
         SAFE_FREE(expanded);
