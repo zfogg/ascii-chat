@@ -330,21 +330,22 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Output routing logic:
-  // - Normal TTY mode: render every frame with cursor control to TTY
-  // - Snapshot mode: render only final frame WITHOUT cursor control
+  // - TTY mode: always render with cursor control (including snapshot mode for animation)
+  // - Snapshot mode on non-TTY: render only final frame WITHOUT cursor control
   // - Piped mode: render every frame WITHOUT cursor control (allows continuous output to files)
-  bool use_tty_control = ctx->has_tty && !ctx->snapshot_mode;
+  bool use_tty_control = ctx->has_tty;
 
   if (use_tty_control) {
-    // Normal TTY mode: always write with cursor control (every frame)
+    // TTY mode: always write with cursor control (every frame, including during snapshot capture)
+    // This shows the animation in real-time, then exits after snapshot is done
     write_frame_internal(frame_data, frame_len, true);
   } else if (ctx->snapshot_mode && is_final) {
-    // Snapshot mode: render final frame only WITHOUT cursor control
+    // Snapshot mode on non-TTY (piped): render final frame only WITHOUT cursor control
     write_frame_internal(frame_data, frame_len, false);
     // Add newline at end of snapshot output
     (void)printf("\n");
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
-    // Piped mode: render every frame WITHOUT cursor control
+    // Piped mode (non-snapshot): render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
     write_frame_internal(frame_data, frame_len, false);
     // Add newline after each frame to separate frames when captured to files

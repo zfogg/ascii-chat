@@ -232,9 +232,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // When paused with snapshot mode, output the initial frame immediately
       bool output_paused_frame = snapshot_mode && is_paused_frame;
 
-      // In snapshot mode, only render when snapshot is done or when outputting paused frame
-      // In normal mode: render every frame normally, but also render paused frames in piped mode
-      bool should_write = !snapshot_mode || snapshot_done || output_paused_frame;
+      // Always attempt to render frames; the display context will handle filtering based on:
+      // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
+      // - Piped mode: render all frames without cursor control (for continuous capture)
+      // - Snapshot mode on non-TTY: only the display context renders the final frame
+      bool should_write = true;
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         bool is_final = snapshot_done || is_paused_frame;
