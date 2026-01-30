@@ -314,6 +314,38 @@ int discovery_main(void) {
   capture_config.should_exit_callback = discovery_capture_should_exit_adapter;
   capture_config.callback_data = NULL;
 
+  // Check if media files/URLs should be used instead of webcam
+  const char *media_url = GET_OPTION(media_url);
+  const char *media_file = GET_OPTION(media_file);
+  bool media_from_stdin = GET_OPTION(media_from_stdin);
+
+  if (media_url && media_url[0] != '\0') {
+    // Network URL streaming (takes priority over --file)
+    // Don't open webcam when streaming from URL
+    capture_config.type = MEDIA_SOURCE_FILE;
+    capture_config.path = media_url;
+    capture_config.loop = false; // Network URLs cannot be looped
+    log_debug("Using network URL: %s (webcam disabled)", media_url);
+  } else if (media_file && media_file[0] != '\0') {
+    // File or stdin streaming - don't open webcam
+    capture_config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+    capture_config.path = media_file;
+    capture_config.loop = GET_OPTION(media_loop) && !media_from_stdin;
+    log_debug("Using media %s: %s (webcam disabled)", media_from_stdin ? "stdin" : "file", media_file);
+  } else if (GET_OPTION(test_pattern)) {
+    // Test pattern mode - don't open real webcam
+    capture_config.type = MEDIA_SOURCE_TEST;
+    capture_config.path = NULL;
+    log_debug("Using test pattern mode");
+  } else {
+    // Webcam mode (default)
+    static char webcam_index_str[32];
+    snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+    capture_config.type = MEDIA_SOURCE_WEBCAM;
+    capture_config.path = webcam_index_str;
+    log_debug("Using webcam device %u", GET_OPTION(webcam_index));
+  }
+
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
     log_fatal("Failed to initialize capture source");
