@@ -14,6 +14,7 @@
 #include "network/webrtc/webrtc.h"
 #include "common.h"
 #include "log/logging.h"
+#include "platform/init.h"
 
 #include <string.h>
 #include <rtc/rtc.h>
@@ -39,7 +40,10 @@ struct webrtc_data_channel {
 // Global State
 // ============================================================================
 
-static bool g_webrtc_initialized = false;
+// WebRTC library reference counting (same pattern as PortAudio)
+// Supports multiple init/cleanup pairs from different code paths
+static unsigned int g_webrtc_init_refcount = 0;
+static static_mutex_t g_webrtc_refcount_mutex = STATIC_MUTEX_INIT;
 
 // ============================================================================
 // libdatachannel Callback Adapters
@@ -237,30 +241,59 @@ static void on_datachannel_error_adapter(int dc_id, const char *error, void *use
 // Initialization and Cleanup
 // ============================================================================
 
-asciichat_error_t webrtc_init(void) {
-  if (g_webrtc_initialized) {
-    return ASCIICHAT_OK; // Already initialized
+/**
+ * @brief Ensure WebRTC library is initialized with reference counting
+ *
+ * Supports multiple init/cleanup pairs from different code paths.
+ * rtcInitLogger() and rtcPreload() are called exactly once.
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t webrtc_ensure_initialized(void) {
+  static_mutex_lock(&g_webrtc_refcount_mutex);
+
+  // If already initialized, just increment refcount
+  if (g_webrtc_init_refcount > 0) {
+    g_webrtc_init_refcount++;
+    static_mutex_unlock(&g_webrtc_refcount_mutex);
+    return ASCIICHAT_OK;
   }
 
-  // Initialize libdatachannel logger
+  // First initialization - call library initialization exactly once
   rtcInitLogger(RTC_LOG_INFO, rtc_log_callback);
-
-  // Preload global resources to avoid lazy-loading delays
   rtcPreload();
 
-  g_webrtc_initialized = true;
+  g_webrtc_init_refcount = 1;
+  static_mutex_unlock(&g_webrtc_refcount_mutex);
+
   log_debug("WebRTC library initialized (libdatachannel)");
   return ASCIICHAT_OK;
 }
 
-void webrtc_cleanup(void) {
-  if (!g_webrtc_initialized) {
-    return;
+/**
+ * @brief Release WebRTC, cleaning up when refcount reaches zero
+ *
+ * Counterpart to webrtc_ensure_initialized().
+ * Decrements refcount and calls rtcCleanup() only when it reaches zero.
+ */
+static void webrtc_release(void) {
+  static_mutex_lock(&g_webrtc_refcount_mutex);
+  if (g_webrtc_init_refcount > 0) {
+    g_webrtc_init_refcount--;
+    if (g_webrtc_init_refcount == 0) {
+      rtcCleanup();
+      log_info("WebRTC library cleaned up");
+    }
   }
+  static_mutex_unlock(&g_webrtc_refcount_mutex);
+}
 
-  rtcCleanup();
-  g_webrtc_initialized = false;
-  log_info("WebRTC library cleaned up");
+asciichat_error_t webrtc_init(void) {
+  return webrtc_ensure_initialized();
+}
+
+void webrtc_cleanup(void) {
+  webrtc_release();
 }
 
 // ============================================================================
@@ -272,7 +305,11 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid config or output parameter");
   }
 
-  if (!g_webrtc_initialized) {
+  static_mutex_lock(&g_webrtc_refcount_mutex);
+  bool is_initialized = (g_webrtc_init_refcount > 0);
+  static_mutex_unlock(&g_webrtc_refcount_mutex);
+
+  if (!is_initialized) {
     return SET_ERRNO(ERROR_INIT, "WebRTC library not initialized");
   }
 

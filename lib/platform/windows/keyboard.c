@@ -6,6 +6,7 @@
 
 #include "../keyboard.h"
 #include "../../common.h"
+#include "../../platform/init.h"
 
 #include <conio.h>
 #include <windows.h>
@@ -16,16 +17,25 @@
 
 static DWORD g_original_console_mode = 0;
 static HANDLE g_console_input = NULL;
-static bool g_keyboard_initialized = false;
+// Keyboard initialization reference counting (supports multiple init/cleanup pairs)
+static unsigned int g_keyboard_init_refcount = 0;
+static static_mutex_t g_keyboard_init_mutex = STATIC_MUTEX_INIT;
 
 /* ============================================================================
  * Keyboard Functions
  * ============================================================================ */
 
 int keyboard_init(void) {
-  if (g_keyboard_initialized) {
-    return 0; // Already initialized
+  static_mutex_lock(&g_keyboard_init_mutex);
+
+  // If already initialized, just increment refcount
+  if (g_keyboard_init_refcount > 0) {
+    g_keyboard_init_refcount++;
+    static_mutex_unlock(&g_keyboard_init_mutex);
+    return 0;
   }
+
+  static_mutex_unlock(&g_keyboard_init_mutex);
 
   // Get handle to standard input
   g_console_input = GetStdHandle(STD_INPUT_HANDLE);
@@ -54,14 +64,23 @@ int keyboard_init(void) {
     return -1;
   }
 
-  g_keyboard_initialized = true;
+  // Mark as initialized with reference counting
+  static_mutex_lock(&g_keyboard_init_mutex);
+  g_keyboard_init_refcount = 1;
+  static_mutex_unlock(&g_keyboard_init_mutex);
+
   return 0;
 }
 
 void keyboard_cleanup(void) {
-  if (!g_keyboard_initialized) {
+  static_mutex_lock(&g_keyboard_init_mutex);
+  if (g_keyboard_init_refcount == 0) {
+    static_mutex_unlock(&g_keyboard_init_mutex);
     return;
   }
+
+  g_keyboard_init_refcount--;
+  static_mutex_unlock(&g_keyboard_init_mutex);
 
   // Restore original console mode
   if (g_console_input != NULL && g_console_input != INVALID_HANDLE_VALUE) {
@@ -69,12 +88,15 @@ void keyboard_cleanup(void) {
       log_error("Failed to restore console mode");
     }
   }
-
-  g_keyboard_initialized = false;
 }
 
 int keyboard_read_nonblocking(void) {
-  if (!g_keyboard_initialized) {
+  // Check if keyboard is initialized with reference counting
+  static_mutex_lock(&g_keyboard_init_mutex);
+  bool is_initialized = (g_keyboard_init_refcount > 0);
+  static_mutex_unlock(&g_keyboard_init_mutex);
+
+  if (!is_initialized) {
     return KEY_NONE;
   }
 

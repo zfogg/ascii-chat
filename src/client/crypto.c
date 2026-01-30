@@ -171,6 +171,7 @@
 #include <sodium.h>
 
 #include "platform/question.h"
+#include "platform/init.h"
 
 // Global crypto handshake context for this client connection
 // NOTE: We use the crypto context from server.c to match the handshake
@@ -185,6 +186,7 @@ extern crypto_handshake_context_t g_crypto_ctx;
  * @ingroup client_crypto
  */
 static bool g_crypto_initialized = false;
+static static_mutex_t g_crypto_init_mutex = STATIC_MUTEX_INIT;
 
 /**
  * Initialize client crypto handshake
@@ -195,10 +197,16 @@ static bool g_crypto_initialized = false;
  */
 int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
-  if (g_crypto_initialized) {
+
+  // Check and reset initialization state with thread safety
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool was_initialized = g_crypto_initialized;
+  g_crypto_initialized = false;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (was_initialized) {
     log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
     crypto_handshake_cleanup(&g_crypto_ctx);
-    g_crypto_initialized = false;
   }
 
   // Check if encryption is disabled
@@ -402,7 +410,11 @@ int client_crypto_init(void) {
     log_debug("Expected server key (from ACDS): %s", server_key_hex);
   }
 
+  // Mark initialization as complete with thread safety
+  static_mutex_lock(&g_crypto_init_mutex);
   g_crypto_initialized = true;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
   log_debug("Client crypto handshake initialized");
   log_debug("CLIENT_CRYPTO_INIT: Initialization complete, g_crypto_initialized=true");
   return 0;
@@ -424,7 +436,11 @@ int client_crypto_handshake(socket_t socket) {
   }
 
   // If we reach here, crypto must be initialized for encryption
-  if (!g_crypto_initialized) {
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool is_initialized = g_crypto_initialized;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (!is_initialized) {
     log_error("Crypto not initialized but server requires encryption");
     log_error("Server requires encrypted connection but client has no encryption configured");
     log_error("Use --key to specify a client key or --password for password authentication");
@@ -776,9 +792,14 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  * @ingroup client_crypto
  */
 void crypto_client_cleanup(void) {
-  if (g_crypto_initialized) {
+  // Check and reset initialization state with thread safety
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool was_initialized = g_crypto_initialized;
+  g_crypto_initialized = false;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (was_initialized) {
     crypto_handshake_cleanup(&g_crypto_ctx);
-    g_crypto_initialized = false;
     log_debug("Client crypto handshake cleaned up");
   }
 }

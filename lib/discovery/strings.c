@@ -147,11 +147,8 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
                      (size_t)SESSION_STRING_BUFFER_SIZE);
   }
 
-  // Ensure libsodium is initialized before using randombytes_uniform
-  // sodium_init() is idempotent - safe to call multiple times
-  if (sodium_init() < 0) {
-    return SET_ERRNO(ERROR_CRYPTO_INIT, "Failed to initialize libsodium");
-  }
+  // libsodium is guaranteed to be initialized by acds_string_init() before this is called
+  // No need to call sodium_init() again (redundant initialization removed)
 
   // Pick random adjective
   uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
