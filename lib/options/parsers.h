@@ -36,6 +36,24 @@
 bool parse_color_setting(const char *arg, void *dest, char **error_msg);
 
 /**
+ * @brief Parse UTF-8 setting option (--utf8 flag)
+ * @param arg String argument (e.g., "auto", "true", "false"), or NULL/empty for default
+ * @param dest Destination pointer (int*, will store utf8_setting_t value)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto", "a", "0" - Smart detection (UTF8_SETTING_AUTO, default)
+ * - "true", "yes", "1", "on" - Force UTF-8 ON (UTF8_SETTING_TRUE)
+ * - "false", "no", "-1", "off" - Force UTF-8 OFF (UTF8_SETTING_FALSE)
+ *
+ * When no argument is provided (--utf8 with no value), defaults to UTF8_SETTING_TRUE.
+ * This controls whether UTF-8 is auto-detected ("auto"), always on ("true"),
+ * or always off ("false") regardless of terminal capability detection.
+ */
+bool parse_utf8_setting(const char *arg, void *dest, char **error_msg);
+
+/**
  * @brief Parse terminal color level option
  * @param arg String argument (e.g., "auto", "none", "16", "256", "truecolor")
  * @param dest Destination pointer (terminal_color_mode_t*)

@@ -954,8 +954,8 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
     break;
   }
 
-  // Handle UTF-8 override
-  if (GET_OPTION(force_utf8)) {
+  // Handle UTF-8 override (force UTF-8 ON if user specified --utf8 true)
+  if (GET_OPTION(force_utf8) == UTF8_SETTING_TRUE) {
     caps.utf8_support = true;
     caps.capabilities |= TERM_CAP_UTF8;
   }

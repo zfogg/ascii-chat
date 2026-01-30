@@ -76,6 +76,52 @@ bool parse_color_setting(const char *arg, void *dest, char **error_msg) {
   return false;
 }
 
+bool parse_utf8_setting(const char *arg, void *dest, char **error_msg) {
+  if (!dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL destination");
+    }
+    return false;
+  }
+
+  int *utf8_setting = (int *)dest;
+
+  // Handle optional argument - default to 'true' (force UTF-8 ON) if not provided
+  if (!arg || arg[0] == '\0') {
+    *utf8_setting = UTF8_SETTING_TRUE;
+    return true;
+  }
+
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Auto-detect (default)
+  if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0 || strcmp(lower, "0") == 0) {
+    *utf8_setting = UTF8_SETTING_AUTO;
+    return true;
+  }
+
+  // Force ON
+  if (strcmp(lower, "true") == 0 || strcmp(lower, "yes") == 0 || strcmp(lower, "1") == 0 || strcmp(lower, "on") == 0 ||
+      strcmp(lower, "enabled") == 0 || strcmp(lower, "enable") == 0) {
+    *utf8_setting = UTF8_SETTING_TRUE;
+    return true;
+  }
+
+  // Force OFF
+  if (strcmp(lower, "false") == 0 || strcmp(lower, "no") == 0 || strcmp(lower, "-1") == 0 ||
+      strcmp(lower, "off") == 0 || strcmp(lower, "disabled") == 0 || strcmp(lower, "disable") == 0) {
+    *utf8_setting = UTF8_SETTING_FALSE;
+    return true;
+  }
+
+  if (error_msg) {
+    *error_msg = strdup("UTF-8 setting must be 'auto' (or 'a', '0'), 'true' (or 'yes', '1', 'on'), "
+                        "or 'false' (or 'no', '-1', 'off')");
+  }
+  return false;
+}
+
 bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   if (!arg || !dest) {
     if (error_msg) {

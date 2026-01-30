@@ -237,6 +237,25 @@ typedef enum {
 } color_setting_t;
 
 /**
+ * @brief UTF-8 support setting (--utf8 flag values)
+ *
+ * Enumeration for the --utf8 option which controls UTF-8 support behavior:
+ * - UTF8_SETTING_AUTO: Smart detection (default) - UTF-8 if terminal supports it
+ * - UTF8_SETTING_TRUE: Force UTF-8 ON - always use UTF-8 regardless of terminal capability
+ * - UTF8_SETTING_FALSE: Force UTF-8 OFF - disable UTF-8 support
+ *
+ * @ingroup options
+ */
+typedef enum {
+  /** @brief Smart detection (default): UTF-8 if terminal supports it */
+  UTF8_SETTING_AUTO = 0,
+  /** @brief Force UTF-8 ON: always use UTF-8 regardless of terminal capability */
+  UTF8_SETTING_TRUE = 1,
+  /** @brief Force UTF-8 OFF: disable UTF-8 support */
+  UTF8_SETTING_FALSE = -1
+} utf8_setting_t;
+
+/**
  * @name Configuration Constants
  * @{
  */
@@ -428,8 +447,8 @@ typedef enum {
 /** @brief Default list speakers flag */
 #define OPT_LIST_SPEAKERS_DEFAULT false
 
-/** @brief Default force UTF-8 support flag */
-#define OPT_FORCE_UTF8_DEFAULT false
+/** @brief Default force UTF-8 support setting (auto-detect) */
+#define OPT_FORCE_UTF8_DEFAULT UTF8_SETTING_AUTO
 
 /** @brief Default allow aspect ratio distortion flag */
 #define OPT_STRETCH_DEFAULT false
@@ -578,7 +597,7 @@ static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
 static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
 static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
 static const bool default_show_capabilities_value = OPT_SHOW_CAPABILITIES_DEFAULT;
-static const bool default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
+static const int default_force_utf8_value = OPT_FORCE_UTF8_DEFAULT;
 static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
 static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
 static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
@@ -787,7 +806,7 @@ typedef struct options_state {
   terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
-  unsigned short int force_utf8;        ///< Force UTF-8 support
+  int force_utf8;                       ///< UTF-8 support setting (auto/true/false)
   int fps;                              ///< Target framerate (1-144, 0=use default)
 
   // ============================================================================

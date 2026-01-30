@@ -796,7 +796,8 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
-  net_packet.utf8_support = GET_OPTION(force_utf8) ? 1 : 0;
+  // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
+  net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
 
   SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 
