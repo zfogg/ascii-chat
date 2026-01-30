@@ -181,7 +181,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, "client", "example.com", "Connect to remote server", false);
   options_builder_add_example(b, "client", "example.com:8080", "Connect to remote server on custom port", false);
   options_builder_add_example(b, "client", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
-                              "Stream from YouTube URL", false);
+                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
   options_builder_add_example(b, "client", "-f video.mp4", "Stream from local video file", false);
   options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120",
                               "Connect with custom display options", false);
@@ -190,18 +190,23 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, "client", "--snapshot", "Capture single frame and exit", false);
 
   // Add examples for mirror mode
-  options_builder_add_example(b, "mirror", NULL, "Preview local webcam as ASCII", false);
-  options_builder_add_example(b, "mirror", NULL, "View local webcam", false);
+  options_builder_add_example(
+      b, "mirror", NULL,
+      "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
+      false);
   options_builder_add_example(b, "mirror", "--color-mode mono", "View webcam in black and white", false);
   options_builder_add_example(b, "mirror", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
-                              "Stream from YouTube URL", false);
+                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
   options_builder_add_example(b, "mirror", "-f video.mp4",
                               "Stream from local video file (supports mp4, mkv, webm, mov, etc)", false);
-  options_builder_add_example(b, "mirror", "-f '-'",
+  options_builder_add_example(b, "mirror", "--file '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')", false);
   options_builder_add_example(b, "mirror", "--palette-chars '@%#*+=-:. '", "View with custom ASCII palette characters",
                               false);
-  options_builder_add_example(b, "mirror", "--snapshot", "Capture single frame and exit", false);
+  options_builder_add_example(b, "mirror", "--file video.mov --seek 22:10",
+                              "Start playback at exactly 22:10 (also works with --url)", false);
+  options_builder_add_example(b, "mirror", "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12",
+                              "Print a single frame from a YouTube video at exactly 5:12 and exit", false);
 
   // Add examples for discovery-service mode
   options_builder_add_example(b, "discovery-service", NULL, "Start on localhost", false);

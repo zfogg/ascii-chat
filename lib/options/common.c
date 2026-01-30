@@ -492,6 +492,7 @@ int options_format_default_value(option_type_t type, const void *default_value, 
     return snprintf(buf, bufsize, "%.2f", double_val);
   }
   default:
+    // OPTION_TYPE_CALLBACK and OPTION_TYPE_ACTION don't have defaults to display
     return 0;
   }
 }
