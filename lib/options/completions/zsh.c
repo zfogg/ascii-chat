@@ -10,6 +10,40 @@
 #include "options/registry.h"
 #include "common.h"
 
+/**
+ * Escape help text for zsh's _arguments command
+ * Zsh interprets square brackets as special syntax, so they need to be escaped
+ */
+static void zsh_escape_help(FILE *output, const char *text) {
+  if (!text) {
+    return;
+  }
+
+  for (const char *p = text; *p; p++) {
+    switch (*p) {
+    case '[':
+    case ']':
+      // Escape square brackets for zsh _arguments
+      fprintf(output, "\\%c", *p);
+      break;
+    case '\'':
+      // Escape single quotes
+      fprintf(output, "'\\''");
+      break;
+    case '\n':
+      // Convert newlines to spaces in help text
+      fprintf(output, " ");
+      break;
+    case '\t':
+      // Convert tabs to spaces in help text
+      fprintf(output, " ");
+      break;
+    default:
+      fputc(*p, output);
+    }
+  }
+}
+
 static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
   if (!opt) {
     return;
@@ -55,19 +89,15 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
 
   // Write short option if present
   if (opt->short_name != '\0') {
-    if (completion_spec[0] != '\0') {
-      fprintf(output, "    '-%c[%s]%s' \\\n", opt->short_name, opt->help_text, completion_spec);
-    } else {
-      fprintf(output, "    '-%c[%s]' \\\n", opt->short_name, opt->help_text);
-    }
+    fprintf(output, "    '-%c[", opt->short_name);
+    zsh_escape_help(output, opt->help_text);
+    fprintf(output, "]%s' \\\n", completion_spec);
   }
 
   // Write long option
-  if (completion_spec[0] != '\0') {
-    fprintf(output, "    '--%s[%s]%s' \\\n", opt->long_name, opt->help_text, completion_spec);
-  } else {
-    fprintf(output, "    '--%s[%s]' \\\n", opt->long_name, opt->help_text);
-  }
+  fprintf(output, "    '--%s[", opt->long_name);
+  zsh_escape_help(output, opt->help_text);
+  fprintf(output, "]%s' \\\n", completion_spec);
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
@@ -157,7 +187,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
   const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
     for (size_t i = 0; i < discovery_svc_count; i++) {

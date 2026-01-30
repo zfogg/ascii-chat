@@ -11,6 +11,28 @@
 #include "options/enums.h"
 #include "common.h"
 
+/**
+ * Escape help text for fish shell completions
+ * Fish uses single quotes for the help text, so single quotes need to be escaped
+ */
+static void fish_escape_help(FILE *output, const char *text) {
+  if (!text) {
+    return;
+  }
+
+  for (const char *p = text; *p; p++) {
+    if (*p == '\'') {
+      // Escape single quotes by ending quote, adding escaped quote, starting quote again
+      fprintf(output, "'\\''");
+    } else if (*p == '\n' || *p == '\t') {
+      // Convert newlines and tabs to spaces
+      fprintf(output, " ");
+    } else {
+      fputc(*p, output);
+    }
+  }
+}
+
 static void fish_write_option(FILE *output, const option_descriptor_t *opt, const char *condition) {
   if (!opt) {
     return;
@@ -28,13 +50,17 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
       // Enum values as completions
       // Output short option once with first value
       if (opt->short_name != '\0') {
-        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n", condition, opt->short_name,
-                meta->enum_values[0], opt->help_text);
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '", condition, opt->short_name,
+                meta->enum_values[0]);
+        fish_escape_help(output, opt->help_text);
+        fprintf(output, "'\n");
       }
       // Output long option with all values
       for (size_t i = 0; i < meta->enum_count; i++) {
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n", condition, opt->long_name,
-                meta->enum_values[i], opt->help_text);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name,
+                meta->enum_values[i]);
+        fish_escape_help(output, opt->help_text);
+        fprintf(output, "'\n");
       }
       return;
     } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
@@ -45,13 +71,17 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
       // Example values as completions (practical values, higher priority than calculated ranges)
       // Output short option once with first example
       if (opt->short_name != '\0') {
-        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '%s'\n", condition, opt->short_name,
-                meta->examples[0], opt->help_text);
+        fprintf(output, "complete -c ascii-chat %s -s %c -x -a '%s' -d '", condition, opt->short_name,
+                meta->examples[0]);
+        fish_escape_help(output, opt->help_text);
+        fprintf(output, "'\n");
       }
       // Output long option with all examples
       for (size_t i = 0; meta->examples[i] != NULL; i++) {
-        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '%s'\n", condition, opt->long_name,
-                meta->examples[i], opt->help_text);
+        fprintf(output, "complete -c ascii-chat %s -l %s -x -a '%s' -d '", condition, opt->long_name,
+                meta->examples[i]);
+        fish_escape_help(output, opt->help_text);
+        fprintf(output, "'\n");
       }
       return;
     } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
@@ -77,15 +107,23 @@ static void fish_write_option(FILE *output, const option_descriptor_t *opt, cons
   // Basic completion without values
   if (opt->short_name != '\0') {
     if (exclusive) {
-      fprintf(output, "complete -c ascii-chat %s -s %c -x -d '%s'\n", condition, opt->short_name, opt->help_text);
+      fprintf(output, "complete -c ascii-chat %s -s %c -x -d '", condition, opt->short_name);
+      fish_escape_help(output, opt->help_text);
+      fprintf(output, "'\n");
     } else {
-      fprintf(output, "complete -c ascii-chat %s -s %c -d '%s'\n", condition, opt->short_name, opt->help_text);
+      fprintf(output, "complete -c ascii-chat %s -s %c -d '", condition, opt->short_name);
+      fish_escape_help(output, opt->help_text);
+      fprintf(output, "'\n");
     }
   }
   if (exclusive) {
-    fprintf(output, "complete -c ascii-chat %s -l %s -x -d '%s'\n", condition, opt->long_name, opt->help_text);
+    fprintf(output, "complete -c ascii-chat %s -l %s -x -d '", condition, opt->long_name);
+    fish_escape_help(output, opt->help_text);
+    fprintf(output, "'\n");
   } else {
-    fprintf(output, "complete -c ascii-chat %s -l %s -d '%s'\n", condition, opt->long_name, opt->help_text);
+    fprintf(output, "complete -c ascii-chat %s -l %s -d '", condition, opt->long_name);
+    fish_escape_help(output, opt->help_text);
+    fprintf(output, "'\n");
   }
 }
 
@@ -180,7 +218,7 @@ asciichat_error_t completions_generate_fish(FILE *output) {
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
   const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   fprintf(output, "# Discovery-service options (same as 'ascii-chat discovery-service --help')\n");
   if (discovery_svc_opts) {

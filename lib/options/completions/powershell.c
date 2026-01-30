@@ -10,6 +10,28 @@
 #include "options/registry.h"
 #include "common.h"
 
+/**
+ * Escape help text for PowerShell
+ * PowerShell uses single quotes, so single quotes need to be escaped by doubling them
+ */
+static void ps_escape_help(FILE *output, const char *text) {
+  if (!text) {
+    return;
+  }
+
+  for (const char *p = text; *p; p++) {
+    if (*p == '\'') {
+      // Escape single quotes by doubling them
+      fprintf(output, "''");
+    } else if (*p == '\n' || *p == '\t') {
+      // Convert newlines and tabs to spaces
+      fprintf(output, " ");
+    } else {
+      fputc(*p, output);
+    }
+  }
+}
+
 static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
   if (!opt) {
     return;
@@ -23,7 +45,9 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
     if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_count > 0) {
       // Enum values
       if (opt->short_name != '\0') {
-        fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
+        fprintf(output, "    @{ Name = '-%c'; Description = '", opt->short_name);
+        ps_escape_help(output, opt->help_text);
+        fprintf(output, "'; Values = @(");
         for (size_t i = 0; i < meta->enum_count; i++) {
           if (i > 0)
             fprintf(output, ", ");
@@ -31,7 +55,9 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
         }
         fprintf(output, ") }\n");
       }
-      fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
+      fprintf(output, "    @{ Name = '--%s'; Description = '", opt->long_name);
+      ps_escape_help(output, opt->help_text);
+      fprintf(output, "'; Values = @(");
       for (size_t i = 0; i < meta->enum_count; i++) {
         if (i > 0)
           fprintf(output, ", ");
@@ -42,7 +68,9 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
     } else if (meta->examples && meta->examples[0] != NULL) {
       // Example values (practical values, higher priority than calculated ranges)
       if (opt->short_name != '\0') {
-        fprintf(output, "    @{ Name = '-%c'; Description = '%s'; Values = @(", opt->short_name, opt->help_text);
+        fprintf(output, "    @{ Name = '-%c'; Description = '", opt->short_name);
+        ps_escape_help(output, opt->help_text);
+        fprintf(output, "'; Values = @(");
         for (size_t i = 0; meta->examples[i] != NULL; i++) {
           if (i > 0)
             fprintf(output, ", ");
@@ -50,7 +78,9 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
         }
         fprintf(output, ") }\n");
       }
-      fprintf(output, "    @{ Name = '--%s'; Description = '%s'; Values = @(", opt->long_name, opt->help_text);
+      fprintf(output, "    @{ Name = '--%s'; Description = '", opt->long_name);
+      ps_escape_help(output, opt->help_text);
+      fprintf(output, "'; Values = @(");
       for (size_t i = 0; meta->examples[i] != NULL; i++) {
         if (i > 0)
           fprintf(output, ", ");
@@ -61,8 +91,9 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
     } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
       // Numeric range - suggest min, middle, max values
       if (opt->short_name != '\0') {
-        fprintf(output, "    @{ Name = '-%c'; Description = '%s (numeric %d-%d)'; Values = @(", opt->short_name,
-                opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
+        fprintf(output, "    @{ Name = '-%c'; Description = '", opt->short_name);
+        ps_escape_help(output, opt->help_text);
+        fprintf(output, " (numeric %d-%d)'; Values = @(", meta->numeric_range.min, meta->numeric_range.max);
         fprintf(output, "'%d'", meta->numeric_range.min);
         if (meta->numeric_range.max > meta->numeric_range.min) {
           int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
@@ -71,8 +102,9 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
         }
         fprintf(output, ") }\n");
       }
-      fprintf(output, "    @{ Name = '--%s'; Description = '%s (numeric %d-%d)'; Values = @(", opt->long_name,
-              opt->help_text, meta->numeric_range.min, meta->numeric_range.max);
+      fprintf(output, "    @{ Name = '--%s'; Description = '", opt->long_name);
+      ps_escape_help(output, opt->help_text);
+      fprintf(output, " (numeric %d-%d)'; Values = @(", meta->numeric_range.min, meta->numeric_range.max);
       fprintf(output, "'%d'", meta->numeric_range.min);
       if (meta->numeric_range.max > meta->numeric_range.min) {
         int middle = (meta->numeric_range.min + meta->numeric_range.max) / 2;
@@ -86,9 +118,13 @@ static void ps_write_option(FILE *output, const option_descriptor_t *opt) {
 
   // Basic option without values
   if (opt->short_name != '\0') {
-    fprintf(output, "    @{ Name = '-%c'; Description = '%s' }\n", opt->short_name, opt->help_text);
+    fprintf(output, "    @{ Name = '-%c'; Description = '", opt->short_name);
+    ps_escape_help(output, opt->help_text);
+    fprintf(output, "' }\n");
   }
-  fprintf(output, "    @{ Name = '--%s'; Description = '%s' }\n", opt->long_name, opt->help_text);
+  fprintf(output, "    @{ Name = '--%s'; Description = '", opt->long_name);
+  ps_escape_help(output, opt->help_text);
+  fprintf(output, "' }\n");
 }
 
 asciichat_error_t completions_generate_powershell(FILE *output) {
@@ -170,7 +206,7 @@ asciichat_error_t completions_generate_powershell(FILE *output) {
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
   const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVER, false, &discovery_svc_count);
+      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
     for (size_t i = 0; i < discovery_svc_count; i++) {
