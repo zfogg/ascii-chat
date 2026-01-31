@@ -370,6 +370,10 @@ int mirror_main(void) {
     return ERROR_DISPLAY;
   }
 
+  // Disable terminal logging during rendering to prevent logs from mixing with ASCII art
+  bool terminal_logging_was_enabled = log_get_terminal_output();
+  log_set_terminal_output(false);
+
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
   // Synchronous mode: pass capture context, NULL for callbacks
   // Keyboard support: pass handler and capture context for interactive controls
@@ -378,6 +382,9 @@ int mirror_main(void) {
                                                  NULL,                    // No custom sleep callback
                                                  mirror_keyboard_handler, // Keyboard handler for interactive controls
                                                  capture); // user_data (capture context for keyboard handler)
+
+  // Re-enable terminal logging after rendering
+  log_set_terminal_output(terminal_logging_was_enabled);
 
   log_debug("mirror_main: session_render_loop returned with result=%d", result);
   if (result != ASCIICHAT_OK) {
