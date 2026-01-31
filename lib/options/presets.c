@@ -70,43 +70,28 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // These allow parsing of positional arguments like "192.168.1.1" for client mode
   // and "[bind-address]" for server mode
 
-  // Client mode: [address] - can be IP, hostname, or hostname:port
-  static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080"};
-  options_builder_add_positional(b, "address", "Server address (optional)", false, "Positional Arguments",
-                                 client_examples, 3, OPTION_MODE_CLIENT, parse_client_address);
-
-  // Discovery mode: [session-string] - session string or empty to start new session
-  static const char *discovery_examples[] = {"happy-rabbit-cat", "brave-elephant-lion"};
-  options_builder_add_positional(b, "session-string", "Session string (optional, or empty to start new session)", false,
-                                 "Positional Arguments", discovery_examples, 2, OPTION_MODE_DISCOVERY,
-                                 parse_client_address);
-
-  // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
-  static const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0",
-                                          "::",        "0.0.0.0 ::",     ":: 192.168.1.100"};
-  options_builder_add_positional(b, "bind-address",
-                                 "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
-                                 false, "Positional Arguments", server_examples, 6,
-                                 OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
-
   // Generate random session strings for examples
   // Use static buffers so they persist after the function returns
+  static char session_buf2[SESSION_STRING_BUFFER_SIZE];
   static char session_buf3[SESSION_STRING_BUFFER_SIZE];
   static char session_buf4[SESSION_STRING_BUFFER_SIZE];
   static char session_buf5[SESSION_STRING_BUFFER_SIZE];
   static char session_buf6[SESSION_STRING_BUFFER_SIZE];
   static char session_buf7[SESSION_STRING_BUFFER_SIZE];
-  static char session_buf8[SESSION_STRING_BUFFER_SIZE];
 
   // Fallback strings if generation fails
-  char *example_session_string3 = "invalid-session-string";
-  char *example_session_string4 = "invalid-session-string";
-  char *example_session_string5 = "invalid-session-string";
-  char *example_session_string6 = "invalid-session-string";
-  char *example_session_string7 = "invalid-session-string";
-  char *example_session_string8 = "invalid-session-string";
+  char *example_session_string2 = "adjective-noun-noun";
+  char *example_session_string3 = "adjective-noun-noun";
+  char *example_session_string4 = "adjective-noun-noun";
+  char *example_session_string5 = "adjective-noun-noun";
+  char *example_session_string6 = "adjective-noun-noun";
+  char *example_session_string7 = "adjective-noun-noun";
 
-  // Generate all session strings (sodium_init called as needed by acds_string_generate)
+  // Generate session strings for examples (sodium_init called as needed by acds_string_generate)
+  acds_string_generate(session_buf2, sizeof(session_buf2));
+  if (session_buf2[0] != '\0') {
+    example_session_string2 = session_buf2;
+  }
   acds_string_generate(session_buf3, sizeof(session_buf3));
   if (session_buf3[0] != '\0') {
     example_session_string3 = session_buf3;
@@ -127,10 +112,27 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   if (session_buf7[0] != '\0') {
     example_session_string7 = session_buf7;
   }
-  acds_string_generate(session_buf8, sizeof(session_buf8));
-  if (session_buf8[0] != '\0') {
-    example_session_string8 = session_buf8;
-  }
+
+  // Client mode: [address] - can be IP, hostname, or hostname:port
+  static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080"};
+  options_builder_add_positional(b, "address", "Server address (optional)", false, "Positional Arguments",
+                                 client_examples, 3, OPTION_MODE_CLIENT, parse_client_address);
+
+  // Discovery mode: [session-string] - session string or empty to start new session
+  // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
+  static const char *discovery_examples[] = {"joyful-panda-lion  (join existing session)",
+                                             "(empty)  (start new session)"};
+  options_builder_add_positional(b, "session-string", "Session string (optional, or empty to start new session)", false,
+                                 "Positional Arguments", discovery_examples, 2, OPTION_MODE_DISCOVERY,
+                                 parse_client_address);
+
+  // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
+  static const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0",
+                                          "::",        "0.0.0.0 ::",     ":: 192.168.1.100"};
+  options_builder_add_positional(b, "bind-address",
+                                 "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
+                                 false, "Positional Arguments", server_examples, 6,
+                                 OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
   // Add usage lines for all modes
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
@@ -145,14 +147,14 @@ const options_config_t *options_preset_unified(const char *program_name, const c
 
   // Build session string examples dynamically for discovery mode
   // These appear at the beginning of the examples section, right after "start new session"
-  char example_buf1[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
+  char example_buf2[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf3[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf4[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf5[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf6[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf7[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
 
-  snprintf(example_buf1, sizeof(example_buf1), "%s", example_session_string8);
+  snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
   snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-server discovery.example.com", example_session_string3);
   snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
   snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
@@ -163,7 +165,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   // Add examples for binary-level help (implicitly discovery mode)
   // Note: Discovery/session examples appear first, then mode-specific examples
   options_builder_add_example(b, NULL, NULL, "Start new session (share the session string)", false);
-  options_builder_add_example(b, NULL, example_buf1, "Join a session using the session string", true);
+  options_builder_add_example(b, NULL, example_buf2, "Join a session using the session string", true);
   options_builder_add_example(b, NULL, example_buf3, "Join session via custom discovery server", true);
   options_builder_add_example(b, NULL, example_buf4, "Join session and stream from local video file", true);
   options_builder_add_example(b, NULL, example_buf5, "Join session and stream from YouTube video", true);
