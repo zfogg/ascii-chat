@@ -1414,12 +1414,12 @@ void log_shutdown_begin(void) {
 }
 
 void log_shutdown_end(void) {
-  if (!g_shutdown_in_progress) {
-    return; /* Not in shutdown phase */
-  }
-
-  /* Clean up compiled color scheme */
+  /* Clean up compiled color scheme (called as atexit handler even if shutdown wasn't started) */
   colors_cleanup_compiled(&g_compiled_colors);
+
+  if (!g_shutdown_in_progress) {
+    return; /* Not in shutdown phase, skip terminal state restoration */
+  }
 
   /* Restore previous terminal output state */
   atomic_store(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
