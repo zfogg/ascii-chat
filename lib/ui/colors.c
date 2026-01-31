@@ -18,7 +18,14 @@
 
 static color_scheme_t g_active_scheme = {0};
 static bool g_colors_initialized = false;
-static mutex_t g_colors_mutex = {0};
+
+/* Mutex for color scheme compilation - used by both colors.c and logging.c */
+/* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock */
+#ifdef _WIN32
+mutex_t g_colors_mutex = {0}; /* Windows CRITICAL_SECTION */
+#else
+mutex_t g_colors_mutex = PTHREAD_MUTEX_INITIALIZER; /* POSIX pthread_mutex_t */
+#endif
 
 /* ============================================================================
  * Built-In Color Schemes
@@ -230,12 +237,16 @@ asciichat_error_t colors_init(void) {
     return ASCIICHAT_OK;
   }
 
-  /* Initialize mutex - only do this once */
+  /* NOTE: Mutex is already statically initialized on POSIX with PTHREAD_MUTEX_INITIALIZER.
+   * On Windows, we initialize it here. Do NOT call mutex_init() on POSIX because
+   * double-initialization of pthread_mutex_t causes undefined behavior and deadlocks. */
+#ifdef _WIN32
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
     mutex_init(&g_colors_mutex);
     mutex_initialized = true;
   }
+#endif
 
   /* Load default scheme */
   const color_scheme_t *pastel = find_builtin_scheme("pastel");
@@ -259,7 +270,12 @@ void colors_shutdown(void) {
   g_colors_initialized = false;
   mutex_unlock(&g_colors_mutex);
 
+  /* NOTE: Do NOT call mutex_destroy() on POSIX because the mutex is statically
+   * initialized with PTHREAD_MUTEX_INITIALIZER. Destroying a statically-initialized
+   * mutex is undefined behavior. On Windows, we must destroy the CRITICAL_SECTION. */
+#ifdef _WIN32
   mutex_destroy(&g_colors_mutex);
+#endif
 }
 
 /* ============================================================================
