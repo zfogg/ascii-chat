@@ -260,6 +260,12 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
 int discovery_main(void) {
   log_info("Starting discovery mode");
 
+  // Enable keepawake mode if not disabled by --no-os-sleep
+  // Ignore errors - keepawake is a non-critical feature
+  if (!GET_OPTION(no_os_sleep)) {
+    (void)platform_enable_keepawake();
+  }
+
   // Install console control-c handler
   platform_set_console_ctrl_handler(discovery_console_ctrl_handler);
 
@@ -435,6 +441,9 @@ int discovery_main(void) {
   }
 
   // Cleanup
+  // Disable keepawake before exit
+  platform_disable_keepawake();
+
   // Re-enable terminal output for shutdown message if --quiet wasn't passed
   if (!GET_OPTION(quiet)) {
     log_set_terminal_output(true);

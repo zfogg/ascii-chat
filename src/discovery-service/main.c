@@ -76,6 +76,12 @@ static void signal_handler(int sig) {
 int acds_main(void) {
   asciichat_error_t result;
 
+  // Enable keepawake mode if not disabled by --no-os-sleep
+  // Ignore errors - keepawake is a non-critical feature
+  if (!GET_OPTION(no_os_sleep)) {
+    (void)platform_enable_keepawake();
+  }
+
   // Increase file descriptor limit for many concurrent connections
 #ifdef __linux__
   struct rlimit rl = {.rlim_cur = 65536, .rlim_max = 65536};
@@ -385,6 +391,9 @@ int acds_main(void) {
 
 cleanup_resources:
   // Cleanup
+  // Disable keepawake before exit
+  platform_disable_keepawake();
+
   log_info("Shutting down discovery server...");
   acds_server_shutdown(&server);
   g_server = NULL;
