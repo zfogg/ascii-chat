@@ -101,27 +101,6 @@ static void full_terminal_reset_internal(bool snapshot_mode) {
   (void)terminal_flush(STDOUT_FILENO);
 }
 
-/**
- * @brief Write frame data to the terminal
- *
- * @param frame_data Frame data to write
- * @param frame_len Length of frame data
- * @param use_tty Use TTY if true, stdout if false
- */
-static void write_frame_internal(const char *frame_data, size_t frame_len, bool use_tty) {
-  if (use_tty && STDOUT_FILENO >= 0) {
-    // Write to stdout with cursor control for TTY output
-    // This ensures frames overwrite each other instead of stacking on new lines
-    (void)terminal_cursor_home(STDOUT_FILENO);
-    (void)platform_write(STDOUT_FILENO, frame_data, frame_len);
-    (void)terminal_flush(STDOUT_FILENO);
-  } else {
-    // stdout for pipes/redirection/testing - don't send terminal control sequences
-    (void)platform_write(STDOUT_FILENO, frame_data, frame_len);
-    (void)fflush(stdout);
-  }
-}
-
 /* ============================================================================
  * Session Display Lifecycle Functions
  * ============================================================================ */
@@ -337,18 +316,46 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   bool use_tty_control = ctx->has_tty;
 
   if (use_tty_control) {
-    // TTY mode: always write with cursor control (every frame, including during snapshot capture)
-    // This shows the animation in real-time, then exits after snapshot is done
-    write_frame_internal(frame_data, frame_len, true);
+    // TTY mode: send clear codes then frame data
+    const char *clear = "\033[2J\033[H";
+    platform_write(STDOUT_FILENO, clear, 7);
+
+    size_t written = 0;
+    int attempts = 0;
+    while (written < frame_len && attempts < 1000) {
+      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
+      if (result > 0) {
+        written += (size_t)result;
+        attempts = 0;
+      } else {
+        attempts++;
+      }
+    }
   } else if (ctx->snapshot_mode && is_final) {
     // Snapshot mode on non-TTY (piped): render final frame only WITHOUT cursor control
-    write_frame_internal(frame_data, frame_len, false);
+    size_t written = 0;
+    while (written < frame_len) {
+      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
+      if (result <= 0) {
+        log_error("Failed to write snapshot frame data");
+        break;
+      }
+      written += (size_t)result;
+    }
     // Add newline at end of snapshot output
     (void)printf("\n");
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
     // Piped mode (non-snapshot): render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
-    write_frame_internal(frame_data, frame_len, false);
+    size_t written = 0;
+    while (written < frame_len) {
+      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
+      if (result <= 0) {
+        log_error("Failed to write piped frame data");
+        break;
+      }
+      written += (size_t)result;
+    }
     // Add newline after each frame to separate frames when captured to files
     (void)printf("\n");
   }

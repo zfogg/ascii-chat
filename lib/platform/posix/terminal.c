@@ -158,8 +158,10 @@ bool terminal_supports_utf8(void) {
 asciichat_error_t terminal_clear_screen(void) {
   // Use ANSI escape codes instead of system("clear") to avoid command processor
   // \033[2J clears entire screen, \033[H moves cursor to home position
-  printf("\033[2J\033[H");
-  fflush(stdout);
+  int fd = STDOUT_FILENO;
+  if (dprintf(fd, "\033[2J\033[H") < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to clear screen");
+  }
   return ASCIICHAT_OK;
 }
 
