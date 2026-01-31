@@ -330,7 +330,6 @@ Unlike HTTPS, ascii-chat has no global certificate authority to bootstrap trust.
 .SS "Authentication Methods"
 \fBDefault (Ephemeral DH):\fR Protects against passive eavesdropping but not MITM attacks. Works with zero configuration. Good for low-threat environments or quick sessions.
 .br
-.B
 \fBPassword Authentication:\fR Both sides prove password knowledge (8-256 characters), bound cryptographically to the DH shared secret. Prevents MITM attacks even without pre-arranged keys. Enable with \fB\-\-password SECRET\fR on both server and client.
 .br
 \fBKey-Based Authentication:\fR Server and client can authenticate using Ed25519 SSH keys or GPG keys. Keys can be specified as:
