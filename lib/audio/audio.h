@@ -213,6 +213,18 @@ asciichat_error_t audio_init(audio_context_t *ctx);
 void audio_destroy(audio_context_t *ctx);
 
 /**
+ * @brief Terminate PortAudio and free all device resources
+ *
+ * This must be called at program shutdown to free device structures allocated
+ * by ALSA/libpulse during Pa_Initialize(). Should be called AFTER all audio
+ * contexts are destroyed and other session cleanup is complete.
+ *
+ * @note This is only needed if you want to ensure all memory is freed at exit.
+ *       In normal operation, the OS will clean up when the process terminates.
+ */
+void audio_terminate_portaudio_final(void);
+
+/**
  * @brief Set audio pipeline for echo cancellation
  * @param ctx Audio context (must not be NULL)
  * @param pipeline Client audio pipeline pointer (opaque, can be NULL)
