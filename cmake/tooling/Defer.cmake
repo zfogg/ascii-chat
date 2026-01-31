@@ -21,7 +21,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 function(ascii_defer_prepare)
     # Skip if defer transformation is disabled (used by temp cmake build to prevent recursion)
     if(NOT ASCIICHAT_ENABLE_DEFER_TRANSFORM)
-        message(STATUS "Defer transformation disabled - skipping ascii_defer_prepare()")
+        # Defer transformation disabled - silent for quiet builds
         return()
     endif()
 
@@ -105,7 +105,7 @@ function(ascii_defer_prepare)
                     list(APPEND defer_abs_paths "${abs_path}")
                     list(APPEND defer_rel_paths "${rel_path}")
                     list(APPEND defer_generated_paths "${generated_path}")
-                    message(STATUS "Found defer() usage in: ${rel_path}")
+                    # Found defer() usage - processing silently
                 endif()
             endif()
         endforeach()
@@ -120,9 +120,7 @@ function(ascii_defer_prepare)
 
     # Detect Clang resource directory for compilation database generation
     detect_clang_resource_dir(_clang_resource_dir_db)
-    if(_clang_resource_dir_db)
-        message(STATUS "Will use Clang resource directory in compilation database: ${_clang_resource_dir_db}")
-    endif()
+    # Using Clang resource directory for compilation database if found (silent for quiet builds)
 
     # Generate compilation database for the defer tool using the common utility
     set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp_defer")
@@ -142,11 +140,11 @@ function(ascii_defer_prepare)
             ASCIICHAT_BUILD_TESTS
     )
 
-    # Create timer targets for defer transformation
+    # Create timer targets for defer transformation (comments disabled for quiet builds)
     add_timer_targets(
         NAME defer-all
-        COMMENT_START "Starting defer() transformation timing block"
-        COMMENT_END "Finishing defer() transformation timing block"
+        COMMENT_START ""
+        COMMENT_END ""
     )
 
     # Create per-file transformation commands for incremental builds
@@ -169,7 +167,7 @@ function(ascii_defer_prepare)
             COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir}
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Transforming defer() in ${_rel_path}"
+            COMMENT ""
             VERBATIM
         )
         list(APPEND _all_generated_outputs "${_gen_path}")
