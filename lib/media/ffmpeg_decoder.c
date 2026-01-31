@@ -256,7 +256,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
 
       // Reallocate if needed (width/height changed)
-      if (decode_buffer->w != (size_t)width || decode_buffer->h != (size_t)height) {
+      if (decode_buffer->w != width || decode_buffer->h != height) {
         image_destroy(decode_buffer);
         decode_buffer = image_new((size_t)width, (size_t)height);
         if (!decode_buffer) {
@@ -1147,7 +1147,9 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   // This ensures prefetch thread is NOT in av_read_frame() while we call av_seek_frame()
   // The prefetch thread releases this mutex BEFORE calling av_read_frame(), so holding it
   // guarantees exclusive access to the AVFormatContext during seek operations
+  log_info("[SEEK] Acquiring prefetch_mutex before av_seek_frame()");
   mutex_lock(&decoder->prefetch_mutex);
+  log_info("[SEEK] Acquired prefetch_mutex, starting seek to %.2f sec", timestamp_sec);
 
   // Set flag to pause prefetch thread via condition variable
   decoder->seeking_in_progress = true;
@@ -1156,10 +1158,13 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
 
   // Seek to timestamp with frame-based seeking to nearest keyframe
+  log_info("[SEEK] Calling av_seek_frame() with target=%.2f sec", timestamp_sec);
   int seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
   if (seek_ret < 0) {
+    log_info("[SEEK] First av_seek_frame failed, trying fallback");
     seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
   }
+  log_info("[SEEK] av_seek_frame returned %d", seek_ret);
 
   if (seek_ret < 0) {
     decoder->seeking_in_progress = false;
@@ -1185,11 +1190,14 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->audio_samples_read = 0;
 
   // Resume prefetch thread
+  log_info("[SEEK] Seeking complete, signaling prefetch thread to resume");
   decoder->seeking_in_progress = false;
   cond_signal(&decoder->prefetch_cond);
 
   // Release mutex - prefetch thread can resume
+  log_info("[SEEK] Releasing prefetch_mutex");
   mutex_unlock(&decoder->prefetch_mutex);
+  log_info("[SEEK] Released prefetch_mutex, seek operation finished");
 
   return ASCIICHAT_OK;
 }
