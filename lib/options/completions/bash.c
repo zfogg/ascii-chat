@@ -168,17 +168,40 @@ static void bash_write_enum_cases(FILE *output) {
   size_t combined_count = 0;
   option_descriptor_t *combined_opts = completions_collect_all_modes_unique(&combined_count);
 
+  // Also add binary-level options (--log-level, --log-file, etc.)
+  size_t binary_count = 0;
+  const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
+
+  if (binary_opts) {
+    for (size_t i = 0; i < binary_count; i++) {
+      // Check if already in combined_opts
+      bool already_has = false;
+      for (size_t j = 0; j < combined_count; j++) {
+        if (strcmp(combined_opts[j].long_name, binary_opts[i].long_name) == 0) {
+          already_has = true;
+          break;
+        }
+      }
+      if (!already_has) {
+        combined_count++;
+        option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
+            combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
+        if (temp) {
+          combined_opts = temp;
+          combined_opts[combined_count - 1] = binary_opts[i];
+        }
+      }
+    }
+    SAFE_FREE(binary_opts);
+  }
+
   if (!combined_opts) {
     return;
   }
 
   for (size_t i = 0; i < combined_count; i++) {
     const option_descriptor_t *opt = &combined_opts[i];
-    const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
-
-    if (!meta) {
-      continue;
-    }
+    const option_metadata_t *meta = &opt->metadata;
 
     // Skip options with no enum or examples
     bool has_examples = meta->examples && meta->examples[0] != NULL;

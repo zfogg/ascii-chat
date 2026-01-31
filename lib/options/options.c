@@ -770,6 +770,21 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
         user_quiet = true;
       }
+      // Validate --log-level and --log-file require arguments
+      if (strcmp(argv[i], "--log-level") == 0) {
+        if (i + 1 >= argc || argv[i + 1][0] == '-') {
+          log_plain_stderr("Error: --log-level requires a value (dev, debug, info, warn, error, fatal)");
+          exit(ERROR_USAGE);
+        }
+        i++; // Skip the argument in this loop
+      }
+      if (strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0) {
+        if (i + 1 >= argc || argv[i + 1][0] == '-') {
+          log_plain_stderr("Error: %s requires a file path", argv[i]);
+          exit(ERROR_USAGE);
+        }
+        i++; // Skip the argument in this loop
+      }
       if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
         show_help = true;
         has_action = true;
@@ -1015,24 +1030,39 @@ asciichat_error_t options_init(int argc, char **argv) {
       }
       // Handle --log-level LEVEL (set log threshold)
       if (strcmp(argv[i], "--log-level") == 0) {
-        if (i + 1 < argc && argv[i + 1][0] != '-') {
-          char *error_msg = NULL;
-          if (parse_log_level(argv[i + 1], &opts.log_level, &error_msg)) {
-            i++; // Skip the level argument
+        if (i + 1 >= argc) {
+          log_plain_stderr("Error: --log-level requires a value (dev, debug, info, warn, error, fatal)");
+          exit(ERROR_USAGE);
+        }
+        if (argv[i + 1][0] == '-') {
+          log_plain_stderr("Error: --log-level requires a value (dev, debug, info, warn, error, fatal)");
+          exit(ERROR_USAGE);
+        }
+        char *error_msg = NULL;
+        if (parse_log_level(argv[i + 1], &opts.log_level, &error_msg)) {
+          i++; // Skip the level argument
+        } else {
+          if (error_msg) {
+            log_plain_stderr("Error: %s", error_msg);
+            free(error_msg);
           } else {
-            if (error_msg) {
-              log_error("Error parsing --log-level: %s", error_msg);
-              free(error_msg);
-            }
+            log_plain_stderr("Error: invalid log level value: %s", argv[i + 1]);
           }
+          exit(ERROR_USAGE);
         }
       }
       // Handle -L and --log-file FILE (set log file path)
       if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
-        if (i + 1 < argc && argv[i + 1][0] != '-') {
-          SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
-          i++; // Skip the file argument
+        if (i + 1 >= argc) {
+          log_plain_stderr("Error: %s requires a file path", argv[i]);
+          exit(ERROR_USAGE);
         }
+        if (argv[i + 1][0] == '-') {
+          log_plain_stderr("Error: %s requires a file path", argv[i]);
+          exit(ERROR_USAGE);
+        }
+        SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
+        i++; // Skip the file argument
       }
       // NOTE: --color is now parsed in STAGE 1A (early, before help processing)
       // to ensure help output colors are applied correctly
