@@ -182,6 +182,15 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
+    // DISABLED: Prefetch thread - causing frame sequencing issues
+    // // Start prefetch thread for video frames (critical for YouTube HTTP performance)
+    // // This thread continuously reads frames into a buffer so the render loop never blocks
+    // asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    // if (prefetch_err != ASCIICHAT_OK) {
+    //   log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
+    //   // Don't fail on prefetch error - continue with synchronous reading as fallback
+    // }
+
     source->audio_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->audio_decoder) {
       log_error("Failed to open media file for audio: %s", effective_path);
@@ -210,6 +219,14 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       SAFE_FREE(source);
       return NULL;
     }
+
+    // DISABLED: Prefetch thread - causing frame sequencing issues
+    // // Start prefetch thread for stdin video frames
+    // asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    // if (prefetch_err != ASCIICHAT_OK) {
+    //   log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
+    //   // Don't fail on prefetch error - continue with synchronous reading as fallback
+    // }
 
     source->audio_decoder = ffmpeg_decoder_create_stdin();
     if (!source->audio_decoder) {
@@ -336,10 +353,33 @@ image_t *media_source_read_video(media_source_t *source) {
     image_t *frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
     uint64_t frame_read_ns = time_elapsed_ns(frame_read_start_ns, time_get_ns());
 
-    if (frame && frame_read_ns > 50000000) { // Log if frame read takes > 50ms
-      double frame_read_ms = (double)frame_read_ns / 1000000.0;
-      log_warn_every(1000000, "SLOW_FRAME_READ: took %.1f ms (YouTube: %s)", frame_read_ms,
-                     source->is_shared_decoder ? "yes" : "no");
+    // Track frame reading statistics for FPS diagnosis
+    static uint64_t total_attempts = 0;
+    static uint64_t successful_frames = 0;
+    static uint64_t null_frame_count = 0;
+    static uint64_t total_read_time_ns = 0;
+    static uint64_t max_read_time_ns = 0;
+
+    total_attempts++;
+    if (frame) {
+      successful_frames++;
+      total_read_time_ns += frame_read_ns;
+      if (frame_read_ns > max_read_time_ns) {
+        max_read_time_ns = frame_read_ns;
+      }
+
+      // Log statistics every 30 successful frames
+      if (successful_frames % 30 == 0) {
+        double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / 1000000.0;
+        double max_read_ms = (double)max_read_time_ns / 1000000.0;
+        double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
+        log_info_every(3000000,
+                       "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "
+                       "(%lu null/%lu attempts)",
+                       successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
+      }
+    } else {
+      null_frame_count++;
     }
 
     // Handle EOF with loop
