@@ -78,6 +78,11 @@ struct ffmpeg_decoder_t {
   mutex_t prefetch_mutex;          // Protect: prefetch frame/stop + FFmpeg decoder access
   // NOTE: prefetch_mutex MUST be held when calling av_read_frame/avcodec_ functions
 
+  // Track which buffer is being read by main thread (prevent prefetch thread from overwriting it)
+  image_t *current_read_buffer; // Buffer main thread is currently reading/rendering
+  bool buffer_a_in_use;         // Whether prefetch_image_a is being read by main thread
+  bool buffer_b_in_use;         // Whether prefetch_image_b is being read by main thread
+
   // State flags
   bool eof_reached;
   bool is_stdin;
@@ -170,6 +175,16 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
     mutex_lock(&decoder->prefetch_mutex);
 
+    // Check if the buffer we want to use is still in use by the main thread
+    // If so, skip this iteration and try again later
+    bool buffer_in_use = use_image_a ? decoder->buffer_a_in_use : decoder->buffer_b_in_use;
+    if (buffer_in_use) {
+      // Can't use this buffer yet - main thread is still rendering it
+      mutex_unlock(&decoder->prefetch_mutex);
+      platform_sleep_usec(1000); // 1ms - brief sleep before retry
+      continue;
+    }
+
     // Read packets until we get a video frame
     while (true) {
       int ret = av_read_frame(decoder->format_ctx, decoder->packet);
@@ -211,6 +226,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       int height = decoder->video_codec_ctx->height;
 
       // Get current decode buffer based on which one we're using
+      // (Buffer availability was already checked before entering the decode loop)
       image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
 
       // Reallocate if needed (width/height changed)
@@ -743,8 +759,24 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
   // Try to get a prefetched frame from the background thread (preferred path)
   mutex_lock(&decoder->prefetch_mutex);
   if (decoder->prefetch_frame_ready && decoder->current_prefetch_image) {
+    // Release the previous buffer (rendering is now complete)
+    if (decoder->current_read_buffer == decoder->prefetch_image_a) {
+      decoder->buffer_a_in_use = false;
+    } else if (decoder->current_read_buffer == decoder->prefetch_image_b) {
+      decoder->buffer_b_in_use = false;
+    }
+
     image_t *frame = decoder->current_prefetch_image;
     decoder->prefetch_frame_ready = false;
+
+    // Mark the new buffer as in use (prevent prefetch thread from overwriting it during rendering)
+    if (frame == decoder->prefetch_image_a) {
+      decoder->buffer_a_in_use = true;
+    } else if (frame == decoder->prefetch_image_b) {
+      decoder->buffer_b_in_use = true;
+    }
+
+    decoder->current_read_buffer = frame;
     mutex_unlock(&decoder->prefetch_mutex);
 
     // Use the prefetched frame
