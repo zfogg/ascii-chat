@@ -1274,6 +1274,47 @@ options_t options_t_new(void);
  *
  * @ingroup options
  */
+const char *options_get_log_filename_from_argv(int argc, char *argv[]);
+
+/**
+ * @brief Initialize all command-line options from argv and environment variables
+ *
+ * **Main entry point for the options parsing system.** This function:
+ * - Detects the mode from the first positional argument (server, client, mirror, etc.)
+ * - Parses binary-level options (--help, --version, --log-file, etc.)
+ * - Parses mode-specific options
+ * - Validates cross-field option dependencies
+ * - Initializes defaults from OPT_*_DEFAULT defines
+ * - Publishes options via RCU for thread-safe lock-free access
+ *
+ * **Option Processing Order**:
+ * 1. Binary-level options (parsed from all args regardless of mode)
+ * 2. Mode detection (from first positional argument)
+ * 3. Mode-specific options (from remaining args filtered by mode)
+ * 4. Defaults initialization (for unspecified options)
+ * 5. Cross-field validation (dependencies between options)
+ * 6. RCU publication (make available to all threads)
+ *
+ * **Return Values**:
+ * - ASCIICHAT_OK - Initialization successful
+ * - ERROR_USAGE - Invalid usage (help/usage already printed to stdout)
+ * - Other errors - Check errno context via HAS_ERRNO()
+ *
+ * **Special Behavior**:
+ * - --help causes help text to print and exit(0) (never returns)
+ * - --version causes version to print and exit(0) (never returns)
+ *
+ * @param argc Argument count from main()
+ * @param argv Argument vector from main()
+ * @return ASCIICHAT_OK on success, ERROR_USAGE on parse error, other on fatal error
+ *
+ * @note Global option variables initialized by this function
+ * @note Returns ERROR_USAGE for invalid options (usage already printed)
+ * @note --help and --version may exit directly via exit(0)
+ * @note After return, options accessible via GET_OPTION() macro
+ *
+ * @ingroup options
+ */
 asciichat_error_t options_init(int argc, char **argv);
 
 /**

@@ -652,6 +652,40 @@ options_t options_t_new_preserve_binary(const options_t *source) {
   return opts;
 }
 
+// Detect mode from argv and return the corresponding log filename
+// This is used during early logging initialization before options_init completes
+const char *options_get_log_filename_from_argv(int argc, char *argv[]) {
+  if (!argv) {
+    log_warn("options_get_log_filename_from_argv: argv is NULL");
+    return "ascii-chat.log";
+  }
+
+  // Scan argv for first non-option argument (the mode)
+  for (int i = 1; i < argc; i++) {
+    const char *arg = argv[i];
+    if (!arg || arg[0] == '-') {
+      continue; // Skip options
+    }
+
+    // Found first positional argument - this is the mode
+    if (strcmp(arg, "server") == 0)
+      return "server.log";
+    if (strcmp(arg, "client") == 0)
+      return "client.log";
+    if (strcmp(arg, "mirror") == 0)
+      return "mirror.log";
+    if (strcmp(arg, "discovery-service") == 0)
+      return "acds.log";
+    if (strcmp(arg, "discovery") == 0)
+      return "discovery.log";
+    // Unknown mode - let options_init handle the error
+    break;
+  }
+
+  // No mode specified, default to ascii-chat.log
+  return "ascii-chat.log";
+}
+
 char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
   // Determine log filename based on mode
   const char *log_filename = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
@@ -681,7 +715,7 @@ char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
   if (log_dir) {
     // Build full log file path: log_dir + separator + log_filename
     char *default_log_path = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
-    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
+    safe_snprintf(default_log_path, PLATFORM_MAX_PATH_LENGTH, "%s%s%s", log_dir, PATH_SEPARATOR_STR, log_filename);
 
     // Validate and normalize the path
     char *normalized_default_log = NULL;
@@ -996,17 +1030,23 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // ========================================================================
-  // STAGE 1C: Process detected mode and flags
+  // STAGE 1C: Process detected mode and set log file early
   // ========================================================================
+  // Set log file based on mode IMMEDIATELY (even before --help check)
+  // so all modes use their proper log files
+  opts.detected_mode = detected_mode;
+  char *log_filename = options_get_log_filepath(detected_mode, opts);
+  SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
+  log_init(opts.log_file, GET_OPTION(log_level), false, false);
+  log_debug("Initialized mode-specific logging for mode %d: %s", detected_mode, opts.log_file);
+  SAFE_FREE(log_filename);
+
   // If --help was found in STAGE 1A, handle it with the detected mode
   if (show_help) {
     opts.help = true;
-    opts.detected_mode = detected_mode;
     options_state_set(&opts);
     return ASCIICHAT_OK;
   }
-
-  opts.detected_mode = detected_mode;
 
   // Check for binary-level options that can appear before or after mode
   // Search entire argv to find --quiet, --log-file, --log-level, -V, etc.
@@ -1212,10 +1252,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_STRNCPY(opts.session_string, detected_session_string, sizeof(opts.session_string));
     log_info("options_init: Detected session string from argv: '%s'", detected_session_string);
   }
-
-  char *log_filename = options_get_log_filepath(detected_mode, opts);
-  SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
-  SAFE_FREE(log_filename);
 
   // Encryption options default to disabled/empty
   opts.no_encrypt = 0;

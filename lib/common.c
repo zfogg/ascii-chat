@@ -83,7 +83,8 @@ static void print_mimalloc_stats(void);
 static bool g_atexit_handlers_registered = false;
 
 asciichat_error_t asciichat_shared_init(bool is_client) {
-  // Initialize logging with default filename
+  // Reconfigure logging with final settings (log level and is_client routing)
+  // Log file was already set in options_init after mode detection
   // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
   const options_t *opts = options_get();
   const char *log_file = opts && opts->log_file[0] != '\0' ? opts->log_file : "ascii-chat.log";
@@ -93,6 +94,7 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
   //   Release/RelWithDebInfo builds: LOG_INFO
   // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
   // use_mmap=false: Regular file logging (default for developers, allows tail -f for log monitoring)
+  // Note: log_init is safe to call multiple times; it will update routing (is_client) if needed
   log_init(log_file, GET_OPTION(log_level), is_client, false /* don't use_mmap */);
 
   // Register memory debugging stats FIRST so it runs LAST at exit

@@ -166,6 +166,12 @@ int main(int argc, char *argv[]) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
   caps = apply_color_mode_override(caps);
 
+  // Initialize logging early so options parsing can log errors
+  // Use generic filename for now; will be replaced with mode-specific filename once mode is detected
+  // This will be reconfigured first in options_init() with mode-specific name,
+  // then again in asciichat_shared_init() with final settings from parsed options
+  log_init("ascii-chat.log", LOG_INFO, false, false);
+
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
   if (strcmp(ASCII_CHAT_BUILD_TYPE, "Release") == 0) {
