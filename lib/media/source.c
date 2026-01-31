@@ -11,6 +11,7 @@
 #include "asciichat_errno.h"
 #include "platform/abstraction.h"
 #include "common/buffer_sizes.h"
+#include "util/time.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,6 +40,13 @@ struct media_source_t {
   // Mutex to protect shared decoder access from concurrent video/audio threads
   // Only used when is_shared_decoder is true (YouTube URLs)
   mutex_t decoder_mutex;
+
+  // Mutex to protect decoder access during seeks (prevents audio callback from reading during seek)
+  // CRITICAL: Must be held when:
+  // - Calling ffmpeg_decoder_read_audio() or ffmpeg_decoder_read_video() (audio/video threads)
+  // - Calling ffmpeg_decoder_seek_to_timestamp() (main/keyboard thread)
+  // This prevents race conditions where audio callback reads stale data while seeking
+  mutex_t seek_access_mutex;
 
   // Mutex to protect pause state accessed from keyboard input thread and video read thread
   mutex_t pause_mutex;
@@ -75,6 +83,15 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   if (mutex_init(&source->pause_mutex) != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize pause mutex");
     mutex_destroy(&source->decoder_mutex);
+    SAFE_FREE(source);
+    return NULL;
+  }
+
+  // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
+  if (mutex_init(&source->seek_access_mutex) != 0) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to initialize seek access mutex");
+    mutex_destroy(&source->decoder_mutex);
+    mutex_destroy(&source->pause_mutex);
     SAFE_FREE(source);
     return NULL;
   }
@@ -267,6 +284,7 @@ void media_source_destroy(media_source_t *source) {
   // Destroy mutexes
   mutex_destroy(&source->decoder_mutex);
   mutex_destroy(&source->pause_mutex);
+  mutex_destroy(&source->seek_access_mutex);
 
   SAFE_FREE(source);
 }
@@ -308,6 +326,9 @@ image_t *media_source_read_video(media_source_t *source) {
       return NULL;
     }
 
+    // CRITICAL: Lock seek_access_mutex to prevent seeking during video read
+    mutex_lock(&source->seek_access_mutex);
+
     // Lock shared decoder if YouTube URL (protect against concurrent audio thread access)
     if (source->is_shared_decoder) {
       mutex_lock(&source->decoder_mutex);
@@ -337,6 +358,9 @@ image_t *media_source_read_video(media_source_t *source) {
     if (source->is_shared_decoder) {
       mutex_unlock(&source->decoder_mutex);
     }
+
+    // Release seek_access_mutex
+    mutex_unlock(&source->seek_access_mutex);
 
     return frame;
   }
@@ -397,6 +421,10 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
       return 0;
     }
 
+    // CRITICAL: Lock seek_access_mutex to prevent audio callback from reading during seek
+    // This ensures the decoder state is consistent and prevents race conditions
+    mutex_lock(&source->seek_access_mutex);
+
     // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
     if (source->is_shared_decoder) {
       mutex_lock(&source->decoder_mutex);
@@ -419,6 +447,9 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
     if (source->is_shared_decoder) {
       mutex_unlock(&source->decoder_mutex);
     }
+
+    // Release seek_access_mutex
+    mutex_unlock(&source->seek_access_mutex);
 
     return samples_read;
   }
@@ -590,32 +621,56 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   asciichat_error_t result = ASCIICHAT_OK;
 
+  // CRITICAL: Lock seek_access_mutex FIRST to block audio callback from reading during seek
+  // This prevents race condition where audio callback reads from decoder while we're seeking
+  mutex_lock(&source->seek_access_mutex);
+
   // For YouTube URLs with shared decoder, lock during seek
   if (source->is_shared_decoder) {
     mutex_lock(&source->decoder_mutex);
   }
 
   // Seek video decoder
+  uint64_t seek_start_ns = time_get_ns();
   if (source->video_decoder) {
+    double video_pos_before = ffmpeg_decoder_get_position(source->video_decoder);
     asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source->video_decoder, timestamp_sec);
+    double video_pos_after = ffmpeg_decoder_get_position(source->video_decoder);
+    uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
     if (video_err != ASCIICHAT_OK) {
-      log_warn("Video seek to %.2f failed: error code %d", timestamp_sec, video_err);
+      log_warn("Video seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, video_err,
+               (double)video_seek_ns / 1000000.0);
       result = video_err;
+    } else {
+      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", video_pos_before, video_pos_after,
+               timestamp_sec, (double)video_seek_ns / 1000000.0);
     }
   }
 
   // Seek audio decoder (if separate from video)
   if (source->audio_decoder && !source->is_shared_decoder) {
+    uint64_t audio_seek_start_ns = time_get_ns();
+    double audio_pos_before = ffmpeg_decoder_get_position(source->audio_decoder);
     asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, timestamp_sec);
+    double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
+    uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
     if (audio_err != ASCIICHAT_OK) {
-      log_warn("Audio seek to %.2f failed: error code %d", timestamp_sec, audio_err);
+      log_warn("Audio seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, audio_err,
+               (double)audio_seek_ns / 1000000.0);
       result = audio_err;
+    } else {
+      log_info("Audio SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
+               timestamp_sec, (double)audio_seek_ns / 1000000.0);
     }
   }
 
   if (source->is_shared_decoder) {
     mutex_unlock(&source->decoder_mutex);
   }
+
+  // Release seek_access_mutex - audio callback can now resume reading
+  mutex_unlock(&source->seek_access_mutex);
+
   return result;
 }
 

@@ -14,10 +14,11 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "options/options.h"
-#include "platform/init.h"  // For static_mutex_t
-#include "network/packet.h" // For audio_batch_packet_t
-#include "log/logging.h"    // For log_* macros
-#include "media/source.h"   // For media_source_read_audio()
+#include "platform/init.h"        // For static_mutex_t
+#include "platform/abstraction.h" // For platform_sleep_usec
+#include "network/packet.h"       // For audio_batch_packet_t
+#include "log/logging.h"          // For log_* macros
+#include "media/source.h"         // For media_source_read_audio()
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -562,7 +563,14 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   if (output) {
     // For mirror mode with media file: read audio directly from media source
     if (ctx->media_source) {
+      static uint64_t read_count = 0;
+      double audio_pos_before = media_source_get_position((media_source_t *)ctx->media_source);
       samples_read = media_source_read_audio((void *)ctx->media_source, output, num_samples);
+      double audio_pos_after = media_source_get_position((media_source_t *)ctx->media_source);
+      if (read_count++ % 48000 == 0) {
+        log_info("OUTPUT_CALLBACK: read %zu samples from media_source (pos: %.3f → %.3f sec)", samples_read,
+                 audio_pos_before, audio_pos_after);
+      }
     } else if (ctx->processed_playback_rb) {
       // Network mode: read from processed playback buffer (worker output)
       samples_read = audio_ring_buffer_read(ctx->processed_playback_rb, output, num_samples);
@@ -1348,7 +1356,28 @@ void audio_flush_playback_buffers(audio_context_t *ctx) {
     log_debug("Cleared render_buffer");
   }
 
-  log_info("Audio playback buffers flushed - seek should be synchronized now");
+  // CRITICAL: Stop and restart output stream to flush PortAudio's internal buffer
+  // PortAudio buffers audio samples internally - stopping/restarting forces it to discard old audio
+  if (ctx->output_stream) {
+    log_info("Stopping output stream to flush PortAudio buffer...");
+    PaError err = Pa_StopStream(ctx->output_stream);
+    if (err == paNoError) {
+      log_debug("Output stream stopped successfully");
+      // Give it a moment for the stream to fully stop
+      platform_sleep_usec(10000); // 10ms
+      // Restart the stream
+      err = Pa_StartStream(ctx->output_stream);
+      if (err == paNoError) {
+        log_info("Output stream restarted - PortAudio buffer cleared");
+      } else {
+        log_error("Failed to restart output stream: %s", Pa_GetErrorText(err));
+      }
+    } else {
+      log_error("Failed to stop output stream: %s", Pa_GetErrorText(err));
+    }
+  }
+
+  log_info("Audio playback buffers and PortAudio stream flushed - seek should be synchronized now");
 }
 
 asciichat_error_t audio_start_duplex(audio_context_t *ctx) {

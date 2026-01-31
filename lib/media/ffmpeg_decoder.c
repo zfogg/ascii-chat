@@ -73,6 +73,10 @@ struct ffmpeg_decoder_t {
   // Position tracking
   double last_video_pts;
   double last_audio_pts;
+
+  // Sample-based position tracking (continuous position based on samples read)
+  uint64_t audio_samples_read; // Total audio samples decoded and output
+  int audio_sample_rate;       // Audio sample rate (Hz)
 };
 
 /* ============================================================================
@@ -250,6 +254,9 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 
   // Initialize swresample context for audio if present
   if (decoder->audio_codec_ctx) {
+    // Store output sample rate for position tracking
+    decoder->audio_sample_rate = TARGET_SAMPLE_RATE;
+
     // Allocate resampler context
     decoder->swr_ctx = swr_alloc();
     if (!decoder->swr_ctx) {
@@ -678,6 +685,9 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
     }
   }
 
+  // Update sample-based position tracking
+  decoder->audio_samples_read += samples_written;
+
   return samples_written;
 }
 
@@ -715,6 +725,7 @@ asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder) {
   decoder->audio_buffer_offset = 0;
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
+  decoder->audio_samples_read = 0; // Reset sample counter to 0
 
   return ASCIICHAT_OK;
 }
@@ -757,6 +768,11 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
+  // Reset sample counter to match seek position (so position tracking is continuous)
+  if (decoder->audio_sample_rate > 0) {
+    decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate + 0.5);
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -781,7 +797,12 @@ double ffmpeg_decoder_get_position(ffmpeg_decoder_t *decoder) {
     return -1.0;
   }
 
-  // Return video position if available, otherwise audio position
+  // Prefer sample-based position tracking (continuous, works before frames are decoded)
+  if (decoder->audio_sample_rate > 0 && decoder->audio_samples_read > 0) {
+    return (double)decoder->audio_samples_read / (double)decoder->audio_sample_rate;
+  }
+
+  // Fallback to frame-based position if available
   if (decoder->last_video_pts >= 0.0) {
     return decoder->last_video_pts;
   } else if (decoder->last_audio_pts >= 0.0) {
