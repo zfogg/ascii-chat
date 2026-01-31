@@ -171,44 +171,32 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // YouTube URLs: Use SINGLE shared decoder (avoid concurrent HTTP connection issues)
-    // Local files: Use SEPARATE decoders (allows independent read rates for audio/video)
-    if (is_youtube) {
-      // YouTube: Create single shared decoder for both video and audio
-      // This avoids creating multiple HTTP connections to the same stream
-      source->video_decoder = ffmpeg_decoder_create(effective_path);
-      if (!source->video_decoder) {
-        log_error("Failed to open YouTube stream: %s", effective_path);
-        SAFE_FREE(source->file_path);
-        SAFE_FREE(source->original_youtube_url);
-        SAFE_FREE(source);
-        return NULL;
-      }
-      source->audio_decoder = source->video_decoder; // Share the same decoder
-      source->is_shared_decoder = true;
-      log_debug("Media source: YouTube (shared video/audio decoder)");
-    } else {
-      // Local files: Create separate decoders for independent read rates
-      source->video_decoder = ffmpeg_decoder_create(effective_path);
-      if (!source->video_decoder) {
-        log_error("Failed to open media file for video: %s", effective_path);
-        SAFE_FREE(source->file_path);
-        SAFE_FREE(source->original_youtube_url);
-        SAFE_FREE(source);
-        return NULL;
-      }
+    // Always use separate decoders for video and audio
+    // This allows independent read rates and avoids lock contention
+    source->video_decoder = ffmpeg_decoder_create(effective_path);
+    if (!source->video_decoder) {
+      log_error("Failed to open media file for video: %s", effective_path);
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      SAFE_FREE(source);
+      return NULL;
+    }
 
-      source->audio_decoder = ffmpeg_decoder_create(effective_path);
-      if (!source->audio_decoder) {
-        log_error("Failed to open media file for audio: %s", effective_path);
-        ffmpeg_decoder_destroy(source->video_decoder);
-        source->video_decoder = NULL;
-        SAFE_FREE(source->file_path);
-        SAFE_FREE(source->original_youtube_url);
-        SAFE_FREE(source);
-        return NULL;
-      }
-      source->is_shared_decoder = false;
+    source->audio_decoder = ffmpeg_decoder_create(effective_path);
+    if (!source->audio_decoder) {
+      log_error("Failed to open media file for audio: %s", effective_path);
+      ffmpeg_decoder_destroy(source->video_decoder);
+      source->video_decoder = NULL;
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      SAFE_FREE(source);
+      return NULL;
+    }
+    source->is_shared_decoder = false;
+
+    if (is_youtube) {
+      log_debug("Media source: YouTube (separate video/audio decoders)");
+    } else {
       log_debug("Media source: File '%s' (separate video/audio decoders)", effective_path);
     }
     break;
