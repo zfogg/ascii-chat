@@ -358,43 +358,35 @@ int mirror_main(void) {
   }
 
   log_info("Mirror mode running - press Ctrl+C to exit");
-  log_set_terminal_output(false);
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
   // Synchronous mode: pass capture context, NULL for callbacks
   // Keyboard support: pass handler and capture context for interactive controls
+  log_info("mirror_main: calling session_render_loop");
   asciichat_error_t result = session_render_loop(capture, display, mirror_render_should_exit,
                                                  NULL,                    // No custom capture callback
                                                  NULL,                    // No custom sleep callback
                                                  mirror_keyboard_handler, // Keyboard handler for interactive controls
                                                  capture); // user_data (capture context for keyboard handler)
 
+  log_debug("mirror_main: session_render_loop returned with result=%d", result);
   if (result != ASCIICHAT_OK) {
     log_error("Render loop failed with error code: %d", result);
   }
 
-  // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
-  if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
-    putc('\n', stdout);
-    fflush(stdout);
-  }
+  log_debug("mirror_main: render loop complete, starting shutdown sequence");
 
-  // Cleanup
-  // Disable keepawake mode (re-allow OS to sleep)
-  platform_disable_keepawake();
-
-  // In snapshot mode, suppress shutdown logs to preserve the rendered ASCII art
-  // Re-enable terminal output for shutdown message only if not in snapshot mode and not --quiet
-  if (!GET_OPTION(snapshot_mode) && !GET_OPTION(quiet)) {
-    log_set_terminal_output(true);
-    log_info("Mirror mode shutting down");
-  }
-
+  // Cleanup - must happen BEFORE disabling terminal output
   // Stop audio FIRST to prevent callback from accessing media_source
+  log_debug("mirror_main: starting cleanup, audio_ctx=%p", (void *)audio_ctx);
   if (audio_ctx) {
+    log_debug("mirror_main: stopping audio duplex");
     audio_stop_duplex(audio_ctx);
+    log_debug("mirror_main: destroying audio");
     audio_destroy(audio_ctx);
+    log_debug("mirror_main: freeing audio_ctx");
     SAFE_FREE(audio_ctx);
+    log_debug("mirror_main: audio cleanup complete");
   }
 
   session_display_destroy(display);
@@ -405,6 +397,25 @@ int mirror_main(void) {
   if (probe_source) {
     media_source_destroy(probe_source);
     probe_source = NULL;
+  }
+
+  log_set_terminal_output(false);
+
+  // Disable keepawake mode (re-allow OS to sleep)
+  log_debug("mirror_main: disabling keepawake");
+  platform_disable_keepawake();
+
+  // In snapshot mode, suppress shutdown logs to preserve the rendered ASCII art
+  // Re-enable terminal output for shutdown message only if not in snapshot mode and not --quiet
+  if (!GET_OPTION(snapshot_mode) && !GET_OPTION(quiet)) {
+    log_set_terminal_output(true);
+    log_info("Mirror mode shutting down");
+  }
+
+  // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
+  if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
+    putc('\n', stdout);
+    fflush(stdout);
   }
 
   return 0;

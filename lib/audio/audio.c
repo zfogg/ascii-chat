@@ -52,19 +52,26 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // If already initialized, just increment refcount
   if (g_pa_init_refcount > 0) {
     g_pa_init_refcount++;
+    log_debug("PortAudio already initialized, incremented refcount to %u", g_pa_init_refcount);
     static_mutex_unlock(&g_pa_refcount_mutex);
     return ASCIICHAT_OK;
   }
 
+  log_debug("audio_ensure_portaudio_initialized: initializing PortAudio (first time, refcount was 0)");
+
   // First initialization - call Pa_Initialize() exactly once
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
+  log_debug("audio_ensure_portaudio_initialized: redirecting stderr to suppress ALSA warnings");
   platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
+  log_debug("audio_ensure_portaudio_initialized: calling Pa_Initialize()");
   PaError err = Pa_Initialize();
+  log_debug("audio_ensure_portaudio_initialized: Pa_Initialize returned, restoring stderr");
 
   // Restore stderr before checking errors
   platform_stderr_restore(stderr_handle);
+  log_debug("audio_ensure_portaudio_initialized: stderr restored");
 
   if (err != paNoError) {
     static_mutex_unlock(&g_pa_refcount_mutex);
@@ -72,9 +79,9 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   }
 
   g_pa_init_refcount = 1;
+  log_debug("PortAudio initialized successfully (refcount = 1)");
   static_mutex_unlock(&g_pa_refcount_mutex);
 
-  log_debug("PortAudio initialized successfully (probe warnings suppressed)");
   return ASCIICHAT_OK;
 }
 
@@ -88,9 +95,14 @@ static void audio_release_portaudio(void) {
   static_mutex_lock(&g_pa_refcount_mutex);
   if (g_pa_init_refcount > 0) {
     g_pa_init_refcount--;
+    log_debug("PortAudio refcount decremented to %u", g_pa_init_refcount);
     if (g_pa_init_refcount == 0) {
+      log_debug("PortAudio refcount is 0, calling Pa_Terminate()");
       Pa_Terminate();
+      log_debug("Pa_Terminate() completed");
     }
+  } else {
+    log_warn("audio_release_portaudio() called but refcount is already 0");
   }
   static_mutex_unlock(&g_pa_refcount_mutex);
 }
@@ -1027,6 +1039,7 @@ size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
 }
 
 asciichat_error_t audio_init(audio_context_t *ctx) {
+  log_debug("audio_init: starting, ctx=%p", (void *)ctx);
   if (!ctx) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx is NULL");
   }
@@ -1038,7 +1051,9 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   }
 
   // Initialize PortAudio (centralized to prevent duplicate initialization)
+  log_debug("audio_init: calling audio_ensure_portaudio_initialized");
   asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
+  log_debug("audio_init: audio_ensure_portaudio_initialized returned %d", pa_result);
   if (pa_result != ASCIICHAT_OK) {
     mutex_destroy(&ctx->state_mutex);
     return pa_result;
@@ -1277,11 +1292,15 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
 void audio_destroy(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    log_debug("audio_destroy: ctx is NULL or not initialized, returning early");
     return;
   }
 
+  log_debug("audio_destroy: starting cleanup");
+
   // Stop duplex stream if running (this also stops the worker thread)
   if (ctx->running) {
+    log_debug("audio_destroy: stopping duplex stream");
     audio_stop_duplex(ctx);
   }
 
