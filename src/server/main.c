@@ -1312,12 +1312,13 @@ int server_main(void) {
   // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
   log_set_terminal_output(!GET_OPTION(quiet));
 
-  // Enable keepawake mode if not disabled by --no-os-sleep
-  if (!GET_OPTION(no_os_sleep)) {
-    asciichat_error_t err = platform_enable_keepawake();
-    if (err != ASCIICHAT_OK) {
-      log_warn("Failed to enable keepawake mode (this is non-critical)");
-    }
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Server default: keepawake DISABLED (use --keepawake to enable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (GET_OPTION(enable_keepawake)) {
+    (void)platform_enable_keepawake();
   }
 
   log_info("ascii-chat server starting...");

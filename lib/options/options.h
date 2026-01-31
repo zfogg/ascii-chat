@@ -828,14 +828,15 @@ typedef struct options_state {
   // ============================================================================
   // Output Options
   // ============================================================================
-  unsigned short int quiet;         ///< Quiet mode (suppress logs)
-  unsigned short int verbose_level; ///< Verbosity level (stackable -V)
-  unsigned short int snapshot_mode; ///< Snapshot mode (one frame and exit)
-  double snapshot_delay;            ///< Snapshot delay in seconds
-  unsigned short int strip_ansi;    ///< Strip ANSI escape sequences
-  char log_file[OPTIONS_BUFF_SIZE]; ///< Log file path
-  log_level_t log_level;            ///< Log level threshold
-  unsigned short int no_os_sleep;   ///< Disable keepawake mode (allow OS to sleep)
+  unsigned short int quiet;             ///< Quiet mode (suppress logs)
+  unsigned short int verbose_level;     ///< Verbosity level (stackable -V)
+  unsigned short int snapshot_mode;     ///< Snapshot mode (one frame and exit)
+  double snapshot_delay;                ///< Snapshot delay in seconds
+  unsigned short int strip_ansi;        ///< Strip ANSI escape sequences
+  char log_file[OPTIONS_BUFF_SIZE];     ///< Log file path
+  log_level_t log_level;                ///< Log level threshold
+  unsigned short int enable_keepawake;  ///< Explicitly enable system sleep prevention
+  unsigned short int disable_keepawake; ///< Explicitly disable system sleep prevention (allow OS to sleep)
 
   // ============================================================================
   // Encryption Options

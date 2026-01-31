@@ -76,9 +76,13 @@ static void signal_handler(int sig) {
 int acds_main(void) {
   asciichat_error_t result;
 
-  // Enable keepawake mode if not disabled by --no-os-sleep
-  // Ignore errors - keepawake is a non-critical feature
-  if (!GET_OPTION(no_os_sleep)) {
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Discovery-service default: keepawake DISABLED (use --keepawake to enable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    log_error("--keepawake and --no-keepawake are mutually exclusive");
+    return ERROR_INVALID_PARAM;
+  }
+  if (GET_OPTION(enable_keepawake)) {
     (void)platform_enable_keepawake();
   }
 

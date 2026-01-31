@@ -132,10 +132,11 @@ typedef struct {
   size_t offset;      ///< offsetof(struct, field) - where to store value
 
   // Documentation
-  const char *help_text;      ///< Description for --help
-  const char *group;          ///< Group name for help sections (e.g., "NETWORK OPTIONS")
-  bool hide_from_mode_help;   ///< If true, don't show in mode-specific help (binary-level only)
-  bool hide_from_binary_help; ///< If true, don't show in binary-level help (e.g., in release builds)
+  const char *help_text;       ///< Description for --help
+  const char *group;           ///< Group name for help sections (e.g., "NETWORK OPTIONS")
+  const char *arg_placeholder; ///< Custom argument placeholder (e.g., "SHELL [FILE]" instead of "STR")
+  bool hide_from_mode_help;    ///< If true, don't show in mode-specific help (binary-level only)
+  bool hide_from_binary_help;  ///< If true, don't show in binary-level help (e.g., in release builds)
 
   // Default and validation
   const void *default_value; ///< Pointer to default value (or NULL if required)

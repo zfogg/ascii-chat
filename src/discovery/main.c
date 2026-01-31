@@ -260,9 +260,12 @@ static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, 
 int discovery_main(void) {
   log_info("Starting discovery mode");
 
-  // Enable keepawake mode if not disabled by --no-os-sleep
-  // Ignore errors - keepawake is a non-critical feature
-  if (!GET_OPTION(no_os_sleep)) {
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Discovery default: keepawake ENABLED (use --no-keepawake to disable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (!GET_OPTION(disable_keepawake)) {
     (void)platform_enable_keepawake();
   }
 

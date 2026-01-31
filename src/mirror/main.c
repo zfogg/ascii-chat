@@ -174,12 +174,13 @@ static bool mirror_display_should_exit_adapter(void *user_data) {
 int mirror_main(void) {
   log_info("Starting mirror mode");
 
-  // Enable keepawake mode if not disabled by --no-os-sleep
-  if (!GET_OPTION(no_os_sleep)) {
-    asciichat_error_t err = platform_enable_keepawake();
-    if (err != ASCIICHAT_OK) {
-      log_warn("Failed to enable keepawake mode (this is non-critical)");
-    }
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Mirror default: keepawake ENABLED (use --no-keepawake to disable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (!GET_OPTION(disable_keepawake)) {
+    (void)platform_enable_keepawake();
   }
 
   // Install console control-c handler
