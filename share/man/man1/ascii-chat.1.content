@@ -10,7 +10,7 @@ The program operates in five modes:
 .B ascii-chat
 The binary's default operating mode without additional commands. Starts or joins an
 ascii-chat Discovery Service session with a session string. This mode makes secure
-internet connections and attempts direct tcp and webrtc connections.
+internet connections and attempts direct TCP and WebRTC connections.
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
@@ -24,8 +24,10 @@ to the server, and displays the combined video feed grid from all participants t
 the server sends back.
 .TP
 .B mirror
-Displays your local webcam as ASCII art without any network connection.
-Perfect for testing webcam, palette settings, and terminal rendering.
+Displays your local webcam or media from files or urls as ASCII art without any 
+network connection. Perfect for testing webcams, palette settings, terminal 
+rendering, scripting, and debugging. Also useful for just viewing YouTube videos 
+or other media as text art without needing an ascii-chat server. Audio supported.
 .TP
 .B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session management.
@@ -99,6 +101,7 @@ Command-line arguments override config file values.
 Config file values override default values.
 .RE
 .PP
+
 To see a sample configuration file with all available options, run:
 .br
 \fBascii-chat --config-create /tmp/ascii-chat.toml\fR

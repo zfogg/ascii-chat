@@ -40,14 +40,20 @@ to the server, and displays the combined video feed grid from all participants t
 the server sends back.
 .TP
 .B mirror
-Displays your local webcam as ASCII art without any network connection.
-Perfect for testing webcam, palette settings, and terminal rendering.
+Displays local webcam or file or URL media as text art without any network
+connection or ascii-chat server. Perfect for testing webcam, palette settings,
+and terminal rendering. Useful for debugging and scripting. Ideal
+for playing around with the webcam. Use mirror mode if you just want to watch
+a YouTube video or other URL or file as text art, with full audio
+support.
 .TP
 .B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session management.
 Allows clients and servers to discover each other using memorable session strings
 instead of IP addresses. Handles NAT traversal via WebRTC when direct TCP connections
-aren't possible.
+aren't possible. The ascii-chat developers host the primary ACDS server
+(discovery-server.ascii-chat.com) whose keys are trusted automatically by
+ascii-chat.
 .\" MANUAL-END: DESCRIPTION
 
 .\" MANUAL-START: PALETTES
@@ -223,7 +229,7 @@ XDG Base Directory specification data directory on Linux (overrides ~/.local/sha
 .SS Configuration and Keys
 .TP
 .I ~/.ssh/id_ed25519
-Default SSH Ed25519 private key used for encryption if \fB\-\-key\fR is not specified.
+Default SSH Ed25519 private key used for encryption if \fB\-\-key ssh\fR is specified.
 .TP
 .I ~/.ssh/id_ed25519.pub
 Public key corresponding to the default private key.
@@ -245,12 +251,16 @@ Uses %APPDATA%\eascii-chat\e if APPDATA is set, otherwise ~\e.ascii-chat\e.
 Contains config.toml and known_hosts.
 .TP
 .I /etc/ascii-chat/config.toml
-System-wide configuration file on Linux/macOS.
+System-wide configuration file on Linux.
 Used for server deployments or shared configurations.
 .TP
 .I /usr/local/etc/ascii-chat/config.toml
-Alternative system-wide configuration file (BSD-style path).
-Used for locally-installed configurations.
+Alternative system-wide configuration file (BSD-style path) on ARM macOS machines and Linux.
+The main system-wide configuration file path for Intel macOS machines.
+.TP
+.I /opt/homebrew/etc/ascii-chat/config.toml
+Alternative system-wide configuration file on ARM macOS machines.
+Used as the OS's shared configuration for ascii-chat.
 .SS Media Files
 The \fB\-\-file\fR option and \fB\-\-url\fR option support streaming media files as ASCII art.
 Supported media formats and codecs are powered by FFmpeg:
@@ -383,6 +393,7 @@ Zachary Fogg <me@zfo.gg>
 .SH SEE ALSO
 .BR ssh (1),
 .BR ssh-keygen (1),
+.BR ssh-keyscan (1),
 .BR ssh-agent (1),
 .BR gpg (1),
 .BR gpgconf (1),
