@@ -5,6 +5,7 @@
  */
 
 #include "builder.h"
+#include "common.h"
 #include "log/logging.h"
 #include "layout.h"
 #include "platform/abstraction.h"
@@ -1692,7 +1693,15 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   if (!desc) {
     if (equals)
       *equals = '='; // Restore
-    return SET_ERRNO(ERROR_USAGE, "Unknown option: %s", arg);
+
+    // Try to suggest a similar option
+    const char *suggestion = find_similar_option_with_mode(arg, config, mode_bitmask);
+    if (suggestion) {
+      log_plain_stderr("Unknown option: %s. %s", arg, suggestion);
+    } else {
+      log_plain_stderr("Unknown option: %s", arg);
+    }
+    return ERROR_USAGE;
   }
 
   // Check if option applies to current mode based on the passed mode_bitmask
