@@ -25,6 +25,7 @@
 #include "video/output_buffer.h"
 #include "video/ansi_fast.h"
 #include "util/overflow.h"
+#include "platform/init.h"
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance
@@ -203,13 +204,21 @@ static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length)
 // Format: each entry has length byte + up to 3 decimal chars (4 bytes per entry)
 static uint8_t neon_decimal_table_data[256 * 4]; // 1024 bytes: [len][d1][d2][d3] per entry
 static bool neon_decimal_table_initialized = false;
+// Mutex to protect NEON decimal table initialization (TOCTOU race prevention)
+static static_mutex_t g_neon_table_init_mutex = STATIC_MUTEX_INIT;
 
 // Initialize NEON TBL decimal lookup table (called once at startup)
+// Thread-safe with proper mutex protection
 void init_neon_decimal_table(void) {
-  if (neon_decimal_table_initialized)
-    return;
+  static_mutex_lock(&g_neon_table_init_mutex);
 
-  // Initialize g_dec3_cache first
+  // Double-check under lock: another thread may have initialized while we waited
+  if (neon_decimal_table_initialized) {
+    static_mutex_unlock(&g_neon_table_init_mutex);
+    return;
+  }
+
+  // Initialize g_dec3_cache first (also mutex-protected if needed)
   if (!g_dec3_cache.dec3_initialized) {
     init_dec3();
   }
@@ -225,6 +234,7 @@ void init_neon_decimal_table(void) {
   }
 
   neon_decimal_table_initialized = true;
+  static_mutex_unlock(&g_neon_table_init_mutex);
 }
 
 // TODO: Implement true NEON vectorized ANSI sequence generation using TBL + compaction

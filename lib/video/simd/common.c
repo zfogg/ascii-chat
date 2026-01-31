@@ -10,6 +10,7 @@
 #include "video/palette.h"
 #include "util/fnv1a.h"
 #include "util/time.h"
+#include "platform/init.h"
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
@@ -132,18 +133,12 @@ static void init_utf8_cache_system(void) {
   }
 
   // Slow path: need to initialize
-  static mutex_t init_mutex = {0};
-  static bool init_mutex_initialized = false;
+  // Use static_mutex_t to avoid bootstrap problem (can't protect init mutex with itself)
+  static static_mutex_t init_bootstrap_mutex = STATIC_MUTEX_INIT;
 
-  // Initialize the init mutex itself (safe because it's the first thing that runs)
-  if (!init_mutex_initialized) {
-    mutex_init(&init_mutex);
-    init_mutex_initialized = true;
-  }
+  static_mutex_lock(&init_bootstrap_mutex);
 
-  mutex_lock(&init_mutex);
-
-  // Double-check after acquiring lock
+  // Double-check after acquiring lock (another thread may have initialized while we waited)
   if (!atomic_load(&g_utf8_cache_initialized)) {
     // Initialize the cache rwlock
     rwlock_init(&g_utf8_cache_rwlock);
@@ -157,7 +152,7 @@ static void init_utf8_cache_system(void) {
     atomic_store(&g_utf8_cache_initialized, true);
   }
 
-  mutex_unlock(&init_mutex);
+  static_mutex_unlock(&init_bootstrap_mutex);
 }
 
 // Min-heap management functions for UTF-8 cache
