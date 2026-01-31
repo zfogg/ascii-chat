@@ -182,14 +182,13 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // DISABLED: Prefetch thread - causing frame sequencing issues
-    // // Start prefetch thread for video frames (critical for YouTube HTTP performance)
-    // // This thread continuously reads frames into a buffer so the render loop never blocks
-    // asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
-    // if (prefetch_err != ASCIICHAT_OK) {
-    //   log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
-    //   // Don't fail on prefetch error - continue with synchronous reading as fallback
-    // }
+    // Start prefetch thread for video frames (critical for YouTube HTTP performance)
+    // This thread continuously reads frames into a buffer so the render loop never blocks
+    asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    if (prefetch_err != ASCIICHAT_OK) {
+      log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
+      // Don't fail on prefetch error - continue with frame skipping as fallback
+    }
 
     source->audio_decoder = ffmpeg_decoder_create(effective_path);
     if (!source->audio_decoder) {
@@ -220,13 +219,12 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // DISABLED: Prefetch thread - causing frame sequencing issues
-    // // Start prefetch thread for stdin video frames
-    // asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
-    // if (prefetch_err != ASCIICHAT_OK) {
-    //   log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
-    //   // Don't fail on prefetch error - continue with synchronous reading as fallback
-    // }
+    // Start prefetch thread for stdin video frames
+    asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    if (prefetch_err != ASCIICHAT_OK) {
+      log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
+      // Don't fail on prefetch error - continue with frame skipping as fallback
+    }
 
     source->audio_decoder = ffmpeg_decoder_create_stdin();
     if (!source->audio_decoder) {
