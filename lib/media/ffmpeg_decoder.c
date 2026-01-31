@@ -689,6 +689,11 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   // Clean up prefetch state
   mutex_destroy(&decoder->prefetch_mutex);
 
+  // Check if current_image is one of the prefetch buffers BEFORE destroying them
+  // (needed to avoid double-free when current_image points to a prefetch buffer)
+  bool current_is_prefetch_a = (decoder->current_image == decoder->prefetch_image_a);
+  bool current_is_prefetch_b = (decoder->current_image == decoder->prefetch_image_b);
+
   // Free prefetch image buffers
   if (decoder->prefetch_image_a) {
     image_destroy(decoder->prefetch_image_a);
@@ -702,8 +707,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   // Current image may point to one of the prefetch buffers (already destroyed above)
   // OR it may be independently allocated (from synchronous fallback decode).
   // Only destroy if it's not one of the prefetch buffers.
-  if (decoder->current_image && decoder->current_image != decoder->prefetch_image_a &&
-      decoder->current_image != decoder->prefetch_image_b) {
+  if (decoder->current_image && !current_is_prefetch_a && !current_is_prefetch_b) {
     image_destroy(decoder->current_image);
   }
   decoder->current_image = NULL;
@@ -1131,10 +1135,13 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->last_audio_pts = -1.0;
   decoder->prefetch_frame_ready = false; // Discard any prefetched frame (now stale after seek)
 
-  // Do NOT reset sample counter to seek position - let it be updated naturally by audio/video decoding
-  // If we set it here and no audio is being decoded, position will be stuck at this value
-  // Better to start from 0 and let normal frame reading update position via PTS
-  decoder->audio_samples_read = 0;
+  // Set sample counter to seek position to maintain continuous position tracking
+  // This prevents audio playback from thinking it's out of sync and causing audible skips/loops
+  if (decoder->audio_sample_rate > 0) {
+    decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate + 0.5);
+  } else {
+    decoder->audio_samples_read = 0;
+  }
 
   mutex_unlock(&decoder->prefetch_mutex);
 
