@@ -320,7 +320,13 @@ int mirror_main(void) {
         *audio_ctx = (audio_context_t){0};
         if (audio_init(audio_ctx) == ASCIICHAT_OK) {
           // Store the media source in audio context for direct callback reading
-          audio_ctx->media_source = session_capture_get_media_source(capture);
+          media_source_t *media_source = session_capture_get_media_source(capture);
+          audio_ctx->media_source = media_source;
+
+          // Store audio context in media source for seek buffer flushing
+          if (media_source) {
+            media_source_set_audio_context(media_source, audio_ctx);
+          }
 
           // Determine if microphone should be enabled based on --audio-source setting
           bool should_enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), audio_available);

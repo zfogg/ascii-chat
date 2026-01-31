@@ -1225,7 +1225,7 @@ double ffmpeg_decoder_get_position(ffmpeg_decoder_t *decoder) {
   }
 
   // Prefer sample-based position tracking (continuous, works before frames are decoded)
-  if (decoder->audio_sample_rate > 0 && decoder->audio_samples_read > 0) {
+  if (decoder->audio_sample_rate > 0 && decoder->audio_samples_read >= 0) {
     return (double)decoder->audio_samples_read / (double)decoder->audio_sample_rate;
   }
 

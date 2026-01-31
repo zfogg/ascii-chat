@@ -7,6 +7,7 @@
 #include "ffmpeg_decoder.h"
 #include "youtube.h"
 #include "video/webcam/webcam.h"
+#include "audio/audio.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"
 #include "platform/abstraction.h"
@@ -54,6 +55,9 @@ struct media_source_t {
   // Cached path (for FILE type) and original YouTube URL for potential re-extraction
   char *file_path;
   char *original_youtube_url;
+
+  // Audio context for clearing playback buffers on seek (opaque pointer)
+  void *audio_ctx;
 };
 
 /* ============================================================================
@@ -679,8 +683,17 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   asciichat_error_t result = ASCIICHAT_OK;
 
-  // Don't hold mutex during av_seek_frame() - seeking_in_progress flag coordinates access
-  // The prefetch thread checks this flag and pauses, allowing seek to proceed without deadlock
+  // Clear audio playback buffer BEFORE seeking to prevent old audio from being queued
+  // This ensures fresh audio starts playing immediately after seek completes
+  if (source->audio_ctx) {
+    audio_context_t *audio_ctx = (audio_context_t *)source->audio_ctx;
+    if (audio_ctx->playback_buffer) {
+      audio_ring_buffer_clear(audio_ctx->playback_buffer);
+    }
+  }
+
+  // The seeking_in_progress flag in decoders blocks prefetch thread
+  // seeking_in_progress coordinates with audio callback via condition variable
 
   uint64_t seek_start_ns = time_get_ns();
   if (source->video_decoder) {
@@ -832,4 +845,10 @@ void media_source_toggle_pause(media_source_t *source) {
   mutex_lock(&source->pause_mutex);
   source->is_paused = !source->is_paused;
   mutex_unlock(&source->pause_mutex);
+}
+
+void media_source_set_audio_context(media_source_t *source, void *audio_ctx) {
+  if (source) {
+    source->audio_ctx = audio_ctx;
+  }
 }

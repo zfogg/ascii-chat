@@ -468,4 +468,16 @@ double media_source_get_position(media_source_t *source);
  */
 double media_source_get_video_fps(media_source_t *source);
 
+/**
+ * @brief Set audio context for playback buffer management
+ * @param source Media source (must not be NULL)
+ * @param audio_ctx Audio context pointer (opaque, may be NULL)
+ *
+ * Associates an audio context with the media source. Used to clear playback
+ * buffers during seeking to prevent audio lag.
+ *
+ * @ingroup media
+ */
+void media_source_set_audio_context(media_source_t *source, void *audio_ctx);
+
 /** @} */
