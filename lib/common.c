@@ -130,6 +130,11 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
     // Register known_hosts cleanup
     (void)atexit(known_hosts_cleanup);
 
+    // Register logging shutdown (frees compiled color scheme strings)
+    // Register begin first (LIFO order means end will be called after begin)
+    (void)atexit(log_shutdown_end);
+    (void)atexit(log_shutdown_begin);
+
     // Register SIMD caches cleanup (for all modes: server, client, mirror)
     (void)atexit(simd_caches_destroy_all);
 

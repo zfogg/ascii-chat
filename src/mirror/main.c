@@ -302,6 +302,8 @@ int mirror_main(void) {
       media_source_destroy(probe_source);
       probe_source = NULL;
     }
+    // Clean up webcam resources and cached images on failure
+    webcam_cleanup();
     return ERROR_MEDIA_INIT;
   }
 
@@ -386,6 +388,8 @@ int mirror_main(void) {
       media_source_destroy(probe_source);
       probe_source = NULL;
     }
+    // Clean up webcam resources and cached images on failure
+    webcam_cleanup();
     return ERROR_DISPLAY;
   }
 
