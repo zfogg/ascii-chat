@@ -193,19 +193,19 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
     break;
   }
 
-  *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "Lock #%u: %s at %p\n",
-                      collector->count, lock_type_str, record->lock_address);
-  *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Thread ID: %llu\n",
-                      (unsigned long long)record->thread_id);
-  *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Acquired: %s:%d in %s()\n",
-                      record->file_name, record->line_number, record->function_name);
+  *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "Lock #%u: %s at %p\n",
+                           collector->count, lock_type_str, record->lock_address);
+  *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Thread ID: %llu\n",
+                           (unsigned long long)record->thread_id);
+  *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Acquired: %s:%d in %s()\n",
+                           record->file_name, record->line_number, record->function_name);
 
   // Calculate how long the lock has been held
   uint64_t current_time_ns = time_get_ns();
   uint64_t held_ns = time_elapsed_ns(record->acquisition_time_ns, current_time_ns);
   char duration_str[32];
   format_duration_ns((double)held_ns, duration_str, sizeof(duration_str));
-  *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Held for: %s\n", duration_str);
+  *offset += safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Held for: %s\n", duration_str);
 
   // Print backtrace using platform symbol resolution with colored format
   if (record->backtrace_size > 0) {
@@ -216,7 +216,8 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
       platform_backtrace_symbols_free(symbols);
     }
   } else {
-    *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Call stack: <capture failed>\n");
+    *offset +=
+        safe_snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  Call stack: <capture failed>\n");
   }
 }
 
@@ -1269,66 +1270,69 @@ void lock_debug_print_state(void) {
   rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
 
   // Header
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "=== LOCK DEBUG STATE ===\n");
+  offset +=
+      safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "=== LOCK DEBUG STATE ===\n");
 
   // Historical Statistics
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "Historical Statistics:\n");
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "  Total locks released: %llu\n", (unsigned long long)total_released);
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Currently held: %u\n",
-                     currently_held);
+  offset +=
+      safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "Historical Statistics:\n");
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                          "  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                          "  Total locks released: %llu\n", (unsigned long long)total_released);
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Currently held: %u\n",
+                          currently_held);
 
   // Check for underflow before subtraction to avoid UB
   if (total_acquired >= total_released) {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Net locks (acquired - released): %lld\n", (long long)(total_acquired - total_released));
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  Net locks (acquired - released): %lld\n", (long long)(total_acquired - total_released));
   } else {
     // This shouldn't happen - means more releases than acquires
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***\n",
-                       (unsigned long long)total_released, (unsigned long long)total_acquired,
-                       (long long)(total_released - total_acquired));
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** This indicates lock tracking was not enabled for some acquires ***\n");
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***\n",
+                            (unsigned long long)total_released, (unsigned long long)total_acquired,
+                            (long long)(total_released - total_acquired));
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  *** This indicates lock tracking was not enabled for some acquires ***\n");
   }
 
   // Currently Active Locks
-  offset +=
-      snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "\n=== Currently Active Locks ===\n");
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                          "\n=== Currently Active Locks ===\n");
   if (active_locks == 0) {
-    offset +=
-        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No locks currently held.\n");
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  No locks currently held.\n");
     // Check for consistency issues
     if (currently_held > 0) {
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",
-                         currently_held);
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** This may indicate a crash during lock acquisition or hash table corruption. ***\n");
+      offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                              "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",
+                              currently_held);
+      offset +=
+          safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                        "  *** This may indicate a crash during lock acquisition or hash table corruption. ***\n");
 
       // Additional debug: Check hash table statistics
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** DEBUG: Hash table stats for lock_records: ***\n");
+      offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                              "  *** DEBUG: Hash table stats for lock_records: ***\n");
       rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
       size_t count = HASH_CNT(hash_handle, g_lock_debug_manager.lock_records);
       rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** Hash table size: %zu ***\n", count);
+      offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                              "  *** Hash table size: %zu ***\n", count);
       if (count > 0) {
-        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                           "  *** Hash table has entries but iteration didn't find them! ***\n");
+        offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                                "  *** Hash table has entries but iteration didn't find them! ***\n");
       }
     }
   } else {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Active locks: %u\n",
-                       active_locks);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Active locks: %u\n",
+                            active_locks);
     // Verify consistency the other way
     if (active_locks != currently_held) {
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***\n", active_locks,
-                         currently_held);
+      offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                              "  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***\n",
+                              active_locks, currently_held);
     }
 
     // The lock details are already in the buffer from collect_lock_record_callback
@@ -1336,8 +1340,8 @@ void lock_debug_print_state(void) {
   }
 
   // Print usage statistics by code location
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "\n=== Lock Usage Statistics by Code Location ===\n");
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                          "\n=== Lock Usage Statistics by Code Location ===\n");
   rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats_lock);
 
   uint32_t total_usage_locations = 0;
@@ -1349,16 +1353,16 @@ void lock_debug_print_state(void) {
   rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats_lock);
 
   if (total_usage_locations == 0) {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  No lock usage statistics available.\n");
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  No lock usage statistics available.\n");
   } else {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Total code locations with lock usage: %u\n", total_usage_locations);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  Total code locations with lock usage: %u\n", total_usage_locations);
   }
 
   // Print orphaned releases (unlocks without corresponding locks)
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "\n=== Orphaned Releases (unlocks without corresponding locks) ===\n");
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                          "\n=== Orphaned Releases (unlocks without corresponding locks) ===\n");
   rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
 
   uint32_t orphan_count = 0;
@@ -1383,17 +1387,19 @@ void lock_debug_print_state(void) {
       break;
     }
 
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "Orphaned Release #%u: %s at %p\n", orphan_count, lock_type_str, orphan_entry->lock_address);
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Thread ID: %llu\n",
-                       (unsigned long long)orphan_entry->thread_id);
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Released: %s:%d in %s()\n",
-                       orphan_entry->file_name, orphan_entry->line_number, orphan_entry->function_name);
+    offset +=
+        safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                      "Orphaned Release #%u: %s at %p\n", orphan_count, lock_type_str, orphan_entry->lock_address);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Thread ID: %llu\n",
+                            (unsigned long long)orphan_entry->thread_id);
+    offset +=
+        safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Released: %s:%d in %s()\n",
+                      orphan_entry->file_name, orphan_entry->line_number, orphan_entry->function_name);
     char release_time_str[32];
     format_duration_ns((double)orphan_entry->acquisition_time_ns, release_time_str, sizeof(release_time_str));
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Released at: %s (nanosecond %llu)\n", release_time_str,
-                       (unsigned long long)orphan_entry->acquisition_time_ns);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  Released at: %s (nanosecond %llu)\n", release_time_str,
+                            (unsigned long long)orphan_entry->acquisition_time_ns);
 
     // Print backtrace for orphaned release
     if (orphan_entry->backtrace_size > 0) {
@@ -1405,28 +1411,28 @@ void lock_debug_print_state(void) {
         platform_backtrace_symbols_free(symbols);
       }
     } else {
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  Release call stack: <capture failed>\n");
+      offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                              "  Release call stack: <capture failed>\n");
     }
   }
 
   rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
 
   if (orphan_count == 0) {
-    offset +=
-        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No orphaned releases found.\n");
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  No orphaned releases found.\n");
   } else {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Total orphaned releases: %u\n", orphan_count);
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** WARNING: %u releases without corresponding locks detected! ***\n", orphan_count);
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  Total orphaned releases: %u\n", orphan_count);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  *** WARNING: %u releases without corresponding locks detected! ***\n", orphan_count);
+    offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                            "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
   }
 
   // End marker
-  offset +=
-      snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "\n=== End Lock Debug State ===\n");
+  offset += safe_snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                          "\n=== End Lock Debug State ===\n");
 
   // Print all at once
   log_info("%s", log_buffer);

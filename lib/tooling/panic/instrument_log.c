@@ -356,11 +356,11 @@ void asciichat_instr_log_line(const char *file_path, uint32_t line_number, const
   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : "-";
 
   const char *safe_file_path = (file_path != NULL) ? file_path : "<unknown>";
-  pos += snprintf(buffer + pos, sizeof(buffer) - pos,
-                  "pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=",
-                  runtime->pid, (unsigned long long)runtime->thread_id, (unsigned long long)runtime->sequence,
-                  (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
-                  function_name ? function_name : "<unknown>", (unsigned)is_macro_expansion);
+  pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
+                       "pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=",
+                       runtime->pid, (unsigned long long)runtime->thread_id, (unsigned long long)runtime->sequence,
+                       (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
+                       function_name ? function_name : "<unknown>", (unsigned)is_macro_expansion);
 
   if (snippet != NULL) {
     size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
@@ -447,7 +447,7 @@ void asciichat_instr_log_pc(uintptr_t program_counter) {
   }
 
   char snippet[64];
-  snprintf(snippet, sizeof(snippet), "pc=0x%zx", (size_t)program_counter);
+  safe_snprintf(snippet, sizeof(snippet), "pc=0x%zx", (size_t)program_counter);
   asciichat_instr_log_line("__coverage__", 0, "<coverage>", snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
 }
 
@@ -556,14 +556,14 @@ static bool asciichat_instr_build_log_path(asciichat_instr_runtime_t *runtime) {
     // Build log file name
     if (g_output_dir_set) {
       // When output directory is explicitly set, use unique naming with pid and tid
-      if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%c%s-%d-%llu.log", output_dir_buf, PATH_DELIM,
-                   ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
-                   (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
+      if (safe_snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%c%s-%d-%llu.log", output_dir_buf, PATH_DELIM,
+                        ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
+                        (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
         return false;
       }
     } else {
       // Use simple "trace.log" name in current directory
-      if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", output_dir_buf, PATH_DELIM) >=
+      if (safe_snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", output_dir_buf, PATH_DELIM) >=
           (int)sizeof(runtime->log_path)) {
         return false;
       }
@@ -1060,7 +1060,7 @@ static bool asciichat_instr_should_log(const asciichat_instr_runtime_t *runtime,
 
   if (runtime->filter_thread != NULL) {
     char tid_buf[32];
-    snprintf(tid_buf, sizeof(tid_buf), "%llu", (unsigned long long)runtime->thread_id);
+    safe_snprintf(tid_buf, sizeof(tid_buf), "%llu", (unsigned long long)runtime->thread_id);
     if (strstr(runtime->filter_thread, tid_buf) == NULL) {
       return false;
     }

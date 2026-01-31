@@ -172,7 +172,7 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
 
     /* Convert network address to dotted decimal notation */
     uint8_t *bytes = (uint8_t *)&addr_in.sin_addr;
-    snprintf(discovery.ipv4, sizeof(discovery.ipv4), "%d.%d.%d.%d", bytes[0], bytes[1], bytes[2], bytes[3]);
+    safe_snprintf(discovery.ipv4, sizeof(discovery.ipv4), "%d.%d.%d.%d", bytes[0], bytes[1], bytes[2], bytes[3]);
     log_debug("mDNS A: %s -> %s (TTL: %u)", discovery.type, discovery.ipv4, ttl);
     break;
   }
@@ -186,10 +186,10 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
 
     /* Convert IPv6 address to colon-separated hex notation */
     const uint8_t *bytes = (const uint8_t *)&addr_in6.sin6_addr;
-    snprintf(discovery.ipv6, sizeof(discovery.ipv6),
-             "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", bytes[0], bytes[1], bytes[2],
-             bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12],
-             bytes[13], bytes[14], bytes[15]);
+    safe_snprintf(discovery.ipv6, sizeof(discovery.ipv6),
+                  "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", bytes[0], bytes[1],
+                  bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11],
+                  bytes[12], bytes[13], bytes[14], bytes[15]);
     log_debug("mDNS AAAA: %s -> %s (TTL: %u)", discovery.type, discovery.ipv6, ttl);
     break;
   }

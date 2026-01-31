@@ -140,8 +140,8 @@ static asciichat_error_t nat_parse_stun_response(const uint8_t *response, size_t
             ((uint32_t)current[8] << 24) | ((uint32_t)current[9] << 16) | ((uint32_t)current[10] << 8) | current[11];
 
         // Convert to dotted quad notation
-        snprintf(reflexive_addr, 64, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF,
-                 addr & 0xFF);
+        safe_snprintf(reflexive_addr, 64, "%u.%u.%u.%u", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF,
+                      addr & 0xFF);
         *reflexive_port = port;
         return ASCIICHAT_OK;
       }
@@ -198,7 +198,7 @@ static asciichat_error_t nat_stun_probe(nat_quality_t *quality, const char *stun
 
   struct addrinfo *result = NULL;
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%u", stun_port);
+  safe_snprintf(port_str, sizeof(port_str), "%u", stun_port);
 
   int ret = getaddrinfo(host_buf, port_str, &hints, &result);
   if (ret != 0) {

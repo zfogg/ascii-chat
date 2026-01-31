@@ -60,7 +60,7 @@ static void format_timestamp(char *buf, size_t buf_size) {
 
   size_t len = strftime(buf, buf_size, "%H:%M:%S", &tm_info);
   if (len > 0 && len < buf_size - 10) {
-    snprintf(buf + len, buf_size - len, ".%06llu", (unsigned long long)microseconds);
+    safe_snprintf(buf + len, buf_size - len, ".%06llu", (unsigned long long)microseconds);
   }
 }
 
@@ -82,7 +82,7 @@ static void crash_signal_handler(int sig) {
   if (g_mmap_log.initialized && g_mmap_log.text_region) {
     const char *crash_msg = "\n=== CRASH DETECTED (signal %d) ===\n";
     char msg_buf[64];
-    int len = snprintf(msg_buf, sizeof(msg_buf), crash_msg, sig);
+    int len = safe_snprintf(msg_buf, sizeof(msg_buf), crash_msg, sig);
     if (len > 0) {
       uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, (uint64_t)len);
       if (pos + (uint64_t)len <= g_mmap_log.text_capacity) {
@@ -122,7 +122,7 @@ static LONG WINAPI windows_crash_handler(EXCEPTION_POINTERS *exception_info) {
     DWORD exception_code = exception_info ? exception_info->ExceptionRecord->ExceptionCode : 0;
     const char *crash_msg = "\n=== CRASH DETECTED (exception 0x%08lX) ===\n";
     char msg_buf[64];
-    int len = snprintf(msg_buf, sizeof(msg_buf), crash_msg, (unsigned long)exception_code);
+    int len = safe_snprintf(msg_buf, sizeof(msg_buf), crash_msg, (unsigned long)exception_code);
     if (len > 0) {
       uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, (uint64_t)len);
       if (pos + (uint64_t)len <= g_mmap_log.text_capacity) {
@@ -325,9 +325,9 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
   int prefix_len;
   if (file && func) {
     prefix_len =
-        snprintf(line_buf, sizeof(line_buf), "[%s] [%s] %s:%d in %s(): ", time_buf, level_name, file, line, func);
+        safe_snprintf(line_buf, sizeof(line_buf), "[%s] [%s] %s:%d in %s(): ", time_buf, level_name, file, line, func);
   } else {
-    prefix_len = snprintf(line_buf, sizeof(line_buf), "[%s] [%s] ", time_buf, level_name);
+    prefix_len = safe_snprintf(line_buf, sizeof(line_buf), "[%s] [%s] ", time_buf, level_name);
   }
 
   if (prefix_len < 0) {
@@ -337,7 +337,7 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
   /* Format the message */
   va_list args;
   va_start(args, fmt);
-  int msg_len = vsnprintf(line_buf + prefix_len, sizeof(line_buf) - (size_t)prefix_len - 1, fmt, args);
+  int msg_len = safe_vsnprintf(line_buf + prefix_len, sizeof(line_buf) - (size_t)prefix_len - 1, fmt, args);
   va_end(args);
 
   if (msg_len < 0) {

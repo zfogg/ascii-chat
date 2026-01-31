@@ -475,7 +475,7 @@ static const char *get_appdata_dir(void) {
     // Fallback to %USERPROFILE%\AppData\Roaming
     const char *userprofile = getenv("USERPROFILE");
     if (userprofile) {
-      snprintf(appdata_path, sizeof(appdata_path), "%s\\AppData\\Roaming", userprofile);
+      safe_snprintf(appdata_path, sizeof(appdata_path), "%s\\AppData\\Roaming", userprofile);
     } else {
       return NULL;
     }
@@ -534,7 +534,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   const char *appdata_dir = get_appdata_dir();
   if (appdata_dir) {
     char full_path[MAX_PATH];
-    snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", appdata_dir, filename);
+    safe_snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", appdata_dir, filename);
 
     if (platform_is_regular_file(full_path)) {
       config_file_result_t *result = &list_out->files[list_out->count];
@@ -553,7 +553,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   const char *programdata_dir = get_programdata_dir();
   if (programdata_dir) {
     char full_path[MAX_PATH];
-    snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", programdata_dir, filename);
+    safe_snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", programdata_dir, filename);
 
     if (platform_is_regular_file(full_path)) {
       config_file_result_t *result = &list_out->files[list_out->count];

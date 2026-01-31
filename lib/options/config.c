@@ -927,7 +927,7 @@ static bool config_builder_append(config_builder_t *builder, const char *fmt, ..
 
   va_list args;
   va_start(args, fmt);
-  int written = vsnprintf(builder->buffer + builder->size, builder->capacity - builder->size, fmt, args);
+  int written = safe_vsnprintf(builder->buffer + builder->size, builder->capacity - builder->size, fmt, args);
   va_end(args);
 
   if (written < 0 || builder->size + written >= builder->capacity) {

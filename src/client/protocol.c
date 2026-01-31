@@ -260,7 +260,7 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
   va_start(args, format);
 
   char message[BUFFER_SIZE_SMALL];
-  vsnprintf(message, sizeof(message), format, args);
+  safe_vsnprintf(message, sizeof(message), format, args);
   va_end(args);
 
   log_error("Server sent invalid data - disconnecting: %s", message);

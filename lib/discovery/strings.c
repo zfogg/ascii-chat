@@ -175,7 +175,7 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
   const char *noun2 = nouns[noun2_idx];
 
   // Format: adjective-noun-noun
-  int written = snprintf(output, output_size, "%s-%s-%s", adj, noun1, noun2);
+  int written = safe_snprintf(output, output_size, "%s-%s-%s", adj, noun1, noun2);
   if (written < 0 || (size_t)written >= output_size) {
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Session string too long for buffer");
   }

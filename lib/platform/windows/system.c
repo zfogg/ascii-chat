@@ -908,7 +908,7 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
   int offset = 0;
 
   // Add header
-  offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
+  offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
 
   // Build backtrace frames with colored frame numbers
   int frame_num = 0;
@@ -922,12 +922,12 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
 
     // Build colored frame number string and manually embed it in buffer
     char frame_str[16];
-    snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
+    safe_snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
     const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_str);
     size_t colored_len = strlen(colored_frame);
 
     // Append "  ["
-    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [");
+    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [");
 
     // Append colored frame number
     if (offset + colored_len < sizeof(buffer)) {
@@ -936,7 +936,7 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     }
 
     // Append "] symbol\n"
-    offset += snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "] %s\n", symbol);
+    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "] %s\n", symbol);
     frame_num++;
   }
 
@@ -968,7 +968,8 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
   int offset = 0;
 
   // Header with color
-  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n", colored_string(LOG_COLOR_WARN, label));
+  offset +=
+      safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n", colored_string(LOG_COLOR_WARN, label));
 
   // Calculate frame limits
   int start = skip_frames;
@@ -989,12 +990,12 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
 
     // Build colored frame number and manually embed it in buffer
     char frame_buf[16];
-    snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
+    safe_snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
     const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
     size_t colored_len = strlen(colored_frame);
 
     // Append "    ["
-    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [");
+    offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "    [");
 
     // Append colored frame number
     if (offset + colored_len < (int)buffer_size) {
@@ -1003,7 +1004,7 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
     }
 
     // Append "] symbol\n"
-    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "] %s\n", symbol);
+    offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "] %s\n", symbol);
   }
 
   return offset;

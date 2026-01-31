@@ -59,19 +59,19 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   int pos = 0;
 
   if (mode_bitmask & (1 << MODE_DISCOVERY)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sascii-chat", pos > 0 ? ", " : "");
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sascii-chat", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_CLIENT)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_SERVER)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sserver", pos > 0 ? ", " : "");
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sserver", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_MIRROR)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smirror", pos > 0 ? ", " : "");
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%smirror", pos > 0 ? ", " : "");
   }
   if (mode_bitmask & (1 << MODE_DISCOVERY_SERVICE)) {
-    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sdiscovery-service", pos > 0 ? ", " : "");
   }
 
   return pos > 0 ? mode_str : NULL;

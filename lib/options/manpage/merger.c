@@ -102,30 +102,30 @@ asciichat_error_t manpage_merger_generate_usage(const options_config_t *config, 
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
 
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
     if (usage->mode) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->mode);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->mode);
     }
     if (usage->positional) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
     }
     if (usage->show_options) {
       // Use mode-specific options suffix for mode commands, regular options for binary-level
       if (usage->mode && strcmp(usage->mode, "<mode>") != 0) {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, " [mode-options...]");
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " [mode-options...]");
       } else {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
       }
     }
-    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
     if (usage->description) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", usage->description);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", usage->description);
     }
   }
 
-  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   *out_content = buffer;
   *out_len = offset;
@@ -148,23 +148,23 @@ asciichat_error_t manpage_merger_generate_synopsis(const char *mode_name, char *
 
   if (mode_name) {
     // Mode-specific synopsis
-    offset += snprintf(buffer + offset, buffer_size - offset,
-                       ".B ascii-chat\n"
-                       ".I %s\n"
-                       "[\\fIoptions\\fR]\n",
-                       mode_name);
+    offset += safe_snprintf(buffer + offset, buffer_size - offset,
+                            ".B ascii-chat\n"
+                            ".I %s\n"
+                            "[\\fIoptions\\fR]\n",
+                            mode_name);
   } else {
     // Binary-level synopsis - show main modes
-    offset += snprintf(buffer + offset, buffer_size - offset,
-                       ".B ascii-chat\n"
-                       "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | "
-                       "\\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n"
-                       "\n"
-                       ".B ascii-chat\n"
-                       "[\\fIoptions\\fR] \\fI<session-string>\\fR\n");
+    offset += safe_snprintf(buffer + offset, buffer_size - offset,
+                            ".B ascii-chat\n"
+                            "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | "
+                            "\\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n"
+                            "\n"
+                            ".B ascii-chat\n"
+                            "[\\fIoptions\\fR] \\fI<session-string>\\fR\n");
   }
 
-  offset += snprintf(buffer + offset, buffer_size - offset, "\n");
+  offset += safe_snprintf(buffer + offset, buffer_size - offset, "\n");
 
   *out_content = buffer;
   *out_len = offset;

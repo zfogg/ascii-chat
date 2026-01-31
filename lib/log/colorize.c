@@ -434,7 +434,7 @@ const char *colorize_log_message(const char *message) {
     if (can_colorize && is_numeric_pattern(message, i, &end_pos)) {
       size_t pattern_len = end_pos - i;
       char pattern_buf[256];
-      snprintf(pattern_buf, sizeof(pattern_buf), "%.*s", (int)pattern_len, message + i);
+      safe_snprintf(pattern_buf, sizeof(pattern_buf), "%.*s", (int)pattern_len, message + i);
 
       const char *colored = colored_string(LOG_COLOR_DEBUG, pattern_buf);
       size_t colored_len = strlen(colored);
@@ -450,7 +450,7 @@ const char *colorize_log_message(const char *message) {
     if (can_colorize && is_file_path(message, i, &end_pos)) {
       size_t path_len = end_pos - i;
       char path_buf[512];
-      snprintf(path_buf, sizeof(path_buf), "%.*s", (int)path_len, message + i);
+      safe_snprintf(path_buf, sizeof(path_buf), "%.*s", (int)path_len, message + i);
 
       const char *colored = colored_string(LOG_COLOR_FATAL, path_buf);
       size_t colored_len = strlen(colored);
@@ -466,7 +466,7 @@ const char *colorize_log_message(const char *message) {
     if (can_colorize && is_env_var(message, i, &end_pos)) {
       size_t var_len = end_pos - i;
       char var_buf[256];
-      snprintf(var_buf, sizeof(var_buf), "%.*s", (int)var_len, message + i);
+      safe_snprintf(var_buf, sizeof(var_buf), "%.*s", (int)var_len, message + i);
 
       const char *colored = colored_string(LOG_COLOR_GREY, var_buf);
       size_t colored_len = strlen(colored);
@@ -482,7 +482,7 @@ const char *colorize_log_message(const char *message) {
     if (can_colorize && is_url(message, i, &end_pos)) {
       size_t url_len = end_pos - i;
       char url_buf[2048];
-      snprintf(url_buf, sizeof(url_buf), "%.*s", (int)url_len, message + i);
+      safe_snprintf(url_buf, sizeof(url_buf), "%.*s", (int)url_len, message + i);
 
       const char *colored = colored_string(LOG_COLOR_INFO, url_buf);
       size_t colored_len = strlen(colored);

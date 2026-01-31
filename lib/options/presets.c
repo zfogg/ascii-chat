@@ -154,13 +154,14 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   char example_buf6[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
   char example_buf7[SESSION_STRING_BUFFER_SIZE + BUFFER_SIZE_MEDIUM];
 
-  snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
-  snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-server discovery.example.com", example_session_string3);
-  snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
-  snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
-           example_session_string5);
-  snprintf(example_buf6, sizeof(example_buf6), "%s -f '-'", example_session_string6);
-  snprintf(example_buf7, sizeof(example_buf7), "%s --palette-chars '@%%#*+=-:. '", example_session_string7);
+  safe_snprintf(example_buf2, sizeof(example_buf2), "%s", example_session_string2);
+  safe_snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-server discovery.example.com",
+                example_session_string3);
+  safe_snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
+  safe_snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+                example_session_string5);
+  safe_snprintf(example_buf6, sizeof(example_buf6), "%s -f '-'", example_session_string6);
+  safe_snprintf(example_buf7, sizeof(example_buf7), "%s --palette-chars '@%%#*+=-:. '", example_session_string7);
 
   // Add examples for binary-level help and discovery mode
   options_builder_add_example(b, OPTION_MODE_BINARY, NULL, "Start new session (share the session string)", false);

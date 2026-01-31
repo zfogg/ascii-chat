@@ -93,7 +93,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
 
   // Call gpg --verify
   char cmd[1024];
-  snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
   log_debug("Running: %s", cmd);
 
   FILE *fp;
@@ -178,12 +178,12 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   char msg_hex[128];
 
   for (int i = 0; i < 32; i++) {
-    snprintf(pubkey_hex + i * 2, 3, "%02x", public_key[i]);
-    snprintf(r_hex + i * 2, 3, "%02x", signature[i]);
-    snprintf(s_hex + i * 2, 3, "%02x", signature[32 + i]);
+    safe_snprintf(pubkey_hex + i * 2, 3, "%02x", public_key[i]);
+    safe_snprintf(r_hex + i * 2, 3, "%02x", signature[i]);
+    safe_snprintf(s_hex + i * 2, 3, "%02x", signature[32 + i]);
   }
   for (size_t i = 0; i < (message_len < 32 ? message_len : 32); i++) {
-    snprintf(msg_hex + i * 2, 3, "%02x", message[i]);
+    safe_snprintf(msg_hex + i * 2, 3, "%02x", message[i]);
   }
 
   log_debug("gpg_verify_signature: pubkey=%s", pubkey_hex);

@@ -224,7 +224,7 @@ static void apply_env_string(void *field, const char *env_value, const option_de
   }
   if (value && value[0] != '\0') {
     char *dest = (char *)field;
-    snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
+    safe_snprintf(dest, OPTIONS_BUFF_SIZE, "%s", value);
     dest[OPTIONS_BUFF_SIZE - 1] = '\0';
   }
 }
@@ -289,7 +289,7 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
 static asciichat_error_t apply_cli_string(void *field, const char *opt_value, const option_descriptor_t *desc) {
   (void)desc;
   char *dest = (char *)field;
-  snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
+  safe_snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
   dest[OPTIONS_BUFF_SIZE - 1] = '\0';
   return ASCIICHAT_OK;
 }
@@ -334,19 +334,19 @@ static void format_help_placeholder_bool(char *buf, size_t bufsize) {
 }
 
 static void format_help_placeholder_int(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "NUM");
+  safe_snprintf(buf, bufsize, "NUM");
 }
 
 static void format_help_placeholder_string(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "STR");
+  safe_snprintf(buf, bufsize, "STR");
 }
 
 static void format_help_placeholder_double(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "NUM");
+  safe_snprintf(buf, bufsize, "NUM");
 }
 
 static void format_help_placeholder_callback(char *buf, size_t bufsize) {
-  snprintf(buf, bufsize, "VAL");
+  safe_snprintf(buf, bufsize, "VAL");
 }
 
 static void format_help_placeholder_action(char *buf, size_t bufsize) {
@@ -396,13 +396,13 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
     if (desc->metadata.enum_integer_values) {
       for (size_t i = 0; i < desc->metadata.enum_count; i++) {
         if (desc->metadata.enum_integer_values[i] == default_int_val) {
-          return snprintf(buf, bufsize, "%s", desc->metadata.enum_values[i]);
+          return safe_snprintf(buf, bufsize, "%s", desc->metadata.enum_values[i]);
         }
       }
     } else {
       // Fallback: assume sequential 0-based indices if integer values not provided
       if (default_int_val >= 0 && (size_t)default_int_val < desc->metadata.enum_count) {
-        return snprintf(buf, bufsize, "%s", desc->metadata.enum_values[default_int_val]);
+        return safe_snprintf(buf, bufsize, "%s", desc->metadata.enum_values[default_int_val]);
       }
     }
   }
@@ -418,7 +418,7 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
 
       // Format with appropriate precision (remove trailing zeros for integers)
       char formatted[32];
-      snprintf(formatted, sizeof(formatted), "%.1f", default_double);
+      safe_snprintf(formatted, sizeof(formatted), "%.1f", default_double);
 
       // Remove trailing zeros after decimal point
       char *dot = strchr(formatted, '.');
@@ -434,7 +434,7 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
         }
       }
 
-      return snprintf(buf, bufsize, "%s", formatted);
+      return safe_snprintf(buf, bufsize, "%s", formatted);
     }
   }
 
@@ -2064,23 +2064,23 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     const usage_descriptor_t *usage = &config->usage_lines[i];
     int len = 0;
 
-    len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+    len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
     if (usage->mode) {
       const char *colored_mode = colored_string(LOG_COLOR_FATAL, usage->mode);
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
     }
 
     if (usage->positional) {
       const char *colored_pos = colored_string(LOG_COLOR_INFO, usage->positional);
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_pos);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_pos);
     }
 
     if (usage->show_options) {
       const char *options_text =
           (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
       const char *colored_opts = colored_string(LOG_COLOR_WARN, options_text);
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_opts);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_opts);
     }
 
     int w = utf8_display_width(temp_buf);
@@ -2098,12 +2098,12 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
 
     // Only prepend program name if this is not a utility command
     if (!example->is_utility_command) {
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
     }
 
     if (example->args) {
       const char *colored_args = colored_string(LOG_COLOR_INFO, example->args);
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_args);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_args);
     }
 
     int w = utf8_display_width(temp_buf);
@@ -2135,16 +2135,16 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     char opts_buf[BUFFER_SIZE_SMALL];
     if (desc->short_name && desc->short_name != '\0') {
       char short_flag[16];
-      snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+      safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
       char long_flag[BUFFER_SIZE_SMALL];
-      snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+      safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
       // Color short flag, add comma, color long flag
-      snprintf(opts_buf, sizeof(opts_buf), "%s, %s", colored_string(LOG_COLOR_WARN, short_flag),
-               colored_string(LOG_COLOR_WARN, long_flag));
+      safe_snprintf(opts_buf, sizeof(opts_buf), "%s, %s", colored_string(LOG_COLOR_WARN, short_flag),
+                    colored_string(LOG_COLOR_WARN, long_flag));
     } else {
       char long_flag[BUFFER_SIZE_SMALL];
-      snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-      snprintf(opts_buf, sizeof(opts_buf), "%s", colored_string(LOG_COLOR_WARN, long_flag));
+      safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+      safe_snprintf(opts_buf, sizeof(opts_buf), "%s", colored_string(LOG_COLOR_WARN, long_flag));
     }
     const char *colored_opts = opts_buf;
 
@@ -2236,20 +2236,20 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       int len = 0;
 
       // Build plain text version for width calculation (no ANSI codes)
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
       if (usage->mode) {
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", usage->mode);
+        len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", usage->mode);
       }
 
       if (usage->positional) {
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", usage->positional);
+        len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", usage->positional);
       }
 
       if (usage->show_options) {
         const char *options_text =
             (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", options_text);
+        len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", options_text);
       }
 
       int w = utf8_display_width_n(temp_buf, len);
@@ -2279,10 +2279,10 @@ static int calculate_section_max_col_width(const options_config_t *config, const
       }
 
       int len = 0;
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+      len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
 
       if (example->args) {
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->args);
+        len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->args);
       }
 
       int w = utf8_display_width_n(temp_buf, len);
@@ -2328,24 +2328,25 @@ static int calculate_section_max_col_width(const options_config_t *config, const
 
       if (desc->short_name) {
         char short_flag[16];
-        snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+        safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
-        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
-                               colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+        safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        option_len +=
+            safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
+                          colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[BUFFER_SIZE_SMALL];
-        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                               colored_string(LOG_COLOR_WARN, long_flag));
+        safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                    colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
         const char *placeholder = get_option_help_placeholder_str(desc);
         if (placeholder[0] != '\0') {
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                 colored_string(LOG_COLOR_INFO, placeholder));
+          option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                      colored_string(LOG_COLOR_INFO, placeholder));
         }
       }
 
@@ -2422,24 +2423,26 @@ static void print_usage_section(const options_config_t *config, FILE *stream, in
     int len = 0;
 
     // Start with binary name
-    len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s", binary_name);
+    len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s", binary_name);
 
     // Add mode if present (magenta color)
     if (usage->mode) {
-      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
+      len +=
+          safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
     }
 
     // Add positional args if present (green color)
     if (usage->positional) {
-      len +=
-          snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_INFO, usage->positional));
+      len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                           colored_string(LOG_COLOR_INFO, usage->positional));
     }
 
     // Add options suffix if requested (yellow color)
     if (usage->show_options) {
       const char *options_text =
           (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
+      len +=
+          safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
     }
 
     // Print with layout function using global column width
@@ -2489,14 +2492,14 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
 
     // Only add binary name if this is not a utility command
     if (!example->is_utility_command) {
-      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
+      len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
     }
 
     // Add args/flags if present (flags=yellow, arguments=green, utility programs=white)
     if (example->args) {
       // Only add space if we've already added something (binary name)
       if (len > 0) {
-        len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
+        len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
       }
 
       // For utility commands, color everything white except flags (yellow)
@@ -2514,22 +2517,22 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
               current_token[token_len] = '\0';
               // Flags (start with -) are yellow, everything else is white
               if (current_token[0] == '-') {
-                len +=
-                    snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                     colored_string(LOG_COLOR_WARN, current_token));
               } else {
-                len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
-                                colored_string(LOG_COLOR_RESET, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                     colored_string(LOG_COLOR_RESET, current_token));
               }
               token_len = 0;
             }
             // Add the separator (space, pipe, redirect, etc) in white
             if (*p != ' ') {
-              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                              colored_string(LOG_COLOR_RESET, (*p == '|')   ? "|"
-                                                              : (*p == '>') ? ">"
-                                                                            : "<"));
+              len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                                   colored_string(LOG_COLOR_RESET, (*p == '|')   ? "|"
+                                                                   : (*p == '>') ? ">"
+                                                                                 : "<"));
             } else {
-              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
+              len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
             }
             p++;
             // Skip multiple spaces
@@ -2545,9 +2548,11 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
         if (token_len > 0) {
           current_token[token_len] = '\0';
           if (current_token[0] == '-') {
-            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                 colored_string(LOG_COLOR_WARN, current_token));
           } else {
-            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_RESET, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                 colored_string(LOG_COLOR_RESET, current_token));
           }
         }
       } else {
@@ -2563,11 +2568,11 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
               current_token[token_len] = '\0';
               // Color flags (start with -) yellow, arguments green
               if (current_token[0] == '-') {
-                len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                                colored_string(LOG_COLOR_WARN, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                                     colored_string(LOG_COLOR_WARN, current_token));
               } else {
-                len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
-                                colored_string(LOG_COLOR_INFO, current_token));
+                len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                                     colored_string(LOG_COLOR_INFO, current_token));
               }
               token_len = 0;
             }
@@ -2585,9 +2590,11 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
         if (token_len > 0) {
           current_token[token_len] = '\0';
           if (current_token[0] == '-') {
-            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                 colored_string(LOG_COLOR_WARN, current_token));
           } else {
-            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_INFO, current_token));
+            len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                 colored_string(LOG_COLOR_INFO, current_token));
           }
         }
       }
@@ -2618,7 +2625,7 @@ static void print_modes_section(const options_config_t *config, FILE *stream, in
   // Print each mode with colored name using colored_string() and global column width
   for (size_t i = 0; i < config->num_modes; i++) {
     char mode_buf[BUFFER_SIZE_SMALL];
-    snprintf(mode_buf, sizeof(mode_buf), "%s", colored_string(LOG_COLOR_FATAL, config->modes[i].name));
+    safe_snprintf(mode_buf, sizeof(mode_buf), "%s", colored_string(LOG_COLOR_FATAL, config->modes[i].name));
     layout_print_two_column_row(stream, mode_buf, config->modes[i].description, max_col_width, term_width);
   }
 
@@ -2639,13 +2646,13 @@ static void print_mode_options_section(FILE *stream, int term_width, int max_col
   int len = 0;
 
   // Binary name (no color)
-  len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s ", binary_name);
+  len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s ", binary_name);
 
   // Mode placeholder (magenta)
-  len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s", colored_string(LOG_COLOR_FATAL, "<mode>"));
+  len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, "%s", colored_string(LOG_COLOR_FATAL, "<mode>"));
 
   // Space and help option (yellow)
-  len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, "--help"));
+  len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, "--help"));
 
   layout_print_two_column_row(stream, usage_buf, "Show options for a mode", max_col_width, term_width);
 
@@ -2734,26 +2741,27 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       // Short name and long name with separate coloring
       if (desc->short_name) {
         char short_flag[16];
-        snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+        safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
-        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
-                               colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+        option_len +=
+            safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s, %s",
+                          colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[BUFFER_SIZE_SMALL];
-        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                               colored_string(LOG_COLOR_WARN, long_flag));
+        safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                    colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       // Value placeholder (colored green)
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
+        option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, " ");
         const char *placeholder = get_option_help_placeholder_str(desc);
         if (placeholder[0] != '\0') {
-          option_len += snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
-                                 colored_string(LOG_COLOR_INFO, placeholder));
+          option_len += safe_snprintf(option_str + option_len, sizeof(option_str) - option_len, "%s",
+                                      colored_string(LOG_COLOR_INFO, placeholder));
         }
       }
 
@@ -2762,7 +2770,7 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
       int desc_len = 0;
 
       if (desc->help_text) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
       }
 
       // Skip adding default if the description already mentions it
@@ -2770,25 +2778,25 @@ void options_config_print_usage(const options_config_t *config, FILE *stream) {
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
-                             colored_string(LOG_COLOR_FATAL, "default:"));
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
+                                  colored_string(LOG_COLOR_FATAL, "default:"));
         char default_buf[32];
         if (format_option_default_value_str(desc, default_buf, sizeof(default_buf)) > 0) {
-          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL, default_buf));
+          desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                                    colored_string(LOG_COLOR_FATAL, default_buf));
         }
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
       }
 
       if (desc->required) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
       }
 
       if (desc->env_var_name) {
         // Color env: label and variable name grey
         desc_len +=
-            snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                     colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
+            safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                          colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       // Use layout function with section-specific column width for consistent alignment
@@ -2954,26 +2962,27 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       // Short name and long name with separate coloring
       if (desc->short_name) {
         char short_flag[16];
-        snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
+        safe_snprintf(short_flag, sizeof(short_flag), "-%c", desc->short_name);
         char long_flag[BUFFER_SIZE_SMALL];
-        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
         // Color short flag, plain comma-space, color long flag
-        colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s",
-                                colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
+        colored_len +=
+            safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s, %s",
+                          colored_string(LOG_COLOR_WARN, short_flag), colored_string(LOG_COLOR_WARN, long_flag));
       } else {
         char long_flag[BUFFER_SIZE_SMALL];
-        snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
-        colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
-                                colored_string(LOG_COLOR_WARN, long_flag));
+        safe_snprintf(long_flag, sizeof(long_flag), "--%s", desc->long_name);
+        colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                     colored_string(LOG_COLOR_WARN, long_flag));
       }
 
       // Value placeholder (colored green)
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, " ");
+        colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, " ");
         const char *placeholder = get_option_help_placeholder_str(desc);
         if (placeholder[0] != '\0') {
-          colored_len += snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
-                                  colored_string(LOG_COLOR_INFO, placeholder));
+          colored_len += safe_snprintf(colored_option_str + colored_len, sizeof(colored_option_str) - colored_len, "%s",
+                                       colored_string(LOG_COLOR_INFO, placeholder));
         }
       }
 
@@ -2982,7 +2991,7 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       int desc_len = 0;
 
       if (desc->help_text) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s", desc->help_text);
       }
 
       // Skip adding default if the description already mentions it
@@ -2990,25 +2999,25 @@ void options_config_print_options_sections_with_width(const options_config_t *co
           desc->help_text && (strstr(desc->help_text, "(default:") || strstr(desc->help_text, "=default)"));
 
       if (desc->default_value && !description_has_default) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
-                             colored_string(LOG_COLOR_FATAL, "default:"));
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s ",
+                                  colored_string(LOG_COLOR_FATAL, "default:"));
         char default_buf[32];
         if (format_option_default_value_str(desc, default_buf, sizeof(default_buf)) > 0) {
-          desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
-                               colored_string(LOG_COLOR_FATAL, default_buf));
+          desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, "%s",
+                                    colored_string(LOG_COLOR_FATAL, default_buf));
         }
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, ")");
       }
 
       if (desc->required) {
-        desc_len += snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
+        desc_len += safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " [REQUIRED]");
       }
 
       if (desc->env_var_name) {
         // Color env: label and variable name grey
         desc_len +=
-            snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
-                     colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
+            safe_snprintf(desc_str + desc_len, sizeof(desc_str) - desc_len, " (%s %s)",
+                          colored_string(LOG_COLOR_GREY, "env:"), colored_string(LOG_COLOR_GREY, desc->env_var_name));
       }
 
       layout_print_two_column_row(stream, colored_option_str, desc_str, max_col_width, term_width);
@@ -3134,21 +3143,23 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       char usage_buf[BUFFER_SIZE_MEDIUM];
       int len = 0;
 
-      len += snprintf(usage_buf + len, sizeof(usage_buf) - len, "ascii-chat");
+      len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, "ascii-chat");
 
       if (usage->mode) {
-        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, usage->mode));
+        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                             colored_string(LOG_COLOR_FATAL, usage->mode));
       }
 
       if (usage->positional) {
-        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
-                        colored_string(LOG_COLOR_INFO, usage->positional));
+        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                             colored_string(LOG_COLOR_INFO, usage->positional));
       }
 
       if (usage->show_options) {
         const char *options_text =
             (usage->mode && strcmp(usage->mode, "<mode>") == 0) ? "[mode-options...]" : "[options...]";
-        len += snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s", colored_string(LOG_COLOR_WARN, options_text));
+        len += safe_snprintf(usage_buf + len, sizeof(usage_buf) - len, " %s",
+                             colored_string(LOG_COLOR_WARN, options_text));
       }
 
       layout_print_two_column_row(desc, usage_buf, usage->description, usage_max_col_width, term_width);
@@ -3211,9 +3222,10 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
             }
 
             char colored_first_part[256];
-            snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
+            safe_snprintf(colored_first_part, sizeof(colored_first_part), "%.*s", first_len_bytes, first_part);
             char colored_result[512];
-            snprintf(colored_result, sizeof(colored_result), "%s", colored_string(LOG_COLOR_INFO, colored_first_part));
+            safe_snprintf(colored_result, sizeof(colored_result), "%s",
+                          colored_string(LOG_COLOR_INFO, colored_first_part));
 
             layout_print_two_column_row(desc, colored_result, desc_start ? desc_start : "", positional_max_col_width,
                                         term_width);

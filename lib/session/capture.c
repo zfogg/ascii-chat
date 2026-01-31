@@ -164,7 +164,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     } else {
       // Webcam mode (default)
       static char webcam_index_str[32];
-      snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+      safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
       auto_config.type = MEDIA_SOURCE_WEBCAM;
       auto_config.path = webcam_index_str;
     }
@@ -281,7 +281,7 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     SAFE_FREE(ctx);
     return NULL;
   }
-  snprintf(tracker_name, 32, "CAPTURE_%u", ctx->target_fps);
+  safe_snprintf(tracker_name, 32, "CAPTURE_%u", ctx->target_fps);
   fps_init(&ctx->fps_tracker, (int)ctx->target_fps, tracker_name);
 
   // Record start time for FPS calculation (nanoseconds)

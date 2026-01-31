@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <time.h>
 #include "../common.h"
 
@@ -614,6 +615,22 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
  * @ingroup platform
  */
 int safe_fprintf(FILE *stream, const char *format, ...);
+
+/**
+ * @brief Platform-safe vsnprintf wrapper
+ *
+ * Uses the appropriate vsnprintf implementation for the platform.
+ * Safely formats a string with va_list argument.
+ *
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param format Format string
+ * @param ap Variable argument list
+ * @return Number of characters written (excluding null terminator) or negative on error
+ *
+ * @ingroup platform
+ */
+int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list ap);
 
 /**
  * Check return value of snprintf/fprintf and cast to void if needed

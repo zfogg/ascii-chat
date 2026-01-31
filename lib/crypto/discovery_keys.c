@@ -57,7 +57,7 @@ static void compute_key_fingerprint(const uint8_t pubkey[32], char fingerprint_o
   crypto_hash_sha256(hash, pubkey, 32);
 
   for (int i = 0; i < 32; i++) {
-    snprintf(&fingerprint_out[i * 2], 3, "%02x", hash[i]);
+    safe_snprintf(&fingerprint_out[i * 2], 3, "%02x", hash[i]);
   }
   fingerprint_out[64] = '\0';
 }
@@ -118,9 +118,9 @@ asciichat_error_t discovery_keys_fetch_github(const char *username, bool is_gpg,
   // Use existing parse_public_key infrastructure
   char key_spec[BUFFER_SIZE_MEDIUM];
   if (is_gpg) {
-    snprintf(key_spec, sizeof(key_spec), "github:%s.gpg", username);
+    safe_snprintf(key_spec, sizeof(key_spec), "github:%s.gpg", username);
   } else {
-    snprintf(key_spec, sizeof(key_spec), "github:%s", username);
+    safe_snprintf(key_spec, sizeof(key_spec), "github:%s", username);
   }
 
   public_key_t key;
@@ -142,7 +142,7 @@ asciichat_error_t discovery_keys_fetch_gitlab(const char *username, uint8_t pubk
 
   // Use existing parse_public_key infrastructure
   char key_spec[BUFFER_SIZE_MEDIUM];
-  snprintf(key_spec, sizeof(key_spec), "gitlab:%s.gpg", username);
+  safe_snprintf(key_spec, sizeof(key_spec), "gitlab:%s.gpg", username);
 
   public_key_t key;
   asciichat_error_t result = parse_public_key(key_spec, &key);
@@ -169,8 +169,8 @@ asciichat_error_t discovery_keys_get_cache_path(const char *acds_server, char *p
   }
 
   // Path: ~/.config/ascii-chat/acds_keys/<hostname>/key.pub
-  snprintf(path_out, path_size, "%s" ACDS_KEYS_CACHE_DIR PATH_SEPARATOR_STR "%s" PATH_SEPARATOR_STR "key.pub",
-           config_dir, acds_server);
+  safe_snprintf(path_out, path_size, "%s" ACDS_KEYS_CACHE_DIR PATH_SEPARATOR_STR "%s" PATH_SEPARATOR_STR "key.pub",
+                config_dir, acds_server);
   SAFE_FREE(config_dir);
 
   return ASCIICHAT_OK;
@@ -209,7 +209,7 @@ asciichat_error_t discovery_keys_save_cached(const char *acds_server, const uint
 
   // Create cache directory if it doesn't exist
   char dir_path[PLATFORM_MAX_PATH_LENGTH];
-  snprintf(dir_path, sizeof(dir_path), "%s", cache_path);
+  safe_snprintf(dir_path, sizeof(dir_path), "%s", cache_path);
 
   // Find the last path separator (handle both / and \ for cross-platform compatibility)
   char *last_sep = strrchr(dir_path, '\\');

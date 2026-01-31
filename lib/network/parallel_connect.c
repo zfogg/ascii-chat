@@ -186,7 +186,7 @@ asciichat_error_t parallel_connect(const parallel_connect_config_t *config, sock
   hints.ai_socktype = SOCK_STREAM;
 
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", config->port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", config->port);
 
   int gai_result = getaddrinfo(config->hostname, port_str, &hints, &result);
   if (gai_result != 0) {

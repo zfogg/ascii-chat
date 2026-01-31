@@ -653,7 +653,7 @@ int client_main(void) {
 
       // Format port as string for compatibility
       char port_str[16];
-      snprintf(port_str, sizeof(port_str), "%u", selected->port);
+      safe_snprintf(port_str, sizeof(port_str), "%u", selected->port);
       SAFE_STRNCPY(opts_new->port, port_str, sizeof(opts_new->port));
 
       log_debug("LAN discovery: Selected server '%s' at %s:%s", selected->name, opts_new->address, opts_new->port);
@@ -780,7 +780,7 @@ int client_main(void) {
     static char address_buffer[BUFFER_SIZE_SMALL];
     static char port_buffer[8];
     SAFE_STRNCPY(address_buffer, discovery_result.server_address, sizeof(address_buffer));
-    snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
+    safe_snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
     discovered_address = address_buffer;
     discovered_port = port_buffer;
 

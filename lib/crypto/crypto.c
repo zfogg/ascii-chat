@@ -1359,13 +1359,13 @@ void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, s
                                    ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count)
                                    : 0;
 
-  snprintf(status_buffer, buffer_size,
-           "Rekey status: %s | "
-           "Packets: %llu/%llu (%llu remaining) | "
-           "Time: %ld/%ld sec (%ld sec remaining) | "
-           "Rekeys: %llu | Failures: %d",
-           ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count,
-           (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
-           (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count,
-           ctx->rekey_failure_count);
+  safe_snprintf(status_buffer, buffer_size,
+                "Rekey status: %s | "
+                "Packets: %llu/%llu (%llu remaining) | "
+                "Time: %ld/%ld sec (%ld sec remaining) | "
+                "Rekeys: %llu | Failures: %d",
+                ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count,
+                (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
+                (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count,
+                ctx->rekey_failure_count);
 }

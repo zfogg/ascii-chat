@@ -1090,7 +1090,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         log_error("Error: Failed to determine default config directory");
         return ERROR_CONFIG;
       }
-      snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
+      safe_snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
       SAFE_FREE(config_dir);
     }
 
@@ -1382,7 +1382,7 @@ asciichat_error_t options_init(int argc, char **argv) {
         SAFE_FREE(allocated_mode_argv);
         return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory for database path");
       }
-      snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", config_dir);
+      safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), "%sdiscovery.db", config_dir);
       SAFE_FREE(config_dir);
     }
   }

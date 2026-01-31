@@ -545,17 +545,17 @@ void debug_memory_report(void) {
 
     // malloc calls
     char malloc_str[32];
-    (void)snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
+    (void)safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
     PRINT_MEM_LINE(label_malloc, malloc_str);
 
     // calloc calls
     char calloc_str[32];
-    (void)snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
+    (void)safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
     PRINT_MEM_LINE(label_calloc, calloc_str);
 
     // free calls
     char free_str[32];
-    (void)snprintf(free_str, sizeof(free_str), "%zu", free_calls);
+    (void)safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
     PRINT_MEM_LINE(label_free, free_str);
 
     // diff - grey label, colored value (red if not 0, green if 0)
@@ -563,7 +563,7 @@ void debug_memory_report(void) {
     size_t total_allocs = malloc_calls + calloc_calls;
     long long diff = (long long)total_allocs - (long long)free_calls;
     char diff_str[32];
-    (void)snprintf(diff_str, sizeof(diff_str), "%lld", diff);
+    (void)safe_snprintf(diff_str, sizeof(diff_str), "%lld", diff);
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
@@ -597,7 +597,7 @@ void debug_memory_report(void) {
           }
 
           char line_str[32];
-          (void)snprintf(line_str, sizeof(line_str), "%d", curr->line);
+          (void)safe_snprintf(line_str, sizeof(line_str), "%d", curr->line);
           SAFE_IGNORE_PRINTF_RESULT(
               safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, file_location),
                            colored_string(LOG_COLOR_FATAL, line_str), colored_string(size_color, pretty_size)));

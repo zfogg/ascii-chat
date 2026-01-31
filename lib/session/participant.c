@@ -236,7 +236,7 @@ static socket_t connect_to_server(const char *address, int port) {
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
-  snprintf(port_str, sizeof(port_str), "%d", port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   int s = getaddrinfo(address, port_str, &hints, &result);
   if (s != 0) {

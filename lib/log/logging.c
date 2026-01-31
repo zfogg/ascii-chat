@@ -149,7 +149,7 @@ size_t get_current_time_formatted(char *time_buf) {
   if (microseconds > 999999)
     microseconds = 999999;
 
-  int result = snprintf(time_buf + len, 32 - len, ".%06ld", microseconds);
+  int result = safe_snprintf(time_buf + len, 32 - len, ".%06ld", microseconds);
   if (result < 0 || result >= (int)(32 - len)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format microseconds");
     return 0;
@@ -166,7 +166,7 @@ char *format_message(const char *format, va_list args) {
   // First, determine the size needed
   va_list args_copy;
   va_copy(args_copy, args);
-  int size = vsnprintf(NULL, 0, format, args_copy);
+  int size = safe_vsnprintf(NULL, 0, format, args_copy);
   va_end(args_copy);
 
   if (size < 0) {
@@ -176,7 +176,7 @@ char *format_message(const char *format, va_list args) {
 
   // Allocate and format the message
   char *message = SAFE_MALLOC(size + 1, char *);
-  int result = vsnprintf(message, (size_t)size + 1, format, args);
+  int result = safe_vsnprintf(message, (size_t)size + 1, format, args);
   if (result < 0) {
     SAFE_FREE(message);
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format context message");
@@ -337,7 +337,7 @@ static void rotate_log_locked(void) {
 
   /* Read the tail into a temporary file */
   char temp_filename[PLATFORM_MAX_PATH_LENGTH];
-  int result = snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
+  int result = safe_snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
   if (result <= 0 || result >= (int)sizeof(temp_filename)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
     platform_close(read_file);
@@ -674,9 +674,10 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
 
   // Release mode: Simple one-line format without file/line/function
   if (use_colors) {
-    result = snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
+    result =
+        safe_snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] ", color, timestamp, reset, color, level_string, reset);
   } else {
-    result = snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_strings[level]);
+    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] ", timestamp, level_strings[level]);
   }
 #else
   // Debug mode: full format with file location, function, and thread ID
@@ -689,13 +690,13 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     const char *line_color = colors[5]; // FATAL: Magenta for line numbers
     const char *func_color = colors[0]; // DEV: Blue for function names
     const char *tid_color = colors[6];  // GREY: Grey for thread ID
-    result =
-        snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s", color,
-                 timestamp, reset, color, level_string, reset, tid_color, (unsigned long long)tid, reset, file_color,
-                 rel_file, reset, line_color, line, reset, func_color, func, reset, reset, newline_or_not);
+    result = safe_snprintf(buffer, buffer_size, "[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s%s",
+                           color, timestamp, reset, color, level_string, reset, tid_color, (unsigned long long)tid,
+                           reset, file_color, rel_file, reset, line_color, line, reset, func_color, func, reset, reset,
+                           newline_or_not);
   } else {
-    result = snprintf(buffer, buffer_size, "[%s] [%s] [tid:%llu] %s:%d in %s(): %s", timestamp, level_strings[level],
-                      (unsigned long long)tid, rel_file, line, func, newline_or_not);
+    result = safe_snprintf(buffer, buffer_size, "[%s] [%s] [tid:%llu] %s:%d in %s(): %s", timestamp,
+                           level_strings[level], (unsigned long long)tid, rel_file, line, func, newline_or_not);
   }
 #endif
 
@@ -755,7 +756,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     char msg_buffer[LOG_MSG_BUFFER_SIZE];
     va_list args_copy;
     va_copy(args_copy, args);
-    int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
+    int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
     va_end(args_copy);
 
     if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
@@ -800,7 +801,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     va_list args;
     va_start(args, fmt);
     char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
-    int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+    int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
     va_end(args);
 
     // Truncate at whole line boundaries to avoid UTF-8 issues
@@ -869,7 +870,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   int msg_len = header_len;
-  int formatted_len = vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
+  int formatted_len = safe_vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
   if (formatted_len < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
     va_end(args);
@@ -919,7 +920,7 @@ void log_plain_msg(const char *fmt, ...) {
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
-  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+  int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
   va_end(args);
 
   if (msg_len <= 0) {
@@ -988,7 +989,7 @@ void log_plain_msg(const char *fmt, ...) {
 // Helper for log_plain_stderr variants (lock-free)
 static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool add_newline) {
   char log_buffer[LOG_MSG_BUFFER_SIZE];
-  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+  int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
 
   if (msg_len <= 0) {
     return;
@@ -1090,7 +1091,7 @@ void log_file_msg(const char *fmt, ...) {
   char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
-  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+  int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
   va_end(args);
 
   if (msg_len <= 0) {

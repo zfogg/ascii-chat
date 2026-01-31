@@ -38,7 +38,7 @@ typedef struct {
  * @brief Create hash key from IP and event type
  */
 static void make_key(const char *ip_address, rate_event_type_t event_type, char *key, size_t key_size) {
-  snprintf(key, key_size, "%s:%d", ip_address, event_type);
+  safe_snprintf(key, key_size, "%s:%d", ip_address, event_type);
 }
 
 /**

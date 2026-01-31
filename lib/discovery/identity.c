@@ -112,7 +112,7 @@ void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65
 
   // Convert to hex string
   for (int i = 0; i < 32; i++) {
-    snprintf(&fingerprint[i * 2], 3, "%02x", hash[i]);
+    safe_snprintf(&fingerprint[i * 2], 3, "%02x", hash[i]);
   }
   fingerprint[64] = '\0';
 }
@@ -129,7 +129,7 @@ asciichat_error_t acds_identity_default_path(char *path_out, size_t path_size) {
   }
 
   // Append "acds_identity" to config directory
-  int written = snprintf(path_out, path_size, "%sacds_identity", config_dir);
+  int written = safe_snprintf(path_out, path_size, "%sacds_identity", config_dir);
   SAFE_FREE(config_dir);
 
   if (written < 0 || (size_t)written >= path_size) {

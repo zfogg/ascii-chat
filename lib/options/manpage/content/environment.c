@@ -43,11 +43,11 @@ char *manpage_content_generate_environment(const options_config_t *config) {
               desc->help_text ? desc->help_text : "NULL");
 
     // Generate .TP tagged paragraph for this environment variable
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", desc->env_var_name);
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", desc->env_var_name);
 
     if (desc->help_text) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", desc->help_text);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", desc->help_text);
     }
   }
 
@@ -125,15 +125,15 @@ char *manpage_content_generate_environment_with_manual(const options_config_t *c
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
 
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", all_vars[i].name);
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s\n", all_vars[i].name);
     if (*all_vars[i].description) {
       // For auto-generated variables, add "(see --option-name)" reference
       if (all_vars[i].option_long_name) {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, "%s (see \\fB\\-\\-%s\\fR)\n",
-                           all_vars[i].description, all_vars[i].option_long_name);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s (see \\fB\\-\\-%s\\fR)\n",
+                                all_vars[i].description, all_vars[i].option_long_name);
       } else {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", all_vars[i].description);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", all_vars[i].description);
       }
     }
   }

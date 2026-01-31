@@ -34,25 +34,26 @@ char *manpage_content_generate_usage(const options_config_t *config) {
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
 
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
     if (usage->mode) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->mode);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->mode);
     }
     if (usage->positional) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " %s", usage->positional);
     }
     if (usage->show_options) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " [options...]");
     }
-    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
     if (usage->description) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(usage->description));
+      offset +=
+          safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(usage->description));
     }
   }
 
-  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   log_debug("Generated USAGE section (%zu bytes)", offset);
   return buffer;

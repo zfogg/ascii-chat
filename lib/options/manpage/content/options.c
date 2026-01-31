@@ -62,7 +62,7 @@ char *manpage_content_generate_options(const options_config_t *config) {
     const char *current_group = unique_groups[g];
 
     // Add section heading for each group
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".SS %s\n", current_group);
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".SS %s\n", current_group);
 
     // Print all options in this group
     for (size_t i = 0; i < config->num_descriptors; i++) {
@@ -87,14 +87,14 @@ char *manpage_content_generate_options(const options_config_t *config) {
       }
 
       // Start option item
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
 
       // Write option flags
       if (desc->short_name && desc->short_name != '\0') {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, ".B \\-%c, \\-\\-%s", desc->short_name,
-                           desc->long_name);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-%c, \\-\\-%s", desc->short_name,
+                                desc->long_name);
       } else {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, ".B \\-\\-%s", desc->long_name);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B \\-\\-%s", desc->long_name);
       }
 
       // Add argument placeholder for value-taking options
@@ -103,22 +103,22 @@ char *manpage_content_generate_options(const options_config_t *config) {
         const char *placeholder =
             desc->arg_placeholder ? desc->arg_placeholder : options_get_type_placeholder(desc->type);
         if (placeholder && *placeholder) {
-          offset += snprintf(buffer + offset, buffer_capacity - offset, " \\fI%s\\fR", placeholder);
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " \\fI%s\\fR", placeholder);
         }
       }
 
-      offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
       // Write help text
       if (desc->help_text) {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, "%s", escape_groff_special(desc->help_text));
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s", escape_groff_special(desc->help_text));
         if (!desc->default_value) {
-          offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
         } else {
-          offset += snprintf(buffer + offset, buffer_capacity - offset, " ");
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " ");
         }
       } else if (desc->default_value) {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, " ");
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " ");
       }
 
       // Add default value if present
@@ -126,13 +126,13 @@ char *manpage_content_generate_options(const options_config_t *config) {
         char default_buf[256];
         int n = options_format_default_value(desc->type, desc->default_value, default_buf, sizeof(default_buf));
         if (n > 0) {
-          offset += snprintf(buffer + offset, buffer_capacity - offset, "(default: ");
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(default: ");
           if (desc->type == OPTION_TYPE_STRING) {
-            offset += snprintf(buffer + offset, buffer_capacity - offset, "%s", escape_groff_special(default_buf));
+            offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s", escape_groff_special(default_buf));
           } else {
-            offset += snprintf(buffer + offset, buffer_capacity - offset, "%s", default_buf);
+            offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s", default_buf);
           }
-          offset += snprintf(buffer + offset, buffer_capacity - offset, ")\n");
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ")\n");
         }
       }
 
@@ -140,26 +140,26 @@ char *manpage_content_generate_options(const options_config_t *config) {
       const char *mode_str = format_mode_names(desc->mode_bitmask);
       if (mode_str && strcmp(mode_str, "all modes") != 0) {
         if (strcmp(mode_str, "global") == 0) {
-          offset += snprintf(buffer + offset, buffer_capacity - offset, "(mode: %s)\n", mode_str);
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(mode: %s)\n", mode_str);
         } else {
-          offset += snprintf(buffer + offset, buffer_capacity - offset, "(modes: %s)\n", mode_str);
+          offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(modes: %s)\n", mode_str);
         }
       }
 
       // Add environment variable note if present
       if (desc->env_var_name) {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, "(env: \\fB%s\\fR)\n", desc->env_var_name);
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "(env: \\fB%s\\fR)\n", desc->env_var_name);
       }
 
       // Add REQUIRED note if applicable
       if (desc->required) {
-        offset += snprintf(buffer + offset, buffer_capacity - offset, "[REQUIRED]\n");
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "[REQUIRED]\n");
       }
     }
   }
 
   SAFE_FREE(unique_groups);
-  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   log_debug("Generated OPTIONS section (%zu bytes)", offset);
   return buffer;

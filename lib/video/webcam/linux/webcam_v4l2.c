@@ -478,7 +478,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   unsigned int device_count = 0;
   for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX; i++) {
     char device_path[32];
-    snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
+    safe_snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
 
     int fd = open(device_path, O_RDONLY);
     if (fd < 0) {
@@ -507,7 +507,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   unsigned int idx = 0;
   for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX && idx < device_count; i++) {
     char device_path[32];
-    snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
+    safe_snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
 
     int fd = open(device_path, O_RDONLY);
     if (fd < 0) {

@@ -128,11 +128,12 @@ const char *find_similar_option_with_mode(const char *unknown_opt, const options
   static char suggestion[256];
   if (available_in_current_mode) {
     // Option exists but user typed it wrong - just suggest the correct spelling
-    snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best_match->long_name);
+    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s'?", best_match->long_name);
   } else {
     // Option exists but in a different mode - suggest with mode info
     const char *mode_str = format_mode_for_suggestion(best_match->mode_bitmask);
-    snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in %s)?", best_match->long_name, mode_str);
+    safe_snprintf(suggestion, sizeof(suggestion), "Did you mean '--%s' (available in %s)?", best_match->long_name,
+                  mode_str);
   }
 
   return suggestion;
@@ -555,18 +556,18 @@ int options_format_default_value(option_type_t type, const void *default_value, 
 
   switch (type) {
   case OPTION_TYPE_BOOL:
-    return snprintf(buf, bufsize, "%s", *(const bool *)default_value ? "true" : "false");
+    return safe_snprintf(buf, bufsize, "%s", *(const bool *)default_value ? "true" : "false");
   case OPTION_TYPE_INT: {
     int int_val = 0;
     memcpy(&int_val, default_value, sizeof(int));
-    return snprintf(buf, bufsize, "%d", int_val);
+    return safe_snprintf(buf, bufsize, "%d", int_val);
   }
   case OPTION_TYPE_STRING:
-    return snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
+    return safe_snprintf(buf, bufsize, "%s", *(const char *const *)default_value);
   case OPTION_TYPE_DOUBLE: {
     double double_val = 0.0;
     memcpy(&double_val, default_value, sizeof(double));
-    return snprintf(buf, bufsize, "%.2f", double_val);
+    return safe_snprintf(buf, bufsize, "%.2f", double_val);
   }
   default:
     // OPTION_TYPE_CALLBACK and OPTION_TYPE_ACTION don't have defaults to display

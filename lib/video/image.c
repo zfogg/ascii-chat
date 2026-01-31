@@ -648,7 +648,7 @@ char *image_print_color(const image_t *p, const char *palette) {
               } else if (c >= 0x20 && c < 0x7F) {
                 debug_buf[debug_pos++] = (char)c;
               } else {
-                debug_pos += (size_t)snprintf(debug_buf + debug_pos, sizeof(debug_buf) - debug_pos, "<%02X>", c);
+                debug_pos += (size_t)safe_snprintf(debug_buf + debug_pos, sizeof(debug_buf) - debug_pos, "<%02X>", c);
               }
             }
             log_error("  Incomplete seq: %s", debug_buf);

@@ -415,9 +415,9 @@ void *stats_logger_thread(void *arg) {
           packet_queue_get_stats(client->audio_queue, &enqueued, &dequeued, &dropped);
           if (enqueued > 0 || dequeued > 0 || dropped > 0) {
             int len =
-                snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
-                         "  Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
-                         (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
+                safe_snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
+                              "  Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
+                              (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
             if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
               client_details_len += len;
             }
@@ -428,10 +428,10 @@ void *stats_logger_thread(void *arg) {
           video_frame_stats_t stats;
           video_frame_get_stats(client->outgoing_video_buffer, &stats);
           if (stats.total_frames > 0) {
-            int len = snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
-                               "  Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)",
-                               client_id_snapshot, (unsigned long long)stats.total_frames,
-                               (unsigned long long)stats.dropped_frames, stats.drop_rate * 100.0f);
+            int len = safe_snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
+                                    "  Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)",
+                                    client_id_snapshot, (unsigned long long)stats.total_frames,
+                                    (unsigned long long)stats.dropped_frames, stats.drop_rate * 100.0f);
             if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
               client_details_len += len;
             }

@@ -228,9 +228,9 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
   // Example with raddr: 1 1 udp 2130706431 203.0.113.45 54321 typ srflx raddr 192.168.1.1 rport 12345
 
-  int written = snprintf(line, line_size, "%s %u %s %u %s %u typ %s", candidate->foundation, candidate->component_id,
-                         ice_protocol_name(candidate->protocol), candidate->priority, candidate->ip_address,
-                         candidate->port, ice_candidate_type_name(candidate->type));
+  int written = safe_snprintf(line, line_size, "%s %u %s %u %s %u typ %s", candidate->foundation,
+                              candidate->component_id, ice_protocol_name(candidate->protocol), candidate->priority,
+                              candidate->ip_address, candidate->port, ice_candidate_type_name(candidate->type));
 
   if (written < 0 || (size_t)written >= line_size) {
     return SET_ERRNO(ERROR_BUFFER_FULL, "Candidate line too large for buffer");
@@ -243,7 +243,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX ||
       candidate->type == ICE_CANDIDATE_RELAY) {
     if (candidate->raddr[0] != '\0') {
-      int appended = snprintf(pos, remaining, " raddr %s rport %u", candidate->raddr, candidate->rport);
+      int appended = safe_snprintf(pos, remaining, " raddr %s rport %u", candidate->raddr, candidate->rport);
       if (appended < 0 || (size_t)appended >= remaining) {
         return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append raddr/rport to candidate line");
       }
@@ -261,7 +261,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
       tcptype_str = "so";
     }
 
-    int appended = snprintf(pos, remaining, " tcptype %s", tcptype_str);
+    int appended = safe_snprintf(pos, remaining, " tcptype %s", tcptype_str);
     if (appended < 0 || (size_t)appended >= remaining) {
       return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append tcptype to candidate line");
     }
@@ -271,7 +271,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
 
   // 4. Append any extensions
   if (candidate->extensions[0] != '\0') {
-    int appended = snprintf(pos, remaining, " %s", candidate->extensions);
+    int appended = safe_snprintf(pos, remaining, " %s", candidate->extensions);
     if (appended < 0 || (size_t)appended >= remaining) {
       return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append extensions to candidate line");
     }

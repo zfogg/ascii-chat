@@ -48,7 +48,7 @@ void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
   if (!pubkey || !hex_out)
     return;
   for (int i = 0; i < 32; i++) {
-    snprintf(hex_out + (i * 2), 3, "%02x", pubkey[i]);
+    safe_snprintf(hex_out + (i * 2), 3, "%02x", pubkey[i]);
   }
   hex_out[64] = '\0';
 }

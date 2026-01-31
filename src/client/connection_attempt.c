@@ -814,7 +814,7 @@ static asciichat_error_t attempt_webrtc_turn(connection_attempt_context_t *ctx, 
 
   // Build TURN URL from configuration
   char turn_url[128] = {0};
-  snprintf(turn_url, sizeof(turn_url), "turn:%s:%u", ctx->stun_turn_cfg.turn_server, ctx->stun_turn_cfg.turn_port);
+  safe_snprintf(turn_url, sizeof(turn_url), "turn:%s:%u", ctx->stun_turn_cfg.turn_server, ctx->stun_turn_cfg.turn_port);
 
   turn_server_t turn_server = {0};
   turn_server.url_len = strlen(turn_url);

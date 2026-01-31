@@ -62,8 +62,8 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
 
   // Generate session ID and version from current time
   time_t now = time(NULL);
-  snprintf(offer_out->session_id, sizeof(offer_out->session_id), "%ld", now);
-  snprintf(offer_out->session_version, sizeof(offer_out->session_version), "%ld", now);
+  safe_snprintf(offer_out->session_id, sizeof(offer_out->session_id), "%ld", now);
+  safe_snprintf(offer_out->session_version, sizeof(offer_out->session_version), "%ld", now);
 
   // Allocate and copy video codecs
   offer_out->video_codecs = SAFE_MALLOC(capability_count * sizeof(terminal_capability_t), terminal_capability_t *);
@@ -84,33 +84,33 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
   int written = 0;
 
   // Session-level attributes
-  written = snprintf(sdp, remaining, "v=0\r\n");
+  written = safe_snprintf(sdp, remaining, "v=0\r\n");
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", offer_out->session_id,
-                     offer_out->session_version);
+  written = safe_snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", offer_out->session_id,
+                          offer_out->session_version);
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "s=-\r\n");
+  written = safe_snprintf(sdp, remaining, "s=-\r\n");
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "t=0 0\r\n");
+  written = safe_snprintf(sdp, remaining, "t=0 0\r\n");
   sdp += written;
   remaining -= written;
 
   // Audio media section
-  written = snprintf(sdp, remaining, "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n");
+  written = safe_snprintf(sdp, remaining, "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n");
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "a=rtpmap:111 opus/48000/2\r\n");
+  written = safe_snprintf(sdp, remaining, "a=rtpmap:111 opus/48000/2\r\n");
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1\r\n");
+  written = safe_snprintf(sdp, remaining, "a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1\r\n");
   sdp += written;
   remaining -= written;
 
@@ -118,12 +118,12 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
   char codec_list[128] = "96";
   for (size_t i = 1; i < capability_count; i++) {
     char codec_num[4];
-    snprintf(codec_num, sizeof(codec_num), " %d", 96 + (int)i);
+    safe_snprintf(codec_num, sizeof(codec_num), " %d", 96 + (int)i);
     size_t len = strlen(codec_list);
     strncat(codec_list, codec_num, sizeof(codec_list) - len - 1);
   }
 
-  written = snprintf(sdp, remaining, "m=video 9 UDP/TLS/RTP/SAVPF %s\r\n", codec_list);
+  written = safe_snprintf(sdp, remaining, "m=video 9 UDP/TLS/RTP/SAVPF %s\r\n", codec_list);
   sdp += written;
   remaining -= written;
 
@@ -132,7 +132,7 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
     int pt = 96 + (int)i;
     const char *codec_name = sdp_codec_name(capabilities[i].codec);
 
-    written = snprintf(sdp, remaining, "a=rtpmap:%d %s/90000\r\n", pt, codec_name);
+    written = safe_snprintf(sdp, remaining, "a=rtpmap:%d %s/90000\r\n", pt, codec_name);
     sdp += written;
     remaining -= written;
 
@@ -147,10 +147,10 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
       compression_name = "zstd";
     }
 
-    written =
-        snprintf(sdp, remaining, "a=fmtp:%d width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n",
-                 pt, cap_format->width, cap_format->height, renderer_name, charset_name, compression_name,
-                 cap_format->csi_rep_support ? 1 : 0);
+    written = safe_snprintf(sdp, remaining,
+                            "a=fmtp:%d width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n", pt,
+                            cap_format->width, cap_format->height, renderer_name, charset_name, compression_name,
+                            cap_format->csi_rep_support ? 1 : 0);
     sdp += written;
     remaining -= written;
   }
@@ -179,7 +179,7 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
   SAFE_STRNCPY(answer_out->session_id, offer->session_id, sizeof(answer_out->session_id));
 
   time_t now = time(NULL);
-  snprintf(answer_out->session_version, sizeof(answer_out->session_version), "%ld", now);
+  safe_snprintf(answer_out->session_version, sizeof(answer_out->session_version), "%ld", now);
 
   // Answer audio section: accept Opus
   answer_out->has_audio = offer->has_audio;
@@ -243,46 +243,46 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
   int written = 0;
 
   // Session-level attributes
-  written = snprintf(sdp, remaining, "v=0\r\n");
+  written = safe_snprintf(sdp, remaining, "v=0\r\n");
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", answer_out->session_id,
-                     answer_out->session_version);
+  written = safe_snprintf(sdp, remaining, "o=ascii-chat %s %s IN IP4 0.0.0.0\r\n", answer_out->session_id,
+                          answer_out->session_version);
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "s=-\r\n");
+  written = safe_snprintf(sdp, remaining, "s=-\r\n");
   sdp += written;
   remaining -= written;
 
-  written = snprintf(sdp, remaining, "t=0 0\r\n");
+  written = safe_snprintf(sdp, remaining, "t=0 0\r\n");
   sdp += written;
   remaining -= written;
 
   // Audio media section (if present in offer)
   if (answer_out->has_audio) {
-    written = snprintf(sdp, remaining, "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n");
+    written = safe_snprintf(sdp, remaining, "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n");
     sdp += written;
     remaining -= written;
 
-    written = snprintf(sdp, remaining, "a=rtpmap:111 opus/48000/2\r\n");
+    written = safe_snprintf(sdp, remaining, "a=rtpmap:111 opus/48000/2\r\n");
     sdp += written;
     remaining -= written;
 
-    written = snprintf(sdp, remaining, "a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1\r\n");
+    written = safe_snprintf(sdp, remaining, "a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1\r\n");
     sdp += written;
     remaining -= written;
   }
 
   // Video media section (if present in offer)
   if (answer_out->has_video && answer_out->video_codecs && answer_out->video_codec_count > 0) {
-    written = snprintf(sdp, remaining, "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n");
+    written = safe_snprintf(sdp, remaining, "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n");
     sdp += written;
     remaining -= written;
 
     const char *codec_name = sdp_codec_name(answer_out->video_codecs[0].codec);
-    written = snprintf(sdp, remaining, "a=rtpmap:96 %s/90000\r\n", codec_name);
+    written = safe_snprintf(sdp, remaining, "a=rtpmap:96 %s/90000\r\n", codec_name);
     sdp += written;
     remaining -= written;
 
@@ -297,10 +297,10 @@ asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal
       compression_name = "zstd";
     }
 
-    written =
-        snprintf(sdp, remaining, "a=fmtp:96 width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n",
-                 cap_format->width, cap_format->height, renderer_name, charset_name, compression_name,
-                 cap_format->csi_rep_support ? 1 : 0);
+    written = safe_snprintf(sdp, remaining,
+                            "a=fmtp:96 width=%u;height=%u;renderer=%s;charset=%s;compression=%s;csi_rep=%d\r\n",
+                            cap_format->width, cap_format->height, renderer_name, charset_name, compression_name,
+                            cap_format->csi_rep_support ? 1 : 0);
     sdp += written;
     remaining -= written;
   }

@@ -75,7 +75,7 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   hints.ai_socktype = SOCK_STREAM; // TCP
 
   char port_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", config->server_port);
+  safe_snprintf(port_str, sizeof(port_str), "%d", config->server_port);
 
   log_debug("ACDS: Resolving address '%s:%s'...", config->server_address, port_str);
   int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);

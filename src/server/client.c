@@ -368,11 +368,11 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 
   // Step 1: Create receive thread
   if (is_tcp) {
-    snprintf(thread_name, sizeof(thread_name), "receive_%u", client_id);
+    safe_snprintf(thread_name, sizeof(thread_name), "receive_%u", client_id);
     result =
         tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_receive_thread, client, 1, thread_name);
   } else {
-    snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id);
+    safe_snprintf(thread_name, sizeof(thread_name), "webrtc_recv_%u", client_id);
     log_error("═══ THREAD_CREATE: WebRTC client %u ═══", client_id);
     log_error("  client=%p, func=%p, &receive_thread=%p", (void *)client, (void *)client_receive_thread,
               (void *)&client->receive_thread);
@@ -402,11 +402,11 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 
   // Step 3: Create send thread AFTER render threads are running
   if (is_tcp) {
-    snprintf(thread_name, sizeof(thread_name), "send_%u", client_id);
+    safe_snprintf(thread_name, sizeof(thread_name), "send_%u", client_id);
     result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_send_thread_func, client, 3,
                                      thread_name);
   } else {
-    snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id);
+    safe_snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id);
     result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
   }
 
@@ -972,7 +972,7 @@ int add_webrtc_client(server_context_t *server_ctx, acip_transport_t *transport,
 
   // Create send thread for this client
   char thread_name[64];
-  snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
+  safe_snprintf(thread_name, sizeof(thread_name), "webrtc_send_%u", client_id_snapshot);
   asciichat_error_t send_result = asciichat_thread_create(&client->send_thread, client_send_thread_func, client);
   if (send_result != ASCIICHAT_OK) {
     log_error("Failed to create send thread for WebRTC client %u: %s", client_id_snapshot,

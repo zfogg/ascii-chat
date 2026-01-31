@@ -294,6 +294,6 @@ const char *colored_string(log_color_t color, const char *text) {
   const char *reset_code = log_level_color(LOG_COLOR_RESET);
 
   // Format into rotating static buffer: color_code + text + reset_code
-  snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
+  safe_snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
   return current_buf;
 }

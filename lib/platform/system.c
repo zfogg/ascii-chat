@@ -396,6 +396,7 @@ bool platform_get_executable_path(char *exe_path, size_t path_size) {
  * @return Number of characters written, or -1 on error
  *
  * Safely formats a string into a buffer with bounds checking.
+ * Uses platform_snprintf for cross-platform implementation.
  * Returns the number of characters written (not including null terminator).
  * Returns -1 if buffer is too small.
  */
@@ -407,11 +408,8 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-#ifdef _WIN32
-  int ret = _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args);
-#else
-  int ret = vsnprintf(buffer, buffer_size, format, args);
-#endif
+  /* Delegate to platform_snprintf for actual formatting */
+  int ret = platform_vsnprintf(buffer, buffer_size, format, args);
 
   va_end(args);
   return ret;
@@ -437,4 +435,26 @@ int safe_fprintf(FILE *stream, const char *format, ...) {
   va_end(args);
 
   return ret;
+}
+
+/**
+ * @brief Safe formatted string printing with va_list
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param format Printf-style format string
+ * @param ap Variable argument list
+ * @return Number of characters written, or -1 on error
+ *
+ * Safely formats a string into a buffer with bounds checking using va_list.
+ * Uses platform_vsnprintf for cross-platform implementation.
+ * Returns the number of characters written (not including null terminator).
+ * Returns -1 if buffer is too small.
+ */
+int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list ap) {
+  if (!buffer || !format || buffer_size == 0) {
+    return -1;
+  }
+
+  /* Delegate to platform_vsnprintf for actual formatting */
+  return platform_vsnprintf(buffer, buffer_size, format, ap);
 }

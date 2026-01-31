@@ -55,7 +55,7 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
   // Construct absolute path using ASCIICHAT_RESOURCE_DIR (set at build time)
 #ifdef ASCIICHAT_RESOURCE_DIR
   static char path_buffer[PATH_MAX];
-  snprintf(path_buffer, sizeof(path_buffer), "%s/share/man/man1/ascii-chat.1.in", ASCIICHAT_RESOURCE_DIR);
+  safe_snprintf(path_buffer, sizeof(path_buffer), "%s/share/man/man1/ascii-chat.1.in", ASCIICHAT_RESOURCE_DIR);
   const char *path = path_buffer;
 #else
   // Fallback: try relative path if ASCIICHAT_RESOURCE_DIR not defined

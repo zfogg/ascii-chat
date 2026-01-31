@@ -120,7 +120,7 @@ int acds_main(void) {
   if (!acds_key_path || acds_key_path[0] == '\0') {
     const char *config_dir = get_config_dir();
     if (config_dir) {
-      snprintf(default_key_path, sizeof(default_key_path), "%sdiscovery_identity", config_dir);
+      safe_snprintf(default_key_path, sizeof(default_key_path), "%sdiscovery_identity", config_dir);
       acds_key_path = default_key_path;
     }
   }

@@ -644,7 +644,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
   // Convert participant_id to string for logging (ASCII-safe portion)
   char participant_str[33];
   for (int i = 0; i < 16; i++) {
-    snprintf(participant_str + (i * 2), 3, "%02x", participant_id[i]);
+    safe_snprintf(participant_str + (i * 2), 3, "%02x", participant_id[i]);
   }
   participant_str[32] = '\0';
 
@@ -756,7 +756,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   char hostname[256] = {0};
   char session_name[256] = "ascii-chat-Server";
   if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
-    snprintf(session_name, sizeof(session_name), "%s", hostname);
+    safe_snprintf(session_name, sizeof(session_name), "%s", hostname);
   }
 
   // Prepare TXT records with session string and host public key
@@ -766,7 +766,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   int txt_count = 0;
 
   // Add session string to TXT records (for client discovery)
-  snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
+  safe_snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
   txt_records[txt_count++] = txt_session_string;
 
   // Add host public key to TXT records (for cryptographic verification)
@@ -774,14 +774,14 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   if (g_server_encryption_enabled) {
     char hex_pubkey[65];
     pubkey_to_hex(g_server_private_key.public_key, hex_pubkey);
-    snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
+    safe_snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
     txt_records[txt_count++] = txt_host_pubkey;
     log_debug("mDNS: Host pubkey=%s", hex_pubkey);
   } else {
     // If encryption is disabled, still advertise a zero pubkey for clients to detect
-    snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
+    safe_snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
     for (int i = 0; i < 32; i++) {
-      snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
+      safe_snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
     }
     txt_records[txt_count++] = txt_host_pubkey;
     log_debug("mDNS: Encryption disabled, advertising zero pubkey");
@@ -1941,8 +1941,8 @@ skip_acds_session:
     uint32_t noun1_idx = (seed / 13) % noun_count;
     uint32_t noun2_idx = (seed / 31) % noun_count; // Second noun (not adjective!)
 
-    snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
-             nouns[noun2_idx]);
+    safe_snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
+                  nouns[noun2_idx]);
 
     log_debug("Generated random session string for mDNS: '%s'", session_string);
 

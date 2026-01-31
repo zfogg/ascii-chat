@@ -18,7 +18,7 @@
 int platform_snprintf(char *str, size_t size, const char *format, ...) {
   va_list ap;
   va_start(ap, format);
-  int ret = vsnprintf(str, size, format, ap);
+  int ret = platform_vsnprintf(str, size, format, ap);
   va_end(ap);
   return ret;
 }

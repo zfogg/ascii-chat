@@ -83,9 +83,9 @@ void manpage_fmt_write_title(FILE *f, const char *program_name, const char *mode
   // Build full program name (e.g., "ascii-chat-server" or just "ascii-chat")
   char full_name[256];
   if (mode_name) {
-    snprintf(full_name, sizeof(full_name), "%s-%s", program_name, mode_name);
+    safe_snprintf(full_name, sizeof(full_name), "%s-%s", program_name, mode_name);
   } else {
-    snprintf(full_name, sizeof(full_name), "%s", program_name);
+    safe_snprintf(full_name, sizeof(full_name), "%s", program_name);
   }
 
   // .TH NAME SECTION DATE SOURCE MANUAL

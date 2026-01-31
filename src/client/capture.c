@@ -364,7 +364,7 @@ int capture_init() {
   } else {
     // Webcam mode (default)
     static char webcam_index_str[32];
-    snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+    safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
     config.type = MEDIA_SOURCE_WEBCAM;
     config.path = webcam_index_str;
     log_debug("Using webcam device %u", GET_OPTION(webcam_index));

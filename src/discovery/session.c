@@ -322,7 +322,7 @@ static asciichat_error_t connect_to_acds(discovery_session_t *session) {
   hints.ai_protocol = IPPROTO_TCP;
 
   char port_str[8];
-  snprintf(port_str, sizeof(port_str), "%u", session->acds_port);
+  safe_snprintf(port_str, sizeof(port_str), "%u", session->acds_port);
 
   int gai_err = getaddrinfo(session->acds_address, port_str, &hints, &result);
   if (gai_err != 0) {

@@ -438,7 +438,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
 
   // Import the key using gpg --import
   char import_cmd[BUFFER_SIZE_MEDIUM];
-  snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
+  safe_snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
   FILE *import_fp = NULL;
   if (platform_popen(import_cmd, "r", &import_fp) != ASCIICHAT_OK || !import_fp) {
     platform_unlink(temp_file);
@@ -497,8 +497,8 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   for (size_t k = 0; k < key_count; k++) {
     // Get full fingerprint from gpg --list-keys output
     char list_cmd[BUFFER_SIZE_SMALL];
-    snprintf(list_cmd, sizeof(list_cmd),
-             "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
+    safe_snprintf(list_cmd, sizeof(list_cmd),
+                  "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
     FILE *list_fp = NULL;
     if (platform_popen(list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
       continue; // Skip this key if we can't list it
@@ -560,7 +560,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG key string");
     }
 
-    snprintf((*keys_out)[valid_keys], gpg_key_len, "gpg:%s", fingerprint);
+    safe_snprintf((*keys_out)[valid_keys], gpg_key_len, "gpg:%s", fingerprint);
     log_debug("Added valid Ed25519 key #%zu: %s", valid_keys, (*keys_out)[valid_keys]);
     valid_keys++;
   }

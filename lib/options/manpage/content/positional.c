@@ -34,34 +34,35 @@ char *manpage_content_generate_positional(const options_config_t *config) {
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
 
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B %s", pos_arg->name);
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B %s", pos_arg->name);
     if (!pos_arg->required) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " (optional)");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " (optional)");
     }
-    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
     if (pos_arg->help_text) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->help_text));
+      offset +=
+          safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->help_text));
     }
 
     // Add examples if present
     if (pos_arg->num_examples > 0) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".RS\n");
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".B Examples:\n");
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".RS\n");
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".nf\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".RS\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B Examples:\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".RS\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".nf\n");
       for (size_t j = 0; j < pos_arg->num_examples; j++) {
-        offset +=
-            snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->examples[j]));
+        offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n",
+                                escape_groff_special(pos_arg->examples[j]));
       }
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".fi\n");
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".fi\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");
     }
   }
 
-  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   log_debug("Generated POSITIONAL ARGUMENTS section (%zu bytes)", offset);
   return buffer;

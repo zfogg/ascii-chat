@@ -34,19 +34,20 @@ char *manpage_content_generate_examples(const options_config_t *config) {
       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
     }
 
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
-    offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
     if (example->args) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", example->args);
+      offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " %s", example->args);
     }
-    offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
     if (example->description) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(example->description));
+      offset +=
+          safe_snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(example->description));
     }
   }
 
-  offset += snprintf(buffer + offset, buffer_capacity - offset, "\n");
+  offset += safe_snprintf(buffer + offset, buffer_capacity - offset, "\n");
 
   return buffer;
 }

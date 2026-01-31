@@ -98,9 +98,11 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
 
   // Exception location
   if (IsBadReadPtr(ctx, sizeof(CONTEXT)) == 0) {
-    offset += snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: 0x%016llX\n", ctx->Rip);
+    offset +=
+        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: 0x%016llX\n", ctx->Rip);
   } else {
-    offset += snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: <invalid context>\n");
+    offset +=
+        safe_snprintf(buffer + offset, buffer_size - offset, "Exception occurred at:\n  RIP: <invalid context>\n");
   }
 
   // Try to resolve the symbol at the crash address - wrap in try/except for safety
@@ -112,8 +114,8 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
     pSymbol->MaxNameLen = MAX_SYM_NAME;
 
     if (g_thread_symbols_initialized && SymFromAddr(hProcess, ctx->Rip, &dwDisplacement, pSymbol)) {
-      offset +=
-          snprintf(buffer + offset, buffer_size - offset, "  Function: %s + 0x%llX\n", pSymbol->Name, dwDisplacement);
+      offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Function: %s + 0x%llX\n", pSymbol->Name,
+                              dwDisplacement);
     } else {
       // Try to get module name - wrap in try/except
       __try {
@@ -124,8 +126,8 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
           if (GetModuleFileNameA(hModule, moduleName, sizeof(moduleName))) {
             char *lastSlash = strrchr(moduleName, '\\');
             char *fileName = lastSlash ? lastSlash + 1 : moduleName;
-            offset += snprintf(buffer + offset, buffer_size - offset, "  Module: %s + 0x%llX\n", fileName,
-                               ctx->Rip - (DWORD64)hModule);
+            offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Module: %s + 0x%llX\n", fileName,
+                                    ctx->Rip - (DWORD64)hModule);
           }
         }
       } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -139,7 +141,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   // Manual stack trace from RSP
   // Note: This works with AddressSanitizer enabled - we use __try/__except to safely handle
   // any access violations when reading stack memory from the exception thread
-  offset += snprintf(buffer + offset, buffer_size - offset, "\nMANUAL STACK TRACE - Walking from RSP\n");
+  offset += safe_snprintf(buffer + offset, buffer_size - offset, "\nMANUAL STACK TRACE - Walking from RSP\n");
 
   // Validate stack pointer before attempting to read from it
   // Check if the pointer is valid and in a reasonable address range
@@ -158,7 +160,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   }
 
   if (!canReadStack) {
-    offset += snprintf(buffer + offset, buffer_size - offset, "  Invalid stack pointer: 0x%016llX\n", ctx->Rsp);
+    offset += safe_snprintf(buffer + offset, buffer_size - offset, "  Invalid stack pointer: 0x%016llX\n", ctx->Rsp);
   } else {
     // Copy stack data to local buffer to avoid ASan stack-use-after-scope errors
     // We're reading from another thread's stack, so copy it to our stack frame first
@@ -219,12 +221,12 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
             if (hasLineInfo) {
               const char *shortName =
                   relPath ? relPath : (strrchr(line.FileName, '\\') ? strrchr(line.FileName, '\\') + 1 : line.FileName);
-              offset +=
-                  snprintf(buffer + offset, buffer_size - offset, "%s RSP+0x%03zX: 0x%016llX %s + 0x%llX [%s:%lu]\n",
-                           prefix, (size_t)(i * 8), addr, pSymbol2->Name, displacement, shortName, line.LineNumber);
+              offset += safe_snprintf(buffer + offset, buffer_size - offset,
+                                      "%s RSP+0x%03zX: 0x%016llX %s + 0x%llX [%s:%lu]\n", prefix, (size_t)(i * 8), addr,
+                                      pSymbol2->Name, displacement, shortName, line.LineNumber);
             } else {
-              offset += snprintf(buffer + offset, buffer_size - offset, "%s RSP+0x%03zX: 0x%016llX %s + 0x%llX\n",
-                                 prefix, (size_t)(i * 8), addr, pSymbol2->Name, displacement);
+              offset += safe_snprintf(buffer + offset, buffer_size - offset, "%s RSP+0x%03zX: 0x%016llX %s + 0x%llX\n",
+                                      prefix, (size_t)(i * 8), addr, pSymbol2->Name, displacement);
             }
           }
 
@@ -256,12 +258,12 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
               char *fileName = lastSlash ? lastSlash + 1 : moduleName;
               DWORD64 offsetInModule = addr - (DWORD64)(uintptr_t)hModule;
               // Show module name with offset
-              offset += snprintf(buffer + offset, buffer_size - offset, "  RSP+0x%03zX: 0x%016llX %s + 0x%llX\n",
-                                 (size_t)(i * 8), addr, fileName, offsetInModule);
+              offset += safe_snprintf(buffer + offset, buffer_size - offset, "  RSP+0x%03zX: 0x%016llX %s + 0x%llX\n",
+                                      (size_t)(i * 8), addr, fileName, offsetInModule);
             } else {
               // Can't resolve symbol or module - still show address for manual resolution with llvm-symbolizer
-              offset += snprintf(buffer + offset, buffer_size - offset, "  RSP+0x%03zX: 0x%016llX <unresolved>\n",
-                                 (size_t)(i * 8), addr);
+              offset += safe_snprintf(buffer + offset, buffer_size - offset, "  RSP+0x%03zX: 0x%016llX <unresolved>\n",
+                                      (size_t)(i * 8), addr);
             }
           }
         } // Close if (addr > 0x10000...)
@@ -270,7 +272,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   } // Close else block
 
   // StackWalk64 trace
-  offset += snprintf(buffer + offset, buffer_size - offset, "\nSTACK TRACE\n");
+  offset += safe_snprintf(buffer + offset, buffer_size - offset, "\nSTACK TRACE\n");
   STACKFRAME64 stackFrame = {0};
   stackFrame.AddrPC.Offset = ctx->Rip;
   stackFrame.AddrPC.Mode = AddrModeFlat;
@@ -283,7 +285,8 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
 
   for (int frameNum = 0; frameNum < 20 && offset < buffer_size - 200; frameNum++) {
     if (stackFrame.AddrStack.Offset == 0 || stackFrame.AddrStack.Offset > 0x7FFFFFFFFFFF) {
-      offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d [Stack corrupted or end reached]\n", frameNum);
+      offset +=
+          safe_snprintf(buffer + offset, buffer_size - offset, "  #%02d [Stack corrupted or end reached]\n", frameNum);
       break;
     }
 
@@ -291,8 +294,8 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
                      SymGetModuleBase64, NULL)) {
       DWORD error = GetLastError();
       if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
-        offset +=
-            snprintf(buffer + offset, buffer_size - offset, "  #%02d [StackWalk64 failed: %lu]\n", frameNum, error);
+        offset += safe_snprintf(buffer + offset, buffer_size - offset, "  #%02d [StackWalk64 failed: %lu]\n", frameNum,
+                                error);
       }
       break;
     }
@@ -313,11 +316,12 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
       DWORD lineDisplacement = 0;
       if (SymGetLineFromAddr64(hProcess, stackFrame.AddrPC.Offset, &lineDisplacement, &line)) {
         const char *relPath = line.FileName ? extract_project_relative_path(line.FileName) : "unknown";
-        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s + 0x%llX [%s:%lu]\n", frameNum,
-                           stackFrame.AddrPC.Offset, pSym->Name, symDisplacement, relPath, line.LineNumber);
+        offset +=
+            safe_snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s + 0x%llX [%s:%lu]\n", frameNum,
+                          stackFrame.AddrPC.Offset, pSym->Name, symDisplacement, relPath, line.LineNumber);
       } else {
-        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s + 0x%llX\n", frameNum,
-                           stackFrame.AddrPC.Offset, pSym->Name, symDisplacement);
+        offset += safe_snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s + 0x%llX\n", frameNum,
+                                stackFrame.AddrPC.Offset, pSym->Name, symDisplacement);
       }
     } else {
       // Symbol resolution failed - try to get module name as fallback
@@ -346,12 +350,12 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
         char *slash = strrchr(modName, '\\');
         char *name = slash ? slash + 1 : modName;
         DWORD64 offsetInModule = stackFrame.AddrPC.Offset - (DWORD64)(uintptr_t)hMod;
-        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s!0x%llX\n", frameNum,
-                           stackFrame.AddrPC.Offset, name, offsetInModule);
+        offset += safe_snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX %s!0x%llX\n", frameNum,
+                                stackFrame.AddrPC.Offset, name, offsetInModule);
       } else {
         // Can't resolve symbol or module - still show address for manual resolution
-        offset += snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX <unresolved>\n", frameNum,
-                           stackFrame.AddrPC.Offset);
+        offset += safe_snprintf(buffer + offset, buffer_size - offset, "  #%02d 0x%016llX <unresolved>\n", frameNum,
+                                stackFrame.AddrPC.Offset);
       }
     }
   }
@@ -493,11 +497,11 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
               build_stack_trace_message(stack_buffer, sizeof(stack_buffer), &contextCopy, hProcess);
             } __except (EXCEPTION_EXECUTE_HANDLER) {
               // If building the stack trace causes an exception, use minimal output
-              (void)snprintf(stack_buffer, sizeof(stack_buffer),
-                             "Stack trace generation failed (exception in trace builder)\n");
+              (void)safe_snprintf(stack_buffer, sizeof(stack_buffer),
+                                  "Stack trace generation failed (exception in trace builder)\n");
             }
           } else {
-            (void)snprintf(stack_buffer, sizeof(stack_buffer), "Exception context is invalid or corrupted\n");
+            (void)safe_snprintf(stack_buffer, sizeof(stack_buffer), "Exception context is invalid or corrupted\n");
           }
 
           // Try to print the stack trace - even this could potentially fail

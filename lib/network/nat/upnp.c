@@ -104,7 +104,7 @@ static asciichat_error_t upnp_try_map_port(uint16_t internal_port, const char *d
   log_info("UPnP: External IP detected: %s", ctx->external_ip);
 
   // Step 4: Request port mapping
-  snprintf(port_str, sizeof(port_str), "%u", internal_port);
+  safe_snprintf(port_str, sizeof(port_str), "%u", internal_port);
 
   log_debug("UPnP: Requesting port mapping for port %u (%s)...", internal_port, description);
 
@@ -194,7 +194,7 @@ static asciichat_error_t natpmp_try_map_port(uint16_t internal_port, nat_upnp_co
   result = readnatpmpresponseorretry(&natpmp, &response);
   if (result != NATPMP_TRYAGAIN && response.type == NATPMP_RESPTYPE_PUBLICADDRESS) {
     unsigned char *ipv4 = (unsigned char *)&response.pnu.publicaddress.addr;
-    snprintf(external_ip_str, sizeof(external_ip_str), "%u.%u.%u.%u", ipv4[0], ipv4[1], ipv4[2], ipv4[3]);
+    safe_snprintf(external_ip_str, sizeof(external_ip_str), "%u.%u.%u.%u", ipv4[0], ipv4[1], ipv4[2], ipv4[3]);
     SAFE_STRNCPY(ctx->external_ip, external_ip_str, sizeof(ctx->external_ip));
     log_info("NAT-PMP: External IP detected: %s", ctx->external_ip);
   }
@@ -317,7 +317,7 @@ asciichat_error_t nat_upnp_get_address(const nat_upnp_context_t *ctx, char *addr
   }
 
   // Format as "IP:port" (e.g., "203.0.113.42:27224")
-  int written = snprintf(addr, addr_len, "%s:%u", ctx->external_ip, ctx->mapped_port);
+  int written = safe_snprintf(addr, addr_len, "%s:%u", ctx->external_ip, ctx->mapped_port);
 
   if (written < 0 || (size_t)written >= addr_len) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NAT: Address buffer too small");

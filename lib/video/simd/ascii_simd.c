@@ -150,7 +150,7 @@ void str_printf(Str *s, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   char stackbuf[256];
-  int n = vsnprintf(stackbuf, sizeof(stackbuf), fmt, ap);
+  int n = safe_vsnprintf(stackbuf, sizeof(stackbuf), fmt, ap);
   va_end(ap);
   if (n < 0)
     return;
@@ -161,7 +161,7 @@ void str_printf(Str *s, const char *fmt, ...) {
   char *heap;
   heap = SAFE_MALLOC((size_t)n + 1, char *);
   va_start(ap, fmt);
-  (void)vsnprintf(heap, (size_t)n + 1, fmt, ap);
+  (void)safe_vsnprintf(heap, (size_t)n + 1, fmt, ap);
   va_end(ap);
   str_append_bytes(s, heap, (size_t)n);
   SAFE_FREE(heap);

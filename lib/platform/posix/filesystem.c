@@ -159,7 +159,7 @@ int platform_is_directory(const char *path) {
 
 int platform_create_temp_file(char *path_out, size_t path_size, const char *prefix, int *fd) {
   /* Unix temp file creation with mkstemp() - include PID for concurrent process safety */
-  int needed = snprintf(path_out, path_size, "/tmp/%s_%d_XXXXXX", prefix, getpid());
+  int needed = safe_snprintf(path_out, path_size, "/tmp/%s_%d_XXXXXX", prefix, getpid());
   if (needed < 0 || (size_t)needed >= path_size) {
     return -1;
   }
@@ -183,7 +183,7 @@ asciichat_error_t platform_mkdtemp(char *path_out, size_t path_size, const char 
   }
 
   /* Create temp directory template with PID for concurrent process safety */
-  int needed = snprintf(path_out, path_size, "/tmp/%s_%d_XXXXXX", prefix, getpid());
+  int needed = safe_snprintf(path_out, path_size, "/tmp/%s_%d_XXXXXX", prefix, getpid());
   if (needed < 0 || (size_t)needed >= path_size) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Path buffer too small for temporary directory");
   }
@@ -218,7 +218,7 @@ asciichat_error_t platform_rmdir_recursive(const char *path) {
 
     /* Build full path to entry */
     char full_path[PLATFORM_MAX_PATH_LENGTH];
-    int len = snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+    int len = safe_snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
     if (len < 0 || len >= (int)sizeof(full_path)) {
       log_warn("Path too long during directory cleanup: %s/%s", path, entry->d_name);
       continue;
@@ -300,7 +300,7 @@ static char *get_xdg_config_home(void) {
   }
 
   char path[PLATFORM_MAX_PATH_LENGTH];
-  int ret = snprintf(path, sizeof(path), "%s/.config", home);
+  int ret = safe_snprintf(path, sizeof(path), "%s/.config", home);
   if (ret < 0 || (size_t)ret >= sizeof(path)) {
     return NULL; // Path too long
   }
@@ -435,7 +435,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   char full_path[PLATFORM_MAX_PATH_LENGTH];
 
   // Priority 0: XDG_CONFIG_HOME/ascii-chat (highest priority, user config)
-  int ret = snprintf(full_path, sizeof(full_path), "%s/ascii-chat/%s", xdg_config_home, filename);
+  int ret = safe_snprintf(full_path, sizeof(full_path), "%s/ascii-chat/%s", xdg_config_home, filename);
   if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
     if (platform_is_regular_file(full_path)) {
       config_file_result_t *result = &list_out->files[list_out->count];
@@ -451,7 +451,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
 
   // Priorities 1+: XDG_CONFIG_DIRS/ascii-chat
   for (size_t i = 0; i < xdg_config_dirs_count; i++) {
-    ret = snprintf(full_path, sizeof(full_path), "%s/ascii-chat/%s", xdg_config_dirs[i], filename);
+    ret = safe_snprintf(full_path, sizeof(full_path), "%s/ascii-chat/%s", xdg_config_dirs[i], filename);
     if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
       if (platform_is_regular_file(full_path)) {
         config_file_result_t *result = &list_out->files[list_out->count];
@@ -475,7 +475,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   const size_t num_legacy = sizeof(legacy_dirs) / sizeof(legacy_dirs[0]);
 
   for (size_t i = 0; i < num_legacy; i++) {
-    ret = snprintf(full_path, sizeof(full_path), "%s/%s", legacy_dirs[i], filename);
+    ret = safe_snprintf(full_path, sizeof(full_path), "%s/%s", legacy_dirs[i], filename);
     if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
       if (platform_is_regular_file(full_path)) {
         config_file_result_t *result = &list_out->files[list_out->count];

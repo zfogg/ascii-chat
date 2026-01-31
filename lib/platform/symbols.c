@@ -728,11 +728,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
     // Build command with all addresses for this binary
     char cmd[8192];
-    int offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e '%s' ",
-                          symbolizer_cmd, groups[g].binary_path);
+    int offset = safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e '%s' ",
+                               symbolizer_cmd, groups[g].binary_path);
 
     for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
-      int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
+      int n =
+          safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
       if (n > 0) {
         offset += n;
       }
@@ -823,11 +824,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
     // Build command with all addresses for this binary
     char cmd[8192];
-    int offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ", symbolizer_cmd,
-                          escaped_binary_path);
+    int offset = safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ",
+                               symbolizer_cmd, escaped_binary_path);
 
     for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
-      int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
+      int n =
+          safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
       if (n > 0) {
         offset += n;
       }
@@ -879,11 +881,11 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
   // Build command
   char cmd[8192];
-  int offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ",
-                        escaped_symbolizer, escaped_exe_path);
+  int offset = safe_snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ",
+                             escaped_symbolizer, escaped_exe_path);
 
   for (int i = 0; i < size && offset < (int)sizeof(cmd) - 32; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
+    int n = safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
     if (n > 0) {
       offset += n;
     }
@@ -965,7 +967,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
   // Build addr2line command
   char cmd[4096];
-  int offset = snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", escaped_addr2line_cmd, escaped_exe_path);
+  int offset = safe_snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", escaped_addr2line_cmd, escaped_exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     log_error("Failed to build addr2line command");
     return NULL;
@@ -973,7 +975,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
   // Use explicit hex format with 0x prefix since Windows %p doesn't include it
   for (int i = 0; i < size; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
+    int n = safe_snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
     if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
       log_error("Failed to build addr2line command");
       break;

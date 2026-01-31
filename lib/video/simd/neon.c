@@ -266,7 +266,7 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
   const size_t prefix_len = 7;
 
   // Optimized scalar loop with NEON TBL acceleration for RGB->decimal conversion
-  // This eliminates the expensive snprintf() calls which were the real bottleneck
+  // This eliminates the expensive safe_snprintf() calls which were the real bottleneck
   for (int i = 0; i < 16; i++) {
     // Use NEON TBL lookups for RGB decimal conversion (major speedup!)
     const uint8_t *r_entry = &neon_decimal_table_data[r_buf[i] * 4];
