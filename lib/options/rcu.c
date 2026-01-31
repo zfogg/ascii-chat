@@ -8,6 +8,7 @@
 #include "common.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
+#include "platform/init.h"
 
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -44,6 +45,8 @@ static mutex_t g_options_write_mutex;
  * @brief Initialization flag
  */
 static bool g_options_initialized = false;
+// Mutex to protect initialization check (TOCTOU race prevention)
+static static_mutex_t g_options_init_mutex = STATIC_MUTEX_INIT;
 
 /**
  * @brief Static default options used when options_get() is called before initialization
@@ -155,19 +158,25 @@ static void deferred_free_all(void) {
 // ============================================================================
 
 asciichat_error_t options_state_init(void) {
+  static_mutex_lock(&g_options_init_mutex);
+
+  // Double-check under lock: another thread may have initialized while we waited
   if (g_options_initialized) {
+    static_mutex_unlock(&g_options_init_mutex);
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
   }
 
   // Initialize write mutex
   if (mutex_init(&g_options_write_mutex) != 0) {
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize options write mutex");
   }
 
   // Initialize deferred free mutex
   if (mutex_init(&g_deferred_free_mutex) != 0) {
     mutex_destroy(&g_options_write_mutex);
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize deferred free mutex");
   }
 
@@ -176,6 +185,7 @@ asciichat_error_t options_state_init(void) {
   if (!initial_opts) {
     mutex_destroy(&g_options_write_mutex);
     mutex_destroy(&g_deferred_free_mutex);
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
   }
 
@@ -186,6 +196,7 @@ asciichat_error_t options_state_init(void) {
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);
 
   g_options_initialized = true;
+  static_mutex_unlock(&g_options_init_mutex);
   log_debug("Options state initialized with RCU pattern");
 
   return ASCIICHAT_OK;
@@ -196,9 +207,13 @@ asciichat_error_t options_state_set(const options_t *opts) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "opts is NULL");
   }
 
+  // Check initialization flag under lock to prevent TOCTOU race
+  static_mutex_lock(&g_options_init_mutex);
   if (!g_options_initialized) {
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized (call options_state_init first)");
   }
+  static_mutex_unlock(&g_options_init_mutex);
 
   // Get current struct (should be the initial zero-initialized one during startup)
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -213,9 +228,14 @@ asciichat_error_t options_state_set(const options_t *opts) {
 }
 
 void options_state_shutdown(void) {
+  // Check and clear initialization flag under lock
+  static_mutex_lock(&g_options_init_mutex);
   if (!g_options_initialized) {
+    static_mutex_unlock(&g_options_init_mutex);
     return;
   }
+  g_options_initialized = false; // Clear flag first to prevent new operations
+  static_mutex_unlock(&g_options_init_mutex);
 
   // Get current options pointer
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -233,7 +253,6 @@ void options_state_shutdown(void) {
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
-  g_options_initialized = false;
   log_debug("Options state shutdown complete");
 }
 
