@@ -1265,6 +1265,11 @@ const char *log_level_color(log_color_t color) {
  * ============================================================================ */
 
 void log_init_colors(void) {
+  /* Skip color initialization during terminal detection to avoid mutex deadlock */
+  if (g_terminal_caps_detecting) {
+    return;
+  }
+
   if (!g_colors_mutex_initialized) {
     mutex_init(&g_colors_mutex);
     g_colors_mutex_initialized = true;

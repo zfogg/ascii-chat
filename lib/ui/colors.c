@@ -230,8 +230,12 @@ asciichat_error_t colors_init(void) {
     return ASCIICHAT_OK;
   }
 
-  /* Initialize mutex */
-  mutex_init(&g_colors_mutex);
+  /* Initialize mutex - only do this once */
+  static bool mutex_initialized = false;
+  if (!mutex_initialized) {
+    mutex_init(&g_colors_mutex);
+    mutex_initialized = true;
+  }
 
   /* Load default scheme */
   const color_scheme_t *pastel = find_builtin_scheme("pastel");
