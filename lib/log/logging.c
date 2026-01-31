@@ -934,9 +934,20 @@ void log_plain_msg(const char *fmt, ...) {
   if (log_mmap_is_active()) {
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
-    // Write to file (atomic write syscall)
+    // Write to file with headers (atomic write syscall)
     int file_fd = atomic_load(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      // Add header with timestamp and log level to file output
+      char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+      get_current_time_formatted(time_buf);
+
+      char header_buffer[512];
+      int header_len =
+          format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, NULL, 0, NULL, false, false);
+
+      if (header_len > 0) {
+        write_to_log_file_atomic(header_buffer, header_len);
+      }
       write_to_log_file_atomic(log_buffer, msg_len);
       write_to_log_file_atomic("\n", 1);
     }
@@ -982,9 +993,20 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   if (log_mmap_is_active()) {
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
-    // Write to file (atomic write syscall)
+    // Write to file with headers (atomic write syscall)
     int file_fd = atomic_load(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      // Add header with timestamp and log level to file output
+      char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+      get_current_time_formatted(time_buf);
+
+      char header_buffer[512];
+      int header_len =
+          format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, NULL, 0, NULL, false, false);
+
+      if (header_len > 0) {
+        write_to_log_file_atomic(header_buffer, header_len);
+      }
       write_to_log_file_atomic(log_buffer, msg_len);
       if (add_newline) {
         write_to_log_file_atomic("\n", 1);
