@@ -1428,7 +1428,8 @@ void options_builder_add_example(options_builder_t *builder, const char *mode, c
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {.mode = mode, .description = description, .owns_args_memory = owns_args};
+  example_descriptor_t example = {
+      .mode = mode, .description = description, .owns_args_memory = owns_args, .is_utility_command = false};
 
   if (owns_args) {
     // If owning, duplicate the string and track it
@@ -1440,6 +1441,29 @@ void options_builder_add_example(options_builder_t *builder, const char *mode, c
     example.args = owned_args;
     track_owned_string_builder(builder, owned_args);
   } else {
+    example.args = args;
+  }
+
+  builder->examples[builder->num_examples++] = example;
+}
+
+/**
+ * @brief Add an example with utility command support
+ *
+ * Allows marking utility commands (like pbpaste, grep, etc.) that shouldn't
+ * be prepended with program name in help output.
+ */
+void options_builder_add_example_utility(options_builder_t *builder, const char *mode, const char *args,
+                                         const char *description, bool is_utility_command) {
+  if (!builder || !description)
+    return;
+
+  ensure_example_capacity(builder);
+
+  example_descriptor_t example = {
+      .mode = mode, .description = description, .owns_args_memory = false, .is_utility_command = is_utility_command};
+
+  if (args) {
     example.args = args;
   }
 
@@ -2074,7 +2098,10 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     const example_descriptor_t *example = &config->examples[i];
     int len = 0;
 
-    len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+    // Only prepend program name if this is not a utility command
+    if (!example->is_utility_command) {
+      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+    }
 
     if (example->mode) {
       const char *colored_mode = colored_string(LOG_COLOR_FATAL, example->mode);
@@ -2514,55 +2541,113 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     char cmd_buf[BUFFER_SIZE_MEDIUM];
     int len = 0;
 
-    // Start with binary name
-    len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
+    // Only add binary name if this is not a utility command
+    if (!example->is_utility_command) {
+      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
+    }
 
-    // Add mode if present (magenta color)
-    if (example->mode) {
+    // Add mode if present (magenta color), but skip for utility commands
+    if (example->mode && !example->is_utility_command) {
       len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, example->mode));
     }
 
-    // Add args/flags if present (flags=yellow, arguments=green)
+    // Add args/flags if present (flags=yellow, arguments=green, utility programs=white)
     if (example->args) {
-      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
-
-      // Parse args to color flags and arguments separately
-      const char *p = example->args;
-      char current_token[BUFFER_SIZE_SMALL];
-      int token_len = 0;
-
-      while (*p) {
-        if (*p == ' ') {
-          // Flush current token if any
-          if (token_len > 0) {
-            current_token[token_len] = '\0';
-            // Color flags (start with -) yellow, arguments green
-            if (current_token[0] == '-') {
-              len +=
-                  snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_WARN, current_token));
-            } else {
-              len +=
-                  snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ", colored_string(LOG_COLOR_INFO, current_token));
-            }
-            token_len = 0;
-          }
-          p++;
-          // Skip multiple spaces
-          while (*p == ' ')
-            p++;
-        } else {
-          current_token[token_len++] = *p;
-          p++;
-        }
+      // Only add space if we've already added something (binary name or mode)
+      if (len > 0) {
+        len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
       }
 
-      // Flush last token
-      if (token_len > 0) {
-        current_token[token_len] = '\0';
-        if (current_token[0] == '-') {
-          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
-        } else {
-          len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_INFO, current_token));
+      // For utility commands, color everything white except flags (yellow)
+      // For regular examples, color flags yellow and arguments green
+      if (example->is_utility_command) {
+        // Utility command: only flags get yellow, everything else is white
+        const char *p = example->args;
+        char current_token[BUFFER_SIZE_SMALL];
+        int token_len = 0;
+
+        while (*p) {
+          if (*p == ' ' || *p == '|' || *p == '>' || *p == '<') {
+            // Flush current token if any
+            if (token_len > 0) {
+              current_token[token_len] = '\0';
+              // Flags (start with -) are yellow, everything else is white
+              if (current_token[0] == '-') {
+                len +=
+                    snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
+              } else {
+                len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s",
+                                colored_string(LOG_COLOR_RESET, current_token));
+              }
+              token_len = 0;
+            }
+            // Add the separator (space, pipe, redirect, etc) in white
+            if (*p != ' ') {
+              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                              colored_string(LOG_COLOR_RESET, (*p == '|')   ? "|"
+                                                              : (*p == '>') ? ">"
+                                                                            : "<"));
+            } else {
+              len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
+            }
+            p++;
+            // Skip multiple spaces
+            while (*p == ' ')
+              p++;
+          } else {
+            current_token[token_len++] = *p;
+            p++;
+          }
+        }
+
+        // Flush last token
+        if (token_len > 0) {
+          current_token[token_len] = '\0';
+          if (current_token[0] == '-') {
+            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
+          } else {
+            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_RESET, current_token));
+          }
+        }
+      } else {
+        // Regular example: flags=yellow, arguments=green
+        const char *p = example->args;
+        char current_token[BUFFER_SIZE_SMALL];
+        int token_len = 0;
+
+        while (*p) {
+          if (*p == ' ') {
+            // Flush current token if any
+            if (token_len > 0) {
+              current_token[token_len] = '\0';
+              // Color flags (start with -) yellow, arguments green
+              if (current_token[0] == '-') {
+                len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                                colored_string(LOG_COLOR_WARN, current_token));
+              } else {
+                len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s ",
+                                colored_string(LOG_COLOR_INFO, current_token));
+              }
+              token_len = 0;
+            }
+            p++;
+            // Skip multiple spaces
+            while (*p == ' ')
+              p++;
+          } else {
+            current_token[token_len++] = *p;
+            p++;
+          }
+        }
+
+        // Flush last token
+        if (token_len > 0) {
+          current_token[token_len] = '\0';
+          if (current_token[0] == '-') {
+            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_WARN, current_token));
+          } else {
+            len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", colored_string(LOG_COLOR_INFO, current_token));
+          }
         }
       }
 
