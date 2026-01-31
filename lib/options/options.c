@@ -943,59 +943,14 @@ asciichat_error_t options_init(int argc, char **argv) {
         options_config_destroy(unified_config);
       }
 
-      // Handle --config-create: create default config file or output to stdout
-      // If a path was provided, write to that file (error if it fails)
-      // If no path was provided, write to stdout
-      asciichat_error_t result = config_create_default(config_create_path, &opts);
-      if (result != ASCIICHAT_OK) {
-        asciichat_error_context_t err_ctx;
-        if (HAS_ERRNO(&err_ctx)) {
-          log_error("Error creating config: %s", err_ctx.context_message);
-        } else if (config_create_path) {
-          log_error("Error: Failed to create config file at %s", config_create_path);
-        } else {
-          log_error("Error: Failed to generate config");
-        }
-        (void)fflush(stderr); // Flush stderr before exiting
-        exit(result);
-      }
-      if (config_create_path) {
-        // File was created successfully
-        log_plain("Created default config file at: %s", config_create_path);
-        (void)fflush(stdout);
-      }
-      // If config_create_path was NULL, config was written to stdout, so no message needed
-      exit(0);
+      // Call action handler which handles all output and prompts properly
+      action_create_config(config_create_path);
+      // action_create_config() calls exit(), so we don't reach here
     }
     if (create_manpage) {
-      // Handle --man-page-create: generate merged man page template to stdout or file
-      // Generate merged man page from embedded or filesystem resources
-      // Resources are loaded automatically based on build type.
-      const options_config_t *config = options_preset_unified(NULL, NULL);
-      if (!config) {
-        log_error("Error: Failed to get binary options config");
-        return ERROR_MEMORY;
-      }
-      // Write merged result to stdout or optional file path
-      asciichat_error_t err = options_config_generate_manpage_merged(config, "ascii-chat", NULL, manpage_create_path,
-                                                                     "Video chat in your terminal");
-      options_config_destroy(config);
-      if (err != ASCIICHAT_OK) {
-        asciichat_error_context_t err_ctx;
-        if (HAS_ERRNO(&err_ctx)) {
-          log_error("%s", err_ctx.context_message);
-        } else {
-          log_error("Error: Failed to generate man page");
-        }
-        return err;
-      }
-      if (manpage_create_path) {
-        log_plain("Man page written to: %s", manpage_create_path);
-      } else {
-        log_plain("Man page written to stdout");
-      }
-      (void)fflush(stdout); // Flush stdout before exiting to ensure output is printed
-      exit(0);
+      // Call action handler which handles all output and prompts properly
+      action_create_manpage(manpage_create_path);
+      // action_create_manpage() calls exit(), so we don't reach here
     }
   }
 
