@@ -376,7 +376,12 @@ int mirror_main(void) {
 
   log_debug("mirror_main: render loop complete, starting shutdown sequence");
 
-  // Cleanup - must happen BEFORE disabling terminal output
+  // Terminate PortAudio FIRST, BEFORE closing streams and destroying audio context
+  // This ensures device resources are freed in the correct order
+  log_debug("mirror_main: terminating PortAudio device resources");
+  audio_terminate_portaudio_final();
+
+  // Cleanup - must happen AFTER PortAudio is terminated
   // Stop audio FIRST to prevent callback from accessing media_source
   log_debug("mirror_main: starting cleanup, audio_ctx=%p", (void *)audio_ctx);
   if (audio_ctx) {

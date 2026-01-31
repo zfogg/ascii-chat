@@ -63,6 +63,9 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // First initialization - call Pa_Initialize() exactly once
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
+  fprintf(stderr, "[PORTAUDIO_INIT] Calling Pa_Initialize() (init_count will be %d)\n", g_pa_init_count + 1);
+  fflush(stderr);
+
   platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
   g_pa_init_count++;
@@ -70,6 +73,10 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
 
   // Restore stderr before checking errors
   platform_stderr_restore(stderr_handle);
+
+  fprintf(stderr, "[PORTAUDIO_INIT] Pa_Initialize() returned: %s (err=%d, init_count=%d)\n", Pa_GetErrorText(err), err,
+          g_pa_init_count);
+  fflush(stderr);
 
   if (err != paNoError) {
     static_mutex_unlock(&g_pa_refcount_mutex);
@@ -83,31 +90,46 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
 }
 
 /**
- * @brief Release PortAudio, terminating when refcount reaches zero
+ * @brief Release PortAudio reference count
  *
  * Counterpart to audio_ensure_portaudio_initialized().
- * Decrements refcount and calls Pa_Terminate() only when it reaches zero.
+ * Decrements refcount. Note: Pa_Terminate() is NOT called here,
+ * use audio_terminate_portaudio_final() when you want to actually
+ * terminate PortAudio and free device resources.
  */
 static void audio_release_portaudio(void) {
   static_mutex_lock(&g_pa_refcount_mutex);
 
   if (g_pa_init_refcount > 0) {
     g_pa_init_refcount--;
-
-    if (g_pa_init_refcount == 0) {
-      // NOTE: Don't call Pa_Terminate() here - ALSA's lazy initialization allocates device structures
-      // on Pa_Initialize() that aren't freed on Pa_Terminate(). Keep Pa_Initialize() active across
-      // the entire program lifetime instead. This avoids the 24KB ALSA memory leak from repeated
-      // Pa_Initialize/Pa_Terminate cycles.
-      //
-      // If we need Pa_Terminate() at process exit, register an atexit() handler instead.
-      static_mutex_unlock(&g_pa_refcount_mutex);
-      return;
-    }
+    log_debug("PortAudio refcount decremented to %u", g_pa_init_refcount);
   } else {
-    fprintf(stderr, "WARNING: audio_release_portaudio() called but refcount is already 0\n");
+    log_warn("audio_release_portaudio() called but refcount is already 0");
+  }
+
+  static_mutex_unlock(&g_pa_refcount_mutex);
+}
+
+/**
+ * @brief Terminate PortAudio and free all device resources
+ *
+ * This must be called to actually free device structures allocated by ALSA/libpulse.
+ * It should be called AFTER all audio contexts are destroyed and session cleanup is complete.
+ */
+void audio_terminate_portaudio_final(void) {
+  static_mutex_lock(&g_pa_refcount_mutex);
+
+  if (g_pa_init_refcount == 0 && g_pa_init_count > 0 && g_pa_terminate_count == 0) {
+    fprintf(stderr, "[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio\n");
+    fflush(stderr);
+
+    PaError err = Pa_Terminate();
+    g_pa_terminate_count++;
+
+    fprintf(stderr, "[PORTAUDIO_TERM] Pa_Terminate() returned: %s\n", Pa_GetErrorText(err));
     fflush(stderr);
   }
+
   static_mutex_unlock(&g_pa_refcount_mutex);
 }
 
@@ -1054,29 +1076,13 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize audio context mutex");
   }
 
-  // Initialize PortAudio (centralized to prevent duplicate initialization)
-  log_debug("audio_init: calling audio_ensure_portaudio_initialized");
-  asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
-  log_debug("audio_init: audio_ensure_portaudio_initialized returned %d", pa_result);
-  if (pa_result != ASCIICHAT_OK) {
-    mutex_destroy(&ctx->state_mutex);
-    return pa_result;
-  }
-
-  // NOTE: Device enumeration removed to avoid ALSA lazy-initialization allocations
+  // NOTE: PortAudio initialization deferred to audio_start_duplex() where streams are actually opened
+  // This avoids Pa_Initialize() overhead for contexts that might not start duplex
+  // and prevents premature ALSA device allocation and memory leaks
 
   // Create capture buffer WITHOUT jitter buffering (PortAudio writes directly from microphone)
   ctx->capture_buffer = audio_ring_buffer_create_for_capture();
   if (!ctx->capture_buffer) {
-    // Decrement refcount and terminate if this was the only context
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create capture buffer");
   }
@@ -1084,15 +1090,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   ctx->playback_buffer = audio_ring_buffer_create();
   if (!ctx->playback_buffer) {
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    // Decrement refcount and terminate if this was the only context
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create playback buffer");
   }
@@ -1102,14 +1099,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   if (!ctx->raw_capture_rb) {
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create raw capture buffer");
   }
@@ -1119,14 +1108,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create raw render buffer");
   }
@@ -1137,14 +1118,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create processed playback buffer");
   }
@@ -1156,14 +1129,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker mutex");
   }
@@ -1175,14 +1141,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker condition variable");
   }
@@ -1197,14 +1156,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker capture batch buffer");
   }
@@ -1219,14 +1171,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker render batch buffer");
   }
@@ -1242,14 +1187,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    static_mutex_lock(&g_pa_refcount_mutex);
-    if (g_pa_init_refcount > 0) {
-      g_pa_init_refcount--;
-      if (g_pa_init_refcount == 0) {
-        Pa_Terminate();
-      }
-    }
-    static_mutex_unlock(&g_pa_refcount_mutex);
+    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker playback batch buffer");
   }
@@ -1347,6 +1285,15 @@ void audio_flush_playback_buffers(audio_context_t *ctx) {
 asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
+  }
+
+  // Initialize PortAudio here, when we actually need to open streams
+  // This defers Pa_Initialize() until necessary, avoiding premature ALSA allocation
+  log_debug("audio_start_duplex: calling audio_ensure_portaudio_initialized");
+  asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
+  log_debug("audio_start_duplex: audio_ensure_portaudio_initialized returned %d", pa_result);
+  if (pa_result != ASCIICHAT_OK) {
+    return pa_result;
   }
 
   mutex_lock(&ctx->state_mutex);
