@@ -169,7 +169,6 @@ function(ascii_defer_prepare)
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT ""
             VERBATIM
-            OUTPUT_QUIET
         )
         list(APPEND _all_generated_outputs "${_gen_path}")
     endforeach()
