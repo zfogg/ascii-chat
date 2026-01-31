@@ -753,6 +753,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   bool create_manpage = false;
   bool has_action = false; // Track if any action flag is present
   const char *config_create_path = NULL;
+  const char *manpage_create_path = NULL;
 
   // ========================================================================
   // STAGE 1A: Quick scan for action flags FIRST (they bypass mode detection)
@@ -820,16 +821,31 @@ asciichat_error_t options_init(int argc, char **argv) {
         }
         break;
       }
-      if (strcmp(argv[i], "--create-man-page") == 0) {
+      if (strcmp(argv[i], "--man-page-create") == 0) {
         create_manpage = true;
         has_action = true;
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          manpage_create_path = argv[i + 1];
+          // Consume the argument
+          i++;
+        }
         break;
       }
       if (strcmp(argv[i], "--completions") == 0) {
         has_action = true;
         // Handle --completions: generate shell completion scripts
         if (i + 1 < argc && argv[i + 1][0] != '-') {
-          action_completions(argv[i + 1]);
+          const char *shell_name = argv[i + 1];
+          i++; // Consume shell name
+
+          // Check for optional output file
+          const char *output_file = NULL;
+          if (i + 1 < argc && argv[i + 1][0] != '-') {
+            output_file = argv[i + 1];
+            i++; // Consume output file
+          }
+
+          action_completions(shell_name, output_file);
           // action_completions() calls exit(), so we don't reach here
         } else {
           log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
@@ -952,19 +968,17 @@ asciichat_error_t options_init(int argc, char **argv) {
       exit(0);
     }
     if (create_manpage) {
-      // Handle --create-man-page: generate merged man page template to stdout
-      // First arg: template file path (.1.in), second arg: content file path (.1.content)
+      // Handle --man-page-create: generate merged man page template to stdout or file
       // Generate merged man page from embedded or filesystem resources
-      // Note: Template and content file parameters are no longer supported.
       // Resources are loaded automatically based on build type.
       const options_config_t *config = options_preset_unified(NULL, NULL);
       if (!config) {
         log_error("Error: Failed to get binary options config");
         return ERROR_MEMORY;
       }
-      // Write merged result to stdout
-      asciichat_error_t err =
-          options_config_generate_manpage_merged(config, "ascii-chat", NULL, NULL, "Video chat in your terminal");
+      // Write merged result to stdout or optional file path
+      asciichat_error_t err = options_config_generate_manpage_merged(config, "ascii-chat", NULL, manpage_create_path,
+                                                                     "Video chat in your terminal");
       options_config_destroy(config);
       if (err != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
@@ -974,6 +988,11 @@ asciichat_error_t options_init(int argc, char **argv) {
           log_error("Error: Failed to generate man page");
         }
         return err;
+      }
+      if (manpage_create_path) {
+        log_plain("Man page written to: %s", manpage_create_path);
+      } else {
+        log_plain("Man page written to stdout");
       }
       (void)fflush(stdout); // Flush stdout before exiting to ensure output is printed
       exit(0);

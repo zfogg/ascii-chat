@@ -24,6 +24,8 @@
 #include "builder.h"
 #include "common.h"
 #include "log/logging.h"
+#include "platform/question.h"
+#include "platform/stat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -252,7 +254,22 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
   FILE *f = NULL;
   bool should_close = false;
 
-  if (output_path) {
+  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
+    // Check if file already exists and prompt for confirmation
+    struct stat st;
+    if (stat(output_path, &st) == 0) {
+      // File exists - ask user if they want to overwrite
+      log_plain("Man page file already exists: %s", output_path);
+
+      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      if (!overwrite) {
+        log_plain("Man page generation cancelled.");
+        return SET_ERRNO(ERROR_FILE_OPERATION, "User cancelled overwrite");
+      }
+
+      log_plain("Overwriting existing man page file...");
+    }
+
     f = fopen(output_path, "w");
     if (!f) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open output file: %s", output_path);

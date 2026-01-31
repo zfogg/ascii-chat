@@ -92,27 +92,37 @@ void action_help_discovery(void);
  * @brief Generate man page template from options builder
  *
  * Generates a merged man page template preserving manual content.
- * Outputs to share/man/man1/ascii-chat.1.in or specified path.
+ * Outputs to stdout by default, or to specified file path if provided.
+ * Prompts for overwrite confirmation if file already exists.
  * Exits with code 0 on success, 1 on error.
+ *
+ * @param output_path Optional file path to write man page to. NULL or empty string = stdout.
  */
-void action_create_manpage(void);
+void action_create_manpage(const char *output_path);
 
 /**
  * @brief Create default configuration file and exit
  *
- * Creates a default configuration file at the default location
- * (or specified path if extended). Exits with code 0 on success, 1 on error.
+ * Creates a default configuration file. Outputs to stdout by default,
+ * or to specified file path if provided.
+ * Prompts for overwrite confirmation if file already exists.
+ * Exits with code 0 on success, 1 on error.
+ *
+ * @param output_path Optional file path to write config to. NULL or empty string = stdout.
  */
-void action_create_config(void);
+void action_create_config(const char *output_path);
 
 /**
- * @brief Generate shell completions and output to stdout
+ * @brief Generate shell completions and output to stdout or file
  *
  * Generates shell completion script for the specified shell (bash, fish, zsh, powershell).
  * Output is dynamically generated from the options registry, ensuring completions are
  * always in sync with current options.
+ * Outputs to stdout by default, or to specified file path if provided.
+ * Prompts for overwrite confirmation if file already exists.
  * Exits with code 0 on success, 1 on error.
  *
  * @param shell_name Shell name: "bash", "fish", "zsh", or "powershell"
+ * @param output_path Optional file path to write completions to. NULL or empty string = stdout.
  */
-void action_completions(const char *shell_name);
+void action_completions(const char *shell_name, const char *output_path);

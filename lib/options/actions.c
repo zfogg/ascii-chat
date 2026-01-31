@@ -18,6 +18,8 @@
 #include "options/config.h"
 #include "options/completions/completions.h"
 #include "platform/terminal.h"
+#include "platform/question.h"
+#include "platform/stat.h"
 #include "version.h"
 #include "video/webcam/webcam.h"
 #include "audio/audio.h"
@@ -288,7 +290,7 @@ void action_help_discovery(void) {
 // Man Page Generation Action
 // ============================================================================
 
-void action_create_manpage(void) {
+void action_create_manpage(const char *output_path) {
   // Get binary-level config
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
@@ -296,12 +298,22 @@ void action_create_manpage(void) {
     exit(ERROR_FILE_OPERATION);
   }
 
+  // Determine output path: use provided path, or NULL for stdout
+  const char *path_to_use = NULL;
+  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
+    // User provided explicit path - use it
+    path_to_use = output_path;
+  } else {
+    // No path or "-" means stdout
+    path_to_use = NULL;
+  }
+
   // Generate merged man page from embedded or filesystem resources
   // Resources are loaded automatically based on build type:
   // - Production (Release): From embedded binary data
   // - Development (Debug): From filesystem files
   asciichat_error_t err =
-      options_config_generate_manpage_merged(config, "ascii-chat", NULL, NULL, "Video chat in your terminal");
+      options_config_generate_manpage_merged(config, "ascii-chat", NULL, path_to_use, "Video chat in your terminal");
 
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
@@ -313,6 +325,11 @@ void action_create_manpage(void) {
     exit(ERROR_FILE_OPERATION);
   }
 
+  if (path_to_use) {
+    log_plain_stderr("Man page written to: %s", path_to_use);
+  } else {
+    log_plain_stderr("Man page written to stdout");
+  }
   exit(0);
 }
 
@@ -320,7 +337,7 @@ void action_create_manpage(void) {
 // Config Creation Action
 // ============================================================================
 
-void action_create_config(void) {
+void action_create_config(const char *output_path) {
   // Get binary-level config to access options
   const options_config_t *config = options_preset_unified(NULL, NULL);
   if (!config) {
@@ -328,20 +345,17 @@ void action_create_config(void) {
     exit(ERROR_CONFIG);
   }
 
-  // Parse just to get the config path if provided
-  // For now, use default path (can be extended to read from argv if needed)
   options_t opts = {0};
-  char config_path[PLATFORM_MAX_PATH_LENGTH] = {0};
+  const char *config_path = NULL;
 
-  // Try to get config path from options (if --config was set)
-  // For --config-create, we'll use default path unless extended
-  char *config_dir = get_config_dir();
-  if (!config_dir) {
-    log_plain_stderr("Error: Failed to determine default config directory");
-    exit(ERROR_CONFIG);
+  // Determine output path: use provided path, or NULL for stdout
+  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
+    // User provided explicit path - use it as-is
+    config_path = output_path;
+  } else {
+    // No path or "-" means stdout
+    config_path = NULL;
   }
-  snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
-  SAFE_FREE(config_dir);
 
   // Create config with default options
   asciichat_error_t result = config_create_default(config_path, &opts);
@@ -350,12 +364,16 @@ void action_create_config(void) {
     if (HAS_ERRNO(&err_ctx)) {
       log_plain_stderr("Error creating config: %s", err_ctx.context_message);
     } else {
-      log_plain_stderr("Error: Failed to create config file at %s", config_path);
+      log_plain_stderr("Error: Failed to create config file");
     }
     exit(ERROR_CONFIG);
   }
 
-  log_plain_stderr("Created default config file at: %s", config_path);
+  if (config_path) {
+    log_plain_stderr("Created default config file at: %s", config_path);
+  } else {
+    log_plain_stderr("Config written to stdout");
+  }
   exit(0);
 }
 
@@ -363,7 +381,7 @@ void action_create_config(void) {
 // Shell Completions Action
 // ============================================================================
 
-void action_completions(const char *shell_name) {
+void action_completions(const char *shell_name, const char *output_path) {
   if (!shell_name || strlen(shell_name) == 0) {
     log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
     exit(ERROR_USAGE);
@@ -375,11 +393,49 @@ void action_completions(const char *shell_name) {
     exit(ERROR_USAGE);
   }
 
-  asciichat_error_t result = completions_generate_for_shell(format, stdout);
+  FILE *output = stdout;
+  bool should_close = false;
+
+  // Determine output: use provided path if given and not "-", otherwise stdout
+  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
+    // Check if file already exists and prompt for confirmation
+    struct stat st;
+    if (stat(output_path, &st) == 0) {
+      // File exists - ask user if they want to overwrite
+      log_plain("Completions file already exists: %s", output_path);
+
+      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      if (!overwrite) {
+        log_plain("Completions generation cancelled.");
+        exit(0);
+      }
+
+      log_plain("Overwriting existing completions file...");
+    }
+
+    output = fopen(output_path, "w");
+    if (!output) {
+      log_plain_stderr("Error: Failed to open %s for writing", output_path);
+      exit(ERROR_FILE_OPERATION);
+    }
+    should_close = true;
+  }
+
+  asciichat_error_t result = completions_generate_for_shell(format, output);
+
+  if (should_close) {
+    fclose(output);
+  }
+
   if (result != ASCIICHAT_OK) {
     log_plain_stderr("Error: Failed to generate %s completions", completions_get_shell_name(format));
     exit(ERROR_USAGE);
   }
 
+  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
+    log_plain_stderr("Completions written to: %s", output_path);
+  } else {
+    log_plain_stderr("Completions written to stdout");
+  }
   exit(0);
 }

@@ -408,6 +408,37 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
     }
   }
 
+  // For callback options storing numeric types (double/float), format them as numbers
+  if (desc->type == OPTION_TYPE_CALLBACK && desc->default_value && desc->metadata.enum_values == NULL) {
+    // Check if this is a numeric callback by looking for numeric_range metadata
+    // Numeric callbacks have min/max range constraints set (max != 0 indicates a range was set)
+    if (desc->metadata.numeric_range.max != 0 || desc->metadata.numeric_range.min != 0) {
+      // This is a numeric callback option - extract and format the double value
+      double default_double = 0.0;
+      memcpy(&default_double, desc->default_value, sizeof(double));
+
+      // Format with appropriate precision (remove trailing zeros for integers)
+      char formatted[32];
+      snprintf(formatted, sizeof(formatted), "%.1f", default_double);
+
+      // Remove trailing zeros after decimal point
+      char *dot = strchr(formatted, '.');
+      if (dot) {
+        char *end = formatted + strlen(formatted) - 1;
+        while (end > dot && *end == '0') {
+          end--;
+        }
+        if (*end == '.') {
+          *end = '\0';
+        } else {
+          *(end + 1) = '\0';
+        }
+      }
+
+      return snprintf(buf, bufsize, "%s", formatted);
+    }
+  }
+
   return options_format_default_value(desc->type, desc->default_value, buf, bufsize);
 }
 
