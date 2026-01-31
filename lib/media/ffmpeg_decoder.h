@@ -160,6 +160,18 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder);
  */
 void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder);
 
+/**
+ * @brief Check if background frame prefetching thread is running
+ * @param decoder Decoder (must not be NULL)
+ * @return true if prefetch thread is running, false otherwise
+ *
+ * Utility function to check if the prefetch thread is currently active.
+ * Used during seeking to determine if thread needs to be stopped/restarted.
+ *
+ * @ingroup media
+ */
+bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder);
+
 /* ============================================================================
  * Video Operations
  * ============================================================================ */

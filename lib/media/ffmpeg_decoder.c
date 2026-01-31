@@ -842,6 +842,13 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
   decoder->prefetch_thread_running = false;
 }
 
+bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder) {
+  if (!decoder) {
+    return false;
+  }
+  return decoder->prefetch_thread_running;
+}
+
 bool ffmpeg_decoder_has_video(ffmpeg_decoder_t *decoder) {
   return decoder && decoder->video_stream_idx >= 0;
 }
