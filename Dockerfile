@@ -71,12 +71,13 @@ COPY . /build/
 RUN git submodule init && git submodule update --recursive
 
 # Build ascii-chat in Release mode and install to /usr/local
-# Disable defer tool (architecture compatibility issues in Docker)
+# Disable defer tool and analyzers (to speed up emulated builds)
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DCMAKE_C_COMPILER=clang \
     -DCMAKE_CXX_COMPILER=clang++ \
     -DASCIICHAT_ENABLE_DEFER_TRANSFORM=OFF \
+    -DASCIICHAT_ENABLE_ANALYZERS=OFF \
     -GNinja && \
     cmake --build build -j$(nproc) && \
     cmake --install build
