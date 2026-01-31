@@ -124,14 +124,15 @@ Requires UTF-8 support (\fB\-\-utf8\fR).
 .SH CONFIGURATION
 Configuration can be stored in a TOML file at the default location
 (see FILES section) or specified via \fB\-\-config\fR.
-.PP
-.B Configuration Priority:
+.TP
+.B Configuration Priority
 .RS
 Command-line arguments override config file values.
 Config file values override default values.
 .RE
 .PP
-.B Configuration Keys and Sections:
+.TP
+.B Configuration Keys and Sections
 .RS
 Configuration keys are command-line option names with dashes converted to underscores.
 The TOML section name is determined by the flag category shown in \fBasciichat \-\-help\fR.
@@ -145,7 +146,8 @@ note its section heading, convert that to lowercase for the TOML section, and re
 dashes with underscores in the flag name for the key.
 .RE
 .PP
-.B Conflicting Options:
+.TP
+.B Conflicting Options
 .RS
 Some configuration options conflict with each other and will cause the
 config file to fail loading if set simultaneously. Common conflicts include:
@@ -160,7 +162,8 @@ If your configuration file fails to load, check the error message for
 conflicting option details and remove one of the conflicting options.
 .RE
 .PP
-.B Security Warning:
+.TP
+.B Security Warning
 While passwords can be stored in the config file, this is discouraged.
 Use \fB\-\-password\fR interactively or environment variables instead.
 Secure your config file permissions if it contains sensitive data.
