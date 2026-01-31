@@ -208,6 +208,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                               "Stream from local video file (supports mp4, mkv, webm, mov, etc)", false);
   options_builder_add_example(b, "mirror", "--file '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')", false);
+  options_builder_add_example_utility(b, "mirror", "cat video.avi | ascii-chat mirror -f '-' -l -s 00:30",
+                                      "Stream .avi from stdin, looped, seeking to 00:30", true);
   options_builder_add_example(b, "mirror", "--palette-chars '@%#*+=-:. '", "View with custom ASCII palette characters",
                               false);
   options_builder_add_example(b, "mirror", "--file video.mov --seek 22:10",
@@ -216,7 +218,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                               "Print a single frame from a YouTube video at exactly 5:12 and exit", false);
   options_builder_add_example(b, "mirror", "-S -D 0 | tee frame.txt | pbcopy",
                               "Capture single ASCII frame to clipboard (macOS) and file", false);
-  options_builder_add_example(b, "mirror", NULL, "pbpaste | cat - (to view frame from clipboard on macOS)", false);
+  options_builder_add_example_utility(b, "mirror", "pbpaste | cat -", "View ASCII frame from clipboard (macOS)", true);
 
   // Add examples for discovery-service mode
   options_builder_add_example(b, "discovery-service", NULL, "Start on localhost", false);
