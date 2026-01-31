@@ -48,8 +48,8 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
     return "global";
   }
 
-  option_mode_bitmask_t user_modes_mask =
-      (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) | (1 << MODE_DISCOVERY_SERVICE);
+  option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
+                                          (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY);
   if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
     return "all modes";
   }
@@ -58,6 +58,9 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   mode_str[0] = '\0';
   int pos = 0;
 
+  if (mode_bitmask & (1 << MODE_DISCOVERY)) {
+    pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sascii-chat", pos > 0 ? ", " : "");
+  }
   if (mode_bitmask & (1 << MODE_CLIENT)) {
     pos += snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sclient", pos > 0 ? ", " : "");
   }
