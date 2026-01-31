@@ -497,11 +497,11 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
               build_stack_trace_message(stack_buffer, sizeof(stack_buffer), &contextCopy, hProcess);
             } __except (EXCEPTION_EXECUTE_HANDLER) {
               // If building the stack trace causes an exception, use minimal output
-              (void)safe_snprintf(stack_buffer, sizeof(stack_buffer),
-                                  "Stack trace generation failed (exception in trace builder)\n");
+              safe_snprintf(stack_buffer, sizeof(stack_buffer),
+                            "Stack trace generation failed (exception in trace builder)\n");
             }
           } else {
-            (void)safe_snprintf(stack_buffer, sizeof(stack_buffer), "Exception context is invalid or corrupted\n");
+            safe_snprintf(stack_buffer, sizeof(stack_buffer), "Exception context is invalid or corrupted\n");
           }
 
           // Try to print the stack trace - even this could potentially fail

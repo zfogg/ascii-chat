@@ -51,7 +51,7 @@ void action_list_webcams(void) {
     log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Webcam Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
-      (void)safe_snprintf(index_str, sizeof(index_str), "%u", devices[i].index);
+      safe_snprintf(index_str, sizeof(index_str), "%u", devices[i].index);
       log_plain_stderr("  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
     }
   }
@@ -80,16 +80,16 @@ void action_list_microphones(void) {
     log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Microphone Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
-      (void)safe_snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
+      safe_snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
       char device_line[512];
       char *line_ptr = device_line;
       int remaining = sizeof(device_line);
-      (void)safe_snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      safe_snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
       if (devices[i].is_default_input) {
         size_t len = strlen(device_line);
         line_ptr = device_line + len;
         remaining = sizeof(device_line) - (int)len;
-        (void)safe_snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
+        safe_snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
       log_plain_stderr("%s", device_line);
     }
@@ -115,16 +115,16 @@ void action_list_speakers(void) {
     log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Speaker Devices:"));
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
-      (void)safe_snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
+      safe_snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
       char device_line[512];
       char *line_ptr = device_line;
       int remaining = sizeof(device_line);
-      (void)safe_snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      safe_snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
       if (devices[i].is_default_output) {
         size_t len = strlen(device_line);
         line_ptr = device_line + len;
         remaining = sizeof(device_line) - (int)len;
-        (void)safe_snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
+        safe_snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
       }
       log_plain_stderr("%s", device_line);
     }
@@ -184,7 +184,7 @@ void action_show_capabilities(void) {
 
   // Print Max Colors
   char max_colors_str[32];
-  (void)safe_snprintf(max_colors_str, sizeof(max_colors_str), "%u", caps.color_count);
+  safe_snprintf(max_colors_str, sizeof(max_colors_str), "%u", caps.color_count);
   PRINT_CAP_LINE(label_max_colors, max_colors_str, LOG_COLOR_DEV);
 
   // Print UTF-8 Support
@@ -213,7 +213,7 @@ void action_show_capabilities(void) {
 
   // Print Capabilities Bitmask
   char bitmask_str[32];
-  (void)safe_snprintf(bitmask_str, sizeof(bitmask_str), "0x%08x", caps.capabilities);
+  safe_snprintf(bitmask_str, sizeof(bitmask_str), "0x%08x", caps.capabilities);
   PRINT_CAP_LINE(label_bitmask, bitmask_str, LOG_COLOR_GREY);
 
 #undef PRINT_CAP_LINE

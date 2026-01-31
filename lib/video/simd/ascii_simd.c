@@ -161,7 +161,7 @@ void str_printf(Str *s, const char *fmt, ...) {
   char *heap;
   heap = SAFE_MALLOC((size_t)n + 1, char *);
   va_start(ap, fmt);
-  (void)safe_vsnprintf(heap, (size_t)n + 1, fmt, ap);
+  safe_vsnprintf(heap, (size_t)n + 1, fmt, ap);
   va_end(ap);
   str_append_bytes(s, heap, (size_t)n);
   SAFE_FREE(heap);

@@ -172,7 +172,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   if (format) {
     va_list args;
     va_start(args, format);
-    (void)safe_vsnprintf(reason, sizeof(reason), format, args);
+    safe_vsnprintf(reason, sizeof(reason), format, args);
     va_end(args);
   } else {
     SAFE_STRNCPY(reason, "Protocol violation", sizeof(reason));
