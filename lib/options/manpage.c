@@ -342,16 +342,37 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       // Do NOT write the MERGE-START marker line - it's an internal control marker
       // The content will be generated when MERGE-END is encountered
 
-      // For ENVIRONMENT MERGE sections, check if next line is .SH header and preserve it
+      // For ENVIRONMENT MERGE sections, find and preserve the .SH header
+      // (skipping over any marker comment lines that might be in between)
       if (strcmp(current_merge_section, "ENVIRONMENT") == 0) {
-        const char *next_line = line_end + 1;
-        const char *next_line_end = strchr(next_line, '\n');
-        if (next_line_end && strncmp(next_line, ".SH ", 4) == 0) {
-          // Write the .SH header line
-          size_t next_len = (size_t)(next_line_end - next_line);
-          fwrite(next_line, 1, next_len + 1, f);
-          p = next_line_end + 1;
-          continue;
+        const char *search_line = line_end + 1;
+        bool found_header = false;
+        while (*search_line && !found_header) {
+          const char *search_line_end = strchr(search_line, '\n');
+          if (!search_line_end)
+            break;
+
+          // Check if this is the .SH header
+          if (strncmp(search_line, ".SH ", 4) == 0) {
+            // Write the .SH header line
+            size_t header_len = (size_t)(search_line_end - search_line);
+            fwrite(search_line, 1, header_len + 1, f);
+            p = search_line_end + 1;
+            found_header = true;
+            break;
+          }
+
+          // Skip marker comment lines (.\" MANUAL-*, .\" MERGE-*, etc)
+          if (strncmp(search_line, ".\\\" ", 4) == 0) {
+            search_line = search_line_end + 1;
+            continue; // Keep searching
+          }
+
+          // If we hit a non-marker, non-.SH line, stop searching
+          break;
+        }
+        if (found_header) {
+          continue; // Skip the "Skip to next line" at line 359
         }
       }
 
