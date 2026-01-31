@@ -38,12 +38,14 @@ int keyboard_init(void) {
     return 0;
   }
 
-  static_mutex_unlock(&g_keyboard_init_mutex);
+  // CRITICAL: Hold lock for ENTIRE initialization sequence to prevent TOCTOU race.
+  // Multiple threads must not call tcgetattr/tcsetattr/fcntl concurrently.
 
   struct termios new_termios;
 
   // Get current terminal settings
   if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
+    static_mutex_unlock(&g_keyboard_init_mutex);
     log_error("Failed to get terminal attributes");
     return -1;
   }
@@ -60,6 +62,7 @@ int keyboard_init(void) {
 
   // Apply new settings
   if (tcsetattr(STDIN_FILENO, TCSANOW, &new_termios) < 0) {
+    static_mutex_unlock(&g_keyboard_init_mutex);
     log_error("Failed to set terminal attributes");
     return -1;
   }
@@ -69,17 +72,18 @@ int keyboard_init(void) {
   if (flags < 0) {
     // Restore original settings on error
     tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
+    static_mutex_unlock(&g_keyboard_init_mutex);
     return -1;
   }
 
   if (fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) < 0) {
     // Restore original settings on error
     tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
+    static_mutex_unlock(&g_keyboard_init_mutex);
     return -1;
   }
 
-  // Mark as initialized with reference counting
-  static_mutex_lock(&g_keyboard_init_mutex);
+  // Mark as initialized with reference counting (still under lock)
   g_keyboard_init_refcount = 1;
   static_mutex_unlock(&g_keyboard_init_mutex);
 

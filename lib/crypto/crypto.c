@@ -14,9 +14,12 @@
 #include <time.h>
 #include <inttypes.h>
 #include <stdatomic.h>
+#include "platform/init.h"
 
 // Static initialization flag for libsodium (atomic for thread-safe check)
 static _Atomic bool g_libsodium_initialized = false;
+// Mutex to protect libsodium initialization from concurrent calls
+static static_mutex_t g_libsodium_init_mutex = STATIC_MUTEX_INIT;
 
 // Internal packet type constants (for test helper functions only)
 // These are NOT part of the main network protocol - they're used for simple
@@ -32,20 +35,30 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 
 // Initialize libsodium (thread-safe, idempotent)
 static crypto_result_t init_libsodium(void) {
-  // Fast path: if already initialized, return immediately
+  // Fast path (no lock): if already initialized, return immediately
   if (atomic_load(&g_libsodium_initialized)) {
     return CRYPTO_OK;
   }
 
-  // Slow path: attempt initialization
-  // Note: sodium_init() is itself idempotent and thread-safe, but we use
-  // atomic flag to prevent redundant calls from multiple threads
+  // Slow path: use mutex to serialize initialization and prevent concurrent sodium_init() calls
+  // This ensures exactly ONE thread calls sodium_init(), others wait and see initialized=true
+  static_mutex_lock(&g_libsodium_init_mutex);
+
+  // Double-check under lock: another thread may have initialized while we waited
+  if (atomic_load(&g_libsodium_initialized)) {
+    static_mutex_unlock(&g_libsodium_init_mutex);
+    return CRYPTO_OK;
+  }
+
+  // Attempt initialization (only ONE thread will reach here)
   if (sodium_init() < 0) {
+    static_mutex_unlock(&g_libsodium_init_mutex);
     SET_ERRNO(ERROR_CRYPTO, "Failed to initialize libsodium");
     return CRYPTO_ERROR_LIBSODIUM;
   }
 
   atomic_store(&g_libsodium_initialized, true);
+  static_mutex_unlock(&g_libsodium_init_mutex);
   return CRYPTO_OK;
 }
 

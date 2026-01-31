@@ -16,6 +16,7 @@
 #include "util/utf8.h"
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
 #include "../common.h"
+#include "platform/init.h"
 #include "uthash/uthash.h"
 #include <sodium.h>
 #include <string.h>
@@ -40,6 +41,8 @@ typedef struct {
 static word_cache_entry_t *g_adjectives_cache = NULL;
 static word_cache_entry_t *g_nouns_cache = NULL;
 static bool g_cache_initialized = false;
+// Mutex to protect lazy initialization of word validation caches
+static static_mutex_t g_cache_init_mutex = STATIC_MUTEX_INIT;
 
 /**
  * @brief Cleanup function called on program exit
@@ -74,10 +77,16 @@ static void acds_strings_cleanup(void) {
 /**
  * @brief Build hashtable caches for word validation (lazy initialization)
  * Called on first validation, not during init - avoids 7500+ slow HASH_ADD_KEYPTR calls
+ *
+ * Uses mutex to prevent multiple threads from building caches concurrently,
+ * which could cause memory leaks and hashtable corruption.
  */
 static asciichat_error_t build_validation_caches(void) {
-  // Only build once
+  static_mutex_lock(&g_cache_init_mutex);
+
+  // Double-check under lock: another thread may have already built while we waited
   if (g_cache_initialized) {
+    static_mutex_unlock(&g_cache_init_mutex);
     return ASCIICHAT_OK;
   }
 
@@ -85,6 +94,7 @@ static asciichat_error_t build_validation_caches(void) {
   for (size_t i = 0; i < adjectives_count; i++) {
     word_cache_entry_t *entry = SAFE_MALLOC(sizeof(word_cache_entry_t), word_cache_entry_t *);
     if (!entry) {
+      static_mutex_unlock(&g_cache_init_mutex);
       acds_strings_cleanup();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate adjectives cache entry");
     }
@@ -93,6 +103,7 @@ static asciichat_error_t build_validation_caches(void) {
     entry->word = SAFE_MALLOC(word_len, char *);
     if (!entry->word) {
       SAFE_FREE(entry);
+      static_mutex_unlock(&g_cache_init_mutex);
       acds_strings_cleanup();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for adjective word");
     }
@@ -105,6 +116,7 @@ static asciichat_error_t build_validation_caches(void) {
   for (size_t i = 0; i < nouns_count; i++) {
     word_cache_entry_t *entry = SAFE_MALLOC(sizeof(word_cache_entry_t), word_cache_entry_t *);
     if (!entry) {
+      static_mutex_unlock(&g_cache_init_mutex);
       acds_strings_cleanup();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate nouns cache entry");
     }
@@ -113,6 +125,7 @@ static asciichat_error_t build_validation_caches(void) {
     entry->word = SAFE_MALLOC(word_len, char *);
     if (!entry->word) {
       SAFE_FREE(entry);
+      static_mutex_unlock(&g_cache_init_mutex);
       acds_strings_cleanup();
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for noun word");
     }
@@ -128,6 +141,7 @@ static asciichat_error_t build_validation_caches(void) {
     log_warn("Failed to register atexit handler for session string cache cleanup");
   }
 
+  static_mutex_unlock(&g_cache_init_mutex);
   log_debug("Session string word cache initialized (%zu adjectives, %zu nouns)", adjectives_count, nouns_count);
   return ASCIICHAT_OK;
 }
@@ -219,6 +233,7 @@ bool is_session_string(const char *str) {
   }
 
   // Lazy initialization: build validation caches on first use
+  // Note: build_validation_caches() handles synchronization internally
   if (!g_cache_initialized) {
     asciichat_error_t cache_err = build_validation_caches();
     if (cache_err != ASCIICHAT_OK) {
