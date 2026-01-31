@@ -904,7 +904,18 @@ double ffmpeg_decoder_get_video_fps(ffmpeg_decoder_t *decoder) {
   }
 
   AVStream *stream = decoder->format_ctx->streams[decoder->video_stream_idx];
-  return av_q2d_safe(stream->avg_frame_rate);
+
+  // Try avg_frame_rate first (average frame rate from entire stream)
+  double fps = av_q2d_safe(stream->avg_frame_rate);
+
+  // Fallback to r_frame_rate if avg_frame_rate is invalid or zero
+  // r_frame_rate is the "real" frame rate based on codec parameters
+  // This is more reliable for YouTube videos and some video codecs
+  if (fps <= 0.0) {
+    fps = av_q2d_safe(stream->r_frame_rate);
+  }
+
+  return fps;
 }
 
 /* ============================================================================
