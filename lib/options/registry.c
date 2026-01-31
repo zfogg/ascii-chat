@@ -59,6 +59,7 @@ typedef struct {
 
 // Log level metadata
 static const char *g_log_level_values[] = {"dev", "debug", "info", "warn", "error", "fatal"};
+static const int g_log_level_integers[] = {LOG_DEV, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL};
 static const char *g_log_level_descs[] = {"Development (most verbose, includes function traces)",
                                           "Debug (includes internal state tracking)",
                                           "Informational (key lifecycle events)",
@@ -89,12 +90,17 @@ static const char *g_color_mode_descs[] = {"Auto-detect from terminal", "Monochr
 
 // Palette metadata
 static const char *g_palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
+static const int g_palette_integers[] = {PALETTE_STANDARD, PALETTE_BLOCKS, PALETTE_DIGITAL,
+                                         PALETTE_MINIMAL,  PALETTE_COOL,   PALETTE_CUSTOM};
 static const char *g_palette_descs[] = {"Standard ASCII palette", "Block characters (full/half/quarter blocks)",
                                         "Digital/computer style", "Minimal palette (light aesthetic)",
                                         "Cool/modern style",      "Custom user-defined characters"};
 
 // Render mode metadata
 static const char *g_render_values[] = {"foreground", "fg", "background", "bg", "half-block"};
+static const int g_render_integers[] = {RENDER_MODE_FOREGROUND, RENDER_MODE_FOREGROUND, // fg is alias for foreground
+                                        RENDER_MODE_BACKGROUND, RENDER_MODE_BACKGROUND, // bg is alias for background
+                                        RENDER_MODE_HALF_BLOCK};
 static const char *g_render_descs[] = {
     "Render using foreground characters only", "Render using foreground characters only (alias)",
     "Render using background colors only", "Render using background colors only (alias)",
@@ -176,6 +182,7 @@ static const registry_entry_t g_logging_entries[] = {
      {.enum_values = g_log_level_values,
       .enum_count = 6,
       .enum_descriptions = g_log_level_descs,
+      .enum_integer_values = g_log_level_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {"verbose",
      'V',
@@ -575,6 +582,7 @@ static const registry_entry_t g_display_entries[] = {
      {.enum_values = g_render_values,
       .enum_count = 5,
       .enum_descriptions = g_render_descs,
+      .enum_integer_values = g_render_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {"palette",
      'P',
@@ -595,6 +603,7 @@ static const registry_entry_t g_display_entries[] = {
      {.enum_values = g_palette_values,
       .enum_count = 6,
       .enum_descriptions = g_palette_descs,
+      .enum_integer_values = g_palette_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {"palette-chars",
      'C',
