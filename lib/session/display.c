@@ -325,10 +325,12 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     return;
   }
 
-  // Handle first frame - disable terminal logging to prevent console corruption
+  // Handle first frame - perform initial terminal reset only
   if (atomic_load(&ctx->first_frame)) {
-    log_set_terminal_output(false);
     atomic_store(&ctx->first_frame, false);
+
+    // NOTE: log_set_terminal_output(false) skipped here to avoid deadlocks with audio worker threads
+    // Terminal logging will continue during rendering but won't corrupt the final frame
 
     // Perform initial terminal reset
     if (ctx->has_tty) {
@@ -385,6 +387,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     }
     // Add newline after each frame to separate frames when captured to files
     (void)printf("\n");
+  } else {
   }
 }
 

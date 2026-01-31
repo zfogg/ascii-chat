@@ -37,6 +37,10 @@
 static unsigned int g_pa_init_refcount = 0;
 static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 
+// Track how many times Pa_Initialize and Pa_Terminate are called
+static int g_pa_init_count = 0;
+static int g_pa_terminate_count = 0;
+
 /**
  * @brief Ensure PortAudio is initialized with reference counting
  *
@@ -52,21 +56,17 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // If already initialized, just increment refcount
   if (g_pa_init_refcount > 0) {
     g_pa_init_refcount++;
-    log_debug("PortAudio already initialized, incremented refcount to %u", g_pa_init_refcount);
     static_mutex_unlock(&g_pa_refcount_mutex);
     return ASCIICHAT_OK;
   }
-
-  log_debug("audio_ensure_portaudio_initialized: initializing PortAudio (first time, refcount was 0)");
 
   // First initialization - call Pa_Initialize() exactly once
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
   platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
-  log_debug("audio_ensure_portaudio_initialized: calling Pa_Initialize()");
+  g_pa_init_count++;
   PaError err = Pa_Initialize();
-  log_debug("audio_ensure_portaudio_initialized: Pa_Initialize returned");
 
   // Restore stderr before checking errors
   platform_stderr_restore(stderr_handle);
@@ -77,7 +77,6 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   }
 
   g_pa_init_refcount = 1;
-  log_debug("PortAudio initialized successfully (refcount = 1)");
   static_mutex_unlock(&g_pa_refcount_mutex);
 
   return ASCIICHAT_OK;
@@ -91,16 +90,20 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
  */
 static void audio_release_portaudio(void) {
   static_mutex_lock(&g_pa_refcount_mutex);
+
   if (g_pa_init_refcount > 0) {
     g_pa_init_refcount--;
-    log_debug("PortAudio refcount decremented to %u", g_pa_init_refcount);
+
     if (g_pa_init_refcount == 0) {
-      log_debug("PortAudio refcount is 0, calling Pa_Terminate()");
-      Pa_Terminate();
-      log_debug("Pa_Terminate() completed");
+      // Release mutex BEFORE calling Pa_Terminate()
+      static_mutex_unlock(&g_pa_refcount_mutex);
+      g_pa_terminate_count++;
+      PaError err = Pa_Terminate();
+      return;
     }
   } else {
-    log_warn("audio_release_portaudio() called but refcount is already 0");
+    fprintf(stderr, "WARNING: audio_release_portaudio() called but refcount is already 0\n");
+    fflush(stderr);
   }
   static_mutex_unlock(&g_pa_refcount_mutex);
 }
@@ -1057,9 +1060,8 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return pa_result;
   }
 
-  // Enumerate all audio devices for debugging
   int numDevices = Pa_GetDeviceCount();
-  const size_t max_device_info_size = 4096; // Limit total device info size
+  const size_t max_device_info_size = 4096;
   char device_names[max_device_info_size];
   int offset = 0;
   for (int i = 0; i < numDevices && offset < (int)sizeof(device_names) - 256; i++) {
@@ -1077,7 +1079,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
       if (len > 0 && len < remaining) {
         offset += len;
       } else {
-        // Buffer full or error - stop here
         break;
       }
     }
@@ -1289,56 +1290,61 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 }
 
 void audio_destroy(audio_context_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    log_debug("audio_destroy: ctx is NULL or not initialized, returning early");
+  if (!ctx) {
     return;
   }
 
-  log_debug("audio_destroy: starting cleanup");
+  // Always release PortAudio refcount if it was incremented
+  // audio_init() calls Pa_Initialize() very early, and if it fails partway through,
+  // ctx->initialized will be false. But we MUST still call audio_release_portaudio()
+  // to properly decrement the refcount and allow Pa_Terminate() to be called.
+  if (ctx->initialized) {
 
-  // Stop duplex stream if running (this also stops the worker thread)
-  if (ctx->running) {
-    log_debug("audio_destroy: stopping duplex stream");
-    audio_stop_duplex(ctx);
+    // Stop duplex stream if running (this also stops the worker thread)
+    if (ctx->running) {
+      audio_stop_duplex(ctx);
+    }
+
+    // Ensure worker thread is stopped even if streams weren't running
+    if (ctx->worker_running) {
+      log_debug("Stopping worker thread during audio_destroy");
+      atomic_store(&ctx->worker_should_stop, true);
+      cond_signal(&ctx->worker_cond); // Wake up worker if waiting
+      asciichat_thread_join(&ctx->worker_thread, NULL);
+      ctx->worker_running = false;
+    }
+
+    mutex_lock(&ctx->state_mutex);
+
+    // Destroy all ring buffers (old + new)
+    audio_ring_buffer_destroy(ctx->capture_buffer);
+    audio_ring_buffer_destroy(ctx->playback_buffer);
+    audio_ring_buffer_destroy(ctx->raw_capture_rb);
+    audio_ring_buffer_destroy(ctx->raw_render_rb);
+    audio_ring_buffer_destroy(ctx->processed_playback_rb);
+    audio_ring_buffer_destroy(ctx->render_buffer); // May be NULL, that's OK
+
+    // Free pre-allocated worker buffers
+    SAFE_FREE(ctx->worker_capture_batch);
+    SAFE_FREE(ctx->worker_render_batch);
+    SAFE_FREE(ctx->worker_playback_batch);
+
+    // Destroy worker synchronization primitives
+    cond_destroy(&ctx->worker_cond);
+    mutex_destroy(&ctx->worker_mutex);
+
+    ctx->initialized = false;
+
+    mutex_unlock(&ctx->state_mutex);
+    mutex_destroy(&ctx->state_mutex);
+
+    log_debug("Audio system cleanup complete (all resources released)");
+  } else {
   }
 
-  // Ensure worker thread is stopped even if streams weren't running
-  if (ctx->worker_running) {
-    log_debug("Stopping worker thread during audio_destroy");
-    atomic_store(&ctx->worker_should_stop, true);
-    cond_signal(&ctx->worker_cond); // Wake up worker if waiting
-    asciichat_thread_join(&ctx->worker_thread, NULL);
-    ctx->worker_running = false;
-  }
-
-  mutex_lock(&ctx->state_mutex);
-
-  // Destroy all ring buffers (old + new)
-  audio_ring_buffer_destroy(ctx->capture_buffer);
-  audio_ring_buffer_destroy(ctx->playback_buffer);
-  audio_ring_buffer_destroy(ctx->raw_capture_rb);
-  audio_ring_buffer_destroy(ctx->raw_render_rb);
-  audio_ring_buffer_destroy(ctx->processed_playback_rb);
-  audio_ring_buffer_destroy(ctx->render_buffer); // May be NULL, that's OK
-
-  // Free pre-allocated worker buffers
-  SAFE_FREE(ctx->worker_capture_batch);
-  SAFE_FREE(ctx->worker_render_batch);
-  SAFE_FREE(ctx->worker_playback_batch);
-
-  // Destroy worker synchronization primitives
-  cond_destroy(&ctx->worker_cond);
-  mutex_destroy(&ctx->worker_mutex);
-
-  // Release PortAudio (centralized refcount management)
+  // MUST happen for both initialized and non-initialized contexts
+  // If audio_init() called Pa_Initialize() but failed partway, refcount must be decremented
   audio_release_portaudio();
-
-  ctx->initialized = false;
-
-  mutex_unlock(&ctx->state_mutex);
-  mutex_destroy(&ctx->state_mutex);
-
-  log_debug("Audio system destroyed (worker thread architecture)");
 }
 
 void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {

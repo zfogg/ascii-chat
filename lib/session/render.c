@@ -236,11 +236,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
       float snapshot_delay = GET_OPTION(snapshot_delay);
 
-      // Enforce minimum 300ms delay for snapshot_delay=0 to allow test pattern initialization
-      if (snapshot_delay <= 0.0f) {
-        snapshot_delay = 0.3f; // 300ms minimum
-      }
-
+      // snapshot_delay=0 means exit immediately after first frame
+      // snapshot_delay>0 means wait that many seconds after first frame
       if (elapsed_sec >= snapshot_delay) {
         snapshot_done = true;
       }
@@ -292,6 +289,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       SAFE_FREE(ascii_frame);
+    } else {
     }
 
     // Keyboard input polling (if enabled)
