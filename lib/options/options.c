@@ -89,6 +89,7 @@
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
+#include "ui/colors.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/util.h"
@@ -1491,6 +1492,23 @@ asciichat_error_t options_init(int argc, char **argv) {
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   debug_memory_set_quiet_mode(quiet_for_memory_report);
 #endif
+
+  // ========================================================================
+  // Apply color scheme to logging
+  // ========================================================================
+  // Now that options are parsed, set and apply the selected color scheme to logging
+  if (opts.color_scheme_name[0] != '\0') {
+    asciichat_error_t scheme_result = colors_set_active_scheme(opts.color_scheme_name);
+    if (scheme_result == ASCIICHAT_OK) {
+      const color_scheme_t *scheme = colors_get_active_scheme();
+      if (scheme) {
+        log_set_color_scheme(scheme);
+        log_debug("Color scheme applied: %s", opts.color_scheme_name);
+      }
+    } else {
+      log_warn("Failed to apply color scheme: %s", opts.color_scheme_name);
+    }
+  }
 
   SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;

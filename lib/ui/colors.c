@@ -264,7 +264,8 @@ void colors_shutdown(void) {
 
 const color_scheme_t *colors_get_active_scheme(void) {
   if (!g_colors_initialized) {
-    return find_builtin_scheme("pastel");
+    /* Lazy initialization of color system */
+    colors_init();
   }
 
   return &g_active_scheme;
@@ -273,6 +274,11 @@ const color_scheme_t *colors_get_active_scheme(void) {
 asciichat_error_t colors_set_active_scheme(const char *name) {
   if (!name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Scheme name is NULL");
+  }
+
+  /* Ensure color system is initialized */
+  if (!g_colors_initialized) {
+    colors_init();
   }
 
   const color_scheme_t *scheme = find_builtin_scheme(name);

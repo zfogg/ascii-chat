@@ -515,13 +515,8 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   // Detect terminal capabilities
   log_redetect_terminal_capabilities();
 
-  // Note: colors_init() and log_init_colors() should be called EARLY from main()
-  // BEFORE log_init() to apply color scheme before any logs are printed.
-  // If colors were not initialized early, initialize them now with defaults.
-  if (!g_colors_initialized) {
-    colors_init();
-    log_init_colors();
-  }
+  // NOTE: Color initialization happens separately via log_set_color_scheme()
+  // after options are parsed. Logging works without colors until then.
 }
 
 void log_destroy(void) {
@@ -1305,12 +1300,14 @@ void log_init_colors(void) {
 
   /* Compile the color scheme to ANSI codes */
   asciichat_error_t result = colors_compile_scheme(scheme, mode, background, &g_compiled_colors);
-  if (result != ASCIICHAT_OK) {
-    log_debug("Failed to compile color scheme: %d", result);
-  }
 
   g_colors_initialized = true;
   mutex_unlock(&g_colors_mutex);
+
+  /* Log outside of mutex lock to avoid recursive lock deadlock */
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to compile color scheme: %d", result);
+  }
 }
 
 void log_set_color_scheme(const color_scheme_t *scheme) {
@@ -1340,12 +1337,14 @@ void log_set_color_scheme(const color_scheme_t *scheme) {
 
   /* Compile the new color scheme */
   asciichat_error_t result = colors_compile_scheme(scheme, mode, background, &g_compiled_colors);
-  if (result != ASCIICHAT_OK) {
-    log_debug("Failed to compile color scheme: %d", result);
-  }
 
   g_colors_initialized = true;
   mutex_unlock(&g_colors_mutex);
+
+  /* Log outside of mutex lock to avoid recursive lock deadlock */
+  if (result != ASCIICHAT_OK) {
+    log_debug("Failed to compile color scheme: %d", result);
+  }
 }
 
 /* ============================================================================
