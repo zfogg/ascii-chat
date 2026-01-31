@@ -1176,10 +1176,15 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   // Reset state
   decoder->eof_reached = false;
   decoder->audio_buffer_offset = 0;
+  // Clear any stale audio data in buffer
+  if (decoder->audio_buffer) {
+    memset(decoder->audio_buffer, 0, decoder->audio_buffer_size * sizeof(float));
+  }
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
   decoder->prefetch_frame_ready = false;
-  decoder->audio_samples_read = 0;
+  // Set audio_samples_read to match the seek target so position tracking works correctly
+  decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate);
 
   // Reset current_read_buffer and mark both buffers as not in use
   // After seeking, the prefetch thread may reallocate buffers, so current_read_buffer
@@ -1189,14 +1194,11 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->buffer_b_in_use = false;
 
   // Resume prefetch thread
-  log_info("[SEEK] Seeking complete, signaling prefetch thread to resume");
   decoder->seeking_in_progress = false;
   cond_signal(&decoder->prefetch_cond);
 
   // Release mutex - prefetch thread can resume
-  log_info("[SEEK] Releasing prefetch_mutex");
   mutex_unlock(&decoder->prefetch_mutex);
-  log_info("[SEEK] Released prefetch_mutex, seek operation finished");
 
   return ASCIICHAT_OK;
 }
