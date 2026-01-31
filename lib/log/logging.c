@@ -1270,6 +1270,11 @@ void log_init_colors(void) {
     return;
   }
 
+  /* Skip color initialization before logging is fully initialized */
+  if (!atomic_load(&g_log.initialized)) {
+    return;
+  }
+
   if (!g_colors_mutex_initialized) {
     mutex_init(&g_colors_mutex);
     g_colors_mutex_initialized = true;
