@@ -225,10 +225,22 @@ int mirror_main(void) {
     capture_config.type = MEDIA_SOURCE_FILE;
     capture_config.path = media_url;
 
-    // For all network URLs: skip FPS detection to avoid decoder corruption
-    // Use fixed 30 FPS for streaming (most common for video streaming)
-    log_info("Streaming URL: using fixed 30 FPS (skip probing)");
-    capture_config.target_fps = 30;
+    // Detect FPS for HTTP URLs using probe source (safe now with lazy initialization)
+    probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
+    if (probe_source) {
+      double url_fps = media_source_get_video_fps(probe_source);
+      log_info("Detected HTTP stream video FPS: %.1f", url_fps);
+      if (url_fps > 0.0) {
+        capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+        log_info("Using target FPS: %u", capture_config.target_fps);
+      } else {
+        log_warn("FPS detection failed for HTTP stream, using default 30 FPS");
+        capture_config.target_fps = 30;
+      }
+    } else {
+      log_warn("Failed to create probe source for HTTP stream, using default 30 FPS");
+      capture_config.target_fps = 30;
+    }
 
     capture_config.loop = false; // Network URLs cannot be looped
   } else if (media_file && strlen(media_file) > 0) {
