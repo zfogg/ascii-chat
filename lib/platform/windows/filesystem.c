@@ -648,7 +648,7 @@ asciichat_error_t platform_temp_file_open(const char *path, int *fd_out) {
   /* Windows: Open the temp file for writing */
   int fd = open(path, O_WRONLY | O_BINARY);
   if (fd < 0) {
-    return SET_ERRNO_SYS(ERROR_IO, "Failed to open temporary file: %s", path);
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open temporary file: %s", path);
   }
 
   *fd_out = fd;
@@ -695,6 +695,117 @@ void platform_normalize_path_separators(char *path) {
 int platform_path_strcasecmp(const char *a, const char *b, size_t n) {
   /* Windows: Case-insensitive comparison */
   return _strnicmp(a, b, n);
+}
+
+/**
+ * @brief Truncate file (Windows)
+ */
+asciichat_error_t platform_truncate_file(const char *path, size_t size) {
+  if (!path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "path cannot be NULL");
+  }
+
+  /* Windows: Use CreateFileA, SetFilePointerEx, SetEndOfFile */
+  HANDLE file_handle = CreateFileA(path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file_handle == INVALID_HANDLE_VALUE) {
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to open file for truncation: %s", path);
+  }
+
+  /* Set file position to desired size */
+  LARGE_INTEGER file_size;
+  file_size.QuadPart = (LONGLONG)size;
+
+  if (!SetFilePointerEx(file_handle, file_size, NULL, FILE_BEGIN)) {
+    CloseHandle(file_handle);
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to seek in file: %s", path);
+  }
+
+  /* Truncate at current position */
+  if (!SetEndOfFile(file_handle)) {
+    CloseHandle(file_handle);
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to truncate file: %s", path);
+  }
+
+  CloseHandle(file_handle);
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Check if path is absolute (Windows)
+ */
+bool platform_path_is_absolute(const char *path) {
+  if (!path || path[0] == '\0') {
+    return false;
+  }
+
+  /* Check for drive letter: C: */
+  if (path[1] == ':' && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z'))) {
+    return true;
+  }
+
+  /* Check for UNC path: \\server */
+  if (path[0] == '\\' && path[1] == '\\') {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Get path separator (Windows)
+ */
+char platform_path_get_separator(void) {
+  return '\\';
+}
+
+/**
+ * @brief Normalize path (Windows)
+ */
+asciichat_error_t platform_path_normalize(const char *input, char *output, size_t output_size) {
+  if (!input || !output || output_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
+  }
+
+  size_t input_len = strlen(input);
+  if (input_len >= output_size) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Output buffer too small");
+  }
+
+  size_t output_pos = 0;
+  bool last_was_slash = false;
+
+  /* Convert to Windows style and remove redundant separators */
+  for (size_t i = 0; i < input_len; i++) {
+    char c = input[i];
+
+    /* Convert forward slash to backslash */
+    if (c == '/') {
+      c = '\\';
+    }
+
+    if (c == '\\') {
+      if (!last_was_slash) {
+        output[output_pos++] = c;
+        last_was_slash = true;
+      }
+    } else {
+      output[output_pos++] = c;
+      last_was_slash = false;
+    }
+  }
+
+  /* Remove trailing backslash unless after drive letter or UNC */
+  if (output_pos > 1) {
+    if (output[output_pos - 1] == '\\') {
+      /* Keep backslash after drive letter (C:\) */
+      if (!(output_pos == 3 && output[1] == ':')) {
+        output_pos--;
+      }
+    }
+  }
+
+  output[output_pos] = '\0';
+  return ASCIICHAT_OK;
 }
 
 #endif // _WIN32

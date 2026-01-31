@@ -9,6 +9,8 @@
 
 #include <stdatomic.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include "common.h"
 #include "uthash/uthash.h" // UBSan-safe uthash wrapper
 #include "log/logging.h"
@@ -384,4 +386,55 @@ bool platform_get_executable_path(char *exe_path, size_t path_size) {
   SET_ERRNO(ERROR_GENERAL, "Unsupported platform - cannot get executable path");
   return false;
 #endif
+}
+
+/**
+ * @brief Safe formatted string printing to buffer
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param format Printf-style format string
+ * @return Number of characters written, or -1 on error
+ *
+ * Safely formats a string into a buffer with bounds checking.
+ * Returns the number of characters written (not including null terminator).
+ * Returns -1 if buffer is too small.
+ */
+int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
+  if (!buffer || !format || buffer_size == 0) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+#ifdef _WIN32
+  int ret = _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args);
+#else
+  int ret = vsnprintf(buffer, buffer_size, format, args);
+#endif
+
+  va_end(args);
+  return ret;
+}
+
+/**
+ * @brief Safe formatted output to file stream
+ * @param stream Output file stream
+ * @param format Printf-style format string
+ * @return Number of characters written, or -1 on error
+ *
+ * Safely formats and prints output to a file stream.
+ * Returns the number of characters written, or -1 on error.
+ */
+int safe_fprintf(FILE *stream, const char *format, ...) {
+  if (!stream || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+  int ret = vfprintf(stream, format, args);
+  va_end(args);
+
+  return ret;
 }

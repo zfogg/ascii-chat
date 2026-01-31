@@ -606,4 +606,76 @@ int platform_path_strcasecmp(const char *a, const char *b, size_t n) {
   return strncmp(a, b, n);
 }
 
+/**
+ * @brief Truncate file (POSIX)
+ */
+asciichat_error_t platform_truncate_file(const char *path, size_t size) {
+  if (!path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "path cannot be NULL");
+  }
+
+  if (truncate(path, (off_t)size) != 0) {
+    return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to truncate file: %s", path);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Check if path is absolute (POSIX)
+ */
+bool platform_path_is_absolute(const char *path) {
+  if (!path || path[0] == '\0') {
+    return false;
+  }
+  /* POSIX: Absolute if starts with / */
+  return path[0] == '/';
+}
+
+/**
+ * @brief Get path separator (POSIX)
+ */
+char platform_path_get_separator(void) {
+  return '/';
+}
+
+/**
+ * @brief Normalize path (POSIX)
+ */
+asciichat_error_t platform_path_normalize(const char *input, char *output, size_t output_size) {
+  if (!input || !output || output_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments");
+  }
+
+  size_t input_len = strlen(input);
+  if (input_len >= output_size) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Output buffer too small");
+  }
+
+  /* POSIX: Copy and remove redundant slashes */
+  size_t output_pos = 0;
+  bool last_was_slash = false;
+
+  for (size_t i = 0; i < input_len; i++) {
+    char c = input[i];
+    if (c == '/') {
+      if (!last_was_slash) {
+        output[output_pos++] = c;
+        last_was_slash = true;
+      }
+    } else {
+      output[output_pos++] = c;
+      last_was_slash = false;
+    }
+  }
+
+  /* Remove trailing slash unless it's the root */
+  if (output_pos > 1 && output[output_pos - 1] == '/') {
+    output_pos--;
+  }
+
+  output[output_pos] = '\0';
+  return ASCIICHAT_OK;
+}
+
 #endif

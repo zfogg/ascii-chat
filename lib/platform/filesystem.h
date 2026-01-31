@@ -24,6 +24,19 @@
 #include <sys/types.h>
 #include "../asciichat_errno.h"
 
+/* ============================================================================
+ * Cross-platform I/O headers
+ * ============================================================================
+ * Consolidates file descriptor and I/O operations across platforms.
+ */
+#ifdef _WIN32
+#include <io.h>    /* Windows I/O functions */
+#include <fcntl.h> /* File control options */
+#else
+#include <unistd.h> /* POSIX standard I/O and file descriptor functions */
+#include <fcntl.h>  /* POSIX file control options */
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -291,6 +304,71 @@ int platform_delete_temp_file(const char *path);
  * @ingroup platform
  */
 asciichat_error_t platform_temp_file_open(const char *path, int *fd_out);
+
+// ============================================================================
+// File Truncation
+// ============================================================================
+
+/**
+ * @brief Truncate a file to a specific size
+ *
+ * Resizes a file to the specified size, removing data if truncating,
+ * or padding with zeros if extending (platform-dependent).
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses CreateFileA, SetFilePointerEx, SetEndOfFile
+ *   - POSIX: Uses ftruncate() or truncate()
+ *
+ * @param path Path to the file to truncate
+ * @param size New file size in bytes
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note File must be writable
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_truncate_file(const char *path, size_t size);
+
+// ============================================================================
+// Path Utilities
+// ============================================================================
+
+/**
+ * @brief Check if a path is absolute (not relative)
+ *
+ * Platform-specific logic:
+ *   - Windows: Checks for drive letter (C:) or UNC path (\\server)
+ *   - POSIX: Checks for leading slash (/)
+ *
+ * @param path Path string to check
+ * @return true if path is absolute, false if relative or NULL
+ *
+ * @ingroup platform
+ */
+bool platform_path_is_absolute(const char *path);
+
+/**
+ * @brief Get the path separator character for current platform
+ *
+ * @return '\\' on Windows, '/' on POSIX
+ *
+ * @ingroup platform
+ */
+char platform_path_get_separator(void);
+
+/**
+ * @brief Normalize and validate a file path
+ *
+ * Converts path to platform-standard format with correct separators and normalization.
+ *
+ * @param input Input path string
+ * @param output Output buffer for normalized path
+ * @param output_size Size of output buffer
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_path_normalize(const char *input, char *output, size_t output_size);
 
 // ============================================================================
 // Key File Security

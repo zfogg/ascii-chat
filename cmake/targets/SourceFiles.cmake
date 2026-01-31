@@ -128,6 +128,7 @@ if(WIN32)
         lib/platform/windows/keepawake.c
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
+        lib/platform/windows/util.c
         lib/platform/windows/question.c
         lib/platform/windows/mmap.c
         lib/platform/windows/symbols.c
@@ -153,6 +154,7 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
+        lib/platform/posix/util.c
         lib/platform/posix/question.c
         lib/platform/posix/mmap.c
         lib/platform/posix/symbols.c

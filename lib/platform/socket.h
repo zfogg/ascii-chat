@@ -587,3 +587,49 @@ typedef unsigned long nfds_t;
 #endif
 
 /** @} */
+
+// ============================================================================
+// Socket Timeout Operations
+// ============================================================================
+
+/**
+ * @brief Set send/receive timeout for a socket
+ *
+ * Configures the timeout for socket send and receive operations.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses ioctlsocket() with SO_RCVTIMEO/SO_SNDTIMEO options
+ *   - POSIX: Uses setsockopt() with SO_RCVTIMEO/SO_SNDTIMEO options
+ *
+ * @param sock Socket to configure
+ * @param timeout_ms Timeout in milliseconds (0 = blocking, -1 = infinite)
+ * @return 0 on success, -1 on error
+ *
+ * @note Timeout applies to both send and receive operations
+ * @note Some platforms may require SO_SNDTIMEO and SO_RCVTIMEO separately
+ *
+ * @ingroup platform
+ */
+int platform_socket_set_timeout(socket_t sock, int timeout_ms);
+
+/**
+ * @brief Connect to remote address with timeout
+ *
+ * Attempts to connect to a remote address with an optional timeout.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses ioctlsocket() to set non-blocking, connect(), then select()
+ *   - POSIX: Uses fcntl() to set non-blocking, connect(), then poll()
+ *
+ * @param sock Socket to connect
+ * @param addr Address structure to connect to
+ * @param addr_len Length of address structure
+ * @param timeout_ms Timeout in milliseconds (0 = infinite wait)
+ * @return 0 on success, -1 on timeout or error
+ *
+ * @note Socket must be created but not yet connected
+ * @note After call, socket is set back to blocking mode on success
+ *
+ * @ingroup platform
+ */
+int platform_socket_connect_timeout(socket_t sock, const struct sockaddr *addr, socklen_t addr_len, int timeout_ms);
