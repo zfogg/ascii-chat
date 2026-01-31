@@ -39,6 +39,7 @@
 #include "options/options.h"
 #include "options/common.h"
 #include "options/rcu.h"
+#include "options/colors.h"
 #include "options/builder.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
@@ -165,6 +166,10 @@ int main(int argc, char *argv[]) {
   log_redetect_terminal_capabilities();
   terminal_capabilities_t caps = detect_terminal_capabilities();
   caps = apply_color_mode_override(caps);
+
+  // Initialize color scheme early (before logging) so logging colors are applied from the start
+  // This scans for --color-scheme CLI args and loads ~/.config/ascii-chat/colors.toml
+  options_colors_init_early(argc, argv);
 
   // Initialize logging early so options parsing can log errors
   // Use generic filename for now; will be replaced with mode-specific filename once mode is detected

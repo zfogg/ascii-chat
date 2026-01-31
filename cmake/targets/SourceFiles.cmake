@@ -326,6 +326,7 @@ set(CORE_SRCS
     lib/log/mmap.c
     lib/platform/terminal.c     # Unified color detection system
     lib/ui/colors.c             # Color scheme management system
+    lib/options/colors.c        # Early color scheme loading
     lib/options/options.c
     lib/options/common.c
     lib/options/validation.c
