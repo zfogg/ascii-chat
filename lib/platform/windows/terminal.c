@@ -277,38 +277,72 @@ asciichat_error_t terminal_set_echo(bool enable) {
  * @return True if UTF-8 is supported, false otherwise
  * @note Checks console code page and terminal type
  */
-bool terminal_supports_utf8(void) {
+// ============================================================================
+// Terminal Capability Caching (Windows Implementation)
+// ============================================================================
+
+// Static cache variables for terminal capabilities (initialized on first use)
+static struct {
+  int initialized;
+  int utf8_support;
+  int color_support;
+  int unicode_support;
+} g_terminal_cache = {0};
+
+/**
+ * @brief Initialize terminal capability cache
+ *
+ * Detects terminal capabilities once and caches results to avoid repeated
+ * Windows API calls on each function invocation.
+ */
+static void _init_terminal_cache(void) {
+  if (g_terminal_cache.initialized) {
+    return;
+  }
+
+  // Detect UTF-8 support
+  g_terminal_cache.utf8_support = 0;
+
   // Check if console output code page is UTF-8 (65001)
   UINT cp = GetConsoleOutputCP();
   if (cp == 65001) {
-    return true;
-  }
-
-  // Check for Windows Terminal via environment variable
-  const char *wt_session = SAFE_GETENV("WT_SESSION");
-  if (wt_session != NULL) {
-    return true; // Windows Terminal always supports UTF-8
-  }
-
-  // Check for ConEmu
-  const char *conemu = SAFE_GETENV("ConEmuPID");
-  if (conemu != NULL) {
-    return true; // ConEmu supports UTF-8
-  }
-
-  // Check for newer Windows Console Host with VT support
-  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-  if (hOut != INVALID_HANDLE_VALUE) {
-    DWORD mode;
-    if (GetConsoleMode(hOut, &mode)) {
-      // ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004) indicates modern console
-      if (mode & 0x0004) {
-        return true; // Modern Windows console with VT support likely has UTF-8
+    g_terminal_cache.utf8_support = 1;
+  } else {
+    // Check for Windows Terminal via environment variable
+    const char *wt_session = SAFE_GETENV("WT_SESSION");
+    if (wt_session != NULL) {
+      g_terminal_cache.utf8_support = 1;
+    } else {
+      // Check for ConEmu
+      const char *conemu = SAFE_GETENV("ConEmuPID");
+      if (conemu != NULL) {
+        g_terminal_cache.utf8_support = 1;
+      } else {
+        // Check for newer Windows Console Host with VT support
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut != INVALID_HANDLE_VALUE) {
+          DWORD mode;
+          if (GetConsoleMode(hOut, &mode)) {
+            // ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004) indicates modern console
+            if (mode & 0x0004) {
+              g_terminal_cache.utf8_support = 1;
+            }
+          }
+        }
       }
     }
   }
 
-  return false; // Default to no UTF-8 support
+  // Windows 10+ always supports colors and Unicode
+  g_terminal_cache.color_support = 1;
+  g_terminal_cache.unicode_support = 1;
+
+  g_terminal_cache.initialized = 1;
+}
+
+bool terminal_supports_utf8(void) {
+  _init_terminal_cache();
+  return g_terminal_cache.utf8_support;
 }
 
 /**
@@ -317,8 +351,8 @@ bool terminal_supports_utf8(void) {
  * @note Windows 10+ supports ANSI colors
  */
 bool terminal_supports_color(void) {
-  // Windows 10+ supports ANSI colors
-  return true;
+  _init_terminal_cache();
+  return g_terminal_cache.color_support;
 }
 
 /**
@@ -327,8 +361,8 @@ bool terminal_supports_color(void) {
  * @note Windows supports Unicode through wide character APIs
  */
 bool terminal_supports_unicode(void) {
-  // Windows supports Unicode through wide character APIs
-  return true;
+  _init_terminal_cache();
+  return g_terminal_cache.unicode_support;
 }
 
 /**

@@ -13,6 +13,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
+#include "util/url.h"            // For parse_https_url()
 #include "platform/util.h"       // For platform_strtok_r
 #include "gpg/export.h"          // For gpg_get_public_key()
 #include "network/http_client.h" // For https_get()
@@ -50,27 +51,18 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
   // Try HTTPS URLs (https://...)
   if (strncmp(input, "https://", 8) == 0) {
-    const char *url = input + 8; // Skip "https://"
-
-    // Find the first '/' to separate hostname from path
-    const char *slash = strchr(url, '/');
-    if (!slash) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid HTTPS URL (missing path): %s", input);
+    // Parse HTTPS URL to extract hostname and path
+    https_url_parts_t url_parts;
+    asciichat_error_t parse_result = parse_https_url(input, &url_parts);
+    if (parse_result != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse HTTPS URL: %s", input);
     }
-
-    // Extract hostname and path
-    size_t hostname_len = (size_t)(slash - url);
-    char hostname[BUFFER_SIZE_SMALL];
-    if (hostname_len >= sizeof(hostname)) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "HTTPS hostname too long: %s", input);
-    }
-
-    memcpy(hostname, url, hostname_len);
-    hostname[hostname_len] = '\0';
-    const char *path = slash; // Path includes the leading '/'
 
     // Fetch the key via HTTPS
-    char *response = https_get(hostname, path);
+    char *response = https_get(url_parts.hostname, url_parts.path);
+    SAFE_FREE(url_parts.hostname);
+    SAFE_FREE(url_parts.path);
+
     if (!response) {
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch key from HTTPS URL: %s", input);
     }

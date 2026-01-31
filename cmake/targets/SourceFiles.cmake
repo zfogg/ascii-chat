@@ -27,6 +27,7 @@ set(UTIL_SRCS
     lib/util/format.c
     lib/util/parsing.c
     lib/util/path.c
+    lib/util/url.c
     lib/util/string.c
     lib/util/ip.c
     lib/util/aspect_ratio.c
@@ -135,7 +136,6 @@ if(WIN32)
         lib/platform/windows/memory.c
         lib/platform/windows/process.c
         lib/platform/windows/filesystem.c
-        lib/platform/windows/path.c
         lib/platform/windows/errno.c
         lib/platform/windows/agent.c
         lib/video/webcam/windows/webcam_mediafoundation.c
@@ -160,7 +160,6 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/memory.c
         lib/platform/posix/process.c
         lib/platform/posix/filesystem.c
-        lib/platform/posix/path.c
         lib/platform/posix/errno.c
         lib/platform/posix/agent.c
     )

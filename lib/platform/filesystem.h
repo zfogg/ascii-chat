@@ -394,6 +394,94 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
  */
 void config_file_list_free(config_file_list_t *list);
 
+// ============================================================================
+// Home and Config Directory Discovery
+// ============================================================================
+
+/**
+ * @brief Get the user's home directory
+ *
+ * Platform-specific implementation:
+ *   - POSIX: Returns HOME environment variable
+ *   - Windows: Returns USERPROFILE environment variable (fallback to HOME)
+ *
+ * @return Pointer to home directory string (not allocated), or NULL if not found
+ *
+ * @note The returned pointer is managed by the system and should not be freed
+ * @note The returned string is valid only until the next getenv() call
+ *
+ * @ingroup platform
+ */
+const char *platform_get_home_dir(void);
+
+/**
+ * @brief Get the application configuration directory
+ *
+ * Platform-specific implementation:
+ *   - POSIX: Returns $XDG_CONFIG_HOME/ascii-chat/ (default: ~/.config/ascii-chat/)
+ *   - Windows: Returns %APPDATA%\ascii-chat\ (fallback: %USERPROFILE%\.ascii-chat\)
+ *
+ * @return Allocated string with config directory path (including trailing separator),
+ *         or NULL on error. Caller must free with SAFE_FREE()
+ *
+ * @note The returned string includes a trailing path separator (/ or \)
+ * @note Returns a freshly allocated string each time; caller must free it
+ * @note Returns NULL if home directory cannot be determined
+ *
+ * @par Example:
+ * @code{.c}
+ * char *config_dir = platform_get_config_dir();
+ * if (config_dir) {
+ *   // config_dir = "/home/user/.config/ascii-chat/" on Linux
+ *   // config_dir = "C:\\Users\\user\\AppData\\Roaming\\ascii-chat\\" on Windows
+ *   SAFE_FREE(config_dir);
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+char *platform_get_config_dir(void);
+
+// ============================================================================
+// Platform Path Utilities
+// ============================================================================
+
+/**
+ * @brief Normalize path separators for the current platform
+ *
+ * Converts all path separators to the preferred format for the current platform.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Converts forward slashes (/) to backslashes (\)
+ *   - Unix: No-op (already uses forward slashes)
+ *
+ * @param path Path string to normalize (modified in-place)
+ *
+ * @note The path is modified in-place
+ * @note Safe to call with NULL (no-op)
+ *
+ * @ingroup platform
+ */
+void platform_normalize_path_separators(char *path);
+
+/**
+ * @brief Platform-aware path string comparison
+ *
+ * Compares paths with platform-specific rules for case sensitivity.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Case-insensitive comparison
+ *   - Unix: Case-sensitive comparison
+ *
+ * @param a First path string
+ * @param b Second path string
+ * @param n Maximum number of characters to compare
+ * @return 0 if equal, <0 if a<b, >0 if a>b
+ *
+ * @ingroup platform
+ */
+int platform_path_strcasecmp(const char *a, const char *b, size_t n);
+
 #ifdef __cplusplus
 }
 #endif

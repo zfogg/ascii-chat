@@ -308,9 +308,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
-        // NOTE: Do NOT free 'image' - ownership depends on source:
-        // - Synchronous: owned by capture context
-        // - Event-driven: owned by caller (capture_cb)
         break;
       }
 
@@ -357,10 +354,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // Note: Do NOT destroy images here - they're managed by their sources:
-    // - Webcam images: cached and reused by webcam driver
-    // - Decoder images: cached and reused by FFmpeg decoder
-    // All image memory is owned and freed by the source, not the render loop
+    // Note: Images returned by media sources are cached/reused and should NOT be destroyed
+    // The image pointers are managed by the source and will be cleaned up on source shutdown
   }
 
   // Keyboard input cleanup (if it was initialized)

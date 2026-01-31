@@ -29,8 +29,7 @@
  */
 asciichat_error_t platform_mkdir(const char *path, int mode) {
   if (!path) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir");
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir");
   }
 
   if (mkdir(path, mode) == -1) {
@@ -55,15 +54,13 @@ asciichat_error_t platform_mkdir(const char *path, int mode) {
  */
 asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
   if (!path || path[0] == '\0') {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path to platform_mkdir_recursive");
   }
 
   char tmp[512];
   size_t len = strlen(path);
   if (len >= sizeof(tmp)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Path too long for platform_mkdir_recursive: %zu", len);
   }
 
   strncpy(tmp, path, sizeof(tmp) - 1);
@@ -104,13 +101,13 @@ asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
  */
 asciichat_error_t platform_stat(const char *path, platform_stat_t *stat_out) {
   if (!path || !stat_out) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_stat");
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_stat");
   }
 
   struct stat sb;
   if (lstat(path, &sb) == -1) {
-    return SET_ERRNO_SYS(ERROR_FILE_NOT_FOUND, "Failed to stat file: %s", path);
+    log_dev("Failed to stat file: %s", path);
+    return ERROR_FILE_NOT_FOUND;
   }
 
   stat_out->size = (size_t)sb.st_size;
@@ -263,8 +260,7 @@ asciichat_error_t platform_rmdir_recursive(const char *path) {
 
 asciichat_error_t platform_validate_key_file_permissions(const char *key_path) {
   if (!key_path) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
   }
 
   struct stat st;
@@ -323,7 +319,7 @@ static char *get_xdg_config_home(void) {
  */
 static asciichat_error_t get_xdg_config_dirs(char ***dirs_out, size_t *count_out) {
   if (!dirs_out || !count_out) {
-    return ERROR_INVALID_PARAM;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: dirs_out=%p, count_out=%p", dirs_out, count_out);
   }
 
   *dirs_out = NULL;
@@ -509,6 +505,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
  */
 void config_file_list_free(config_file_list_t *list) {
   if (!list) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: list=%p", list);
     return;
   }
 
@@ -521,6 +518,67 @@ void config_file_list_free(config_file_list_t *list) {
 
   list->count = 0;
   list->capacity = 0;
+}
+
+// ============================================================================
+// Home and Config Directory Discovery (POSIX Implementation)
+// ============================================================================
+
+const char *platform_get_home_dir(void) {
+  /* Unix: Use HOME environment variable */
+  return platform_getenv("HOME");
+}
+
+char *platform_get_config_dir(void) {
+  /* Unix: Use $XDG_CONFIG_HOME/ascii-chat/ if set */
+  const char *xdg_config_home = platform_getenv("XDG_CONFIG_HOME");
+  if (xdg_config_home && xdg_config_home[0] != '\0') {
+    size_t len = strlen(xdg_config_home) + strlen("/ascii-chat/") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s/ascii-chat/", xdg_config_home);
+    return dir;
+  }
+
+  /* Fallback: ~/.config/ascii-chat/ (XDG Base Directory standard) */
+  const char *home = platform_getenv("HOME");
+  if (home && home[0] != '\0') {
+    size_t len = strlen(home) + strlen("/.config/ascii-chat/") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s/.config/ascii-chat/", home);
+    return dir;
+  }
+
+  return NULL;
+}
+
+// ============================================================================
+// Platform Path Utilities
+// ============================================================================
+
+/**
+ * @brief Normalize path separators for the current platform (POSIX)
+ *
+ * On Unix, forward slashes are already the standard, so this is a no-op.
+ */
+void platform_normalize_path_separators(char *path) {
+  /* Unix: No-op - already uses forward slashes */
+  (void)path;
+}
+
+/**
+ * @brief Platform-aware path string comparison (POSIX)
+ *
+ * On Unix, paths are case-sensitive, so use standard strncmp.
+ */
+int platform_path_strcasecmp(const char *a, const char *b, size_t n) {
+  /* Unix: Case-sensitive comparison */
+  return strncmp(a, b, n);
 }
 
 #endif

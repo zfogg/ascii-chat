@@ -10,7 +10,6 @@
  */
 
 #include "common.h"
-#include "platform/path.h"
 #include "platform/filesystem.h"
 #include "ui/colors.h"
 #include <string.h>

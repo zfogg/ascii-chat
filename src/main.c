@@ -114,35 +114,46 @@ static const mode_descriptor_t g_discovery_mode = {
     .entry_point = discovery_main,
 };
 
-static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
-  // Discovery mode is not in the table (it's implicit)
-  if (mode == MODE_DISCOVERY) {
-    return &g_discovery_mode;
-  }
+/**
+ * @brief Mode lookup table for O(1) mode dispatch (direct indexing)
+ *
+ * Maps asciichat_mode_t enum values directly to mode descriptors for fast lookup.
+ * This eliminates the O(n) loop+switch pattern in the previous implementation.
+ *
+ * Must match the order of asciichat_mode_t enum in options.h:
+ * - MODE_SERVER = 0
+ * - MODE_CLIENT = 1
+ * - MODE_MIRROR = 2
+ * - MODE_DISCOVERY_SERVICE = 3
+ * - MODE_DISCOVERY = 4
+ * - MODE_INVALID = 5
+ *
+ * @note MODE_INVALID is reserved and has no descriptor
+ */
+static const mode_descriptor_t *g_mode_lookup[] = {
+    [MODE_SERVER] = &g_mode_table[0],            // server_main
+    [MODE_CLIENT] = &g_mode_table[1],            // client_main
+    [MODE_MIRROR] = &g_mode_table[2],            // mirror_main
+    [MODE_DISCOVERY_SERVICE] = &g_mode_table[3], // acds_main
+    [MODE_DISCOVERY] = &g_discovery_mode,        // discovery_main (implicit mode)
+    [MODE_INVALID] = NULL,                       // Invalid: no descriptor
+};
 
-  for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
-    switch (mode) {
-    case MODE_SERVER:
-      if (strcmp(m->name, "server") == 0)
-        return m;
-      break;
-    case MODE_CLIENT:
-      if (strcmp(m->name, "client") == 0)
-        return m;
-      break;
-    case MODE_MIRROR:
-      if (strcmp(m->name, "mirror") == 0)
-        return m;
-      break;
-    case MODE_DISCOVERY_SERVICE:
-      if (strcmp(m->name, "discovery-service") == 0)
-        return m;
-      break;
-    default:
-      break;
-    }
+/**
+ * @brief Find mode descriptor by asciichat_mode_t enum (O(1) direct lookup)
+ *
+ * Returns the mode descriptor for the given mode by direct indexing into
+ * the lookup table. This is much faster than the previous loop+switch approach.
+ *
+ * @param mode The mode enum value
+ * @return Pointer to mode descriptor, or NULL if mode is invalid
+ */
+static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
+  // Bounds check: ensure mode is within valid range (0 to MODE_INVALID)
+  if (mode < MODE_SERVER || mode > MODE_INVALID) {
+    return NULL;
   }
-  return NULL;
+  return g_mode_lookup[mode];
 }
 
 /* ============================================================================

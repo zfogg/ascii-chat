@@ -11,6 +11,7 @@
 #include "platform/util.h"
 #include "platform/process.h"
 #include "platform/filesystem.h"
+#include "util/url.h" // For parse_https_url()
 #include "network/http_client.h"
 #include <string.h>
 #include <stdlib.h>
@@ -35,33 +36,17 @@ static asciichat_error_t https_fetch_keys(const char *url, char **response_text,
   }
 
   // Parse URL to extract hostname and path
-  // Expected format: https://hostname/path
-  if (strncmp(url, "https://", 8) != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "URL must start with https://");
-    return ERROR_INVALID_PARAM;
+  https_url_parts_t url_parts;
+  asciichat_error_t parse_result = parse_https_url(url, &url_parts);
+  if (parse_result != ASCIICHAT_OK) {
+    return parse_result;
   }
-
-  const char *hostname_start = url + 8; // Skip "https://"
-  const char *path_start = strchr(hostname_start, '/');
-
-  if (!path_start) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "URL must include a path");
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Extract hostname
-  size_t hostname_len = path_start - hostname_start;
-  if (hostname_len == 0 || hostname_len > 255) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hostname length");
-    return ERROR_INVALID_PARAM;
-  }
-
-  char hostname[BUFFER_SIZE_SMALL];
-  memcpy(hostname, hostname_start, hostname_len);
-  hostname[hostname_len] = '\0';
 
   // Use https_get from http_client
-  char *response = https_get(hostname, path_start);
+  char *response = https_get(url_parts.hostname, url_parts.path);
+  SAFE_FREE(url_parts.hostname);
+  SAFE_FREE(url_parts.path);
+
   if (!response) {
     SET_ERRNO(ERROR_NETWORK, "Failed to fetch from %s", url);
     return ERROR_NETWORK;

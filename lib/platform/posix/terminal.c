@@ -110,21 +110,38 @@ asciichat_error_t terminal_set_echo(bool enable) {
  * @brief Check if terminal supports color output
  * @return True if color is supported, false otherwise
  */
-bool terminal_supports_color(void) {
-  const char *term = SAFE_GETENV("TERM");
-  if (!term)
-    return false;
+// ============================================================================
+// Terminal Capability Caching (POSIX Implementation)
+// ============================================================================
 
-  // Check for common color-capable terminals
-  return (strstr(term, "color") != NULL || strstr(term, "xterm") != NULL || strstr(term, "screen") != NULL ||
-          strstr(term, "vt100") != NULL || strstr(term, "linux") != NULL);
-}
+// Static cache variables for terminal capabilities (initialized on first use)
+static struct {
+  int initialized;
+  int color_support;
+  int unicode_support;
+} g_terminal_cache = {0};
 
 /**
- * @brief Check if terminal supports Unicode output
- * @return True if Unicode is supported, false otherwise
+ * @brief Initialize terminal capability cache
+ *
+ * Detects terminal capabilities once and caches results to avoid repeated
+ * environment variable lookups on each function call.
  */
-bool terminal_supports_unicode(void) {
+static void _init_terminal_cache(void) {
+  if (g_terminal_cache.initialized) {
+    return;
+  }
+
+  // Detect color support
+  const char *term = SAFE_GETENV("TERM");
+  if (term && (strstr(term, "color") != NULL || strstr(term, "xterm") != NULL || strstr(term, "screen") != NULL ||
+               strstr(term, "vt100") != NULL || strstr(term, "linux") != NULL)) {
+    g_terminal_cache.color_support = 1;
+  } else {
+    g_terminal_cache.color_support = 0;
+  }
+
+  // Detect unicode support
   const char *lang = SAFE_GETENV("LANG");
   const char *lc_all = SAFE_GETENV("LC_ALL");
   const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
@@ -137,10 +154,28 @@ bool terminal_supports_unicode(void) {
   } else {
     check = lang;
   }
-  if (!check)
-    return false;
 
-  return (strstr(check, "UTF-8") != NULL || strstr(check, "utf8") != NULL);
+  if (check && (strstr(check, "UTF-8") != NULL || strstr(check, "utf8") != NULL)) {
+    g_terminal_cache.unicode_support = 1;
+  } else {
+    g_terminal_cache.unicode_support = 0;
+  }
+
+  g_terminal_cache.initialized = 1;
+}
+
+bool terminal_supports_color(void) {
+  _init_terminal_cache();
+  return g_terminal_cache.color_support;
+}
+
+/**
+ * @brief Check if terminal supports Unicode output
+ * @return True if Unicode is supported, false otherwise
+ */
+bool terminal_supports_unicode(void) {
+  _init_terminal_cache();
+  return g_terminal_cache.unicode_support;
 }
 
 /**

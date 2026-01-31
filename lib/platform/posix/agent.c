@@ -14,18 +14,7 @@
 int platform_get_ssh_agent_socket(char *path_out, size_t path_size) {
   /* Unix: SSH_AUTH_SOCK is required */
   const char *auth_sock = platform_getenv("SSH_AUTH_SOCK");
-  if (!auth_sock || strlen(auth_sock) == 0) {
-    log_debug("SSH_AUTH_SOCK not set");
-    return -1;
-  }
-
-  if (strlen(auth_sock) >= path_size) {
-    log_error("SSH_AUTH_SOCK path too long");
-    return -1;
-  }
-
-  SAFE_STRNCPY(path_out, auth_sock, path_size);
-  return 0;
+  VALIDATE_AGENT_PATH(auth_sock, path_out, path_size, "SSH_AUTH_SOCK");
 }
 
 int platform_get_gpg_agent_socket(char *path_out, size_t path_size) {

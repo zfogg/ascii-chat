@@ -17,6 +17,48 @@
 
 #include <stddef.h>
 
+/* ============================================================================
+ * Path Validation Helper Macro
+ * ============================================================================ */
+
+/**
+ * @brief Validate and copy agent socket path
+ * @param path Source path string
+ * @param path_out Output buffer
+ * @param path_size Output buffer size
+ * @param context Description for error messages (e.g., "SSH_AUTH_SOCK")
+ *
+ * Checks that path is not empty, fits in buffer, and copies it safely.
+ * Returns -1 on failure (logs error), returns 0 on success.
+ */
+#define VALIDATE_AGENT_PATH(path, path_out, path_size, context)                                                        \
+  do {                                                                                                                 \
+    if (!path || strlen(path) == 0) {                                                                                  \
+      log_debug(context " not set");                                                                                   \
+      return -1;                                                                                                       \
+    }                                                                                                                  \
+    if (strlen(path) >= path_size) {                                                                                   \
+      log_error(context " path too long");                                                                             \
+      return -1;                                                                                                       \
+    }                                                                                                                  \
+    SAFE_STRNCPY(path_out, path, path_size);                                                                           \
+    return 0;                                                                                                          \
+  } while (0)
+
+/**
+ * @brief Get home directory or special Windows path
+ * @param env_var Primary environment variable (e.g., "HOME", "APPDATA")
+ * @param fallback_env Fallback environment variable (e.g., "USERPROFILE")
+ * @return Directory path or NULL if not found
+ */
+static inline const char *get_home_or_fallback(const char *env_var, const char *fallback_env) {
+  const char *path = platform_getenv(env_var);
+  if (!path || path[0] == '\0') {
+    path = fallback_env ? platform_getenv(fallback_env) : NULL;
+  }
+  return path;
+}
+
 /**
  * Get the SSH agent socket/pipe path.
  *
