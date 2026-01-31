@@ -527,7 +527,12 @@ static bool is_sensitive_system_path(const char *path) {
  * @return true if the file appears to be an ascii-chat log file (false for directories or non-files)
  */
 static bool is_file_empty(const char *path) {
-  if (!path || !platform_is_regular_file(path)) {
+  if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "is_file_empty: invalid parameter");
+    return false;
+  }
+
+  if (!platform_is_regular_file(path)) {
     return false;
   }
 
