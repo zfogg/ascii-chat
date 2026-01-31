@@ -86,5 +86,8 @@ RUN clang --version && cmake --version
 # Set working directory
 WORKDIR /app
 
+# Copy .git directory to enable CMake to initialize submodules
+COPY .git /app/.git
+
 # Default command builds and runs tests with ctest
 CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel 0"]

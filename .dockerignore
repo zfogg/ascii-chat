@@ -16,10 +16,8 @@ bin/
 *~
 .DS_Store
 
-# Git
-.git/
+# Git (keep .git and .gitmodules for Docker builds, exclude .gitignore)
 .gitignore
-.gitmodules
 
 # Documentation
 docs/
