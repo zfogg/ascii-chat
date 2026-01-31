@@ -10,6 +10,7 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../util/parsing.h"
+#include "../windows/getopt.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>

@@ -16,6 +16,7 @@
 #include "../../util/parsing.h"
 #include <errno.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <string.h>

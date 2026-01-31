@@ -28,6 +28,25 @@
 #include "../common.h"
 
 // ============================================================================
+// Cross-platform CLI Utilities
+// ============================================================================
+
+/**
+ * @brief Platform-specific getopt include
+ *
+ * Provides unified getopt functionality across platforms:
+ * - Windows: Uses platform/windows/getopt.h
+ * - POSIX: Uses system <getopt.h>
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#include "windows/getopt.h"
+#else
+#include <getopt.h>
+#endif
+
+// ============================================================================
 // Platform-Specific Signal Definitions
 // ============================================================================
 

@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <io.h>
+#include <fcntl.h>
 
 #pragma comment(lib, "advapi32.lib")
 
@@ -632,6 +634,42 @@ char *platform_get_config_dir(void) {
 // ============================================================================
 // Platform Path Utilities
 // ============================================================================
+
+/**
+ * @brief Open temporary file (Windows)
+ *
+ * On Windows, platform_create_temp_file returns fd=-1, so we need to open the file.
+ */
+asciichat_error_t platform_temp_file_open(const char *path, int *fd_out) {
+  if (!path || !fd_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "path and fd_out cannot be NULL");
+  }
+
+  /* Windows: Open the temp file for writing */
+  int fd = open(path, O_WRONLY | O_BINARY);
+  if (fd < 0) {
+    return SET_ERRNO_SYS(ERROR_IO, "Failed to open temporary file: %s", path);
+  }
+
+  *fd_out = fd;
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Skip absolute path prefix (Windows)
+ *
+ * On Windows, skip the drive letter prefix (e.g., "C:" in "C:\path")
+ */
+const char *platform_path_skip_absolute_prefix(const char *path) {
+  if (!path || path[0] == '\0') {
+    return path;
+  }
+  /* Windows: Skip drive letter (e.g., "C:") */
+  if (path[1] == ':') {
+    return path + 2;
+  }
+  return path;
+}
 
 /**
  * @brief Normalize path separators for the current platform (Windows)

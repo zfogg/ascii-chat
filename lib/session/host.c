@@ -20,6 +20,7 @@
 #include "platform/socket.h"
 #include "platform/mutex.h"
 #include "platform/thread.h"
+#include "platform/network.h"
 #include "log/logging.h"
 #include "network/packet.h"
 #include "ringbuffer.h"
@@ -32,14 +33,6 @@
 #include <time.h>
 #include <stdio.h>
 #include <errno.h>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <netdb.h>
-#include <arpa/inet.h>
-#endif
 
 /* ============================================================================
  * Session Host Constants

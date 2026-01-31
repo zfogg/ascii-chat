@@ -122,38 +122,19 @@ asciichat_error_t acds_identity_default_path(char *path_out, size_t path_size) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "path_out cannot be NULL and path_size must be > 0");
   }
 
-#ifdef _WIN32
-  // Windows: %APPDATA%\ascii-chat\acds_identity
-  const char *appdata = SAFE_GETENV("APPDATA");
-  if (!appdata) {
-    return SET_ERRNO(ERROR_CONFIG, "APPDATA environment variable not set");
+  // Get platform-specific config directory (~/.config/ascii-chat/ or %APPDATA%\ascii-chat\)
+  char *config_dir = platform_get_config_dir();
+  if (!config_dir) {
+    return SET_ERRNO(ERROR_CONFIG, "Failed to get config directory");
   }
 
-  int written = snprintf(path_out, path_size, "%s\\ascii-chat\\acds_identity", appdata);
+  // Append "acds_identity" to config directory
+  int written = snprintf(path_out, path_size, "%sacds_identity", config_dir);
+  SAFE_FREE(config_dir);
+
   if (written < 0 || (size_t)written >= path_size) {
     return SET_ERRNO(ERROR_CONFIG, "Path buffer too small");
   }
-#else
-  // Unix: ~/.config/ascii-chat/acds_identity
-  const char *home = SAFE_GETENV("HOME");
-  if (!home) {
-    return SET_ERRNO(ERROR_CONFIG, "HOME environment variable not set");
-  }
-
-  // Check for XDG_CONFIG_HOME
-  const char *xdg_config = SAFE_GETENV("XDG_CONFIG_HOME");
-  if (xdg_config && xdg_config[0] != '\0') {
-    int written = snprintf(path_out, path_size, "%s/ascii-chat/acds_identity", xdg_config);
-    if (written < 0 || (size_t)written >= path_size) {
-      return SET_ERRNO(ERROR_CONFIG, "Path buffer too small");
-    }
-  } else {
-    int written = snprintf(path_out, path_size, "%s/.config/ascii-chat/acds_identity", home);
-    if (written < 0 || (size_t)written >= path_size) {
-      return SET_ERRNO(ERROR_CONFIG, "Path buffer too small");
-    }
-  }
-#endif
 
   return ASCIICHAT_OK;
 }

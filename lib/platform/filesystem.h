@@ -270,6 +270,28 @@ int platform_create_temp_file(char *path_out, size_t path_size, const char *pref
  */
 int platform_delete_temp_file(const char *path);
 
+/**
+ * @brief Open a temporary file for writing
+ *
+ * Platform-aware wrapper that handles the differences between POSIX and Windows
+ * temp file opening.
+ *
+ * Platform-specific behavior:
+ *   - POSIX: Use fd from platform_create_temp_file() directly
+ *   - Windows: Open the temp file created by platform_create_temp_file()
+ *
+ * @param path Path to the temporary file (from platform_create_temp_file)
+ * @param fd_out Output parameter: file descriptor
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Caller must close fd when done
+ * @note On Windows, platform_create_temp_file returns fd=-1, so this wrapper opens it
+ * @note On POSIX, platform_create_temp_file already returns valid fd
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_temp_file_open(const char *path, int *fd_out);
+
 // ============================================================================
 // Key File Security
 // ============================================================================
@@ -445,6 +467,25 @@ char *platform_get_config_dir(void);
 // ============================================================================
 // Platform Path Utilities
 // ============================================================================
+
+/**
+ * @brief Skip absolute path prefix (drive letter on Windows)
+ *
+ * Advances pointer past the absolute path prefix for the current platform.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Skips drive letter (e.g., "C:" in "C:\path")
+ *   - Unix: Returns original pointer (no prefix to skip)
+ *
+ * @param path Path string to process (e.g., "C:\path" or "/path")
+ * @return Pointer to first character after the prefix, or original path if no prefix
+ *
+ * @note Safe to call with NULL (returns NULL)
+ * @note Safe to call with relative paths
+ *
+ * @ingroup platform
+ */
+const char *platform_path_skip_absolute_prefix(const char *path);
 
 /**
  * @brief Normalize path separators for the current platform

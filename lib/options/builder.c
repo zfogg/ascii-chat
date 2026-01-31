@@ -19,15 +19,9 @@
 #include <errno.h>
 #include <ctype.h>
 
-// Platform-specific getopt
-#ifdef _WIN32
-#include "platform/windows/getopt.h"
-#else
-#include <getopt.h>
-#endif
-
-// Use platform asprintf
+// Use platform utilities
 #include "platform/util.h"
+#include "platform/terminal.h"
 #define asprintf platform_asprintf
 
 // Initial capacities for dynamic arrays

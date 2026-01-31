@@ -14,15 +14,10 @@
 #include "common.h"
 #include "options/options.h"
 #include "asciichat_errno.h"
+#include "platform/network.h"
 
 #include <string.h>
 #include <time.h>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#else
-#include <arpa/inet.h>
-#endif
 
 /* ============================================================================
  * Session Settings Functions

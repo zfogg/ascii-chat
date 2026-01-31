@@ -562,6 +562,31 @@ char *platform_get_config_dir(void) {
 // ============================================================================
 
 /**
+ * @brief Open temporary file (POSIX)
+ *
+ * On POSIX, platform_create_temp_file already returns a valid fd, so just return it.
+ */
+asciichat_error_t platform_temp_file_open(const char *path, int *fd_out) {
+  (void)path; // Unused on POSIX - fd already obtained from platform_create_temp_file
+  if (!fd_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "fd_out cannot be NULL");
+  }
+  /* On POSIX, the caller already has the fd from platform_create_temp_file */
+  /* This is a no-op wrapper for API consistency */
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Skip absolute path prefix (POSIX)
+ *
+ * On Unix, absolute paths don't have a drive letter prefix, so return the original path.
+ */
+const char *platform_path_skip_absolute_prefix(const char *path) {
+  /* Unix: No drive letter to skip */
+  return path;
+}
+
+/**
  * @brief Normalize path separators for the current platform (POSIX)
  *
  * On Unix, forward slashes are already the standard, so this is a no-op.

@@ -20,6 +20,7 @@
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "platform/thread.h"
+#include "platform/network.h"
 #include "log/logging.h"
 #include "session/capture.h"
 #include "session/audio.h"
@@ -29,14 +30,6 @@
 
 #include <string.h>
 #include <stdio.h>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#else
-#include <netdb.h>
-#include <arpa/inet.h>
-#endif
 
 /* ============================================================================
  * Session Participant Context Structure

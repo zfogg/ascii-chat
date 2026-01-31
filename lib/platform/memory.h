@@ -2,30 +2,33 @@
 
 /**
  * @file platform/memory.h
- * @brief Cross-platform memory utilities
+ * @brief Cross-platform memory allocation utilities
  * @ingroup platform
  * @addtogroup platform
  * @{
  *
- * Provides platform-independent memory utilities for debugging and allocation tracking.
+ * Provides unified memory allocation abstractions across Windows and POSIX platforms.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
 
-#include <stddef.h>
-
+#ifdef _WIN32
+#include <malloc.h>
 /**
- * Get the allocated size of a malloc'd block.
+ * @brief Platform-specific stack allocation (Windows)
  *
- * Returns the actual allocated size of a pointer, which may be larger than
- * the requested size due to alignment and overhead.
- *
- * This is primarily used for debugging/tracking of untracked allocations.
- *
- * @param ptr Pointer to query (from malloc/calloc/aligned_malloc)
- * @return Allocated size in bytes, or 0 if unable to determine
+ * On Windows, use _alloca for stack allocation
  */
-size_t platform_malloc_size(void *ptr);
+#define platform_alloca(size) _alloca(size)
+#else
+#include <alloca.h>
+/**
+ * @brief Platform-specific stack allocation (POSIX)
+ *
+ * On POSIX, use standard alloca
+ */
+#define platform_alloca(size) alloca(size)
+#endif
 
 /** @} */
