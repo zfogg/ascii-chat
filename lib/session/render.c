@@ -326,70 +326,44 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // Audio-Video Synchronization: Temporarily disabled to investigate video skipping issue
-    // if (is_synchronous && capture && image && frame_count % 60 == 0) {
-    //   // Sync audio to video every 60 frames (~2.5 seconds at 24fps)
-    //   // This keeps audio/video synchronized by seeking audio to match video's current PTS
-    //   media_source_t *source = session_capture_get_media_source(capture);
-    //   if (source) {
-    //     asciichat_error_t sync_err = media_source_sync_audio_to_video(source);
-    //     if (sync_err == ASCIICHAT_OK) {
-    //       log_debug_every(5000000, "AUDIO_SYNC: Synchronized audio to video at frame %lu", frame_count);
-    //     } else {
-    //       log_debug_every(5000000, "AUDIO_SYNC: Sync failed (not available for this source type)");
-    //     }
-    //   }
-    // }
+    // Audio-Video Synchronization: Keep audio and video in sync by periodically adjusting audio to match video time
+    if (is_synchronous && capture && image && frame_count % 30 == 0) {
+      // Sync audio to video every 30 frames to keep them synchronized
+      // This prevents audio from drifting ahead or behind video
+      media_source_t *source = session_capture_get_media_source(capture);
+      if (source) {
+        asciichat_error_t sync_err = media_source_sync_audio_to_video(source);
+        if (sync_err == ASCIICHAT_OK) {
+          log_debug_every(3000000, "AUDIO_SYNC: Synchronized audio to video at frame %lu", frame_count);
+        }
+      }
+    }
 
-    // Maintain target frame rate by sleeping only for remaining time
-    // Apply frame rate limiting in all modes, including snapshot (so animation plays at correct speed)
+    // Frame rate limiting: Only sleep if we're ahead of schedule
+    // If decoder is slow and we're already behind, don't add extra sleep
     if (is_synchronous && capture) {
       uint32_t target_fps = session_capture_get_target_fps(capture);
       if (target_fps > 0) {
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, time_get_ns());
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
-        // Profile: total frame time
-        double frame_ms = (double)frame_elapsed_ns / 1000000.0;
-        double target_ms = (double)frame_target_ns / 1000000.0;
-
+        // Only sleep if we have time budget remaining
+        // If already behind, skip sleep to catch up
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
           uint64_t sleep_us = sleep_ns / 1000;
-          if (sleep_us > 0) {
-            platform_sleep_usec(sleep_us);
+          // Sleep in 1ms chunks to respond to interrupts faster
+          if (sleep_us > 1000) {
+            platform_sleep_usec(sleep_us - 500); // Reserve 500us for overhead
           }
-          if (frame_count % 30 == 0) {
-            log_info("TIMING[%lu]: ops=%.2f+sleep %.0f ms = %.2fms (%.0f%% utilized)", frame_count, frame_ms,
-                     target_ms - frame_ms, target_ms, (frame_ms / target_ms) * 100.0);
-          }
-        } else {
-          // Operations exceeded target frame time - no sleep needed
-          double overrun_ms = frame_ms - target_ms;
-          log_warn("TIMING[%lu]: OVERRUN %.2f ms (ops=%.2f, budget=%.2f)", frame_count, overrun_ms, frame_ms,
-                   target_ms);
         }
       }
-
-      // Debug: log actual render FPS every 30 frames
-      if (frame_count % 30 == 0) {
-        double actual_fps = session_capture_get_current_fps(capture);
-        uint32_t target_fps = session_capture_get_target_fps(capture);
-        void *media_src = session_capture_get_media_source(capture);
-        double video_pos = media_src ? media_source_get_position((media_source_t *)media_src) : -1.0;
-        log_info_every(5000000, "RENDER: frame=%lu, actual=%.1f FPS, target=%u FPS, pos=%.3f sec", frame_count,
-                       actual_fps, target_fps, video_pos);
-      }
     }
 
-    // Clean up image if it's from a webcam source (they allocate fresh frames)
-    // Decoder images are cached and owned by the decoder, so we must NOT free those
-    if (is_synchronous && capture) {
-      media_source_t *source = session_capture_get_media_source(capture);
-      if (source && media_source_get_type(source) == MEDIA_SOURCE_WEBCAM && image) {
-        image_destroy(image);
-      }
-    }
+    // Note: Do NOT destroy images here - they're managed by their sources:
+    // - Webcam images: cached and reused by webcam driver
+    // - Decoder images: cached and reused by FFmpeg decoder
+    // All image memory is owned and freed by the source, not the render loop
   }
 
   // Keyboard input cleanup (if it was initialized)

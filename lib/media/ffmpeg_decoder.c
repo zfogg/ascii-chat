@@ -754,80 +754,12 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
   }
   mutex_unlock(&decoder->prefetch_mutex);
 
-  // Fallback: if prefetch thread hasn't provided a frame yet (e.g., still decoding first frame),
-  // decode synchronously. This ensures we always get frames, even if background thread is slow.
-  log_debug_every(1000000, "Prefetch frame not ready, falling back to synchronous decode");
-
-  // CRITICAL: Hold mutex while accessing FFmpeg decoder
-  mutex_lock(&decoder->prefetch_mutex);
-
-  // Read packets until we get a video frame
-  image_t *result = NULL;
-  while (true) {
-    int ret = av_read_frame(decoder->format_ctx, decoder->packet);
-    if (ret < 0) {
-      if (ret == AVERROR_EOF) {
-        decoder->eof_reached = true;
-      }
-      break;
-    }
-
-    // Check if this is a video packet
-    if (decoder->packet->stream_index != decoder->video_stream_idx) {
-      av_packet_unref(decoder->packet);
-      continue;
-    }
-
-    // Send packet to decoder
-    ret = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
-    av_packet_unref(decoder->packet);
-
-    if (ret < 0) {
-      continue;
-    }
-
-    // Receive decoded frame
-    ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
-    if (ret == AVERROR(EAGAIN)) {
-      continue; // Need more packets
-    } else if (ret < 0) {
-      break;
-    }
-
-    // Update position tracking
-    decoder->last_video_pts =
-        get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->video_stream_idx]->time_base);
-
-    // Convert frame to RGB24
-    int width = decoder->video_codec_ctx->width;
-    int height = decoder->video_codec_ctx->height;
-
-    // Allocate current_image if needed
-    if (!decoder->current_image || (int)decoder->current_image->w != width ||
-        (int)decoder->current_image->h != height) {
-      if (decoder->current_image) {
-        image_destroy(decoder->current_image);
-      }
-      decoder->current_image = image_new((size_t)width, (size_t)height);
-      if (!decoder->current_image) {
-        log_error("Failed to allocate image");
-        break;
-      }
-    }
-
-    // Convert pixel format (rgb_pixel_t is 3 bytes: r, g, b)
-    uint8_t *dst_data[1] = {(uint8_t *)decoder->current_image->pixels};
-    int dst_linesize[1] = {width * 3};
-
-    sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
-              dst_data, dst_linesize);
-
-    result = decoder->current_image;
-    break;
-  }
-
-  mutex_unlock(&decoder->prefetch_mutex);
-  return result;
+  // No fallback synchronous decode - let the render loop skip this frame
+  // The background prefetch thread will provide frames when they're ready.
+  // This prevents blocking on network I/O during slow network conditions.
+  // The render loop continues and stays in sync with audio timing.
+  log_debug_every(5000000, "Prefetch frame not ready, skipping to next iteration (allow prefetch to catch up)");
+  return NULL;
 }
 
 /**
