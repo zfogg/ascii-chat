@@ -753,7 +753,10 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   if (use_colors) {
     // Format the message first so we can colorize it
     char msg_buffer[LOG_MSG_BUFFER_SIZE];
-    int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
+    va_end(args_copy);
 
     if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
       const char *colorized_msg = colorize_log_message(msg_buffer);
@@ -963,14 +966,23 @@ void log_plain_msg(const char *fmt, ...) {
     }
   }
 
-  // Apply colorization for TTY output
-  if (terminal_should_color_output(STDOUT_FILENO)) {
-    const char *colorized_msg = colorize_log_message(log_buffer);
-    safe_fprintf(stdout, "%s\n", colorized_msg);
+  // Choose output stream: respect force_stderr flag to keep stdout clean for piped output
+  FILE *output_stream;
+  if (atomic_load(&g_log.force_stderr)) {
+    output_stream = stderr;
   } else {
-    safe_fprintf(stdout, "%s\n", log_buffer);
+    output_stream = stdout;
   }
-  (void)fflush(stdout);
+  int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
+
+  // Apply colorization for TTY output
+  if (terminal_should_color_output(fd)) {
+    const char *colorized_msg = colorize_log_message(log_buffer);
+    safe_fprintf(output_stream, "%s\n", colorized_msg);
+  } else {
+    safe_fprintf(output_stream, "%s\n", log_buffer);
+  }
+  (void)fflush(output_stream);
 }
 
 // Helper for log_plain_stderr variants (lock-free)

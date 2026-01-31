@@ -246,6 +246,7 @@ int main(int argc, char *argv[]) {
   terminal_color_mode_t color_mode = opts->color_mode;
   if (is_client_like_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
       opts->color != COLOR_SETTING_TRUE) {
+    log_set_force_stderr(true); // Force logs to stderr BEFORE logging the piped detection
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");

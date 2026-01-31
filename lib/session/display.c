@@ -141,6 +141,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     ctx->has_tty = (platform_isatty(ctx->tty_info.fd) != 0) && (platform_isatty(STDOUT_FILENO) != 0);
   }
 
+  // In piped mode, force all logs to stderr to prevent frame data corruption
+  if (!ctx->has_tty) {
+    log_set_force_stderr(true);
+  }
+
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
 
@@ -346,8 +351,19 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   if (use_tty_control) {
     // TTY mode: send clear codes then frame data
+    // CRITICAL: Ensure clear codes write completely before frame data to avoid cursor misalignment
     const char *clear = "\033[2J\033[H";
-    platform_write(STDOUT_FILENO, clear, 7);
+    size_t clear_written = 0;
+    int clear_attempts = 0;
+    while (clear_written < 7 && clear_attempts < 100) {
+      ssize_t result = platform_write(STDOUT_FILENO, clear + clear_written, 7 - clear_written);
+      if (result > 0) {
+        clear_written += (size_t)result;
+        clear_attempts = 0;
+      } else {
+        clear_attempts++;
+      }
+    }
 
     size_t written = 0;
     int attempts = 0;
@@ -379,19 +395,34 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
     // Piped mode (non-snapshot): render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
-    size_t written = 0;
-    while (written < frame_len) {
-      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
-      if (result <= 0) {
-        log_error("Failed to write piped frame data");
-        break;
-      }
-      written += (size_t)result;
-    }
-    // Add newline after each frame using thread-safe console lock
+    // CRITICAL: Use ONLY platform_write() (unbuffered syscalls) to avoid mixing buffering modes
+    // Mixing buffered (fputc/fflush) and unbuffered (platform_write) causes incomplete file writes
     bool prev_lock_state = log_lock_terminal();
-    (void)fputc('\n', stdout);
-    (void)fflush(stdout);
+    (void)fflush(stdout); // Flush any pending buffered output first
+    log_unlock_terminal(prev_lock_state);
+
+    size_t written = 0;
+    int attempts = 0;
+    while (written < frame_len && attempts < 1000) {
+      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
+      if (result > 0) {
+        written += (size_t)result;
+        attempts = 0;
+      } else {
+        attempts++;
+      }
+    }
+    // Write newline after each frame using unbuffered write (NOT fputc)
+    // This ensures frame + newline are both immediately visible in piped output
+    const char newline = '\n';
+    prev_lock_state = log_lock_terminal();
+    ssize_t nl_result = platform_write(STDOUT_FILENO, &newline, 1);
+    if (nl_result < 0) {
+      log_error("Failed to write frame newline to stdout");
+    }
+    // Force data to disk immediately so piped output shows complete frames
+    // This is critical when output is redirected to a file - otherwise kernel buffers hide incomplete frames
+    (void)fsync(STDOUT_FILENO);
     log_unlock_terminal(prev_lock_state);
   } else {
   }
