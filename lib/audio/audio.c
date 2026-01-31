@@ -62,16 +62,14 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // First initialization - call Pa_Initialize() exactly once
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
-  log_debug("audio_ensure_portaudio_initialized: redirecting stderr to suppress ALSA warnings");
   platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
   log_debug("audio_ensure_portaudio_initialized: calling Pa_Initialize()");
   PaError err = Pa_Initialize();
-  log_debug("audio_ensure_portaudio_initialized: Pa_Initialize returned, restoring stderr");
+  log_debug("audio_ensure_portaudio_initialized: Pa_Initialize returned");
 
   // Restore stderr before checking errors
   platform_stderr_restore(stderr_handle);
-  log_debug("audio_ensure_portaudio_initialized: stderr restored");
 
   if (err != paNoError) {
     static_mutex_unlock(&g_pa_refcount_mutex);
@@ -1521,6 +1519,13 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         log_warn("Failed to open output at %.0f Hz: %s, trying native rate %.0f Hz", preferred_rate,
                  Pa_GetErrorText(err), native_rate);
 
+        // If first Pa_OpenStream call left a partial stream, clean it up before retrying
+        if (ctx->output_stream) {
+          log_debug("Closing partially-opened output stream from failed preferred rate");
+          Pa_CloseStream(ctx->output_stream);
+          ctx->output_stream = NULL;
+        }
+
         // Fall back to native rate
         err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
                             output_callback, ctx);
@@ -1531,6 +1536,12 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
           log_info("✓ Output opened at native rate: %.0f Hz (will need resampling)", native_rate);
         } else {
           log_warn("Failed to open output stream at native rate: %s", Pa_GetErrorText(err));
+          // Clean up if fallback also failed
+          if (ctx->output_stream) {
+            log_debug("Closing partially-opened output stream from failed native rate");
+            Pa_CloseStream(ctx->output_stream);
+            ctx->output_stream = NULL;
+          }
         }
       }
 
@@ -1557,6 +1568,14 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       // If input failed, try device 0 as fallback (HDMI on BeaglePlay)
       if (!input_ok) {
         log_debug("Input failed - trying device 0 as fallback");
+
+        // Clean up partial stream from first attempt before retrying
+        if (ctx->input_stream) {
+          log_debug("Closing partially-opened input stream from failed primary device");
+          Pa_CloseStream(ctx->input_stream);
+          ctx->input_stream = NULL;
+        }
+
         PaStreamParameters fallback_input_params = inputParams;
         fallback_input_params.device = 0;
         const PaDeviceInfo *device_0_info = Pa_GetDeviceInfo(0);
@@ -1568,6 +1587,12 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
             input_ok = true;
           } else {
             log_warn("Fallback also failed on device 0: %s", Pa_GetErrorText(err));
+            // Clean up if fallback also failed
+            if (ctx->input_stream) {
+              log_debug("Closing partially-opened input stream from failed fallback device");
+              Pa_CloseStream(ctx->input_stream);
+              ctx->input_stream = NULL;
+            }
           }
         }
       }
@@ -1703,21 +1728,51 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
   mutex_lock(&ctx->state_mutex);
 
   if (ctx->duplex_stream) {
-    Pa_StopStream(ctx->duplex_stream);
-    Pa_CloseStream(ctx->duplex_stream);
+    log_debug("Stopping duplex stream");
+    PaError err = Pa_StopStream(ctx->duplex_stream);
+    if (err != paNoError) {
+      log_warn("Pa_StopStream failed: %s", Pa_GetErrorText(err));
+    }
+    log_debug("Closing duplex stream");
+    err = Pa_CloseStream(ctx->duplex_stream);
+    if (err != paNoError) {
+      log_warn("Pa_CloseStream failed: %s", Pa_GetErrorText(err));
+    } else {
+      log_debug("Duplex stream closed successfully");
+    }
     ctx->duplex_stream = NULL;
   }
 
   // Stop separate streams if used
   if (ctx->input_stream) {
-    Pa_StopStream(ctx->input_stream);
-    Pa_CloseStream(ctx->input_stream);
+    log_debug("Stopping input stream");
+    PaError err = Pa_StopStream(ctx->input_stream);
+    if (err != paNoError) {
+      log_warn("Pa_StopStream input failed: %s", Pa_GetErrorText(err));
+    }
+    log_debug("Closing input stream");
+    err = Pa_CloseStream(ctx->input_stream);
+    if (err != paNoError) {
+      log_warn("Pa_CloseStream input failed: %s", Pa_GetErrorText(err));
+    } else {
+      log_debug("Input stream closed successfully");
+    }
     ctx->input_stream = NULL;
   }
 
   if (ctx->output_stream) {
-    Pa_StopStream(ctx->output_stream);
-    Pa_CloseStream(ctx->output_stream);
+    log_debug("Stopping output stream");
+    PaError err = Pa_StopStream(ctx->output_stream);
+    if (err != paNoError) {
+      log_warn("Pa_StopStream output failed: %s", Pa_GetErrorText(err));
+    }
+    log_debug("Closing output stream");
+    err = Pa_CloseStream(ctx->output_stream);
+    if (err != paNoError) {
+      log_warn("Pa_CloseStream output failed: %s", Pa_GetErrorText(err));
+    } else {
+      log_debug("Output stream closed successfully");
+    }
     ctx->output_stream = NULL;
   }
 
