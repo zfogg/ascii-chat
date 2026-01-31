@@ -321,7 +321,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       decoder->prefetch_frame_ready = true;
       mutex_unlock(&decoder->prefetch_mutex);
 
-      log_debug_every(5000000, "PREFETCH: decoded frame in %.2f ms", read_ms);
+      log_dev_every(5000000, "PREFETCH: decoded frame in %.2f ms", read_ms);
 
       // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
       use_image_a = !use_image_a;
@@ -870,7 +870,7 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
 
     // Use the prefetched frame
     decoder->current_image = frame;
-    log_debug_every(5000000, "Using prefetched frame");
+    log_dev_every(5000000, "Using prefetched frame");
     return frame;
   }
   mutex_unlock(&decoder->prefetch_mutex);
@@ -878,7 +878,7 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
   // No fallback synchronous decode - rely on background prefetch thread
   // Skipping frames when prefetch not ready allows audio timing to advance
   // This is critical for proper audio-video sync when prefetch is active
-  log_debug_every(5000000, "Prefetch frame not ready, skipping to next iteration (allow prefetch to catch up)");
+  log_dev_every(5000000, "Prefetch frame not ready, skipping to next iteration (allow prefetch to catch up)");
   return NULL;
 }
 
@@ -1143,13 +1143,8 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
   }
 
-  // CRITICAL: Hold mutex during entire seek operation
-  // This ensures prefetch thread is NOT in av_read_frame() while we call av_seek_frame()
-  // The prefetch thread releases this mutex BEFORE calling av_read_frame(), so holding it
-  // guarantees exclusive access to the AVFormatContext during seek operations
-  log_info("[SEEK] Acquiring prefetch_mutex before av_seek_frame()");
+  // Hold mutex during entire seek operation to prevent race with prefetch thread
   mutex_lock(&decoder->prefetch_mutex);
-  log_info("[SEEK] Acquired prefetch_mutex, starting seek to %.2f sec", timestamp_sec);
 
   // Set flag to pause prefetch thread via condition variable
   decoder->seeking_in_progress = true;
@@ -1158,13 +1153,10 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
 
   // Seek to timestamp with frame-based seeking to nearest keyframe
-  log_info("[SEEK] Calling av_seek_frame() with target=%.2f sec", timestamp_sec);
   int seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
   if (seek_ret < 0) {
-    log_info("[SEEK] First av_seek_frame failed, trying fallback");
     seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
   }
-  log_info("[SEEK] av_seek_frame returned %d", seek_ret);
 
   if (seek_ret < 0) {
     decoder->seeking_in_progress = false;
@@ -1188,6 +1180,13 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->last_audio_pts = -1.0;
   decoder->prefetch_frame_ready = false;
   decoder->audio_samples_read = 0;
+
+  // Reset current_read_buffer and mark both buffers as not in use
+  // After seeking, the prefetch thread may reallocate buffers, so current_read_buffer
+  // could point to freed memory. Clear it so the next read doesn't try to release stale pointers.
+  decoder->current_read_buffer = NULL;
+  decoder->buffer_a_in_use = false;
+  decoder->buffer_b_in_use = false;
 
   // Resume prefetch thread
   log_info("[SEEK] Seeking complete, signaling prefetch thread to resume");
