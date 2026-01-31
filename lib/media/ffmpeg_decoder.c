@@ -689,11 +689,6 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   // Clean up prefetch state
   mutex_destroy(&decoder->prefetch_mutex);
 
-  // Check if current_image is one of the prefetch buffers BEFORE destroying them
-  // (needed to avoid double-free when current_image points to a prefetch buffer)
-  bool current_is_prefetch_a = (decoder->current_image == decoder->prefetch_image_a);
-  bool current_is_prefetch_b = (decoder->current_image == decoder->prefetch_image_b);
-
   // Free prefetch image buffers
   if (decoder->prefetch_image_a) {
     image_destroy(decoder->prefetch_image_a);
@@ -704,12 +699,8 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
     decoder->prefetch_image_b = NULL;
   }
 
-  // Current image may point to one of the prefetch buffers (already destroyed above)
-  // OR it may be independently allocated (from synchronous fallback decode).
-  // Only destroy if it's not one of the prefetch buffers.
-  if (decoder->current_image && !current_is_prefetch_a && !current_is_prefetch_b) {
-    image_destroy(decoder->current_image);
-  }
+  // Don't destroy current_image - it points to one of the prefetch buffers
+  // which have already been destroyed above
   decoder->current_image = NULL;
 
   // Free audio buffer
@@ -795,82 +786,11 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
   }
   mutex_unlock(&decoder->prefetch_mutex);
 
-  // Fallback: Try to decode ONE packet without blocking indefinitely on network I/O.
-  // If we can get a frame immediately, great. Otherwise return NULL and let the
-  // render loop skip this frame, allowing sync with audio.
-  log_debug_every(5000000, "Prefetch frame not ready, attempting single synchronous decode");
-
-  // CRITICAL: Hold mutex while accessing FFmpeg decoder
-  mutex_lock(&decoder->prefetch_mutex);
-
-  // Try to read ONE packet. If it blocks on network, don't wait.
-  // We'll return NULL and let the render loop continue.
-  image_t *result = NULL;
-
-  // First, try to get a frame from the decoder without reading new packets
-  // (maybe there's one waiting in the codec buffer)
-  int ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
-  if (ret == AVERROR(EAGAIN)) {
-    // Need more packets - try to read just ONE packet
-    ret = av_read_frame(decoder->format_ctx, decoder->packet);
-    if (ret < 0) {
-      if (ret == AVERROR_EOF) {
-        decoder->eof_reached = true;
-      }
-      // Network timeout or EOF - return NULL, don't block
-      mutex_unlock(&decoder->prefetch_mutex);
-      return NULL;
-    }
-
-    // Got one packet - send it to decoder
-    if (decoder->packet->stream_index == decoder->video_stream_idx) {
-      avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
-    }
-    av_packet_unref(decoder->packet);
-
-    // Try to receive frame now
-    ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
-    if (ret != 0) {
-      // Still no frame - return NULL without waiting for more packets
-      mutex_unlock(&decoder->prefetch_mutex);
-      return NULL;
-    }
-  } else if (ret != 0) {
-    // Decoder error
-    mutex_unlock(&decoder->prefetch_mutex);
-    return NULL;
-  }
-
-  // We got a frame! Update position and convert to RGB24
-  decoder->last_video_pts =
-      get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->video_stream_idx]->time_base);
-
-  int width = decoder->video_codec_ctx->width;
-  int height = decoder->video_codec_ctx->height;
-
-  // Allocate current_image if needed
-  if (!decoder->current_image || (int)decoder->current_image->w != width || (int)decoder->current_image->h != height) {
-    if (decoder->current_image) {
-      image_destroy(decoder->current_image);
-    }
-    decoder->current_image = image_new((size_t)width, (size_t)height);
-    if (!decoder->current_image) {
-      log_error("Failed to allocate image");
-      mutex_unlock(&decoder->prefetch_mutex);
-      return NULL;
-    }
-  }
-
-  // Convert pixel format (rgb_pixel_t is 3 bytes: r, g, b)
-  uint8_t *dst_data[1] = {(uint8_t *)decoder->current_image->pixels};
-  int dst_linesize[1] = {width * 3};
-
-  sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
-            dst_data, dst_linesize);
-
-  result = decoder->current_image;
-  mutex_unlock(&decoder->prefetch_mutex);
-  return result;
+  // No fallback synchronous decode - rely on background prefetch thread
+  // Skipping frames when prefetch not ready allows audio timing to advance
+  // This is critical for proper audio-video sync when prefetch is active
+  log_debug_every(5000000, "Prefetch frame not ready, skipping to next iteration (allow prefetch to catch up)");
+  return NULL;
 }
 
 /**
@@ -996,6 +916,7 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
   }
 
   // Read more packets to fill the request
+  static uint64_t packet_count = 0;
   while (samples_written < num_samples) {
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
     if (ret < 0) {
@@ -1011,6 +932,9 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       continue;
     }
 
+    log_info_every(50000, "Audio packet #%lu: pts=%ld dts=%ld duration=%d size=%d", packet_count++,
+                   decoder->packet->pts, decoder->packet->dts, decoder->packet->duration, decoder->packet->size);
+
     // Send packet to decoder
     ret = avcodec_send_packet(decoder->audio_codec_ctx, decoder->packet);
     av_packet_unref(decoder->packet);
@@ -1020,29 +944,48 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
       continue;
     }
 
-    // Receive decoded frame
-    ret = avcodec_receive_frame(decoder->audio_codec_ctx, decoder->frame);
-    if (ret == AVERROR(EAGAIN)) {
-      continue;
-    } else if (ret < 0) {
-      log_warn("Error receiving audio frame from decoder");
-      break;
+    // Receive all decoded frames from this packet
+    // Important: a single packet can produce multiple frames. Must drain all before next packet.
+    while (1) {
+      ret = avcodec_receive_frame(decoder->audio_codec_ctx, decoder->frame);
+      if (ret == AVERROR(EAGAIN)) {
+        break; // No more frames from this packet, get next packet
+      } else if (ret < 0) {
+        log_warn("Error receiving audio frame from decoder");
+        goto audio_read_done;
+      }
+
+      // Update position tracking
+      decoder->last_audio_pts =
+          get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->audio_stream_idx]->time_base);
+
+      // Resample to target format
+      float *out_buf = buffer + samples_written;
+      int out_samples = (int)(num_samples - samples_written);
+
+      uint8_t *out_ptr = (uint8_t *)out_buf;
+      int converted = swr_convert(decoder->swr_ctx, &out_ptr, out_samples, (const uint8_t **)decoder->frame->data,
+                                  decoder->frame->nb_samples);
+
+      if (converted > 0) {
+        samples_written += (size_t)converted;
+      }
+
+      if (samples_written >= num_samples) {
+        goto audio_read_done;
+      }
     }
+  }
 
-    // Update position tracking
-    decoder->last_audio_pts =
-        get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->audio_stream_idx]->time_base);
-
-    // Resample to target format
-    float *out_buf = buffer + samples_written;
-    int out_samples = (int)(num_samples - samples_written);
-
-    uint8_t *out_ptr = (uint8_t *)out_buf;
-    int converted = swr_convert(decoder->swr_ctx, &out_ptr, out_samples, (const uint8_t **)decoder->frame->data,
-                                decoder->frame->nb_samples);
-
-    if (converted > 0) {
-      samples_written += (size_t)converted;
+audio_read_done:
+  // Flush resampler buffer if we haven't filled the full request
+  // The resampler may have buffered samples that need to be output
+  if (samples_written < num_samples) {
+    int remaining_space = (int)(num_samples - samples_written);
+    uint8_t *out_ptr = (uint8_t *)(buffer + samples_written);
+    int flushed = swr_convert(decoder->swr_ctx, &out_ptr, remaining_space, NULL, 0);
+    if (flushed > 0) {
+      samples_written += (size_t)flushed;
     }
   }
 
@@ -1135,13 +1078,10 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->last_audio_pts = -1.0;
   decoder->prefetch_frame_ready = false; // Discard any prefetched frame (now stale after seek)
 
-  // Set sample counter to seek position to maintain continuous position tracking
-  // This prevents audio playback from thinking it's out of sync and causing audible skips/loops
-  if (decoder->audio_sample_rate > 0) {
-    decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate + 0.5);
-  } else {
-    decoder->audio_samples_read = 0;
-  }
+  // Do NOT reset sample counter to seek position - let it be updated naturally by audio/video decoding
+  // If we set it here and no audio is being decoded, position will be stuck at this value
+  // Better to start from 0 and let normal frame reading update position via PTS
+  decoder->audio_samples_read = 0;
 
   mutex_unlock(&decoder->prefetch_mutex);
 

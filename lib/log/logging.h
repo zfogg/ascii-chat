@@ -621,6 +621,137 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 
 /** @} */
 
+/**
+ * @brief Log every nth call to this code location (thread-safe)
+ *
+ * Logs a message every nth time the code is executed. Useful for logging
+ * periodic events in tight loops without spamming the log. For example,
+ * log_nth(INFO, 1000, "Processed items") logs every 1000 calls.
+ *
+ * Each call site maintains its own static counter, so different call sites
+ * can log independently at different frequencies.
+ *
+ * @param log_level Log level (DEV, DEBUG, INFO, WARN, ERROR, FATAL)
+ * @param n Log every nth call (1 = every call, 2 = every 2nd call, etc.)
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * @note Thread-safe via atomic fetch_add.
+ * @ingroup logging
+ */
+#ifdef NDEBUG
+#define log_nth(log_level, n, fmt, ...)                                                                                \
+  do {                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                             \
+    uint64_t _log_nth_count = atomic_load_explicit(&_log_nth_counter, memory_order_relaxed);                           \
+    uint64_t _log_nth_new = _log_nth_count + 1;                                                                        \
+    atomic_store_explicit(&_log_nth_counter, _log_nth_new, memory_order_relaxed);                                      \
+    if (_log_nth_new % (uint64_t)(n) == 0) {                                                                           \
+      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
+    }                                                                                                                  \
+  } while (0)
+#else
+#define log_nth(log_level, n, fmt, ...)                                                                                \
+  do {                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_nth_counter = LOG_ATOMIC_UINT64_INIT(0);                                             \
+    uint64_t _log_nth_count = atomic_load_explicit(&_log_nth_counter, memory_order_relaxed);                           \
+    uint64_t _log_nth_new = _log_nth_count + 1;                                                                        \
+    atomic_store_explicit(&_log_nth_counter, _log_nth_new, memory_order_relaxed);                                      \
+    if (_log_nth_new % (uint64_t)(n) == 0) {                                                                           \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
+    }                                                                                                                  \
+  } while (0)
+#endif
+
+/**
+ * @brief Log exactly once per call site (thread-safe)
+ *
+ * Logs a message exactly once, no matter how many times the code is executed.
+ * Each call site maintains its own static counter, so different call sites can
+ * log independently.
+ *
+ * Useful for one-time initialization messages, warnings, or debug output that
+ * should only appear once per session.
+ *
+ * @param log_level Log level (DEV, DEBUG, INFO, WARN, ERROR, FATAL)
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * @note Thread-safe via atomic operations.
+ * @ingroup logging
+ */
+#ifdef NDEBUG
+#define log_once(log_level, fmt, ...)                                                                                  \
+  do {                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                            \
+    uint64_t _log_once_count = atomic_load_explicit(&_log_once_counter, memory_order_relaxed);                         \
+    if (_log_once_count == 0) {                                                                                        \
+      atomic_store_explicit(&_log_once_counter, 1, memory_order_relaxed);                                              \
+      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
+    }                                                                                                                  \
+  } while (0)
+#else
+#define log_once(log_level, fmt, ...)                                                                                  \
+  do {                                                                                                                 \
+    static LOG_ATOMIC_UINT64 _log_once_counter = LOG_ATOMIC_UINT64_INIT(0);                                            \
+    uint64_t _log_once_count = atomic_load_explicit(&_log_once_counter, memory_order_relaxed);                         \
+    if (_log_once_count == 0) {                                                                                        \
+      atomic_store_explicit(&_log_once_counter, 1, memory_order_relaxed);                                              \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
+    }                                                                                                                  \
+  } while (0)
+#endif
+
+/**
+ * @name Nth-Call Logging Macros
+ * @{
+ */
+
+/** @brief Log DEV message every nth call */
+#define log_dev_nth(n, fmt, ...) log_nth(DEV, n, fmt, ##__VA_ARGS__)
+
+/** @brief Log DEBUG message every nth call */
+#define log_debug_nth(n, fmt, ...) log_nth(DEBUG, n, fmt, ##__VA_ARGS__)
+
+/** @brief Log INFO message every nth call */
+#define log_info_nth(n, fmt, ...) log_nth(INFO, n, fmt, ##__VA_ARGS__)
+
+/** @brief Log WARN message every nth call */
+#define log_warn_nth(n, fmt, ...) log_nth(WARN, n, fmt, ##__VA_ARGS__)
+
+/** @brief Log ERROR message every nth call */
+#define log_error_nth(n, fmt, ...) log_nth(ERROR, n, fmt, ##__VA_ARGS__)
+
+/** @brief Log FATAL message every nth call */
+#define log_fatal_nth(n, fmt, ...) log_nth(FATAL, n, fmt, ##__VA_ARGS__)
+
+/** @} */
+
+/**
+ * @name Once-Only Logging Macros
+ * @{
+ */
+
+/** @brief Log DEV message exactly once */
+#define log_dev_once(fmt, ...) log_once(DEV, fmt, ##__VA_ARGS__)
+
+/** @brief Log DEBUG message exactly once */
+#define log_debug_once(fmt, ...) log_once(DEBUG, fmt, ##__VA_ARGS__)
+
+/** @brief Log INFO message exactly once */
+#define log_info_once(fmt, ...) log_once(INFO, fmt, ##__VA_ARGS__)
+
+/** @brief Log WARN message exactly once */
+#define log_warn_once(fmt, ...) log_once(WARN, fmt, ##__VA_ARGS__)
+
+/** @brief Log ERROR message exactly once */
+#define log_error_once(fmt, ...) log_once(ERROR, fmt, ##__VA_ARGS__)
+
+/** @brief Log FATAL message exactly once */
+#define log_fatal_once(fmt, ...) log_once(FATAL, fmt, ##__VA_ARGS__)
+
+/** @} */
+
 /* LOGGING_INTERNAL_ERROR macro is defined in logging.c (internal use only) */
 
 /* Network logging convenience macros (log_*_net) are defined in src/server/client.h

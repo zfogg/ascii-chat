@@ -435,6 +435,12 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
     return 0;
   }
 
+  static uint64_t call_count = 0;
+  call_count++;
+  if (call_count <= 5 || call_count % 1000 == 0) {
+    log_info("media_source_read_audio #%lu: source_type=%d num_samples=%zu", call_count, source->type, num_samples);
+  }
+
   // Check pause state (thread-safe)
   mutex_lock(&source->pause_mutex);
   bool is_paused = source->is_paused;
@@ -455,11 +461,11 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
     if (!source->audio_decoder) {
+      log_warn("media_source_read_audio: audio_decoder is NULL!");
       return 0;
     }
 
-    // CRITICAL: Lock seek_access_mutex to prevent audio callback from reading during seek
-    // This ensures the decoder state is consistent and prevents race conditions
+    // Lock seek_access_mutex to prevent audio callback from reading during seek
     mutex_lock(&source->seek_access_mutex);
 
     // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
@@ -467,7 +473,20 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
       mutex_lock(&source->decoder_mutex);
     }
 
+    double audio_pos_before_read = ffmpeg_decoder_get_position(source->audio_decoder);
     size_t samples_read = ffmpeg_decoder_read_audio_samples(source->audio_decoder, buffer, num_samples);
+    double audio_pos_after_read = ffmpeg_decoder_get_position(source->audio_decoder);
+
+    static double last_audio_pos = 0;
+    if (audio_pos_after_read >= 0 && last_audio_pos >= 0 && audio_pos_after_read < last_audio_pos) {
+      log_warn("AUDIO POSITION WENT BACKWARD: %.2f → %.2f (LOOPING!)", last_audio_pos, audio_pos_after_read);
+    }
+    if (audio_pos_after_read >= 0) {
+      last_audio_pos = audio_pos_after_read;
+    }
+
+    log_info_every(100000, "Audio: read %zu samples, pos %.2f → %.2f", samples_read, audio_pos_before_read,
+                   audio_pos_after_read);
 
     // Handle EOF with loop
     if (samples_read == 0 && ffmpeg_decoder_at_end(source->audio_decoder)) {
@@ -698,17 +717,20 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   // Seek audio decoder (if separate from video)
   if (source->audio_decoder && !source->is_shared_decoder) {
+    log_info("=== Starting audio seek to %.2f sec ===", timestamp_sec);
     uint64_t audio_seek_start_ns = time_get_ns();
     double audio_pos_before = ffmpeg_decoder_get_position(source->audio_decoder);
+    log_info("Audio position before seek: %.2f", audio_pos_before);
     asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, timestamp_sec);
     double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
     uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
+    log_info("Audio position after seek: %.2f", audio_pos_after);
     if (audio_err != ASCIICHAT_OK) {
       log_warn("Audio seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, audio_err,
                (double)audio_seek_ns / 1000000.0);
       result = audio_err;
     } else {
-      log_info("Audio SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
+      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
                timestamp_sec, (double)audio_seek_ns / 1000000.0);
     }
   }
