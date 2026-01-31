@@ -92,8 +92,8 @@ size_t levenshtein(const char *a, const char *b) {
     return char_count_a;
   }
 
-  uint32_t *codepoints_a = SAFE_MALLOC(char_count_a, uint32_t *);
-  uint32_t *codepoints_b = SAFE_MALLOC(char_count_b, uint32_t *);
+  uint32_t *codepoints_a = SAFE_MALLOC(char_count_a * sizeof(uint32_t), uint32_t *);
+  uint32_t *codepoints_b = SAFE_MALLOC(char_count_b * sizeof(uint32_t), uint32_t *);
 
   if (!codepoints_a || !codepoints_b) {
     SAFE_FREE(codepoints_a);
@@ -111,7 +111,7 @@ size_t levenshtein(const char *a, const char *b) {
   }
 
   // Compute Levenshtein distance on codepoint arrays
-  size_t *cache = SAFE_CALLOC(char_count_a, sizeof(size_t), size_t *);
+  size_t *cache = SAFE_CALLOC(char_count_a * sizeof(size_t), 1, size_t *);
   if (!cache) {
     SAFE_FREE(codepoints_a);
     SAFE_FREE(codepoints_b);

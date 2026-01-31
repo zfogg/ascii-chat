@@ -1095,3 +1095,30 @@ const char *options_get_type_placeholder(option_type_t type);
  * @return Number of characters written, or 0 on error
  */
 int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize);
+
+// ============================================================================
+// Typo Suggestions for Unknown Options
+// ============================================================================
+
+/**
+ * @brief Find similar option across all modes and suggest with mode information
+ *
+ * Searches for options matching the unknown option using Levenshtein distance.
+ * If found and available in a different mode, suggests it with mode information.
+ * For discovery mode, displays it as "the default mode (ascii-chat)".
+ *
+ * @param unknown_opt Unknown option name (with -- prefix)
+ * @param config Options configuration (has all descriptors across modes)
+ * @param current_mode_bitmask Current mode bitmask for filtering
+ * @return Formatted suggestion with mode info, or NULL if no good match
+ *
+ * Example:
+ * @code
+ * const char *suggestion = find_similar_option_with_mode("--prot", config, current_mode);
+ * if (suggestion) {
+ *     log_error("%s", suggestion);  // "Did you mean '--port' (available in server mode)?"
+ * }
+ * @endcode
+ */
+const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config,
+                                          option_mode_bitmask_t current_mode_bitmask);
