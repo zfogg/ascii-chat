@@ -324,6 +324,13 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     // Track frame for FPS reporting
     fps_frame_ns(&ctx->fps_tracker, time_get_ns(), "frame captured");
     ctx->frame_count++;
+
+    // Handle --pause flag: pause after first frame is read
+    if (ctx->should_pause_after_first_frame && !ctx->paused_after_first_frame) {
+      media_source_pause(ctx->source);
+      ctx->paused_after_first_frame = true;
+      log_info("Paused (--pause flag)");
+    }
   }
 
   return frame;

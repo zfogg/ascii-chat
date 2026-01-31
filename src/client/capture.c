@@ -91,6 +91,7 @@
 #include "audio.h"
 #include "session/capture.h"
 #include "video/image.h"
+#include "media/source.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
@@ -191,6 +192,7 @@ static void *webcam_capture_thread_func(void *arg) {
   static bool fps_tracker_initialized = false;
   static uint64_t capture_frame_count = 0;
   static uint64_t last_capture_frame_time_ns = 0;
+  static image_t *last_frame = NULL; // Cache last frame to render when paused
   if (!fps_tracker_initialized) {
     fps_init(&fps_tracker, CAPTURE_TARGET_FPS, "WEBCAM_TX");
     fps_tracker_initialized = true;
@@ -210,15 +212,25 @@ static void *webcam_capture_thread_func(void *arg) {
     // Read frame using session capture library
     image_t *image = session_capture_read_frame(g_capture_ctx);
 
+    // Check if media is paused and we have a last frame - render last frame to keep keyboard polling active
     if (!image) {
-      // Check if we've reached end of file for media sources
-      if (session_capture_at_end(g_capture_ctx)) {
+      media_source_t *source = (media_source_t *)session_capture_get_media_source(g_capture_ctx);
+      if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE && media_source_is_paused(source) &&
+          last_frame) {
+        // Use last frame when paused (keeps display thread rendering and keyboard polling active)
+        image = last_frame;
+        log_debug_every(LOG_RATE_SLOW, "Using cached frame while paused");
+      } else if (session_capture_at_end(g_capture_ctx)) {
+        // Check if we've reached end of file for media sources
         log_debug("Media source reached end of file");
+        image_destroy(last_frame);
+        last_frame = NULL;
         break; // Exit capture loop - end of media
+      } else {
+        log_debug_every(LOG_RATE_SLOW, "No frame available from media source yet (returned NULL)");
+        platform_sleep_usec(10000); // 10ms delay before retry
+        continue;
       }
-      log_debug("No frame available from media source yet (returned NULL)");
-      platform_sleep_usec(10000); // 10ms delay before retry
-      continue;
     }
 
     // Track frame for FPS reporting
@@ -256,6 +268,17 @@ static void *webcam_capture_thread_func(void *arg) {
       break;
     }
     log_debug_every(LOG_RATE_SLOW, "Capture thread: IMAGE_FRAME sent successfully");
+
+    // Cache last frame for rendering when paused
+    // Make a copy since the original is owned by media_source
+    if (last_frame) {
+      image_destroy(last_frame);
+    }
+    last_frame = image_new(processed_image->w, processed_image->h);
+    if (last_frame) {
+      memcpy(last_frame->pixels, processed_image->pixels,
+             (size_t)processed_image->w * (size_t)processed_image->h * sizeof(rgb_pixel_t));
+    }
 
     // FPS tracking - frame successfully captured and sent
     capture_frame_count++;

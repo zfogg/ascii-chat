@@ -73,6 +73,78 @@ ascii-chat.
 .\" placeholder
 .\" AUTO-END: OPTIONS
 
+.SH KEYBOARD CONTROLS
+Interactive keyboard controls are available when running with local media sources
+(\fB--file\fR or \fB--url\fR).
+Keyboard controls work in \fBmirror\fR, \fBclient\fR, and \fBdiscovery\fR modes.
+They are \fInot\fR available when receiving video from a remote server or webcam
+in network-only mode.
+.PP
+.B Media Playback Controls (--file and --url only)
+.TP
+.B LEFT ARROW
+Seek backward 30 seconds in the media file.
+.TP
+.B RIGHT ARROW
+Seek forward 30 seconds in the media file.
+.TP
+.B SPACE
+Toggle play/pause. Pauses playback at the current position; press again to resume.
+.PP
+.B Audio Controls (all modes)
+.TP
+.B UP ARROW
+Increase volume by 10%.
+.TP
+.B DOWN ARROW
+Decrease volume by 10%.
+.TP
+.B M
+Mute/unmute audio. Muting saves the current volume level and restores it when unmuted.
+.PP
+.B Display Controls (all modes)
+.TP
+.B C
+Cycle through color modes: Mono → 16-color → 256-color → Truecolor → Mono.
+Useful for adapting to different terminal capabilities.
+.TP
+.B F
+Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
+.PP
+.B Keyboard Configuration
+.RS
+.PP
+These keyboard mappings are currently hardcoded in the application.
+Future versions will support custom keyboard bindings via a configuration file.
+.PP
+.B Developer TODO:
+Implement remappable keyboard controls via a configuration file (e.g., \fI~/.config/ascii-chat/keybindings.toml\fR).
+This will allow users to customize keyboard shortcuts without rebuilding the application.
+.RE
+.PP
+.B Keyboard Layout Support
+.RS
+.PP
+The keyboard input system supports all standard POSIX keyboards and terminal emulators.
+Currently, default keybindings use ASCII characters only for maximum compatibility.
+.PP
+The underlying input system fully supports Unicode, including:
+.TP
+.B UTF-8 characters
+Any character in the UTF-8 character set can be used for keyboard shortcuts.
+.TP
+.B Non-ASCII languages
+Keyboard layouts from any language (e.g., Cyrillic, Arabic, CJK, etc.) are supported
+for future custom bindings.
+.TP
+.B Emoji and symbols
+Emoji and other Unicode symbols can be used as keyboard shortcuts in future
+custom binding configurations.
+.PP
+When custom keybindings are implemented, you will be able to map shortcuts to
+any Unicode character your keyboard or input method can produce.
+.RE
+
 .SH PALETTES
 Built-in ASCII character palettes for different visual styles.
 Characters are ordered from darkest (leftmost) to brightest (rightmost).

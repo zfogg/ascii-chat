@@ -84,18 +84,25 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
-  // Disable keyboard in snapshot mode - don't put stdin into raw mode
+  // Disable keyboard in snapshot mode only - don't put stdin into raw mode in snapshot mode
   bool keyboard_enabled = false;
-  if (keyboard_handler && platform_isatty(STDIN_FILENO) && !snapshot_mode) {
-    asciichat_error_t kb_result = keyboard_init();
-    if (kb_result == ASCIICHAT_OK) {
-      keyboard_enabled = true;
-      log_debug("Keyboard input enabled");
+  if (keyboard_handler && !snapshot_mode) {
+    // Try to initialize keyboard if stdin is a TTY
+    if (platform_isatty(STDIN_FILENO)) {
+      asciichat_error_t kb_result = keyboard_init();
+      if (kb_result == ASCIICHAT_OK) {
+        keyboard_enabled = true;
+        log_debug("Keyboard input enabled (TTY mode)");
+      } else {
+        log_debug("Failed to initialize keyboard input (%s) - will attempt fallback",
+                  asciichat_error_string(kb_result));
+        // Don't fail - continue with keyboard handler (will try to read anyway)
+        keyboard_enabled = true; // Allow trying to read keyboard even if init failed
+      }
     } else {
-      log_warn("Failed to initialize keyboard input (%s) - continuing without keyboard support",
-               asciichat_error_string(kb_result));
-      // Don't fail the render loop if keyboard init fails
-      keyboard_enabled = false;
+      // Not a TTY, but we still allow keyboard attempts
+      log_debug("Keyboard requested but stdin is not a TTY - will attempt non-raw reads");
+      keyboard_enabled = true; // Allow trying to read keyboard without raw mode
     }
   }
 
@@ -133,6 +140,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       media_source_t *source = session_capture_get_media_source(capture);
       is_paused = source && media_source_is_paused(source);
 
+      // Detect pause transition - mark initial frame as rendered so polling starts
+      if (!was_paused && is_paused) {
+        initial_paused_frame_rendered = true;
+        log_debug("Media paused, enabling keyboard polling");
+      }
+
       // Detect unpause transition to reset flag
       if (was_paused && !is_paused) {
         initial_paused_frame_rendered = false;
@@ -140,24 +153,20 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
       was_paused = is_paused;
 
-      // If paused and already rendered initial frame, skip frame capture
+      // If paused and already rendered initial frame, skip frame capture and poll for resume
       if (is_paused && initial_paused_frame_rendered) {
-        // For non-snapshot pause mode, exit after rendering the paused frame
-        if (!snapshot_mode) {
-          break; // Exit render loop - paused frame already rendered
-        }
-
-        // Sleep briefly to avoid busy-waiting (for snapshot mode pause)
+        // Sleep briefly to avoid busy-waiting while paused
         platform_sleep_usec(16666); // ~60 FPS idle rate
 
-        // Still poll keyboard to allow unpausing
-        if (keyboard_enabled && keyboard_handler) {
+        // Keep polling keyboard to allow unpausing (even if keyboard wasn't formally initialized)
+        // keyboard_read_nonblocking() is safe to call even if keyboard_init() wasn't called - it just returns KEY_NONE
+        if (keyboard_handler) {
           keyboard_key_t key = keyboard_read_nonblocking();
           if (key != KEY_NONE) {
             keyboard_handler(capture, key, user_data);
           }
         }
-        continue; // Skip frame capture and rendering
+        continue; // Skip frame capture and rendering, keep loop running
       }
 
       image = session_capture_read_frame(capture);
@@ -180,13 +189,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (!is_paused && frame_count == 1 && GET_OPTION(pause) && source) {
         media_source_pause(source);
         is_paused = true;
+        // Note: initial_paused_frame_rendered will be set in next iteration when pause is detected above
         log_debug("Paused media source after first frame");
-      }
-
-      // Mark initial frame as rendered if paused
-      if (is_paused && !initial_paused_frame_rendered) {
-        initial_paused_frame_rendered = true;
-        log_debug("Initial paused frame rendered");
       }
 
     } else {

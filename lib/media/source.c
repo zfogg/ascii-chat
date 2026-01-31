@@ -40,6 +40,9 @@ struct media_source_t {
   // Only used when is_shared_decoder is true (YouTube URLs)
   mutex_t decoder_mutex;
 
+  // Mutex to protect pause state accessed from keyboard input thread and video read thread
+  mutex_t pause_mutex;
+
   // Cached path (for FILE type) and original YouTube URL for potential re-extraction
   char *file_path;
   char *original_youtube_url;
@@ -64,6 +67,14 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   // Initialize mutex for protecting shared decoder access (for YouTube URLs)
   if (mutex_init(&source->decoder_mutex) != 0) {
     SET_ERRNO(ERROR_MEMORY, "Failed to initialize mutex");
+    SAFE_FREE(source);
+    return NULL;
+  }
+
+  // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
+  if (mutex_init(&source->pause_mutex) != 0) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to initialize pause mutex");
+    mutex_destroy(&source->decoder_mutex);
     SAFE_FREE(source);
     return NULL;
   }
@@ -253,8 +264,9 @@ void media_source_destroy(media_source_t *source) {
     source->original_youtube_url = NULL;
   }
 
-  // Destroy mutex
+  // Destroy mutexes
   mutex_destroy(&source->decoder_mutex);
+  mutex_destroy(&source->pause_mutex);
 
   SAFE_FREE(source);
 }
@@ -268,8 +280,13 @@ image_t *media_source_read_video(media_source_t *source) {
     return NULL;
   }
 
+  // Check pause state (thread-safe)
+  mutex_lock(&source->pause_mutex);
+  bool is_paused = source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+
   // Return NULL immediately if paused (maintaining position)
-  if (source->is_paused) {
+  if (is_paused) {
     return NULL;
   }
 
@@ -357,8 +374,13 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
     return 0;
   }
 
+  // Check pause state (thread-safe)
+  mutex_lock(&source->pause_mutex);
+  bool is_paused = source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+
   // Return silence immediately if paused (maintaining position)
-  if (source->is_paused) {
+  if (is_paused) {
     memset(buffer, 0, num_samples * sizeof(float));
     return num_samples;
   }
@@ -675,26 +697,35 @@ void media_source_pause(media_source_t *source) {
   if (!source) {
     return;
   }
+  mutex_lock(&source->pause_mutex);
   source->is_paused = true;
+  mutex_unlock(&source->pause_mutex);
 }
 
 void media_source_resume(media_source_t *source) {
   if (!source) {
     return;
   }
+  mutex_lock(&source->pause_mutex);
   source->is_paused = false;
+  mutex_unlock(&source->pause_mutex);
 }
 
 bool media_source_is_paused(media_source_t *source) {
   if (!source) {
     return false;
   }
-  return source->is_paused;
+  mutex_lock(&source->pause_mutex);
+  bool paused = source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+  return paused;
 }
 
 void media_source_toggle_pause(media_source_t *source) {
   if (!source) {
     return;
   }
+  mutex_lock(&source->pause_mutex);
   source->is_paused = !source->is_paused;
+  mutex_unlock(&source->pause_mutex);
 }
