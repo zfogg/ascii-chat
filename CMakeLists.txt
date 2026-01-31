@@ -230,9 +230,7 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/embedded")
 
 # Use absolute paths to ensure they're found regardless of working directory
 set(MANPAGE_TEMPLATE_SOURCE "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
-set(MANPAGE_CONTENT_SOURCE "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content")
 set(MANPAGE_TEMPLATE_EMBEDDED "${CMAKE_BINARY_DIR}/generated/embedded/manpage_template.c")
-set(MANPAGE_CONTENT_EMBEDDED "${CMAKE_BINARY_DIR}/generated/embedded/manpage_content.c")
 
 # Embed man page template
 add_custom_command(
@@ -248,30 +246,14 @@ add_custom_command(
     VERBATIM
 )
 
-# Embed man page content
-add_custom_command(
-    OUTPUT "${MANPAGE_CONTENT_EMBEDDED}"
-    COMMAND ${CMAKE_COMMAND}
-        -D "INPUT_FILE=${MANPAGE_CONTENT_SOURCE}"
-        -D "OUTPUT_FILE=${MANPAGE_CONTENT_EMBEDDED}"
-        -D "VARIABLE_NAME=embedded_manpage_content"
-        -P "${CMAKE_SOURCE_DIR}/cmake/utils/EmbedTextFile.cmake"
-    DEPENDS "${MANPAGE_CONTENT_SOURCE}"
-    COMMENT "Embedding man page content"
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-    VERBATIM
-)
-
 # Add generated sources to CORE_SRCS for compilation
 list(APPEND CORE_SRCS
     "${MANPAGE_TEMPLATE_EMBEDDED}"
-    "${MANPAGE_CONTENT_EMBEDDED}"
 )
 
 # Mark generated files as generated (CMake housekeeping)
 set_source_files_properties(
     "${MANPAGE_TEMPLATE_EMBEDDED}"
-    "${MANPAGE_CONTENT_EMBEDDED}"
     PROPERTIES GENERATED TRUE
 )
 

@@ -25,8 +25,6 @@
 //
 extern const char embedded_manpage_template[];
 extern const size_t embedded_manpage_template_len;
-extern const char embedded_manpage_content[];
-extern const size_t embedded_manpage_content_len;
 
 // =============================================================================
 // Resource Access Implementation
@@ -84,54 +82,19 @@ int get_manpage_template(FILE **out_file, const char **out_content, size_t *out_
 }
 
 int get_manpage_content(FILE **out_file, const char **out_content, size_t *out_len) {
-#ifdef NDEBUG
-  // Release build: Return embedded data
+  // Content is now consolidated into the template - return empty
   if (out_content) {
-    *out_content = embedded_manpage_content;
+    *out_content = "";
   }
   if (out_len) {
-    *out_len = embedded_manpage_content_len;
+    *out_len = 0;
   }
   if (out_file) {
     *out_file = NULL;
   }
 
-  log_debug("Using embedded man page content (%zu bytes)", embedded_manpage_content_len);
+  log_debug("Man page content is now consolidated into template (empty)");
   return 0;
-#else
-  // Debug build: Read from filesystem
-  if (!out_file) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "out_file cannot be NULL in development mode");
-    return -1;
-  }
-
-  // Construct absolute path using ASCIICHAT_RESOURCE_DIR (set at build time)
-#ifdef ASCIICHAT_RESOURCE_DIR
-  static char path_buffer[PATH_MAX];
-  snprintf(path_buffer, sizeof(path_buffer), "%s/share/man/man1/ascii-chat.1.content", ASCIICHAT_RESOURCE_DIR);
-  const char *path = path_buffer;
-#else
-  // Fallback: try relative path if ASCIICHAT_RESOURCE_DIR not defined
-  const char *path = "share/man/man1/ascii-chat.1.content";
-#endif
-
-  FILE *f = fopen(path, "r");
-  if (!f) {
-    SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open man page content: %s", path);
-    return -1;
-  }
-
-  *out_file = f;
-  if (out_content) {
-    *out_content = NULL;
-  }
-  if (out_len) {
-    *out_len = 0;
-  }
-
-  log_debug("Using filesystem man page content: %s", path);
-  return 0;
-#endif
 }
 
 void release_manpage_resources(FILE *file) {

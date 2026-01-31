@@ -124,14 +124,9 @@ asciichat_error_t manpage_resources_load(manpage_resources_t *resources) {
     return err;
   }
 
-  // Load content resource
-  err = load_single_resource(&resources->content_sections, &resources->content_len, get_manpage_content,
-                             "man page content");
-  if (err != ASCIICHAT_OK) {
-    // Clean up template if content loading failed
-    manpage_resources_cleanup(resources);
-    return err;
-  }
+  // Content is now merged into template - no separate content file needed
+  resources->content_sections = "";
+  resources->content_len = 0;
 
   // Determine if resources came from embedded binary
   // In production (NDEBUG), both would be embedded; in development, both would be files
@@ -186,7 +181,6 @@ bool manpage_resources_is_valid(const manpage_resources_t *resources) {
     return false;
   }
 
-  // Resources are valid only if both template and content are loaded
-  return resources->template_content != NULL && resources->template_len > 0 && resources->content_sections != NULL &&
-         resources->content_len > 0;
+  // Resources are valid if template is loaded (content is now optional/merged into template)
+  return resources->template_content != NULL && resources->template_len > 0;
 }

@@ -52,8 +52,7 @@ add_custom_command(
     DEPENDS
         ascii-chat
         "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.content"
-    COMMENT "Generating ascii-chat.1 from embedded resources"
+    COMMENT "Generating ascii-chat.1 from template"
     VERBATIM
 )
 
