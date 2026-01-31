@@ -58,9 +58,20 @@ static static_mutex_t g_options_init_mutex = STATIC_MUTEX_INIT;
  * atexit handlers).
  */
 static const options_t g_default_options = (options_t){
+    // Binary-Level Options (must match options_t_new() defaults)
+    .help = OPT_HELP_DEFAULT,
+    .version = OPT_VERSION_DEFAULT,
+
     // Logging
     .log_level = LOG_INFO,
     .quiet = false,
+    .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
+
+    // Terminal Dimensions
+    .width = OPT_WIDTH_DEFAULT,
+    .height = OPT_HEIGHT_DEFAULT,
+    .auto_width = OPT_AUTO_WIDTH_DEFAULT,
+    .auto_height = OPT_AUTO_HEIGHT_DEFAULT,
 
     // Display
     .color_mode = COLOR_MODE_AUTO,
@@ -73,10 +84,12 @@ static const options_t g_default_options = (options_t){
 
     // Webcam
     .test_pattern = false,
+    .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
 
     // Network
     .max_clients = OPT_MAX_CLIENTS_DEFAULT,
     .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
+    .port = OPT_PORT_DEFAULT,
 
     // Audio
     .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
@@ -85,7 +98,7 @@ static const options_t g_default_options = (options_t){
     .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,
     .speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT,
 
-    // All other fields are zero-initialized (empty strings, false, 0, etc.)
+    // All other fields are zero-initialized (empty strings, NULL, 0, false, etc.)
 };
 
 // ============================================================================
