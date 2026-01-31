@@ -841,7 +841,7 @@ typedef struct options_state {
   // Audio Configuration
   // ============================================================================
   unsigned short int audio_enabled;          ///< Enable audio streaming
-  audio_source_t audio_source;               ///< Audio source selection (auto/microphone/media/both)
+  audio_source_t audio_source;               ///< Audio source selection (auto/mic/media/both)
   int microphone_index;                      ///< Microphone device index (-1 = default)
   int speakers_index;                        ///< Speakers device index (-1 = default)
   float microphone_sensitivity;              ///< Microphone volume multiplier (0.0-1.0, default 1.0)

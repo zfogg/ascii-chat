@@ -37,6 +37,7 @@
 #include "media/source.h"
 #include "media/youtube.h"
 #include "audio/audio.h"
+#include "video/webcam/webcam.h"
 #include "common.h"
 #include "options/options.h"
 
@@ -420,6 +421,9 @@ int mirror_main(void) {
     media_source_destroy(probe_source);
     probe_source = NULL;
   }
+
+  // Clean up webcam resources and cached images (test pattern, etc.)
+  webcam_cleanup();
 
   log_set_terminal_output(false);
 
