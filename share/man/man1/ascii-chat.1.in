@@ -130,19 +130,46 @@ Requires UTF-8 support (\fB\-\-utf8\fR).
 .SH CONFIGURATION
 Configuration can be stored in a TOML file at the default location
 (see FILES section) or specified via \fB\-\-config\fR.
-.PP
-.B Configuration Priority:
+.TP
+.B Configuration Priority
 .RS
 Command-line arguments override config file values.
 Config file values override default values.
 .RE
 .PP
-
-To see a sample configuration file with all available options, run:
-.br
-\fBascii-chat --config-create /tmp/ascii-chat.toml\fR
+.TP
+.B Configuration Keys and Sections
+.RS
+Configuration keys are command-line option names with dashes converted to underscores.
+The TOML section name is determined by the flag category shown in \fBasciichat \-\-help\fR.
+For example, \fB\-\-color\-mode\fR (under "TERMINAL" in --help) becomes
+\fCcolor_mode\fR under \fB[terminal]\fR in config.
+Similarly, \fB\-\-max\-clients\fR (under "SERVER" section) becomes \fCmax_clients\fR
+under \fB[server]\fR, and \fB\-\-server\-key\fR (under "SECURITY" section) becomes
+\fCserver_key\fR under \fB[security]\fR.
+To find the correct section and key name, locate the flag in \fBasciichat \-\-help\fR,
+note its section heading, convert that to lowercase for the TOML section, and replace
+dashes with underscores in the flag name for the key.
+.RE
 .PP
-.B Security Warning:
+.TP
+.B Conflicting Options
+.RS
+Some configuration options conflict with each other and will cause the
+config file to fail loading if set simultaneously. Common conflicts include:
+.IP \(bu 2
+\fB\-\-file\fR and \fB\-\-url\fR cannot both be set (URL takes priority)
+.IP \(bu 2
+\fB\-\-loop\fR cannot be used with \fB\-\-url\fR (network streams cannot be looped)
+.IP \(bu 2
+\fB\-\-seek\fR requires either \fB\-\-file\fR or \fB\-\-url\fR
+.PP
+If your configuration file fails to load, check the error message for
+conflicting option details and remove one of the conflicting options.
+.RE
+.PP
+.TP
+.B Security Warning
 While passwords can be stored in the config file, this is discouraged.
 Use \fB\-\-password\fR interactively or environment variables instead.
 Secure your config file permissions if it contains sensitive data.
@@ -161,6 +188,7 @@ The grid size adjusts based on the number of connected clients.
 .B Frame Rate
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
+.\" MERGE-START: ENVIRONMENT
 .\" MANUAL-START: ENVIRONMENT
 .SH ENVIRONMENT
 .TP
@@ -197,6 +225,7 @@ XDG Base Directory specification config directory on Linux (overrides ~/.config/
 .B XDG_DATA_HOME
 XDG Base Directory specification data directory on Linux (overrides ~/.local/share/). Can be used for application data storage following XDG conventions.
 .\" MANUAL-END: ENVIRONMENT
+.\" MERGE-END: ENVIRONMENT
 .SH FILES
 .SS Configuration and Keys
 .TP
