@@ -99,6 +99,13 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
   bool force_stderr = is_client && !platform_isatty(STDOUT_FILENO);
   log_init(log_file, GET_OPTION(log_level), force_stderr, false /* don't use_mmap */);
 
+  // For client-like modes (client, mirror, discovery), disable terminal output to prevent
+  // logs from corrupting ASCII art rendering. This is especially important when rendering
+  // to stdout, where even a single log line breaks the visual output.
+  if (is_client) {
+    log_set_terminal_output(false);
+  }
+
   // Register memory debugging stats FIRST so it runs LAST at exit
   // (atexit callbacks run in LIFO order - last registered runs first)
   // This ensures all cleanup handlers run before the memory report is printed
