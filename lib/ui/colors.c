@@ -22,7 +22,7 @@ static bool g_colors_initialized = false;
 /* Mutex for color scheme compilation - used by both colors.c and logging.c */
 /* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock */
 #ifdef _WIN32
-mutex_t g_colors_mutex = {0}; /* Windows CRITICAL_SECTION */
+mutex_t g_colors_mutex = {0}; /* Windows CRITICAL_SECTION - referenced from logging.c via extern */
 #else
 mutex_t g_colors_mutex = PTHREAD_MUTEX_INITIALIZER; /* POSIX pthread_mutex_t */
 #endif
@@ -260,6 +260,23 @@ asciichat_error_t colors_init(void) {
   return ASCIICHAT_OK;
 }
 
+void colors_cleanup_compiled(compiled_color_scheme_t *compiled) {
+  if (!compiled) {
+    return;
+  }
+
+  /* Free allocated color code strings */
+  for (int i = 0; i < 8; i++) {
+    char *str_16 = (char *)compiled->codes_16[i];
+    char *str_256 = (char *)compiled->codes_256[i];
+    char *str_truecolor = (char *)compiled->codes_truecolor[i];
+    SAFE_FREE(str_16);
+    SAFE_FREE(str_256);
+    SAFE_FREE(str_truecolor);
+  }
+  memset(compiled, 0, sizeof(compiled_color_scheme_t));
+}
+
 void colors_shutdown(void) {
   if (!g_colors_initialized) {
     return;
@@ -397,40 +414,66 @@ asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_c
                                   ? scheme->log_colors_light
                                   : scheme->log_colors_dark;
 
+  /* Helper: allocate and format a color code string */
+  char temp_buf[128];
+
   /* Compile for 16-color mode */
   for (int i = 0; i < 8; i++) {
     if (i == 7) {
       /* RESET */
-      SAFE_STRNCPY(compiled->codes_16[i], "\x1b[0m", sizeof(compiled->codes_16[i]));
+      SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
     } else {
       uint8_t color_idx = rgb_to_16color(colors[i].r, colors[i].g, colors[i].b);
       /* ANSI color codes: 30-37 for normal, 90-97 for bright */
       if (color_idx < 8) {
-        safe_snprintf(compiled->codes_16[i], sizeof(compiled->codes_16[i]), "\x1b[%dm", 30 + color_idx);
+        safe_snprintf(temp_buf, sizeof(temp_buf), "\x1b[%dm", 30 + color_idx);
       } else {
-        safe_snprintf(compiled->codes_16[i], sizeof(compiled->codes_16[i]), "\x1b[%dm", 90 + (color_idx - 8));
+        safe_snprintf(temp_buf, sizeof(temp_buf), "\x1b[%dm", 90 + (color_idx - 8));
       }
     }
+    /* Allocate string with SAFE_MALLOC and copy */
+    size_t len = strlen(temp_buf) + 1;
+    char *allocated = SAFE_MALLOC(len, char *);
+    if (!allocated) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
+    }
+    memcpy(allocated, temp_buf, len);
+    compiled->codes_16[i] = allocated;
   }
 
   /* Compile for 256-color mode */
   for (int i = 0; i < 8; i++) {
     if (i == 7) {
-      SAFE_STRNCPY(compiled->codes_256[i], "\x1b[0m", sizeof(compiled->codes_256[i]));
+      SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
     } else {
       uint8_t color_idx = rgb_to_256color(colors[i].r, colors[i].g, colors[i].b);
-      safe_snprintf(compiled->codes_256[i], sizeof(compiled->codes_256[i]), "\x1b[38;5;%dm", color_idx);
+      safe_snprintf(temp_buf, sizeof(temp_buf), "\x1b[38;5;%dm", color_idx);
     }
+    /* Allocate string with SAFE_MALLOC and copy */
+    size_t len = strlen(temp_buf) + 1;
+    char *allocated = SAFE_MALLOC(len, char *);
+    if (!allocated) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
+    }
+    memcpy(allocated, temp_buf, len);
+    compiled->codes_256[i] = allocated;
   }
 
   /* Compile for truecolor mode */
   for (int i = 0; i < 8; i++) {
     if (i == 7) {
-      SAFE_STRNCPY(compiled->codes_truecolor[i], "\x1b[0m", sizeof(compiled->codes_truecolor[i]));
+      SAFE_STRNCPY(temp_buf, "\x1b[0m", sizeof(temp_buf));
     } else {
-      rgb_to_truecolor_ansi(colors[i].r, colors[i].g, colors[i].b, compiled->codes_truecolor[i],
-                            sizeof(compiled->codes_truecolor[i]));
+      rgb_to_truecolor_ansi(colors[i].r, colors[i].g, colors[i].b, temp_buf, sizeof(temp_buf));
     }
+    /* Allocate string with SAFE_MALLOC and copy */
+    size_t len = strlen(temp_buf) + 1;
+    char *allocated = SAFE_MALLOC(len, char *);
+    if (!allocated) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate color code string");
+    }
+    memcpy(allocated, temp_buf, len);
+    compiled->codes_truecolor[i] = allocated;
   }
 
   return ASCIICHAT_OK;

@@ -112,11 +112,12 @@ static terminal_capabilities_t g_terminal_caps = {0};
 static bool g_terminal_caps_initialized = false;
 static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 
-/* Color scheme management */
+/* Color scheme management - logging-specific state */
 static compiled_color_scheme_t g_compiled_colors = {0};
 static bool g_colors_initialized = false;
-static mutex_t g_colors_mutex = {0};
-static bool g_colors_mutex_initialized = false;
+
+/* Note: g_colors_mutex is defined in lib/ui/colors.c and managed by the color system */
+extern mutex_t g_colors_mutex;
 
 /* Shutdown logging state */
 static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shutdown_begin/end */
@@ -1239,7 +1240,14 @@ const char **log_get_color_array(void) {
     log_init_colors();
   }
 
-  /* Return the compiled color scheme based on terminal capabilities */
+  /* Safety check: if colors are not initialized, return NULL to prevent crashes from null pointers */
+  if (!g_colors_initialized) {
+    return NULL;
+  }
+
+  /* Return the compiled color scheme based on terminal capabilities
+   * codes_16, codes_256, codes_truecolor are now proper arrays of pointers (const char *[8]),
+   * so we can safely cast them to const char **. */
   if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
     return (const char **)g_compiled_colors.codes_truecolor;
   } else if (g_terminal_caps.color_level >= TERM_COLOR_256) {
@@ -1275,25 +1283,19 @@ void log_init_colors(void) {
     return;
   }
 
-  if (!g_colors_mutex_initialized) {
-    mutex_init(&g_colors_mutex);
-    g_colors_mutex_initialized = true;
-  }
-
   if (g_colors_initialized) {
     return;
   }
 
-  mutex_lock(&g_colors_mutex);
-
-  /* Get active color scheme from color system */
+  /* Get active color scheme - this ensures color system is initialized */
   const color_scheme_t *scheme = colors_get_active_scheme();
   if (!scheme) {
-    /* Fallback to default if color system not initialized */
-    g_colors_initialized = true;
-    mutex_unlock(&g_colors_mutex);
+    /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
     return;
   }
+
+  /* Acquire mutex for compilation (mutex is now initialized by colors_init) */
+  mutex_lock(&g_colors_mutex);
 
   /* Detect terminal background */
   terminal_background_t background = detect_terminal_background();
@@ -1325,11 +1327,7 @@ void log_set_color_scheme(const color_scheme_t *scheme) {
     return;
   }
 
-  if (!g_colors_mutex_initialized) {
-    mutex_init(&g_colors_mutex);
-    g_colors_mutex_initialized = true;
-  }
-
+  /* Mutex is managed by colors.c - just use it */
   mutex_lock(&g_colors_mutex);
 
   /* Detect terminal background */

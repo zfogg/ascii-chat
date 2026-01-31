@@ -357,8 +357,8 @@ void buffer_pool_log_stats(buffer_pool_t *pool, const char *name) {
   double hit_rate = total_requests > 0 ? (double)hits * 100.0 / (double)total_requests : 0;
 
   log_debug("=== Buffer Pool: %s ===", name ? name : "unnamed");
-  log_debug("  Pool: %s / %s (peak: %s)", pretty_current, pretty_max, pretty_peak_pool);
-  log_debug("  Used: %s, Free: %s (peak used: %s)", pretty_used, pretty_free, pretty_peak);
+  log_debug("  Current: %s / %s capacity (peak used: %s)", pretty_current, pretty_max, pretty_peak_pool);
+  log_debug("  Buffers: %s used, %s free (peak: %s)", pretty_used, pretty_free, pretty_peak);
   log_debug("  Hits: %llu (%.1f%%), Allocs: %llu, Fallbacks: %llu", (unsigned long long)hits, hit_rate,
             (unsigned long long)allocs, (unsigned long long)fallbacks);
   log_debug("  Returns: %llu, Shrink freed: %llu", (unsigned long long)returns, (unsigned long long)shrink_freed);

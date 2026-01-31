@@ -32,6 +32,12 @@ extern bool g_color_flag_value;
  * @return true if colors should be used, false otherwise
  */
 bool terminal_should_color_output(int fd) {
+  // Check color_mode setting - if explicitly set to NONE, disable colors
+  int color_mode = GET_OPTION(color_mode);
+  if (color_mode == COLOR_MODE_NONE) {
+    return false; // Color mode explicitly disabled
+  }
+
   // Get current color setting (auto/true/false)
   int color_setting = GET_OPTION(color);
 

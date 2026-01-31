@@ -68,12 +68,13 @@ typedef struct color_scheme_t {
  * @brief Compiled ANSI escape codes for a color scheme
  *
  * Contains pre-compiled ANSI escape codes for all log colors
- * in different terminal color modes.
+ * in different terminal color modes. Stores pointers to allocated strings
+ * rather than inline char arrays, matching the interface expected by callers.
  */
 typedef struct {
-  char codes_16[8][32];        /**< 16-color ANSI codes */
-  char codes_256[8][32];       /**< 256-color ANSI codes */
-  char codes_truecolor[8][64]; /**< 24-bit truecolor ANSI codes */
+  const char *codes_16[8];        /**< Array of 16-color ANSI code strings */
+  const char *codes_256[8];       /**< Array of 256-color ANSI code strings */
+  const char *codes_truecolor[8]; /**< Array of 24-bit truecolor ANSI code strings */
 } compiled_color_scheme_t;
 
 /* ============================================================================
@@ -149,6 +150,14 @@ asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_c
                                         terminal_background_t background, compiled_color_scheme_t *compiled);
 
 /**
+ * @brief Clean up allocated strings in a compiled color scheme
+ * @param compiled Compiled color scheme to clean (NULL-safe)
+ *
+ * Frees all allocated color code strings and zeros the structure.
+ */
+void colors_cleanup_compiled(compiled_color_scheme_t *compiled);
+
+/**
  * @brief Export a color scheme to TOML format
  * @param scheme_name Name of scheme to export
  * @param file_path Output file path (NULL = stdout)
@@ -204,6 +213,19 @@ void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t si
  * 4. Defaults to DARK
  */
 terminal_background_t detect_terminal_background(void);
+
+/* ============================================================================
+ * Internal: Shared Mutex for Color Compilation
+ * ============================================================================ */
+
+/**
+ * @brief Shared mutex for color scheme compilation
+ *
+ * Used by both lib/ui/colors.c and lib/log/logging.c to synchronize
+ * color scheme compilation. Defined in colors.c and declared here
+ * for use by logging.c.
+ */
+extern mutex_t g_colors_mutex;
 
 #ifdef __cplusplus
 }
