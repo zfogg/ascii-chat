@@ -151,7 +151,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
   }
 
   log_debug("Video prefetch thread started");
-  bool use_image_a = true; // Track which buffer we're using
+  bool use_image_a = true; // Track which buffer we're using (critical for correct buffer swapping)
 
   while (true) {
     // Check if thread should stop
@@ -210,7 +210,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       int width = decoder->video_codec_ctx->width;
       int height = decoder->video_codec_ctx->height;
 
-      // Get current decode buffer (may be reallocated if dimensions changed)
+      // Get current decode buffer based on which one we're using
       image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
 
       // Reallocate if needed (width/height changed)
@@ -221,7 +221,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           log_error("Failed to allocate prefetch image buffer");
           break;
         }
-        // Update the decoder's pointer to the reallocated buffer
+        // CRITICAL: Update decoder's pointer to the reallocated buffer
         if (use_image_a) {
           decoder->prefetch_image_a = decode_buffer;
         } else {
@@ -246,7 +246,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       uint64_t read_time_ns = time_elapsed_ns(read_start_ns, time_get_ns());
       double read_ms = (double)read_time_ns / 1000000.0;
 
-      // Get current decode buffer for updating current_prefetch_image
+      // Get current decode buffer
       image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
 
       // Update the current prefetch image (main thread will pull from this)
@@ -257,7 +257,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
 
       log_debug_every(5000000, "PREFETCH: decoded frame in %.2f ms", read_ms);
 
-      // Switch to the other buffer for next iteration
+      // Switch to the other buffer for next iteration (MUST use boolean flag, not pointer comparison)
       use_image_a = !use_image_a;
     } else {
       // EOF or error - exit thread
@@ -1042,6 +1042,10 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
   }
 
+  // CRITICAL: Must hold mutex while seeking to prevent race with prefetch thread
+  // The prefetch thread holds this mutex while accessing FFmpeg decoder state
+  mutex_lock(&decoder->prefetch_mutex);
+
   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
 
@@ -1054,6 +1058,7 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   }
 
   if (seek_ret < 0) {
+    mutex_unlock(&decoder->prefetch_mutex);
     return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to timestamp %.2f seconds", timestamp_sec);
   }
 
@@ -1075,6 +1080,8 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   if (decoder->audio_sample_rate > 0) {
     decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate + 0.5);
   }
+
+  mutex_unlock(&decoder->prefetch_mutex);
 
   return ASCIICHAT_OK;
 }

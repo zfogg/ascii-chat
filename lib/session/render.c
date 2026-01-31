@@ -209,7 +209,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         break; // Exit retry loop
       } while (true);
 
-      // Skip frame rendering if we still don't have an image after retries
+      // If we still don't have an image after retries, skip this frame and continue
+      // (This happens during network latency or when prefetch thread is catching up)
       if (!image) {
         continue;
       }
@@ -325,21 +326,20 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // Audio-Video Synchronization: Periodically sync audio to match current video frame
-    // This ensures audio and video don't drift apart over time
-    if (is_synchronous && capture && image && frame_count % 60 == 0) {
-      // Sync audio to video every 60 frames (~2.5 seconds at 24fps)
-      // This keeps audio/video synchronized by seeking audio to match video's current PTS
-      media_source_t *source = session_capture_get_media_source(capture);
-      if (source) {
-        asciichat_error_t sync_err = media_source_sync_audio_to_video(source);
-        if (sync_err == ASCIICHAT_OK) {
-          log_debug_every(5000000, "AUDIO_SYNC: Synchronized audio to video at frame %lu", frame_count);
-        } else {
-          log_debug_every(5000000, "AUDIO_SYNC: Sync failed (not available for this source type)");
-        }
-      }
-    }
+    // Audio-Video Synchronization: Temporarily disabled to investigate video skipping issue
+    // if (is_synchronous && capture && image && frame_count % 60 == 0) {
+    //   // Sync audio to video every 60 frames (~2.5 seconds at 24fps)
+    //   // This keeps audio/video synchronized by seeking audio to match video's current PTS
+    //   media_source_t *source = session_capture_get_media_source(capture);
+    //   if (source) {
+    //     asciichat_error_t sync_err = media_source_sync_audio_to_video(source);
+    //     if (sync_err == ASCIICHAT_OK) {
+    //       log_debug_every(5000000, "AUDIO_SYNC: Synchronized audio to video at frame %lu", frame_count);
+    //     } else {
+    //       log_debug_every(5000000, "AUDIO_SYNC: Sync failed (not available for this source type)");
+    //     }
+    //   }
+    // }
 
     // Maintain target frame rate by sleeping only for remaining time
     // Apply frame rate limiting in all modes, including snapshot (so animation plays at correct speed)
