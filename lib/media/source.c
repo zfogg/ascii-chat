@@ -339,9 +339,6 @@ image_t *media_source_read_video(media_source_t *source) {
       return NULL;
     }
 
-    // CRITICAL: Lock seek_access_mutex to prevent seeking during video read
-    mutex_lock(&source->seek_access_mutex);
-
     // Lock shared decoder if YouTube URL (protect against concurrent audio thread access)
     if (source->is_shared_decoder) {
       mutex_lock(&source->decoder_mutex);
@@ -395,9 +392,6 @@ image_t *media_source_read_video(media_source_t *source) {
     if (source->is_shared_decoder) {
       mutex_unlock(&source->decoder_mutex);
     }
-
-    // Release seek_access_mutex
-    mutex_unlock(&source->seek_access_mutex);
 
     return frame;
   }
@@ -685,14 +679,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   asciichat_error_t result = ASCIICHAT_OK;
 
-  mutex_lock(&source->seek_access_mutex);
-
-  // With condition variable synchronization, we don't need to stop the prefetch thread
-  // It will pause automatically when seeking_in_progress is set in ffmpeg_decoder_seek_to_timestamp
-
-  if (source->is_shared_decoder) {
-    mutex_lock(&source->decoder_mutex);
-  }
+  // Don't hold mutex during av_seek_frame() - seeking_in_progress flag coordinates access
+  // The prefetch thread checks this flag and pauses, allowing seek to proceed without deadlock
 
   uint64_t seek_start_ns = time_get_ns();
   if (source->video_decoder) {
@@ -730,14 +718,7 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     }
   }
 
-  if (source->is_shared_decoder) {
-    mutex_unlock(&source->decoder_mutex);
-  }
-
   // Prefetch thread automatically resumes when seeking_in_progress is cleared and signaled
-  // No need to explicitly restart it
-
-  mutex_unlock(&source->seek_access_mutex);
 
   return result;
 }

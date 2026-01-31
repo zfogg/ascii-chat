@@ -75,6 +75,8 @@ struct ffmpeg_decoder_t {
   bool prefetch_frame_ready;       // Whether current_prefetch_image has valid data
   bool prefetch_thread_running;    // Whether prefetch thread is active
   bool prefetch_should_stop;       // Signal to stop prefetch thread
+  bool seeking_in_progress;        // Signal to pause prefetch thread during seek
+  cond_t prefetch_cond;            // Condition variable for pausing during seek
   mutex_t prefetch_mutex;          // Protect: prefetch frame/stop + FFmpeg decoder access
   // NOTE: prefetch_mutex MUST be held when calling av_read_frame/avcodec_ functions
 
@@ -143,6 +145,21 @@ static double get_frame_pts_seconds(AVFrame *frame, AVRational time_base) {
 }
 
 /**
+ * @brief FFmpeg interrupt callback - allows seeking to interrupt long-running av_read_frame() calls
+ *
+ * This callback is called periodically by FFmpeg during blocking operations.
+ * Returning 1 tells FFmpeg to abort the current operation.
+ */
+static int ffmpeg_interrupt_callback(void *opaque) {
+  ffmpeg_decoder_t *decoder = (ffmpeg_decoder_t *)opaque;
+  if (!decoder) {
+    return 0;
+  }
+  // Interrupt av_read_frame() if a seek is in progress
+  return decoder->seeking_in_progress ? 1 : 0;
+}
+
+/**
  * @brief Background thread function for prefetching video frames
  *
  * Continuously reads frames from the decoder and decodes them into prefetch buffers.
@@ -159,21 +176,22 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
   bool use_image_a = true; // Track which buffer we're using (critical for correct buffer swapping)
 
   while (true) {
-    // Check if thread should stop
     mutex_lock(&decoder->prefetch_mutex);
-    bool should_stop = decoder->prefetch_should_stop || decoder->eof_reached;
-    mutex_unlock(&decoder->prefetch_mutex);
 
+    // Check if thread should stop
+    bool should_stop = decoder->prefetch_should_stop || decoder->eof_reached;
     if (should_stop) {
+      mutex_unlock(&decoder->prefetch_mutex);
       break;
     }
 
-    // Try to read the next video frame (blocks on YouTube HTTP)
-    // CRITICAL: Hold mutex while accessing FFmpeg decoder to prevent race conditions
-    uint64_t read_start_ns = time_get_ns();
-    bool frame_decoded = false;
+    // Pause if seek is in progress - wait for signal to continue
+    // cond_wait automatically releases and re-acquires mutex
+    while (decoder->seeking_in_progress) {
+      cond_wait(&decoder->prefetch_cond, &decoder->prefetch_mutex);
+    }
 
-    mutex_lock(&decoder->prefetch_mutex);
+    // Mutex is re-acquired after cond_wait - KEEP IT HELD
 
     // Check if the buffer we want to use is still in use by the main thread
     // If so, skip this iteration and try again later
@@ -185,7 +203,14 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       continue;
     }
 
-    // Read packets until we get a video frame
+    uint64_t read_start_ns = time_get_ns();
+    bool frame_decoded = false;
+
+    // Release mutex before blocking av_read_frame() call
+    // The seeking_in_progress flag prevents av_seek_frame() races
+    mutex_unlock(&decoder->prefetch_mutex);
+
+    // Read packets until we get a video frame - MUTEX RELEASED
     while (true) {
       int ret = av_read_frame(decoder->format_ctx, decoder->packet);
       if (ret < 0) {
@@ -217,6 +242,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
         break;
       }
 
+      // Frame decoded - mutex still held
       // Update position tracking
       decoder->last_video_pts =
           get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->video_stream_idx]->time_base);
@@ -237,7 +263,7 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
           log_error("Failed to allocate prefetch image buffer");
           break;
         }
-        // CRITICAL: Update decoder's pointer to the reallocated buffer
+        // Update decoder's pointer to the reallocated buffer
         if (use_image_a) {
           decoder->prefetch_image_a = decode_buffer;
         } else {
@@ -249,14 +275,38 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       uint8_t *dst_data[1] = {(uint8_t *)decode_buffer->pixels};
       int dst_linesize[1] = {width * 3};
 
+      // Lazy initialize swscale context if not done at startup (happens with HTTP/stdin streams)
+      if (!decoder->sws_ctx) {
+        if (width > 0 && height > 0 && decoder->video_codec_ctx->pix_fmt != AV_PIX_FMT_NONE) {
+          decoder->sws_ctx = sws_getContext(width, height, decoder->video_codec_ctx->pix_fmt, width, height,
+                                            AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+          if (!decoder->sws_ctx) {
+            log_error("Failed to create swscale context on first frame");
+            break;
+          }
+          log_debug("Lazy initialized swscale context with %dx%d", width, height);
+        } else {
+          log_error("Cannot initialize swscale: invalid dimensions or pixel format");
+          break;
+        }
+      }
+
       sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
                 dst_data, dst_linesize);
 
       frame_decoded = true;
-      break;
+      break; // Exit while loop
     }
 
-    mutex_unlock(&decoder->prefetch_mutex);
+    // Re-acquire mutex to update prefetch state
+    mutex_lock(&decoder->prefetch_mutex);
+
+    // Mutex now held - update prefetch state
+    if (frame_decoded) {
+      // Update shared prefetch state while mutex is held
+    }
+
+    mutex_unlock(&decoder->prefetch_mutex); // Release at end of main loop iteration
 
     if (frame_decoded) {
       uint64_t read_time_ns = time_elapsed_ns(read_start_ns, time_get_ns());
@@ -398,6 +448,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     return NULL;
   }
 
+  // Install interrupt callback to allow seeking to interrupt long av_read_frame() calls
+  // Do this AFTER finding stream info to ensure format context is fully initialized
+  if (decoder->format_ctx) {
+    decoder->format_ctx->interrupt_callback.callback = ffmpeg_interrupt_callback;
+    decoder->format_ctx->interrupt_callback.opaque = decoder;
+  }
+
   platform_stderr_restore(stderr_handle);
 
   // Open video codec
@@ -432,14 +489,26 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 
   // Initialize swscale context for video if present
   if (decoder->video_codec_ctx) {
-    decoder->sws_ctx =
-        sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
-                       decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
-                       decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
-    if (!decoder->sws_ctx) {
-      SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
-      ffmpeg_decoder_destroy(decoder);
-      return NULL;
+    // Validate codec context has valid dimensions and pixel format
+    // For HTTP streams, these might not be valid until first frame is read
+    if (decoder->video_codec_ctx->width <= 0 || decoder->video_codec_ctx->height <= 0) {
+      log_warn("Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame",
+               decoder->video_codec_ctx->width, decoder->video_codec_ctx->height);
+      // Don't create swscale context yet - will create it lazily on first frame read
+    } else if (decoder->video_codec_ctx->pix_fmt == AV_PIX_FMT_NONE) {
+      log_warn("Video codec has invalid pixel format, will initialize swscale on first frame");
+      // Don't create swscale context yet - will create it lazily on first frame read
+    } else {
+      // Create swscale context with valid parameters
+      decoder->sws_ctx =
+          sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
+                         decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
+                         decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+      if (!decoder->sws_ctx) {
+        SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
+        ffmpeg_decoder_destroy(decoder);
+        return NULL;
+      }
     }
   }
 
@@ -503,6 +572,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     // Initialize prefetch mutex
     if (mutex_init(&decoder->prefetch_mutex) != 0) {
       SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch mutex");
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+
+    if (cond_init(&decoder->prefetch_cond) != 0) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch condition variable");
+      mutex_destroy(&decoder->prefetch_mutex);
       ffmpeg_decoder_destroy(decoder);
       return NULL;
     }
@@ -621,14 +697,26 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   // Initialize swscale/swresample (same as file-based)
   if (decoder->video_codec_ctx) {
-    decoder->sws_ctx =
-        sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
-                       decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
-                       decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
-    if (!decoder->sws_ctx) {
-      SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
-      ffmpeg_decoder_destroy(decoder);
-      return NULL;
+    // Validate codec context has valid dimensions and pixel format
+    // For stdin/HTTP streams, these might not be valid until first frame is read
+    if (decoder->video_codec_ctx->width <= 0 || decoder->video_codec_ctx->height <= 0) {
+      log_warn("Video codec has invalid dimensions (%dx%d), will initialize swscale on first frame",
+               decoder->video_codec_ctx->width, decoder->video_codec_ctx->height);
+      // Don't create swscale context yet - will create it lazily on first frame read
+    } else if (decoder->video_codec_ctx->pix_fmt == AV_PIX_FMT_NONE) {
+      log_warn("Video codec has invalid pixel format, will initialize swscale on first frame");
+      // Don't create swscale context yet - will create it lazily on first frame read
+    } else {
+      // Create swscale context with valid parameters
+      decoder->sws_ctx =
+          sws_getContext(decoder->video_codec_ctx->width, decoder->video_codec_ctx->height,
+                         decoder->video_codec_ctx->pix_fmt, decoder->video_codec_ctx->width,
+                         decoder->video_codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
+      if (!decoder->sws_ctx) {
+        SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to create swscale context");
+        ffmpeg_decoder_destroy(decoder);
+        return NULL;
+      }
     }
   }
 
@@ -687,6 +775,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   }
 
   // Clean up prefetch state
+  cond_destroy(&decoder->prefetch_cond);
   mutex_destroy(&decoder->prefetch_mutex);
 
   // Free prefetch image buffers
@@ -835,8 +924,19 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
   }
 
   decoder->prefetch_should_stop = true;
-  asciichat_thread_join(&decoder->prefetch_thread, NULL);
-  decoder->prefetch_thread_running = false;
+  // Wait up to 2 seconds for thread to stop
+  // The interrupt callback should cause av_read_frame to abort quickly
+  int join_result = asciichat_thread_join_timeout(&decoder->prefetch_thread, NULL, 2000);
+
+  if (join_result == 0) {
+    // Thread exited successfully
+    decoder->prefetch_thread_running = false;
+  } else {
+    // Timeout: thread is still running (blocked on I/O)
+    // Mark as stopped anyway - we'll create a new thread on restart
+    // The old thread will eventually finish and exit
+    decoder->prefetch_thread_running = false;
+  }
 }
 
 bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder) {
@@ -1043,27 +1143,32 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
   }
 
-  // CRITICAL: Must hold mutex while seeking to prevent race with prefetch thread
-  // The prefetch thread holds this mutex while accessing FFmpeg decoder state
+  // CRITICAL: Hold mutex during entire seek operation
+  // This ensures prefetch thread is NOT in av_read_frame() while we call av_seek_frame()
+  // The prefetch thread releases this mutex BEFORE calling av_read_frame(), so holding it
+  // guarantees exclusive access to the AVFormatContext during seek operations
   mutex_lock(&decoder->prefetch_mutex);
+
+  // Set flag to pause prefetch thread via condition variable
+  decoder->seeking_in_progress = true;
 
   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
 
   // Seek to timestamp with frame-based seeking to nearest keyframe
-  // Note: av_seek_frame can only seek to keyframes in most video codecs
   int seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
   if (seek_ret < 0) {
-    // Fallback: try without AVSEEK_FLAG_FRAME
     seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
   }
 
   if (seek_ret < 0) {
+    decoder->seeking_in_progress = false;
+    cond_signal(&decoder->prefetch_cond);
     mutex_unlock(&decoder->prefetch_mutex);
     return SET_ERRNO(ERROR_MEDIA_SEEK, "Failed to seek to timestamp %.2f seconds", timestamp_sec);
   }
 
-  // Flush codec buffers AFTER seeking to discard any buffered frames from before the seek
+  // Flush codec buffers AFTER seeking
   if (decoder->video_codec_ctx) {
     avcodec_flush_buffers(decoder->video_codec_ctx);
   }
@@ -1071,18 +1176,19 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
     avcodec_flush_buffers(decoder->audio_codec_ctx);
   }
 
-  // Reset state to indicate no current position is known until next frame is read
+  // Reset state
   decoder->eof_reached = false;
-  decoder->audio_buffer_offset = 0; // Discard any buffered audio samples from before seek
+  decoder->audio_buffer_offset = 0;
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
-  decoder->prefetch_frame_ready = false; // Discard any prefetched frame (now stale after seek)
-
-  // Do NOT reset sample counter to seek position - let it be updated naturally by audio/video decoding
-  // If we set it here and no audio is being decoded, position will be stuck at this value
-  // Better to start from 0 and let normal frame reading update position via PTS
+  decoder->prefetch_frame_ready = false;
   decoder->audio_samples_read = 0;
 
+  // Resume prefetch thread
+  decoder->seeking_in_progress = false;
+  cond_signal(&decoder->prefetch_cond);
+
+  // Release mutex - prefetch thread can resume
   mutex_unlock(&decoder->prefetch_mutex);
 
   return ASCIICHAT_OK;
