@@ -526,6 +526,21 @@ static bool is_sensitive_system_path(const char *path) {
  * @param path The path to the file to check
  * @return true if the file appears to be an ascii-chat log file (false for directories or non-files)
  */
+static bool is_file_empty(const char *path) {
+  if (!path || !platform_is_regular_file(path)) {
+    return false;
+  }
+
+  FILE *f = fopen(path, "r");
+  if (!f) {
+    return false;
+  }
+
+  int c = fgetc(f);
+  fclose(f);
+  return c == EOF;
+}
+
 static bool is_existing_ascii_chat_log(const char *path) {
   if (!path) {
     return false;
@@ -758,15 +773,15 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
     bool is_regular_file = platform_is_regular_file(normalized_buf);
 
-    // If a regular file exists, it MUST be an ascii-chat log to be overwritten
-    if (is_regular_file && !is_existing_ascii_chat_log(normalized_buf)) {
+    // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
+    if (is_regular_file && !is_existing_ascii_chat_log(normalized_buf) && !is_file_empty(normalized_buf)) {
       SAFE_FREE(expanded);
       if (config_dir) {
         SAFE_FREE(config_dir);
       }
       return SET_ERRNO(ERROR_LOGGING_INIT,
                        "Cannot overwrite existing non-ascii-chat file: %s\n"
-                       "For safety, ascii-chat will only overwrite its own log files",
+                       "For safety, ascii-chat will only overwrite its own log files or empty files",
                        normalized_buf);
     }
 

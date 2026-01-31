@@ -119,21 +119,33 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Frame timing - measure total time to maintain target FPS
     frame_start_ns = time_get_ns();
 
-    // Log actual loop iteration time (time between frame starts)
-    if (prev_frame_start_ns > 0 && frame_count % 30 == 0) {
+    // Log actual loop iteration time (time between frame starts) - EVERY frame for debugging
+    if (prev_frame_start_ns > 0) {
       uint64_t loop_time_ns = time_elapsed_ns(prev_frame_start_ns, frame_start_ns);
       double loop_time_ms = (double)loop_time_ns / 1000000.0;
       int fps = GET_OPTION(fps);
       if (fps > 0) {
-        log_info("LOOP_TIME: frame-to-frame time %.2f ms (target %.2f ms)", loop_time_ms, 1000.0 / fps);
+        double expected_ms = 1000.0 / fps;
+        if (frame_count % 30 == 0) {
+          log_info("TIMING[%lu]: loop=%.2f ms (target %.2f ms, %.0f%% of target)", frame_count, loop_time_ms,
+                   expected_ms, (loop_time_ms / expected_ms) * 100.0);
+        }
+        if (loop_time_ms > expected_ms * 1.5) {
+          log_warn("SLOWDOWN: frame-to-frame time %.2f ms (target %.2f ms, %.0f%% slower)", loop_time_ms, expected_ms,
+                   (loop_time_ms / expected_ms - 1.0) * 100.0);
+        }
       }
     }
     prev_frame_start_ns = frame_start_ns;
 
     // Frame capture and timing - mode-dependent
     image_t *image;
+    uint64_t capture_start_ns = 0;
+    uint64_t conversion_start_ns = 0;
+    uint64_t render_start_ns = 0;
 
     if (is_synchronous) {
+      capture_start_ns = time_get_ns();
       // SYNCHRONOUS MODE: Use session_capture context
 
       // Check pause state and handle initial frame rendering
@@ -169,7 +181,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         continue; // Skip frame capture and rendering, keep loop running
       }
 
+      // Profile: frame capture
       image = session_capture_read_frame(capture);
+      uint64_t capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
       if (!image) {
         // Check if we've reached end of file for media sources
@@ -178,11 +192,20 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           break; // Exit render loop - end of media
         }
         // Brief delay before retry on temporary frame unavailability
+        if (frame_count > 0 && frame_count % 100 == 0) {
+          log_debug("FRAME_STALL: decoder not ready at frame %lu (waiting for data)", frame_count);
+        }
         platform_sleep_usec(10000); // 10ms
         continue;
       }
 
       frame_count++;
+
+      // Log capture time every 30 frames
+      if (frame_count % 30 == 0) {
+        double capture_ms = (double)capture_elapsed_ns / 1000000.0;
+        log_info_every(5000000, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
+      }
 
       // Pause after first frame if requested via --pause flag
       // We read the frame first, then pause, so the initial frame is available for rendering
@@ -225,7 +248,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
+    conversion_start_ns = time_get_ns();
     char *ascii_frame = session_display_convert_to_ascii(display, image);
+    uint64_t conversion_elapsed_ns = time_elapsed_ns(conversion_start_ns, time_get_ns());
 
     if (ascii_frame) {
       // Detect when we have a paused frame (first frame after pausing)
@@ -242,7 +267,19 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         bool is_final = snapshot_done || is_paused_frame;
+
+        // Profile: render frame
+        render_start_ns = time_get_ns();
         session_display_render_frame(display, ascii_frame, is_final);
+        uint64_t render_elapsed_ns = time_elapsed_ns(render_start_ns, time_get_ns());
+
+        // Log render time every 30 frames
+        if (frame_count % 30 == 0) {
+          double conversion_ms = (double)conversion_elapsed_ns / 1000000.0;
+          double render_ms = (double)render_elapsed_ns / 1000000.0;
+          log_info_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
+                         render_ms);
+        }
       }
 
       // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
@@ -273,11 +310,33 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, time_get_ns());
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
+        // Profile: total frame time before sleep
+        if (frame_count % 30 == 0) {
+          double frame_ms = (double)frame_elapsed_ns / 1000000.0;
+          double target_ms = (double)frame_target_ns / 1000000.0;
+          log_info("TIMING[%lu]: total ops = %.2f ms / %.2f ms target (%.0f%%)", frame_count, frame_ms, target_ms,
+                   (frame_ms / target_ms) * 100.0);
+        }
+
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
           uint64_t sleep_us = sleep_ns / 1000;
           if (sleep_us > 0) {
+            uint64_t sleep_start_ns = time_get_ns();
             platform_sleep_usec(sleep_us);
+            uint64_t actual_sleep_ns = time_elapsed_ns(sleep_start_ns, time_get_ns());
+
+            if (frame_count % 30 == 0) {
+              double actual_sleep_ms = (double)actual_sleep_ns / 1000000.0;
+              double expected_sleep_ms = (double)sleep_ns / 1000000.0;
+              log_info("TIMING[%lu]: sleep = %.2f ms (expected %.2f ms)", frame_count, actual_sleep_ms,
+                       expected_sleep_ms);
+            }
+          }
+        } else {
+          if (frame_count % 30 == 0) {
+            double overrun_ms = ((double)frame_elapsed_ns - (double)frame_target_ns) / 1000000.0;
+            log_warn("TIMING[%lu]: frame overrun by %.2f ms (no sleep)", frame_count, overrun_ms);
           }
         }
       }

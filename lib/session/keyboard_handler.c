@@ -77,7 +77,6 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
           asciichat_error_t err = media_source_seek(source, new_pos);
           if (err == ASCIICHAT_OK) {
             log_info("Seeked backward to %.1f seconds", new_pos);
-            media_source_sync_audio_to_video(source);
           }
         }
       }
@@ -100,7 +99,6 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
           asciichat_error_t err = media_source_seek(source, new_pos);
           if (err == ASCIICHAT_OK) {
             log_info("Seeked forward to %.1f seconds", new_pos);
-            media_source_sync_audio_to_video(source);
           }
         }
       }
