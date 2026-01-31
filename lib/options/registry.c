@@ -54,6 +54,30 @@ typedef struct {
   option_mode_bitmask_t mode_bitmask;
   option_metadata_t metadata; ///< Enum values, numeric ranges, examples
 } registry_entry_t;
+
+/**
+ * @brief Initialize a terminator entry (sentinel value for array end)
+ * Uses designated initializers to properly initialize all fields to zero/NULL
+ */
+#define REGISTRY_TERMINATOR()                                                                                          \
+  {.long_name = NULL,                                                                                                  \
+   .short_name = '\0',                                                                                                 \
+   .type = OPTION_TYPE_BOOL,                                                                                           \
+   .offset = 0,                                                                                                        \
+   .default_value = NULL,                                                                                              \
+   .default_value_size = 0,                                                                                            \
+   .help_text = NULL,                                                                                                  \
+   .group = NULL,                                                                                                      \
+   .arg_placeholder = NULL,                                                                                            \
+   .required = false,                                                                                                  \
+   .env_var_name = NULL,                                                                                               \
+   .validate_fn = NULL,                                                                                                \
+   .parse_fn = NULL,                                                                                                   \
+   .owns_memory = false,                                                                                               \
+   .optional_arg = false,                                                                                              \
+   .mode_bitmask = OPTION_MODE_NONE,                                                                                   \
+   .metadata = {0}}
+
 // ============================================================================
 // Static Metadata Arrays (Enum Values, Descriptions, Ranges)
 // ============================================================================
@@ -276,22 +300,7 @@ static const registry_entry_t g_logging_entries[] = {
       .enum_descriptions = g_color_setting_descs,
       .enum_integer_values = g_color_setting_integers,
       .input_type = OPTION_INPUT_ENUM}},
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // CONFIGURATION CATEGORY - Configuration file options
@@ -332,22 +341,7 @@ static const registry_entry_t g_configuration_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {0}},
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // SHELL CATEGORY - Shell integration options
@@ -389,22 +383,7 @@ static const registry_entry_t g_shell_entries[] = {
      OPTION_MODE_BINARY,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // TERMINAL CATEGORY - Terminal display options
@@ -448,22 +427,7 @@ static const registry_entry_t g_terminal_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {.numeric_range = {10, 256, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // WEBCAM CATEGORY - Webcam capture options
@@ -573,22 +537,7 @@ static const registry_entry_t g_webcam_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // DISPLAY CATEGORY - Display layout options
@@ -805,22 +754,7 @@ static const registry_entry_t g_display_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // NETWORK CATEGORY - Network protocol options
@@ -862,22 +796,7 @@ static const registry_entry_t g_network_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // SECURITY CATEGORY - Security and authentication options
@@ -1303,22 +1222,7 @@ static const registry_entry_t g_security_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC | OPTION_MODE_DISCOVERY,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // MEDIA CATEGORY - Media file and stream options
@@ -1448,22 +1352,7 @@ static const registry_entry_t g_media_entries[] = {
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // AUDIO CATEGORY - Audio processing options
@@ -1677,22 +1566,7 @@ static const registry_entry_t g_audio_entries[] = {
      OPTION_MODE_SERVER,
      {0}},
 
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // DATABASE CATEGORY - Discovery service database options
@@ -1803,22 +1677,7 @@ static const registry_entry_t g_database_entries[] = {
      {0}},
 
     // Generic placeholder to mark end of array
-    {NULL,
-     '\0',
-     OPTION_TYPE_BOOL,
-     0,
-     NULL,
-     0,
-     NULL,
-     NULL,
-     false,
-     NULL,
-     NULL,
-     NULL,
-     false,
-     false,
-     OPTION_MODE_NONE,
-     {0}}};
+    REGISTRY_TERMINATOR()};
 
 // ============================================================================
 // Master Registry - Composition of all category arrays
@@ -1847,29 +1706,6 @@ static registry_entry_t g_options_registry[2048];
 
 static size_t g_registry_size = 0;
 static bool g_metadata_populated = false;
-
-// Permanent metadata cache - prevents metadata from being lost on subsequent descriptor lookups
-typedef struct {
-  const char *long_name;
-  option_metadata_t metadata;
-} cached_metadata_t;
-
-#define MAX_CACHED_METADATA 200
-static cached_metadata_t g_metadata_cache[MAX_CACHED_METADATA];
-static size_t g_metadata_cache_count = 0;
-
-static const option_metadata_t *get_cached_metadata(const char *long_name) {
-  if (!long_name) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Long name is NULL");
-    return NULL;
-  }
-  for (size_t i = 0; i < g_metadata_cache_count; i++) {
-    if (strcmp(g_metadata_cache[i].long_name, long_name) == 0) {
-      return &g_metadata_cache[i].metadata;
-    }
-  }
-  return NULL;
-}
 
 // Metadata is now initialized compile-time in registry entries
 
@@ -2420,14 +2256,17 @@ const option_metadata_t *options_registry_get_metadata(const char *long_name) {
     return NULL;
   }
 
-  // Check cache first (faster and preserves metadata across calls)
-  const option_metadata_t *cached = get_cached_metadata(long_name);
-  if (cached) {
-    SET_ERRNO(ERROR_NOT_FOUND, "Option '%s' not found", long_name);
-    return cached;
+  // Look up option in registry and return its metadata
+  registry_init_size();
+  for (size_t i = 0; i < g_registry_size; i++) {
+    const registry_entry_t *entry = &g_options_registry[i];
+    if (entry->long_name && strcmp(entry->long_name, long_name) == 0) {
+      // Return the metadata from the registry entry
+      return &entry->metadata;
+    }
   }
 
-  // If not in cache, return empty metadata
+  // If not found, return empty metadata
   static option_metadata_t empty_metadata = {0};
   return &empty_metadata;
 }

@@ -53,7 +53,7 @@ asciichat_error_t keyboard_init(void) {
   new_termios = g_original_termios;
 
   // Disable canonical mode (line buffering) and echo
-  new_termios.c_lflag &= ~(ICANON | ECHO);
+  new_termios.c_lflag &= ~((tcflag_t)(ICANON | ECHO));
 
   // Set minimum characters to read and timeout
   new_termios.c_cc[VMIN] = 0;  // Non-blocking: return immediately if no input

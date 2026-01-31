@@ -63,7 +63,7 @@ static int next_color_mode(int current) {
 void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_t key) {
   switch (key) {
   // ===== SEEK CONTROLS (file sources only) =====
-  case 258: { // KEY_LEFT - Seek backward 30 seconds
+  case KEY_LEFT: { // Seek backward 30 seconds
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
@@ -83,7 +83,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
     break;
   }
 
-  case 259: { // KEY_RIGHT - Seek forward 30 seconds
+  case KEY_RIGHT: { // Seek forward 30 seconds
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
@@ -106,7 +106,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
   }
 
   // ===== VOLUME CONTROLS =====
-  case 257: { // KEY_DOWN - Decrease volume 10%
+  case KEY_DOWN: { // Decrease volume 10%
     double current_volume = GET_OPTION(speakers_volume);
     double new_volume = clamp_volume(current_volume - 0.1);
     options_set_double("speakers_volume", new_volume);
@@ -114,7 +114,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
     break;
   }
 
-  case 256: { // KEY_UP - Increase volume 10%
+  case KEY_UP: { // Increase volume 10%
     double current_volume = GET_OPTION(speakers_volume);
     double new_volume = clamp_volume(current_volume + 0.1);
     options_set_double("speakers_volume", new_volume);
@@ -123,7 +123,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
   }
 
   // ===== PLAY/PAUSE CONTROL =====
-  case 32: { // KEY_SPACE - Toggle play/pause
+  case KEY_SPACE: { // Toggle play/pause
     if (capture) {
       media_source_t *source = (media_source_t *)session_capture_get_media_source(capture);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE) {
@@ -139,7 +139,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
   }
 
   // ===== COLOR MODE CONTROL =====
-  case 'c': {
+  case KEY_C: {
     int current_mode = (int)GET_OPTION(color_mode);
     int next_mode = next_color_mode(current_mode);
     options_set_int("color_mode", next_mode);
@@ -152,7 +152,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
   }
 
   // ===== MUTE CONTROL =====
-  case 'm': {
+  case KEY_M: {
     double current_volume = GET_OPTION(speakers_volume);
     if (current_volume > 0.01) { // If not already muted
       // Save current volume and mute
@@ -169,7 +169,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
   }
 
   // ===== WEBCAM FLIP CONTROL =====
-  case 'f': {
+  case KEY_F: {
     bool current_flip = (bool)GET_OPTION(webcam_flip);
     options_set_bool("webcam_flip", !current_flip);
     log_info("Webcam flip: %s", !current_flip ? "enabled" : "disabled");
