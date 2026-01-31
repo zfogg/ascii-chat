@@ -125,7 +125,8 @@ asciichat_error_t manpage_resources_load(manpage_resources_t *resources) {
   }
 
   // Content is now merged into template - no separate content file needed
-  resources->content_sections = "";
+  // Set to NULL so cleanup doesn't try to free a string literal
+  resources->content_sections = NULL;
   resources->content_len = 0;
 
   // Determine if resources came from embedded binary
