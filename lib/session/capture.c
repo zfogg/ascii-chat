@@ -87,6 +87,9 @@ struct session_capture_ctx {
   /** @brief Microphone audio context for fallback (borrowed, not owned) */
   void *mic_audio_ctx;
 
+  /** @brief Main audio context for playback (borrowed, not owned) */
+  void *audio_ctx;
+
   /** @brief Pause media source after first frame is read (--pause flag) */
   bool should_pause_after_first_frame;
 
@@ -473,6 +476,19 @@ void *session_capture_get_media_source(session_capture_ctx_t *ctx) {
     return NULL;
   }
   return (void *)ctx->source;
+}
+
+void *session_capture_get_audio_context(session_capture_ctx_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    return NULL;
+  }
+  return ctx->audio_ctx;
+}
+
+void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx) {
+  if (ctx) {
+    ctx->audio_ctx = audio_ctx;
+  }
 }
 
 asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx) {

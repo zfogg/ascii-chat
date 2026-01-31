@@ -778,4 +778,16 @@ asciichat_error_t audio_validate_batch_params(const audio_batch_info_t *batch);
  */
 bool audio_is_supported_sample_rate(uint32_t sample_rate);
 
+/**
+ * @brief Flush all audio buffers to synchronize with seek operations
+ * @param ctx Audio context (must not be NULL)
+ *
+ * Clears the playback buffers when seeking occurs. This prevents 5-10 seconds
+ * of old audio from playing after a seek operation. Called by keyboard handler
+ * when user presses seek arrow keys.
+ *
+ * @ingroup audio
+ */
+void audio_flush_playback_buffers(audio_context_t *ctx);
+
 /** @} */

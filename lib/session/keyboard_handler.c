@@ -9,6 +9,7 @@
 #include "media/source.h"
 #include "options/options.h"
 #include "log/logging.h"
+#include "audio/audio.h"
 #include <string.h>
 
 /* ============================================================================
@@ -76,6 +77,11 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
           asciichat_error_t err = media_source_seek(source, new_pos);
           if (err == ASCIICHAT_OK) {
             log_info("Seeked backward to %.1f seconds", new_pos);
+            // Flush audio buffers to prevent 5-10 second lag after seek
+            audio_context_t *audio_ctx = (audio_context_t *)session_capture_get_audio_context(capture);
+            if (audio_ctx) {
+              audio_flush_playback_buffers(audio_ctx);
+            }
           }
         }
       }
@@ -98,6 +104,11 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
           asciichat_error_t err = media_source_seek(source, new_pos);
           if (err == ASCIICHAT_OK) {
             log_info("Seeked forward to %.1f seconds", new_pos);
+            // Flush audio buffers to prevent 5-10 second lag after seek
+            audio_context_t *audio_ctx = (audio_context_t *)session_capture_get_audio_context(capture);
+            if (audio_ctx) {
+              audio_flush_playback_buffers(audio_ctx);
+            }
           }
         }
       }
@@ -110,7 +121,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
     double current_volume = GET_OPTION(speakers_volume);
     double new_volume = clamp_volume(current_volume - 0.1);
     options_set_double("speakers_volume", new_volume);
-    log_info("Volume: %.0f%%", new_volume * 100.0);
+    double verify_volume = GET_OPTION(speakers_volume);
+    log_info("Volume DOWN: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
+             verify_volume * 100.0);
     break;
   }
 
@@ -118,7 +131,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
     double current_volume = GET_OPTION(speakers_volume);
     double new_volume = clamp_volume(current_volume + 0.1);
     options_set_double("speakers_volume", new_volume);
-    log_info("Volume: %.0f%%", new_volume * 100.0);
+    double verify_volume = GET_OPTION(speakers_volume);
+    log_info("Volume UP: %.0f%% → %.0f%% (verified: %.0f%%)", current_volume * 100.0, new_volume * 100.0,
+             verify_volume * 100.0);
     break;
   }
 
@@ -154,16 +169,21 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
   // ===== MUTE CONTROL =====
   case KEY_M: {
     double current_volume = GET_OPTION(speakers_volume);
+    log_debug("Mute toggle: current_volume=%.2f, g_mute_saved_volume=%.2f, threshold=0.01", current_volume,
+              g_mute_saved_volume);
+
     if (current_volume > 0.01) { // If not already muted
       // Save current volume and mute
       g_mute_saved_volume = current_volume;
       options_set_double("speakers_volume", 0.0);
-      log_info("Muted");
+      double verify = GET_OPTION(speakers_volume);
+      log_info("Muted: saved %.0f%%, set to 0%% (verified: %.2f)", g_mute_saved_volume * 100.0, verify);
     } else {
       // Restore previous volume
       double restore_volume = g_mute_saved_volume > 0.0 ? g_mute_saved_volume : 0.5;
       options_set_double("speakers_volume", restore_volume);
-      log_info("Unmuted: %.0f%%", restore_volume * 100.0);
+      double verify = GET_OPTION(speakers_volume);
+      log_info("Unmuted: restored %.0f%% (verified: %.2f)", restore_volume * 100.0, verify);
     }
     break;
   }

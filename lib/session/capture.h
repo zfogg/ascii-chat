@@ -309,6 +309,20 @@ bool session_capture_using_file_audio(session_capture_ctx_t *ctx);
 void *session_capture_get_media_source(session_capture_ctx_t *ctx);
 
 /**
+ * @brief Get the audio context for playback control
+ * @param ctx Capture context
+ * @return Audio context pointer (borrowed, not owned) or NULL
+ */
+void *session_capture_get_audio_context(session_capture_ctx_t *ctx);
+
+/**
+ * @brief Set the audio context for playback control
+ * @param ctx Capture context (must not be NULL)
+ * @param audio_ctx Audio context pointer (borrowed, not owned)
+ */
+void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx);
+
+/**
  * @brief Synchronize audio decoder to video position for frame-locked playback
  * @param ctx Capture context (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure

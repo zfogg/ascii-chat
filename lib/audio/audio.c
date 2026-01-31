@@ -355,6 +355,12 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   float *output = (float *)outputBuffer;
   size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
 
+  static uint64_t audio_callback_debug_count = 0;
+  if (audio_callback_debug_count++ % 4800 == 0) {
+    log_info("AUDIO_CALLBACK: frames=%lu, channels=%d, num_samples=%zu, output=%p", framesPerBuffer, AUDIO_CHANNELS,
+             num_samples, (void *)output);
+  }
+
   // Silence on shutdown
   if (atomic_load(&ctx->shutting_down)) {
     if (output) {
@@ -424,9 +430,12 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
       // Apply volume scaling if not at 100%
       if (speaker_volume != 1.0f) {
+        log_debug_every(48000, "Applying audio volume %.1f%% to %zu samples", speaker_volume * 100.0, samples_read);
         for (size_t i = 0; i < samples_read; i++) {
           output[i] *= speaker_volume;
         }
+      } else {
+        log_debug_every(48000, "Audio at 100%% volume, no scaling needed");
       }
     }
   }
@@ -557,6 +566,25 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
     } else if (ctx->processed_playback_rb) {
       // Network mode: read from processed playback buffer (worker output)
       samples_read = audio_ring_buffer_read(ctx->processed_playback_rb, output, num_samples);
+    }
+
+    // Apply speaker volume control
+    if (samples_read > 0) {
+      float speaker_volume = GET_OPTION(speakers_volume);
+      // Clamp to valid range [0.0, 1.0]
+      if (speaker_volume < 0.0f) {
+        speaker_volume = 0.0f;
+      } else if (speaker_volume > 1.0f) {
+        speaker_volume = 1.0f;
+      }
+      // Apply volume scaling if not at 100%
+      if (speaker_volume != 1.0f) {
+        log_debug_every(48000, "OUTPUT_CALLBACK: Applying volume %.0f%% to %zu samples", speaker_volume * 100.0,
+                        samples_read);
+        for (size_t i = 0; i < samples_read; i++) {
+          output[i] *= speaker_volume;
+        }
+      }
     }
 
     // Fill remaining with silence if underrun
@@ -1296,6 +1324,31 @@ void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
   if (!ctx)
     return;
   ctx->audio_pipeline = pipeline;
+}
+
+void audio_flush_playback_buffers(audio_context_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    log_debug("audio_flush_playback_buffers: context invalid");
+    return;
+  }
+
+  log_info("Flushing audio playback buffers (seeking...)");
+
+  // Flush all playback buffers to clear old audio
+  if (ctx->playback_buffer) {
+    audio_ring_buffer_clear(ctx->playback_buffer);
+    log_debug("Cleared playback_buffer");
+  }
+  if (ctx->processed_playback_rb) {
+    audio_ring_buffer_clear(ctx->processed_playback_rb);
+    log_debug("Cleared processed_playback_rb");
+  }
+  if (ctx->render_buffer) {
+    audio_ring_buffer_clear(ctx->render_buffer);
+    log_debug("Cleared render_buffer");
+  }
+
+  log_info("Audio playback buffers flushed - seek should be synchronized now");
 }
 
 asciichat_error_t audio_start_duplex(audio_context_t *ctx) {

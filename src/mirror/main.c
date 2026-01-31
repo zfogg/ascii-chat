@@ -304,6 +304,8 @@ int mirror_main(void) {
           }
 
           if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
+            // Store audio context in capture for keyboard handler access (for seek buffer flushing)
+            session_capture_set_audio_context(capture, audio_ctx);
             log_info("Audio playback initialized for media file");
           } else {
             log_warn("Failed to start audio duplex");
