@@ -1117,6 +1117,10 @@ void audio_cleanup() {
   // Stop async sender thread (drains queue and exits)
   audio_sender_cleanup();
 
+  // Terminate PortAudio FIRST to properly free device resources before cleanup
+  // This must happen before audio_stop_duplex() and audio_destroy()
+  audio_terminate_portaudio_final();
+
   // CRITICAL: Stop audio stream BEFORE destroying pipeline to prevent race condition
   // PortAudio may invoke the callback one more time after we request stop.
   // We need to clear the pipeline pointer first so the callback can't access freed memory.
