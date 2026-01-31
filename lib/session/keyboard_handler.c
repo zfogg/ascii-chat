@@ -15,18 +15,26 @@
  * Internal Helpers
  * ============================================================================ */
 
-/** Muted volume state (used to restore volume when unmuting) */
-static double g_mute_saved_volume = 0.5;
+/** Muted volume state (used to restore volume when unmuting) - default 100% */
+static double g_mute_saved_volume = 1.0;
 
 /**
- * @brief Clamp volume to valid range [0.0, 2.0]
+ * @brief Clamp volume to valid range [0.0, 1.0]
+ *
+ * Restricts volume to the valid audio range where:
+ * - 0.0 = silent (mute)
+ * - 0.7 = default/normal level (70%)
+ * - 1.0 = maximum volume (100%)
+ *
+ * @param volume Unclamped volume value
+ * @return Volume clamped to [0.0, 1.0] range
  */
 static double clamp_volume(double volume) {
   if (volume < 0.0) {
     return 0.0;
   }
-  if (volume > 2.0) {
-    return 2.0;
+  if (volume > 1.0) {
+    return 1.0;
   }
   return volume;
 }
@@ -52,7 +60,7 @@ static int next_color_mode(int current) {
  * Keyboard Handler
  * ============================================================================ */
 
-void session_handle_keyboard_input(session_capture_ctx_t *capture, int key) {
+void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_t key) {
   switch (key) {
   // ===== SEEK CONTROLS (file sources only) =====
   case 258: { // KEY_LEFT - Seek backward 30 seconds

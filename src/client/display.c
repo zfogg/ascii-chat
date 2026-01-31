@@ -209,10 +209,12 @@ int display_init() {
   // Initialize keyboard input for interactive controls (volume, color mode, flip, seek, pause)
   // Only initialize in TTY mode to avoid interfering with piped/redirected I/O
   if (platform_isatty(STDIN_FILENO)) {
-    if (keyboard_init() == 0) {
+    asciichat_error_t kb_result = keyboard_init();
+    if (kb_result == ASCIICHAT_OK) {
       g_keyboard_enabled = true;
     } else {
       // Non-fatal: client can work without keyboard support
+      log_warn("Failed to initialize keyboard input: %s", asciichat_error_string(kb_result));
       g_keyboard_enabled = false;
     }
   }
@@ -299,8 +301,8 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
   //   (seek, pause, play, volume, color mode, flip)
   // - If client mode is network-only, pass NULL (volume, color mode, flip work; seek/pause ignored)
   if (g_keyboard_enabled) {
-    int key = keyboard_read_nonblocking();
-    if (key != 0) { // 0 is KEY_NONE
+    keyboard_key_t key = keyboard_read_nonblocking();
+    if (key != KEY_NONE) {
       session_handle_keyboard_input(g_capture_ctx, key);
     }
   }

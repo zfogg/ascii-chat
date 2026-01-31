@@ -87,11 +87,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Disable keyboard in snapshot mode - don't put stdin into raw mode
   bool keyboard_enabled = false;
   if (keyboard_handler && platform_isatty(STDIN_FILENO) && !snapshot_mode) {
-    if (keyboard_init() == 0) {
+    asciichat_error_t kb_result = keyboard_init();
+    if (kb_result == ASCIICHAT_OK) {
       keyboard_enabled = true;
       log_debug("Keyboard input enabled");
     } else {
-      log_warn("Failed to initialize keyboard input - continuing without keyboard support");
+      log_warn("Failed to initialize keyboard input (%s) - continuing without keyboard support",
+               asciichat_error_string(kb_result));
       // Don't fail the render loop if keyboard init fails
       keyboard_enabled = false;
     }
@@ -150,8 +152,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         // Still poll keyboard to allow unpausing
         if (keyboard_enabled && keyboard_handler) {
-          int key = keyboard_read_nonblocking();
-          if (key != 0) {
+          keyboard_key_t key = keyboard_read_nonblocking();
+          if (key != KEY_NONE) {
             keyboard_handler(capture, key, user_data);
           }
         }
@@ -257,8 +259,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Keyboard input polling (if enabled)
     if (keyboard_enabled && keyboard_handler) {
-      int key = keyboard_read_nonblocking();
-      if (key != 0) { // 0 is KEY_NONE
+      keyboard_key_t key = keyboard_read_nonblocking();
+      if (key != KEY_NONE) {
         keyboard_handler(capture, key, user_data);
       }
     }

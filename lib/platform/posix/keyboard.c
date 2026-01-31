@@ -28,14 +28,14 @@ static static_mutex_t g_keyboard_init_mutex = STATIC_MUTEX_INIT;
  * Keyboard Functions
  * ============================================================================ */
 
-int keyboard_init(void) {
+asciichat_error_t keyboard_init(void) {
   static_mutex_lock(&g_keyboard_init_mutex);
 
   // If already initialized, just increment refcount
   if (g_keyboard_init_refcount > 0) {
     g_keyboard_init_refcount++;
     static_mutex_unlock(&g_keyboard_init_mutex);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   // CRITICAL: Hold lock for ENTIRE initialization sequence to prevent TOCTOU race.
@@ -46,8 +46,7 @@ int keyboard_init(void) {
   // Get current terminal settings
   if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
     static_mutex_unlock(&g_keyboard_init_mutex);
-    log_error("Failed to get terminal attributes");
-    return -1;
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes");
   }
 
   // Save original settings and create raw mode version
@@ -63,8 +62,7 @@ int keyboard_init(void) {
   // Apply new settings
   if (tcsetattr(STDIN_FILENO, TCSANOW, &new_termios) < 0) {
     static_mutex_unlock(&g_keyboard_init_mutex);
-    log_error("Failed to set terminal attributes");
-    return -1;
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to set terminal attributes");
   }
 
   // Make stdin non-blocking just in case
@@ -73,21 +71,21 @@ int keyboard_init(void) {
     // Restore original settings on error
     tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
     static_mutex_unlock(&g_keyboard_init_mutex);
-    return -1;
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get stdin flags");
   }
 
   if (fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) < 0) {
     // Restore original settings on error
     tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
     static_mutex_unlock(&g_keyboard_init_mutex);
-    return -1;
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to set stdin non-blocking");
   }
 
   // Mark as initialized with reference counting (still under lock)
   g_keyboard_init_refcount = 1;
   static_mutex_unlock(&g_keyboard_init_mutex);
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void keyboard_cleanup(void) {
@@ -105,7 +103,7 @@ void keyboard_cleanup(void) {
   // The shell will restore terminal settings when the process exits.
 }
 
-int keyboard_read_nonblocking(void) {
+keyboard_key_t keyboard_read_nonblocking(void) {
   // Check if keyboard is initialized with reference counting
   static_mutex_lock(&g_keyboard_init_mutex);
   bool is_initialized = (g_keyboard_init_refcount > 0);
@@ -137,7 +135,7 @@ int keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-  // Handle regular ASCII characters and spacebar
+  // Handle special characters first
   if (ch == ' ') {
     return KEY_SPACE;
   }
@@ -179,6 +177,6 @@ int keyboard_read_nonblocking(void) {
     return KEY_ESCAPE;
   }
 
-  // Return regular ASCII character
-  return (int)ch;
+  // Return regular ASCII character (including control characters 0-31, printable 32-126)
+  return (keyboard_key_t)ch;
 }

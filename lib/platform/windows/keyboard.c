@@ -25,14 +25,14 @@ static static_mutex_t g_keyboard_init_mutex = STATIC_MUTEX_INIT;
  * Keyboard Functions
  * ============================================================================ */
 
-int keyboard_init(void) {
+asciichat_error_t keyboard_init(void) {
   static_mutex_lock(&g_keyboard_init_mutex);
 
   // If already initialized, just increment refcount
   if (g_keyboard_init_refcount > 0) {
     g_keyboard_init_refcount++;
     static_mutex_unlock(&g_keyboard_init_mutex);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   static_mutex_unlock(&g_keyboard_init_mutex);
@@ -40,14 +40,12 @@ int keyboard_init(void) {
   // Get handle to standard input
   g_console_input = GetStdHandle(STD_INPUT_HANDLE);
   if (g_console_input == INVALID_HANDLE_VALUE) {
-    log_error("Failed to get console input handle");
-    return -1;
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to get console input handle");
   }
 
   // Get current console mode
   if (!GetConsoleMode(g_console_input, &g_original_console_mode)) {
-    log_error("Failed to get console mode");
-    return -1;
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to get console mode");
   }
 
   // Disable line input buffering mode
@@ -60,8 +58,7 @@ int keyboard_init(void) {
   // Keep ENABLE_PROCESSED_INPUT for signal handling
 
   if (!SetConsoleMode(g_console_input, new_mode)) {
-    log_error("Failed to set console mode");
-    return -1;
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to set console mode");
   }
 
   // Mark as initialized with reference counting
@@ -69,7 +66,7 @@ int keyboard_init(void) {
   g_keyboard_init_refcount = 1;
   static_mutex_unlock(&g_keyboard_init_mutex);
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void keyboard_cleanup(void) {
@@ -90,7 +87,7 @@ void keyboard_cleanup(void) {
   }
 }
 
-int keyboard_read_nonblocking(void) {
+keyboard_key_t keyboard_read_nonblocking(void) {
   // Check if keyboard is initialized with reference counting
   static_mutex_lock(&g_keyboard_init_mutex);
   bool is_initialized = (g_keyboard_init_refcount > 0);
@@ -111,7 +108,7 @@ int keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-  // Handle regular characters
+  // Handle special characters
   if (ch == ' ') {
     return KEY_SPACE;
   }
@@ -119,7 +116,7 @@ int keyboard_read_nonblocking(void) {
     return KEY_ESCAPE;
   }
 
-  // Handle Windows extended key codes (0xE0 prefix)
+  // Handle Windows extended key codes (0xE0 or 0x00 prefix)
   if (ch == 0xE0 || ch == 0x00) {
     // Extended key code - read the actual key
     if (!_kbhit()) {
@@ -147,6 +144,6 @@ int keyboard_read_nonblocking(void) {
     }
   }
 
-  // Return regular ASCII character
-  return ch;
+  // Return regular ASCII character (including control characters 1-31, printable 32-126)
+  return (keyboard_key_t)ch;
 }
