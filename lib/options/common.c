@@ -96,7 +96,7 @@ bool validate_positive_int_opt(const char *value_str, int *out_value, const char
 
   int val = strtoint_safe(value_str);
   if (val == INT_MIN || val <= 0) {
-    (void)fprintf(stderr, "Invalid %s value '%s'. %s must be a positive integer.\n", param_name, value_str, param_name);
+    log_error("Invalid %s value '%s'. %s must be a positive integer.", param_name, value_str, param_name);
     return false;
   }
 
@@ -112,7 +112,7 @@ bool validate_port_opt(const char *value_str, uint16_t *out_port) {
 
   // Use safe integer parsing with range validation
   if (parse_port(value_str, out_port) != ASCIICHAT_OK) {
-    (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
+    log_error("Invalid port value '%s'. Port must be a number between 1 and 65535.", value_str);
     return false;
   }
 
@@ -127,7 +127,7 @@ bool validate_fps_opt(const char *value_str, int *out_fps) {
 
   int fps_val = strtoint_safe(value_str);
   if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
-    (void)fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
+    log_error("Invalid FPS value '%s'. FPS must be between 1 and 144.", value_str);
     return false;
   }
 
@@ -144,12 +144,12 @@ bool validate_webcam_index(const char *value_str, unsigned short int *out_index)
   char error_msg[BUFFER_SIZE_SMALL];
   int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
   if (parsed_index == INT_MIN) {
-    (void)fprintf(stderr, "Invalid webcam index: %s\n", error_msg);
+    log_error("Invalid webcam index: %s", error_msg);
     return false;
   }
   // Webcam index doesn't support -1 (default), must be >= 0
   if (parsed_index < 0) {
-    (void)fprintf(stderr, "Invalid webcam index '%s'. Webcam index must be a non-negative integer.\n", value_str);
+    log_error("Invalid webcam index '%s'. Webcam index must be a non-negative integer.", value_str);
     return false;
   }
 
@@ -176,7 +176,7 @@ asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
     return ASCIICHAT_OK;
   }
 
-  (void)fprintf(stderr, "No Ed25519 SSH key found at %s\n", full_path);
+  log_error("No Ed25519 SSH key found at %s", full_path);
   SAFE_FREE(full_path);
   return SET_ERRNO(
       ERROR_CRYPTO_KEY,
@@ -230,9 +230,8 @@ char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_s
   return value_str;
 
 error:
-  (void)fprintf(stderr, "%s: option '--%s' requires an argument\n",
-                mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"), option_name);
-  (void)fflush(stderr);
+  const char *mode_name = (mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"));
+  log_error("%s: option '--%s' requires an argument", mode_name, option_name);
   return NULL; // Signal error to caller
 }
 
@@ -297,7 +296,7 @@ asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts
   } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
     opts->color_mode = COLOR_MODE_TRUECOLOR;
   } else {
-    (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor\n", value_str);
+    log_error("Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor", value_str);
     return ERROR_INVALID_PARAM;
   }
 
@@ -316,8 +315,7 @@ asciichat_error_t parse_render_mode_option(const char *value_str, options_t *opt
   } else if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
     opts->render_mode = RENDER_MODE_HALF_BLOCK;
   } else {
-    (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
-                  value_str);
+    log_error("Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
     return ERROR_INVALID_PARAM;
   }
 
@@ -342,8 +340,7 @@ asciichat_error_t parse_palette_option(const char *value_str, options_t *opts) {
   } else if (strcmp(value_str, "custom") == 0) {
     opts->palette_type = PALETTE_CUSTOM;
   } else {
-    (void)fprintf(stderr, "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
-                  value_str);
+    log_error("Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom", value_str);
     return ERROR_INVALID_PARAM;
   }
 
@@ -356,8 +353,8 @@ asciichat_error_t parse_palette_chars_option(const char *value_str, options_t *o
   }
 
   if (strlen(value_str) >= sizeof(opts->palette_custom)) {
-    (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
-                  sizeof(opts->palette_custom) - 1);
+    log_error("Invalid palette-chars: too long (%zu chars, max %zu)", strlen(value_str),
+              sizeof(opts->palette_custom) - 1);
     return ERROR_INVALID_PARAM;
   }
 
@@ -424,7 +421,7 @@ asciichat_error_t parse_snapshot_delay_option(const char *value_str, options_t *
   char *endptr;
   float delay = strtof(value_str, &endptr);
   if (endptr == value_str || *endptr != '\0' || delay < 0.0f) {
-    (void)fprintf(stderr, "Invalid snapshot delay '%s'. Must be a non-negative number.\n", value_str);
+    log_error("Invalid snapshot delay '%s'. Must be a non-negative number.", value_str);
     return ERROR_INVALID_PARAM;
   }
 
@@ -442,7 +439,7 @@ asciichat_error_t parse_log_level_option(const char *value_str, options_t *opts)
   int log_level = validate_opt_log_level(value_str, error_msg, sizeof(error_msg));
 
   if (log_level == -1) {
-    (void)fprintf(stderr, "Error: %s\n", error_msg);
+    log_error("%s", error_msg);
     return ERROR_INVALID_PARAM;
   }
 
@@ -621,7 +618,7 @@ asciichat_error_t validate_options_and_report(const void *config, const void *op
   asciichat_error_t result = options_config_validate(config_typed, opts, &error_message);
   if (result != ASCIICHAT_OK) {
     if (error_message) {
-      (void)fprintf(stderr, "Error: %s\n", error_message);
+      log_error("%s", error_message);
       free(error_message);
     }
   }
