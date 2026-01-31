@@ -488,17 +488,62 @@ asciichat_error_t colors_export_scheme(const char *scheme_name, const char *file
     return SET_ERRNO(ERROR_INVALID_PARAM, "Scheme name is NULL");
   }
 
-  /* Note: file_path parameter reserved for future use */
-  (void)file_path;
-
   color_scheme_t scheme = {0};
   asciichat_error_t result = colors_load_builtin(scheme_name, &scheme);
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
-  /* TODO: Generate TOML content and write to file or stdout */
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "Color scheme export not yet implemented");
+  /* Generate TOML content */
+  char toml_content[8192] = {0};
+  size_t offset = 0;
+
+  /* Scheme header section */
+  offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset,
+                          "[scheme]\n"
+                          "name = \"%s\"\n"
+                          "description = \"%s\"\n\n",
+                          scheme.name, scheme.description);
+
+  /* Dark mode colors */
+  const char *color_names[] = {"dev", "debug", "warn", "info", "error", "fatal", "grey", "reset"};
+  offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "[colors.dark]\n");
+
+  for (int i = 0; i < 8; i++) {
+    offset +=
+        safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n", color_names[i],
+                      scheme.log_colors_dark[i].r, scheme.log_colors_dark[i].g, scheme.log_colors_dark[i].b);
+  }
+
+  /* Light mode colors if available */
+  if (scheme.has_light_variant) {
+    offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "\n[colors.light]\n");
+    for (int i = 0; i < 8; i++) {
+      offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, "%s = \"#%02X%02X%02X\"\n",
+                              color_names[i], scheme.log_colors_light[i].r, scheme.log_colors_light[i].g,
+                              scheme.log_colors_light[i].b);
+    }
+  }
+
+  /* Write to file or stdout */
+  if (file_path) {
+    FILE *fp = fopen(file_path, "w");
+    if (!fp) {
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Cannot open %s for writing", file_path);
+    }
+    if (fputs(toml_content, fp) < 0) {
+      fclose(fp);
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to %s", file_path);
+    }
+    fclose(fp);
+  } else {
+    /* Write to stdout */
+    if (fputs(toml_content, stdout) < 0) {
+      return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to stdout");
+    }
+  }
+
+  return ASCIICHAT_OK;
 }
 
 /* ============================================================================

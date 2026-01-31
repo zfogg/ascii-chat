@@ -43,6 +43,7 @@
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
+#include "ui/colors.h"
 
 #ifndef NDEBUG
 #include "asciichat_errno.h"
@@ -181,6 +182,42 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "    For reproducible builds, commit or stash changes before building.\n\n");
   }
 #endif
+
+  // Handle --color-scheme-create early (before options_init) to avoid options parsing issues
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--color-scheme-create") == 0) {
+      // Initialize colors system
+      if (colors_init() != ASCIICHAT_OK) {
+        fprintf(stderr, "Error: Failed to initialize color system\n");
+        return ERROR_INIT;
+      }
+
+      // Parse scheme name and output file (both optional)
+      const char *scheme_name = "pastel"; // default
+      const char *output_file = NULL;
+
+      // Check if next argument is a scheme name (no '-' prefix)
+      if (i + 1 < argc && argv[i + 1][0] != '-') {
+        scheme_name = argv[i + 1];
+        i++;
+
+        // Check if argument after that is an output file
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          output_file = argv[i + 1];
+          i++;
+        }
+      }
+
+      // Export the scheme
+      asciichat_error_t export_result = colors_export_scheme(scheme_name, output_file);
+      colors_shutdown();
+
+      if (export_result != ASCIICHAT_OK) {
+        return export_result;
+      }
+      return ASCIICHAT_OK;
+    }
+  }
 
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {

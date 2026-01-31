@@ -351,7 +351,7 @@ static const registry_entry_t g_configuration_entries[] = {
      {0}},
     {"color-scheme-create",
      '\0',
-     OPTION_TYPE_STRING,
+     OPTION_TYPE_BOOL,
      0,
      NULL,
      0,
@@ -362,10 +362,10 @@ static const registry_entry_t g_configuration_entries[] = {
      NULL,
      NULL,
      NULL,
-     true, /* optional_arg - scheme name is optional */
+     false, /* no optional arg - handled specially before options_init */
      false,
      OPTION_MODE_BINARY,
-     {.input_type = OPTION_INPUT_STRING}},
+     {0}},
     REGISTRY_TERMINATOR()};
 
 // ============================================================================
