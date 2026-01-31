@@ -416,14 +416,14 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
     // Apply speaker volume control
     if (samples_read > 0) {
       float speaker_volume = GET_OPTION(speakers_volume);
-      if (speaker_volume == 0.0f) {
+      // Clamp to valid range [0.0, 1.0]
+      if (speaker_volume < 0.0f) {
+        speaker_volume = 0.0f;
+      } else if (speaker_volume > 1.0f) {
         speaker_volume = 1.0f;
       }
+      // Apply volume scaling if not at 100%
       if (speaker_volume != 1.0f) {
-        if (speaker_volume < 0.0f)
-          speaker_volume = 0.0f;
-        if (speaker_volume > 1.0f)
-          speaker_volume = 1.0f;
         for (size_t i = 0; i < samples_read; i++) {
           output[i] *= speaker_volume;
         }
