@@ -437,10 +437,6 @@ void action_completions(const char *shell_name, const char *output_path) {
     exit(ERROR_USAGE);
   }
 
-  if (output_path && strlen(output_path) > 0 && strcmp(output_path, "-") != 0) {
-    log_plain_stderr("Completions written to: %s", output_path);
-  } else {
-    log_plain_stderr("Completions written to stdout");
-  }
+  // Silently exit - completions are written (either to file or stdout)
   exit(0);
 }

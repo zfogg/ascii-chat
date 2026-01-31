@@ -46,13 +46,11 @@ endif()
 
 add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from embedded resources..."
     COMMAND ${_MAN_PAGE_COMMAND}
-    COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
     DEPENDS
         ascii-chat
         "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-    COMMENT "Generating ascii-chat.1 from template"
+    COMMENT "Building man page"
     VERBATIM
 )
 

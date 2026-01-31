@@ -494,7 +494,7 @@ add_custom_command(
     COMMAND timeout 3 "$<TARGET_FILE:ascii-chat>" --completions powershell
             > "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
     DEPENDS $<TARGET_FILE:ascii-chat>
-    COMMENT "Generating shell completions from options registry..."
+    COMMENT "Building shell completions"
     VERBATIM
 )
 
@@ -510,7 +510,7 @@ add_custom_target(completions ALL
         "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
 )
 
-message(STATUS "${BoldGreen}Configured${ColorReset} completion generation: All shell completions will be generated from options registry at build time")
+# Shell completions are generated silently as part of the build process
 
 # =============================================================================
 # Shell Completion Scripts Installation (Unix only)
