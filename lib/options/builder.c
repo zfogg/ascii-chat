@@ -367,11 +367,15 @@ static void format_help_placeholder_action(char *buf, size_t bufsize) {
 /**
  * @brief Get help placeholder string for an option type
  * @param desc Option descriptor
- * @return Pointer to string literal ("NUM", "STR", "VAL") or empty string
+ * @return Pointer to string literal ("NUM", "STR", "VAL"), custom placeholder, or empty string
  */
 static const char *get_option_help_placeholder_str(const option_descriptor_t *desc) {
   if (!desc) {
     return "";
+  }
+  // Check for custom placeholder first
+  if (desc->arg_placeholder != NULL) {
+    return desc->arg_placeholder;
   }
   return options_get_type_placeholder(desc->type);
 }
@@ -1150,6 +1154,14 @@ void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bi
     return;
   }
   builder->descriptors[builder->num_descriptors - 1].mode_bitmask = mode_bitmask;
+}
+
+void options_builder_set_arg_placeholder(options_builder_t *builder, const char *arg_placeholder) {
+  if (!builder || builder->num_descriptors == 0) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Builder is NULL or has no descriptors");
+    return;
+  }
+  builder->descriptors[builder->num_descriptors - 1].arg_placeholder = arg_placeholder;
 }
 
 // ============================================================================

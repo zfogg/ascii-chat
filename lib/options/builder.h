@@ -564,6 +564,17 @@ void options_builder_add_action(options_builder_t *builder, const char *long_nam
  */
 void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bitmask_t mode_bitmask);
 
+/**
+ * @brief Set custom argument placeholder on the last added option descriptor
+ *
+ * Sets the arg_placeholder field on the most recently added option descriptor.
+ * This allows customizing the placeholder text shown in help (e.g., "SHELL [FILE]" instead of "STR").
+ *
+ * @param builder Options builder
+ * @param arg_placeholder Custom placeholder text (e.g., "SHELL [FILE]"), or NULL to use type-based placeholder
+ */
+void options_builder_set_arg_placeholder(options_builder_t *builder, const char *arg_placeholder);
+
 // ============================================================================
 // Completion Metadata (NEW - Phase 2)
 // ============================================================================

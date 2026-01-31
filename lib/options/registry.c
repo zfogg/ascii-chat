@@ -2036,6 +2036,11 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
 
     // Set mode bitmask on the last added descriptor
     options_builder_set_mode_bitmask(builder, entry->mode_bitmask);
+
+    // Set custom arg_placeholder if defined
+    if (entry->arg_placeholder) {
+      options_builder_set_arg_placeholder(builder, entry->arg_placeholder);
+    }
   }
 
   return ASCIICHAT_OK;
