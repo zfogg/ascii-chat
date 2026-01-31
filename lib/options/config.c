@@ -1181,38 +1181,49 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
 
 asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, const char *user_config_path, bool strict,
                                               options_t *opts) {
-  // Fallback for ASCIICHAT_INSTALL_PREFIX if paths.h hasn't been generated yet
-  // (prevents defer tool compilation errors during initial builds)
-#ifndef ASCIICHAT_INSTALL_PREFIX
-#ifdef _WIN32
-#define ASCIICHAT_INSTALL_PREFIX "C:\\Program Files\\ascii-chat"
-#else
-#define ASCIICHAT_INSTALL_PREFIX "/usr/local"
-#endif
-#endif
+  // Use platform abstraction to find all config.toml files across standard locations
+  config_file_list_t config_files = {0};
+  asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);
 
-  // Build system config path: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml
-  char system_config_path[PLATFORM_MAX_PATH_LENGTH];
-  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path),
-                "%s" PATH_SEPARATOR_STR "etc" PATH_SEPARATOR_STR "ascii-chat" PATH_SEPARATOR_STR "config.toml",
-                ASCIICHAT_INSTALL_PREFIX);
-
-  // Load system config first (non-strict - it's optional)
-  CONFIG_DEBUG("Attempting to load system config from: %s", system_config_path);
-  asciichat_error_t system_result = config_load_and_apply(detected_mode, system_config_path, false, opts);
-  if (system_result == ASCIICHAT_OK) {
-    CONFIG_DEBUG("System config loaded successfully");
-  } else {
-    CONFIG_DEBUG("System config not loaded (this is normal if file doesn't exist)");
-    // Clear the error context since this failure is expected/non-fatal
-    CLEAR_ERRNO();
+  if (search_result != ASCIICHAT_OK) {
+    CONFIG_DEBUG("Failed to search for config files: %d", search_result);
+    return search_result;
   }
 
-  // Load user config second (with user-specified strictness)
-  // User config values will override system config values
-  CONFIG_DEBUG("Loading user config (strict=%s)", strict ? "true" : "false");
-  asciichat_error_t user_result = config_load_and_apply(detected_mode, user_config_path, strict, opts);
+  // Cascade load: Load all found configs in reverse order (lowest priority first)
+  // This allows higher-priority configs to override lower-priority values.
+  // Example: System configs load first, then user configs override them.
 
-  // Return user config result - errors in user config should be reported
-  return user_result;
+  asciichat_error_t result = ASCIICHAT_OK;
+  for (size_t i = config_files.count; i > 0; i--) {
+    const config_file_result_t *file = &config_files.files[i - 1];
+
+    // Determine strictness based on whether this is a system or user config
+    // System configs are non-strict (values can be missing, errors are non-fatal)
+    // User config is strict or non-strict based on parameter
+    bool is_user_config = !file->is_system_config;
+    bool file_strict = is_user_config ? strict : false;
+
+    CONFIG_DEBUG("Loading config from %s (system=%s, strict=%s)", file->path, file->is_system_config ? "yes" : "no",
+                 file_strict ? "true" : "false");
+
+    asciichat_error_t load_result = config_load_and_apply(detected_mode, file->path, file_strict, opts);
+
+    if (load_result != ASCIICHAT_OK) {
+      if (file_strict) {
+        // Strict mode: errors are fatal
+        CONFIG_DEBUG("Strict config loading failed for %s", file->path);
+        result = load_result;
+      } else {
+        // Non-strict mode: errors are non-fatal, just log and continue
+        CONFIG_DEBUG("Non-strict config loading warning for %s: %d (continuing)", file->path, load_result);
+        CLEAR_ERRNO(); // Clear error context for next file
+      }
+    }
+  }
+
+  // Clean up search results
+  config_file_list_free(&config_files);
+
+  return result;
 }

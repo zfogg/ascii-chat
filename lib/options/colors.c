@@ -39,38 +39,44 @@ static const char *find_cli_color_scheme(int argc, const char *const argv[]) {
 }
 
 /**
- * @brief Load color scheme from config file (~/.config/ascii-chat/colors.toml)
+ * @brief Load color scheme from config files (checks multiple locations)
  * @param scheme Pointer to store loaded scheme
- * @return ASCIICHAT_OK if loaded, error code if file not found or invalid
+ * @return ASCIICHAT_OK if loaded from any location, ERROR_NOT_FOUND if none found
  *
- * Attempts to load user's custom color scheme from TOML config file.
- * Returns ERROR_NOT_FOUND if file doesn't exist (not an error condition).
+ * Attempts to load user's custom color scheme from TOML config files using the
+ * unified platform config search API. Searches standard locations in priority order:
+ * 1. ~/.config/ascii-chat/colors.toml (highest priority, user config)
+ * 2. /opt/homebrew/etc/ascii-chat/colors.toml (macOS Homebrew)
+ * 3. /usr/local/etc/ascii-chat/colors.toml (Unix/Linux local)
+ * 4. /etc/ascii-chat/colors.toml (system-wide, lowest priority)
+ *
+ * Uses override semantics: returns first match (highest priority).
+ * Built-in defaults are used if no config file found.
  */
 static asciichat_error_t load_config_color_scheme(color_scheme_t *scheme) {
   if (!scheme) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "scheme pointer is NULL");
   }
 
-  /* Build config path: ~/.config/ascii-chat/colors.toml */
-  char config_path[PLATFORM_MAX_PATH_LENGTH];
+  /* Use platform abstraction to find colors.toml across standard locations */
+  config_file_list_t config_files = {0};
+  asciichat_error_t search_result = platform_find_config_file("colors.toml", &config_files);
 
-  /* Get config directory (e.g., ~/.config/ascii-chat/) */
-  char *config_dir = platform_get_config_dir();
-  if (!config_dir) {
-    return ERROR_NOT_FOUND; /* No config directory */
+  if (search_result != ASCIICHAT_OK) {
+    /* Platform search failed - non-fatal, will use built-in defaults */
+    return ERROR_NOT_FOUND;
   }
 
-  /* Build full path to colors.toml */
-  snprintf(config_path, sizeof(config_path), "%scolors.toml", config_dir);
-  SAFE_FREE(config_dir);
-
-  /* Check if file exists and is a regular file */
-  if (!platform_is_regular_file(config_path)) {
-    return ERROR_NOT_FOUND; /* File doesn't exist or not a regular file, not an error */
+  /* Use first match (highest priority) - override semantics */
+  asciichat_error_t load_result = ERROR_NOT_FOUND;
+  if (config_files.count > 0) {
+    load_result = colors_load_from_file(config_files.files[0].path, scheme);
   }
 
-  /* Load from TOML file */
-  return colors_load_from_file(config_path, scheme);
+  /* Clean up search results */
+  config_file_list_free(&config_files);
+
+  return load_result;
 }
 
 /**

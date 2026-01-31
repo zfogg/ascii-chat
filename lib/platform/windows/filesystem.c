@@ -7,6 +7,7 @@
 #ifdef _WIN32
 
 #include "../filesystem.h"
+#include "../util.h"
 #include "../../common.h"
 #include "../../log/logging.h"
 #include <windows.h>
@@ -447,6 +448,144 @@ asciichat_error_t platform_validate_key_file_permissions(const char *key_path) {
   }
 
   return ASCIICHAT_OK;
+}
+
+// ============================================================================
+// Config File Search
+// ============================================================================
+
+/**
+ * @brief Get APPDATA directory path (Windows helper)
+ */
+static const char *get_appdata_dir(void) {
+  static char appdata_path[MAX_PATH] = {0};
+  static bool initialized = false;
+
+  if (initialized) {
+    return appdata_path;
+  }
+
+  const char *appdata = getenv("APPDATA");
+  if (appdata) {
+    strncpy(appdata_path, appdata, sizeof(appdata_path) - 1);
+    appdata_path[sizeof(appdata_path) - 1] = '\0';
+  } else {
+    // Fallback to %USERPROFILE%\AppData\Roaming
+    const char *userprofile = getenv("USERPROFILE");
+    if (userprofile) {
+      snprintf(appdata_path, sizeof(appdata_path), "%s\\AppData\\Roaming", userprofile);
+    } else {
+      return NULL;
+    }
+  }
+
+  initialized = true;
+  return appdata_path;
+}
+
+/**
+ * @brief Get PROGRAMDATA directory path (Windows helper)
+ */
+static const char *get_programdata_dir(void) {
+  static char programdata_path[MAX_PATH] = {0};
+  static bool initialized = false;
+
+  if (initialized) {
+    return programdata_path;
+  }
+
+  const char *programdata = getenv("PROGRAMDATA");
+  if (programdata) {
+    strncpy(programdata_path, programdata, sizeof(programdata_path) - 1);
+    programdata_path[sizeof(programdata_path) - 1] = '\0';
+  } else {
+    // Fallback to C:\ProgramData
+    strncpy(programdata_path, "C:\\ProgramData", sizeof(programdata_path) - 1);
+    programdata_path[sizeof(programdata_path) - 1] = '\0';
+  }
+
+  initialized = true;
+  return programdata_path;
+}
+
+/**
+ * @brief Find config file across multiple standard locations (Windows implementation)
+ */
+asciichat_error_t platform_find_config_file(const char *filename, config_file_list_t *list_out) {
+  if (!filename || !list_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_find_config_file");
+  }
+
+  // Initialize output list
+  list_out->files = NULL;
+  list_out->count = 0;
+  list_out->capacity = 0;
+
+  // Pre-allocate capacity for all possible results (2 on Windows)
+  list_out->capacity = 2;
+  list_out->files = SAFE_MALLOC(sizeof(config_file_result_t) * 2, config_file_result_t *);
+  if (!list_out->files) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate config file list");
+  }
+
+  // Priority 0: User config (%APPDATA%\ascii-chat\) - highest priority
+  const char *appdata_dir = get_appdata_dir();
+  if (appdata_dir) {
+    char full_path[MAX_PATH];
+    snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", appdata_dir, filename);
+
+    if (platform_is_regular_file(full_path)) {
+      config_file_result_t *result = &list_out->files[list_out->count];
+      result->path = platform_strdup(full_path);
+      if (!result->path) {
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate path string");
+      }
+      result->priority = 0;
+      result->exists = true;
+      result->is_system_config = false;
+      list_out->count++;
+    }
+  }
+
+  // Priority 1: System config (%PROGRAMDATA%\ascii-chat\) - lowest priority
+  const char *programdata_dir = get_programdata_dir();
+  if (programdata_dir) {
+    char full_path[MAX_PATH];
+    snprintf(full_path, sizeof(full_path), "%s\\ascii-chat\\%s", programdata_dir, filename);
+
+    if (platform_is_regular_file(full_path)) {
+      config_file_result_t *result = &list_out->files[list_out->count];
+      result->path = platform_strdup(full_path);
+      if (!result->path) {
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate path string");
+      }
+      result->priority = 1;
+      result->exists = true;
+      result->is_system_config = true;
+      list_out->count++;
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Free config file list resources (Windows implementation)
+ */
+void config_file_list_free(config_file_list_t *list) {
+  if (!list) {
+    return;
+  }
+
+  if (list->files) {
+    for (size_t i = 0; i < list->count; i++) {
+      SAFE_FREE(list->files[i].path);
+    }
+    SAFE_FREE(list->files);
+  }
+
+  list->count = 0;
+  list->capacity = 0;
 }
 
 #endif // _WIN32

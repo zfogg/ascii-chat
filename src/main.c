@@ -40,6 +40,7 @@
 #include "options/common.h"
 #include "options/rcu.h"
 #include "options/builder.h"
+#include "options/colors.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
@@ -219,6 +220,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // Load color scheme early (from config files and CLI) before logging initialization
+  // This allows logging to use the correct colors from the start
+  options_colors_init_early(argc, argv);
+
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
@@ -277,13 +282,19 @@ int main(int argc, char *argv[]) {
   const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_warn("Logging initialized to %s", final_log_file);
 
-  // Client-specific: auto-detect piping and default to no color mode
+  // Client-specific: auto-detect piping and route logs to stderr
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
-  // However, respect --color=true which explicitly forces colors ON
+  // Logs go to stderr when piped, regardless of color settings
+  // Color settings are decided separately below
   terminal_color_mode_t color_mode = opts->color_mode;
+  if (is_client_like_mode && !platform_isatty(STDOUT_FILENO)) {
+    log_set_force_stderr(true); // Always route logs to stderr when stdout is piped
+  }
+
+  // Separately: auto-disable colors when piped (unless explicitly enabled with --color=true)
+  // This respects user's explicit --color=true request while auto-disabling in other cases
   if (is_client_like_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
       opts->color != COLOR_SETTING_TRUE) {
-    log_set_force_stderr(true); // Force logs to stderr BEFORE logging the piped detection
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
     log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");

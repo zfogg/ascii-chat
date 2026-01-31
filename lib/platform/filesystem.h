@@ -13,12 +13,14 @@
  * - Temporary file and directory creation
  * - Recursive directory deletion
  * - Key file permission validation
+ * - Config file search across standard locations
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date January 2026
  */
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include "../asciichat_errno.h"
 
@@ -288,6 +290,109 @@ int platform_delete_temp_file(const char *path);
  * @ingroup platform
  */
 asciichat_error_t platform_validate_key_file_permissions(const char *key_path);
+
+// ============================================================================
+// Config File Search
+// ============================================================================
+
+/**
+ * @brief Result of a config file search
+ *
+ * Represents a single matching config file in the search result list.
+ * @ingroup platform
+ */
+typedef struct {
+  char *path;            ///< Absolute path to config file (allocated, must be freed)
+  uint8_t priority;      ///< Priority order (0 = highest, 255 = lowest)
+  bool exists;           ///< True if file exists and is a regular file
+  bool is_system_config; ///< True if from system directory (not user config)
+} config_file_result_t;
+
+/**
+ * @brief List of config file search results
+ *
+ * Contains all matching config files in priority order (highest priority first).
+ * @ingroup platform
+ */
+typedef struct {
+  config_file_result_t *files; ///< Array of results (allocated, must be freed)
+  size_t count;                ///< Number of results found
+  size_t capacity;             ///< Allocated capacity
+} config_file_list_t;
+
+/**
+ * @brief Find config file across multiple standard locations
+ *
+ * Searches for a config file across platform-specific standard locations
+ * and returns ALL existing matches in priority order (highest first).
+ *
+ * This allows calling code to implement different merge strategies:
+ * - Override: use first match (colors.toml)
+ * - Cascade: load all in reverse order (config.toml)
+ * - Append: search all for matching entries (known_hosts)
+ *
+ * **Search Order (Unix/macOS):**
+ * 1. ~/.config/ascii-chat/filename (XDG user config)
+ * 2. /opt/homebrew/etc/ascii-chat/filename (macOS Homebrew)
+ * 3. /usr/local/etc/ascii-chat/filename (Unix local)
+ * 4. /etc/ascii-chat/filename (system-wide)
+ *
+ * **Search Order (Windows):**
+ * 1. %APPDATA%\ascii-chat\filename (user config)
+ * 2. %PROGRAMDATA%\ascii-chat\filename (system-wide)
+ *
+ * @param filename Config filename (e.g., "config.toml", "colors.toml", "known_hosts")
+ * @param list_out Pointer to config_file_list_t to populate
+ * @return ASCIICHAT_OK on success (even if no files found), error code on failure
+ *
+ * @note Caller must free list_out with config_file_list_free()
+ * @note Returns ASCIICHAT_OK even if no files are found (list_out->count == 0)
+ * @note Files are checked for existence and regular file type
+ *
+ * @par Example (Override semantics - colors.toml):
+ * @code{.c}
+ * config_file_list_t list = {0};
+ * if (platform_find_config_file("colors.toml", &list) == ASCIICHAT_OK) {
+ *   if (list.count > 0) {
+ *     // Use first match (highest priority)
+ *     colors_load_from_file(list.files[0].path, scheme);
+ *   }
+ *   config_file_list_free(&list);
+ * }
+ * @endcode
+ *
+ * @par Example (Cascade semantics - config.toml):
+ * @code{.c}
+ * config_file_list_t list = {0};
+ * if (platform_find_config_file("config.toml", &list) == ASCIICHAT_OK) {
+ *   // Load configs in reverse order (lowest priority first)
+ *   // This allows higher-priority configs to override
+ *   for (size_t i = list.count; i > 0; i--) {
+ *     config_load_and_apply(list.files[i - 1].path, opts);
+ *   }
+ *   config_file_list_free(&list);
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_find_config_file(const char *filename, config_file_list_t *list_out);
+
+/**
+ * @brief Free config file list resources
+ *
+ * Releases all allocated memory in a config file list result.
+ * Safe to call with NULL or empty lists.
+ *
+ * @param list Pointer to config_file_list_t to free
+ *
+ * @note This function always succeeds; no error checking needed
+ * @note Safe to call multiple times with the same list
+ * @note Safe to call with list->count == 0
+ *
+ * @ingroup platform
+ */
+void config_file_list_free(config_file_list_t *list);
 
 #ifdef __cplusplus
 }

@@ -7,6 +7,8 @@
 #ifndef _WIN32
 
 #include "../filesystem.h"
+#include "../system.h"
+#include "../util.h"
 #include "../../common.h"
 #include "../../log/logging.h"
 #include <sys/stat.h>
@@ -278,6 +280,247 @@ asciichat_error_t platform_validate_key_file_permissions(const char *key_path) {
   }
 
   return ASCIICHAT_OK;
+}
+
+// ============================================================================
+// Config File Search
+// ============================================================================
+
+/**
+ * @brief Get XDG_CONFIG_HOME directory with fallback to ~/.config
+ * @return Allocated string (must be freed by caller)
+ */
+static char *get_xdg_config_home(void) {
+  const char *xdg_config_home = getenv("XDG_CONFIG_HOME");
+
+  if (xdg_config_home && xdg_config_home[0] != '\0') {
+    return platform_strdup(xdg_config_home);
+  }
+
+  // Fallback: ~/.config
+  const char *home = getenv("HOME");
+  if (!home) {
+    home = "/root";
+  }
+
+  char path[PLATFORM_MAX_PATH_LENGTH];
+  int ret = snprintf(path, sizeof(path), "%s/.config", home);
+  if (ret < 0 || (size_t)ret >= sizeof(path)) {
+    return NULL; // Path too long
+  }
+
+  return platform_strdup(path);
+}
+
+/**
+ * @brief Parse XDG_CONFIG_DIRS (colon-separated) into array of directories
+ * @param dirs_out Pointer to array (allocated by this function)
+ * @param count_out Pointer to count of directories
+ * @return ASCIICHAT_OK on success
+ *
+ * Default if XDG_CONFIG_DIRS not set: /etc/xdg
+ * Caller must free dirs_out array with SAFE_FREE
+ */
+static asciichat_error_t get_xdg_config_dirs(char ***dirs_out, size_t *count_out) {
+  if (!dirs_out || !count_out) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  *dirs_out = NULL;
+  *count_out = 0;
+
+  const char *xdg_config_dirs = getenv("XDG_CONFIG_DIRS");
+  if (!xdg_config_dirs || xdg_config_dirs[0] == '\0') {
+    xdg_config_dirs = "/etc/xdg"; // Default
+  }
+
+  // Count colons to determine number of directories
+  size_t num_dirs = 1;
+  for (const char *p = xdg_config_dirs; *p; p++) {
+    if (*p == ':') {
+      num_dirs++;
+    }
+  }
+
+  // Allocate array of directory strings
+  char **dirs = SAFE_MALLOC(sizeof(char *) * num_dirs, char **);
+  if (!dirs) {
+    return ERROR_MEMORY;
+  }
+
+  // Parse the colon-separated list
+  char *dirs_copy = platform_strdup(xdg_config_dirs);
+  if (!dirs_copy) {
+    SAFE_FREE(dirs);
+    return ERROR_MEMORY;
+  }
+
+  size_t idx = 0;
+  char *saveptr = NULL;
+  char *token = strtok_r(dirs_copy, ":", &saveptr);
+
+  while (token && idx < num_dirs) {
+    // Skip empty tokens
+    if (token[0] != '\0') {
+      dirs[idx] = platform_strdup(token);
+      if (!dirs[idx]) {
+        // Free previously allocated directories on error
+        for (size_t i = 0; i < idx; i++) {
+          SAFE_FREE(dirs[i]);
+        }
+        SAFE_FREE(dirs);
+        SAFE_FREE(dirs_copy);
+        return ERROR_MEMORY;
+      }
+      idx++;
+    }
+    token = strtok_r(NULL, ":", &saveptr);
+  }
+
+  SAFE_FREE(dirs_copy);
+
+  *dirs_out = dirs;
+  *count_out = idx;
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Find config file across multiple standard locations (POSIX implementation)
+ *
+ * Search priority (highest to lowest):
+ * 1. XDG_CONFIG_HOME/ascii-chat (default: ~/.config/ascii-chat)
+ * 2. Each directory in XDG_CONFIG_DIRS/ascii-chat (default: /etc/xdg/ascii-chat)
+ * 3. Backward compatibility paths:
+ *    - /opt/homebrew/etc/ascii-chat (macOS Homebrew ARM)
+ *    - /usr/local/etc/ascii-chat (Unix/Linux local)
+ *    - /etc/ascii-chat (system-wide)
+ */
+asciichat_error_t platform_find_config_file(const char *filename, config_file_list_t *list_out) {
+  if (!filename || !list_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to platform_find_config_file");
+  }
+
+  // Initialize output list
+  list_out->files = NULL;
+  list_out->count = 0;
+  list_out->capacity = 0;
+
+  // Get XDG directories
+  char *xdg_config_home = get_xdg_config_home();
+  if (!xdg_config_home) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to get XDG_CONFIG_HOME");
+  }
+
+  char **xdg_config_dirs = NULL;
+  size_t xdg_config_dirs_count = 0;
+  asciichat_error_t xdg_result = get_xdg_config_dirs(&xdg_config_dirs, &xdg_config_dirs_count);
+  if (xdg_result != ASCIICHAT_OK) {
+    SAFE_FREE(xdg_config_home);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to parse XDG_CONFIG_DIRS");
+  }
+
+  // Calculate total number of search directories
+  // 1 (XDG_CONFIG_HOME) + xdg_config_dirs_count + 3 (legacy paths)
+  const size_t total_dirs = 1 + xdg_config_dirs_count + 3;
+
+  // Pre-allocate capacity for all possible results
+  list_out->capacity = total_dirs;
+  list_out->files = SAFE_MALLOC(sizeof(config_file_result_t) * total_dirs, config_file_result_t *);
+  if (!list_out->files) {
+    SAFE_FREE(xdg_config_home);
+    for (size_t i = 0; i < xdg_config_dirs_count; i++) {
+      SAFE_FREE(xdg_config_dirs[i]);
+    }
+    SAFE_FREE(xdg_config_dirs);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate config file list");
+  }
+
+  uint8_t priority = 0;
+  char full_path[PLATFORM_MAX_PATH_LENGTH];
+
+  // Priority 0: XDG_CONFIG_HOME/ascii-chat (highest priority, user config)
+  int ret = snprintf(full_path, sizeof(full_path), "%s/ascii-chat/%s", xdg_config_home, filename);
+  if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
+    if (platform_is_regular_file(full_path)) {
+      config_file_result_t *result = &list_out->files[list_out->count];
+      result->path = platform_strdup(full_path);
+      if (result->path) {
+        result->priority = priority++;
+        result->exists = true;
+        result->is_system_config = false; // User config
+        list_out->count++;
+      }
+    }
+  }
+
+  // Priorities 1+: XDG_CONFIG_DIRS/ascii-chat
+  for (size_t i = 0; i < xdg_config_dirs_count; i++) {
+    ret = snprintf(full_path, sizeof(full_path), "%s/ascii-chat/%s", xdg_config_dirs[i], filename);
+    if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
+      if (platform_is_regular_file(full_path)) {
+        config_file_result_t *result = &list_out->files[list_out->count];
+        result->path = platform_strdup(full_path);
+        if (result->path) {
+          result->priority = priority++;
+          result->exists = true;
+          result->is_system_config = true; // System config
+          list_out->count++;
+        }
+      }
+    }
+  }
+
+  // Backward compatibility: Legacy paths
+  const char *legacy_dirs[] = {
+      "/opt/homebrew/etc/ascii-chat", // macOS Homebrew ARM
+      "/usr/local/etc/ascii-chat",    // Unix/Linux local
+      "/etc/ascii-chat",              // System-wide
+  };
+  const size_t num_legacy = sizeof(legacy_dirs) / sizeof(legacy_dirs[0]);
+
+  for (size_t i = 0; i < num_legacy; i++) {
+    ret = snprintf(full_path, sizeof(full_path), "%s/%s", legacy_dirs[i], filename);
+    if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
+      if (platform_is_regular_file(full_path)) {
+        config_file_result_t *result = &list_out->files[list_out->count];
+        result->path = platform_strdup(full_path);
+        if (result->path) {
+          result->priority = priority++;
+          result->exists = true;
+          result->is_system_config = true; // System config
+          list_out->count++;
+        }
+      }
+    }
+  }
+
+  // Cleanup
+  SAFE_FREE(xdg_config_home);
+  for (size_t i = 0; i < xdg_config_dirs_count; i++) {
+    SAFE_FREE(xdg_config_dirs[i]);
+  }
+  SAFE_FREE(xdg_config_dirs);
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Free config file list resources (POSIX implementation)
+ */
+void config_file_list_free(config_file_list_t *list) {
+  if (!list) {
+    return;
+  }
+
+  if (list->files) {
+    for (size_t i = 0; i < list->count; i++) {
+      SAFE_FREE(list->files[i].path);
+    }
+    SAFE_FREE(list->files);
+  }
+
+  list->count = 0;
+  list->capacity = 0;
 }
 
 #endif
