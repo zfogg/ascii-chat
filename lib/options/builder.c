@@ -1425,7 +1425,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
 
   // No positional args defined - but we got some positional arguments
   if (config->num_positional_args == 0 && remaining_argc > 0) {
-    (void)fprintf(stderr, "Error: Unexpected positional argument '%s'\n", remaining_argv[0]);
+    log_error("Error: Unexpected positional argument '%s'", remaining_argv[0]);
     return ERROR_USAGE;
   }
 
@@ -1433,9 +1433,9 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
   for (size_t i = 0; i < config->num_positional_args; i++) {
     const positional_arg_descriptor_t *pos_arg = &config->positional_args[i];
     if (pos_arg->required && remaining_argc == 0) {
-      (void)fprintf(stderr, "Error: Missing required positional argument '%s'\n", pos_arg->name);
+      log_error("Error: Missing required positional argument '%s'", pos_arg->name);
       if (pos_arg->help_text) {
-        (void)fprintf(stderr, "  %s\n", pos_arg->help_text);
+        log_error("  %s", pos_arg->help_text);
       }
       return ERROR_USAGE;
     }
@@ -1457,10 +1457,10 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
     if (consumed < 0) {
       // Parse error
       if (error_msg) {
-        (void)fprintf(stderr, "Error parsing positional argument '%s': %s\n", pos_arg->name, error_msg);
+        log_error("Error parsing positional argument '%s': %s", pos_arg->name, error_msg);
         free(error_msg);
       } else {
-        (void)fprintf(stderr, "Error parsing positional argument '%s': %s\n", pos_arg->name, arg);
+        log_error("Error parsing positional argument '%s': %s", pos_arg->name, arg);
       }
       return ERROR_USAGE;
     }
@@ -1471,7 +1471,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
 
   // Check for extra unconsumed positional arguments
   if (arg_index < remaining_argc) {
-    (void)fprintf(stderr, "Error: Unexpected positional argument '%s'\n", remaining_argv[arg_index]);
+    log_error("Error: Unexpected positional argument '%s'", remaining_argv[arg_index]);
     return ERROR_USAGE;
   }
 
@@ -1796,8 +1796,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
       int consumed = pos_arg->parse_fn(arg, options_struct, remaining, num_remaining, &error_msg);
 
       if (consumed < 0) {
-        (void)fprintf(stderr, "Error parsing positional argument '%s': %s\n", pos_arg->name,
-                      error_msg ? error_msg : arg);
+        log_error("Error parsing positional argument '%s': %s", pos_arg->name, error_msg ? error_msg : arg);
         free(error_msg);
         SAFE_FREE(positional_args);
         return ERROR_USAGE;
@@ -1808,7 +1807,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
 
     // Check for extra unconsumed positional arguments
     if (arg_index < positional_count) {
-      (void)fprintf(stderr, "Error: Unexpected positional argument '%s'\n", positional_args[arg_index]);
+      log_error("Error: Unexpected positional argument '%s'", positional_args[arg_index]);
       SAFE_FREE(positional_args);
       return ERROR_USAGE;
     }
@@ -1817,9 +1816,9 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     for (size_t i = 0; i < config->num_positional_args; i++) {
       const positional_arg_descriptor_t *pos_arg = &config->positional_args[i];
       if (pos_arg->required && i >= (size_t)arg_index) {
-        (void)fprintf(stderr, "Error: Missing required positional argument '%s'\n", pos_arg->name);
+        log_error("Error: Missing required positional argument '%s'", pos_arg->name);
         if (pos_arg->help_text) {
-          (void)fprintf(stderr, "  %s\n", pos_arg->help_text);
+          log_error("  %s", pos_arg->help_text);
         }
         SAFE_FREE(positional_args);
         return ERROR_USAGE;
@@ -1827,7 +1826,7 @@ static asciichat_error_t options_config_parse_unified(const options_config_t *co
     }
   } else if (positional_count > 0) {
     // No positional args expected, but we got some
-    (void)fprintf(stderr, "Error: Unexpected positional argument '%s'\n", positional_args[0]);
+    log_error("Error: Unexpected positional argument '%s'", positional_args[0]);
     SAFE_FREE(positional_args);
     return ERROR_USAGE;
   }
