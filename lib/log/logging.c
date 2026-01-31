@@ -1418,6 +1418,9 @@ void log_shutdown_end(void) {
     return; /* Not in shutdown phase */
   }
 
+  /* Clean up compiled color scheme */
+  colors_cleanup_compiled(&g_compiled_colors);
+
   /* Restore previous terminal output state */
   atomic_store(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
   g_shutdown_in_progress = false;
