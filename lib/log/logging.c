@@ -942,8 +942,8 @@ void log_plain_msg(const char *fmt, ...) {
       get_current_time_formatted(time_buf);
 
       char header_buffer[512];
-      int header_len =
-          format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, NULL, 0, NULL, false, false);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
+                                         0, "log_plain_msg", false, false);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len);
@@ -1001,8 +1001,8 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
       get_current_time_formatted(time_buf);
 
       char header_buffer[512];
-      int header_len =
-          format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, NULL, 0, NULL, false, false);
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
+                                         0, "log_plain_stderr_msg", false, false);
 
       if (header_len > 0) {
         write_to_log_file_atomic(header_buffer, header_len);
