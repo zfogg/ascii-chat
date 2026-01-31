@@ -11,6 +11,7 @@
 #include "common.h"
 #include "util/time.h"
 #include "util/overflow.h"
+#include "platform/system.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
@@ -114,11 +115,15 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   UINT32 count = 0;
   int result = -1;
 
+  // Suppress Windows Media Foundation's verbose initialization output
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
   // Initialize COM
   hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
   if (SUCCEEDED(hr)) {
     cam->com_initialized = TRUE;
   } else if (hr != RPC_E_CHANGED_MODE) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to initialize COM: 0x%08x", hr);
     goto error;
   }
@@ -126,10 +131,13 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   // Initialize Media Foundation
   hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
   if (FAILED(hr)) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to startup Media Foundation: 0x%08x", hr);
     goto error;
   }
   cam->mf_initialized = TRUE;
+
+  platform_stderr_restore(stderr_handle);
 
   // Enumerate and print all devices
   enumerate_devices_and_print();
@@ -605,21 +613,28 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   BOOL com_initialized = FALSE;
   BOOL mf_initialized = FALSE;
 
+  // Suppress Windows Media Foundation's verbose initialization output
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
   // Initialize COM
   hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
   if (SUCCEEDED(hr)) {
     com_initialized = TRUE;
   } else if (hr != RPC_E_CHANGED_MODE) {
+    platform_stderr_restore(stderr_handle);
     return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to initialize COM: 0x%08x", hr);
   }
 
   // Initialize Media Foundation
   hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
   if (FAILED(hr)) {
+    platform_stderr_restore(stderr_handle);
     result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to startup Media Foundation: 0x%08x", hr);
     goto cleanup;
   }
   mf_initialized = TRUE;
+
+  platform_stderr_restore(stderr_handle);
 
   // Create attribute store for device enumeration
   hr = MFCreateAttributes(&attr, 1);

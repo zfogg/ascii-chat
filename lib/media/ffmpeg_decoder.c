@@ -8,6 +8,7 @@
 #include "log/logging.h"
 #include "asciichat_errno.h"
 #include "video/image.h"
+#include "platform/system.h"
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -194,8 +195,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
+  // Suppress FFmpeg's probing output (device detection, format warnings, etc.)
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
   // Open input file
   if (avformat_open_input(&decoder->format_ctx, path, NULL, NULL) < 0) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open media file: %s", path);
     SAFE_FREE(decoder);
     return NULL;
@@ -203,11 +208,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 
   // Find stream info
   if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info");
     avformat_close_input(&decoder->format_ctx);
     SAFE_FREE(decoder);
     return NULL;
   }
+
+  platform_stderr_restore(stderr_handle);
 
   // Open video codec
   asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,
@@ -348,8 +356,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   decoder->format_ctx->pb = decoder->avio_ctx;
 
+  // Suppress FFmpeg's probing output (device detection, format warnings, etc.)
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
   // Open input from stdin
   if (avformat_open_input(&decoder->format_ctx, NULL, NULL, NULL) < 0) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open stdin");
     av_freep(&decoder->avio_ctx->buffer);
     avio_context_free(&decoder->avio_ctx);
@@ -360,10 +372,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   // Find stream info
   if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info from stdin");
     ffmpeg_decoder_destroy(decoder);
     return NULL;
   }
+
+  platform_stderr_restore(stderr_handle);
 
   // Open codecs (same as file-based decoder)
   asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,
