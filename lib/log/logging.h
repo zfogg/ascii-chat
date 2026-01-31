@@ -51,6 +51,8 @@ using std::memory_order_relaxed;
 
 /* Forward declarations */
 struct crypto_context_t;
+struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included in logging.c */
+typedef struct color_scheme_t color_scheme_t;
 
 /**
  * @brief Logging levels enumeration
@@ -321,6 +323,27 @@ const char **log_get_color_array(void);
  * @ingroup logging
  */
 void log_redetect_terminal_capabilities(void);
+
+/**
+ * @brief Initialize logging color system with current terminal capabilities
+ *
+ * Compiles the active color scheme to ANSI codes based on terminal capabilities.
+ * Called automatically during terminal capability detection.
+ *
+ * @ingroup logging
+ */
+void log_init_colors(void);
+
+/**
+ * @brief Set the color scheme for logging output
+ * @param scheme Color scheme to apply (must not be NULL)
+ *
+ * Updates the compiled ANSI color codes based on the new color scheme.
+ * Must be called after colors_init() to have an effect.
+ *
+ * @ingroup logging
+ */
+void log_set_color_scheme(const color_scheme_t *scheme);
 
 /**
  * @brief Lock terminal output for exclusive access by the calling thread

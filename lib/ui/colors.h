@@ -48,7 +48,7 @@ typedef enum {
  * Defines a color scheme with RGB colors for logging levels.
  * Supports both dark and light mode variants.
  */
-typedef struct {
+typedef struct color_scheme_t {
   char name[64];         /**< Scheme name (e.g., "pastel", "nord") */
   char description[256]; /**< Scheme description */
 
