@@ -376,6 +376,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
         attempts++;
       }
     }
+    (void)fflush(stdout); // Flush after TTY frame write
   } else if (ctx->snapshot_mode && is_final) {
     // Snapshot mode on non-TTY (piped): render final frame only WITHOUT cursor control
     size_t written = 0;
@@ -395,11 +396,10 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
     // Piped mode (non-snapshot): render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
-    // CRITICAL: Use ONLY platform_write() (unbuffered syscalls) to avoid mixing buffering modes
-    // Mixing buffered (fputc/fflush) and unbuffered (platform_write) causes incomplete file writes
+    // Hold lock for entire frame write to prevent log interleaving
+    // Multiple platform_write() calls can be interrupted by other threads' logs otherwise
     bool prev_lock_state = log_lock_terminal();
     (void)fflush(stdout); // Flush any pending buffered output first
-    log_unlock_terminal(prev_lock_state);
 
     size_t written = 0;
     int attempts = 0;
@@ -415,7 +415,6 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Write newline after each frame using unbuffered write (NOT fputc)
     // This ensures frame + newline are both immediately visible in piped output
     const char newline = '\n';
-    prev_lock_state = log_lock_terminal();
     ssize_t nl_result = platform_write(STDOUT_FILENO, &newline, 1);
     if (nl_result < 0) {
       log_error("Failed to write frame newline to stdout");
@@ -423,6 +422,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Force data to disk immediately so piped output shows complete frames
     // This is critical when output is redirected to a file - otherwise kernel buffers hide incomplete frames
     (void)fsync(STDOUT_FILENO);
+    (void)fflush(stdout); // Flush C library buffer after fsync
     log_unlock_terminal(prev_lock_state);
   } else {
   }

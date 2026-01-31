@@ -95,7 +95,9 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
   // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
   // use_mmap=false: Regular file logging (default for developers, allows tail -f for log monitoring)
   // Note: log_init is safe to call multiple times; it will update routing (is_client) if needed
-  log_init(log_file, GET_OPTION(log_level), is_client, false /* don't use_mmap */);
+  // Force stderr when: client-like mode AND stdout is piped (to keep stdout clean for frames/data)
+  bool force_stderr = is_client && !platform_isatty(STDOUT_FILENO);
+  log_init(log_file, GET_OPTION(log_level), force_stderr, false /* don't use_mmap */);
 
   // Register memory debugging stats FIRST so it runs LAST at exit
   // (atexit callbacks run in LIFO order - last registered runs first)
