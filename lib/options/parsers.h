@@ -259,3 +259,20 @@ bool parse_volume(const char *arg, void *dest, char **error_msg);
  * - Returns error message if validation fails
  */
 bool parse_log_file(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse audio source option (--audio-source)
+ * @param arg String argument (e.g., "auto", "mic", "media", "both")
+ * @param dest Destination pointer (audio_source_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto" - Smart selection (AUDIO_SOURCE_AUTO, default)
+ *   When media is playing (--file or --url): media only
+ *   When no media: mic only
+ * - "mic" - Microphone only (AUDIO_SOURCE_MIC)
+ * - "media" - Media only (AUDIO_SOURCE_MEDIA)
+ * - "both" - Both microphone and media (AUDIO_SOURCE_BOTH)
+ */
+bool parse_audio_source(const char *arg, void *dest, char **error_msg);

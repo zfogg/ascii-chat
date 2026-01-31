@@ -168,6 +168,14 @@ static const char *g_cookies_descs[] = {"Google Chrome",   "Mozilla Firefox", "M
                                         "Apple Safari",    "Brave Browser",   "Opera Browser",
                                         "Vivaldi Browser", "Naver Whale",     NULL};
 
+// Audio source metadata
+static const char *g_audio_source_values[] = {"auto", "mic", "media", "both"};
+static const int g_audio_source_integers[] = {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA,
+                                              AUDIO_SOURCE_BOTH};
+static const char *g_audio_source_descs[] = {"Smart selection (media-only when playing files, mic-only otherwise)",
+                                             "Microphone only (no media audio)", "Media audio only (no microphone)",
+                                             "Both microphone and media audio simultaneously"};
+
 // ============================================================================
 // LOGGING CATEGORY - Binary-level logging options
 // ============================================================================
@@ -1478,6 +1486,27 @@ static const registry_entry_t g_audio_entries[] = {
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {.numeric_range = {0, 1, 0}}},
+    {"audio-source",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, audio_source),
+     &default_audio_source_value,
+     sizeof(audio_source_t),
+     "Select which audio sources to use: auto (smart), microphone, media, or both",
+     "AUDIO",
+     NULL,
+     false,
+     "ASCII_CHAT_AUDIO_SOURCE",
+     NULL,
+     parse_audio_source,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_audio_source_values,
+      .enum_count = 4,
+      .enum_descriptions = g_audio_source_descs,
+      .enum_integer_values = g_audio_source_integers,
+      .input_type = OPTION_INPUT_ENUM}},
 #ifdef DEBUG
     {"audio-analysis",
      '\0',

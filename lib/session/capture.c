@@ -321,27 +321,37 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
     return NULL;
   }
 
+  static uint64_t last_frame_time_ns = 0;
+  uint64_t frame_request_time_ns = time_get_ns();
+
   image_t *frame = media_source_read_video(ctx->source);
 
   if (frame) {
+    uint64_t frame_available_time_ns = time_get_ns();
+
     // Track frame for FPS reporting
-    fps_frame_ns(&ctx->fps_tracker, time_get_ns(), "frame captured");
+    fps_frame_ns(&ctx->fps_tracker, frame_available_time_ns, "frame captured");
     ctx->frame_count++;
+
+    // Log frame-to-frame timing
+    if (last_frame_time_ns > 0) {
+      uint64_t time_since_last_frame_ns = time_elapsed_ns(last_frame_time_ns, frame_request_time_ns);
+      uint64_t time_to_get_frame_ns = time_elapsed_ns(frame_request_time_ns, frame_available_time_ns);
+      double since_last_ms = (double)time_since_last_frame_ns / 1000000.0;
+      double to_get_ms = (double)time_to_get_frame_ns / 1000000.0;
+
+      if (ctx->frame_count % 30 == 0) {
+        log_info_every(3000000, "FRAME_TIMING[%lu]: since_last=%.1f ms, to_get=%.1f ms", ctx->frame_count,
+                       since_last_ms, to_get_ms);
+      }
+    }
+    last_frame_time_ns = frame_available_time_ns;
 
     // Handle --pause flag: pause after first frame is read
     if (ctx->should_pause_after_first_frame && !ctx->paused_after_first_frame) {
       media_source_pause(ctx->source);
       ctx->paused_after_first_frame = true;
       log_info("Paused (--pause flag)");
-    }
-  } else {
-    // Log NULL frame returns to understand frame drop pattern
-    static uint64_t null_frame_count = 0;
-    null_frame_count++;
-    if (null_frame_count % 50 == 0) {
-      log_info_every(2000000, "NULL_FRAME at loop iteration %lu (success rate: %.1f%%)",
-                     null_frame_count + ctx->frame_count,
-                     (double)ctx->frame_count * 100.0 / ((double)ctx->frame_count + (double)null_frame_count));
     }
   }
 

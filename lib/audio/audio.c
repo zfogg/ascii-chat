@@ -480,8 +480,8 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   // STEP 2: Copy raw mic samples → worker for AEC3 processing (~0.5ms)
-  // Skip microphone capture in playback-only mode (mirror with media audio)
-  // When media files are being played, microphone input is completely disabled
+  // Skip microphone capture in playback-only mode (mirror with file/URL audio)
+  // When files (--file) or URLs (--url) are being played, microphone input is completely disabled
   // to prevent feedback loops and interference with playback audio
   if (!ctx->playback_only && input && ctx->raw_capture_rb) {
     audio_ring_buffer_write(ctx->raw_capture_rb, input, (int)num_samples);
@@ -1968,4 +1968,23 @@ bool audio_is_supported_sample_rate(uint32_t sample_rate) {
   }
 
   return false;
+}
+
+bool audio_should_enable_microphone(audio_source_t source, bool has_media_audio) {
+  switch (source) {
+  case AUDIO_SOURCE_AUTO:
+    return !has_media_audio;
+
+  case AUDIO_SOURCE_MIC:
+    return true;
+
+  case AUDIO_SOURCE_MEDIA:
+    return false;
+
+  case AUDIO_SOURCE_BOTH:
+    return true;
+
+  default:
+    return !has_media_audio;
+  }
 }

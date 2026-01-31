@@ -886,3 +886,45 @@ bool parse_log_file(const char *arg, void *dest, char **error_msg) {
   SAFE_FREE(normalized);
   return true;
 }
+
+bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  audio_source_t *audio_source = (audio_source_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Auto (smart selection based on media state)
+  if (strcmp(lower, "auto") == 0) {
+    *audio_source = AUDIO_SOURCE_AUTO;
+    return true;
+  }
+
+  // Microphone only
+  if (strcmp(lower, "mic") == 0) {
+    *audio_source = AUDIO_SOURCE_MIC;
+    return true;
+  }
+
+  // Media only
+  if (strcmp(lower, "media") == 0) {
+    *audio_source = AUDIO_SOURCE_MEDIA;
+    return true;
+  }
+
+  // Both microphone and media
+  if (strcmp(lower, "both") == 0) {
+    *audio_source = AUDIO_SOURCE_BOTH;
+    return true;
+  }
+
+  if (error_msg) {
+    *error_msg = strdup("Audio source must be 'auto', 'mic', 'media', or 'both'");
+  }
+  return false;
+}

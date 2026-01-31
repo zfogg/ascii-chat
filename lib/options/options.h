@@ -256,6 +256,30 @@ typedef enum {
 } utf8_setting_t;
 
 /**
+ * @brief Audio source selection for playback and capture
+ *
+ * Determines which audio sources are active during playback:
+ * - AUDIO_SOURCE_AUTO: Smart selection based on context (default)
+ *   - With media (--file/--url): media only
+ *   - Without media: microphone only
+ * - AUDIO_SOURCE_MICROPHONE: Capture from microphone only
+ * - AUDIO_SOURCE_MEDIA: Playback media audio only (no microphone)
+ * - AUDIO_SOURCE_BOTH: Both microphone and media audio simultaneously
+ *
+ * @ingroup options
+ */
+typedef enum {
+  /** Smart selection: media only when playing, mic otherwise */
+  AUDIO_SOURCE_AUTO = 0,
+  /** Microphone input only */
+  AUDIO_SOURCE_MIC = 1,
+  /** Media audio only (no microphone) */
+  AUDIO_SOURCE_MEDIA = 2,
+  /** Both microphone and media audio */
+  AUDIO_SOURCE_BOTH = 3
+} audio_source_t;
+
+/**
  * @name Configuration Constants
  * @{
  */
@@ -474,6 +498,9 @@ typedef enum {
 /** @brief Default audio enabled flag (false = audio disabled) */
 #define OPT_AUDIO_ENABLED_DEFAULT false
 
+/** @brief Default audio source (AUDIO_SOURCE_AUTO = smart selection) */
+#define OPT_AUDIO_SOURCE_DEFAULT AUDIO_SOURCE_AUTO
+
 /** @brief Default audio analysis enabled flag */
 #define OPT_AUDIO_ANALYSIS_ENABLED_DEFAULT false
 
@@ -622,6 +649,7 @@ static const bool default_pause_value = OPT_PAUSE_DEFAULT;
 static const double default_media_seek_value = OPT_MEDIA_SEEK_TIMESTAMP_DEFAULT;
 static const bool default_no_cookies_value = OPT_NO_COOKIES_FROM_BROWSER_DEFAULT;
 static const bool default_audio_enabled_value = OPT_AUDIO_ENABLED_DEFAULT;
+static const audio_source_t default_audio_source_value = OPT_AUDIO_SOURCE_DEFAULT;
 static const int default_microphone_index_value = OPT_MICROPHONE_INDEX_DEFAULT;
 static const int default_speakers_index_value = OPT_SPEAKERS_INDEX_DEFAULT;
 static const double default_microphone_sensitivity_value = OPT_MICROPHONE_SENSITIVITY_DEFAULT;
@@ -813,6 +841,7 @@ typedef struct options_state {
   // Audio Configuration
   // ============================================================================
   unsigned short int audio_enabled;          ///< Enable audio streaming
+  audio_source_t audio_source;               ///< Audio source selection (auto/microphone/media/both)
   int microphone_index;                      ///< Microphone device index (-1 = default)
   int speakers_index;                        ///< Speakers device index (-1 = default)
   float microphone_sensitivity;              ///< Microphone volume multiplier (0.0-1.0, default 1.0)
