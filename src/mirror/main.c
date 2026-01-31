@@ -282,10 +282,6 @@ int mirror_main(void) {
   }
 
   // Initialize audio for playback if media file has audio
-  // SKIP AUDIO IN SNAPSHOT MODE: snapshot mode only renders a single frame and exits immediately,
-  // so audio playback isn't needed. Audio initialization calls Pa_Initialize() which allocates
-  // ALSA resources that can't be properly freed by Pa_Terminate() (24KB leak). Since snapshot
-  // doesn't need audio, we avoid this by skipping initialization entirely.
   audio_context_t *audio_ctx = NULL;
   bool audio_available = false;
 
@@ -294,8 +290,7 @@ int mirror_main(void) {
   // For files: use probe_source if available
   media_source_t *audio_probe_source =
       (is_youtube_url && capture) ? session_capture_get_media_source(capture) : probe_source;
-  if (!GET_OPTION(snapshot_mode) && capture_config.type == MEDIA_SOURCE_FILE && capture_config.path &&
-      audio_probe_source) {
+  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
     if (media_source_has_audio(audio_probe_source)) {
       audio_available = true;
       audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);

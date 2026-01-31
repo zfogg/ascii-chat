@@ -95,10 +95,13 @@ static void audio_release_portaudio(void) {
     g_pa_init_refcount--;
 
     if (g_pa_init_refcount == 0) {
-      // Release mutex BEFORE calling Pa_Terminate()
+      // NOTE: Don't call Pa_Terminate() here - ALSA's lazy initialization allocates device structures
+      // on Pa_Initialize() that aren't freed on Pa_Terminate(). Keep Pa_Initialize() active across
+      // the entire program lifetime instead. This avoids the 24KB ALSA memory leak from repeated
+      // Pa_Initialize/Pa_Terminate cycles.
+      //
+      // If we need Pa_Terminate() at process exit, register an atexit() handler instead.
       static_mutex_unlock(&g_pa_refcount_mutex);
-      g_pa_terminate_count++;
-      PaError err = Pa_Terminate();
       return;
     }
   } else {
@@ -1060,35 +1063,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return pa_result;
   }
 
-  int numDevices = Pa_GetDeviceCount();
-  const size_t max_device_info_size = 4096;
-  char device_names[max_device_info_size];
-  int offset = 0;
-  for (int i = 0; i < numDevices && offset < (int)sizeof(device_names) - 256; i++) {
-    const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(i);
-    if (deviceInfo && deviceInfo->name) {
-      int remaining = sizeof(device_names) - offset;
-      if (remaining < 256)
-        break;
-
-      int len = snprintf(&device_names[offset], remaining,
-                         "\n  Device %d: %s (inputs=%d, outputs=%d, sample_rate=%.0f Hz)%s%s", i, deviceInfo->name,
-                         deviceInfo->maxInputChannels, deviceInfo->maxOutputChannels, deviceInfo->defaultSampleRate,
-                         (i == Pa_GetDefaultInputDevice()) ? " [DEFAULT INPUT]" : "",
-                         (i == Pa_GetDefaultOutputDevice()) ? " [DEFAULT OUTPUT]" : "");
-      if (len > 0 && len < remaining) {
-        offset += len;
-      } else {
-        break;
-      }
-    }
-  }
-  device_names[offset] = '\0';
-  if (offset > 0) {
-    log_debug("PortAudio found %d audio devices:%s", numDevices, device_names);
-  } else {
-    log_warn("PortAudio found no audio devices");
-  }
+  // NOTE: Device enumeration removed to avoid ALSA lazy-initialization allocations
 
   // Create capture buffer WITHOUT jitter buffering (PortAudio writes directly from microphone)
   ctx->capture_buffer = audio_ring_buffer_create_for_capture();
