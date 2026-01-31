@@ -245,8 +245,14 @@ int mirror_main(void) {
       }
     }
     capture_config.loop = GET_OPTION(media_loop);
+  } else if (GET_OPTION(test_pattern)) {
+    // Test pattern mode
+    log_info("Using test pattern");
+    capture_config.type = MEDIA_SOURCE_TEST;
+    capture_config.path = NULL;
+    capture_config.loop = false;
   } else {
-    // Default to webcam (no --file or --url specified)
+    // Default to webcam (no --file, --url, or --test-pattern specified)
     log_info("Using local webcam");
     capture_config.type = MEDIA_SOURCE_WEBCAM;
     capture_config.path = NULL;
