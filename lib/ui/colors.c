@@ -7,10 +7,12 @@
 #include "colors.h"
 #include "../common.h"
 #include "../video/ansi_fast.h"
+#include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 /* ============================================================================
  * Global State
@@ -318,13 +320,25 @@ asciichat_error_t colors_set_active_scheme(const char *name) {
     colors_init();
   }
 
-  const color_scheme_t *scheme = find_builtin_scheme(name);
-  if (!scheme) {
-    return SET_ERRNO(ERROR_CONFIG, "Unknown color scheme: %s", name);
+  color_scheme_t scheme = {0};
+  asciichat_error_t result = ASCIICHAT_OK;
+
+  /* Try loading as built-in scheme first */
+  const color_scheme_t *builtin = find_builtin_scheme(name);
+  if (builtin) {
+    memcpy(&scheme, builtin, sizeof(color_scheme_t));
+  } else if (strchr(name, '/') || strchr(name, '.')) {
+    /* Try loading as file path if it contains / or . */
+    result = colors_load_from_file(name, &scheme);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+  } else {
+    return SET_ERRNO(ERROR_CONFIG, "Unknown color scheme: %s (not a built-in scheme or valid file path)", name);
   }
 
   mutex_lock(&g_colors_mutex);
-  memcpy(&g_active_scheme, scheme, sizeof(color_scheme_t));
+  memcpy(&g_active_scheme, &scheme, sizeof(color_scheme_t));
   mutex_unlock(&g_colors_mutex);
 
   log_debug("Switched to color scheme: %s", name);
@@ -350,8 +364,74 @@ asciichat_error_t colors_load_from_file(const char *path, color_scheme_t *scheme
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL path or scheme pointer");
   }
 
-  /* TODO: Implement TOML parsing */
-  return SET_ERRNO(ERROR_NOT_SUPPORTED, "TOML color file loading not yet implemented");
+  /* Check if file exists and is readable */
+  struct stat sb;
+  if (stat(path, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+    return SET_ERRNO(ERROR_FILE_NOT_FOUND, "Color scheme file not found or not readable: %s", path);
+  }
+
+  /* Parse TOML file */
+  toml_result_t result = toml_parse_file_ex(path);
+  if (!result.ok) {
+    toml_free(result);
+    return SET_ERRNO(ERROR_CONFIG, "Failed to parse color scheme file '%s': %s", path, result.errmsg);
+  }
+
+  /* Extract scheme information */
+  memset(scheme, 0, sizeof(color_scheme_t));
+
+  /* Get scheme section */
+  toml_datum_t scheme_section = toml_get(result.toptab, "scheme");
+  if (scheme_section.type == TOML_TABLE) {
+    /* Get scheme name */
+    toml_datum_t name_datum = toml_get(scheme_section, "name");
+    if (name_datum.type == TOML_STRING) {
+      SAFE_STRNCPY(scheme->name, name_datum.u.s, sizeof(scheme->name));
+    }
+
+    /* Get scheme description */
+    toml_datum_t desc_datum = toml_get(scheme_section, "description");
+    if (desc_datum.type == TOML_STRING) {
+      SAFE_STRNCPY(scheme->description, desc_datum.u.s, sizeof(scheme->description));
+    }
+  }
+
+  /* Get colors section */
+  toml_datum_t colors_section = toml_get(result.toptab, "colors");
+  if (colors_section.type == TOML_TABLE) {
+    /* Parse dark mode colors */
+    toml_datum_t dark_section = toml_get(colors_section, "dark");
+    if (dark_section.type == TOML_TABLE) {
+      const char *color_names[] = {"dev", "debug", "warn", "info", "error", "fatal", "grey", "reset"};
+      for (int i = 0; i < 8; i++) {
+        toml_datum_t color_value = toml_get(dark_section, color_names[i]);
+        if (color_value.type == TOML_STRING) {
+          parse_hex_color(color_value.u.s, &scheme->log_colors_dark[i].r, &scheme->log_colors_dark[i].g,
+                          &scheme->log_colors_dark[i].b);
+        }
+      }
+    }
+
+    /* Parse light mode colors (optional) */
+    toml_datum_t light_section = toml_get(colors_section, "light");
+    if (light_section.type == TOML_TABLE) {
+      scheme->has_light_variant = true;
+      const char *color_names[] = {"dev", "debug", "warn", "info", "error", "fatal", "grey", "reset"};
+      for (int i = 0; i < 8; i++) {
+        toml_datum_t color_value = toml_get(light_section, color_names[i]);
+        if (color_value.type == TOML_STRING) {
+          parse_hex_color(color_value.u.s, &scheme->log_colors_light[i].r, &scheme->log_colors_light[i].g,
+                          &scheme->log_colors_light[i].b);
+        }
+      }
+    }
+  }
+
+  scheme->is_builtin = false;
+  SAFE_STRNCPY(scheme->source_file, path, sizeof(scheme->source_file));
+
+  toml_free(result);
+  return ASCIICHAT_OK;
 }
 
 /* ============================================================================
