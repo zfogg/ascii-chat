@@ -54,6 +54,10 @@ char *manpage_content_generate_positional(const options_config_t *config) {
       for (size_t j = 0; j < pos_arg->num_examples; j++) {
         offset +=
             snprintf(buffer + offset, buffer_capacity - offset, "%s\n", escape_groff_special(pos_arg->examples[j]));
+        // Add .PP between examples to force line breaks in HTML rendering
+        if (j < pos_arg->num_examples - 1) {
+          offset += snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
+        }
       }
       offset += snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");
       offset += snprintf(buffer + offset, buffer_capacity - offset, ".RE\n");
