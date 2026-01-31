@@ -99,7 +99,9 @@ char *manpage_content_generate_options(const options_config_t *config) {
 
       // Add argument placeholder for value-taking options
       if (desc->type != OPTION_TYPE_BOOL && desc->type != OPTION_TYPE_ACTION) {
-        const char *placeholder = options_get_type_placeholder(desc->type);
+        // Check for custom placeholder first, fall back to type-based placeholder
+        const char *placeholder =
+            desc->arg_placeholder ? desc->arg_placeholder : options_get_type_placeholder(desc->type);
         if (placeholder && *placeholder) {
           offset += snprintf(buffer + offset, buffer_capacity - offset, " \\fI%s\\fR", placeholder);
         }
