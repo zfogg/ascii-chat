@@ -256,8 +256,8 @@ static bool is_mirror_mode_option(const char *opt_name, char short_name) {
 
     // Check by long name
     if (opt_name && desc->long_name && strcmp(opt_name, desc->long_name) == 0) {
-      // Check if this option applies to mirror mode
-      if (desc->mode_bitmask & (1 << MODE_MIRROR)) {
+      // Check if this option is EXCLUSIVE to mirror mode (not shared with other modes)
+      if ((desc->mode_bitmask & (1 << MODE_MIRROR)) && (desc->mode_bitmask == (1 << MODE_MIRROR))) {
         found = true;
       }
       break;
@@ -265,8 +265,8 @@ static bool is_mirror_mode_option(const char *opt_name, char short_name) {
 
     // Check by short name
     if (short_name != '\0' && desc->short_name == short_name) {
-      // Check if this option applies to mirror mode
-      if (desc->mode_bitmask & (1 << MODE_MIRROR)) {
+      // Check if this option is EXCLUSIVE to mirror mode (not shared with other modes)
+      if ((desc->mode_bitmask & (1 << MODE_MIRROR)) && (desc->mode_bitmask == (1 << MODE_MIRROR))) {
         found = true;
       }
       break;
