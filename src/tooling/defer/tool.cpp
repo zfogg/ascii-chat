@@ -69,6 +69,9 @@ static cl::opt<std::string>
 static cl::opt<std::string> BuildPath("p", cl::desc("Build path (directory containing compile_commands.json)"),
                                       cl::Optional, cl::cat(ToolCategory));
 
+static cl::opt<bool> QuietMode("quiet", cl::desc("Suppress verbose diagnostic output"), cl::init(false),
+                               cl::cat(ToolCategory));
+
 static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [... <sourceN>]"), cl::cat(ToolCategory));
 
 namespace {
@@ -873,7 +876,9 @@ int main(int argc, const char **argv) {
     resourceDir = CLANG_RESOURCE_DIR;
     // llvm::errs() << "Using embedded clang resource directory: " << resourceDir << "\n";
   } else {
-    llvm::errs() << "Embedded clang resource directory not found: " << CLANG_RESOURCE_DIR << "\n";
+    if (!QuietMode) {
+      llvm::errs() << "Embedded clang resource directory not found: " << CLANG_RESOURCE_DIR << "\n";
+    }
   }
 #endif
 
@@ -926,12 +931,14 @@ int main(int argc, const char **argv) {
 
       if (!bestVersion.empty()) {
         resourceDir = bestVersion;
-        llvm::errs() << "Found clang resource directory at runtime: " << resourceDir << "\n";
+        if (!QuietMode) {
+          llvm::errs() << "Found clang resource directory at runtime: " << resourceDir << "\n";
+        }
         break;
       }
     }
 
-    if (resourceDir.empty()) {
+    if (resourceDir.empty() && !QuietMode) {
       llvm::errs() << "Warning: Could not find clang resource directory\n";
     }
   }

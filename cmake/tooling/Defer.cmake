@@ -164,11 +164,12 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir}
+            COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir} --quiet
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT ""
             VERBATIM
+            OUTPUT_QUIET
         )
         list(APPEND _all_generated_outputs "${_gen_path}")
     endforeach()
