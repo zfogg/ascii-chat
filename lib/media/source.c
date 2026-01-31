@@ -658,12 +658,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   asciichat_error_t result = ASCIICHAT_OK;
 
-  // CRITICAL: Lock seek_access_mutex FIRST to block audio callback from reading during seek
-  // This prevents race condition where audio callback reads from decoder while we're seeking
   mutex_lock(&source->seek_access_mutex);
 
-  // Stop prefetch threads BEFORE seeking to prevent deadlock
-  // The prefetch threads may be blocked on decoder mutex while we try to seek
   bool video_prefetch_was_running = false;
   if (source->video_decoder) {
     video_prefetch_was_running = ffmpeg_decoder_is_prefetch_running(source->video_decoder);
@@ -680,12 +676,10 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     }
   }
 
-  // For YouTube URLs with shared decoder, lock during seek
   if (source->is_shared_decoder) {
     mutex_lock(&source->decoder_mutex);
   }
 
-  // Seek video decoder
   uint64_t seek_start_ns = time_get_ns();
   if (source->video_decoder) {
     double video_pos_before = ffmpeg_decoder_get_position(source->video_decoder);
@@ -723,7 +717,6 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     mutex_unlock(&source->decoder_mutex);
   }
 
-  // Restart prefetch threads after seek completes
   if (video_prefetch_was_running && source->video_decoder) {
     ffmpeg_decoder_start_prefetch(source->video_decoder);
   }
@@ -731,7 +724,6 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     ffmpeg_decoder_start_prefetch(source->audio_decoder);
   }
 
-  // Release seek_access_mutex - audio callback can now resume reading
   mutex_unlock(&source->seek_access_mutex);
 
   return result;

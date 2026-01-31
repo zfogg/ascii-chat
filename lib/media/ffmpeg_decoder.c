@@ -834,10 +834,7 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
     return;
   }
 
-  mutex_lock(&decoder->prefetch_mutex);
   decoder->prefetch_should_stop = true;
-  mutex_unlock(&decoder->prefetch_mutex);
-
   asciichat_thread_join(&decoder->prefetch_thread, NULL);
   decoder->prefetch_thread_running = false;
 }
