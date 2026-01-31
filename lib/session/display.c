@@ -371,8 +371,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       }
       written += (size_t)result;
     }
-    // Add newline at end of snapshot output
-    (void)printf("\n");
+    // Add newline at end of snapshot output using thread-safe console lock
+    bool prev_lock_state = log_lock_terminal();
+    (void)fputc('\n', stdout);
+    (void)fflush(stdout);
+    log_unlock_terminal(prev_lock_state);
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
     // Piped mode (non-snapshot): render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
@@ -385,8 +388,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       }
       written += (size_t)result;
     }
-    // Add newline after each frame to separate frames when captured to files
-    (void)printf("\n");
+    // Add newline after each frame using thread-safe console lock
+    bool prev_lock_state = log_lock_terminal();
+    (void)fputc('\n', stdout);
+    (void)fflush(stdout);
+    log_unlock_terminal(prev_lock_state);
   } else {
   }
 }
