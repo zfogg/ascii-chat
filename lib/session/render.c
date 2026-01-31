@@ -308,34 +308,25 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, time_get_ns());
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
-        // Profile: total frame time before sleep
-        if (frame_count % 30 == 0) {
-          double frame_ms = (double)frame_elapsed_ns / 1000000.0;
-          double target_ms = (double)frame_target_ns / 1000000.0;
-          log_info("TIMING[%lu]: total ops = %.2f ms / %.2f ms target (%.0f%%)", frame_count, frame_ms, target_ms,
-                   (frame_ms / target_ms) * 100.0);
-        }
+        // Profile: total frame time
+        double frame_ms = (double)frame_elapsed_ns / 1000000.0;
+        double target_ms = (double)frame_target_ns / 1000000.0;
 
         if (frame_elapsed_ns < frame_target_ns) {
           uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
           uint64_t sleep_us = sleep_ns / 1000;
           if (sleep_us > 0) {
-            uint64_t sleep_start_ns = time_get_ns();
             platform_sleep_usec(sleep_us);
-            uint64_t actual_sleep_ns = time_elapsed_ns(sleep_start_ns, time_get_ns());
-
-            if (frame_count % 30 == 0) {
-              double actual_sleep_ms = (double)actual_sleep_ns / 1000000.0;
-              double expected_sleep_ms = (double)sleep_ns / 1000000.0;
-              log_info("TIMING[%lu]: sleep = %.2f ms (expected %.2f ms)", frame_count, actual_sleep_ms,
-                       expected_sleep_ms);
-            }
+          }
+          if (frame_count % 30 == 0) {
+            log_info("TIMING[%lu]: ops=%.2f+sleep %.0f ms = %.2fms (%.0f%% utilized)", frame_count, frame_ms,
+                     target_ms - frame_ms, target_ms, (frame_ms / target_ms) * 100.0);
           }
         } else {
-          if (frame_count % 30 == 0) {
-            double overrun_ms = ((double)frame_elapsed_ns - (double)frame_target_ns) / 1000000.0;
-            log_warn("TIMING[%lu]: frame overrun by %.2f ms (no sleep)", frame_count, overrun_ms);
-          }
+          // Operations exceeded target frame time - no sleep needed
+          double overrun_ms = frame_ms - target_ms;
+          log_warn("TIMING[%lu]: OVERRUN %.2f ms (ops=%.2f, budget=%.2f)", frame_count, overrun_ms, frame_ms,
+                   target_ms);
         }
       }
 
