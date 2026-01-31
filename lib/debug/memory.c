@@ -559,15 +559,17 @@ void debug_memory_report(void) {
     PRINT_MEM_LINE(label_free, free_str);
 
     // diff - grey label, colored value (red if not 0, green if 0)
-    size_t diff = (malloc_calls + calloc_calls) - free_calls;
+    // Handle potential underflow if free_calls > allocations (internal cleanup)
+    size_t total_allocs = malloc_calls + calloc_calls;
+    long long diff = (long long)total_allocs - (long long)free_calls;
     char diff_str[32];
-    (void)snprintf(diff_str, sizeof(diff_str), "%zu", diff);
+    (void)snprintf(diff_str, sizeof(diff_str), "%lld", diff);
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
     }
     SAFE_IGNORE_PRINTF_RESULT(
-        safe_fprintf(stderr, " %s\n", colored_string(diff == 0 ? LOG_COLOR_INFO : LOG_COLOR_ERROR, diff_str)));
+        safe_fprintf(stderr, " %s\n", colored_string(diff == 0 ? LOG_COLOR_INFO : LOG_COLOR_WARN, diff_str)));
 
 #undef PRINT_MEM_LINE
 

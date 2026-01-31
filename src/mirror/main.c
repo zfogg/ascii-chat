@@ -225,21 +225,11 @@ int mirror_main(void) {
     capture_config.type = MEDIA_SOURCE_FILE;
     capture_config.path = media_url;
 
-    // Create probe source once and reuse for FPS and audio detection
-    probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
-    if (probe_source) {
-      double url_fps = media_source_get_video_fps(probe_source);
-      log_info("Detected URL video FPS: %.1f", url_fps);
-      if (url_fps > 0.0) {
-        capture_config.target_fps = (uint32_t)(url_fps + 0.5);
-        log_info("Using target FPS: %u", capture_config.target_fps);
-      } else {
-        log_warn("FPS detection failed, using default 60 FPS");
-        capture_config.target_fps = 60;
-      }
-    } else {
-      log_warn("Failed to create probe source for FPS detection");
-    }
+    // For all network URLs: skip FPS detection to avoid decoder corruption
+    // Use fixed 30 FPS for streaming (most common for video streaming)
+    log_info("Streaming URL: using fixed 30 FPS (skip probing)");
+    capture_config.target_fps = 30;
+
     capture_config.loop = false; // Network URLs cannot be looped
   } else if (media_file && strlen(media_file) > 0) {
     // User specified a media file or stdin - don't open webcam
@@ -286,13 +276,12 @@ int mirror_main(void) {
   // Add seek timestamp if specified
   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
-  // Reuse probe_source for both local files and YouTube URLs
-  // This ensures consistent frame sourcing throughout playback
+  // Don't reuse probe_source - FPS detection corrupts decoder state
+  // Let session_capture create its own fresh source for reliable playback
   if (probe_source) {
-    capture_config.media_source = probe_source;
+    media_source_destroy(probe_source);
+    probe_source = NULL;
   }
-
-  bool is_youtube_url = media_url && strlen(media_url) > 0 && youtube_is_youtube_url(media_url);
 
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
@@ -309,10 +298,8 @@ int mirror_main(void) {
   bool audio_available = false;
 
   // Check if file/URL has audio stream
-  // For YouTube: use capture's media source (probe_source not reused due to FPS detection altering state)
-  // For files: use probe_source if available
-  media_source_t *audio_probe_source =
-      (is_youtube_url && capture) ? session_capture_get_media_source(capture) : probe_source;
+  // Use capture's media source to check for audio
+  media_source_t *audio_probe_source = capture ? session_capture_get_media_source(capture) : NULL;
   if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
     if (media_source_has_audio(audio_probe_source)) {
       audio_available = true;
