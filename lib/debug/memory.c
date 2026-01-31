@@ -30,6 +30,8 @@ typedef struct mem_block {
   char file[BUFFER_SIZE_SMALL];
   int line;
   bool is_aligned;
+  void *backtrace_ptrs[16]; // Store up to 16 return addresses
+  int backtrace_count;      // Number of frames captured
   struct mem_block *next;
 } mem_block_t;
 
@@ -129,6 +131,12 @@ void *debug_malloc(size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
+      // Capture backtrace (skip 1 frame for this function)
+      block->backtrace_count = platform_backtrace(block->backtrace_ptrs, 16);
+      // Ensure valid backtrace count
+      if (block->backtrace_count < 0) {
+        block->backtrace_count = 0;
+      }
       block->next = g_mem.head;
       g_mem.head = block;
     }
@@ -172,6 +180,12 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
+      // Capture backtrace (skip 1 frame for this function)
+      block->backtrace_count = platform_backtrace(block->backtrace_ptrs, 16);
+      // Ensure valid backtrace count
+      if (block->backtrace_count < 0) {
+        block->backtrace_count = 0;
+      }
       block->next = g_mem.head;
       g_mem.head = block;
     }
@@ -588,6 +602,12 @@ void debug_memory_report(void) {
 
         SAFE_IGNORE_PRINTF_RESULT(
             safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
+
+        // Check if we should print backtraces
+        const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
+        int backtrace_count = 0;
+        int backtrace_limit = (print_backtrace != NULL) ? 5 : 0; // Only print first 5 backtraces to save time
+
         mem_block_t *curr = g_mem.head;
         while (curr) {
           char pretty_size[64];
@@ -610,6 +630,28 @@ void debug_memory_report(void) {
           SAFE_IGNORE_PRINTF_RESULT(
               safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, file_location),
                            colored_string(LOG_COLOR_FATAL, line_str), colored_string(size_color, pretty_size)));
+
+          // Print backtrace if environment variable is set and we haven't hit the limit
+          if (backtrace_count < backtrace_limit && curr->backtrace_count > 0) {
+            backtrace_count++;
+            // CRITICAL: Unlock mutex before calling platform_backtrace_symbols to avoid deadlock
+            // when backtrace symbol resolution allocates memory
+            mutex_unlock(&g_mem.mutex);
+
+            // Print backtrace with symbol names
+            char **symbols = platform_backtrace_symbols(curr->backtrace_ptrs, curr->backtrace_count);
+            if (symbols) {
+              SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Backtrace (%d frames):\n", curr->backtrace_count));
+              for (int i = 0; i < curr->backtrace_count; i++) {
+                SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "      [%d] %s\n", i, symbols[i]));
+              }
+              platform_backtrace_symbols_free(symbols);
+            }
+
+            // Re-acquire mutex for next iteration
+            mutex_lock(&g_mem.mutex);
+          }
+
           curr = curr->next;
         }
 
