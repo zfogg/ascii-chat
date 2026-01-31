@@ -74,16 +74,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
           if (new_pos < 0.0) {
             new_pos = 0.0;
           }
-          log_info("SEEK_START: backward to %.1f seconds", new_pos);
           asciichat_error_t err = media_source_seek(source, new_pos);
           if (err == ASCIICHAT_OK) {
-            log_info("Seeked backward to %.1f seconds (decoder flushed)", new_pos);
-            // Flush audio buffers to prevent 5-10 second lag after seek
-            audio_context_t *audio_ctx = (audio_context_t *)session_capture_get_audio_context(capture);
-            if (audio_ctx) {
-              audio_flush_playback_buffers(audio_ctx);
-              log_info("SEEK_COMPLETE: audio buffers flushed");
-            }
+            log_info("Seeked backward to %.1f seconds", new_pos);
+            media_source_sync_audio_to_video(source);
           }
         }
       }
@@ -103,16 +97,10 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_
           if (duration > 0.0 && new_pos > duration) {
             new_pos = duration;
           }
-          log_info("SEEK_START: forward to %.1f seconds", new_pos);
           asciichat_error_t err = media_source_seek(source, new_pos);
           if (err == ASCIICHAT_OK) {
-            log_info("Seeked forward to %.1f seconds (decoder flushed)", new_pos);
-            // Flush audio buffers to prevent 5-10 second lag after seek
-            audio_context_t *audio_ctx = (audio_context_t *)session_capture_get_audio_context(capture);
-            if (audio_ctx) {
-              audio_flush_playback_buffers(audio_ctx);
-              log_info("SEEK_COMPLETE: audio buffers flushed");
-            }
+            log_info("Seeked forward to %.1f seconds", new_pos);
+            media_source_sync_audio_to_video(source);
           }
         }
       }

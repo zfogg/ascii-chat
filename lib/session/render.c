@@ -223,10 +223,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // NOTE: Audio is NOT written from render loop in mirror mode
-    // Audio timing must match PortAudio sample rate, not video frame rate
-    // The PortAudio callback reads audio on-demand directly from the media source
-
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
     char *ascii_frame = session_display_convert_to_ascii(display, image);
