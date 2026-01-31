@@ -612,9 +612,13 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       }
       // Otherwise skip old content between section header and AUTO-END
     } else {
-      // Write all manual content (not in AUTO section), but skip marker comments
-      // Skip lines with MANUAL-START, MANUAL-END markers
-      if (strstr(p, "MANUAL-START:") == NULL && strstr(p, "MANUAL-END:") == NULL) {
+      // Write all manual content (not in AUTO section)
+      // Skip marker comment lines: .\" AUTO-*, .\" MANUAL-*, .\" MERGE-*
+      // These are internal build-time control comments
+      bool is_marker_comment = (strstr(p, ".\\\" AUTO-") != NULL && strstr(p, ".\\\" AUTO-") < line_end) ||
+                               (strstr(p, ".\\\" MANUAL-") != NULL && strstr(p, ".\\\" MANUAL-") < line_end) ||
+                               (strstr(p, ".\\\" MERGE-") != NULL && strstr(p, ".\\\" MERGE-") < line_end);
+      if (!is_marker_comment) {
         fwrite(p, 1, line_len + 1, f);
       }
     }
