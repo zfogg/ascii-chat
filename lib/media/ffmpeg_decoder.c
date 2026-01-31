@@ -699,8 +699,13 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
     decoder->prefetch_image_b = NULL;
   }
 
-  // Don't destroy current_image - it points to one of the prefetch buffers
-  // which have already been destroyed above
+  // Current image may point to one of the prefetch buffers (already destroyed above)
+  // OR it may be independently allocated (from synchronous fallback decode).
+  // Only destroy if it's not one of the prefetch buffers.
+  if (decoder->current_image && decoder->current_image != decoder->prefetch_image_a &&
+      decoder->current_image != decoder->prefetch_image_b) {
+    image_destroy(decoder->current_image);
+  }
   decoder->current_image = NULL;
 
   // Free audio buffer
