@@ -439,7 +439,7 @@ int safe_fprintf(FILE *stream, const char *format, ...) {
 
 /**
  * @brief Safe formatted string printing with va_list
- * @param buffer Output buffer
+ * @param buffer Output buffer (can be NULL if buffer_size is 0 for size calculation)
  * @param buffer_size Size of output buffer
  * @param format Printf-style format string
  * @param ap Variable argument list
@@ -448,11 +448,17 @@ int safe_fprintf(FILE *stream, const char *format, ...) {
  * Safely formats a string into a buffer with bounds checking using va_list.
  * Uses platform_vsnprintf for cross-platform implementation.
  * Returns the number of characters written (not including null terminator).
- * Returns -1 if buffer is too small.
+ * Special case: NULL buffer with size 0 returns required buffer size for size calculation.
+ * Returns -1 if buffer is too small, format is invalid, or buffer is NULL with size > 0.
  */
 int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list ap) {
-  if (!buffer || !format || buffer_size == 0) {
+  if (!format) {
     return -1;
+  }
+
+  // Allow NULL buffer with size 0 for size calculation (standard vsnprintf behavior)
+  if (!buffer && buffer_size > 0) {
+    return -1; // Non-NULL buffer required when buffer_size > 0
   }
 
   /* Delegate to platform_vsnprintf for actual formatting */

@@ -230,7 +230,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
     if (!found) {
       log_warn_every(LOG_RATE_FAST, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
-      RUN_BURST_AND_THROTTLE(500 * NS_PER_MS_INT, 10 * NS_PER_SEC_INT, { platform_print_backtrace(1); });
+      // Don't print backtrace - log_warn_every already rate-limits the warning
     }
 
     mutex_unlock(&g_mem.mutex);
@@ -558,18 +558,27 @@ void debug_memory_report(void) {
     safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
     PRINT_MEM_LINE(label_free, free_str);
 
-    // diff - grey label, colored value (red if not 0, green if 0)
-    // Handle potential underflow if free_calls > allocations (internal cleanup)
-    size_t total_allocs = malloc_calls + calloc_calls;
-    long long diff = (long long)total_allocs - (long long)free_calls;
+    // diff - count actual unfreed allocations in the linked list
+    size_t unfreed_count = 0;
+    if (g_mem.head) {
+      if (ensure_mutex_initialized()) {
+        mutex_lock(&g_mem.mutex);
+        mem_block_t *curr = g_mem.head;
+        while (curr) {
+          unfreed_count++;
+          curr = curr->next;
+        }
+        mutex_unlock(&g_mem.mutex);
+      }
+    }
     char diff_str[32];
-    safe_snprintf(diff_str, sizeof(diff_str), "%lld", diff);
+    safe_snprintf(diff_str, sizeof(diff_str), "%zu", unfreed_count);
     SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
     for (size_t i = strlen(label_diff); i < max_label_width; i++) {
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
     }
     SAFE_IGNORE_PRINTF_RESULT(
-        safe_fprintf(stderr, " %s\n", colored_string(diff == 0 ? LOG_COLOR_INFO : LOG_COLOR_WARN, diff_str)));
+        safe_fprintf(stderr, " %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_WARN, diff_str)));
 
 #undef PRINT_MEM_LINE
 
