@@ -50,7 +50,8 @@ RUN apt-get update && \
 RUN LLVM_VERSION=$(ls /usr/lib/llvm-* -d 2>/dev/null | sort -V | tail -1 | grep -oE '[0-9]+$') && \
   LLVM_BIN="/usr/lib/llvm-${LLVM_VERSION}/bin" && \
   update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200 && \
-  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
+  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200 && \
+  update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${LLVM_VERSION} 200 || true
 
 # Set compiler environment variables
 ENV CC=clang \
