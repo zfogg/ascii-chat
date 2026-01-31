@@ -1007,11 +1007,12 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   decoder->audio_buffer_offset = 0; // Discard any buffered audio samples from before seek
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
+  decoder->prefetch_frame_ready = false; // Discard any prefetched frame (now stale after seek)
 
-  // Reset sample counter to match seek position (so position tracking is continuous)
-  if (decoder->audio_sample_rate > 0) {
-    decoder->audio_samples_read = (uint64_t)(timestamp_sec * decoder->audio_sample_rate + 0.5);
-  }
+  // Do NOT reset sample counter to seek position - let it be updated naturally by audio/video decoding
+  // If we set it here and no audio is being decoded, position will be stuck at this value
+  // Better to start from 0 and let normal frame reading update position via PTS
+  decoder->audio_samples_read = 0;
 
   mutex_unlock(&decoder->prefetch_mutex);
 
