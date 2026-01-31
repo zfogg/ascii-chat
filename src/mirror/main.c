@@ -197,6 +197,8 @@ int mirror_main(void) {
   // Configure media source based on options
   const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
+  log_info("Media configuration: url='%s', file='%s'", media_url ? media_url : "(null)",
+           media_file ? media_file : "(null)");
 
   // Audio source determination based on --audio-source setting
   // By default (--audio-source auto), microphone is disabled when playing files with --file or --url
@@ -227,10 +229,16 @@ int mirror_main(void) {
     probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
     if (probe_source) {
       double url_fps = media_source_get_video_fps(probe_source);
+      log_info("Detected URL video FPS: %.1f", url_fps);
       if (url_fps > 0.0) {
         capture_config.target_fps = (uint32_t)(url_fps + 0.5);
-        log_debug("URL FPS: %.1f (using %u)", url_fps, capture_config.target_fps);
+        log_info("Using target FPS: %u", capture_config.target_fps);
+      } else {
+        log_warn("FPS detection failed, using default 60 FPS");
+        capture_config.target_fps = 60;
       }
+    } else {
+      log_warn("Failed to create probe source for FPS detection");
     }
     capture_config.loop = false; // Network URLs cannot be looped
   } else if (media_file && strlen(media_file) > 0) {
@@ -248,10 +256,16 @@ int mirror_main(void) {
       probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
       if (probe_source) {
         double file_fps = media_source_get_video_fps(probe_source);
+        log_info("Detected file video FPS: %.1f", file_fps);
         if (file_fps > 0.0) {
           capture_config.target_fps = (uint32_t)(file_fps + 0.5);
-          log_debug("File FPS: %.1f (using %u)", file_fps, capture_config.target_fps);
+          log_info("Using target FPS: %u", capture_config.target_fps);
+        } else {
+          log_warn("FPS detection failed, using default 60 FPS");
+          capture_config.target_fps = 60;
         }
+      } else {
+        log_warn("Failed to create probe source for FPS detection");
       }
     }
     capture_config.loop = GET_OPTION(media_loop);
@@ -272,14 +286,13 @@ int mirror_main(void) {
   // Add seek timestamp if specified
   capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
-  // For local files: pass probe_source to reuse (avoids file reopens)
-  // For YouTube URLs: don't pass probe_source because FPS detection may have altered decoder state
-  // The yt-dlp cache (30 seconds) prevents redundant network requests anyway
-  bool is_youtube_url = media_url && strlen(media_url) > 0 && youtube_is_youtube_url(media_url);
-  if (!is_youtube_url && probe_source) {
+  // Reuse probe_source for both local files and YouTube URLs
+  // This ensures consistent frame sourcing throughout playback
+  if (probe_source) {
     capture_config.media_source = probe_source;
   }
-  // Note: For YouTube, let session_capture create its own source
+
+  bool is_youtube_url = media_url && strlen(media_url) > 0 && youtube_is_youtube_url(media_url);
 
   session_capture_ctx_t *capture = session_capture_create(&capture_config);
   if (!capture) {
