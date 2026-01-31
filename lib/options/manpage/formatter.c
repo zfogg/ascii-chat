@@ -58,21 +58,6 @@ void manpage_fmt_write_tagged_paragraph(FILE *f) {
   fprintf(f, ".TP\n");
 }
 
-void manpage_fmt_write_marker(FILE *f, const char *type, const char *section_name, bool is_start) {
-  if (!f || !type || !section_name) {
-    return;
-  }
-
-  fprintf(f, ".\\\" %s-%s: %s\n", type, is_start ? "START" : "END", section_name);
-  if (is_start) {
-    if (strcmp(type, "AUTO") == 0) {
-      fprintf(f, ".\\\" This section is auto-generated. Manual edits will be lost.\n");
-    } else if (strcmp(type, "MERGE") == 0) {
-      fprintf(f, ".\\\" This section merges auto-generated and manual content.\n");
-    }
-  }
-}
-
 void manpage_fmt_write_text(FILE *f, const char *text) {
   if (!f) {
     return;

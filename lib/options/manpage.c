@@ -106,34 +106,27 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   size_t synopsis_len = 0;
   asciichat_error_t err = manpage_merger_generate_synopsis(mode_name, &synopsis_content, &synopsis_len);
   if (err == ASCIICHAT_OK && synopsis_content && synopsis_len > 0) {
-    manpage_fmt_write_marker(f, "AUTO", "SYNOPSIS", true);
     fprintf(f, "%s", synopsis_content);
-    manpage_fmt_write_marker(f, "AUTO", "SYNOPSIS", false);
     manpage_merger_free_content(synopsis_content);
   }
 
   // Write POSITIONAL ARGUMENTS if present
   if (config->num_positional_args > 0) {
-    manpage_fmt_write_marker(f, "AUTO", "POSITIONAL ARGUMENTS", true);
     char *pos_content = manpage_content_generate_positional(config);
     if (pos_content && *pos_content != '\0') {
       fprintf(f, "%s", pos_content);
     }
-    manpage_fmt_write_marker(f, "AUTO", "POSITIONAL ARGUMENTS", false);
     manpage_content_free_positional(pos_content);
   }
 
   // Write DESCRIPTION
-  manpage_fmt_write_marker(f, "MANUAL", "DESCRIPTION", true);
   manpage_fmt_write_section(f, "DESCRIPTION");
   fprintf(f, ".B ascii-chat\nis a terminal-based video chat application that converts webcam video to ASCII\n");
   fprintf(f, "art in real-time. It enables video chat directly in your terminal, whether you're\n");
   fprintf(f, "using a local console, a remote SSH session, or any terminal emulator.\n");
   manpage_fmt_write_blank_line(f);
-  manpage_fmt_write_marker(f, "MANUAL", "DESCRIPTION", false);
 
   // Write USAGE
-  manpage_fmt_write_marker(f, "AUTO", "USAGE", true);
   char *usage_content = NULL;
   size_t usage_len = 0;
   err = manpage_merger_generate_usage(config, &usage_content, &usage_len);
@@ -141,28 +134,23 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
     fprintf(f, ".SH USAGE\n%s", usage_content);
     manpage_merger_free_content(usage_content);
   }
-  manpage_fmt_write_marker(f, "AUTO", "USAGE", false);
 
   // Write OPTIONS
   if (config->num_descriptors > 0) {
-    manpage_fmt_write_marker(f, "AUTO", "OPTIONS", true);
     char *options_content = manpage_content_generate_options(config);
     if (options_content && *options_content != '\0') {
       fprintf(f, "%s", options_content);
     }
     manpage_content_free_options(options_content);
-    manpage_fmt_write_marker(f, "AUTO", "OPTIONS", false);
   }
 
   // Write EXAMPLES if present
   if (config->num_examples > 0) {
-    manpage_fmt_write_marker(f, "AUTO", "EXAMPLES", true);
     char *examples_content = manpage_content_generate_examples(config);
     if (examples_content && *examples_content != '\0') {
       fprintf(f, "%s", examples_content);
     }
     manpage_content_free_examples(examples_content);
-    manpage_fmt_write_marker(f, "AUTO", "EXAMPLES", false);
   }
 
   // Write ENVIRONMENT if present
@@ -175,47 +163,35 @@ asciichat_error_t options_config_generate_manpage_template(const options_config_
   }
 
   if (has_env_vars) {
-    manpage_fmt_write_marker(f, "MERGE", "ENVIRONMENT", true);
     char *env_content = manpage_content_generate_environment(config);
     if (env_content && *env_content != '\0') {
       fprintf(f, "%s", env_content);
     }
     manpage_content_free_environment(env_content);
-    manpage_fmt_write_marker(f, "MERGE", "ENVIRONMENT", false);
   }
 
   // Write placeholder manual sections
-  manpage_fmt_write_marker(f, "MANUAL", "FILES", true);
   manpage_fmt_write_section(f, "FILES");
   fprintf(f, ".I ~/.ascii-chat/config.toml\n");
   fprintf(f, "User configuration file\n");
   manpage_fmt_write_blank_line(f);
-  manpage_fmt_write_marker(f, "MANUAL", "FILES", false);
 
-  manpage_fmt_write_marker(f, "MANUAL", "NOTES", true);
   manpage_fmt_write_section(f, "NOTES");
   fprintf(f, "For more information and examples, visit the project repository.\n");
   manpage_fmt_write_blank_line(f);
-  manpage_fmt_write_marker(f, "MANUAL", "NOTES", false);
 
-  manpage_fmt_write_marker(f, "MANUAL", "BUGS", true);
   manpage_fmt_write_section(f, "BUGS");
   fprintf(f, "Report bugs at the project issue tracker.\n");
   manpage_fmt_write_blank_line(f);
-  manpage_fmt_write_marker(f, "MANUAL", "BUGS", false);
 
-  manpage_fmt_write_marker(f, "MANUAL", "AUTHOR", true);
   manpage_fmt_write_section(f, "AUTHOR");
   fprintf(f, "Contributed by the ascii-chat community.\n");
   manpage_fmt_write_blank_line(f);
-  manpage_fmt_write_marker(f, "MANUAL", "AUTHOR", false);
 
-  manpage_fmt_write_marker(f, "MANUAL", "SEE ALSO", true);
   manpage_fmt_write_section(f, "SEE ALSO");
   fprintf(f, ".B man(1),\n");
   fprintf(f, ".B groff_man(7)\n");
   manpage_fmt_write_blank_line(f);
-  manpage_fmt_write_marker(f, "MANUAL", "SEE ALSO", false);
 
   if (should_close) {
     fclose(f);
@@ -556,22 +532,23 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
         }
       }
 
-      // Write the AUTO-START marker line
-      fwrite(p, 1, line_len + 1, f);
+      // Don't write the AUTO-START marker line - it's an internal control comment
 
     } else if (strstr(p, "AUTO-END:") != NULL && strstr(p, "AUTO-END:") < line_end) {
       in_auto_section = false;
-      // Write the AUTO-END marker line
-      fwrite(p, 1, line_len + 1, f);
+      // Don't write the AUTO-END marker line - it's an internal control comment
       memset(current_auto_section, 0, sizeof(current_auto_section));
       found_section_header = false;
 
     } else if (in_auto_section) {
       // Preserve comment lines that come before the section header
       if (!found_section_header && strstr(p, ".\\\"") != NULL && strstr(p, ".\\\"") < line_end) {
-        // This is a comment line in the AUTO section (like "This section is auto-generated")
-        // Preserve it
-        fwrite(p, 1, line_len + 1, f);
+        // Skip comment lines in AUTO sections that contain "auto-generated" text
+        if (strstr(p, "auto-generated") == NULL) {
+          // Non-marker comment lines can be preserved
+          fwrite(p, 1, line_len + 1, f);
+        }
+        // Skip comment lines with "auto-generated" marker text
       } else if (!found_section_header && strstr(p, ".SH ") != NULL && strstr(p, ".SH ") < line_end) {
         // If this is the section header line (.SH ...), write it and generate content
         fwrite(p, 1, line_len + 1, f);
@@ -635,8 +612,11 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
       }
       // Otherwise skip old content between section header and AUTO-END
     } else {
-      // Write all manual content (not in AUTO section)
-      fwrite(p, 1, line_len + 1, f);
+      // Write all manual content (not in AUTO section), but skip marker comments
+      // Skip lines with MANUAL-START, MANUAL-END markers
+      if (strstr(p, "MANUAL-START:") == NULL && strstr(p, "MANUAL-END:") == NULL) {
+        fwrite(p, 1, line_len + 1, f);
+      }
     }
 
     // Move to next line

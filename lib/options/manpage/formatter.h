@@ -99,24 +99,6 @@ void manpage_fmt_write_italic(FILE *f, const char *text);
 void manpage_fmt_write_tagged_paragraph(FILE *f);
 
 /**
- * @brief Write a section marker comment
- *
- * Writes comment directives marking section types (AUTO/MANUAL/MERGE).
- * Example: manpage_fmt_write_marker(f, "AUTO", "OPTIONS", true)
- * writes:
- *   .\" AUTO-START: OPTIONS
- *   .\" This section is auto-generated. Manual edits will be lost.
- *
- * @param[in] f Output file handle (cannot be NULL)
- * @param[in] type Marker type: "AUTO", "MANUAL", or "MERGE" (cannot be NULL)
- * @param[in] section_name Section name (cannot be NULL)
- * @param[in] is_start true for START marker, false for END marker
- *
- * @ingroup options_manpage
- */
-void manpage_fmt_write_marker(FILE *f, const char *type, const char *section_name, bool is_start);
-
-/**
  * @brief Write plain text line (without directive)
  *
  * Writes text directly without any formatting directive.
