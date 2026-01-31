@@ -83,7 +83,13 @@ if(_use_shared_lib)
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
             target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
         endif()
-        
+
+        # Suppress linker warnings about duplicate debug symbols in libdatachannel
+        # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+        if(APPLE)
+            target_link_options(ascii-chat PRIVATE "-Wl,-w")
+        endif()
+
         # Ensure C++ standard library is linked
         # Use CXX language for linking to automatically link C++ runtime
         set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
@@ -102,6 +108,13 @@ else()
             _WIN32_WINNT=0x0A00  # Windows 10
         )
     endif()
+
+    # Suppress linker warnings about duplicate debug symbols in libdatachannel
+    # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+    if(APPLE)
+        target_link_options(ascii-chat PRIVATE "LINKER:-suppress_warnings")
+    endif()
+
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 endif()
 

@@ -613,6 +613,12 @@ if(BUILDING_OBJECT_LIBS)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
 
+    # Suppress linker warnings about duplicate debug symbols in libdatachannel
+    # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+    if(APPLE)
+        target_link_options(ascii-chat-shared PRIVATE "-Wl,-w")
+    endif()
+
     # Note: System library dependencies will be added below
 else()
     # Unix or Windows Release: Compile shared library from all sources with default visibility
@@ -951,7 +957,13 @@ if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
 endif()
 
-    # Ensure C++ standard library is linked for C++ dependencies  
+# Suppress linker warnings about duplicate debug symbols in libdatachannel
+# (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+if(APPLE)
+    target_link_options(ascii-chat-shared PRIVATE "-Wl,-w")
+endif()
+
+    # Ensure C++ standard library is linked for C++ dependencies
     # Set LINKER_LANGUAGE to CXX so CMake uses the C++ compiler for linking
     # This automatically includes the C++ standard library
     if(NOT WIN32)

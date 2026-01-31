@@ -318,9 +318,13 @@ if(NOT libdatachannel_POPULATED)
                 message(STATUS "libdatachannel macOS build: using system clang")
             endif()
 
-            # Only add -w to suppress warnings in C code (this is safe)
-            set(_libdc_c_flags "-w")
+            # Suppress debug symbols to avoid linker warnings about duplicate debug map objects
+            # libdatachannel's debug symbols have invalid timestamps that cause ld64.lld to warn
+            # Strip debug symbols and use -w to suppress compiler/linker warnings
+            set(_libdc_c_flags "-w -g0")
+            set(_libdc_cxx_flags "-w -g0")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
+            list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
 
             # Pass the macOS SDK sysroot for proper SDK header resolution
             if(CMAKE_OSX_SYSROOT)
@@ -420,6 +424,23 @@ if(NOT libdatachannel_POPULATED)
 
         if(NOT LIBDATACHANNEL_BUILD_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to build libdatachannel")
+        endif()
+
+        # Strip debug symbols from libdatachannel.a to eliminate linker warnings
+        # about duplicate debug map objects with invalid timestamps
+        if(APPLE)
+            find_program(STRIP_EXECUTABLE strip)
+            if(STRIP_EXECUTABLE)
+                execute_process(
+                    COMMAND ${STRIP_EXECUTABLE} -x "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                    RESULT_VARIABLE STRIP_RESULT
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+                if(STRIP_RESULT EQUAL 0)
+                    message(STATUS "Stripped debug symbols from libdatachannel.a")
+                endif()
+            endif()
         endif()
 
         message(STATUS "${BoldGreen}libdatachannel${ColorReset} library built and cached successfully")
