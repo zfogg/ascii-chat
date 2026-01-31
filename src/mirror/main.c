@@ -196,6 +196,14 @@ int mirror_main(void) {
   // Configure media source based on options
   const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
+
+  // Prevent microphone capture when media audio is playing
+  // If --file or --url is specified and has audio, microphone must be disabled
+  bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
+  if (has_media && GET_OPTION(audio_enabled)) {
+    log_warn("--audio flag is ignored when playing media files (microphone disabled to prevent interference)");
+  }
+
   session_capture_config_t capture_config = {0};
   capture_config.target_fps = 60; // Default for webcam
   capture_config.resize_for_network = false;
@@ -300,7 +308,11 @@ int mirror_main(void) {
           // Store the media source in audio context for direct callback reading
           audio_ctx->media_source = session_capture_get_media_source(capture);
 
-          // Enable playback-only mode (no microphone input in mirror mode)
+          // Enable playback-only mode (disable microphone input to prevent interference)
+          // When media audio is playing, microphone capture is disabled to:
+          // - Prevent feedback loops between speakers and microphone
+          // - Avoid interference with playback audio
+          // - Ensure clean audio playback experience
           audio_ctx->playback_only = true;
 
           // Disable jitter buffering for local file playback

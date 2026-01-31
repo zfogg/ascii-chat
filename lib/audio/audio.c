@@ -480,9 +480,15 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   // STEP 2: Copy raw mic samples → worker for AEC3 processing (~0.5ms)
-  // Skip microphone capture in playback-only mode (mirror)
+  // Skip microphone capture in playback-only mode (mirror with media audio)
+  // When media files are being played, microphone input is completely disabled
+  // to prevent feedback loops and interference with playback audio
   if (!ctx->playback_only && input && ctx->raw_capture_rb) {
     audio_ring_buffer_write(ctx->raw_capture_rb, input, (int)num_samples);
+  } else if (ctx->playback_only && input) {
+    // Explicitly discard microphone input when in playback-only mode
+    // This ensures complete isolation between microphone and media playback
+    (void)input; // Suppress unused parameter warning
   }
 
   // STEP 3: Copy raw speaker samples → worker for AEC3 reference (~0.5ms)
