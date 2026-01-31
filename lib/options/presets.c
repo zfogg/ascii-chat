@@ -78,10 +78,11 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                  parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
-  static const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0 ::", "[2001:db8::1]:9000"};
+  static const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0",
+                                          "::",        "0.0.0.0 ::",     ":: 192.168.1.100"};
   options_builder_add_positional(b, "bind-address",
                                  "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
-                                 false, "Positional Arguments", server_examples, 4,
+                                 false, "Positional Arguments", server_examples, 6,
                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
   // Generate random session strings for examples
