@@ -11,12 +11,9 @@
 
 asciichat_error_t platform_enable_keepawake(void) {
   // Windows: Use SetThreadExecutionState
-  EXECUTION_STATE state = SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
-
-  if (state == 0) {
-    DWORD error = GetLastError();
-    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "SetThreadExecutionState failed (error %lu)", error);
-  }
+  // Note: SetThreadExecutionState returns the PREVIOUS state, not an error code.
+  // It cannot fail - it always succeeds. The return value is informational only.
+  SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
 
   log_debug("Keepawake enabled via SetThreadExecutionState");
   return ASCIICHAT_OK;

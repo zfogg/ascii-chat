@@ -36,8 +36,11 @@ asciichat_error_t platform_enable_keepawake(void) {
   sd_bus_error error = SD_BUS_ERROR_NULL;
 
   if (sd_bus_default_system(&bus) < 0) {
-    log_warn("Failed to connect to system bus, keepawake disabled");
-    return ASCIICHAT_OK; // Non-critical
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to connect to system bus");
+  }
+
+  if (!bus) {
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "System bus is NULL");
   }
 
   int r = sd_bus_call_method(bus, "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager",
@@ -49,13 +52,24 @@ asciichat_error_t platform_enable_keepawake(void) {
   );
 
   if (r < 0) {
-    log_warn("Failed to inhibit sleep via systemd: %s", error.message);
     sd_bus_error_free(&error);
     sd_bus_unref(bus);
-    return ASCIICHAT_OK; // Non-critical
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to inhibit sleep via systemd");
   }
 
-  sd_bus_message_read(reply, "h", &g_inhibit_fd);
+  if (!reply) {
+    sd_bus_error_free(&error);
+    sd_bus_unref(bus);
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "systemd inhibit reply is NULL");
+  }
+
+  if (sd_bus_message_read(reply, "h", &g_inhibit_fd) < 0) {
+    sd_bus_message_unref(reply);
+    sd_bus_error_free(&error);
+    sd_bus_unref(bus);
+    return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to read inhibit fd from systemd reply");
+  }
+
   sd_bus_message_unref(reply);
   sd_bus_error_free(&error);
   sd_bus_unref(bus);
