@@ -390,8 +390,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     }
     // Add newline at end of snapshot output using thread-safe console lock
     bool prev_lock_state = log_lock_terminal();
-    (void)fputc('\n', stdout);
-    (void)fflush(stdout);
+    const char newline = '\n';
+    platform_write(STDOUT_FILENO, &newline, 1);
     log_unlock_terminal(prev_lock_state);
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
     // Piped mode (non-snapshot): render every frame WITHOUT cursor control

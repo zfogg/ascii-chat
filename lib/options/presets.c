@@ -214,6 +214,9 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                               "Start playback at exactly 22:10 (also works with --url)", false);
   options_builder_add_example(b, "mirror", "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12",
                               "Print a single frame from a YouTube video at exactly 5:12 and exit", false);
+  options_builder_add_example(b, "mirror", "-S -D 0 | tee frame.txt | pbcopy",
+                              "Capture single ASCII frame to clipboard (macOS) and file", false);
+  options_builder_add_example(b, "mirror", NULL, "pbpaste | cat - (to view frame from clipboard on macOS)", false);
 
   // Add examples for discovery-service mode
   options_builder_add_example(b, "discovery-service", NULL, "Start on localhost", false);
