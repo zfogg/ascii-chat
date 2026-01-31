@@ -34,6 +34,11 @@ static struct {
     .initialized = false,
 };
 
+/**
+ * @brief Track if sokol_time has been initialized (separate from full timer system init)
+ */
+static bool g_sokol_time_initialized = false;
+
 // ============================================================================
 // Core Monotonic Timing Implementation
 // ============================================================================
@@ -41,6 +46,11 @@ static struct {
 uint64_t time_get_ns(void) {
   // sokol_time provides monotonic clock that never goes backwards
   // stm_ns() converts ticks to nanoseconds
+  // Ensure sokol_time is initialized before use (defensive programming)
+  if (!g_sokol_time_initialized) {
+    stm_setup();
+    g_sokol_time_initialized = true;
+  }
   return (uint64_t)stm_ns(stm_now());
 }
 
