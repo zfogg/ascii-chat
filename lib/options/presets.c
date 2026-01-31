@@ -162,69 +162,73 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   snprintf(example_buf6, sizeof(example_buf6), "%s -f '-'", example_session_string6);
   snprintf(example_buf7, sizeof(example_buf7), "%s --palette-chars '@%%#*+=-:. '", example_session_string7);
 
-  // Add examples for binary-level help (implicitly discovery mode)
-  // Note: Discovery/session examples appear first, then mode-specific examples
-  options_builder_add_example(b, NULL, NULL, "Start new session (share the session string)", false);
-  options_builder_add_example(b, NULL, example_buf2, "Join a session using the session string", true);
-  options_builder_add_example(b, NULL, example_buf3, "Join session via custom discovery server", true);
-  options_builder_add_example(b, NULL, example_buf4, "Join session and stream from local video file", true);
-  options_builder_add_example(b, NULL, example_buf5, "Join session and stream from YouTube video", true);
-  options_builder_add_example(b, NULL, example_buf6,
+  // Add examples for binary-level help and discovery mode
+  options_builder_add_example(b, OPTION_MODE_BINARY, NULL, "Start new session (share the session string)", false);
+  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf2, "Join a session using the session string", true);
+  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf3, "Join session via custom discovery server", true);
+  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf4, "Join session and stream from local video file",
+                              true);
+  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf5, "Join session and stream from YouTube video", true);
+  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf6,
                               "Join session and stream media from stdin (cat file.mov | ascii-chat ... -f '-')", true);
-  options_builder_add_example(b, NULL, example_buf7, "Join session with custom ASCII palette characters", true);
+  options_builder_add_example(b, OPTION_MODE_BINARY, example_buf7, "Join session with custom ASCII palette characters",
+                              true);
 
   // Add examples for server mode
-  options_builder_add_example(b, "server", NULL, "Run as dedicated server", false);
-  options_builder_add_example(b, "server", NULL, "Start on localhost (127.0.0.1 and ::1)", false);
-  options_builder_add_example(b, "server", "0.0.0.0", "Start on all IPv4 interfaces", false);
-  options_builder_add_example(b, "server", "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)", false);
-  options_builder_add_example(b, "server", "--port 8080", "Start on custom port", false);
-  options_builder_add_example(b, "server", "--key ~/.ssh/id_ed25519 --discovery",
+  options_builder_add_example(b, OPTION_MODE_SERVER, NULL, "Run as dedicated server", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0", "Start on all IPv4 interfaces", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)",
+                              false);
+  options_builder_add_example(b, OPTION_MODE_SERVER, "--port 8080", "Start on custom port", false);
+  options_builder_add_example(b, OPTION_MODE_SERVER, "--key ~/.ssh/id_ed25519 --discovery",
                               "Start with identity key and discovery registration", false);
 
   // Add examples for client mode
-  options_builder_add_example(b, "client", "example.com", "Connect to specific server", false);
-  options_builder_add_example(b, "client", NULL, "Connect to localhost", false);
-  options_builder_add_example(b, "client", "example.com", "Connect to remote server", false);
-  options_builder_add_example(b, "client", "example.com:8080", "Connect to remote server on custom port", false);
-  options_builder_add_example(b, "client", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
-                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
-  options_builder_add_example(b, "client", "-f video.mp4", "Stream from local video file", false);
-  options_builder_add_example(b, "client", "--color-mode mono --render-mode half-block --width 120",
-                              "Connect with custom display options", false);
-  options_builder_add_example(b, "client", "--palette-chars '@%#*+=-:. '", "Use custom ASCII palette characters",
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to specific server", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, NULL, "Connect to localhost", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to remote server", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port",
                               false);
-  options_builder_add_example(b, "client", "--snapshot", "Capture single frame and exit", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+                              "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "-f video.mp4", "Stream from local video file", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-mode mono --render-mode half-block --width 120",
+                              "Connect with custom display options", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--palette-chars '@%#*+=-:. '",
+                              "Use custom ASCII palette characters", false);
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--snapshot", "Capture single frame and exit", false);
 
   // Add examples for mirror mode
   options_builder_add_example(
-      b, "mirror", NULL,
+      b, OPTION_MODE_MIRROR, NULL,
       "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
       false);
-  options_builder_add_example(b, "mirror", "--color-mode mono", "View webcam in black and white", false);
-  options_builder_add_example(b, "mirror", "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-mode mono", "View webcam in black and white", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
                               "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
-  options_builder_add_example(b, "mirror", "-f video.mp4",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "-f video.mp4",
                               "Stream from local video file (supports mp4, mkv, webm, mov, etc)", false);
-  options_builder_add_example(b, "mirror", "--file '-'",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--file '-'",
                               "Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')", false);
-  options_builder_add_example_utility(b, "mirror", "cat video.avi | ascii-chat mirror -f '-' -l -s 00:30",
+  options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "cat video.avi | ascii-chat mirror -f '-' -l -s 00:30",
                                       "Stream .avi from stdin, looped, seeking to 00:30", true);
-  options_builder_add_example(b, "mirror", "--palette-chars '@%#*+=-:. '", "View with custom ASCII palette characters",
-                              false);
-  options_builder_add_example(b, "mirror", "--file video.mov --seek 22:10",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--palette-chars '@%#*+=-:. '",
+                              "View with custom ASCII palette characters", false);
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--file video.mov --seek 22:10",
                               "Start playback at exactly 22:10 (also works with --url)", false);
-  options_builder_add_example(b, "mirror", "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12",
                               "Print a single frame from a YouTube video at exactly 5:12 and exit", false);
-  options_builder_add_example(b, "mirror", "-S -D 0 | tee frame.txt | pbcopy",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "-S -D 0 | tee frame.txt | pbcopy",
                               "Capture single ASCII frame to clipboard (macOS) and file", false);
-  options_builder_add_example_utility(b, "mirror", "pbpaste | cat -", "View ASCII frame from clipboard (macOS)", true);
+  options_builder_add_example_utility(b, OPTION_MODE_MIRROR, "pbpaste | cat -",
+                                      "View ASCII frame from clipboard (macOS)", true);
 
   // Add examples for discovery-service mode
-  options_builder_add_example(b, "discovery-service", NULL, "Start on localhost", false);
-  options_builder_add_example(b, "discovery-service", "0.0.0.0", "Start on all IPv4 interfaces", false);
-  options_builder_add_example(b, "discovery-service", "--port 5000", "Start on custom port", false);
-  options_builder_add_example(b, "discovery-service", "--require-server-identity --require-client-identity",
+  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, NULL, "Start on localhost", false);
+  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "0.0.0.0", "Start on all IPv4 interfaces", false);
+  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--port 5000", "Start on custom port", false);
+  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--require-server-identity --require-client-identity",
                               "Enforce identity verification for all parties", false);
 
   // Add mode descriptions

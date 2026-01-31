@@ -36,9 +36,6 @@ char *manpage_content_generate_examples(const options_config_t *config) {
 
     offset += snprintf(buffer + offset, buffer_capacity - offset, ".TP\n");
     offset += snprintf(buffer + offset, buffer_capacity - offset, ".B ascii-chat");
-    if (example->mode) {
-      offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", example->mode);
-    }
     if (example->args) {
       offset += snprintf(buffer + offset, buffer_capacity - offset, " %s", example->args);
     }

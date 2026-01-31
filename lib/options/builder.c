@@ -1421,15 +1421,17 @@ void options_builder_add_usage(options_builder_t *builder, const char *mode, con
   builder->usage_lines[builder->num_usage_lines++] = usage;
 }
 
-void options_builder_add_example(options_builder_t *builder, const char *mode, const char *args,
+void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
                                  const char *description, bool owns_args) {
   if (!builder || !description)
     return;
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {
-      .mode = mode, .description = description, .owns_args_memory = owns_args, .is_utility_command = false};
+  example_descriptor_t example = {.mode_bitmask = mode_bitmask,
+                                  .description = description,
+                                  .owns_args_memory = owns_args,
+                                  .is_utility_command = false};
 
   if (owns_args) {
     // If owning, duplicate the string and track it
@@ -1453,15 +1455,17 @@ void options_builder_add_example(options_builder_t *builder, const char *mode, c
  * Allows marking utility commands (like pbpaste, grep, etc.) that shouldn't
  * be prepended with program name in help output.
  */
-void options_builder_add_example_utility(options_builder_t *builder, const char *mode, const char *args,
+void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
                                          const char *description, bool is_utility_command) {
   if (!builder || !description)
     return;
 
   ensure_example_capacity(builder);
 
-  example_descriptor_t example = {
-      .mode = mode, .description = description, .owns_args_memory = false, .is_utility_command = is_utility_command};
+  example_descriptor_t example = {.mode_bitmask = mode_bitmask,
+                                  .description = description,
+                                  .owns_args_memory = false,
+                                  .is_utility_command = is_utility_command};
 
   if (args) {
     example.args = args;
@@ -2103,11 +2107,6 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
       len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
     }
 
-    if (example->mode) {
-      const char *colored_mode = colored_string(LOG_COLOR_FATAL, example->mode);
-      len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_mode);
-    }
-
     if (example->args) {
       const char *colored_args = colored_string(LOG_COLOR_INFO, example->args);
       len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", colored_args);
@@ -2272,47 +2271,21 @@ static int calculate_section_max_col_width(const options_config_t *config, const
     if (config->num_examples == 0)
       return 20;
 
-    // Get mode name for filtering
-    const char *mode_name = NULL;
-    switch (mode) {
-    case MODE_SERVER:
-      mode_name = "server";
-      break;
-    case MODE_CLIENT:
-      mode_name = "client";
-      break;
-    case MODE_MIRROR:
-      mode_name = "mirror";
-      break;
-    case MODE_DISCOVERY_SERVICE:
-      mode_name = "discovery-service";
-      break;
-    case MODE_DISCOVERY:
-      mode_name = NULL; // Binary help uses MODE_DISCOVERY but shows mode=NULL examples
-      break;
-    default:
-      mode_name = NULL;
-      break;
-    }
-
     for (size_t i = 0; i < config->num_examples; i++) {
       const example_descriptor_t *example = &config->examples[i];
 
-      // Filter examples by mode
+      // Filter examples by mode using bitmask
       if (for_binary_help) {
-        if (example->mode != NULL)
+        if (!(example->mode_bitmask & OPTION_MODE_BINARY))
           continue;
       } else {
-        if (!example->mode || !mode_name || strcmp(example->mode, mode_name) != 0)
+        uint32_t mode_bitmask = (1 << mode);
+        if (!(example->mode_bitmask & mode_bitmask))
           continue;
       }
 
       int len = 0;
       len += snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
-
-      if (example->mode) {
-        len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->mode);
-      }
 
       if (example->args) {
         len += snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", example->args);
@@ -2502,38 +2475,17 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
   for (size_t i = 0; i < config->num_examples; i++) {
     const example_descriptor_t *example = &config->examples[i];
 
-    // Filter examples based on mode
+    // Filter examples based on mode bitmask
     if (for_binary_help) {
-      // Binary help shows only examples with NULL mode (binary-level examples)
-      if (example->mode != NULL) {
+      // Binary help shows only examples with OPTION_MODE_BINARY flag
+      if (!(example->mode_bitmask & OPTION_MODE_BINARY)) {
         continue;
       }
     } else {
-      // For mode-specific help, show examples with matching mode ONLY
-      // Get mode name from the mode enum
-      const char *mode_name = NULL;
-      switch (mode) {
-      case MODE_SERVER:
-        mode_name = "server";
-        break;
-      case MODE_CLIENT:
-        mode_name = "client";
-        break;
-      case MODE_MIRROR:
-        mode_name = "mirror";
-        break;
-      case MODE_DISCOVERY_SERVICE:
-        mode_name = "discovery-service";
-        break;
-      case MODE_DISCOVERY:
-        mode_name = "discovery";
-        break;
-      default:
-        mode_name = NULL;
-        break;
-      }
-      // Skip if no example mode or mode doesn't match
-      if (!example->mode || !mode_name || strcmp(example->mode, mode_name) != 0) {
+      // For mode-specific help, show examples with matching mode
+      // Convert mode enum to bitmask
+      uint32_t mode_bitmask = (1 << mode);
+      if (!(example->mode_bitmask & mode_bitmask)) {
         continue;
       }
     }
@@ -2546,14 +2498,9 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
       len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
     }
 
-    // Add mode if present (magenta color), but skip for utility commands
-    if (example->mode && !example->is_utility_command) {
-      len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, example->mode));
-    }
-
     // Add args/flags if present (flags=yellow, arguments=green, utility programs=white)
     if (example->args) {
-      // Only add space if we've already added something (binary name or mode)
+      // Only add space if we've already added something (binary name)
       if (len > 0) {
         len += snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " ");
       }

@@ -184,14 +184,15 @@ typedef struct {
  * @brief Example descriptor for programmatic EXAMPLES generation
  *
  * Stores command components separately for semantic coloring:
- * - mode: magenta
+ * - mode_bitmask: which modes this example applies to
  * - args: green
  */
 typedef struct {
-  const char *mode; ///< NULL or mode name (e.g., "server", "client")
-  const char *args; // Command-line arguments part of the example
+  uint32_t mode_bitmask; ///< Bitmask of modes (OPTION_MODE_SERVER, OPTION_MODE_CLIENT, etc.)
+  const char *args;      ///< Command-line arguments part of the example
   const char *description;
-  bool owns_args_memory; // True if args memory should be freed by options_config_destroy
+  bool owns_args_memory;   ///< True if args memory should be freed by options_config_destroy
+  bool is_utility_command; ///< True if this is a utility command (don't prepend program name)
 } example_descriptor_t;
 
 /**
@@ -889,8 +890,33 @@ void options_builder_add_usage(options_builder_t *builder, const char *mode, con
  *                             "Connect to specific server");
  * ```
  */
-void options_builder_add_example(options_builder_t *builder, const char *mode, const char *args,
+/**
+ * @brief Add an example to the help output
+ *
+ * @param builder Builder instance
+ * @param mode_bitmask Bitmask of modes (OPTION_MODE_SERVER | OPTION_MODE_CLIENT, etc.)
+ *                     Use OPTION_MODE_BINARY for binary-level examples
+ * @param args Arguments (NULL or "example.com", etc.)
+ * @param description Help text for this example
+ * @param owns_args If true, duplicate and track the args string
+ */
+void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
                                  const char *description, bool owns_args);
+
+/**
+ * @brief Add an example with utility command support
+ *
+ * Utility commands (like pbpaste, cat, etc.) that shouldn't be prepended
+ * with program name or mode in help output.
+ *
+ * @param builder Builder instance
+ * @param mode_bitmask Bitmask of modes (OPTION_MODE_MIRROR, etc.)
+ * @param args Arguments (e.g., "pbpaste | cat -", "cat video.avi | ascii-chat mirror -f '-'")
+ * @param description Help text for this example
+ * @param is_utility_command Must be true for utility commands
+ */
+void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
+                                         const char *description, bool is_utility_command);
 
 /**
  * @brief Add mode descriptor
