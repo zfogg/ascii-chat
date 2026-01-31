@@ -9,6 +9,8 @@
 #include "asciichat_errno.h"
 #include "video/image.h"
 #include "platform/system.h"
+#include "platform/thread.h"
+#include "util/time.h"
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -55,13 +57,26 @@ struct ffmpeg_decoder_t {
   AVFrame *frame;
   AVPacket *packet;
 
-  // Decoded image cache
+  // Decoded image cache - double-buffered for prefetching
+  // current_image: working buffer for decoding
   image_t *current_image;
 
   // Audio sample buffer (for partial frame handling)
   float *audio_buffer;
   size_t audio_buffer_size;
   size_t audio_buffer_offset;
+
+  // Background thread for frame prefetching (reduces YouTube HTTP blocking)
+  // Double-buffered image: main thread reads from current, prefetch thread decodes into next
+  asciichat_thread_t prefetch_thread;
+  image_t *prefetch_image_a;       // First prefetch buffer
+  image_t *prefetch_image_b;       // Second prefetch buffer
+  image_t *current_prefetch_image; // Currently available prefetched frame
+  bool prefetch_frame_ready;       // Whether current_prefetch_image has valid data
+  bool prefetch_thread_running;    // Whether prefetch thread is active
+  bool prefetch_should_stop;       // Signal to stop prefetch thread
+  mutex_t prefetch_mutex;          // Protect: prefetch frame/stop + FFmpeg decoder access
+  // NOTE: prefetch_mutex MUST be held when calling av_read_frame/avcodec_ functions
 
   // State flags
   bool eof_reached;
@@ -120,6 +135,138 @@ static double get_frame_pts_seconds(AVFrame *frame, AVRational time_base) {
     return -1.0;
   }
   return (double)frame->pts * av_q2d_safe(time_base);
+}
+
+/**
+ * @brief Background thread function for prefetching video frames
+ *
+ * Continuously reads frames from the decoder and decodes them into prefetch buffers.
+ * This allows the main render thread to pull pre-decoded frames without blocking
+ * on YouTube HTTP requests.
+ */
+static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
+  ffmpeg_decoder_t *decoder = (ffmpeg_decoder_t *)arg;
+  if (!decoder || !decoder->prefetch_image_a || !decoder->prefetch_image_b) {
+    return NULL;
+  }
+
+  log_debug("Video prefetch thread started");
+  bool use_image_a = true; // Track which buffer we're using
+
+  while (true) {
+    // Check if thread should stop
+    mutex_lock(&decoder->prefetch_mutex);
+    bool should_stop = decoder->prefetch_should_stop || decoder->eof_reached;
+    mutex_unlock(&decoder->prefetch_mutex);
+
+    if (should_stop) {
+      break;
+    }
+
+    // Try to read the next video frame (blocks on YouTube HTTP)
+    // CRITICAL: Hold mutex while accessing FFmpeg decoder to prevent race conditions
+    uint64_t read_start_ns = time_get_ns();
+    bool frame_decoded = false;
+
+    mutex_lock(&decoder->prefetch_mutex);
+
+    // Read packets until we get a video frame
+    while (true) {
+      int ret = av_read_frame(decoder->format_ctx, decoder->packet);
+      if (ret < 0) {
+        if (ret == AVERROR_EOF) {
+          decoder->eof_reached = true;
+        }
+        break;
+      }
+
+      // Check if this is a video packet
+      if (decoder->packet->stream_index != decoder->video_stream_idx) {
+        av_packet_unref(decoder->packet);
+        continue;
+      }
+
+      // Send packet to decoder
+      ret = avcodec_send_packet(decoder->video_codec_ctx, decoder->packet);
+      av_packet_unref(decoder->packet);
+
+      if (ret < 0) {
+        continue;
+      }
+
+      // Receive decoded frame
+      ret = avcodec_receive_frame(decoder->video_codec_ctx, decoder->frame);
+      if (ret == AVERROR(EAGAIN)) {
+        continue; // Need more packets
+      } else if (ret < 0) {
+        break;
+      }
+
+      // Update position tracking
+      decoder->last_video_pts =
+          get_frame_pts_seconds(decoder->frame, decoder->format_ctx->streams[decoder->video_stream_idx]->time_base);
+
+      // Convert frame to RGB24
+      int width = decoder->video_codec_ctx->width;
+      int height = decoder->video_codec_ctx->height;
+
+      // Get current decode buffer (may be reallocated if dimensions changed)
+      image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
+
+      // Reallocate if needed (width/height changed)
+      if (decode_buffer->w != (size_t)width || decode_buffer->h != (size_t)height) {
+        image_destroy(decode_buffer);
+        decode_buffer = image_new((size_t)width, (size_t)height);
+        if (!decode_buffer) {
+          log_error("Failed to allocate prefetch image buffer");
+          break;
+        }
+        // Update the decoder's pointer to the reallocated buffer
+        if (use_image_a) {
+          decoder->prefetch_image_a = decode_buffer;
+        } else {
+          decoder->prefetch_image_b = decode_buffer;
+        }
+      }
+
+      // Convert pixel format (rgb_pixel_t is 3 bytes: r, g, b)
+      uint8_t *dst_data[1] = {(uint8_t *)decode_buffer->pixels};
+      int dst_linesize[1] = {width * 3};
+
+      sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
+                dst_data, dst_linesize);
+
+      frame_decoded = true;
+      break;
+    }
+
+    mutex_unlock(&decoder->prefetch_mutex);
+
+    if (frame_decoded) {
+      uint64_t read_time_ns = time_elapsed_ns(read_start_ns, time_get_ns());
+      double read_ms = (double)read_time_ns / 1000000.0;
+
+      // Get current decode buffer for updating current_prefetch_image
+      image_t *decode_buffer = use_image_a ? decoder->prefetch_image_a : decoder->prefetch_image_b;
+
+      // Update the current prefetch image (main thread will pull from this)
+      mutex_lock(&decoder->prefetch_mutex);
+      decoder->current_prefetch_image = decode_buffer;
+      decoder->prefetch_frame_ready = true;
+      mutex_unlock(&decoder->prefetch_mutex);
+
+      log_debug_every(5000000, "PREFETCH: decoded frame in %.2f ms", read_ms);
+
+      // Switch to the other buffer for next iteration
+      use_image_a = !use_image_a;
+    } else {
+      // EOF or error - exit thread
+      break;
+    }
+  }
+
+  log_debug("Video prefetch thread stopped");
+  return NULL;
 }
 
 /**
@@ -320,6 +467,34 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     }
   }
 
+  // Initialize video frame prefetching system (for YouTube streaming)
+  if (decoder->video_stream_idx >= 0) {
+    int width = decoder->video_codec_ctx->width;
+    int height = decoder->video_codec_ctx->height;
+
+    // Create two prefetch image buffers for double-buffering
+    decoder->prefetch_image_a = image_new((size_t)width, (size_t)height);
+    decoder->prefetch_image_b = image_new((size_t)width, (size_t)height);
+    if (!decoder->prefetch_image_a || !decoder->prefetch_image_b) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate prefetch image buffers");
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+
+    decoder->current_prefetch_image = decoder->prefetch_image_a;
+    decoder->prefetch_frame_ready = false;
+
+    // Initialize prefetch mutex
+    if (mutex_init(&decoder->prefetch_mutex) != 0) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch mutex");
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+
+    decoder->prefetch_thread_running = false;
+    decoder->prefetch_should_stop = false;
+  }
+
   log_debug("FFmpeg decoder opened: %s (video=%s, audio=%s)", path, decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
@@ -484,11 +659,33 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
     return;
   }
 
-  // Free image cache
-  if (decoder->current_image) {
-    image_destroy(decoder->current_image);
-    decoder->current_image = NULL;
+  // Stop prefetch thread (signal it to stop and wait for it to finish)
+  if (decoder->prefetch_thread_running) {
+    mutex_lock(&decoder->prefetch_mutex);
+    decoder->prefetch_should_stop = true;
+    mutex_unlock(&decoder->prefetch_mutex);
+
+    // Wait for thread to finish
+    asciichat_thread_join(&decoder->prefetch_thread, NULL);
+    decoder->prefetch_thread_running = false;
   }
+
+  // Clean up prefetch state
+  mutex_destroy(&decoder->prefetch_mutex);
+
+  // Free prefetch image buffers
+  if (decoder->prefetch_image_a) {
+    image_destroy(decoder->prefetch_image_a);
+    decoder->prefetch_image_a = NULL;
+  }
+  if (decoder->prefetch_image_b) {
+    image_destroy(decoder->prefetch_image_b);
+    decoder->prefetch_image_b = NULL;
+  }
+
+  // Don't destroy current_image - it points to one of the prefetch buffers
+  // which have already been destroyed above
+  decoder->current_image = NULL;
 
   // Free audio buffer
   SAFE_FREE(decoder->audio_buffer);
@@ -543,15 +740,36 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
     return NULL;
   }
 
+  // Try to get a prefetched frame from the background thread (preferred path)
+  mutex_lock(&decoder->prefetch_mutex);
+  if (decoder->prefetch_frame_ready && decoder->current_prefetch_image) {
+    image_t *frame = decoder->current_prefetch_image;
+    decoder->prefetch_frame_ready = false;
+    mutex_unlock(&decoder->prefetch_mutex);
+
+    // Use the prefetched frame
+    decoder->current_image = frame;
+    log_debug_every(5000000, "Using prefetched frame");
+    return frame;
+  }
+  mutex_unlock(&decoder->prefetch_mutex);
+
+  // Fallback: if prefetch thread hasn't provided a frame yet (e.g., still decoding first frame),
+  // decode synchronously. This ensures we always get frames, even if background thread is slow.
+  log_debug_every(1000000, "Prefetch frame not ready, falling back to synchronous decode");
+
+  // CRITICAL: Hold mutex while accessing FFmpeg decoder
+  mutex_lock(&decoder->prefetch_mutex);
+
   // Read packets until we get a video frame
+  image_t *result = NULL;
   while (true) {
-    // Read next packet
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
     if (ret < 0) {
       if (ret == AVERROR_EOF) {
         decoder->eof_reached = true;
       }
-      return NULL;
+      break;
     }
 
     // Check if this is a video packet
@@ -565,7 +783,6 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
     av_packet_unref(decoder->packet);
 
     if (ret < 0) {
-      log_warn("Error sending video packet to decoder");
       continue;
     }
 
@@ -574,8 +791,7 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
     if (ret == AVERROR(EAGAIN)) {
       continue; // Need more packets
     } else if (ret < 0) {
-      log_warn("Error receiving video frame from decoder");
-      return NULL;
+      break;
     }
 
     // Update position tracking
@@ -586,17 +802,16 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
     int width = decoder->video_codec_ctx->width;
     int height = decoder->video_codec_ctx->height;
 
-    // Reallocate image if needed
-    if (!decoder->current_image || decoder->current_image->w != width || decoder->current_image->h != height) {
-
+    // Allocate current_image if needed
+    if (!decoder->current_image || (int)decoder->current_image->w != width ||
+        (int)decoder->current_image->h != height) {
       if (decoder->current_image) {
         image_destroy(decoder->current_image);
       }
-
       decoder->current_image = image_new((size_t)width, (size_t)height);
       if (!decoder->current_image) {
         log_error("Failed to allocate image");
-        return NULL;
+        break;
       }
     }
 
@@ -607,8 +822,61 @@ image_t *ffmpeg_decoder_read_video_frame(ffmpeg_decoder_t *decoder) {
     sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
               dst_data, dst_linesize);
 
-    return decoder->current_image;
+    result = decoder->current_image;
+    break;
   }
+
+  mutex_unlock(&decoder->prefetch_mutex);
+  return result;
+}
+
+/**
+ * @brief Start the background frame prefetching thread
+ *
+ * Starts a background thread that continuously reads and decodes video frames,
+ * storing them in double-buffer structures. The render loop pulls frames from
+ * these buffers. This prevents the render thread from blocking on YouTube HTTP requests.
+ */
+asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder) {
+  if (!decoder || decoder->video_stream_idx < 0) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (!decoder->prefetch_image_a || !decoder->prefetch_image_b) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Already running
+  if (decoder->prefetch_thread_running) {
+    return ASCIICHAT_OK;
+  }
+
+  // Reset stop flag and create thread
+  decoder->prefetch_should_stop = false;
+
+  int thread_err = asciichat_thread_create(&decoder->prefetch_thread, ffmpeg_decoder_prefetch_thread_func, decoder);
+  if (thread_err != 0) {
+    return SET_ERRNO(ERROR_THREAD, "Failed to create video prefetch thread");
+  }
+
+  decoder->prefetch_thread_running = true;
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Stop the background frame prefetching thread
+ */
+void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
+  if (!decoder || !decoder->prefetch_thread_running) {
+    return;
+  }
+
+  mutex_lock(&decoder->prefetch_mutex);
+  decoder->prefetch_should_stop = true;
+  mutex_unlock(&decoder->prefetch_mutex);
+
+  asciichat_thread_join(&decoder->prefetch_thread, NULL);
+  decoder->prefetch_thread_running = false;
 }
 
 bool ffmpeg_decoder_has_video(ffmpeg_decoder_t *decoder) {

@@ -19,11 +19,13 @@
 #include "util/time.h"
 #include "audio/audio.h"
 #include "media/source.h"
+#include "media/ffmpeg_decoder.h"
 #include "platform/keyboard.h"
 #include "asciichat_errno.h"
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <math.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -163,21 +165,52 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         continue; // Skip frame capture and rendering, keep loop running
       }
 
-      // Profile: frame capture
-      image = session_capture_read_frame(capture);
-      uint64_t capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
+      // Profile: frame capture with detailed retry tracking
+      static uint64_t retry_count = 0;
+      static uint64_t max_retries = 0;
+      uint64_t loop_retry_count = 0;
+      uint64_t capture_elapsed_ns = 0;
 
+      do {
+        image = session_capture_read_frame(capture);
+        capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
+
+        if (!image) {
+          // Check if we've reached end of file for media sources
+          if (session_capture_at_end(capture)) {
+            log_info("Media source reached end of file");
+            break; // Exit render loop - end of media
+          }
+          loop_retry_count++;
+          retry_count++;
+
+          // Brief delay before retry on temporary frame unavailability
+          if (loop_retry_count <= 1 || frame_count % 100 == 0) {
+            if (loop_retry_count == 1 && frame_count > 0) {
+              log_debug_every(500000, "FRAME_WAIT: retry at frame %lu (waited %.1f ms so far)", frame_count,
+                              (double)capture_elapsed_ns / 1000000.0);
+            }
+          }
+
+          // Track max retry count for diagnostic logging
+          if (loop_retry_count > max_retries) {
+            max_retries = loop_retry_count;
+          }
+
+          platform_sleep_usec(10000); // 10ms
+          continue;
+        }
+
+        // Frame obtained successfully
+        if (loop_retry_count > 0) {
+          double wait_ms = (double)capture_elapsed_ns / 1000000.0;
+          log_debug_every(1000000, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count, wait_ms);
+        }
+        break; // Exit retry loop
+      } while (true);
+
+      // Skip frame rendering if we still don't have an image after retries
       if (!image) {
-        // Check if we've reached end of file for media sources
-        if (session_capture_at_end(capture)) {
-          log_info("Media source reached end of file");
-          break; // Exit render loop - end of media
-        }
-        // Brief delay before retry on temporary frame unavailability
-        if (frame_count > 0 && frame_count % 100 == 0) {
-          log_debug("FRAME_STALL: decoder not ready at frame %lu (waiting for data)", frame_count);
-        }
-        platform_sleep_usec(10000); // 10ms
         continue;
       }
 
@@ -289,6 +322,22 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       keyboard_key_t key = keyboard_read_nonblocking();
       if (key != KEY_NONE) {
         keyboard_handler(capture, key, user_data);
+      }
+    }
+
+    // Audio-Video Synchronization: Periodically sync audio to match current video frame
+    // This ensures audio and video don't drift apart over time
+    if (is_synchronous && capture && image && frame_count % 60 == 0) {
+      // Sync audio to video every 60 frames (~2.5 seconds at 24fps)
+      // This keeps audio/video synchronized by seeking audio to match video's current PTS
+      media_source_t *source = session_capture_get_media_source(capture);
+      if (source) {
+        asciichat_error_t sync_err = media_source_sync_audio_to_video(source);
+        if (sync_err == ASCIICHAT_OK) {
+          log_debug_every(5000000, "AUDIO_SYNC: Synchronized audio to video at frame %lu", frame_count);
+        } else {
+          log_debug_every(5000000, "AUDIO_SYNC: Sync failed (not available for this source type)");
+        }
       }
     }
 
