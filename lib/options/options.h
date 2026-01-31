@@ -1274,8 +1274,6 @@ options_t options_t_new(void);
  *
  * @ingroup options
  */
-const char *options_get_log_filename_from_argv(int argc, char *argv[]);
-
 /**
  * @brief Initialize all command-line options from argv and environment variables
  *

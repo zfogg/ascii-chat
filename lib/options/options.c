@@ -652,41 +652,7 @@ options_t options_t_new_preserve_binary(const options_t *source) {
   return opts;
 }
 
-// Detect mode from argv and return the corresponding log filename
-// This is used during early logging initialization before options_init completes
-const char *options_get_log_filename_from_argv(int argc, char *argv[]) {
-  if (!argv) {
-    log_warn("options_get_log_filename_from_argv: argv is NULL");
-    return "ascii-chat.log";
-  }
-
-  // Scan argv for first non-option argument (the mode)
-  for (int i = 1; i < argc; i++) {
-    const char *arg = argv[i];
-    if (!arg || arg[0] == '-') {
-      continue; // Skip options
-    }
-
-    // Found first positional argument - this is the mode
-    if (strcmp(arg, "server") == 0)
-      return "server.log";
-    if (strcmp(arg, "client") == 0)
-      return "client.log";
-    if (strcmp(arg, "mirror") == 0)
-      return "mirror.log";
-    if (strcmp(arg, "discovery-service") == 0)
-      return "acds.log";
-    if (strcmp(arg, "discovery") == 0)
-      return "discovery.log";
-    // Unknown mode - let options_init handle the error
-    break;
-  }
-
-  // No mode specified, default to ascii-chat.log
-  return "ascii-chat.log";
-}
-
-char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
+static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t opts) {
   // Determine log filename based on mode
   const char *log_filename = SAFE_MALLOC(PLATFORM_MAX_PATH_LENGTH, char *);
   switch (detected_mode) {
