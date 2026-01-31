@@ -349,6 +349,23 @@ static const registry_entry_t g_configuration_entries[] = {
      false,
      OPTION_MODE_BINARY,
      {0}},
+    {"color-scheme-create",
+     '\0',
+     OPTION_TYPE_STRING,
+     0,
+     NULL,
+     0,
+     "Export color scheme to TOML format (optionally specify scheme name and output file)",
+     "CONFIGURATION",
+     "[SCHEME] [FILE]",
+     false,
+     NULL,
+     NULL,
+     NULL,
+     true, /* optional_arg - scheme name is optional */
+     false,
+     OPTION_MODE_BINARY,
+     {.input_type = OPTION_INPUT_STRING}},
     REGISTRY_TERMINATOR()};
 
 // ============================================================================
@@ -434,6 +451,23 @@ static const registry_entry_t g_terminal_entries[] = {
      false,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
      {.numeric_range = {10, 256, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC}},
+    {"color-scheme",
+     '\0',
+     OPTION_TYPE_STRING,
+     offsetof(options_t, color_scheme_name),
+     OPT_COLOR_SCHEME_NAME_DEFAULT,
+     sizeof(((options_t *)0)->color_scheme_name),
+     "Color scheme for logging output (pastel, nord, solarized-dark, dracula, gruvbox-dark, monokai, etc.)",
+     "TERMINAL",
+     "NAME",
+     false,
+     "ASCII_CHAT_COLOR_SCHEME",
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.input_type = OPTION_INPUT_STRING}},
 
     REGISTRY_TERMINATOR()};
 
