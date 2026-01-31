@@ -230,6 +230,7 @@ char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_s
   return value_str;
 
 error:
+  (void)0;
   const char *mode_name = (mode == MODE_SERVER ? "server" : (mode == MODE_MIRROR ? "mirror" : "client"));
   log_error("%s: option '--%s' requires an argument", mode_name, option_name);
   return NULL; // Signal error to caller
