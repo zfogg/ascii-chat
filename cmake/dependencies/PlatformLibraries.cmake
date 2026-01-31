@@ -55,6 +55,7 @@ else()
         find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
         find_library(COREMEDIA_FRAMEWORK CoreMedia REQUIRED)
         find_library(COREVIDEO_FRAMEWORK CoreVideo REQUIRED)
+        find_library(IOKIT_FRAMEWORK IOKit REQUIRED)
 
         # Audio frameworks (required for static portaudio)
         find_library(COREAUDIO_FRAMEWORK CoreAudio REQUIRED)

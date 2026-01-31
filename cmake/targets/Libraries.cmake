@@ -170,6 +170,19 @@ else()
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
+        # Optional: Link libsystemd on Linux for keepawake functionality
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
+            if(LIBSYSTEMD_FOUND)
+                target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+                target_link_libraries(ascii-chat-platform ${LIBSYSTEMD_LIBRARIES})
+                target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
+                message(STATUS "libsystemd found: keepawake support enabled")
+            else()
+                message(STATUS "libsystemd not found: keepawake disabled on Linux (non-critical)")
+            endif()
+        endif()
     endif()
 endif()
 
@@ -573,6 +586,8 @@ if(BUILDING_OBJECT_LIBS)
             ${AUDIOTOOLBOX_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK}
         )
+        # Link IOKit framework for keepawake functionality
+        target_link_options(ascii-chat-shared PRIVATE "SHELL:-framework IOKit")
     elseif(PLATFORM_LINUX AND JACK_LIB)
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES}

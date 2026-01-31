@@ -1312,6 +1312,14 @@ int server_main(void) {
   // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
   log_set_terminal_output(!GET_OPTION(quiet));
 
+  // Enable keepawake mode if not disabled by --no-os-sleep
+  if (!GET_OPTION(no_os_sleep)) {
+    asciichat_error_t err = platform_enable_keepawake();
+    if (err != ASCIICHAT_OK) {
+      log_warn("Failed to enable keepawake mode (this is non-critical)");
+    }
+  }
+
   log_info("ascii-chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
@@ -2155,6 +2163,9 @@ cleanup:
   // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
   // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
   buffer_pool_cleanup_global();
+
+  // Disable keepawake mode (re-allow OS to sleep)
+  platform_disable_keepawake();
 
   // Clean up binary path cache explicitly
   // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent

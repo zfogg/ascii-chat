@@ -15,7 +15,8 @@
 #include "../../util/string.h"
 #include "../../util/time.h"
 #include "../../util/utf8.h"
-#include "../symbols.h" // For symbol cache
+#include "../symbols.h"            // For symbol cache
+#include "../../options/options.h" // For options_get()
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>

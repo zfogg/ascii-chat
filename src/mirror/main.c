@@ -174,6 +174,14 @@ static bool mirror_display_should_exit_adapter(void *user_data) {
 int mirror_main(void) {
   log_info("Starting mirror mode");
 
+  // Enable keepawake mode if not disabled by --no-os-sleep
+  if (!GET_OPTION(no_os_sleep)) {
+    asciichat_error_t err = platform_enable_keepawake();
+    if (err != ASCIICHAT_OK) {
+      log_warn("Failed to enable keepawake mode (this is non-critical)");
+    }
+  }
+
   // Install console control-c handler
   platform_set_console_ctrl_handler(mirror_console_ctrl_handler);
 
@@ -363,6 +371,9 @@ int mirror_main(void) {
   }
 
   // Cleanup
+  // Disable keepawake mode (re-allow OS to sleep)
+  platform_disable_keepawake();
+
   // In snapshot mode, suppress shutdown logs to preserve the rendered ASCII art
   // Re-enable terminal output for shutdown message only if not in snapshot mode and not --quiet
   if (!GET_OPTION(snapshot_mode) && !GET_OPTION(quiet)) {

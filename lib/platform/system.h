@@ -159,6 +159,43 @@ asciichat_error_t platform_request_timer_precision(int precision);
  */
 asciichat_error_t platform_restore_timer_resolution(void);
 
+/**
+ * @brief Enable system sleep prevention (keepawake mode)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Prevents the operating system from entering sleep mode while the application is running.
+ *
+ * Platform-specific implementations:
+ *   - macOS: Uses IOKit power assertions (IOPMAssertionCreateWithName)
+ *   - Linux: Uses systemd-inhibit if available, gracefully degrades if unavailable
+ *   - Windows: Uses SetThreadExecutionState with ES_SYSTEM_REQUIRED and ES_DISPLAY_REQUIRED
+ *
+ * @note Logs warning and returns OK if platform doesn't support keepawake
+ * @note Safe to call multiple times (checks for already-enabled state)
+ * @note Call platform_disable_keepawake() to revert
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_enable_keepawake(void);
+
+/**
+ * @brief Disable system sleep prevention (allow OS to sleep)
+ *
+ * Allows the operating system to enter sleep mode. This reverts the effect
+ * of platform_enable_keepawake().
+ *
+ * Platform-specific implementations:
+ *   - macOS: Releases the IOKit power assertion
+ *   - Linux: Closes the systemd-inhibit file descriptor
+ *   - Windows: Clears all execution state flags
+ *
+ * @note Safe to call even if keepawake was never enabled
+ * @note Safe to call multiple times
+ *
+ * @ingroup platform
+ */
+void platform_disable_keepawake(void);
+
 #ifdef _WIN32
 // usleep macro - only define if not already declared (GCC's unistd.h declares it as a function)
 // On Windows with GCC/Clang, usleep may be available via unistd.h, so we check for that

@@ -18,6 +18,7 @@
 #include "util/time.h"
 #include "util/utf8.h"
 #include "../symbols.h"
+#include "options/options.h"
 
 #include <dbghelp.h>
 #include <wincrypt.h>

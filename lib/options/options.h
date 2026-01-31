@@ -835,6 +835,7 @@ typedef struct options_state {
   unsigned short int strip_ansi;    ///< Strip ANSI escape sequences
   char log_file[OPTIONS_BUFF_SIZE]; ///< Log file path
   log_level_t log_level;            ///< Log level threshold
+  unsigned short int no_os_sleep;   ///< Disable keepawake mode (allow OS to sleep)
 
   // ============================================================================
   // Encryption Options

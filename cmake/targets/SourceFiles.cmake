@@ -124,6 +124,7 @@ if(WIN32)
         lib/platform/windows/terminal.c
         lib/platform/windows/keyboard.c
         lib/platform/windows/system.c
+        lib/platform/windows/keepawake.c
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
         lib/platform/windows/question.c
@@ -166,10 +167,12 @@ elseif(PLATFORM_POSIX)
 
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
+            lib/platform/macos/keepawake.c
             lib/video/webcam/macos/webcam_avfoundation.m
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
+            lib/platform/linux/keepawake.c
             lib/video/webcam/linux/webcam_v4l2.c
         )
     else()
