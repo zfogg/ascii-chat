@@ -327,17 +327,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     }
 
     // Audio-Video Synchronization: Keep audio and video in sync by periodically adjusting audio to match video time
-    if (is_synchronous && capture && image && frame_count % 30 == 0) {
-      // Sync audio to video every 30 frames to keep them synchronized
-      // This prevents audio from drifting ahead or behind video
-      media_source_t *source = session_capture_get_media_source(capture);
-      if (source) {
-        asciichat_error_t sync_err = media_source_sync_audio_to_video(source);
-        if (sync_err == ASCIICHAT_OK) {
-          log_debug_every(3000000, "AUDIO_SYNC: Synchronized audio to video at frame %lu", frame_count);
-        }
-      }
-    }
+    // DISABLED: Audio sync causes seeking every 1 second, which interrupts playback
+    // For file/media playback (mirror mode), audio and video decode independently
+    // and don't need synchronization - they play at their natural rates from the file.
+    // Audio sync is only needed for multi-client video conferencing (server mode).
+    //
+    // if (is_synchronous && capture && image && frame_count % 30 == 0) {
+    //   media_source_sync_audio_to_video(source);
+    // }
 
     // Frame rate limiting: Only sleep if we're ahead of schedule
     // If decoder is slow and we're already behind, don't add extra sleep

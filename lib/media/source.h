@@ -353,29 +353,26 @@ bool media_source_at_end(media_source_t *source);
 asciichat_error_t media_source_rewind(media_source_t *source);
 
 /**
- * @brief Synchronize audio decoder to video position for frame-locked playback
+ * @brief DEPRECATED: Synchronize audio decoder to video position
  * @param source Media source (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Seeks the audio decoder to match the video decoder's current position.
- * Used to maintain audio/video sync in mirror mode when both decoders are used.
+ * @deprecated This function is deprecated and causes audio playback issues.
+ * Forcing audio to video position via seeking every ~1 second interrupts
+ * audio playback with skips and loops. For file/media playback (mirror mode),
+ * audio and video decoders naturally stay in sync when decoding from the same
+ * source at their independent rates. Forced synchronization is not needed and
+ * causes more problems than it solves.
  *
- * **Behavior:**
- * - Reads video decoder's current PTS via media_source_get_position()
- * - Seeks audio decoder to that same PTS
- * - Ensures next audio reads will be from the correct position
+ * DO NOT USE in mirror mode. Audio/video sync should only be needed for
+ * complex multi-client scenarios (server mode), and even then, seeking is
+ * a poor solution that causes discontinuities.
  *
- * **Usage:**
- * After calling media_source_read_video(), call this function before the
- * PortAudio callback reads audio samples. This keeps them synchronized.
- *
- * @note FILE sources only (returns OK for others)
- * @note STDIN sources: ERROR_NOT_SUPPORTED (cannot seek stdin)
- * @note No-op for WEBCAM/TEST sources
- *
+ * @note This function is being phased out. Use natural decode rates instead.
  * @ingroup media
  */
-asciichat_error_t media_source_sync_audio_to_video(media_source_t *source);
+asciichat_error_t media_source_sync_audio_to_video(media_source_t *source)
+    __attribute__((deprecated("Use natural audio/video decode rates instead - seeking causes skips and loops")));
 
 /**
  * @brief Seek media source to timestamp

@@ -215,9 +215,10 @@ static void *audio_worker_thread(void *arg) {
       if (wait_time_ns > max_wait_ns)
         max_wait_ns = wait_time_ns;
     } else {
-      // Output-only: no wait, just add a small sleep to avoid busy-looping
-      Pa_Sleep(5);     // 5ms sleep between writes
-      wait_result = 1; // Treat as timeout to trigger processing
+      // Output-only mode: no wait needed, callback handles audio delivery
+      // Just sleep briefly to avoid busy-looping
+      Pa_Sleep(5);
+      wait_result = 1;
     }
 
     // Check shutdown flag
@@ -348,61 +349,8 @@ static void *audio_worker_thread(void *arg) {
     }
 
     // STEP 2: Output/Playback handling
-    // For output-only mode (no input callback), actively write audio data using Pa_WriteStream
-    if (ctx->output_stream && !ctx->input_stream && !ctx->duplex_stream) {
-      static int output_mode_logged = 0;
-      if (output_mode_logged++ == 0) {
-        log_warn("!!! WORKER ENTERING OUTPUT-ONLY MODE: output_stream=%p, reading from media_source=%p !!!",
-                 (void *)ctx->output_stream, (void *)ctx->media_source);
-      }
-
-      // Output-only mode: read from media_source or playback_buffer and write to output stream
-      START_TIMER("worker_output_writing");
-
-      // Allocate temporary buffer for output audio
-      float *output_buffer = (float *)alloca(WORKER_BATCH_SAMPLES * sizeof(float));
-      size_t samples_to_write = WORKER_BATCH_SAMPLES;
-      size_t samples_available = 0;
-
-      // Try to read from media_source (mirror/playback mode)
-      if (ctx->media_source) {
-        samples_available = media_source_read_audio((void *)ctx->media_source, output_buffer, samples_to_write);
-        if (samples_available > 0) {
-          log_debug_every(100000, "Worker: read %zu samples from media_source", samples_available);
-        }
-      } else if (ctx->playback_buffer) {
-        // Fallback: read from playback buffer (network mode)
-        samples_available = audio_ring_buffer_read(ctx->playback_buffer, output_buffer, samples_to_write);
-        if (samples_available > 0) {
-          log_debug_every(100000, "Worker: read %zu samples from playback_buffer", samples_available);
-        }
-      }
-
-      // If we have audio data, write it to the output stream
-      if (samples_available > 0) {
-        // Write to output stream (blocking call)
-        unsigned long frames_to_write = samples_available / AUDIO_CHANNELS;
-        PaError write_err = Pa_WriteStream(ctx->output_stream, output_buffer, frames_to_write);
-        if (write_err != paNoError) {
-          log_warn_every(LOG_RATE_FAST, "Pa_WriteStream failed: %s", Pa_GetErrorText(write_err));
-        } else {
-          log_debug_every(100000, "Worker: wrote %lu frames to output stream", frames_to_write);
-        }
-      } else {
-        // No audio available - write silence to keep stream alive
-        SAFE_MEMSET(output_buffer, samples_to_write * sizeof(float), 0, samples_to_write * sizeof(float));
-        PaError write_err = Pa_WriteStream(ctx->output_stream, output_buffer, samples_to_write / AUDIO_CHANNELS);
-        if (write_err != paNoError && write_err != paOutputOverflow) {
-          log_warn_every(LOG_RATE_FAST, "Pa_WriteStream silence failed: %s", Pa_GetErrorText(write_err));
-        }
-      }
-
-      double output_time_ns = STOP_TIMER("worker_output_writing");
-      total_playback_ns += output_time_ns;
-      if (output_time_ns > max_playback_ns)
-        max_playback_ns = output_time_ns;
-    }
-    // For duplex/input modes, playback is handled by callbacks directly
+    // With output_callback registered, PortAudio handles calling it automatically
+    // No need for worker thread to manually write data via Pa_WriteStream
     (void)playback_available; // Suppress unused variable warning if not used in this build
 
     // Log overall loop iteration time
@@ -1411,32 +1359,24 @@ void audio_flush_playback_buffers(audio_context_t *ctx) {
 }
 
 asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
-  log_warn(">>> audio_start_duplex ENTRY: ctx=%p <<<", (void *)ctx);
   if (!ctx || !ctx->initialized) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }
 
   // Initialize PortAudio here, when we actually need to open streams
   // This defers Pa_Initialize() until necessary, avoiding premature ALSA allocation
-  log_debug("audio_start_duplex: calling audio_ensure_portaudio_initialized");
   asciichat_error_t pa_result = audio_ensure_portaudio_initialized();
-  log_debug("audio_start_duplex: audio_ensure_portaudio_initialized returned %d", pa_result);
   if (pa_result != ASCIICHAT_OK) {
-    log_warn(">>> audio_start_duplex EARLY RETURN (pa_init failed): %d <<<", pa_result);
     return pa_result;
   }
 
-  log_warn(">>> audio_start_duplex ACQUIRING MUTEX <<<");
   mutex_lock(&ctx->state_mutex);
 
   // Already running?
   if (ctx->duplex_stream || ctx->input_stream || ctx->output_stream) {
-    log_warn(">>> audio_start_duplex EARLY RETURN (already running) <<<");
     mutex_unlock(&ctx->state_mutex);
     return ASCIICHAT_OK;
   }
-
-  log_warn(">>> audio_start_duplex PROCEEDING: playback_only=%d <<<", ctx->playback_only);
 
   // Setup input parameters (skip if playback-only mode)
   PaStreamParameters inputParams = {0};
@@ -1516,9 +1456,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   bool try_separate = rates_differ || !has_input || !has_output;
   PaError err = paNoError;
 
-  log_warn(">>> PATH DECISION: try_separate=%d (has_input=%d, has_output=%d, rates_differ=%d) <<<", try_separate,
-           has_input, has_output, rates_differ);
-
   if (!try_separate) {
     // Try full-duplex first (preferred - perfect AEC3 timing)
     err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
@@ -1572,10 +1509,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
       log_debug("Attempting output at %.0f Hz (preferred) vs %.0f Hz (native)", preferred_rate, native_rate);
 
-      // For output-only mode (no input), use blocking mode (NULL callback)
-      // The worker thread will actively write data via Pa_WriteStream()
-      // For duplex mode, we'd use a callback, but we're in separate streams mode here
-      PaStreamCallback *callback = has_input ? output_callback : NULL;
+      // Always use output_callback for output streams (both output-only and duplex modes)
+      // PortAudio will invoke the callback whenever it needs audio data
+      // The callback reads from media_source (mirror mode) or playback buffers (network mode)
+      PaStreamCallback *callback = output_callback;
 
       // Try preferred rate first
       err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
@@ -1673,8 +1610,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     }
 
     // Check if we got at least one stream working
-    log_warn(">>> STREAM CHECK: has_input=%d, has_output=%d, input_ok=%d, output_ok=%d <<<", has_input, has_output,
-             input_ok, output_ok);
     if (!input_ok && !output_ok) {
       // Neither stream works - fail completely
       audio_ring_buffer_destroy(ctx->render_buffer);
@@ -1695,17 +1630,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     }
 
     // Start output stream if it's open
-    log_warn(">>> BEFORE STREAM START: output_stream=%p, input_stream=%p, try_separate=%d <<<",
-             (void *)ctx->output_stream, (void *)ctx->input_stream, try_separate);
-    log_warn(">>> CHECK: output_stream=%p <<<", (void *)ctx->output_stream);
     if (ctx->output_stream) {
-      log_warn(">>> STARTING OUTPUT STREAM <<<");
       err = Pa_StartStream(ctx->output_stream);
-      log_warn(">>> OUTPUT STREAM STARTED: %s (err=%d) <<<", Pa_GetErrorText(err), err);
-      if (err == paNoError) {
-        int stream_active = Pa_IsStreamActive(ctx->output_stream);
-        log_warn(">>> OUTPUT STREAM STATE CHECK: active=%d <<<", stream_active);
-      }
       if (err != paNoError) {
         if (ctx->input_stream)
           Pa_CloseStream(ctx->input_stream);
@@ -1778,14 +1704,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
   ctx->running = true;
   ctx->sample_rate = AUDIO_SAMPLE_RATE;
-
-  log_warn(">>> audio_start_duplex SUCCESS: worker_running=%d, duplex=%p, input=%p, output=%p, separate=%d <<<",
-           ctx->worker_running, (void *)ctx->duplex_stream, (void *)ctx->input_stream, (void *)ctx->output_stream,
-           ctx->separate_streams);
-
   mutex_unlock(&ctx->state_mutex);
-
-  log_warn(">>> audio_start_duplex RETURNING OK <<<");
   return ASCIICHAT_OK;
 }
 

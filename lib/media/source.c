@@ -628,6 +628,14 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
 }
 
 asciichat_error_t media_source_sync_audio_to_video(media_source_t *source) {
+  // DEPRECATED: This function is deprecated and causes audio playback issues.
+  // Seeking the audio decoder to match video position every ~1 second causes
+  // audio skips and loops. Audio and video naturally stay synchronized when
+  // decoding independently from the same source.
+
+  log_warn("DEPRECATED: media_source_sync_audio_to_video() called - this function causes audio playback issues. "
+           "Use natural decode rates instead.");
+
   if (!source) {
     return ERROR_INVALID_PARAM;
   }
@@ -642,13 +650,13 @@ asciichat_error_t media_source_sync_audio_to_video(media_source_t *source) {
     return ASCIICHAT_OK;
   }
 
+  // NOTE: The actual sync code is disabled because it causes problems.
   // Get video decoder's current PTS
-  double video_pts = ffmpeg_decoder_get_position(source->video_decoder);
-
+  // double video_pts = ffmpeg_decoder_get_position(source->video_decoder);
   // If we have a valid PTS, seek audio decoder to that position
-  if (video_pts >= 0.0) {
-    return ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, video_pts);
-  }
+  // if (video_pts >= 0.0) {
+  //   return ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, video_pts);
+  // }
 
   return ASCIICHAT_OK;
 }
@@ -679,21 +687,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
 
   mutex_lock(&source->seek_access_mutex);
 
-  bool video_prefetch_was_running = false;
-  if (source->video_decoder) {
-    video_prefetch_was_running = ffmpeg_decoder_is_prefetch_running(source->video_decoder);
-    if (video_prefetch_was_running) {
-      ffmpeg_decoder_stop_prefetch(source->video_decoder);
-    }
-  }
-
-  bool audio_prefetch_was_running = false;
-  if (source->audio_decoder && !source->is_shared_decoder) {
-    audio_prefetch_was_running = ffmpeg_decoder_is_prefetch_running(source->audio_decoder);
-    if (audio_prefetch_was_running) {
-      ffmpeg_decoder_stop_prefetch(source->audio_decoder);
-    }
-  }
+  // With condition variable synchronization, we don't need to stop the prefetch thread
+  // It will pause automatically when seeking_in_progress is set in ffmpeg_decoder_seek_to_timestamp
 
   if (source->is_shared_decoder) {
     mutex_lock(&source->decoder_mutex);
@@ -739,12 +734,8 @@ asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec
     mutex_unlock(&source->decoder_mutex);
   }
 
-  if (video_prefetch_was_running && source->video_decoder) {
-    ffmpeg_decoder_start_prefetch(source->video_decoder);
-  }
-  if (audio_prefetch_was_running && source->audio_decoder && !source->is_shared_decoder) {
-    ffmpeg_decoder_start_prefetch(source->audio_decoder);
-  }
+  // Prefetch thread automatically resumes when seeking_in_progress is cleared and signaled
+  // No need to explicitly restart it
 
   mutex_unlock(&source->seek_access_mutex);
 

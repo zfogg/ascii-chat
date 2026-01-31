@@ -323,20 +323,20 @@ void *session_capture_get_audio_context(session_capture_ctx_t *ctx);
 void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_ctx);
 
 /**
- * @brief Synchronize audio decoder to video position for frame-locked playback
+ * @brief DEPRECATED: Synchronize audio decoder to video position
  * @param ctx Capture context (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Keeps the audio decoder synchronized with the video decoder's current position.
- * Used in mirror mode to ensure audio and video frames stay in sync.
+ * @deprecated This function is deprecated. Forcing audio to video position via
+ * seeking causes audio playback issues (skips and loops). Use natural audio/video
+ * decode rates instead - they stay naturally synchronized when decoding from the
+ * same source.
  *
- * **Usage:**
- * Call this after each session_capture_read_frame() to sync the audio decoder
- * to the video frame's timestamp before the PortAudio callback reads audio.
- *
+ * @note This function is being phased out.
  * @ingroup session
  */
-asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx);
+asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx)
+    __attribute__((deprecated("Seeking causes audio skips and loops - use natural decode rates")));
 
 /** @} */
 

@@ -511,6 +511,10 @@ void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_c
 }
 
 asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx) {
+  // DEPRECATED: This function is deprecated. Seeking audio to match video causes
+  // audio playback interruptions. Audio and video stay naturally synchronized when
+  // decoding independently from the same source.
+
   if (!ctx || !ctx->initialized || !ctx->source) {
     return ERROR_INVALID_PARAM;
   }
