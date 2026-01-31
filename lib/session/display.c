@@ -274,13 +274,40 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   unsigned short int height = GET_OPTION(height);
   bool stretch = GET_OPTION(stretch);
   bool preserve_aspect_ratio = !stretch;
+  bool flip = GET_OPTION(webcam_flip);
 
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
 
+  // Apply horizontal flip if requested
+  image_t *flipped_image = NULL;
+  const image_t *display_image = image;
+
+  if (flip && image->w > 1 && image->pixels) {
+    flipped_image = image_new((size_t)image->w, (size_t)image->h);
+    if (flipped_image) {
+      // Flip image horizontally (mirror left-right)
+      for (int y = 0; y < image->h; y++) {
+        for (int x = 0; x < image->w; x++) {
+          int src_idx = y * image->w + (image->w - 1 - x);
+          int dst_idx = y * image->w + x;
+          flipped_image->pixels[dst_idx] = image->pixels[src_idx];
+        }
+      }
+      display_image = flipped_image;
+    }
+  }
+
   // Call the standard ASCII conversion using context's palette and capabilities
-  return ascii_convert_with_capabilities(image, width, height, &caps_copy, preserve_aspect_ratio, stretch,
-                                         ctx->palette_chars);
+  char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
+                                                 stretch, ctx->palette_chars);
+
+  // Clean up flipped image if created
+  if (flipped_image) {
+    image_destroy(flipped_image);
+  }
+
+  return result;
 }
 
 /* ============================================================================
