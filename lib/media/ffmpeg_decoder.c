@@ -198,8 +198,28 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   // Suppress FFmpeg's probing output (device detection, format warnings, etc.)
   platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
 
+  // Configure FFmpeg options for HTTP streaming performance
+  AVDictionary *options = NULL;
+
+  // For HTTP/HTTPS streams: enable fast probing and reconnection
+  if (path && (strstr(path, "http://") == path || strstr(path, "https://") == path)) {
+    // Limit probing to 32KB for faster format detection
+    av_dict_set(&options, "probesize", "32768", 0);
+    // Analyze for 100ms max to determine streams quickly
+    av_dict_set(&options, "analyzeduration", "100000", 0);
+    // Enable auto-reconnection for interrupted connections
+    av_dict_set(&options, "reconnect", "1", 0);
+    // Allow reconnection for streamed protocols
+    av_dict_set(&options, "reconnect_streamed", "1", 0);
+    // Set reasonable I/O timeout (10 seconds)
+    av_dict_set(&options, "rw_timeout", "10000000", 0);
+  }
+
   // Open input file
-  if (avformat_open_input(&decoder->format_ctx, path, NULL, NULL) < 0) {
+  int ret = avformat_open_input(&decoder->format_ctx, path, NULL, &options);
+  av_dict_free(&options); // Free options dictionary
+
+  if (ret < 0) {
     platform_stderr_restore(stderr_handle);
     SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open media file: %s", path);
     SAFE_FREE(decoder);

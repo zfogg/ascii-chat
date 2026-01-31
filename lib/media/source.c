@@ -171,34 +171,44 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    // Create separate decoders for video and audio
-    // Both YouTube URLs and local files use separate decoders to allow independent read rates
-    // This prevents oscillation issues when video and audio threads read at different times
-
-    source->video_decoder = ffmpeg_decoder_create(effective_path);
-    if (!source->video_decoder) {
-      log_error("Failed to open media file for video: %s", effective_path);
-      SAFE_FREE(source->file_path);
-      SAFE_FREE(source->original_youtube_url);
-      SAFE_FREE(source);
-      return NULL;
-    }
-
-    source->audio_decoder = ffmpeg_decoder_create(effective_path);
-    if (!source->audio_decoder) {
-      log_error("Failed to open media file for audio: %s", effective_path);
-      ffmpeg_decoder_destroy(source->video_decoder);
-      source->video_decoder = NULL;
-      SAFE_FREE(source->file_path);
-      SAFE_FREE(source->original_youtube_url);
-      SAFE_FREE(source);
-      return NULL;
-    }
-    source->is_shared_decoder = false;
-
+    // YouTube URLs: Use SINGLE shared decoder (avoid concurrent HTTP connection issues)
+    // Local files: Use SEPARATE decoders (allows independent read rates for audio/video)
     if (is_youtube) {
-      log_debug("Media source: YouTube (separate video/audio decoders)");
+      // YouTube: Create single shared decoder for both video and audio
+      // This avoids creating multiple HTTP connections to the same stream
+      source->video_decoder = ffmpeg_decoder_create(effective_path);
+      if (!source->video_decoder) {
+        log_error("Failed to open YouTube stream: %s", effective_path);
+        SAFE_FREE(source->file_path);
+        SAFE_FREE(source->original_youtube_url);
+        SAFE_FREE(source);
+        return NULL;
+      }
+      source->audio_decoder = source->video_decoder; // Share the same decoder
+      source->is_shared_decoder = true;
+      log_debug("Media source: YouTube (shared video/audio decoder)");
     } else {
+      // Local files: Create separate decoders for independent read rates
+      source->video_decoder = ffmpeg_decoder_create(effective_path);
+      if (!source->video_decoder) {
+        log_error("Failed to open media file for video: %s", effective_path);
+        SAFE_FREE(source->file_path);
+        SAFE_FREE(source->original_youtube_url);
+        SAFE_FREE(source);
+        return NULL;
+      }
+
+      source->audio_decoder = ffmpeg_decoder_create(effective_path);
+      if (!source->audio_decoder) {
+        log_error("Failed to open media file for audio: %s", effective_path);
+        ffmpeg_decoder_destroy(source->video_decoder);
+        source->video_decoder = NULL;
+        SAFE_FREE(source->file_path);
+        SAFE_FREE(source->original_youtube_url);
+        SAFE_FREE(source);
+        return NULL;
+      }
+      source->is_shared_decoder = false;
       log_debug("Media source: File '%s' (separate video/audio decoders)", effective_path);
     }
     break;
@@ -334,13 +344,14 @@ image_t *media_source_read_video(media_source_t *source) {
       mutex_lock(&source->decoder_mutex);
     }
 
-    double pos_before = ffmpeg_decoder_get_position(source->video_decoder);
+    uint64_t frame_read_start_ns = time_get_ns();
     image_t *frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
-    double pos_after = ffmpeg_decoder_get_position(source->video_decoder);
+    uint64_t frame_read_ns = time_elapsed_ns(frame_read_start_ns, time_get_ns());
 
-    if (source->is_shared_decoder && pos_before >= 0 && pos_after >= 0 &&
-        (pos_after < pos_before - 1.0 || pos_after > pos_before + 5.0)) {
-      log_warn("VIDEO POSITION JUMP: %.2f -> %.2f (delta: %.2f sec)", pos_before, pos_after, pos_after - pos_before);
+    if (frame && frame_read_ns > 50000000) { // Log if frame read takes > 50ms
+      double frame_read_ms = (double)frame_read_ns / 1000000.0;
+      log_warn_every(1000000, "SLOW_FRAME_READ: took %.1f ms (YouTube: %s)", frame_read_ms,
+                     source->is_shared_decoder ? "yes" : "no");
     }
 
     // Handle EOF with loop

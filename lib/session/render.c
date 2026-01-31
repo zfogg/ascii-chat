@@ -112,31 +112,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Frame rate timing
   uint64_t frame_count = 0;
   uint64_t frame_start_ns = 0;
-  uint64_t prev_frame_start_ns = 0;
+  uint64_t prev_render_ns = 0; // Track when we actually rendered the last frame
+  uint64_t frame_to_render_ns = 0;
 
   // Main render loop - works for both synchronous and event-driven modes
   while (!should_exit(user_data)) {
     // Frame timing - measure total time to maintain target FPS
     frame_start_ns = time_get_ns();
-
-    // Log actual loop iteration time (time between frame starts) - EVERY frame for debugging
-    if (prev_frame_start_ns > 0) {
-      uint64_t loop_time_ns = time_elapsed_ns(prev_frame_start_ns, frame_start_ns);
-      double loop_time_ms = (double)loop_time_ns / 1000000.0;
-      int fps = GET_OPTION(fps);
-      if (fps > 0) {
-        double expected_ms = 1000.0 / fps;
-        if (frame_count % 30 == 0) {
-          log_info("TIMING[%lu]: loop=%.2f ms (target %.2f ms, %.0f%% of target)", frame_count, loop_time_ms,
-                   expected_ms, (loop_time_ms / expected_ms) * 100.0);
-        }
-        if (loop_time_ms > expected_ms * 1.5) {
-          log_warn("SLOWDOWN: frame-to-frame time %.2f ms (target %.2f ms, %.0f%% slower)", loop_time_ms, expected_ms,
-                   (loop_time_ms / expected_ms - 1.0) * 100.0);
-        }
-      }
-    }
-    prev_frame_start_ns = frame_start_ns;
 
     // Frame capture and timing - mode-dependent
     image_t *image;
@@ -269,6 +251,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         render_start_ns = time_get_ns();
         session_display_render_frame(display, ascii_frame, is_final);
         uint64_t render_elapsed_ns = time_elapsed_ns(render_start_ns, time_get_ns());
+        uint64_t render_complete_ns = time_get_ns();
+        prev_render_ns = render_complete_ns; // Record when this render completed
+
+        // Calculate total time from frame START (frame_start_ns) to render COMPLETE
+        frame_to_render_ns = time_elapsed_ns(frame_start_ns, render_complete_ns);
+        if (frame_count % 30 == 0) {
+          double total_frame_time_ms = (double)frame_to_render_ns / 1000000.0;
+          log_warn("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
+                   total_frame_time_ms);
+        }
 
         // Log render time every 30 frames
         if (frame_count % 30 == 0) {

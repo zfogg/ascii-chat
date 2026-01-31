@@ -334,6 +334,15 @@ image_t *session_capture_read_frame(session_capture_ctx_t *ctx) {
       ctx->paused_after_first_frame = true;
       log_info("Paused (--pause flag)");
     }
+  } else {
+    // Log NULL frame returns to understand frame drop pattern
+    static uint64_t null_frame_count = 0;
+    null_frame_count++;
+    if (null_frame_count % 50 == 0) {
+      log_info_every(2000000, "NULL_FRAME at loop iteration %lu (success rate: %.1f%%)",
+                     null_frame_count + ctx->frame_count,
+                     (double)ctx->frame_count * 100.0 / ((double)ctx->frame_count + (double)null_frame_count));
+    }
   }
 
   return frame;
