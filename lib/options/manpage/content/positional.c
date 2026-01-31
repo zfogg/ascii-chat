@@ -48,7 +48,6 @@ char *manpage_content_generate_positional(const options_config_t *config) {
     // Add examples if present
     if (pos_arg->num_examples > 0) {
       offset += snprintf(buffer + offset, buffer_capacity - offset, ".RS\n");
-      offset += snprintf(buffer + offset, buffer_capacity - offset, ".PP\n");
       offset += snprintf(buffer + offset, buffer_capacity - offset, ".B Examples:\n");
       offset += snprintf(buffer + offset, buffer_capacity - offset, ".nf\n");
       for (size_t j = 0; j < pos_arg->num_examples; j++) {
