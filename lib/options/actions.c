@@ -138,8 +138,8 @@ void action_list_speakers(void) {
 void action_show_capabilities(void) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  // Print title with color (use fprintf instead of log_plain_stderr since logging isn't initialized yet)
-  (void)fprintf(stdout, "%s\n", colored_string(LOG_COLOR_INFO, "Detected Terminal Capabilities:"));
+  // Print title with color
+  log_plain("%s", colored_string(LOG_COLOR_INFO, "Detected Terminal Capabilities:"));
 
   // Column alignment: calculate max label width
   const char *label_color_level = "Color Level:";
@@ -172,7 +172,7 @@ void action_show_capabilities(void) {
     }                                                                                                                  \
     _cap_pos += snprintf(_cap_line_buf + _cap_pos, sizeof(_cap_line_buf) - _cap_pos, " %s",                            \
                          colored_string(value_color, value_str));                                                      \
-    (void)fprintf(stdout, "%s\n", _cap_line_buf);                                                                      \
+    log_plain("%s", _cap_line_buf);                                                                                    \
   } while (0)
 
   // Print Color Level

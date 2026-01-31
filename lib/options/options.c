@@ -721,7 +721,7 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
 
 asciichat_error_t options_init(int argc, char **argv) {
   // Validate arguments (safety check for tests)
-  if (argc < 0 || argc > 1000) {
+  if (argc < 0 || argc > 128) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
   }
   if (argv == NULL) {
@@ -784,7 +784,7 @@ asciichat_error_t options_init(int argc, char **argv) {
             i++; // Skip the setting argument
           } else {
             if (error_msg) {
-              fprintf(stderr, "Error parsing --color: %s\n", error_msg);
+              log_error("Error parsing --color: %s", error_msg);
               free(error_msg);
             }
           }
@@ -802,7 +802,7 @@ asciichat_error_t options_init(int argc, char **argv) {
           color_setting_found = true;
         } else {
           if (error_msg) {
-            fprintf(stderr, "Error parsing --color: %s\n", error_msg);
+            log_error("Error parsing --color: %s", error_msg);
             free(error_msg);
           }
         }
@@ -934,18 +934,18 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
         if (HAS_ERRNO(&err_ctx)) {
-          fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+          log_error("Error creating config: %s", err_ctx.context_message);
         } else if (config_create_path) {
-          fprintf(stderr, "Error: Failed to create config file at %s\n", config_create_path);
+          log_error("Error: Failed to create config file at %s", config_create_path);
         } else {
-          fprintf(stderr, "Error: Failed to generate config\n");
+          log_error("Error: Failed to generate config");
         }
         (void)fflush(stderr); // Flush stderr before exiting
         exit(result);
       }
       if (config_create_path) {
         // File was created successfully
-        printf("Created default config file at: %s\n", config_create_path);
+        log_plain("Created default config file at: %s", config_create_path);
         (void)fflush(stdout);
       }
       // If config_create_path was NULL, config was written to stdout, so no message needed
@@ -959,7 +959,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Resources are loaded automatically based on build type.
       const options_config_t *config = options_preset_unified(NULL, NULL);
       if (!config) {
-        fprintf(stderr, "Error: Failed to get binary options config\n");
+        log_error("Error: Failed to get binary options config");
         return ERROR_MEMORY;
       }
       // Write merged result to stdout
@@ -969,9 +969,9 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (err != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
         if (HAS_ERRNO(&err_ctx)) {
-          fprintf(stderr, "Error: %s\n", err_ctx.context_message);
+          log_error("%s", err_ctx.context_message);
         } else {
-          fprintf(stderr, "Error: Failed to generate man page\n");
+          log_error("Error: Failed to generate man page");
         }
         return err;
       }
@@ -1047,7 +1047,7 @@ asciichat_error_t options_init(int argc, char **argv) {
             i++; // Skip the level argument
           } else {
             if (error_msg) {
-              fprintf(stderr, "Error parsing --log-level: %s\n", error_msg);
+              log_error("Error parsing --log-level: %s", error_msg);
               free(error_msg);
             }
           }
@@ -1082,7 +1082,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Use default config path: ~/.ascii-chat/config.toml
       char *config_dir = get_config_dir();
       if (!config_dir) {
-        fprintf(stderr, "Error: Failed to determine default config directory\n");
+        log_error("Error: Failed to determine default config directory");
         return ERROR_CONFIG;
       }
       snprintf(config_path, sizeof(config_path), "%sconfig.toml", config_dir);
@@ -1094,14 +1094,14 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (result != ASCIICHAT_OK) {
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
-        fprintf(stderr, "Error creating config: %s\n", err_ctx.context_message);
+        log_error("Error creating config: %s", err_ctx.context_message);
       } else {
-        fprintf(stderr, "Error: Failed to create config file at %s\n", config_path);
+        log_error("Error: Failed to create config file at %s", config_path);
       }
       return result;
     }
 
-    printf("Created default config file at: %s\n", config_path);
+    log_plain("Created default config file at: %s", config_path);
     exit(0); // Exit successfully after creating config
   }
 
@@ -1111,7 +1111,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     const char *existing_template_path = "share/man/man1/ascii-chat.1.in";
     const options_config_t *config = options_preset_unified(NULL, NULL);
     if (!config) {
-      fprintf(stderr, "Error: Failed to get binary options config\n");
+      log_error("Error: Failed to get binary options config");
       return ERROR_MEMORY;
     }
 
@@ -1125,14 +1125,14 @@ asciichat_error_t options_init(int argc, char **argv) {
     if (err != ASCIICHAT_OK) {
       asciichat_error_context_t err_ctx;
       if (HAS_ERRNO(&err_ctx)) {
-        fprintf(stderr, "Error: %s\n", err_ctx.context_message);
+        log_error("%s", err_ctx.context_message);
       } else {
-        fprintf(stderr, "Error: Failed to generate man page\n");
+        log_error("Error: Failed to generate man page");
       }
       return err;
     }
 
-    printf("Generated man page: %s\n", existing_template_path);
+    log_plain("Generated man page: %s", existing_template_path);
     exit(0); // Exit successfully after generating man page
   }
 
@@ -1358,9 +1358,9 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Check for unexpected remaining arguments
   if (remaining_argc > 0) {
-    (void)fprintf(stderr, "Error: Unexpected arguments after options:\n");
+    log_error("Error: Unexpected arguments after options:");
     for (int i = 0; i < remaining_argc; i++) {
-      (void)fprintf(stderr, "  %s\n", remaining_argv[i]);
+      log_error("  %s", remaining_argv[i]);
     }
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
