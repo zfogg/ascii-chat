@@ -317,7 +317,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo pacman -S --needed \
       pkg-config autoconf automake libtool \
       ccache \
-      clang llvm lldb lld \
+      clang clang-tools llvm lldb lld \
       libc++ libc++abi \
       cmake ninja make \
       musl mimalloc \
