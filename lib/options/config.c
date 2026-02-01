@@ -1179,8 +1179,7 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, const char *user_config_path, bool strict,
-                                              options_t *opts) {
+asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bool strict, options_t *opts) {
   // Use platform abstraction to find all config.toml files across standard locations
   config_file_list_t config_files = {0};
   asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);

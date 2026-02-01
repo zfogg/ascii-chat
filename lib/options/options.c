@@ -1269,15 +1269,6 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 5: Load Configuration Files
   // ========================================================================
 
-  // Extract --config value from argv before loading config files
-  const char *config_path_to_load = NULL;
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
-      config_path_to_load = argv[i + 1];
-      break;
-    }
-  }
-
   // Extract binary-level options BEFORE config loading (config may reset them)
   binary_level_opts_t binary_before_config = extract_binary_level(&opts);
 
@@ -1289,7 +1280,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Load config files - now uses detected_mode directly for bitmask validation
-  asciichat_error_t config_result = config_load_system_and_user(detected_mode, config_path_to_load, false, &opts);
+  asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // Restore binary-level options (don't let config override command-line options)
