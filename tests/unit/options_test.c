@@ -85,9 +85,13 @@ static void save_options(options_backup_t *backup) {
 
 static void restore_options(const options_backup_t *backup) {
   (void)backup; // Unused parameter
-  // Clean up RCU state after test by shutting down
-  // This ensures the next test starts fresh
-  options_state_shutdown();
+  // Note: We do NOT call options_state_shutdown() here because:
+  // 1. Each test calls options_state_init() in their test macro (line 63)
+  // 2. The RCU state is designed to be reusable across multiple updates
+  // 3. Calling shutdown/init cycles too frequently causes mutex state corruption
+  //    on platforms like macOS where mutexes can't be safely re-initialized
+  // 4. The next test will properly call options_init() which initializes as needed
+  // The global options state is thread-safe and doesn't need aggressive cleanup.
 }
 
 // Helper function to test options_init with fork/exec to avoid exit() calls

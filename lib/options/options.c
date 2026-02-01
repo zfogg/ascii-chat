@@ -291,11 +291,14 @@ static asciichat_error_t options_detect_mode(int argc, char **argv, asciichat_mo
   const asciichat_mode_t mode_values_check[] = {MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
   for (int i = 0; mode_names_check[i] != NULL; i++) {
     if (strcmp(argv[0], mode_names_check[i]) == 0) {
+      log_debug("Mode detected from argv[0]: %s", argv[0]);
       *out_mode = mode_values_check[i];
       *out_mode_index = 0;
       return ASCIICHAT_OK;
     }
   }
+
+  log_debug("argv[0] '%s' is not a mode name, looking for first non-option argument", argv[0]);
 
   // Find the first non-option argument (potential mode or session string)
   // Also detect mirror-specific options to infer mode if no positional arg found
