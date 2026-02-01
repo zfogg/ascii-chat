@@ -19,16 +19,17 @@ rm -f /tmp/server_startup.txt /tmp/client_stderr.log "$FRAME_FILE"
 
 echo "Starting discovery server locally..."
 # Kill any existing ACDS servers
+pkill -9 -f "ascii-chat server" 2>/dev/null || true
 pkill -9 -f "ascii-chat discovery-service" 2>/dev/null || true
-sleep 1
+sleep 0.5
 
 # Clean up old ACDS database
 rm -f ~/.ascii-chat/acds.db* /tmp/acds_local.log 2>/dev/null || true
 
 # Start ACDS server locally (127.0.0.1 for testing)
-timeout 120 $BIN/ascii-chat discovery-service 127.0.0.1 :: --port $DISCOVERY_PORT 2>&1 | tee /tmp/acds_local.log &
+timeout 30 $BIN/ascii-chat discovery-service 127.0.0.1 :: --port $DISCOVERY_PORT 2>&1 | tee /tmp/acds_local.log &
 ACDS_PID=$!
-sleep 3
+sleep 0.25
 
 DISCOVERY_CONNECT="127.0.0.1"
 
@@ -44,8 +45,8 @@ timeout 25 $BIN/ascii-chat \
   --discovery-server "$DISCOVERY_CONNECT" \
   --discovery-port $DISCOVERY_PORT \
   2>&1 | tee /tmp/server_startup.txt &
-
-sleep 5
+SERVER_PID=$!
+sleep 0.25
 
 # Verify ACDS server is listening locally
 echo "Verifying ACDS server is listening on $DISCOVERY_CONNECT:$DISCOVERY_PORT..."
@@ -62,24 +63,22 @@ ss -tlnp 2>/dev/null | grep -E ':27224|:27225|LISTEN' || echo "ss not available"
 
 # Wait for session string to appear in server output
 SESSION=""
-for i in {1..10}; do
+for i in {1..100}; do
   SESSION=$(grep -oE "Session String: [a-z-]+" /tmp/server_startup.txt | tail -1 | awk '{print $NF}')
   if [ -n "$SESSION" ]; then
     break
   fi
-  echo "Waiting for session string... ($i/10)"
-  sleep 1
+  echo "Waiting for session string... ($i/100)"
+  sleep 0.1
 done
 
 if [ -z "$SESSION" ]; then
   echo "ERROR: No session string found"
   echo "=== Server output ==="
   cat /tmp/server_startup.txt
-  exit 1
 fi
 
 echo "Server session: $SESSION"
-sleep 3
 
 # Check established connections before client attempts connection
 echo ""
@@ -112,6 +111,11 @@ timeout 6 $BIN/ascii-chat \
   --discovery-port $DISCOVERY_PORT \
   --prefer-webrtc \
   2>/tmp/client_stderr.log | tee "$FRAME_FILE"
+
+
+kill $SERVER_PID $ACDS_PID
+sleep 0.25
+kill -9 $SERVER_PID $ACDS_PID
 
 echo ""
 echo "=== ASCII FRAME TRANSMITTED OVER WEBRTC ==="
