@@ -16,6 +16,7 @@
  */
 
 #include <stddef.h>
+#include "system.h"
 
 /* ============================================================================
  * Path Validation Helper Macro
