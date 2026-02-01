@@ -14,8 +14,8 @@
 #include "platform/string.h"
 
 static webcam_context_t *global_webcam_ctx = NULL;
-static image_t *cached_test_pattern = NULL;
 static image_t *cached_webcam_frame = NULL;
+static unsigned int frame_counter = 0; // Counter for animated test pattern
 
 asciichat_error_t webcam_init(unsigned short int webcam_index) {
   // Check if test pattern mode is enabled
@@ -59,63 +59,57 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
 image_t *webcam_read(void) {
   // Check if test pattern mode is enabled
   if (GET_OPTION(test_pattern)) {
-    // Use cached test pattern for 60 FPS performance
-    // Generate once on first call, reuse for subsequent calls
-
-    if (!cached_test_pattern) {
-      // Generate a colorful test pattern ONCE on first call
-      cached_test_pattern = image_new(320, 240);
-      if (!cached_test_pattern) {
-        SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
-        return NULL;
-      }
-
-      // Generate a simple color bar pattern (FAST - no per-pixel calculations)
-      for (int y = 0; y < cached_test_pattern->h; y++) {
-        for (int x = 0; x < cached_test_pattern->w; x++) {
-          rgb_pixel_t *pixel = &cached_test_pattern->pixels[y * cached_test_pattern->w + x];
-
-          // Simple color bars (2 vertical sections for 80px width)
-          int grid_x = x / 40;
-
-          // Base pattern: color bars (no floating-point math)
-          switch (grid_x) {
-          case 0: // Red
-            pixel->r = 255;
-            pixel->g = 0;
-            pixel->b = 0;
-            break;
-          case 1: // Green
-          default:
-            pixel->r = 0;
-            pixel->g = 255;
-            pixel->b = 0;
-            break;
-          }
-
-          // Add grid lines for visual separation
-          if (x % 40 == 0 || y % 30 == 0) {
-            pixel->r = 0;
-            pixel->g = 0;
-            pixel->b = 0;
-          }
-        }
-      }
-    }
-
     // Allocate cached frame once (like FFmpeg's current_image)
     // Reuse same buffer for each call to avoid repeated allocations
     if (!cached_webcam_frame) {
-      cached_webcam_frame = image_new(cached_test_pattern->w, cached_test_pattern->h);
+      cached_webcam_frame = image_new(320, 240);
       if (!cached_webcam_frame) {
-        SET_ERRNO(ERROR_MEMORY, "Failed to allocate webcam frame cache");
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
         return NULL;
       }
     }
 
-    // Copy cached pattern to frame buffer
-    memcpy(cached_webcam_frame->pixels, cached_test_pattern->pixels,
-           (size_t)cached_test_pattern->w * cached_test_pattern->h * sizeof(rgb_pixel_t));
+    // Generate animated test pattern each frame
+    // Animation is based on frame counter, respects FPS setting
+    unsigned int animation_phase = frame_counter / 2; // Slow down animation
+    frame_counter++;
+
+    for (int y = 0; y < cached_webcam_frame->h; y++) {
+      for (int x = 0; x < cached_webcam_frame->w; x++) {
+        rgb_pixel_t *pixel = &cached_webcam_frame->pixels[y * cached_webcam_frame->w + x];
+
+        // Animated color bars that shift based on frame counter
+        int animated_x = (x + animation_phase) % cached_webcam_frame->w;
+        int grid_x = animated_x / 40;
+
+        // Base pattern: color bars that animate horizontally
+        switch (grid_x % 3) {
+        case 0: // Red
+          pixel->r = 255;
+          pixel->g = 0;
+          pixel->b = 0;
+          break;
+        case 1: // Green
+          pixel->r = 0;
+          pixel->g = 255;
+          pixel->b = 0;
+          break;
+        case 2: // Blue
+        default:
+          pixel->r = 0;
+          pixel->g = 0;
+          pixel->b = 255;
+          break;
+        }
+
+        // Add animated grid lines
+        if (animated_x % 40 == 0 || y % 30 == 0) {
+          pixel->r = 0;
+          pixel->g = 0;
+          pixel->b = 0;
+        }
+      }
+    }
 
     // Apply horizontal flip if requested (same as real webcam)
     if (GET_OPTION(webcam_flip)) {
@@ -171,12 +165,6 @@ image_t *webcam_read(void) {
 }
 
 void webcam_cleanup(void) {
-  // Free cached test pattern if it was allocated
-  if (cached_test_pattern) {
-    image_destroy(cached_test_pattern);
-    cached_test_pattern = NULL;
-  }
-
   // Free cached webcam frame if it was allocated (from test pattern or real webcam)
   if (cached_webcam_frame) {
     image_destroy(cached_webcam_frame);
