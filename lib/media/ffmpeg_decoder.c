@@ -11,6 +11,7 @@
 #include "platform/system.h"
 #include "platform/thread.h"
 #include "util/time.h"
+#include "options/options.h"
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -483,11 +484,18 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     log_warn("Failed to open video codec (file may be audio-only)");
   }
 
-  // Open audio codec
-  err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                           &decoder->audio_codec_ctx);
-  if (err != ASCIICHAT_OK) {
-    log_warn("Failed to open audio codec (file may be video-only)");
+  // Open audio codec ONLY if audio is enabled
+  if (GET_OPTION(audio_enabled)) {
+    err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
+                             &decoder->audio_codec_ctx);
+    if (err != ASCIICHAT_OK) {
+      log_warn("Failed to open audio codec (file may be video-only)");
+    }
+  } else {
+    // Audio disabled - skip codec initialization to save bandwidth
+    decoder->audio_stream_idx = -1;
+    decoder->audio_codec_ctx = NULL;
+    log_debug("Audio decoding disabled by user option");
   }
 
   // Require at least one stream
@@ -693,10 +701,16 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     log_warn("Failed to open video codec from stdin");
   }
 
-  err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                           &decoder->audio_codec_ctx);
-  if (err != ASCIICHAT_OK) {
-    log_warn("Failed to open audio codec from stdin");
+  if (GET_OPTION(audio_enabled)) {
+    err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
+                             &decoder->audio_codec_ctx);
+    if (err != ASCIICHAT_OK) {
+      log_warn("Failed to open audio codec from stdin");
+    }
+  } else {
+    decoder->audio_stream_idx = -1;
+    decoder->audio_codec_ctx = NULL;
+    log_debug("Audio decoding disabled by user option");
   }
 
   if (decoder->video_stream_idx < 0 && decoder->audio_stream_idx < 0) {
