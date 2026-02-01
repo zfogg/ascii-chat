@@ -67,18 +67,18 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
 static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
     [0]  = {PACKET_TYPE_AUDIO_BATCH,           1},   // hash(4000)=0
     [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      2},   // hash(4001)=1
-    [2]  = {PACKET_TYPE_SERVER_STATE,          3},   // hash(5008)=0, probed->2
-    [8]  = {PACKET_TYPE_ASCII_FRAME,           0},   // hash(3000)=8
+    [9]  = {PACKET_TYPE_PING,                  6},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                  7},   // hash(5002)=10
+    [15] = {PACKET_TYPE_CLEAR_CONSOLE,         8},   // hash(5007)=15
+    [16] = {PACKET_TYPE_SERVER_STATE,          3},   // hash(5008)=16
     [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,  9},   // hash(1201)=17
     [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE, 10},  // hash(1202)=18
     [19] = {PACKET_TYPE_ERROR_MESSAGE,         4},   // hash(2003)=19
     [20] = {PACKET_TYPE_REMOTE_LOG,            5},   // hash(2004)=20
     [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,   13},  // hash(6005)=21
-    [25] = {PACKET_TYPE_PING,                  6},   // hash(5001)=25
-    [26] = {PACKET_TYPE_PONG,                  7},   // hash(5002)=26
-    [27] = {PACKET_TYPE_ACIP_WEBRTC_SDP,       11},  // hash(6009)=25, probed->27
-    [28] = {PACKET_TYPE_ACIP_WEBRTC_ICE,       12},  // hash(6010)=26, probed->28
-    [31] = {PACKET_TYPE_CLEAR_CONSOLE,         8},   // hash(5007)=31
+    [24] = {PACKET_TYPE_ASCII_FRAME,           0},   // hash(3000)=24
+    [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,       11},  // hash(6009)=25
+    [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,       12},  // hash(6010)=26
 };
 // clang-format on
 
@@ -88,19 +88,19 @@ static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
     [0]  = {PACKET_TYPE_AUDIO_BATCH,           2},   // hash(4000)=0
     [1]  = {PACKET_TYPE_PROTOCOL_VERSION,      0},   // hash(1)=1
     [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      3},   // hash(4001)=1, probed->2
-    [9]  = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=9
+    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   4},   // hash(5000)=8
+    [9]  = {PACKET_TYPE_PING,                  5},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                  6},   // hash(5002)=10
+    [11] = {PACKET_TYPE_CLIENT_JOIN,           7},   // hash(5003)=11
+    [12] = {PACKET_TYPE_CLIENT_LEAVE,          8},   // hash(5004)=12
+    [13] = {PACKET_TYPE_STREAM_START,          9},   // hash(5005)=13
+    [14] = {PACKET_TYPE_STREAM_STOP,           10},  // hash(5006)=14
     [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,  13},  // hash(1201)=17
     [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE, 14},  // hash(1202)=18
     [19] = {PACKET_TYPE_ERROR_MESSAGE,         12},  // hash(2003)=19
     [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
     [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE, 15},  // hash(1203)=19, probed->21
-    [24] = {PACKET_TYPE_CLIENT_CAPABILITIES,   4},   // hash(5000)=24
-    [25] = {PACKET_TYPE_PING,                  5},   // hash(5001)=25
-    [26] = {PACKET_TYPE_PONG,                  6},   // hash(5002)=26
-    [27] = {PACKET_TYPE_CLIENT_JOIN,           7},   // hash(5003)=27
-    [28] = {PACKET_TYPE_CLIENT_LEAVE,          8},   // hash(5004)=28
-    [29] = {PACKET_TYPE_STREAM_START,          9},   // hash(5005)=29
-    [30] = {PACKET_TYPE_STREAM_STOP,           10},  // hash(5006)=30
+    [25] = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=25
 };
 // clang-format on
 
