@@ -28,7 +28,7 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options, LOG_FATAL, LOG_DEBUG, true
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBUG, true, true);
 
 // Macro helpers for argv construction without brace-literals at call sites
-#define ARGV_LIST(...) ((char *[]){__VA_ARGS__, NULL})
+#define ARGV_LIST(...) ((char *[]){"program", __VA_ARGS__, NULL})
 #define ARG_WRAP(list) ((char *[])list)
 
 // Usage:
@@ -500,8 +500,8 @@ ParameterizedTestParameters(options, color_mode_validation) {
 }
 
 ParameterizedTest(color_mode_test_case_t *tc, options, color_mode_validation) {
-  char *argv[] = {"client", "--color-mode", (char *)tc->mode_string, NULL};
-  int argc = 3;
+  char *argv[] = {"program", "client", "--color-mode", (char *)tc->mode_string, NULL};
+  int argc = 4;
   options_backup_t backup;
   save_options(&backup);
 
