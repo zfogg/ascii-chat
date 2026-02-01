@@ -321,7 +321,29 @@ int mirror_main(void) {
   // Check if file/URL has audio stream
   // Use capture's media source to check for audio
   media_source_t *audio_probe_source = capture ? session_capture_get_media_source(capture) : NULL;
-  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
+
+  // ============================================================================
+  // Audio Initialization Control
+  // ============================================================================
+  // Skip audio initialization in the following cases:
+  // 1. Immediate snapshot mode (snapshot_delay == 0) - no time to play audio
+  // 2. User disabled audio via --audio flag
+  bool should_init_audio = true;
+
+  // Check 1: Skip audio for immediate snapshots (optimization)
+  if (GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0) {
+    should_init_audio = false;
+    log_debug("Skipping audio initialization for immediate snapshot (snapshot_delay=0)");
+  }
+
+  // Check 2: Honor --audio flag for media playback control
+  // Note: has_media is already defined at line 213
+  if (has_media && !GET_OPTION(audio_enabled)) {
+    should_init_audio = false;
+    log_debug("Skipping media audio playback (--audio not enabled)");
+  }
+
+  if (should_init_audio && capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
     if (media_source_has_audio(audio_probe_source)) {
       audio_available = true;
       audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);

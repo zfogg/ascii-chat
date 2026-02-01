@@ -498,8 +498,8 @@ typedef enum {
 /** @brief Default WebRTC mode flag (true = P2P WebRTC, false = direct TCP) */
 #define OPT_WEBRTC_DEFAULT true
 
-/** @brief Default audio enabled flag (false = audio disabled) */
-#define OPT_AUDIO_ENABLED_DEFAULT false
+/** @brief Default audio enabled flag (true = audio enabled by default) */
+#define OPT_AUDIO_ENABLED_DEFAULT true
 
 /** @brief Default audio source (AUDIO_SOURCE_AUTO = smart selection) */
 #define OPT_AUDIO_SOURCE_DEFAULT AUDIO_SOURCE_AUTO

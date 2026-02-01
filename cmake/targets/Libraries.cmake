@@ -587,9 +587,8 @@ if(BUILDING_OBJECT_LIBS)
             ${AUDIOUNIT_FRAMEWORK}
             ${AUDIOTOOLBOX_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK}
+            ${IOKIT_FRAMEWORK}
         )
-        # Link IOKit framework using target_link_options
-        target_link_options(ascii-chat-shared PRIVATE "-framework IOKit")
     elseif(PLATFORM_LINUX AND JACK_LIB)
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES}
@@ -932,7 +931,7 @@ else()
                 ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
                 ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
                 ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
-                ${CORESERVICES_FRAMEWORK}
+                ${CORESERVICES_FRAMEWORK} ${IOKIT_FRAMEWORK}
             )
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
