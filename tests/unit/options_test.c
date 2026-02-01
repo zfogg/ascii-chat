@@ -126,6 +126,15 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     // options_init now auto-detects mode from argv
     asciichat_error_t result = options_init(argc, argv_with_null);
 
+    // DEBUG: Log the result
+    FILE *debug_log = fopen("/tmp/options_test_debug.log", "a");
+    if (debug_log) {
+      fprintf(debug_log, "[PID %d Test %d] options_init returned %d (argc=%d, argv=[%s, %s, %s, ...])\n", getpid(),
+              getppid(), result, argc, argc > 0 ? argv_with_null[0] : "?", argc > 1 ? argv_with_null[1] : "?",
+              argc > 2 ? argv_with_null[2] : "?");
+      fclose(debug_log);
+    }
+
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {
       // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
