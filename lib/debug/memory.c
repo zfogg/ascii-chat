@@ -14,6 +14,7 @@
 #include "debug/memory.h"
 #include "common.h"
 #include "common/buffer_sizes.h"
+#include "common/error_codes.h"
 #include "asciichat_errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
@@ -494,11 +495,19 @@ static const char *strip_project_path(const char *full_path) {
 }
 
 void debug_memory_report(void) {
+  // Check for usage error BEFORE cleanup clears it
+  asciichat_error_t error = GET_ERRNO();
+
   asciichat_errno_cleanup();
 
   // Skip memory report if an action flag was passed (for clean action output)
   extern bool has_action_flag(void);
   if (has_action_flag()) {
+    return;
+  }
+
+  // Skip memory report on command-line usage errors for clean error output
+  if (error == ERROR_USAGE) {
     return;
   }
 

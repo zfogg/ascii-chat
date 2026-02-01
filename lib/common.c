@@ -105,6 +105,9 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
   // This ensures all cleanup handlers run before the memory report is printed
   // Only register atexit handlers once
   if (!g_atexit_handlers_registered) {
+    // Register errno cleanup FIRST so it runs LAST (after memory report checks the error)
+    (void)atexit(asciichat_errno_cleanup);
+
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
     (void)atexit(debug_memory_report);
 #elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
@@ -124,9 +127,6 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
     // Initialize global shared buffer pool
     buffer_pool_init_global();
     (void)atexit(buffer_pool_cleanup_global);
-
-    // Register errno cleanup
-    (void)atexit(asciichat_errno_cleanup);
 
     // Register options state cleanup
     (void)atexit(options_state_shutdown);

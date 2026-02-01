@@ -293,6 +293,12 @@ const char *colored_string(log_color_t color, const char *text) {
   const char *color_code = log_level_color(color);
   const char *reset_code = log_level_color(LOG_COLOR_RESET);
 
+  // Ensure we never pass NULL to snprintf (handle uninitialized color system)
+  if (!color_code)
+    color_code = "";
+  if (!reset_code)
+    reset_code = "";
+
   // Format into rotating static buffer: color_code + text + reset_code
   safe_snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
   return current_buf;
