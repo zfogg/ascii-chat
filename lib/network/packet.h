@@ -532,8 +532,8 @@ static inline bool packet_is_precompressed(packet_type_t type) {
  * @ingroup packet
  */
 typedef struct {
-  /** @brief Magic number (PACKET_MAGIC) for packet validation */
-  uint32_t magic;
+  /** @brief Magic number (PACKET_MAGIC = 0xA5C11C4A1 "ASCIICHAT" in hex) for packet validation */
+  uint64_t magic;
   /** @brief Packet type (packet_type_t enumeration) */
   uint16_t type;
   /** @brief Payload data length in bytes (0 for header-only packets) */
