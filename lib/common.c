@@ -178,6 +178,11 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
 // Wrapper function for mi_stats_print to use with atexit()
 // mi_stats_print takes a parameter, but atexit requires void(void)
 static void print_mimalloc_stats(void) {
+  // Skip memory report if an action flag was passed (for clean action output)
+  // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
+  if (has_action_flag() && !SAFE_GETENV("ASCII_CHAT_MEMORY_DEBUG")) {
+    return;
+  }
   mi_stats_print(NULL); // NULL = print to stderr
 }
 #endif

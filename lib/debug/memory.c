@@ -24,6 +24,7 @@
 #include "util/string.h"
 #include "util/time.h"
 #include "log/logging.h"
+#include "options/options.h"
 
 typedef struct mem_block {
   void *ptr;
@@ -501,8 +502,8 @@ void debug_memory_report(void) {
   asciichat_errno_cleanup();
 
   // Skip memory report if an action flag was passed (for clean action output)
-  extern bool has_action_flag(void);
-  if (has_action_flag()) {
+  // unless explicitly forced via ASCII_CHAT_MEMORY_DEBUG environment variable
+  if (has_action_flag() && !SAFE_GETENV("ASCII_CHAT_MEMORY_DEBUG")) {
     return;
   }
 
