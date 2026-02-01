@@ -36,6 +36,7 @@ FetchContent_Declare(
     GIT_REPOSITORY ${WEBRTC_AEC3_REPO}
     GIT_TAG ${WEBRTC_AEC3_TAG}
     GIT_SHALLOW TRUE
+    GIT_SHALLOW_EXCLUDE_DEPS TRUE  # Don't shallow-clone submodules
     UPDATE_DISCONNECTED TRUE  # Don't update if already populated (avoids SSH auth issues)
 )
 

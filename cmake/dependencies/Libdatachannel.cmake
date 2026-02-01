@@ -161,6 +161,8 @@ FetchContent_Declare(
     GIT_REPOSITORY ${LIBDATACHANNEL_REPO}
     GIT_TAG ${LIBDATACHANNEL_TAG}
     GIT_SHALLOW TRUE
+    GIT_SHALLOW_EXCLUDE_DEPS TRUE  # Don't shallow-clone submodules (we'll do it manually with --depth 1)
+    GIT_SUBMODULES_RECURSE FALSE   # Don't auto-init submodules (we handle it manually)
 )
 
 cmake_policy(SET CMP0169 OLD)

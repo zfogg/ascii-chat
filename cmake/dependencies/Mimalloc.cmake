@@ -265,6 +265,7 @@ if(USE_MIMALLOC)
                 GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
                 GIT_TAG v2.2.4  # Match vcpkg version
                 GIT_SHALLOW TRUE
+                GIT_SHALLOW_EXCLUDE_DEPS TRUE  # Don't shallow-clone submodules
                 # Use persistent cache directories (survives build/ deletion)
                 SOURCE_DIR "${MIMALLOC_SOURCE_DIR}"
                 BINARY_DIR "${MIMALLOC_BUILD_DIR}"
