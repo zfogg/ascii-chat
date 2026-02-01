@@ -489,6 +489,10 @@ asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_c
   /* Note: mode parameter reserved for future use */
   (void)mode;
 
+  /* Free any previously compiled strings before recompiling */
+  /* This prevents memory leaks when the color scheme is recompiled */
+  colors_cleanup_compiled(compiled);
+
   /* Select color array based on background */
   const rgb_color_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
                                   ? scheme->log_colors_light
