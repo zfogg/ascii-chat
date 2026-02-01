@@ -86,25 +86,18 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
-  // Disable keyboard in snapshot mode only - don't put stdin into raw mode in snapshot mode
+  // Disable keyboard in snapshot mode or when stdin is piped (not a TTY)
   bool keyboard_enabled = false;
-  if (keyboard_handler && !snapshot_mode) {
-    // Try to initialize keyboard if stdin is a TTY
-    if (platform_isatty(STDIN_FILENO)) {
-      asciichat_error_t kb_result = keyboard_init();
-      if (kb_result == ASCIICHAT_OK) {
-        keyboard_enabled = true;
-        log_debug("Keyboard input enabled (TTY mode)");
-      } else {
-        log_debug("Failed to initialize keyboard input (%s) - will attempt fallback",
-                  asciichat_error_string(kb_result));
-        // Don't fail - continue with keyboard handler (will try to read anyway)
-        keyboard_enabled = true; // Allow trying to read keyboard even if init failed
-      }
+  if (keyboard_handler && !snapshot_mode && platform_isatty(STDIN_FILENO)) {
+    // Try to initialize keyboard if stdin is a TTY in interactive mode
+    asciichat_error_t kb_result = keyboard_init();
+    if (kb_result == ASCIICHAT_OK) {
+      keyboard_enabled = true;
+      log_debug("Keyboard input enabled (TTY mode)");
     } else {
-      // Not a TTY, but we still allow keyboard attempts
-      log_debug("Keyboard requested but stdin is not a TTY - will attempt non-raw reads");
-      keyboard_enabled = true; // Allow trying to read keyboard without raw mode
+      log_debug("Failed to initialize keyboard input (%s) - will attempt fallback", asciichat_error_string(kb_result));
+      // Don't fail - continue with keyboard handler (will try to read anyway)
+      keyboard_enabled = true; // Allow trying to read keyboard even if init failed
     }
   }
 

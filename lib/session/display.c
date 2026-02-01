@@ -144,6 +144,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // In piped mode, force all logs to stderr to prevent frame data corruption
   if (!ctx->has_tty) {
     log_set_force_stderr(true);
+    // Set stdout to line buffering to ensure output is flushed at newlines
+    // This helps with snapshot mode where each frame ends with a newline
+    (void)setvbuf(stdout, NULL, _IOLBF, 0);
   }
 
   // Detect terminal capabilities
@@ -393,36 +396,24 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     const char newline = '\n';
     platform_write(STDOUT_FILENO, &newline, 1);
     log_unlock_terminal(prev_lock_state);
+    (void)fflush(stdout);                // Flush after snapshot frame write to ensure visible output
+    (void)platform_fsync(STDOUT_FILENO); // Force data to disk/pipe
   } else if (!ctx->has_tty && !ctx->snapshot_mode) {
     // Piped mode (non-snapshot): render every frame WITHOUT cursor control
     // This allows continuous frame output to files for streaming/recording
-    // Hold lock for entire frame write to prevent log interleaving
-    // Multiple platform_write() calls can be interrupted by other threads' logs otherwise
-    bool prev_lock_state = log_lock_terminal();
-    (void)fflush(stdout); // Flush any pending buffered output first
-
+    // Use same approach as snapshot mode: write frame, then lock only for newline
     size_t written = 0;
-    int attempts = 0;
-    while (written < frame_len && attempts < 1000) {
+    while (written < frame_len) {
       ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
-      if (result > 0) {
-        written += (size_t)result;
-        attempts = 0;
-      } else {
-        attempts++;
+      if (result <= 0) {
+        break;
       }
+      written += (size_t)result;
     }
-    // Write newline after each frame using unbuffered write (NOT fputc)
-    // This ensures frame + newline are both immediately visible in piped output
+    // Add newline using thread-safe console lock (like snapshot mode does)
+    bool prev_lock_state = log_lock_terminal();
     const char newline = '\n';
-    ssize_t nl_result = platform_write(STDOUT_FILENO, &newline, 1);
-    if (nl_result < 0) {
-      log_error("Failed to write frame newline to stdout");
-    }
-    // Force data to disk immediately so piped output shows complete frames
-    // This is critical when output is redirected to a file - otherwise kernel buffers hide incomplete frames
-    (void)fsync(STDOUT_FILENO);
-    (void)fflush(stdout); // Flush C library buffer after fsync
+    platform_write(STDOUT_FILENO, &newline, 1);
     log_unlock_terminal(prev_lock_state);
   } else {
   }
