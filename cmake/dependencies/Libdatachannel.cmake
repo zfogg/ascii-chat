@@ -161,8 +161,9 @@ FetchContent_Declare(
     GIT_REPOSITORY ${LIBDATACHANNEL_REPO}
     GIT_TAG ${LIBDATACHANNEL_TAG}
     GIT_SHALLOW TRUE
-    GIT_SHALLOW_EXCLUDE_DEPS TRUE  # Don't shallow-clone submodules (we'll do it manually with --depth 1)
-    GIT_SUBMODULES_RECURSE FALSE   # Don't auto-init submodules (we handle it manually)
+    GIT_SHALLOW_EXCLUDE_DEPS TRUE
+    GIT_SUBMODULES_RECURSE FALSE
+    UPDATE_DISCONNECTED TRUE  # Don't fetch updates if source already populated
 )
 
 cmake_policy(SET CMP0169 OLD)
@@ -185,6 +186,11 @@ if(NOT libdatachannel_POPULATED)
     if(NOT SUBMODULE_RESULT EQUAL 0)
         message(WARNING "Failed to initialize libdatachannel submodules (git may not be available)")
         # Continue anyway - CMake build will fail later if submodules are actually required
+    else()
+        # Only clean git metadata after successful submodule initialization
+        # .git is large (274MB) and not needed once submodules are initialized
+        message(STATUS "Removing .git from libdatachannel cache (UPDATE_DISCONNECTED=TRUE prevents re-cloning)...")
+        file(REMOVE_RECURSE "${libdatachannel_SOURCE_DIR}/.git")
     endif()
 
     # Patch dependency CMakeLists to require modern CMake
