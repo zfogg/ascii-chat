@@ -35,6 +35,13 @@ struct webrtc_data_channel {
   int rtc_id;                   ///< libdatachannel data channel ID
   webrtc_peer_connection_t *pc; ///< Parent peer connection
   bool is_open;                 ///< Channel open state
+
+  // Per-channel callbacks (set via webrtc_datachannel_set_callbacks)
+  void (*user_on_open)(webrtc_data_channel_t *dc, void *user_data);
+  void (*user_on_close)(webrtc_data_channel_t *dc, void *user_data);
+  void (*user_on_error)(webrtc_data_channel_t *dc, const char *error, void *user_data);
+  void (*user_on_message)(webrtc_data_channel_t *dc, const uint8_t *data, size_t len, void *user_data);
+  void *user_data; ///< User data for per-channel callbacks
 };
 
 // ============================================================================
@@ -73,6 +80,7 @@ static void rtc_log_callback(rtcLogLevel level, const char *message) {
 
 // Forward declarations for callback functions
 static void on_datachannel_open_adapter(int dc_id, void *user_data);
+static void on_datachannel_closed_adapter(int dc_id, void *user_data);
 static void on_datachannel_message_adapter(int dc_id, const char *data, int size, void *user_data);
 static void on_datachannel_error_adapter(int dc_id, const char *error, void *user_data);
 
@@ -193,11 +201,33 @@ static void on_datachannel_open_adapter(int dc_id, void *user_data) {
   dc->is_open = true;
   log_info("DataChannel opened (id=%d, dc=%p), set is_open=true", dc_id, (void *)dc);
 
-  if (dc->pc && dc->pc->config.on_datachannel_open) {
+  // Check per-channel callback first, then fall back to peer connection callback
+  if (dc->user_on_open) {
+    log_debug("Calling per-channel on_open callback");
+    dc->user_on_open(dc, dc->user_data);
+  } else if (dc->pc && dc->pc->config.on_datachannel_open) {
     log_debug("Calling user on_datachannel_open callback");
     dc->pc->config.on_datachannel_open(dc, dc->pc->config.user_data);
   } else {
     log_warn("No user on_datachannel_open callback registered");
+  }
+}
+
+static void on_datachannel_closed_adapter(int dc_id, void *user_data) {
+  webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
+  log_info("on_datachannel_closed_adapter called: dc_id=%d, dc=%p", dc_id, (void *)dc);
+  if (!dc) {
+    log_error("on_datachannel_closed_adapter: dc is NULL!");
+    return;
+  }
+
+  dc->is_open = false;
+  log_info("DataChannel closed (id=%d, dc=%p), set is_open=false", dc_id, (void *)dc);
+
+  // Check per-channel callback first
+  if (dc->user_on_close) {
+    log_debug("Calling per-channel on_close callback");
+    dc->user_on_close(dc, dc->user_data);
   }
 }
 
@@ -221,7 +251,10 @@ static void on_datachannel_message_adapter(int dc_id, const char *data, int size
     return;
   }
 
-  if (dc->pc && dc->pc->config.on_datachannel_message) {
+  // Check per-channel callback first, then fall back to peer connection callback
+  if (dc->user_on_message) {
+    dc->user_on_message(dc, (const uint8_t *)data, (size_t)size, dc->user_data);
+  } else if (dc->pc && dc->pc->config.on_datachannel_message) {
     dc->pc->config.on_datachannel_message(dc, (const uint8_t *)data, (size_t)size, dc->pc->config.user_data);
   }
 }
@@ -233,7 +266,10 @@ static void on_datachannel_error_adapter(int dc_id, const char *error, void *use
 
   log_error("DataChannel error (id=%d): %s", dc_id, error);
 
-  if (dc->pc && dc->pc->config.on_datachannel_error) {
+  // Check per-channel callback first, then fall back to peer connection callback
+  if (dc->user_on_error) {
+    dc->user_on_error(dc, error, dc->user_data);
+  } else if (dc->pc && dc->pc->config.on_datachannel_error) {
     dc->pc->config.on_datachannel_error(dc, error, dc->pc->config.user_data);
   }
 }
@@ -601,28 +637,33 @@ asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc,
     return SET_ERRNO(ERROR_INVALID_PARAM, "Callbacks struct is NULL");
   }
 
-  // Store callbacks in DataChannel structure
-  // NOTE: Intentional function pointer casts for libdatachannel API compatibility
+  // Store user callbacks in the data channel struct
+  dc->user_on_open = callbacks->on_open;
+  dc->user_on_close = callbacks->on_close;
+  dc->user_on_error = callbacks->on_error;
+  dc->user_on_message = callbacks->on_message;
+  dc->user_data = callbacks->user_data;
+
+  // Register adapter functions with libdatachannel (adapters use correct signature)
+  // The adapters will look up our stored callbacks and invoke them with proper types
   if (callbacks->on_open) {
-    rtcSetOpenCallback(dc->rtc_id, (rtcOpenCallbackFunc)callbacks->on_open);
+    rtcSetOpenCallback(dc->rtc_id, on_datachannel_open_adapter);
   }
 
   if (callbacks->on_close) {
-    rtcSetClosedCallback(dc->rtc_id, (rtcClosedCallbackFunc)callbacks->on_close);
+    rtcSetClosedCallback(dc->rtc_id, on_datachannel_closed_adapter);
   }
 
   if (callbacks->on_error) {
-    rtcSetErrorCallback(dc->rtc_id, (rtcErrorCallbackFunc)callbacks->on_error);
+    rtcSetErrorCallback(dc->rtc_id, on_datachannel_error_adapter);
   }
 
   if (callbacks->on_message) {
-    rtcSetMessageCallback(dc->rtc_id, (rtcMessageCallbackFunc)callbacks->on_message);
+    rtcSetMessageCallback(dc->rtc_id, on_datachannel_message_adapter);
   }
 
-  // Store user_data for callbacks (libdatachannel passes this to callbacks)
-  if (callbacks->user_data) {
-    rtcSetUserPointer(dc->rtc_id, callbacks->user_data);
-  }
+  // Set user pointer to the data channel so adapters can retrieve it
+  rtcSetUserPointer(dc->rtc_id, dc);
 
   log_debug("Set DataChannel callbacks (dc_id=%d)", dc->rtc_id);
   return ASCIICHAT_OK;
