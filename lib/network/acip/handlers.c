@@ -26,32 +26,63 @@
 // Handler Function Pointer Types
 // =============================================================================
 
-/**
- * @brief Client-side packet handler function pointer type
- *
- * All client packet handlers follow this signature for O(1) array dispatch.
- *
- * @param payload Packet payload data
- * @param payload_len Payload length in bytes
- * @param callbacks Application callbacks structure
- * @return ASCIICHAT_OK on success, error code on failure
- */
 typedef asciichat_error_t (*acip_client_handler_func_t)(const void *payload, size_t payload_len,
                                                         const acip_client_callbacks_t *callbacks);
 
-/**
- * @brief Server-side packet handler function pointer type
- *
- * All server packet handlers follow this signature for O(1) array dispatch.
- *
- * @param payload Packet payload data
- * @param payload_len Payload length in bytes
- * @param client_ctx Per-client context (e.g., client_info_t*)
- * @param callbacks Application callbacks structure
- * @return ASCIICHAT_OK on success, error code on failure
- */
 typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, size_t payload_len, void *client_ctx,
                                                         const acip_server_callbacks_t *callbacks);
+
+// =============================================================================
+// Packet Type to Handler Index Mapping (O(1) sparse array lookup)
+// =============================================================================
+// Values are stored as index+1, where 0 means "not handled"
+// This allows uninitialized array entries (default 0) to indicate no handler
+
+#define PACKET_TYPE_MAP_SIZE 6200 // > max packet type value (6199)
+#define CLIENT_HANDLER_COUNT 14
+#define SERVER_HANDLER_COUNT 16
+
+// Client packet type -> handler index+1 mapping (sparse array)
+// clang-format off
+static const uint8_t g_client_handler_map[PACKET_TYPE_MAP_SIZE] = {
+    [PACKET_TYPE_ASCII_FRAME]           = 1,   // handler index 0
+    [PACKET_TYPE_AUDIO_BATCH]           = 2,   // handler index 1
+    [PACKET_TYPE_AUDIO_OPUS_BATCH]      = 3,   // handler index 2
+    [PACKET_TYPE_SERVER_STATE]          = 4,   // handler index 3
+    [PACKET_TYPE_ERROR_MESSAGE]         = 5,   // handler index 4
+    [PACKET_TYPE_REMOTE_LOG]            = 6,   // handler index 5
+    [PACKET_TYPE_PING]                  = 7,   // handler index 6
+    [PACKET_TYPE_PONG]                  = 8,   // handler index 7
+    [PACKET_TYPE_CLEAR_CONSOLE]         = 9,   // handler index 8
+    [PACKET_TYPE_CRYPTO_REKEY_REQUEST]  = 10,  // handler index 9
+    [PACKET_TYPE_CRYPTO_REKEY_RESPONSE] = 11,  // handler index 10
+    [PACKET_TYPE_ACIP_WEBRTC_SDP]       = 12,  // handler index 11
+    [PACKET_TYPE_ACIP_WEBRTC_ICE]       = 13,  // handler index 12
+    [PACKET_TYPE_ACIP_SESSION_JOINED]   = 14,  // handler index 13
+};
+// clang-format on
+
+// Server packet type -> handler index+1 mapping (sparse array)
+// clang-format off
+static const uint8_t g_server_handler_map[PACKET_TYPE_MAP_SIZE] = {
+    [PACKET_TYPE_PROTOCOL_VERSION]      = 1,   // handler index 0
+    [PACKET_TYPE_IMAGE_FRAME]           = 2,   // handler index 1
+    [PACKET_TYPE_AUDIO_BATCH]           = 3,   // handler index 2
+    [PACKET_TYPE_AUDIO_OPUS_BATCH]      = 4,   // handler index 3
+    [PACKET_TYPE_CLIENT_CAPABILITIES]   = 5,   // handler index 4
+    [PACKET_TYPE_PING]                  = 6,   // handler index 5
+    [PACKET_TYPE_PONG]                  = 7,   // handler index 6
+    [PACKET_TYPE_CLIENT_JOIN]           = 8,   // handler index 7
+    [PACKET_TYPE_CLIENT_LEAVE]          = 9,   // handler index 8
+    [PACKET_TYPE_STREAM_START]          = 10,  // handler index 9
+    [PACKET_TYPE_STREAM_STOP]           = 11,  // handler index 10
+    [PACKET_TYPE_REMOTE_LOG]            = 12,  // handler index 11
+    [PACKET_TYPE_ERROR_MESSAGE]         = 13,  // handler index 12
+    [PACKET_TYPE_CRYPTO_REKEY_REQUEST]  = 14,  // handler index 13
+    [PACKET_TYPE_CRYPTO_REKEY_RESPONSE] = 15,  // handler index 14
+    [PACKET_TYPE_CRYPTO_REKEY_COMPLETE] = 16,  // handler index 15
+};
+// clang-format on
 
 // =============================================================================
 // Client-Side Packet Handlers
@@ -87,49 +118,41 @@ static asciichat_error_t handle_client_webrtc_ice(const void *payload, size_t pa
 static asciichat_error_t handle_client_session_joined(const void *payload, size_t payload_len,
                                                       const acip_client_callbacks_t *callbacks);
 
+// Client handler dispatch table (indexed by client_handler_index())
+static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] = {
+    handle_client_ascii_frame,          // 0
+    handle_client_audio_batch,          // 1
+    handle_client_audio_opus_batch,     // 2
+    handle_client_server_state,         // 3
+    handle_client_error_message,        // 4
+    handle_client_remote_log,           // 5
+    handle_client_ping,                 // 6
+    handle_client_pong,                 // 7
+    handle_client_clear_console,        // 8
+    handle_client_crypto_rekey_request, // 9
+    handle_client_crypto_rekey_response,// 10
+    handle_client_webrtc_sdp,           // 11
+    handle_client_webrtc_ice,           // 12
+    handle_client_session_joined,       // 13
+};
+
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, const acip_client_callbacks_t *callbacks) {
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
-
-  // TODO: Use transport for sending responses or out-of-band messages in future versions
   (void)transport;
 
-  // Dispatch to handler based on packet type
-  switch (type) {
-  case PACKET_TYPE_ASCII_FRAME:
-    return handle_client_ascii_frame(payload, payload_len, callbacks);
-  case PACKET_TYPE_AUDIO_BATCH:
-    return handle_client_audio_batch(payload, payload_len, callbacks);
-  case PACKET_TYPE_AUDIO_OPUS_BATCH:
-    return handle_client_audio_opus_batch(payload, payload_len, callbacks);
-  case PACKET_TYPE_SERVER_STATE:
-    return handle_client_server_state(payload, payload_len, callbacks);
-  case PACKET_TYPE_ERROR_MESSAGE:
-    return handle_client_error_message(payload, payload_len, callbacks);
-  case PACKET_TYPE_REMOTE_LOG:
-    return handle_client_remote_log(payload, payload_len, callbacks);
-  case PACKET_TYPE_PING:
-    return handle_client_ping(payload, payload_len, callbacks);
-  case PACKET_TYPE_PONG:
-    return handle_client_pong(payload, payload_len, callbacks);
-  case PACKET_TYPE_CLEAR_CONSOLE:
-    return handle_client_clear_console(payload, payload_len, callbacks);
-  case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
-    return handle_client_crypto_rekey_request(payload, payload_len, callbacks);
-  case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
-    return handle_client_crypto_rekey_response(payload, payload_len, callbacks);
-  case PACKET_TYPE_ACIP_WEBRTC_SDP:
-    return handle_client_webrtc_sdp(payload, payload_len, callbacks);
-  case PACKET_TYPE_ACIP_WEBRTC_ICE:
-    return handle_client_webrtc_ice(payload, payload_len, callbacks);
-  case PACKET_TYPE_ACIP_SESSION_JOINED:
-    return handle_client_session_joined(payload, payload_len, callbacks);
-  default:
-    log_warn("Unhandled client packet type: %d", type);
-    return ASCIICHAT_OK;
+  // O(1) dispatch via sparse array lookup
+  if ((size_t)type >= PACKET_TYPE_MAP_SIZE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet type out of range: %d", type);
   }
+  int idx = (int)g_client_handler_map[type] - 1;
+  if (idx < 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled client packet type: %d", type);
+  }
+
+  return g_client_handlers[idx](payload, payload_len, callbacks);
 }
 
 // =============================================================================
@@ -435,10 +458,6 @@ static asciichat_error_t handle_client_session_joined(const void *payload, size_
 // Server-Side Packet Handlers
 // =============================================================================
 
-// Server handler function signature (includes client_ctx)
-typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, size_t payload_len, void *client_ctx,
-                                                        const acip_server_callbacks_t *callbacks);
-
 // Forward declarations for server handlers
 static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks);
@@ -473,54 +492,44 @@ static asciichat_error_t handle_server_crypto_rekey_response(const void *payload
 static asciichat_error_t handle_server_crypto_rekey_complete(const void *payload, size_t payload_len, void *client_ctx,
                                                              const acip_server_callbacks_t *callbacks);
 
+// Server handler dispatch table (indexed by server_handler_index())
+static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] = {
+    handle_server_protocol_version,       // 0
+    handle_server_image_frame,            // 1
+    handle_server_audio_batch,            // 2
+    handle_server_audio_opus_batch,       // 3
+    handle_server_capabilities,           // 4
+    handle_server_ping,                   // 5
+    handle_server_pong,                   // 6
+    handle_server_client_join,            // 7
+    handle_server_client_leave,           // 8
+    handle_server_stream_start,           // 9
+    handle_server_stream_stop,            // 10
+    handle_server_remote_log,             // 11
+    handle_server_error_message,          // 12
+    handle_server_crypto_rekey_request,   // 13
+    handle_server_crypto_rekey_response,  // 14
+    handle_server_crypto_rekey_complete,  // 15
+};
+
 asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
                                             size_t payload_len, void *client_ctx,
                                             const acip_server_callbacks_t *callbacks) {
   if (!transport || !callbacks) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport or callbacks");
   }
-
-  // TODO: Use transport for sending responses or out-of-band messages in future versions
   (void)transport;
 
-  // Dispatch to handler based on packet type
-  switch (type) {
-  case PACKET_TYPE_PROTOCOL_VERSION:
-    return handle_server_protocol_version(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_IMAGE_FRAME:
-    return handle_server_image_frame(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_AUDIO_BATCH:
-    return handle_server_audio_batch(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_AUDIO_OPUS_BATCH:
-    return handle_server_audio_opus_batch(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_CLIENT_CAPABILITIES:
-    return handle_server_capabilities(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_PING:
-    return handle_server_ping(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_PONG:
-    return handle_server_pong(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_CLIENT_JOIN:
-    return handle_server_client_join(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_CLIENT_LEAVE:
-    return handle_server_client_leave(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_STREAM_START:
-    return handle_server_stream_start(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_STREAM_STOP:
-    return handle_server_stream_stop(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_REMOTE_LOG:
-    return handle_server_remote_log(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_ERROR_MESSAGE:
-    return handle_server_error_message(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_CRYPTO_REKEY_REQUEST:
-    return handle_server_crypto_rekey_request(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_CRYPTO_REKEY_RESPONSE:
-    return handle_server_crypto_rekey_response(payload, payload_len, client_ctx, callbacks);
-  case PACKET_TYPE_CRYPTO_REKEY_COMPLETE:
-    return handle_server_crypto_rekey_complete(payload, payload_len, client_ctx, callbacks);
-  default:
-    log_warn("Unhandled server packet type: %d", type);
-    return ASCIICHAT_OK;
+  // O(1) dispatch via sparse array lookup
+  if ((size_t)type >= PACKET_TYPE_MAP_SIZE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet type out of range: %d", type);
   }
+  int idx = (int)g_server_handler_map[type] - 1;
+  if (idx < 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
+  }
+
+  return g_server_handlers[idx](payload, payload_len, client_ctx, callbacks);
 }
 
 // =============================================================================
