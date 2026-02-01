@@ -134,6 +134,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include "main.h"
 #include "stats.h"
 #include "client.h"
 #include "render.h"
@@ -209,14 +210,6 @@ void stats_cleanup(void) {
     static_mutex_unlock(&g_stats_init_check_mutex);
   }
 }
-
-/**
- * @brief Global shutdown flag from main.c - coordinate statistics thread termination
- *
- * The statistics thread monitors this flag to detect server shutdown and exit
- * its monitoring loop gracefully, ensuring clean resource cleanup.
- */
-extern atomic_bool g_server_should_exit;
 
 /* ============================================================================
  * Statistics Collection and Reporting Thread

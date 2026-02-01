@@ -7,11 +7,10 @@
 #include "usage.h"
 #include "../../../log/logging.h"
 #include "../../../common.h"
+#include "options/manpage.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-extern const char *escape_groff_special(const char *str);
 
 char *manpage_content_generate_usage(const options_config_t *config) {
   if (!config || config->num_usage_lines == 0) {

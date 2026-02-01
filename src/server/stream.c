@@ -135,6 +135,7 @@
 #include <math.h>
 #include <float.h>
 
+#include "main.h"
 #include "stream.h"
 #include "client.h"
 #include "common.h"
@@ -148,10 +149,6 @@
 #include "util/aspect_ratio.h"
 #include "util/endian.h"
 #include "util/image.h"
-
-// Global client manager from client.c - needed for any_clients_sending_video()
-extern rwlock_t g_client_manager_rwlock;
-extern client_manager_t g_client_manager;
 
 /**
  * @brief Previous active video source count for layout change detection

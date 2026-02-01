@@ -313,7 +313,8 @@ int main(int argc, char *argv[]) {
       opts->color != COLOR_SETTING_TRUE) {
     options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
-    log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
+    // Log to file only, not terminal - avoid polluting piped stdout when stderr is redirected to stdout (2>&1)
+    log_debug("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }
 
 #ifndef NDEBUG

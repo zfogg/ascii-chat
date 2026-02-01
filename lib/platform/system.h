@@ -461,6 +461,34 @@ platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void);
 void platform_stderr_restore(platform_stderr_redirect_handle_t handle);
 
 /**
+ * @brief Redirect both stdout and stderr to /dev/null (restorable)
+ *
+ * Suppresses output from both stdout and stderr. This is useful when initializing
+ * libraries that may output diagnostic messages that would corrupt terminal rendering.
+ *
+ * @return Handle to pass to platform_stdout_stderr_restore() to restore streams
+ *
+ * @note Always call platform_stdout_stderr_restore() with the returned handle
+ * @note The returned handle uses original_fd for stdout, devnull_fd for stderr
+ *
+ * @ingroup platform
+ */
+platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void);
+
+/**
+ * @brief Restore stdout and stderr after platform_stdout_stderr_redirect_to_null()
+ *
+ * Restores both stdout and stderr to their original destinations.
+ *
+ * @param handle Handle returned by platform_stdout_stderr_redirect_to_null()
+ *
+ * @note Safe to call with invalid handle - will do nothing
+ *
+ * @ingroup platform
+ */
+void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle);
+
+/**
  * @brief Permanently redirect stderr and stdout to /dev/null
  *
  * This is used before exit() to prevent cleanup handlers from writing to the console

@@ -116,8 +116,7 @@ static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 static compiled_color_scheme_t g_compiled_colors = {0};
 static bool g_colors_initialized = false;
 
-/* Note: g_colors_mutex is defined in lib/ui/colors.c and managed by the color system */
-extern mutex_t g_colors_mutex;
+/* Note: g_colors_mutex is defined in lib/ui/colors.c and declared in lib/ui/colors.h */
 
 /* Shutdown logging state */
 static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shutdown_begin/end */

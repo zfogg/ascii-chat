@@ -229,4 +229,32 @@ asciichat_error_t options_config_generate_final_manpage(const char *template_pat
                                                         const char *version_string, const char *content_file_path);
 #endif
 
+/**
+ * @brief Escape special groff/troff characters in text
+ *
+ * Converts special characters (-, \, etc.) to groff escape sequences
+ * so they display correctly in man pages.
+ *
+ * @param str Input string to escape
+ * @return Escaped string (static buffer, valid until next call)
+ *
+ * @note Result is stored in static buffer, do not free
+ * @ingroup options
+ */
+const char *escape_groff_special(const char *str);
+
+/**
+ * @brief Format option mode names as human-readable string
+ *
+ * Converts bitmask of modes into a readable format for man pages.
+ * For example: MODE_BINARY | MODE_SERVER -> "binary, server"
+ *
+ * @param bitmask Bitmask of option_mode_t values
+ * @return Formatted string (static buffer, valid until next call)
+ *
+ * @note Result is stored in static buffer, do not free
+ * @ingroup options
+ */
+const char *format_mode_names(option_mode_bitmask_t bitmask);
+
 /** @} */

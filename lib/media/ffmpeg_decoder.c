@@ -23,6 +23,22 @@
 #include <inttypes.h>
 
 /* ============================================================================
+ * FFmpeg Logging Suppression
+ * ============================================================================ */
+
+/**
+ * Silent logging callback for FFmpeg - discards all log messages
+ * This prevents FFmpeg from printing "stdout: " prefixed messages
+ */
+static void ffmpeg_silent_log_callback(void *avcl, int level, const char *fmt, va_list vl) {
+  (void)avcl;  // unused
+  (void)level; // unused
+  (void)fmt;   // unused
+  (void)vl;    // unused
+  // Do nothing - silently discard all FFmpeg logs
+}
+
+/* ============================================================================
  * Constants
  * ============================================================================ */
 
@@ -392,7 +408,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   // Only set this once, it's a global setting
   static bool ffmpeg_log_level_set = false;
   if (!ffmpeg_log_level_set) {
-    av_log_set_level(AV_LOG_QUIET); // Suppress all FFmpeg logging
+    av_log_set_level(AV_LOG_QUIET);                  // Suppress all FFmpeg logging
+    av_log_set_callback(ffmpeg_silent_log_callback); // Install silent callback to discard all output
     ffmpeg_log_level_set = true;
   }
 
@@ -408,8 +425,9 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
-  // Suppress FFmpeg's probing output (device detection, format warnings, etc.)
-  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+  // Suppress FFmpeg's probing output by redirecting both stdout and stderr to /dev/null
+  // FFmpeg may write directly to either stream, so we suppress both
+  platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
 
   // Configure FFmpeg options for HTTP streaming performance
   AVDictionary *options = NULL;
@@ -433,7 +451,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   av_dict_free(&options); // Free options dictionary
 
   if (ret < 0) {
-    platform_stderr_restore(stderr_handle);
+    platform_stdout_stderr_restore(stdio_handle);
     SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open media file: %s", path);
     SAFE_FREE(decoder);
     return NULL;
@@ -441,7 +459,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 
   // Find stream info
   if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
-    platform_stderr_restore(stderr_handle);
+    platform_stdout_stderr_restore(stdio_handle);
     SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info");
     avformat_close_input(&decoder->format_ctx);
     SAFE_FREE(decoder);
@@ -455,7 +473,8 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     decoder->format_ctx->interrupt_callback.opaque = decoder;
   }
 
-  platform_stderr_restore(stderr_handle);
+  // Restore stdout and stderr after FFmpeg initialization
+  platform_stdout_stderr_restore(stdio_handle);
 
   // Open video codec
   asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,
@@ -643,12 +662,12 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   decoder->format_ctx->pb = decoder->avio_ctx;
 
-  // Suppress FFmpeg's probing output (device detection, format warnings, etc.)
-  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+  // Suppress FFmpeg's probing output by redirecting both stdout and stderr to /dev/null
+  platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
 
   // Open input from stdin
   if (avformat_open_input(&decoder->format_ctx, NULL, NULL, NULL) < 0) {
-    platform_stderr_restore(stderr_handle);
+    platform_stdout_stderr_restore(stdio_handle);
     SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open stdin");
     av_freep(&decoder->avio_ctx->buffer);
     avio_context_free(&decoder->avio_ctx);
@@ -659,13 +678,13 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   // Find stream info
   if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
-    platform_stderr_restore(stderr_handle);
+    platform_stdout_stderr_restore(stdio_handle);
     SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info from stdin");
     ffmpeg_decoder_destroy(decoder);
     return NULL;
   }
 
-  platform_stderr_restore(stderr_handle);
+  platform_stdout_stderr_restore(stdio_handle);
 
   // Open codecs (same as file-based decoder)
   asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,

@@ -302,15 +302,6 @@ static asciichat_thread_t g_acds_ping_thread;
 static bool g_acds_ping_thread_started = false;
 
 /**
- * @brief Global client manager for signal handler access
- *
- * Made global so signal handler can close client sockets immediately
- * during shutdown to interrupt blocking recv() calls.
- */
-extern client_manager_t g_client_manager;
-extern rwlock_t g_client_manager_rwlock;
-
-/**
  * @brief Background worker thread pool for server operations
  *
  * Manages background threads like stats logger, lock debugging, etc.

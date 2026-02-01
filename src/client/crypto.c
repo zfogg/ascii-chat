@@ -146,6 +146,7 @@
  * @see crypto/known_hosts.h For server identity verification
  */
 
+#include "main.h"
 #include "crypto.h"
 #include "server.h"
 #include "options/options.h"
@@ -172,10 +173,6 @@
 
 #include "platform/question.h"
 #include "platform/init.h"
-
-// Global crypto handshake context for this client connection
-// NOTE: We use the crypto context from server.c to match the handshake
-extern crypto_handshake_context_t g_crypto_ctx;
 
 /**
  * @brief Flag indicating if crypto subsystem has been initialized

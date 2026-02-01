@@ -116,6 +116,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "main.h"
 #include "protocol.h"
 #include "client.h"
 #include "common.h"
@@ -140,15 +141,6 @@
 #include "network/packet_parsing.h"
 #include "network/logging.h"
 #include "crypto/handshake/common.h"
-
-/**
- * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown
- *
- * When the server is shutting down, certain packet processing errors become
- * expected (e.g., buffer allocation failures, queue shutdowns). This flag
- * helps handlers distinguish between genuine errors and shutdown conditions.
- */
-extern atomic_bool g_server_should_exit;
 
 static void protocol_cleanup_thread_locals(void) {
   // Placeholder for thread-local resources owned by the receive thread.

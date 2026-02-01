@@ -130,6 +130,7 @@
  * @see crypto/keys/keys.h For key parsing and management
  */
 
+#include "main.h"
 #include "client.h"
 #include "crypto.h"
 
@@ -148,18 +149,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <sodium.h>
-
-// External references to global server crypto state
-extern bool g_server_encryption_enabled;
-extern private_key_t g_server_private_key;
-
-// External references to multi-key support (defined in main.c)
-extern private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS];
-extern size_t g_num_server_identity_keys;
-
-// External references to client whitelist (defined in main.c)
-extern public_key_t g_client_whitelist[];
-extern size_t g_num_whitelisted_clients;
 
 // Per-client crypto contexts are now stored in client_info_t structure
 // No global crypto context needed

@@ -175,6 +175,13 @@ static bool mirror_display_should_exit_adapter(void *user_data) {
 int mirror_main(void) {
   log_info("Starting mirror mode");
 
+  // CRITICAL FIX: When stdout is piped, disable ALL terminal output to prevent buffered output
+  // from corrupting the ASCII frame stream. Any log messages that would normally write to terminal
+  // must be suppressed to keep stdout clean for piped output.
+  if (!platform_isatty(STDOUT_FILENO)) {
+    log_set_terminal_output(false);
+  }
+
   // Handle keepawake: check for mutual exclusivity and apply mode default
   // Mirror default: keepawake ENABLED (use --no-keepawake to disable)
   if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {

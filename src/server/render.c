@@ -172,26 +172,6 @@
 #include "util/format.h"
 #include "util/fps.h"
 
-// Global client manager lock for thread-safe access
-extern rwlock_t g_client_manager_rwlock;
-
-/**
- * @brief Global shutdown flag from main.c - coordinate graceful thread termination
- *
- * All render threads monitor this flag to detect server shutdown and exit
- * their processing loops gracefully. This prevents resource leaks and ensures
- * clean shutdown behavior.
- */
-extern atomic_bool g_server_should_exit;
-
-/**
- * @brief Global audio mixer from main.c - provides multi-client audio mixing
- *
- * Audio render threads use this mixer to combine audio from multiple clients
- * while excluding the target client's own audio (prevents echo/feedback).
- */
-extern mixer_t *volatile g_audio_mixer;
-
 /* ============================================================================
  * Cross-Platform Utility Functions
  * ============================================================================

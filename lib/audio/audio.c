@@ -66,13 +66,14 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   fprintf(stderr, "[PORTAUDIO_INIT] Calling Pa_Initialize() (init_count will be %d)\n", g_pa_init_count + 1);
   fflush(stderr);
 
-  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+  // Suppress PortAudio output by redirecting both stdout and stderr to /dev/null
+  platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
 
   g_pa_init_count++;
   PaError err = Pa_Initialize();
 
-  // Restore stderr before checking errors
-  platform_stderr_restore(stderr_handle);
+  // Restore stdout and stderr before checking errors
+  platform_stdout_stderr_restore(stdio_handle);
 
   fprintf(stderr, "[PORTAUDIO_INIT] Pa_Initialize() returned: %s (err=%d, init_count=%d)\n", Pa_GetErrorText(err), err,
           g_pa_init_count);

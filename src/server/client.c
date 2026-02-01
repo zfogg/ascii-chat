@@ -203,10 +203,6 @@ client_manager_t g_client_manager;
  */
 rwlock_t g_client_manager_rwlock = {0};
 
-// External globals from main.c
-extern atomic_bool g_server_should_exit; ///< Global shutdown flag from main.c
-extern mixer_t *volatile g_audio_mixer;  ///< Global audio mixer from main.c (volatile pointer)
-
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
 void *client_send_thread_func(void *arg);         ///< Client packet send thread

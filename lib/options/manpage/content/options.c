@@ -7,16 +7,12 @@
 #include "options.h"
 #include "../../../log/logging.h"
 #include "../../../common.h"
+#include "options/manpage.h"
+#include "options/builder.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-
-// Forward declarations for helper functions from parent manpage.c
-extern const char *escape_groff_special(const char *str);
-extern const char *format_mode_names(option_mode_bitmask_t bitmask);
-extern int options_format_default_value(option_type_t type, const void *value, char *buf, size_t buf_size);
-extern const char *options_get_type_placeholder(option_type_t type);
 
 char *manpage_content_generate_options(const options_config_t *config) {
   if (!config || config->num_descriptors == 0) {

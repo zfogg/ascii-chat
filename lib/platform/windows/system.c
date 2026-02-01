@@ -1673,6 +1673,16 @@ void platform_stdio_redirect_to_null_permanent(void) {
   // Windows: No-op
 }
 
+platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) {
+  // Windows: No-op
+  return (platform_stderr_redirect_handle_t){-1, -1};
+}
+
+void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle) {
+  // Windows: No-op
+  (void)handle; // unused
+}
+
 /**
  * @brief Forcefully terminate the process immediately without cleanup (Windows)
  * @param exit_code Exit code to return

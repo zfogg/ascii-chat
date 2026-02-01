@@ -1169,6 +1169,75 @@ void platform_stdio_redirect_to_null_permanent(void) {
 }
 
 /**
+ * @brief Redirect both stdout and stderr to /dev/null (restorable)
+ * @return Handle that can be passed to platform_stdout_stderr_restore()
+ *
+ * This is useful for suppressing library output during initialization.
+ * Always call platform_stdout_stderr_restore() with the returned handle
+ * to restore the original file descriptors.
+ */
+platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) {
+  platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
+
+  // For stdout, we'll use original_fd to store the saved stdout
+  // We reuse the same structure but use it differently:
+  // original_fd stores the saved stdout
+  // devnull_fd stores the saved stderr (to be restored together)
+  int saved_stdout = dup(STDOUT_FILENO);
+  int saved_stderr = dup(STDERR_FILENO);
+  if (saved_stdout < 0 || saved_stderr < 0) {
+    if (saved_stdout >= 0)
+      close(saved_stdout);
+    if (saved_stderr >= 0)
+      close(saved_stderr);
+    return handle;
+  }
+
+  // Open /dev/null for redirection
+  int devnull = platform_open("/dev/null", O_WRONLY, 0);
+  if (devnull < 0) {
+    close(saved_stdout);
+    close(saved_stderr);
+    return handle;
+  }
+
+  // Redirect both stdout and stderr to /dev/null
+  if (dup2(devnull, STDOUT_FILENO) < 0 || dup2(devnull, STDERR_FILENO) < 0) {
+    close(devnull);
+    close(saved_stdout);
+    close(saved_stderr);
+    return handle;
+  }
+
+  close(devnull);
+
+  // Store both saved FDs in the handle (we'll need both on restore)
+  // Use original_fd for stdout, devnull_fd for stderr
+  handle.original_fd = saved_stdout;
+  handle.devnull_fd = saved_stderr;
+
+  return handle;
+}
+
+/**
+ * @brief Restore stdout and stderr after platform_stdout_stderr_redirect_to_null()
+ * @param handle Handle returned by platform_stdout_stderr_redirect_to_null()
+ */
+void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle) {
+  // Restore stdout
+  if (handle.original_fd >= 0) {
+    dup2(handle.original_fd, STDOUT_FILENO);
+    close(handle.original_fd);
+  }
+
+  // Restore stderr
+  if (handle.devnull_fd >= 0) {
+    dup2(handle.devnull_fd, STDERR_FILENO);
+    close(handle.devnull_fd);
+  }
+}
+
+/**
  * @brief Forcefully terminate the process immediately without cleanup (POSIX)
  * @param exit_code Exit code to return
  * @note Does not return - process is terminated

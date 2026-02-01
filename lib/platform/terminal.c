@@ -14,10 +14,6 @@
 #endif
 #include <string.h>
 
-// Forward declare global color flag variables set during options_init()
-extern bool g_color_flag_passed;
-extern bool g_color_flag_value;
-
 /**
  * @brief Determine if color output should be used
  *

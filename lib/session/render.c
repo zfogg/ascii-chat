@@ -172,7 +172,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       uint64_t capture_elapsed_ns = 0;
 
       do {
+        log_debug_every(3000000, "RENDER[%lu]: Starting frame read", frame_count);
         image = session_capture_read_frame(capture);
+        log_debug_every(3000000, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
 
         if (!image) {
@@ -261,9 +263,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
+    log_debug_every(3000000, "RENDER[%lu]: Starting ASCII conversion", frame_count);
     conversion_start_ns = time_get_ns();
     char *ascii_frame = session_display_convert_to_ascii(display, image);
     uint64_t conversion_elapsed_ns = time_elapsed_ns(conversion_start_ns, time_get_ns());
+    log_debug_every(3000000, "RENDER[%lu]: Conversion done (%.2f ms)", frame_count,
+                    (double)conversion_elapsed_ns / 1000000.0);
 
     if (ascii_frame) {
       // Detect when we have a paused frame (first frame after pausing)
@@ -282,9 +287,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         bool is_final = snapshot_done || is_paused_frame;
 
         // Profile: render frame
+        log_debug_every(3000000, "RENDER[%lu]: Starting frame render", frame_count);
         render_start_ns = time_get_ns();
         session_display_render_frame(display, ascii_frame, is_final);
         uint64_t render_elapsed_ns = time_elapsed_ns(render_start_ns, time_get_ns());
+        log_debug_every(3000000, "RENDER[%lu]: Frame render done (%.2f ms)", frame_count,
+                        (double)render_elapsed_ns / 1000000.0);
         uint64_t render_complete_ns = time_get_ns();
         prev_render_ns = render_complete_ns; // Record when this render completed
 
@@ -317,7 +325,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Keyboard input polling (if enabled)
     if (keyboard_enabled && keyboard_handler) {
+      log_debug_every(3000000, "RENDER[%lu]: Starting keyboard read", frame_count);
       keyboard_key_t key = keyboard_read_nonblocking();
+      log_debug_every(3000000, "RENDER[%lu]: Keyboard read done (key=%d)", frame_count, key);
       if (key != KEY_NONE) {
         keyboard_handler(capture, key, user_data);
       }
