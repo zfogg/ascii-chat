@@ -445,10 +445,10 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
   }
 
-  // Method 3: Default fallback
-  *width = 80;
-  *height = 24;
-  log_debug("POSIX terminal size fallback: %dx%d", *width, *height);
+  // Method 3: Default fallback (match OPT_WIDTH_DEFAULT and OPT_HEIGHT_DEFAULT)
+  *width = OPT_WIDTH_DEFAULT;
+  *height = OPT_HEIGHT_DEFAULT;
+  log_debug("POSIX terminal size fallback: %dx%d (defaults)", *width, *height);
   return ASCIICHAT_OK; // Fallback succeeded with defaults
 }
 
