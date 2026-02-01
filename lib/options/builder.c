@@ -438,6 +438,16 @@ static int format_option_default_value_str(const option_descriptor_t *desc, char
     }
   }
 
+  // For callback options with string defaults (no enum, no numeric range)
+  // Treat default_value as a const char* string pointer
+  if (desc->type == OPTION_TYPE_CALLBACK && desc->default_value && desc->metadata.enum_values == NULL &&
+      desc->metadata.numeric_range.max == 0 && desc->metadata.numeric_range.min == 0) {
+    const char *str_default = (const char *)desc->default_value;
+    if (str_default && str_default[0] != '\0') {
+      return safe_snprintf(buf, bufsize, "%s", str_default);
+    }
+  }
+
   return options_format_default_value(desc->type, desc->default_value, buf, bufsize);
 }
 
