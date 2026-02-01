@@ -13,8 +13,8 @@
  * Magic Number Definitions
  * ============================================================================ */
 
-/** @brief Magic number for valid ring buffer frames (0xDEADBEEF) */
-#define MAGIC_FRAME_VALID 0xDEADBEEFU
+/** @brief Magic number for valid ring buffer frames (0xA5C11C4A1 = "ASCIICHAT" in hex) */
+#define MAGIC_FRAME_VALID 0xA5C11C4A1U
 
 /** @brief Magic number for freed ring buffer frames (0xFEEDFACE) */
 #define MAGIC_FRAME_FREED 0xFEEDFACEU
@@ -25,8 +25,8 @@
 /** @brief Magic number for malloc fallback buffers (0xBF00FA11) */
 #define MAGIC_BUFFER_POOL_FALLBACK 0xBF00FA11U
 
-/** @brief Magic number for network packets (0xDEADBEEF) */
-#define MAGIC_PACKET_VALID 0xDEADBEEFU
+/** @brief Magic number for network packets (0xA5C11C4A1 = "ASCIICHAT" in hex) */
+#define MAGIC_PACKET_VALID 0xA5C11C4A1U
 
 /* ============================================================================
  * Validation Macros

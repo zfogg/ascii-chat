@@ -76,6 +76,7 @@
 #include "platform/abstraction.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
+#include "util/magic.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -241,14 +242,16 @@
  */
 
 /**
- * @brief Packet magic number (0xDEADBEEF)
+ * @brief Packet magic number (alias for MAGIC_PACKET_VALID)
  *
  * Magic number used in packet headers for packet validation.
- * Invalid magic numbers indicate corrupted or invalid packets.
+ * Defined once in util/magic.h (0xA5C11C4A1 = "ASCIICHAT" in hex)
+ * and imported here for use in packet validation.
  *
+ * @see MAGIC_PACKET_VALID
  * @ingroup packet
  */
-#define PACKET_MAGIC 0xDEADBEEF
+#define PACKET_MAGIC MAGIC_PACKET_VALID
 
 /** @} */
 
