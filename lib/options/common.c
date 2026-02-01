@@ -366,15 +366,16 @@ asciichat_error_t parse_color_mode_option(const char *value_str, options_t *opts
     return ERROR_INVALID_PARAM;
   }
 
-  if (strcmp(value_str, "auto") == 0) {
+  if (strcmp(value_str, "auto") == 0 || strcmp(value_str, "a") == 0) {
     opts->color_mode = COLOR_MODE_AUTO;
   } else if (strcmp(value_str, "none") == 0 || strcmp(value_str, "mono") == 0) {
     opts->color_mode = COLOR_MODE_NONE;
-  } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
+  } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0 || strcmp(value_str, "ansi") == 0) {
     opts->color_mode = COLOR_MODE_16_COLOR;
   } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
     opts->color_mode = COLOR_MODE_256_COLOR;
-  } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
+  } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0 || strcmp(value_str, "tc") == 0 ||
+             strcmp(value_str, "rgb") == 0 || strcmp(value_str, "true") == 0) {
     opts->color_mode = COLOR_MODE_TRUECOLOR;
   } else {
     log_error("Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor", value_str);
