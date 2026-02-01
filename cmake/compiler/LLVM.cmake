@@ -402,8 +402,11 @@ function(configure_llvm_post_project)
 
         if(DETECTED_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
             if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib")
+                # Add to executable linker flags for console apps and shared library consumers
                 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${DETECTED_LLVM_LINK_FLAGS}" CACHE STRING "Linker flags" FORCE)
-                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${DETECTED_LLVM_LINK_FLAGS}" CACHE STRING "Shared linker flags" FORCE)
+                # Add only directory flags to shared library, not -lunwind (to avoid duplicate linker warnings)
+                # The executable linking against the shared library will provide -lunwind
+                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${DETECTED_LLVM_LINK_DIRS}" CACHE STRING "Shared linker flags" FORCE)
                 message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths and -lunwind")
             else()
                 message(STATUS "${BoldYellow}${LLVM_SOURCE_NAME}${ColorReset} library paths already present in linker flags")
