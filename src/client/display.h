@@ -60,11 +60,10 @@ void display_disable_logging_for_first_frame();
 /**
  * @brief Render ASCII frame to display
  * @param frame_data ASCII frame data to render
- * @param is_snapshot_frame Whether this is the final snapshot frame
  *
  * @ingroup client_display
  */
-void display_render_frame(const char *frame_data, bool is_snapshot_frame);
+void display_render_frame(const char *frame_data);
 
 /**
  * @brief Cleanup display subsystem

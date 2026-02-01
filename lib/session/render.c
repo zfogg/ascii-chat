@@ -277,12 +277,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       bool should_write = true;
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
-        bool is_final = snapshot_done || is_paused_frame;
-
         // Profile: render frame
         log_debug_every(3000000, "RENDER[%lu]: Starting frame render", frame_count);
         render_start_ns = time_get_ns();
-        session_display_render_frame(display, ascii_frame, is_final);
+        session_display_render_frame(display, ascii_frame);
         uint64_t render_elapsed_ns = time_elapsed_ns(render_start_ns, time_get_ns());
         log_debug_every(3000000, "RENDER[%lu]: Frame render done (%.2f ms)", frame_count,
                         (double)render_elapsed_ns / 1000000.0);

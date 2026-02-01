@@ -260,11 +260,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * Renders the ASCII frame to the terminal. Handles cursor positioning,
  * RLE expansion if needed, and snapshot mode behavior.
  *
- * @note In snapshot mode, only the final frame produces output.
+ * In snapshot mode, renders all frames during the snapshot window.
  *
  * @ingroup session
  */
-void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data, bool is_final);
+void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data);
 
 /**
  * @brief Render raw bytes to the terminal without frame processing

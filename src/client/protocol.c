@@ -505,7 +505,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
               header.height);
   }
 
-  display_render_frame(frame_data, take_snapshot);
+  display_render_frame(frame_data);
 
   SAFE_FREE(frame_data);
 }

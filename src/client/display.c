@@ -287,14 +287,14 @@ void display_disable_logging_for_first_frame() {
  *
  * @ingroup client_display
  */
-void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
+void display_render_frame(const char *frame_data) {
   if (!frame_data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Attempted to render NULL frame data");
     return;
   }
 
   // Use session display library for frame rendering
-  session_display_render_frame(g_display_ctx, frame_data, is_snapshot_frame);
+  session_display_render_frame(g_display_ctx, frame_data);
 
   // Poll for keyboard input and handle interactive controls
   // - If client mode has local media (--file/--url), pass capture context for full controls

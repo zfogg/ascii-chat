@@ -322,8 +322,14 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * Session Display Rendering Functions
  * ============================================================================ */
 
-void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data, bool is_final) {
-  if (!ctx || !ctx->initialized || !frame_data) {
+void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
+  if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
+    return;
+  }
+
+  if (!frame_data) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is NULL");
     return;
   }
 
@@ -380,28 +386,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       }
     }
     (void)fflush(stdout); // Flush after TTY frame write
-  } else if (ctx->snapshot_mode && is_final) {
-    // Snapshot mode on non-TTY (piped): render final frame only WITHOUT cursor control
-    size_t written = 0;
-    while (written < frame_len) {
-      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
-      if (result <= 0) {
-        log_error("Failed to write snapshot frame data");
-        break;
-      }
-      written += (size_t)result;
-    }
-    // Add newline at end of snapshot output using thread-safe console lock
-    bool prev_lock_state = log_lock_terminal();
-    const char newline = '\n';
-    platform_write(STDOUT_FILENO, &newline, 1);
-    log_unlock_terminal(prev_lock_state);
-    (void)fflush(stdout);                // Flush after snapshot frame write to ensure visible output
-    (void)platform_fsync(STDOUT_FILENO); // Force data to disk/pipe
-  } else if (!ctx->has_tty && !ctx->snapshot_mode) {
-    // Piped mode (non-snapshot): render every frame WITHOUT cursor control
-    // This allows continuous frame output to files for streaming/recording
-    // Use same approach as snapshot mode: write frame, then lock only for newline
+  } else if (!ctx->has_tty) {
+    // Piped mode (both snapshot and continuous): render every frame WITHOUT cursor control
+    // Snapshot mode: renders all frames during the snapshot window at live speed
+    // Continuous mode: renders frames indefinitely
+    // Both use line buffering to flush at newlines for live streaming
     size_t written = 0;
     while (written < frame_len) {
       ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
@@ -410,7 +399,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       }
       written += (size_t)result;
     }
-    // Add newline using thread-safe console lock (like snapshot mode does)
+    // Add newline using thread-safe console lock
     bool prev_lock_state = log_lock_terminal();
     const char newline = '\n';
     platform_write(STDOUT_FILENO, &newline, 1);
