@@ -386,7 +386,7 @@ void ringbuffer_clear(ringbuffer_t *rb);
  */
 typedef struct {
   /** @brief Magic number to detect corruption (FRAME_MAGIC when valid) */
-  uint32_t magic;
+  uint64_t magic;
   /** @brief Actual size of frame data in bytes */
   size_t size;
   /** @brief Pointer to frame data (not owned by this struct) */
@@ -403,7 +403,7 @@ typedef struct {
  */
 typedef struct {
   /** @brief Magic number to detect corruption (FRAME_MAGIC when valid) */
-  uint32_t magic;
+  uint64_t magic;
   /** @brief Client ID that sent this frame */
   uint32_t source_client_id;
   /** @brief Frame sequence number for ordering */
