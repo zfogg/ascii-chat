@@ -630,37 +630,46 @@ asciichat_error_t terminal_clear_scrollback(int fd) {
 asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   HANDLE console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+  const char *cols_env;
+  const char *lines_env;
+  uint32_t env_width;
+  uint32_t env_height;
 
-  if (console_handle == INVALID_HANDLE_VALUE) {
-    goto fallback;
+  // Check if output handle is a valid console (not a redirected file/pipe)
+  if (console_handle != INVALID_HANDLE_VALUE && GetFileType(console_handle) == FILE_TYPE_CHAR) {
+    if (GetConsoleScreenBufferInfo(console_handle, &csbi)) {
+      // Use window size, not buffer size
+      *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+      *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+      log_debug("Windows terminal size from console: %ux%u", *width, *height);
+      return ASCIICHAT_OK;
+    }
   }
 
-  if (GetConsoleScreenBufferInfo(console_handle, &csbi)) {
-    // Use window size, not buffer size
-    *width = (unsigned short int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
-    *height = (unsigned short int)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-    return ASCIICHAT_OK;
-  }
+  // Output is redirected (not a console) or failed to get console info
+  log_debug("Windows: output is redirected (not a console), using env or defaults");
 
-fallback:
   // Environment variable fallback
-  const char *cols_env = SAFE_GETENV("COLUMNS");
-  const char *lines_env = SAFE_GETENV("LINES");
+  cols_env = SAFE_GETENV("COLUMNS");
+  lines_env = SAFE_GETENV("LINES");
 
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
 
   if (cols_env && lines_env) {
-    uint32_t env_width = 0, env_height = 0;
+    env_width = 0;
+    env_height = 0;
     // Parse width and height with safe range validation (1 to USHRT_MAX)
     if (parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
         parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
+      log_debug("Windows terminal size from env: %ux%u", *width, *height);
       return ASCIICHAT_OK;
     }
   }
 
+  log_debug("Windows terminal size fallback: %ux%u (defaults)", *width, *height);
   // Don't return error - just use default size
   return ASCIICHAT_OK;
 }

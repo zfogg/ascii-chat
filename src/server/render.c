@@ -431,8 +431,6 @@ void *client_video_render_thread(void *arg) {
     unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
     bool active_snapshot = atomic_load(&client->active);           // Atomic read
 
-    log_info("RENDER: client_id=%u, width=%u, height=%u, active=%d", client_id_snapshot, width_snapshot, height_snapshot, active_snapshot);
-
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
       break;
@@ -443,12 +441,14 @@ void *client_video_render_thread(void *arg) {
 
     // Check if any clients are sending video
     bool has_video_sources = any_clients_sending_video();
-    log_debug("Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id, has_video_sources, width_snapshot, height_snapshot);
+    log_debug("Video render iteration for client %u: has_video_sources=%d, width=%u, height=%u", thread_client_id,
+              has_video_sources, width_snapshot, height_snapshot);
 
     if (has_video_sources) {
       int sources_count = 0; // Track number of video sources in this frame
 
-      log_debug("About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id, width_snapshot, height_snapshot);
+      log_debug("About to call create_mixed_ascii_frame_for_client for client %u with dims %ux%u", thread_client_id,
+                width_snapshot, height_snapshot);
       char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot,
                                                               false, &frame_size, NULL, &sources_count);
       log_debug("create_mixed_ascii_frame_for_client returned: ascii_frame=%p, frame_size=%zu, sources_count=%d",
