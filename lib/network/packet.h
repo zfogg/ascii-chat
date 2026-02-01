@@ -260,23 +260,25 @@
  *
  * Defines all packet types used in the ascii-chat network protocol.
  * Packet types are organized by category: protocol negotiation, frames,
- * audio, control, crypto handshake, multi-user extensions, messages.
+ * control, crypto handshake, multi-user extensions, messages, audio.
  *
  * PACKET CATEGORIES:
  * - 1: Protocol negotiation
  * - 2-3: Frame packets (ASCII, image)
- * - 4: Audio packets (legacy single)
- * - 5-7: Control packets (capabilities, ping/pong)
- * - 8-13: Multi-user protocol extensions
- * - 14-24: Crypto handshake packets (ALWAYS UNENCRYPTED)
- * - 25-27: Crypto rekeying packets (ALWAYS UNENCRYPTED during rekey)
- * - 28: Audio batching (efficient)
- * - 29-31: Message packets (size, audio, text)
+ * - 4-6: Control packets (capabilities, ping/pong)
+ * - 7-12: Multi-user protocol extensions
+ * - 13-26: Crypto handshake packets (ALWAYS UNENCRYPTED)
+ * - 26: Encrypted packet (after handshake completion)
+ * - 27-29: Crypto rekeying packets (ALWAYS UNENCRYPTED during rekey)
+ * - 27-33: Message packets and audio batching
+ * - 34-35: Opus-encoded audio (modern codec)
+ * - 36: Client hello
+ * - 100-199: Discovery/ACIP protocol
  *
- * @note Crypto handshake packets (14-23) and rekey packets (25-27) are
+ * @note Crypto handshake packets (13-25) and rekey packets (27-29) are
  *       ALWAYS sent unencrypted. Use packet_is_handshake_type() to check.
  *
- * @note PACKET_TYPE_ENCRYPTED (24) is used for encrypted session packets
+ * @note PACKET_TYPE_ENCRYPTED (26) is used for encrypted session packets
  *       after handshake completion.
  *
  * @ingroup packet
@@ -290,79 +292,75 @@ typedef enum {
   /** @brief Complete RGB image with dimensions */
   PACKET_TYPE_IMAGE_FRAME = 3,
 
-  /** @brief Single audio packet (legacy) */
-  PACKET_TYPE_AUDIO = 4,
   /** @brief Client reports terminal capabilities */
-  PACKET_TYPE_CLIENT_CAPABILITIES = 5,
+  PACKET_TYPE_CLIENT_CAPABILITIES = 4,
   /** @brief Keepalive ping packet */
-  PACKET_TYPE_PING = 6,
+  PACKET_TYPE_PING = 5,
   /** @brief Keepalive pong response */
-  PACKET_TYPE_PONG = 7,
+  PACKET_TYPE_PONG = 6,
 
   /** @brief Client announces capability to send media */
-  PACKET_TYPE_CLIENT_JOIN = 8,
+  PACKET_TYPE_CLIENT_JOIN = 7,
   /** @brief Clean disconnect notification */
-  PACKET_TYPE_CLIENT_LEAVE = 9,
+  PACKET_TYPE_CLIENT_LEAVE = 8,
   /** @brief Client requests to start sending video/audio */
-  PACKET_TYPE_STREAM_START = 10,
+  PACKET_TYPE_STREAM_START = 9,
   /** @brief Client stops sending media */
-  PACKET_TYPE_STREAM_STOP = 11,
+  PACKET_TYPE_STREAM_STOP = 10,
   /** @brief Server tells client to clear console */
-  PACKET_TYPE_CLEAR_CONSOLE = 12,
+  PACKET_TYPE_CLEAR_CONSOLE = 11,
   /** @brief Server sends current state to clients */
-  PACKET_TYPE_SERVER_STATE = 13,
+  PACKET_TYPE_SERVER_STATE = 12,
 
   /** @brief Client -> Server: Supported crypto algorithms (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_CAPABILITIES = 14,
+  PACKET_TYPE_CRYPTO_CAPABILITIES = 13,
   /** @brief Server -> Client: Chosen algorithms + data sizes (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_PARAMETERS = 15,
+  PACKET_TYPE_CRYPTO_PARAMETERS = 14,
   /** @brief Server -> Client: {server_pubkey[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT = 16,
+  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT = 15,
   /** @brief Client -> Server: {client_pubkey[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP = 17,
+  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP = 16,
   /** @brief Server -> Client: {nonce[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_AUTH_CHALLENGE = 18,
+  PACKET_TYPE_CRYPTO_AUTH_CHALLENGE = 17,
   /** @brief Client -> Server: {HMAC[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_AUTH_RESPONSE = 19,
+  PACKET_TYPE_CRYPTO_AUTH_RESPONSE = 18,
   /** @brief Server -> Client: "authentication failed" (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_AUTH_FAILED = 20,
+  PACKET_TYPE_CRYPTO_AUTH_FAILED = 19,
   /** @brief Server -> Client: {HMAC[32]} server proves knowledge (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP = 21,
+  PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP = 20,
   /** @brief Server -> Client: "encryption ready" (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 22,
+  PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 21,
   /** @brief Client -> Server: "I want to proceed without encryption" (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 23,
+  PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 22,
   /** @brief Encrypted packet (after handshake completion) */
-  PACKET_TYPE_ENCRYPTED = 24,
+  PACKET_TYPE_ENCRYPTED = 23,
 
   /** @brief Initiator -> Responder: {new_ephemeral_pk[32]} (UNENCRYPTED during rekey) */
-  PACKET_TYPE_CRYPTO_REKEY_REQUEST = 25,
+  PACKET_TYPE_CRYPTO_REKEY_REQUEST = 24,
   /** @brief Responder -> Initiator: {new_ephemeral_pk[32]} (UNENCRYPTED during rekey) */
-  PACKET_TYPE_CRYPTO_REKEY_RESPONSE = 26,
+  PACKET_TYPE_CRYPTO_REKEY_RESPONSE = 25,
   /** @brief Initiator -> Responder: Empty (encrypted with NEW key, but still handshake) */
-  PACKET_TYPE_CRYPTO_REKEY_COMPLETE = 27,
+  PACKET_TYPE_CRYPTO_REKEY_COMPLETE = 26,
 
   /** @brief Batched audio packets for efficiency */
-  PACKET_TYPE_AUDIO_BATCH = 28,
+  PACKET_TYPE_AUDIO_BATCH = 27,
 
   /** @brief Terminal size message */
-  PACKET_TYPE_SIZE_MESSAGE = 29,
+  PACKET_TYPE_SIZE_MESSAGE = 28,
   /** @brief Audio message */
-  PACKET_TYPE_AUDIO_MESSAGE = 30,
+  PACKET_TYPE_AUDIO_MESSAGE = 29,
   /** @brief Text message */
-  PACKET_TYPE_TEXT_MESSAGE = 31,
+  PACKET_TYPE_TEXT_MESSAGE = 30,
   /** @brief Error packet with asciichat_error_t code and human-readable message */
-  PACKET_TYPE_ERROR_MESSAGE = 32,
+  PACKET_TYPE_ERROR_MESSAGE = 31,
   /** @brief Bidirectional remote logging packet */
-  PACKET_TYPE_REMOTE_LOG = 33,
+  PACKET_TYPE_REMOTE_LOG = 32,
 
-  /** @brief Opus-encoded single audio frame */
-  PACKET_TYPE_AUDIO_OPUS = 34,
   /** @brief Batched Opus-encoded audio frames */
-  PACKET_TYPE_AUDIO_OPUS_BATCH = 35,
+  PACKET_TYPE_AUDIO_OPUS_BATCH = 33,
 
   /** @brief Client -> Server: Expected server key fingerprint for multi-key selection (UNENCRYPTED, handshake) */
-  PACKET_TYPE_CRYPTO_CLIENT_HELLO = 36,
+  PACKET_TYPE_CRYPTO_CLIENT_HELLO = 34,
 
   // ============================================================================
   // Discovery Service Protocol (ACDS)
@@ -493,8 +491,7 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
  * NOT be compressed again (double-compression is wasteful and counterproductive).
  *
  * Currently includes:
- * - PACKET_TYPE_AUDIO_OPUS (34): Opus-encoded audio (already compressed)
- * - PACKET_TYPE_AUDIO_OPUS_BATCH (35): Batched Opus frames (already compressed)
+ * - PACKET_TYPE_AUDIO_OPUS_BATCH (33): Batched Opus-encoded audio (already compressed)
  *
  * @param type Packet type to check
  * @return true if packet contains pre-compressed data, false otherwise
@@ -507,7 +504,7 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
  */
 static inline bool packet_is_precompressed(packet_type_t type) {
   // Opus audio packets are already compressed by Opus codec
-  return (type == PACKET_TYPE_AUDIO_OPUS || type == PACKET_TYPE_AUDIO_OPUS_BATCH);
+  return (type == PACKET_TYPE_AUDIO_OPUS_BATCH);
 }
 
 /**

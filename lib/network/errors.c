@@ -63,9 +63,7 @@ bool check_and_record_packet_rate_limit(rate_limiter_t *rate_limiter, const char
     packet_name = "IMAGE_FRAME";
     break;
 
-  case PACKET_TYPE_AUDIO:
   case PACKET_TYPE_AUDIO_BATCH:
-  case PACKET_TYPE_AUDIO_OPUS:
   case PACKET_TYPE_AUDIO_OPUS_BATCH:
     event_type = RATE_EVENT_AUDIO;
     packet_name = "AUDIO";

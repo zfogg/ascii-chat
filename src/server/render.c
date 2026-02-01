@@ -931,8 +931,8 @@ void *client_audio_render_thread(void *arg) {
         // Queue Opus-encoded audio for this specific client
         uint64_t queue_start_ns = time_get_ns();
 
-        int result =
-            packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS, opus_buffer, (size_t)opus_size, 0, true);
+        int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS_BATCH, opus_buffer,
+                                          (size_t)opus_size, 0, true);
 
         uint64_t queue_end_ns = time_get_ns();
         uint64_t queue_time_ns = time_elapsed_ns(queue_start_ns, queue_end_ns);

@@ -152,7 +152,7 @@ Test(packet_queue, basic_enqueue_dequeue) {
   char test_data[] = "Hello, World!";
 
   // Enqueue a packet
-  int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, test_data, strlen(test_data) + 1, 123, true);
+  int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, test_data, strlen(test_data) + 1, 123, true);
   cr_assert_eq(result, 0, "Enqueue should succeed");
   cr_assert_eq(packet_queue_size(queue), 1, "Queue size should be 1");
   cr_assert(packet_queue_is_empty(queue) == false, "Queue should not be empty");
@@ -160,7 +160,7 @@ Test(packet_queue, basic_enqueue_dequeue) {
   // Dequeue the packet
   queued_packet_t *packet = packet_queue_dequeue(queue);
   cr_assert_not_null(packet, "Dequeue should return packet");
-  cr_assert_eq(ntohs(packet->header.type), PACKET_TYPE_AUDIO, "Packet type should match");
+  cr_assert_eq(ntohs(packet->header.type), PACKET_TYPE_AUDIO_BATCH, "Packet type should match");
   cr_assert_eq(ntohl(packet->header.client_id), 123, "Client ID should match");
   cr_assert_eq(packet->data_len, strlen(test_data) + 1, "Data length should match");
   cr_assert_str_eq((char *)packet->data, test_data, "Data should match");
@@ -181,7 +181,7 @@ Test(packet_queue, multiple_packets) {
     char data[32];
     safe_snprintf(data, sizeof(data), "Packet %d", i);
 
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, strlen(data) + 1, i, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, strlen(data) + 1, i, true);
     cr_assert_eq(result, 0, "Enqueue %d should succeed", i);
   }
 
@@ -268,7 +268,7 @@ Test(packet_queue, queue_full_behavior) {
 
   // Fill the queue to capacity
   for (int i = 0; i < 3; i++) {
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), i, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), i, true);
     cr_assert_eq(result, 0, "Enqueue %d should succeed", i);
   }
 
@@ -276,7 +276,7 @@ Test(packet_queue, queue_full_behavior) {
   cr_assert(packet_queue_is_full(queue), "Queue should report full");
 
   // Try to add one more (should drop oldest)
-  int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), 999, true);
+  int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), 999, true);
   cr_assert_eq(result, 0, "Overflow enqueue should succeed (drop oldest)");
   cr_assert_eq(packet_queue_size(queue), 3, "Queue size should remain at capacity");
 
@@ -297,7 +297,7 @@ Test(packet_queue, unlimited_queue) {
 
   // Add many packets
   for (int i = 0; i < 100; i++) {
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), i, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), i, true);
     cr_assert_eq(result, 0, "Enqueue %d should succeed in unlimited queue", i);
   }
 
@@ -323,7 +323,7 @@ Test(packet_queue, packet_validation) {
   // Create a valid packet
   queued_packet_t valid_packet = {0};
   valid_packet.header.magic = htonl(PACKET_MAGIC); // Use network byte order
-  valid_packet.header.type = htons(PACKET_TYPE_AUDIO);
+  valid_packet.header.type = htons(PACKET_TYPE_AUDIO_BATCH);
   valid_packet.header.length = htonl(10);
   valid_packet.data_len = 10;
 
@@ -405,7 +405,7 @@ Test(packet_queue, statistics_tracking) {
 
   // Enqueue some packets
   for (int i = 0; i < 5; i++) { // 5 > capacity of 3, so 2 should be dropped
-    packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), i, true);
+    packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), i, true);
   }
 
   packet_queue_get_stats(queue, &enqueued, &dequeued, &dropped);
@@ -435,7 +435,7 @@ Test(packet_queue, shutdown_behavior) {
 
   // Add a packet
   char data[] = "Test";
-  packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), 123, true);
+  packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), 123, true);
   cr_assert_eq(packet_queue_size(queue), 1, "Queue should have 1 packet");
 
   // Shutdown the queue
@@ -461,7 +461,7 @@ Test(packet_queue, clear_operation) {
 
   // Add multiple packets
   for (int i = 0; i < 5; i++) {
-    packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), i, true);
+    packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), i, true);
   }
 
   cr_assert_eq(packet_queue_size(queue), 5, "Queue should have 5 packets");
@@ -487,7 +487,7 @@ typedef struct {
 } packet_type_test_case_t;
 
 static packet_type_test_case_t packet_type_cases[] = {
-    {PACKET_TYPE_AUDIO, "AUDIO", 100, "Audio packet type"},
+    {PACKET_TYPE_AUDIO_BATCH, "AUDIO", 100, "Audio packet type"},
     {PACKET_TYPE_ASCII_FRAME, "ASCII_FRAME", 101, "ASCII frame packet type"},
     {PACKET_TYPE_IMAGE_FRAME, "IMAGE_FRAME", 102, "Image frame packet type"},
     {PACKET_TYPE_PING, "PING", 103, "Ping packet type"},
@@ -579,7 +579,7 @@ Test(packet_queue, null_pointer_handling) {
   packet_queue_free_packet(packet);
 
   // Test NULL queue operations
-  result = packet_queue_enqueue(NULL, PACKET_TYPE_AUDIO, "test", 4, 123, true);
+  result = packet_queue_enqueue(NULL, PACKET_TYPE_AUDIO_BATCH, "test", 4, 123, true);
   cr_assert_neq(result, 0, "Enqueue to NULL queue should fail");
 
   packet = packet_queue_dequeue(NULL);
@@ -619,7 +619,7 @@ Test(packet_queue, node_pool_integration) {
 
   // Enqueue packets (should use node pool)
   for (int i = 0; i < 8; i++) {
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), i, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), i, true);
     cr_assert_eq(result, 0, "Enqueue %d should succeed with node pool", i);
   }
 
@@ -646,7 +646,7 @@ Test(packet_queue, buffer_pool_integration) {
 
   // Enqueue packets (should use buffer pool for data)
   for (int i = 0; i < 3; i++) {
-    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO, data, sizeof(data), i, true);
+    int result = packet_queue_enqueue(queue, PACKET_TYPE_AUDIO_BATCH, data, sizeof(data), i, true);
     cr_assert_eq(result, 0, "Enqueue %d should succeed with buffer pool", i);
   }
 

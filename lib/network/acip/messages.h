@@ -39,8 +39,8 @@
  * @return true if packet contains media data
  */
 static inline bool acip_is_media_packet(uint16_t type) {
-  return (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_AUDIO ||
-          type == PACKET_TYPE_AUDIO_BATCH || type == PACKET_TYPE_AUDIO_OPUS || type == PACKET_TYPE_AUDIO_OPUS_BATCH);
+  return (type == PACKET_TYPE_ASCII_FRAME || type == PACKET_TYPE_IMAGE_FRAME || type == PACKET_TYPE_AUDIO_BATCH ||
+          type == PACKET_TYPE_AUDIO_OPUS_BATCH);
 }
 
 /**

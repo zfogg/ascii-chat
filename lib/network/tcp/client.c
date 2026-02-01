@@ -662,9 +662,9 @@ int tcp_client_send_audio_opus(tcp_client_t *client, const uint8_t *opus_data, s
   // Send packet with encryption if available
   asciichat_error_t result;
   if (crypto_ctx) {
-    result = send_packet_secure(client->sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size, crypto_ctx);
+    result = send_packet_secure(client->sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, crypto_ctx);
   } else {
-    result = packet_send(client->sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
+    result = packet_send(client->sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size);
   }
 
   buffer_pool_free(NULL, packet_data, total_size);

@@ -125,11 +125,6 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
                        sizeof(image_frame_packet_t));
     }
     break;
-  case PACKET_TYPE_AUDIO:
-    if (len == 0 || len > AUDIO_SAMPLES_PER_PACKET * sizeof(float) * 2) { // Max stereo samples
-      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid audio packet size: %u", len);
-    }
-    break;
   case PACKET_TYPE_AUDIO_BATCH:
     // Batch must have at least header + some samples
     if (len < sizeof(audio_batch_packet_t) + sizeof(float)) {

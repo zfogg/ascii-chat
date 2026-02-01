@@ -137,7 +137,10 @@ asciichat_error_t acip_send_audio_opus(acip_transport_t *transport, const void *
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  return packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS, opus_data, opus_len);
+  // Convert single opus frame to batch format (frame_count=1) with standard parameters
+  // Standard: 48kHz sample rate, 20ms frame duration
+  uint16_t frame_sizes[1] = {(uint16_t)opus_len};
+  return acip_send_audio_opus_batch(transport, opus_data, opus_len, frame_sizes, 1, 48000, 20);
 }
 
 asciichat_error_t acip_send_audio_opus_batch(acip_transport_t *transport, const void *opus_data, size_t opus_len,

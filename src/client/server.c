@@ -1000,7 +1000,8 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
   memcpy(buf + header_size, opus_data, opus_size);
 
   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
-  asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
+  asciichat_error_t result =
+      packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size);
 
   // Clean up
   buffer_pool_free(NULL, packet_data, total_size);

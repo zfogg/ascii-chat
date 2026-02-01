@@ -1562,29 +1562,17 @@ void *client_send_thread_func(void *arg) {
         mutex_unlock(&client->send_mutex);
 
         // Network I/O happens OUTSIDE the mutex
-        if (pkt_type == PACKET_TYPE_AUDIO_OPUS) {
-          result = acip_send_audio_opus(transport, audio_packets[0]->data, audio_packets[0]->data_len);
-          if (result != ASCIICHAT_OK) {
-            log_error("AUDIO SEND FAIL (single): client=%u, len=%zu, result=%d, errno=%d", client->client_id,
-                      audio_packets[0]->data_len, result, GET_ERRNO());
-          } else {
-            fprintf(stderr, "[SEND_SINGLE] client=%u sent 1 Opus packet (%zu bytes)\n", client->client_id,
-                    audio_packets[0]->data_len);
-          }
-        } else {
-          // Raw float audio - use generic packet sender
-          result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len);
-          if (result != ASCIICHAT_OK) {
-            log_error("AUDIO SEND FAIL (raw): client=%u, len=%zu, result=%d", client->client_id,
-                      audio_packets[0]->data_len, result);
-          }
+        result = packet_send_via_transport(transport, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len);
+        if (result != ASCIICHAT_OK) {
+          log_error("AUDIO SEND FAIL: client=%u, len=%zu, result=%d", client->client_id, audio_packets[0]->data_len,
+                    result);
         }
       } else {
         // Multiple packets - batch them together
         // Check if these are Opus-encoded packets or raw float audio
         packet_type_t first_pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
 
-        if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS) {
+        if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS_BATCH) {
           // Opus packets - batch using proper Opus batching format
           // Calculate total Opus data size
           size_t total_opus_size = 0;
@@ -2613,54 +2601,8 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     handle_image_frame_packet(client, data, len);
     break;
 
-  case PACKET_TYPE_AUDIO:
-    handle_audio_packet(client, data, len);
-    break;
-
   case PACKET_TYPE_AUDIO_BATCH:
     handle_audio_batch_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_AUDIO_OPUS:
-    // Single-frame Opus packet: 16-byte header (sample_rate + frame_duration + reserved) + Opus data
-    // Extract metadata and forward to mixer
-    if (len >= 16) {
-      const uint8_t *payload = (const uint8_t *)data;
-      // Use unaligned read helpers - network data may not be aligned
-      int sample_rate = (int)NET_TO_HOST_U32(read_u32_unaligned(payload));
-      int frame_duration = (int)NET_TO_HOST_U32(read_u32_unaligned(payload + 4));
-      // Reserved bytes at offset 8-15
-      size_t opus_size = len - 16;
-
-      if (opus_size > 0 && opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
-        // Create a synthetic Opus batch packet (frame_count=1) and process it
-        // This reuses the batch handler logic
-        uint8_t batch_buffer[1024 + 20]; // Max Opus + header
-        uint8_t *batch_ptr = batch_buffer;
-
-        // Write batch header (batch_buffer is stack-aligned, writes are safe)
-        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)sample_rate));
-        batch_ptr += 4;
-        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)frame_duration));
-        batch_ptr += 4;
-        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32(1)); // frame_count = 1
-        batch_ptr += 4;
-        memset(batch_ptr, 0, 4); // reserved
-        batch_ptr += 4;
-
-        // Write frame size
-        write_u16_unaligned(batch_ptr, HOST_TO_NET_U16((uint16_t)opus_size));
-        batch_ptr += 2;
-
-        // Write Opus data
-        memcpy(batch_ptr, payload + 16, opus_size);
-        batch_ptr += opus_size;
-
-        // Process as batch packet
-        size_t batch_size = (size_t)(batch_ptr - batch_buffer);
-        handle_audio_opus_batch_packet(client, batch_buffer, batch_size);
-      }
-    }
     break;
 
   case PACKET_TYPE_AUDIO_OPUS_BATCH:
