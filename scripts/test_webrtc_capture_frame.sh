@@ -106,7 +106,7 @@ timeout 6 $BIN/ascii-chat \
   --log-level debug \
   "$SESSION" \
   --snapshot \
-  --snapshot-delay 2 \
+  --snapshot-delay 0 \
   --discovery-server "$DISCOVERY_CONNECT" \
   --discovery-port $DISCOVERY_PORT \
   --prefer-webrtc \
