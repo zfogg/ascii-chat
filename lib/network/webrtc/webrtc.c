@@ -12,6 +12,7 @@
  */
 
 #include "network/webrtc/webrtc.h"
+#include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
 #include "platform/init.h"
@@ -382,6 +383,7 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
 
 void webrtc_close_peer_connection(webrtc_peer_connection_t *pc) {
   if (!pc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid peer connection");
     return;
   }
 
@@ -400,6 +402,7 @@ void webrtc_close_peer_connection(webrtc_peer_connection_t *pc) {
 
 webrtc_state_t webrtc_get_state(webrtc_peer_connection_t *pc) {
   if (!pc) {
+    log_warn("Peer connection is NULL");
     return WEBRTC_STATE_CLOSED;
   }
   return pc->state;
@@ -407,6 +410,7 @@ webrtc_state_t webrtc_get_state(webrtc_peer_connection_t *pc) {
 
 void *webrtc_get_user_data(webrtc_peer_connection_t *pc) {
   if (!pc) {
+    log_warn("Peer connection is NULL");
     return NULL;
   }
   return pc->config.user_data;
@@ -538,17 +542,24 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
 }
 
 bool webrtc_datachannel_is_open(webrtc_data_channel_t *dc) {
-  return dc && dc->is_open;
+  if (!dc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
+    return false;
+  }
+  return dc->is_open;
 }
 
 void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open) {
-  if (dc) {
-    dc->is_open = is_open;
+  if (!dc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
+    return;
   }
+  dc->is_open = is_open;
 }
 
 const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc) {
   if (!dc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
     return NULL;
   }
 
@@ -563,6 +574,7 @@ const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc) {
 
 void webrtc_close_datachannel(webrtc_data_channel_t *dc) {
   if (!dc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "DataChannel is NULL");
     return;
   }
 
@@ -591,8 +603,6 @@ asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc,
 
   // Store callbacks in DataChannel structure
   // NOTE: Intentional function pointer casts for libdatachannel API compatibility
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-function-type-mismatch"
   if (callbacks->on_open) {
     rtcSetOpenCallback(dc->rtc_id, (rtcOpenCallbackFunc)callbacks->on_open);
   }
@@ -608,7 +618,6 @@ asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc,
   if (callbacks->on_message) {
     rtcSetMessageCallback(dc->rtc_id, (rtcMessageCallbackFunc)callbacks->on_message);
   }
-#pragma clang diagnostic pop
 
   // Store user_data for callbacks (libdatachannel passes this to callbacks)
   if (callbacks->user_data) {
@@ -621,6 +630,7 @@ asciichat_error_t webrtc_datachannel_set_callbacks(webrtc_data_channel_t *dc,
 
 void webrtc_datachannel_destroy(webrtc_data_channel_t *dc) {
   if (!dc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid null data channel");
     return;
   }
 
@@ -635,6 +645,7 @@ void webrtc_datachannel_destroy(webrtc_data_channel_t *dc) {
 
 void webrtc_peer_connection_close(webrtc_peer_connection_t *pc) {
   if (!pc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid null peer connectiont");
     return;
   }
 
@@ -644,6 +655,7 @@ void webrtc_peer_connection_close(webrtc_peer_connection_t *pc) {
 
 void webrtc_peer_connection_destroy(webrtc_peer_connection_t *pc) {
   if (!pc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid null peer connectiont");
     return;
   }
 
@@ -652,4 +664,21 @@ void webrtc_peer_connection_destroy(webrtc_peer_connection_t *pc) {
   log_debug("Destroyed peer connection (pc_id=%d)", pc->rtc_id);
 
   SAFE_FREE(pc);
+}
+
+/**
+ * @brief Get the internal libdatachannel peer connection ID
+ *
+ * Helper function for C++ code that needs access to internal rtc_id
+ * without exposing the full structure definition.
+ *
+ * @param pc Peer connection
+ * @return libdatachannel peer connection ID, or -1 if pc is NULL
+ */
+int webrtc_get_rtc_id(webrtc_peer_connection_t *pc) {
+  if (!pc) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid null peer connectiont");
+    return -1;
+  }
+  return pc->rtc_id;
 }

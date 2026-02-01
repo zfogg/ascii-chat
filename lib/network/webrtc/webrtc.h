@@ -357,6 +357,17 @@ void webrtc_peer_connection_close(webrtc_peer_connection_t *pc);
  */
 void webrtc_peer_connection_destroy(webrtc_peer_connection_t *pc);
 
+/**
+ * @brief Get the internal libdatachannel peer connection ID
+ *
+ * Helper function for C++ code that needs access to internal rtc_id
+ * without exposing the full structure definition.
+ *
+ * @param pc Peer connection
+ * @return libdatachannel peer connection ID, or -1 if pc is NULL
+ */
+int webrtc_get_rtc_id(webrtc_peer_connection_t *pc);
+
 /** @} */ // end of webrtc group
 
 #ifdef __cplusplus

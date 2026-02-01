@@ -248,6 +248,17 @@ asciichat_error_t ice_add_remote_candidate(struct webrtc_peer_connection *pc, co
 bool ice_is_connected(struct webrtc_peer_connection *pc);
 
 /**
+ * @brief Get the internal libdatachannel peer connection ID
+ *
+ * Helper function for C++ code that needs access to internal rtc_id
+ * without exposing the full structure definition.
+ *
+ * @param pc Peer connection to query
+ * @return libdatachannel peer connection ID, or -1 if pc is NULL
+ */
+int webrtc_get_rtc_id(struct webrtc_peer_connection *pc);
+
+/**
  * @brief Get selected candidate pair
  *
  * Returns the local and remote candidates that were selected for data flow.

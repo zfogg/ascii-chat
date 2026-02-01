@@ -12,20 +12,10 @@
 
 #include "ice.h"
 #include "webrtc.h"
-#include "log/logging.h"
 
 #include <rtc/rtc.hpp>
 #include <string>
 #include <cstring>
-
-// Internal structure access (from webrtc.c)
-// We need to access the rtc_id from the peer connection
-extern "C" {
-struct webrtc_peer_connection {
-  int rtc_id;
-  // ... other fields we don't need
-};
-}
 
 /**
  * @brief Parse ICE candidate string from libdatachannel into ice_candidate_t
@@ -61,12 +51,15 @@ extern "C" {
 asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
                                              ice_candidate_t *remote_candidate) {
   if (!pc) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Peer connection is NULL");
+    return ERROR_INVALID_PARAM;
   }
 
   try {
-    // Get the libdatachannel peer connection ID
-    int rtc_id = pc->rtc_id;
+    // Get the libdatachannel peer connection ID using helper function
+    int rtc_id = webrtc_get_rtc_id(pc);
+    if (rtc_id < 0) {
+      return ERROR_INVALID_PARAM;
+    }
 
     // Query selected candidate pair from libdatachannel
     // Note: This requires libdatachannel to have the selected candidate pair available
@@ -76,7 +69,7 @@ asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_c
     // Try to get the selected local candidate
     if (rtcGetSelectedCandidatePair(rtc_id, local_buf, sizeof(local_buf), remote_buf, sizeof(remote_buf)) < 0) {
       // No pair selected yet, or error accessing it
-      return SET_ERRNO(ERROR_INVALID_STATE, "No candidate pair selected yet");
+      return ERROR_INVALID_STATE;
     }
 
     // Parse local candidate if requested
@@ -84,7 +77,7 @@ asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_c
       std::string local_str(local_buf);
       asciichat_error_t err = parse_datachannel_candidate(local_str, local_candidate);
       if (err != ASCIICHAT_OK) {
-        return SET_ERRNO(err, "Failed to parse local candidate");
+        return err;
       }
     }
 
@@ -93,16 +86,16 @@ asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_c
       std::string remote_str(remote_buf);
       asciichat_error_t err = parse_datachannel_candidate(remote_str, remote_candidate);
       if (err != ASCIICHAT_OK) {
-        return SET_ERRNO(err, "Failed to parse remote candidate");
+        return err;
       }
     }
 
     return ASCIICHAT_OK;
 
   } catch (const std::exception &e) {
-    return SET_ERRNO(ERROR_NETWORK, "Exception while retrieving candidate pair: %s", e.what());
+    return ERROR_NETWORK;
   } catch (...) {
-    return SET_ERRNO(ERROR_NETWORK, "Unknown exception while retrieving candidate pair");
+    return ERROR_NETWORK;
   }
 }
 

@@ -315,6 +315,16 @@ set(NETWORK_SRCS
     deps/ascii-chat-deps/mdns/mdns.c
 )
 
+# ice_selected_pair.cpp: Uses standard C++26 like the rest of the project
+# The file includes libdatachannel's C++ headers (<rtc/rtc.hpp>) which use <atomic>,
+# and other headers transitively include <stdatomic.h>. These are incompatible before C++23,
+# but C++26 (our project standard) allows both to coexist without conflict.
+set_source_files_properties(
+    lib/network/webrtc/ice_selected_pair.cpp
+    PROPERTIES
+    LANGUAGE CXX
+)
+
 # =============================================================================
 # Module 8: Core Application (changes daily)
 # =============================================================================
