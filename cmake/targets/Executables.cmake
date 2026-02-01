@@ -112,7 +112,7 @@ else()
     # Suppress linker warnings about duplicate debug symbols in libdatachannel
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
     if(APPLE)
-        target_link_options(ascii-chat PRIVATE "LINKER:-suppress_warnings")
+        target_link_options(ascii-chat PRIVATE "LINKER:-w")
     endif()
 
     # Linux: Link libsystemd for keepawake functionality (static library deps don't propagate)
