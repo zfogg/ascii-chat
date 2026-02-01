@@ -33,54 +33,74 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
                                                         const acip_server_callbacks_t *callbacks);
 
 // =============================================================================
-// Packet Type to Handler Index Mapping (O(1) sparse array lookup)
+// Packet Type to Handler Index Mapping (O(1) hash table lookup)
 // =============================================================================
-// Values are stored as index+1, where 0 means "not handled"
-// This allows uninitialized array entries (default 0) to indicate no handler
+// Open-addressing hash table with linear probing. key=0 means empty slot.
+// Stores handler_idx+1 so that 0 can indicate "not found" after lookup.
 
-#define PACKET_TYPE_MAP_SIZE 6200 // > max packet type value (6199)
+#define HANDLER_HASH_SIZE 32 // ~50% load factor for 14-16 entries
 #define CLIENT_HANDLER_COUNT 14
 #define SERVER_HANDLER_COUNT 16
 
-// Client packet type -> handler index+1 mapping (sparse array)
+typedef struct {
+  packet_type_t key;    // 0 = empty slot
+  uint8_t handler_idx;  // handler index (0-based)
+} handler_hash_entry_t;
+
+// Hash function: simple modulo
+#define HANDLER_HASH(type) ((type) % HANDLER_HASH_SIZE)
+
+// Lookup function: linear probing, returns handler index or -1 if not found
+static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_type_t type) {
+  uint32_t h = HANDLER_HASH(type);
+  for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
+    uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
+    if (table[slot].key == 0) return -1;  // empty slot = not found
+    if (table[slot].key == type) return table[slot].handler_idx;
+  }
+  return -1;
+}
+
+// Client packet type -> handler index hash table
+// Slots computed via linear probing: hash = type % 32
 // clang-format off
-static const uint8_t g_client_handler_map[PACKET_TYPE_MAP_SIZE] = {
-    [PACKET_TYPE_ASCII_FRAME]           = 1,   // handler index 0
-    [PACKET_TYPE_AUDIO_BATCH]           = 2,   // handler index 1
-    [PACKET_TYPE_AUDIO_OPUS_BATCH]      = 3,   // handler index 2
-    [PACKET_TYPE_SERVER_STATE]          = 4,   // handler index 3
-    [PACKET_TYPE_ERROR_MESSAGE]         = 5,   // handler index 4
-    [PACKET_TYPE_REMOTE_LOG]            = 6,   // handler index 5
-    [PACKET_TYPE_PING]                  = 7,   // handler index 6
-    [PACKET_TYPE_PONG]                  = 8,   // handler index 7
-    [PACKET_TYPE_CLEAR_CONSOLE]         = 9,   // handler index 8
-    [PACKET_TYPE_CRYPTO_REKEY_REQUEST]  = 10,  // handler index 9
-    [PACKET_TYPE_CRYPTO_REKEY_RESPONSE] = 11,  // handler index 10
-    [PACKET_TYPE_ACIP_WEBRTC_SDP]       = 12,  // handler index 11
-    [PACKET_TYPE_ACIP_WEBRTC_ICE]       = 13,  // handler index 12
-    [PACKET_TYPE_ACIP_SESSION_JOINED]   = 14,  // handler index 13
+static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
+    [0]  = {PACKET_TYPE_AUDIO_BATCH,           1},   // hash(4000)=0
+    [1]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      2},   // hash(4001)=1
+    [2]  = {PACKET_TYPE_SERVER_STATE,          3},   // hash(5008)=0, probed->2
+    [8]  = {PACKET_TYPE_ASCII_FRAME,           0},   // hash(3000)=8
+    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,  9},   // hash(1201)=17
+    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE, 10},  // hash(1202)=18
+    [19] = {PACKET_TYPE_ERROR_MESSAGE,         4},   // hash(2003)=19
+    [20] = {PACKET_TYPE_REMOTE_LOG,            5},   // hash(2004)=20
+    [21] = {PACKET_TYPE_ACIP_SESSION_JOINED,   13},  // hash(6005)=21
+    [25] = {PACKET_TYPE_PING,                  6},   // hash(5001)=25
+    [26] = {PACKET_TYPE_PONG,                  7},   // hash(5002)=26
+    [27] = {PACKET_TYPE_ACIP_WEBRTC_SDP,       11},  // hash(6009)=25, probed->27
+    [28] = {PACKET_TYPE_ACIP_WEBRTC_ICE,       12},  // hash(6010)=26, probed->28
+    [31] = {PACKET_TYPE_CLEAR_CONSOLE,         8},   // hash(5007)=31
 };
 // clang-format on
 
-// Server packet type -> handler index+1 mapping (sparse array)
+// Server packet type -> handler index hash table
 // clang-format off
-static const uint8_t g_server_handler_map[PACKET_TYPE_MAP_SIZE] = {
-    [PACKET_TYPE_PROTOCOL_VERSION]      = 1,   // handler index 0
-    [PACKET_TYPE_IMAGE_FRAME]           = 2,   // handler index 1
-    [PACKET_TYPE_AUDIO_BATCH]           = 3,   // handler index 2
-    [PACKET_TYPE_AUDIO_OPUS_BATCH]      = 4,   // handler index 3
-    [PACKET_TYPE_CLIENT_CAPABILITIES]   = 5,   // handler index 4
-    [PACKET_TYPE_PING]                  = 6,   // handler index 5
-    [PACKET_TYPE_PONG]                  = 7,   // handler index 6
-    [PACKET_TYPE_CLIENT_JOIN]           = 8,   // handler index 7
-    [PACKET_TYPE_CLIENT_LEAVE]          = 9,   // handler index 8
-    [PACKET_TYPE_STREAM_START]          = 10,  // handler index 9
-    [PACKET_TYPE_STREAM_STOP]           = 11,  // handler index 10
-    [PACKET_TYPE_REMOTE_LOG]            = 12,  // handler index 11
-    [PACKET_TYPE_ERROR_MESSAGE]         = 13,  // handler index 12
-    [PACKET_TYPE_CRYPTO_REKEY_REQUEST]  = 14,  // handler index 13
-    [PACKET_TYPE_CRYPTO_REKEY_RESPONSE] = 15,  // handler index 14
-    [PACKET_TYPE_CRYPTO_REKEY_COMPLETE] = 16,  // handler index 15
+static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
+    [0]  = {PACKET_TYPE_AUDIO_BATCH,           2},   // hash(4000)=0
+    [1]  = {PACKET_TYPE_PROTOCOL_VERSION,      0},   // hash(1)=1
+    [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      3},   // hash(4001)=1, probed->2
+    [9]  = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=9
+    [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,  13},  // hash(1201)=17
+    [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE, 14},  // hash(1202)=18
+    [19] = {PACKET_TYPE_ERROR_MESSAGE,         12},  // hash(2003)=19
+    [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
+    [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE, 15},  // hash(1203)=19, probed->21
+    [24] = {PACKET_TYPE_CLIENT_CAPABILITIES,   4},   // hash(5000)=24
+    [25] = {PACKET_TYPE_PING,                  5},   // hash(5001)=25
+    [26] = {PACKET_TYPE_PONG,                  6},   // hash(5002)=26
+    [27] = {PACKET_TYPE_CLIENT_JOIN,           7},   // hash(5003)=27
+    [28] = {PACKET_TYPE_CLIENT_LEAVE,          8},   // hash(5004)=28
+    [29] = {PACKET_TYPE_STREAM_START,          9},   // hash(5005)=29
+    [30] = {PACKET_TYPE_STREAM_STOP,           10},  // hash(5006)=30
 };
 // clang-format on
 
@@ -143,11 +163,8 @@ asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_
   }
   (void)transport;
 
-  // O(1) dispatch via sparse array lookup
-  if ((size_t)type >= PACKET_TYPE_MAP_SIZE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet type out of range: %d", type);
-  }
-  int idx = (int)g_client_handler_map[type] - 1;
+  // O(1) dispatch via hash table lookup
+  int idx = handler_hash_lookup(g_client_handler_hash, type);
   if (idx < 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled client packet type: %d", type);
   }
@@ -520,11 +537,8 @@ asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_
   }
   (void)transport;
 
-  // O(1) dispatch via sparse array lookup
-  if ((size_t)type >= PACKET_TYPE_MAP_SIZE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet type out of range: %d", type);
-  }
-  int idx = (int)g_server_handler_map[type] - 1;
+  // O(1) dispatch via hash table lookup
+  int idx = handler_hash_lookup(g_server_handler_hash, type);
   if (idx < 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Unhandled server packet type: %d", type);
   }
