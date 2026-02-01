@@ -12,7 +12,8 @@
 #include <sys/ioctl.h>
 
 #include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
+#include "options/rcu.h"     // For RCU-based options access
+#include "options/actions.h" // For deferred action tests
 #include "tests/common.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
@@ -1342,3 +1343,91 @@ GENERATE_OPTIONS_TEST(
       // Color output should be disabled
     },
     { cr_assert_eq(exit_code, 0, "none color mode should not cause exit"); })
+
+// ============================================================================
+// Deferred Actions Tests
+// ============================================================================
+
+/**
+ * @brief Test that action functions defer execution instead of exiting
+ *
+ * Verifies the deferred action system works correctly:
+ * 1. action_list_webcams() defers ACTION_LIST_WEBCAMS
+ * 2. action_list_microphones() defers ACTION_LIST_MICROPHONES
+ * 3. action_list_speakers() defers ACTION_LIST_SPEAKERS
+ * 4. action_show_capabilities() defers ACTION_SHOW_CAPABILITIES
+ * 5. Only the first action is remembered when multiple are deferred
+ */
+
+Test(options, deferred_action_list_webcams) {
+  // Defer the action
+  action_list_webcams();
+
+  // Verify it was deferred (not executed immediately, which would exit)
+  deferred_action_t action = actions_get_deferred();
+  cr_assert_eq(action, ACTION_LIST_WEBCAMS, "action_list_webcams() should defer ACTION_LIST_WEBCAMS");
+}
+
+Test(options, deferred_action_list_microphones) {
+  // Defer the action
+  action_list_microphones();
+
+  // Verify it was deferred
+  deferred_action_t action = actions_get_deferred();
+  cr_assert_eq(action, ACTION_LIST_MICROPHONES, "action_list_microphones() should defer ACTION_LIST_MICROPHONES");
+}
+
+Test(options, deferred_action_list_speakers) {
+  // Defer the action
+  action_list_speakers();
+
+  // Verify it was deferred
+  deferred_action_t action = actions_get_deferred();
+  cr_assert_eq(action, ACTION_LIST_SPEAKERS, "action_list_speakers() should defer ACTION_LIST_SPEAKERS");
+}
+
+Test(options, deferred_action_show_capabilities) {
+  // Defer the action
+  action_show_capabilities();
+
+  // Verify it was deferred
+  deferred_action_t action = actions_get_deferred();
+  cr_assert_eq(action, ACTION_SHOW_CAPABILITIES, "action_show_capabilities() should defer ACTION_SHOW_CAPABILITIES");
+}
+
+Test(options, deferred_action_first_wins) {
+  // Defer first action
+  action_list_webcams();
+  cr_assert_eq(actions_get_deferred(), ACTION_LIST_WEBCAMS, "First action should be deferred");
+
+  // Try to defer second action
+  action_list_microphones();
+  cr_assert_eq(actions_get_deferred(), ACTION_LIST_WEBCAMS,
+               "First action should still be deferred, second action should be ignored");
+
+  // Try to defer third action
+  action_show_capabilities();
+  cr_assert_eq(actions_get_deferred(), ACTION_LIST_WEBCAMS,
+               "First action should still be deferred, third action should be ignored");
+}
+
+Test(options, deferred_action_arguments) {
+  // Set action with arguments
+  action_args_t args = {.output_path = "/tmp/test.txt", .shell_name = "bash"};
+
+  actions_defer(ACTION_LIST_WEBCAMS, &args);
+
+  // Retrieve and verify arguments
+  const action_args_t *retrieved_args = actions_get_args();
+  cr_assert_not_null(retrieved_args, "Action arguments should be retrievable");
+  cr_assert_str_eq(retrieved_args->output_path, "/tmp/test.txt", "Output path should be preserved");
+  cr_assert_str_eq(retrieved_args->shell_name, "bash", "Shell name should be preserved");
+}
+
+Test(options, deferred_action_no_action_by_default) {
+  deferred_action_t action = actions_get_deferred();
+  cr_assert_eq(action, ACTION_NONE, "ACTION_NONE should be the default deferred action");
+
+  const action_args_t *args = actions_get_args();
+  cr_assert_null(args, "Arguments should be NULL when action is ACTION_NONE");
+}
