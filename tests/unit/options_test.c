@@ -119,12 +119,27 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
       argv_with_null = argv;
     }
 
-    // Clear any inherited options state from parent fork
-    // This is critical to avoid RCU state conflicts when forking for tests
-    options_state_shutdown();
+    // Note: Don't call options_state_shutdown() here - after fork(), inherited mutexes
+    // are in an inconsistent state. Let options_init() call options_state_init() which
+    // will properly initialize the RCU state for the child process.
 
     // options_init now auto-detects mode from argv
     asciichat_error_t result = options_init(argc, argv_with_null);
+
+    // TEMPORARY DEBUG: Write result to file (before output redirection is done)
+    FILE *debug_log = fopen("/tmp/options_test_child_debug.log", "a");
+    if (debug_log) {
+      const char *error_name = "UNKNOWN";
+      if (result == 0)
+        error_name = "ASCIICHAT_OK";
+      else if (result == 2)
+        error_name = "ERROR_USAGE";
+      else if (result == 86)
+        error_name = "ERROR_INVALID_PARAM";
+      fprintf(debug_log, "Child PID %d: options_init returned %d/%s (argc=%d, argv[1]=%s, argv[2]=%s)\n", getpid(),
+              result, error_name, argc, argc > 1 ? argv_with_null[1] : "NULL", argc > 2 ? argv_with_null[2] : "NULL");
+      fclose(debug_log);
+    }
 
     // Exit with appropriate code based on return value
     if (result != ASCIICHAT_OK) {

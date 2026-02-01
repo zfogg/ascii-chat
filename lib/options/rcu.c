@@ -14,6 +14,10 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 // ============================================================================
 // RCU State: Global Atomic Pointer
@@ -48,6 +52,8 @@ static mutex_t g_options_write_mutex;
 static bool g_options_initialized = false;
 // Mutex to protect initialization check (TOCTOU race prevention)
 static static_mutex_t g_options_init_mutex = STATIC_MUTEX_INIT;
+// Track the PID to detect fork() - after fork, child needs to reinitialize
+static pid_t g_init_pid = -1;
 
 /**
  * @brief Static default options used when options_get() is called before initialization
@@ -174,11 +180,23 @@ static void deferred_free_all(void) {
 asciichat_error_t options_state_init(void) {
   static_mutex_lock(&g_options_init_mutex);
 
-  // Double-check under lock: another thread may have initialized while we waited
-  if (g_options_initialized) {
+  // Detect fork: after fork(), child process must reinitialize mutexes
+  // Mutexes inherited from parent are in inconsistent state
+  pid_t current_pid = getpid();
+  if (g_options_initialized && g_init_pid == current_pid) {
+    // Already initialized in this process
     static_mutex_unlock(&g_options_init_mutex);
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
+  }
+
+  // If we forked (pid changed), we need to clean up old state
+  if (g_options_initialized && g_init_pid != current_pid) {
+    log_debug("Detected fork - reinitializing options state for child process");
+    // Mutexes are in bad state after fork - they need to be destroyed and recreated
+    // But we can't safely call mutex_destroy on inherited mutexes
+    // Just reset the flag and reinitialize
+    g_options_initialized = false;
   }
 
   // Initialize write mutex
@@ -210,8 +228,9 @@ asciichat_error_t options_state_init(void) {
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);
 
   g_options_initialized = true;
+  g_init_pid = current_pid; // Record PID to detect fork later
   static_mutex_unlock(&g_options_init_mutex);
-  log_debug("Options state initialized with RCU pattern");
+  log_debug("Options state initialized with RCU pattern (PID %d)", current_pid);
 
   return ASCIICHAT_OK;
 }
