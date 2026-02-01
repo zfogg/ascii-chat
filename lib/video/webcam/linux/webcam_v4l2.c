@@ -43,6 +43,7 @@ struct webcam_context_t {
   uint32_t pixelformat; // Actual pixel format from driver (RGB24 or YUYV)
   webcam_buffer_t *buffers;
   int buffer_count;
+  image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
 };
 
 /**

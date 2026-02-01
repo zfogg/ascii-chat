@@ -28,6 +28,7 @@ struct webcam_context_t {
   int height;
   BOOL mf_initialized;
   BOOL com_initialized;
+  image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
 };
 
 static HRESULT enumerate_devices_and_print(void) {
@@ -390,6 +391,11 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
       CoUninitialize();
       ctx->com_initialized = FALSE;
     }
+    // Free cached frame if it was allocated
+    if (ctx->cached_frame) {
+      image_destroy(ctx->cached_frame);
+      ctx->cached_frame = NULL;
+    }
     SAFE_FREE(ctx);
     log_debug("Windows Media Foundation webcam closed");
   }
@@ -521,12 +527,24 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Create image_t structure
-  image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
-  img->w = (int)(unsigned int)width;
-  img->h = (int)(unsigned int)height;
-  // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-  img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_pixel_t *);
+  // Allocate or reuse cached frame (allocated once, reused for each call)
+  // This matches the documented API contract: "Subsequent calls reuse the same buffer"
+  if (!ctx->cached_frame || ctx->cached_frame->w != (int)width || ctx->cached_frame->h != (int)height) {
+    // Free old cached frame if it exists with different dimensions
+    if (ctx->cached_frame) {
+      image_destroy(ctx->cached_frame);
+    }
+
+    // Create new image_t structure
+    image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
+    img->w = (int)(unsigned int)width;
+    img->h = (int)(unsigned int)height;
+    // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
+    img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_pixel_t *);
+    ctx->cached_frame = img;
+  }
+
+  image_t *img = ctx->cached_frame;
 
   // Copy RGB32 data (BGRA order in Media Foundation)
   // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline

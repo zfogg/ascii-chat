@@ -109,6 +109,7 @@ struct webcam_context_t {
   dispatch_queue_t queue;
   int width;
   int height;
+  image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
 };
 
 // Helper function to get supported device types without deprecated ones
@@ -343,6 +344,12 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
     }
   }
 
+  // Free cached frame if it was allocated
+  if (ctx->cached_frame) {
+    image_destroy(ctx->cached_frame);
+    ctx->cached_frame = NULL;
+  }
+
   SAFE_FREE(ctx);
   // log_info("AVFoundation webcam cleaned up");
 }
@@ -397,14 +404,19 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       return NULL;
     }
 
-    // Create image_t structure
-    image_t *img = image_new((int)width, (int)height);
-    if (!img) {
-      CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
-      CVPixelBufferRelease(pixelBuffer); // Release our retained reference
-      log_error("Failed to allocate image buffer");
-      return NULL;
+    // Allocate or reuse cached frame (allocated once, reused for each call)
+    // This matches the documented API contract: "Subsequent calls reuse the same buffer"
+    if (!ctx->cached_frame) {
+      ctx->cached_frame = image_new((int)width, (int)height);
+      if (!ctx->cached_frame) {
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+        CVPixelBufferRelease(pixelBuffer); // Release our retained reference
+        log_error("Failed to allocate image buffer");
+        return NULL;
+      }
     }
+
+    image_t *img = ctx->cached_frame;
 
     // Copy pixel data (handle potential row padding)
     // Calculate frame size with overflow checking
@@ -412,7 +424,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     if (image_calc_rgb_size(width, height, &frame_size) != ASCIICHAT_OK) {
       CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
       CVPixelBufferRelease(pixelBuffer);
-      image_destroy(img);
       log_error("Failed to calculate frame size: width=%zu, height=%zu (would overflow)", width, height);
       return NULL;
     }
@@ -421,7 +432,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     if (image_calc_rgb_size(width, 1, &row_size) != ASCIICHAT_OK) {
       CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
       CVPixelBufferRelease(pixelBuffer);
-      image_destroy(img);
       log_error("Failed to calculate row size: width=%zu (would overflow)", width);
       return NULL;
     }
