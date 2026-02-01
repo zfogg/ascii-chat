@@ -149,7 +149,8 @@ char *expand_path(const char *path);
  *
  * Configuration path resolution:
  * - Unix: $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/
- * - Windows: %APPDATA%\ascii-chat\ if APPDATA is set, otherwise ~\.ascii-chat\
+ * - Windows: %APPDATA%\ascii-chat\ if APPDATA is set, with fallback to %USERPROFILE%\AppData\Roaming\ascii-chat\,
+ * %HOME%\.config\ascii-chat\, or C:\ProgramData\ascii-chat\
  *
  * @note Returned path is allocated with malloc() and must be freed by caller.
  * @note Path includes directory separator at the end (e.g., "/home/user/.config/ascii-chat/").
