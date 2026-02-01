@@ -186,7 +186,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
 
   // Add examples for client mode
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to specific server", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, NULL, "Connect to localhost", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to remote server", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port",
                               false);

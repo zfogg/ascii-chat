@@ -765,7 +765,6 @@ int client_main(void) {
       fprintf(stderr, "  - Not found via ACDS (discovery server)\n");
       fprintf(stderr, "\nDid you mean to:\n");
       fprintf(stderr, "  ascii-chat server           # Start a new server\n");
-      fprintf(stderr, "  ascii-chat client           # Connect to localhost\n");
       fprintf(stderr, "  ascii-chat client HOST      # Connect to specific host\n");
       return 1;
     }
