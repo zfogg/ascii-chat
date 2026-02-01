@@ -133,7 +133,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_playback_enabled = config->enable_audio_playback;
   ctx->audio_ctx = config->audio_ctx;
   atomic_init(&ctx->first_frame, true);
-  atomic_init(&ctx->help_screen_active, false);
+  atomic_init(&ctx->help_screen_active, config->snapshot_mode);
 
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
