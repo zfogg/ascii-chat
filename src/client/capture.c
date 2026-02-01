@@ -120,7 +120,7 @@
  *
  * @ingroup client_capture
  */
-static session_capture_ctx_t *g_capture_ctx = NULL;
+static session_capture_ctx_t *g_capture_capture_ctx = NULL;
 
 /* ============================================================================
  * Capture Thread Management
@@ -207,20 +207,20 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Frame rate limiting using session capture adaptive sleep
-    session_capture_sleep_for_fps(g_capture_ctx);
+    session_capture_sleep_for_fps(g_capture_capture_ctx);
 
     // Read frame using session capture library
-    image_t *image = session_capture_read_frame(g_capture_ctx);
+    image_t *image = session_capture_read_frame(g_capture_capture_ctx);
 
     // Check if media is paused and we have a last frame - render last frame to keep keyboard polling active
     if (!image) {
-      media_source_t *source = (media_source_t *)session_capture_get_media_source(g_capture_ctx);
+      media_source_t *source = (media_source_t *)session_capture_get_media_source(g_capture_capture_ctx);
       if (source && media_source_get_type(source) == MEDIA_SOURCE_FILE && media_source_is_paused(source) &&
           last_frame) {
         // Use last frame when paused (keeps display thread rendering and keyboard polling active)
         image = last_frame;
         log_debug_every(LOG_RATE_SLOW, "Using cached frame while paused");
-      } else if (session_capture_at_end(g_capture_ctx)) {
+      } else if (session_capture_at_end(g_capture_capture_ctx)) {
         // Check if we've reached end of file for media sources
         log_debug("Media source reached end of file");
         image_destroy(last_frame);
@@ -239,7 +239,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Process frame for network transmission using session library
     // session_capture_process_for_transmission() returns a new image that we own
     // NOTE: The original 'image' is owned by media_source - do NOT free it!
-    image_t *processed_image = session_capture_process_for_transmission(g_capture_ctx, image);
+    image_t *processed_image = session_capture_process_for_transmission(g_capture_capture_ctx, image);
     if (!processed_image) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
       // NOTE: Do NOT free 'image' - it's owned by capture context
@@ -290,7 +290,7 @@ static void *webcam_capture_thread_func(void *arg) {
     last_capture_frame_time_ns = frame_capture_time_ns;
 
     // Expected frame interval in nanoseconds
-    uint64_t expected_interval_ns = NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(g_capture_ctx);
+    uint64_t expected_interval_ns = NS_PER_SEC_INT / (uint64_t)session_capture_get_target_fps(g_capture_capture_ctx);
     uint64_t lag_threshold_ns = expected_interval_ns + (expected_interval_ns / 2); // 50% over expected
 
     // Log warning if frame took too long to capture (display in milliseconds for readability)
@@ -381,8 +381,8 @@ int capture_init() {
   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
   // Create capture context using session library
-  g_capture_ctx = session_capture_create(&config);
-  if (!g_capture_ctx) {
+  g_capture_capture_ctx = session_capture_create(&config);
+  if (!g_capture_capture_ctx) {
     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
     asciichat_error_t existing_error = GET_ERRNO();
     log_debug("session_capture_create failed, GET_ERRNO() returned: %d", existing_error);
@@ -479,8 +479,8 @@ void capture_cleanup() {
   capture_stop_thread();
 
   // Destroy capture context
-  if (g_capture_ctx) {
-    session_capture_destroy(g_capture_ctx);
-    g_capture_ctx = NULL;
+  if (g_capture_capture_ctx) {
+    session_capture_destroy(g_capture_capture_ctx);
+    g_capture_capture_ctx = NULL;
   }
 }

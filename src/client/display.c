@@ -135,7 +135,7 @@ static bool g_keyboard_enabled = false;
  *
  * @ingroup client_display
  */
-static session_capture_ctx_t *g_capture_ctx = NULL;
+static session_capture_ctx_t *g_display_capture_ctx = NULL;
 
 /* TTY detection and terminal reset now handled by session display library */
 
@@ -199,10 +199,10 @@ int display_init() {
     capture_config.loop = GET_OPTION(media_loop);
     capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
 
-    g_capture_ctx = session_capture_create(&capture_config);
-    if (!g_capture_ctx) {
+    g_display_capture_ctx = session_capture_create(&capture_config);
+    if (!g_display_capture_ctx) {
       log_warn("Failed to create capture context for local media - keyboard seek/pause disabled");
-      g_capture_ctx = NULL;
+      g_display_capture_ctx = NULL;
     }
   }
 
@@ -303,7 +303,7 @@ void display_render_frame(const char *frame_data) {
   if (g_keyboard_enabled) {
     keyboard_key_t key = keyboard_read_nonblocking();
     if (key != KEY_NONE) {
-      session_handle_keyboard_input(g_capture_ctx, key);
+      session_handle_keyboard_input(g_display_capture_ctx, key);
     }
   }
 }
@@ -324,9 +324,9 @@ void display_cleanup() {
   }
 
   // Cleanup optional local media capture context if it was created
-  if (g_capture_ctx) {
-    session_capture_destroy(g_capture_ctx);
-    g_capture_ctx = NULL;
+  if (g_display_capture_ctx) {
+    session_capture_destroy(g_display_capture_ctx);
+    g_display_capture_ctx = NULL;
   }
 
   if (g_display_ctx) {

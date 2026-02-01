@@ -114,7 +114,7 @@ static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 
 /* Color scheme management - logging-specific state */
 static compiled_color_scheme_t g_compiled_colors = {0};
-static bool g_colors_initialized = false;
+static bool g_log_colors_initialized = false;
 
 /* Note: g_colors_mutex is defined in lib/ui/colors.c and declared in lib/ui/colors.h */
 
@@ -1248,12 +1248,12 @@ const char **log_get_color_array(void) {
   init_terminal_capabilities();
 
   /* Initialize colors if not already done */
-  if (!g_colors_initialized) {
+  if (!g_log_colors_initialized) {
     log_init_colors();
   }
 
   /* Safety check: if colors are not initialized, return NULL to prevent crashes from null pointers */
-  if (!g_colors_initialized) {
+  if (!g_log_colors_initialized) {
     return NULL;
   }
 
@@ -1295,7 +1295,7 @@ void log_init_colors(void) {
     return;
   }
 
-  if (g_colors_initialized) {
+  if (g_log_colors_initialized) {
     return;
   }
 
@@ -1325,7 +1325,7 @@ void log_init_colors(void) {
   /* Compile the color scheme to ANSI codes */
   asciichat_error_t result = colors_compile_scheme(scheme, mode, background, &g_compiled_colors);
 
-  g_colors_initialized = true;
+  g_log_colors_initialized = true;
   mutex_unlock(&g_colors_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */
@@ -1358,7 +1358,7 @@ void log_set_color_scheme(const color_scheme_t *scheme) {
   /* Compile the new color scheme */
   asciichat_error_t result = colors_compile_scheme(scheme, mode, background, &g_compiled_colors);
 
-  g_colors_initialized = true;
+  g_log_colors_initialized = true;
   mutex_unlock(&g_colors_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */

@@ -37,7 +37,7 @@
 /**
  * @brief Get current time in milliseconds (portable)
  */
-static uint64_t get_current_time_ms(void) {
+static uint64_t session_get_current_time_ms(void) {
   uint64_t current_time_ns = time_get_ns();
   return time_ns_to_ms(current_time_ns);
 }
@@ -1259,7 +1259,7 @@ asciichat_error_t discovery_session_process(discovery_session_t *session, int ti
       // Migration completed successfully
       set_state(session, DISCOVERY_STATE_ACTIVE);
       log_info("Migration complete, session resumed");
-    } else if (get_current_time_ms() - session->migration.detection_time_ms > 30000) {
+    } else if (session_get_current_time_ms() - session->migration.detection_time_ms > 30000) {
       // Migration timed out after 30 seconds
       log_error("Host migration timeout - session cannot recover");
       set_state(session, DISCOVERY_STATE_FAILED);
@@ -1413,7 +1413,7 @@ asciichat_error_t discovery_session_init_ring(discovery_session_t *session) {
 
   // Simplified for new architecture: just initialize timing
   // No participant list needed - host runs the election
-  session->ring.last_ring_round_ms = get_current_time_ms();
+  session->ring.last_ring_round_ms = session_get_current_time_ms();
   session->ring.am_future_host = false;
   memset(session->ring.future_host_id, 0, 16);
 
@@ -1427,7 +1427,7 @@ asciichat_error_t discovery_session_start_ring_round(discovery_session_t *sessio
     return ERROR_INVALID_PARAM;
   }
 
-  session->ring.last_ring_round_ms = get_current_time_ms();
+  session->ring.last_ring_round_ms = session_get_current_time_ms();
 
   if (session->is_host) {
     log_info("Starting 5-minute proactive election round (collecting NETWORK_QUALITY from participants)");
@@ -1489,7 +1489,7 @@ asciichat_error_t discovery_session_handle_host_disconnect(discovery_session_t *
 
   // Initialize migration context
   session->migration.state = MIGRATION_STATE_DETECTED;
-  session->migration.detection_time_ms = get_current_time_ms();
+  session->migration.detection_time_ms = session_get_current_time_ms();
   memcpy(session->migration.last_host_id, session->host_id, 16);
   session->migration.disconnect_reason = disconnect_reason;
 

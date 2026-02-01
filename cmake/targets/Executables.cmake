@@ -115,6 +115,17 @@ else()
         target_link_options(ascii-chat PRIVATE "LINKER:-suppress_warnings")
     endif()
 
+    # Linux: Link libsystemd for keepawake functionality (static library deps don't propagate)
+    if(PLATFORM_LINUX AND NOT USE_MUSL)
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
+            if(LIBSYSTEMD_FOUND)
+                target_link_libraries(ascii-chat PRIVATE ${LIBSYSTEMD_LIBRARIES})
+            endif()
+        endif()
+    endif()
+
     set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 endif()
 

@@ -102,7 +102,7 @@ static void generate_uuid(uint8_t uuid_out[16]) {
 /**
  * @brief Get current time in milliseconds
  */
-static uint64_t get_current_time_ms(void) {
+static uint64_t database_get_current_time_ms(void) {
   uint64_t current_time_ns = time_get_realtime_ns();
   return time_ns_to_ms(current_time_ns);
 }
@@ -335,7 +335,7 @@ asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create
   generate_uuid(session_id);
 
   // Set timestamps
-  uint64_t now = get_current_time_ms();
+  uint64_t now = database_get_current_time_ms();
   uint64_t expires_at = now + ACIP_SESSION_EXPIRATION_MS;
 
   // Calculate max_participants
@@ -512,7 +512,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   // Generate participant ID
   uint8_t participant_id[16];
   generate_uuid(participant_id);
-  uint64_t now = get_current_time_ms();
+  uint64_t now = database_get_current_time_ms();
 
   // Begin transaction
   char *err_msg = NULL;
@@ -802,7 +802,7 @@ void database_session_cleanup_expired(sqlite3 *db) {
     return;
   }
 
-  uint64_t now = get_current_time_ms();
+  uint64_t now = database_get_current_time_ms();
 
   // Log sessions about to be deleted
   const char *log_sql = "SELECT session_string FROM sessions WHERE expires_at < ?";
@@ -918,7 +918,7 @@ asciichat_error_t database_session_start_migration(sqlite3 *db, const uint8_t se
     return SET_ERRNO(ERROR_INVALID_PARAM, "db or session_id is NULL");
   }
 
-  uint64_t now = get_current_time_ms();
+  uint64_t now = database_get_current_time_ms();
 
   const char *sql = "UPDATE sessions SET "
                     "in_migration = 1, "
@@ -956,7 +956,7 @@ bool database_session_is_migration_ready(sqlite3 *db, const uint8_t session_id[1
     return false;
   }
 
-  uint64_t now = get_current_time_ms();
+  uint64_t now = database_get_current_time_ms();
   const char *sql = "SELECT in_migration, migration_start_ms FROM sessions WHERE session_id = ?";
 
   sqlite3_stmt *stmt = NULL;

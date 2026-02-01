@@ -19,7 +19,7 @@
  * ============================================================================ */
 
 static color_scheme_t g_active_scheme = {0};
-static bool g_colors_initialized = false;
+static bool g_ui_colors_initialized = false;
 
 /* Mutex for color scheme compilation - used by both colors.c and logging.c */
 /* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock */
@@ -235,7 +235,7 @@ static const color_scheme_t *find_builtin_scheme(const char *name) {
  * ============================================================================ */
 
 asciichat_error_t colors_init(void) {
-  if (g_colors_initialized) {
+  if (g_ui_colors_initialized) {
     return ASCIICHAT_OK;
   }
 
@@ -257,7 +257,7 @@ asciichat_error_t colors_init(void) {
   }
 
   memcpy(&g_active_scheme, pastel, sizeof(color_scheme_t));
-  g_colors_initialized = true;
+  g_ui_colors_initialized = true;
 
   return ASCIICHAT_OK;
 }
@@ -280,13 +280,13 @@ void colors_cleanup_compiled(compiled_color_scheme_t *compiled) {
 }
 
 void colors_shutdown(void) {
-  if (!g_colors_initialized) {
+  if (!g_ui_colors_initialized) {
     return;
   }
 
   mutex_lock(&g_colors_mutex);
   memset(&g_active_scheme, 0, sizeof(color_scheme_t));
-  g_colors_initialized = false;
+  g_ui_colors_initialized = false;
   mutex_unlock(&g_colors_mutex);
 
   /* NOTE: Do NOT call mutex_destroy() on POSIX because the mutex is statically
@@ -302,7 +302,7 @@ void colors_shutdown(void) {
  * ============================================================================ */
 
 const color_scheme_t *colors_get_active_scheme(void) {
-  if (!g_colors_initialized) {
+  if (!g_ui_colors_initialized) {
     /* Lazy initialization of color system */
     colors_init();
   }
@@ -316,7 +316,7 @@ asciichat_error_t colors_set_active_scheme(const char *name) {
   }
 
   /* Ensure color system is initialized */
-  if (!g_colors_initialized) {
+  if (!g_ui_colors_initialized) {
     colors_init();
   }
 
