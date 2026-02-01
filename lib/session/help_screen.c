@@ -9,6 +9,8 @@
 #include "common.h"
 #include "options/options.h"
 #include "platform/terminal.h"
+#include "log/logging.h"
+#include "util/string.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>
@@ -62,6 +64,22 @@ static const char *color_mode_to_string(int mode) {
     return "256-color";
   case 3:
     return "Truecolor";
+  default:
+    return "Unknown";
+  }
+}
+
+/**
+ * @brief Get render mode name
+ */
+static const char *render_mode_to_string(int mode) {
+  switch (mode) {
+  case 0:
+    return "Foreground";
+  case 1:
+    return "Background";
+  case 2:
+    return "Half-block";
   default:
     return "Unknown";
   }
@@ -141,7 +159,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("║  ───────────────────                      ║");
 
   APPEND("\033[%d;%dH", start_row + 7, start_col + 1);
-  APPEND("║  ~       Toggle this help screen          ║");
+  APPEND("║  ?       Toggle this help screen          ║");
 
   APPEND("\033[%d;%dH", start_row + 8, start_col + 1);
   APPEND("║  ↑ / ↓   Volume up/down (10%%)             ║");
@@ -174,6 +192,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   // Get current option values
   double current_volume = GET_OPTION(speakers_volume);
   int current_color_mode = (int)GET_OPTION(color_mode);
+  int current_render_mode = (int)GET_OPTION(render_mode);
   bool current_flip = (bool)GET_OPTION(webcam_flip);
   bool current_audio = (bool)GET_OPTION(audio_enabled);
 
@@ -181,31 +200,40 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   char volume_bar[20];
   format_volume_bar(current_volume, volume_bar, sizeof(volume_bar));
 
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
-  APPEND("║  Volume:   %s ║", volume_bar);
+  // Volume line (always show the bar)
+  APPEND("\033[%d;%dH║  Volume: %s%-24s│", start_row + 17, start_col + 1, volume_bar, "");
 
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
-  APPEND("║  Color:    %-16s ║", color_mode_to_string(current_color_mode));
+  // Color mode line
+  const char *color_str = color_mode_to_string(current_color_mode);
+  APPEND("\033[%d;%dH║  Color Mode: %-22s│", start_row + 18, start_col + 1, color_str);
 
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
-  APPEND("║  Webcam:   %-16s ║", current_flip ? "Flipped" : "Normal");
+  // Render mode line
+  const char *render_str = render_mode_to_string(current_render_mode);
+  APPEND("\033[%d;%dH║  Render Mode: %-21s│", start_row + 19, start_col + 1, render_str);
 
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
-  APPEND("║  Audio:    %-16s ║", current_audio ? "Enabled" : "Disabled");
+  // Webcam flip line - with color coding
+  const char *flip_text = current_flip ? "Flipped" : "Normal";
+  const char *flip_colored = colored_string(current_flip ? LOG_COLOR_INFO : LOG_COLOR_ERROR, flip_text);
+  APPEND("\033[%d;%dH║  Webcam: %-29s│", start_row + 20, start_col + 1, flip_colored);
+
+  // Audio line - with color coding
+  const char *audio_text = current_audio ? "Enabled" : "Disabled";
+  const char *audio_colored = colored_string(current_audio ? LOG_COLOR_INFO : LOG_COLOR_ERROR, audio_text);
+  APPEND("\033[%d;%dH║  Audio: %-30s│", start_row + 21, start_col + 1, audio_colored);
 
   // Footer
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
   APPEND("║                                            ║");
 
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
-  APPEND("║  Press ~ to close                         ║");
+  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
+  APPEND("║  Press ? to close                         ║");
 
   // Bottom border
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
   APPEND("╚════════════════════════════════════════════╝");
 
   // Cursor positioning after rendering
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
 
 #undef APPEND
 
