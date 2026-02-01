@@ -265,13 +265,13 @@ Default 60 FPS. Configurable from 1-144 FPS.
 .SH ENVIRONMENT
 .TP
 .B APPDATA
-Windows configuration directory for user-specific application data (%APPDATA%\\ascii-chat\). Used as fallback for config directory if not using XDG paths.
+Windows configuration directory for user-specific application data (%APPDATA%\\ascii-chat\). Primary location for config files on Windows.
 .TP
 .B GNUPGHOME
 GPG home directory for gpg-agent and key management. Defaults to ~/.gnupg if not set. Used when authenticating with GPG keys.
 .TP
 .B HOME
-User home directory on Unix/macOS. Used to locate config files (.ascii-chat/), SSH keys (.ssh/), and GPG keys. Required for path expansion.
+User home directory on Unix/macOS and Windows. Used to locate config files (.ascii-chat/ on Unix, third fallback on Windows), SSH keys (.ssh/), and GPG keys. Required for path expansion.
 .TP
 .B LLVM_SYMBOLIZER_PATH
 Path to llvm-symbolizer executable (debug builds only). When set, enables line-by-line stack traces in crash reports and panic messages. Improves debugging information quality.
@@ -280,7 +280,7 @@ Path to llvm-symbolizer executable (debug builds only). When set, enables line-b
 Windows program data directory for shared application data. Used as fallback directory for global configuration on Windows.
 .TP
 .B USERPROFILE
-Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used for expanding ~ in paths and locating config files on Windows.
+Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used for expanding ~ in paths. When APPDATA is not set, %USERPROFILE%\eAppData\eRoaming\eascii-chat\e is used for config files (first fallback in the chain).
 .TP
 .B USER
 Current user identifier on Unix/macOS. Used for TOFU host verification to associate server keys with specific users.
@@ -321,9 +321,9 @@ Configuration directory on Linux/macOS.
 Uses $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/.
 Contains config.toml and known_hosts.
 .TP
-.I %APPDATA%\eascii-chat\e \fRor\fI ~\e.ascii-chat\e
+.I %APPDATA%\eascii-chat\e \fRor\fI %USERPROFILE%\eAppData\eRoaming\eascii-chat\e
 Configuration directory on Windows.
-Uses %APPDATA%\eascii-chat\e if APPDATA is set, otherwise ~\e.ascii-chat\e.
+Uses %APPDATA%\eascii-chat\e (primary), with fallback to %USERPROFILE%\eAppData\eRoaming\eascii-chat\e, %HOME%\e.config\eascii-chat\e, or C:\eProgramData\eascii-chat\e.
 Contains config.toml and known_hosts.
 .TP
 .I /etc/ascii-chat/config.toml
