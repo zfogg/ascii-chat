@@ -187,21 +187,6 @@ if(NOT libdatachannel_POPULATED)
         # Continue anyway - CMake build will fail later if submodules are actually required
     endif()
 
-    # Clean up unnecessary files to reduce cache size
-    message(STATUS "Cleaning libdatachannel cache...")
-    file(REMOVE_RECURSE
-        "${libdatachannel_SOURCE_DIR}/.git"  # Git metadata (274MB)
-    )
-    # Remove media files
-    file(GLOB_RECURSE _MEDIA_FILES
-        "${libdatachannel_SOURCE_DIR}/*.opus"
-        "${libdatachannel_SOURCE_DIR}/*.h264"
-        "${libdatachannel_SOURCE_DIR}/*.mov"
-    )
-    if(_MEDIA_FILES)
-        file(REMOVE ${_MEDIA_FILES})
-    endif()
-
     # Patch dependency CMakeLists to require modern CMake
     # plog
     set(PLOG_CMAKE_FILE "${libdatachannel_SOURCE_DIR}/deps/plog/CMakeLists.txt")
@@ -515,6 +500,17 @@ endif()
         INTERFACE
         "${libdatachannel_SOURCE_DIR}/include"
     )
+
+    # Remove media files to reduce cache size
+    file(GLOB_RECURSE _MEDIA_FILES
+        "${libdatachannel_SOURCE_DIR}/*.opus"
+        "${libdatachannel_SOURCE_DIR}/*.h264"
+        "${libdatachannel_SOURCE_DIR}/*.mov"
+    )
+    if(_MEDIA_FILES)
+        message(STATUS "Removing media files from libdatachannel cache...")
+        file(REMOVE ${_MEDIA_FILES})
+    endif()
 
     message(STATUS "  ${BoldGreen}✓ libdatachannel configured successfully${ColorReset}")
     message(STATUS "  Source dir: ${libdatachannel_SOURCE_DIR}")
