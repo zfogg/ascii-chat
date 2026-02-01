@@ -4,6 +4,7 @@
  */
 
 #include "options/rcu.h"
+#include "options/schema.h"
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
@@ -239,14 +240,6 @@ asciichat_error_t options_state_set(const options_t *opts) {
   log_debug("Options state set from parsed struct");
   return ASCIICHAT_OK;
 }
-
-// ============================================================================
-// Schema Cleanup Hook (Declared early for use in options_state_shutdown)
-// ============================================================================
-// Note: Schema is built as a global during options_init but needs explicit
-// cleanup to free all dynamically allocated strings. We declare it here
-// and it's implemented in schema.c.
-extern void config_schema_cleanup(void);
 
 void options_state_shutdown(void) {
   // Check and clear initialization flag under lock
