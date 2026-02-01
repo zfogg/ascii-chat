@@ -529,8 +529,8 @@ Test(options, valid_render_modes) {
   char *valid_modes[] = {"foreground", "fg", "background", "bg", "half-block", "halfblock"};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "--render-mode", valid_modes[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
+    char *argv[] = {"program", "client", "--render-mode", valid_modes[i], NULL};
+    int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 0, "Valid render mode %s should not cause exit", valid_modes[i]);
   }
 
@@ -541,8 +541,8 @@ Test(options, invalid_render_modes) {
   char *invalid_modes[] = {"invalid", "full", "block", "text", ""};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "--render-mode", invalid_modes[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
+    char *argv[] = {"program", "client", "--render-mode", invalid_modes[i], NULL};
+    int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 1, "Invalid render mode %s should cause exit with code 1", invalid_modes[i]);
   }
 }
@@ -558,8 +558,8 @@ Test(options, valid_palettes) {
   char *valid_palettes[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
 
   for (int i = 0; i < 6; i++) {
-    char *argv[] = {"client", "--palette", valid_palettes[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
+    char *argv[] = {"program", "client", "--palette", valid_palettes[i], NULL};
+    int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 0, "Valid palette %s should not cause exit", valid_palettes[i]);
   }
 
@@ -570,8 +570,8 @@ Test(options, invalid_palettes) {
   char *invalid_palettes[] = {"invalid", "ascii", "unicode", "color", ""};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "--palette", invalid_palettes[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
+    char *argv[] = {"program", "client", "--palette", invalid_palettes[i], NULL};
+    int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 1, "Invalid palette %s should cause exit with code 1", invalid_palettes[i]);
   }
 }
@@ -580,8 +580,8 @@ Test(options, valid_palette_chars) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "--palette-chars", " .:-=+*#%@$", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
+  char *argv[] = {"program", "client", "--palette-chars", " .:-=+*#%@$", NULL};
+  int result = test_options_init_with_fork(argv, 4, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -589,8 +589,8 @@ Test(options, valid_palette_chars) {
 
 Test(options, invalid_palette_chars) {
   // Empty palette chars should fail
-  char *argv[] = {"client", "--palette-chars", "", NULL};
-  int result = test_options_init_with_fork(argv, 3, true);
+  char *argv[] = {"program", "client", "--palette-chars", "", NULL};
+  int result = test_options_init_with_fork(argv, 4, true);
   cr_assert_eq(result, 1);
 }
 
@@ -605,8 +605,8 @@ Test(options, valid_snapshot_delays) {
   char *valid_delays[] = {"0.0", "1.5", "3.0", "10.0", "0"};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"client", "--snapshot-delay", valid_delays[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
+    char *argv[] = {"program", "client", "--snapshot-delay", valid_delays[i], NULL};
+    int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 0, "Valid snapshot delay %s should not cause exit", valid_delays[i]);
   }
 
@@ -621,8 +621,8 @@ Test(options, invalid_snapshot_delays) {
   };
 
   for (int i = 0; i < 3; i++) {
-    char *argv[] = {"client", "--snapshot-delay", invalid_delays[i], NULL};
-    int result = test_options_init_with_fork(argv, 3, true);
+    char *argv[] = {"program", "client", "--snapshot-delay", invalid_delays[i], NULL};
+    int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 1, "Invalid snapshot delay %s should cause exit with code 1", invalid_delays[i]);
   }
 }
@@ -677,8 +677,9 @@ Test(options, flag_options) {
   save_options(&backup);
 
   // NOTE: --quiet is now a global option, removed from this test
-  char *argv[] = {"client", "--show-capabilities", "--utf8", "--audio", "--stretch", "--snapshot", "--encrypt", NULL};
-  int result = test_options_init_with_fork(argv, 7, true);
+  char *argv[] = {"program",   "client",     "--show-capabilities", "--utf8", "--audio",
+                  "--stretch", "--snapshot", "--encrypt",           NULL};
+  int result = test_options_init_with_fork(argv, 8, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -728,8 +729,8 @@ Test(options, equals_sign_handling) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "192.168.1.1:8080", "--width=100", "--height=50", NULL};
-  int result = test_options_init_with_fork(argv, 4, true);
+  char *argv[] = {"program", "client", "192.168.1.1:8080", "--width=100", "--height=50", NULL};
+  int result = test_options_init_with_fork(argv, 5, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -744,7 +745,8 @@ Test(options, complex_client_combination) {
   save_options(&backup);
 
   // NOTE: --quiet and --log-file are now global options, removed from this test
-  char *argv[] = {"client",
+  char *argv[] = {"program",
+                  "client",
                   "192.168.1.100:8080",
                   "--width=120",
                   "--height=60",
@@ -760,7 +762,7 @@ Test(options, complex_client_combination) {
                   "--encrypt",
                   "--key=mysecretpassword",
                   NULL};
-  int argc = 15;
+  int argc = 16;
 
   log_set_level(LOG_DEBUG);
   int result = test_options_init_with_fork(argv, argc, true);
@@ -775,8 +777,9 @@ Test(options, complex_server_combination) {
 
   // NOTE: --log-file is now a global option, removed from this test
   char *argv[] = {
-      "server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", "--keyfile=/etc/ascii-chat/key", NULL};
-  int argc = 6;
+      "program", "server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", "--keyfile=/etc/ascii-chat/key",
+      NULL};
+  int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, false);
   cr_assert_eq(result, 0);
@@ -900,8 +903,8 @@ Test(options, very_long_arguments) {
   long_address[sizeof(long_address) - 1] = '\0';
   SAFE_STRNCPY(long_address, "192.168.1.1:8080", sizeof(long_address)); // Valid but test the buffer handling
 
-  char *argv[] = {"client", long_address, NULL};
-  int result = test_options_init_with_fork(argv, 2, true);
+  char *argv[] = {"program", "client", long_address, NULL};
+  int result = test_options_init_with_fork(argv, 3, true);
   cr_assert_eq(result, 0);
 
   restore_options(&backup);
@@ -911,14 +914,15 @@ Test(options, maximum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client",
+  char *argv[] = {"program",
+                  "client",
                   "255.255.255.255:65535",
                   "--width=65535",
                   "--height=65535",
                   "--webcam-index=65535",
                   "--snapshot-delay=999.999",
                   NULL};
-  int argc = 6;
+  int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
   cr_assert_eq(result, 0);
@@ -930,8 +934,9 @@ Test(options, minimum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"client", "0.0.0.0:1", "--width=1", "--height=1", "--webcam-index=0", "--snapshot-delay=0.0", NULL};
-  int argc = 6;
+  char *argv[] = {
+      "program", "client", "0.0.0.0:1", "--width=1", "--height=1", "--webcam-index=0", "--snapshot-delay=0.0", NULL};
+  int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
   cr_assert_eq(result, 0);
@@ -948,8 +953,9 @@ Test(options, random_combinations) {
 
   for (int i = 0; i < 10; i++) {
     char *argv[20];
-    int argc = 1;
-    argv[0] = "client";
+    int argc = 2;
+    argv[0] = "program";
+    argv[1] = "client";
 
     // Randomly add valid options
     // NOTE: --quiet is now a global option, removed from this test
