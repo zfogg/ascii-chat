@@ -322,23 +322,17 @@ int mirror_main(void) {
   // Use capture's media source to check for audio
   media_source_t *audio_probe_source = capture ? session_capture_get_media_source(capture) : NULL;
 
-  // ============================================================================
-  // Audio Initialization Control
-  // ============================================================================
-  // Skip audio initialization in the following cases:
-  // 1. Immediate snapshot mode (snapshot_delay == 0) - no time to play audio
-  // 2. User disabled audio via --audio flag
+  // Determine if we should initialize audio based on snapshot and --audio settings
   bool should_init_audio = true;
 
-  // Check 1: Skip audio for immediate snapshots (optimization)
+  // Skip audio for immediate snapshots (snapshot_delay == 0) - optimization
   if (GET_OPTION(snapshot_mode) && GET_OPTION(snapshot_delay) == 0.0) {
     should_init_audio = false;
     log_debug("Skipping audio initialization for immediate snapshot (snapshot_delay=0)");
   }
 
-  // Check 2: Honor --audio flag for media playback control
-  // Note: has_media is already defined at line 213
-  if (has_media && !GET_OPTION(audio_enabled)) {
+  // Honor --audio flag for media playback control
+  if (should_init_audio && has_media && !GET_OPTION(audio_enabled)) {
     should_init_audio = false;
     log_debug("Skipping media audio playback (--audio not enabled)");
   }
