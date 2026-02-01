@@ -99,7 +99,7 @@ function(ascii_defer_prepare)
 
             # Only transform files that actually use defer()
             if(EXISTS "${abs_path}")
-                file(STRINGS "${abs_path}" _defer_usage REGEX "defer\\(")
+                file(STRINGS "${abs_path}" _defer_usage REGEX "(^|[^a-zA-Z_])defer\\(")
                 if(_defer_usage)
                     set(generated_path "${defer_transformed_dir}/${rel_path}")
                     list(APPEND defer_abs_paths "${abs_path}")
