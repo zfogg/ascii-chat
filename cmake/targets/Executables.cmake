@@ -159,11 +159,13 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
     )
     message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    # Release builds use static linking - no rpath needed
+    # Release builds need rpath for LLVM runtime libraries (libunwind, libc++)
+    # even though we use static linking for application dependencies
+    # Use /usr/local/lib for Homebrew LLVM libraries
     set_target_properties(ascii-chat PROPERTIES
-        SKIP_BUILD_RPATH TRUE
-        INSTALL_RPATH ""
-        INSTALL_RPATH_USE_LINK_PATH FALSE
+        BUILD_RPATH "/usr/local/lib"
+        INSTALL_RPATH "/usr/local/lib"
+        INSTALL_RPATH_USE_LINK_PATH TRUE
     )
 endif()
 
