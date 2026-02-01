@@ -38,6 +38,7 @@ echo "Starting server..."
 # Use --discovery-expose-ip flag to allow public IP disclosure (required for non-interactive mode)
 # WebRTC is now the default for discovery sessions
 timeout 25 $BIN/ascii-chat \
+  --log-level debug \
   server 0.0.0.0 :: \
   --port $SERVER_PORT \
   --discovery \
@@ -113,9 +114,9 @@ timeout 6 $BIN/ascii-chat \
   2>/tmp/client_stderr.log | tee "$FRAME_FILE"
 
 
-kill $SERVER_PID $ACDS_PID
+kill $SERVER_PID $ACDS_PID || true
 sleep 0.25
-kill -9 $SERVER_PID $ACDS_PID
+kill -9 $SERVER_PID $ACDS_PID || true
 
 echo ""
 echo "=== ASCII FRAME TRANSMITTED OVER WEBRTC ==="
