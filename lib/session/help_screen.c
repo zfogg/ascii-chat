@@ -141,7 +141,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("║  ───────────────────                      ║");
 
   APPEND("\033[%d;%dH", start_row + 7, start_col + 1);
-  APPEND("║  ?       Toggle this help screen          ║");
+  APPEND("║  ~       Toggle this help screen          ║");
 
   APPEND("\033[%d;%dH", start_row + 8, start_col + 1);
   APPEND("║  ↑ / ↓   Volume up/down (10%%)             ║");
@@ -198,7 +198,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   APPEND("║                                            ║");
 
   APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
-  APPEND("║  Press ? to close                         ║");
+  APPEND("║  Press ~ to close                         ║");
 
   // Bottom border
   APPEND("\033[%d;%dH", start_row + 23, start_col + 1);

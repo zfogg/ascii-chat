@@ -66,7 +66,7 @@ static int next_color_mode(int current) {
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
   switch (key) {
   // ===== HELP SCREEN TOGGLE =====
-  case '?': {
+  case '~': {
     if (display) {
       session_display_toggle_help(display);
       // Render help screen immediately so user sees it

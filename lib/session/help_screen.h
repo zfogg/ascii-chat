@@ -9,7 +9,7 @@
  * - Available keyboard shortcuts
  * - Current program state (volume, color mode, webcam flip, audio, mute status)
  *
- * The help screen is toggled with '?' key and suppresses frame rendering
+ * The help screen is toggled with '~' key and suppresses frame rendering
  * while network reception continues in the background.
  *
  * **Display State:**
