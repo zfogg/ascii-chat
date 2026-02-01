@@ -113,6 +113,8 @@ else()
     # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
     if(APPLE)
         target_link_options(ascii-chat PRIVATE "LINKER:-w")
+        # Link IOKit framework for keepawake functionality (static library deps don't propagate)
+        target_link_libraries(ascii-chat PRIVATE ${IOKIT_FRAMEWORK})
     endif()
 
     # Linux: Link libsystemd for keepawake functionality (static library deps don't propagate)

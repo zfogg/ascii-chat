@@ -167,6 +167,8 @@ else()
             ${AVFOUNDATION_FRAMEWORK}
             ${COREMEDIA_FRAMEWORK}
             ${COREVIDEO_FRAMEWORK}
+            ${CORESERVICES_FRAMEWORK}
+            ${IOKIT_FRAMEWORK}  # Required for IOPMLib.h (keepawake functionality)
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
@@ -586,8 +588,8 @@ if(BUILDING_OBJECT_LIBS)
             ${AUDIOTOOLBOX_FRAMEWORK}
             ${CORESERVICES_FRAMEWORK}
         )
-        # Link IOKit framework for keepawake functionality
-        target_link_options(ascii-chat-shared PRIVATE "SHELL:-framework IOKit")
+        # Link IOKit framework using target_link_options
+        target_link_options(ascii-chat-shared PRIVATE "-framework IOKit")
     elseif(PLATFORM_LINUX AND JACK_LIB)
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES}
