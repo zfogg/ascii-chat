@@ -6,6 +6,65 @@
 
 #pragma once
 
+#include <stdbool.h>
+
+/**
+ * @brief Action type enumeration
+ *
+ * Defines all possible deferred actions that can be executed after
+ * options are fully parsed and initialized.
+ */
+typedef enum {
+  ACTION_NONE = 0,
+  ACTION_LIST_WEBCAMS,
+  ACTION_LIST_MICROPHONES,
+  ACTION_LIST_SPEAKERS,
+  ACTION_SHOW_CAPABILITIES,
+} deferred_action_t;
+
+/**
+ * @brief Action argument structure
+ *
+ * Holds optional arguments for actions that need them (e.g., config path for --config-create)
+ */
+typedef struct {
+  const char *output_path; ///< Output path for generation actions (config, manpage, completions)
+  const char *shell_name;  ///< Shell name for completion actions
+} action_args_t;
+
+/**
+ * @brief Set which action to defer until options are fully initialized
+ *
+ * Only the first action found is remembered. If multiple actions are specified,
+ * only the first one will be executed.
+ *
+ * @param action The action type to defer
+ * @param args Optional action arguments (can be NULL)
+ */
+void actions_defer(deferred_action_t action, const action_args_t *args);
+
+/**
+ * @brief Get the deferred action (if any) that was set
+ *
+ * @return The deferred action type, or ACTION_NONE if no action was deferred
+ */
+deferred_action_t actions_get_deferred(void);
+
+/**
+ * @brief Get the arguments for the deferred action
+ *
+ * @return Pointer to action arguments, or NULL if no arguments were set
+ */
+const action_args_t *actions_get_args(void);
+
+/**
+ * @brief Execute the deferred action (if any)
+ *
+ * This function should be called during STAGE 8 of options_init()
+ * after all options are fully parsed and dimensions are calculated.
+ */
+void actions_execute_deferred(void);
+
 /**
  * @brief List available webcam devices and exit
  *
@@ -36,6 +95,10 @@ void action_list_speakers(void);
  * Detects and displays terminal color support, UTF-8 support,
  * dimensions, and terminal program name.
  * Exits with code 0.
+ *
+ * Note: This action is deferred until after all options are parsed
+ * and dimensions are calculated, so that --width and --height flags
+ * are properly reflected in the output.
  */
 void action_show_capabilities(void);
 

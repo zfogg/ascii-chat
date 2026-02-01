@@ -3,11 +3,16 @@
  * @brief Action option callbacks for ascii-chat
  * @ingroup options
  *
- * Action options execute immediately during parsing and may exit the program.
- * Examples: --list-webcams, --version, --show-capabilities
+ * Action options are deferred until after all options are fully parsed and initialized.
+ * This ensures that options like --width and --height are properly reflected in action
+ * output (e.g., --show-capabilities displays the final terminal dimensions).
+ *
+ * Examples: --list-webcams, --list-microphones, --list-speakers, --show-capabilities
  */
 
 #include "actions.h"
+#include <string.h>
+#include <stddef.h>
 
 #include "asciichat_errno.h"
 #include "common.h"
@@ -32,10 +37,69 @@
 #include <string.h>
 
 // ============================================================================
+// Deferred Action Tracking System
+// ============================================================================
+
+/**
+ * @brief Global state for deferred actions
+ *
+ * Tracks which action to execute and its arguments after options initialization.
+ * Only the first action found is stored - subsequent actions are ignored.
+ */
+static struct {
+  deferred_action_t action;
+  action_args_t args;
+  bool has_action;
+} g_deferred_action_state = {
+    .action = ACTION_NONE,
+    .args = {0},
+    .has_action = false,
+};
+
+void actions_defer(deferred_action_t action, const action_args_t *args) {
+  // Only remember the first action found
+  if (g_deferred_action_state.has_action) {
+    return; // Action already deferred, ignore subsequent actions
+  }
+
+  g_deferred_action_state.action = action;
+  g_deferred_action_state.has_action = true;
+
+  // Copy arguments if provided
+  if (args) {
+    memcpy(&g_deferred_action_state.args, args, sizeof(action_args_t));
+  } else {
+    memset(&g_deferred_action_state.args, 0, sizeof(action_args_t));
+  }
+}
+
+deferred_action_t actions_get_deferred(void) {
+  return g_deferred_action_state.action;
+}
+
+const action_args_t *actions_get_args(void) {
+  if (!g_deferred_action_state.has_action) {
+    return NULL;
+  }
+  return &g_deferred_action_state.args;
+}
+
+// ============================================================================
 // Webcam Action
 // ============================================================================
 
 void action_list_webcams(void) {
+  // Defer execution until after options are fully parsed
+  actions_defer(ACTION_LIST_WEBCAMS, NULL);
+}
+
+/**
+ * @brief Internal implementation of list webcams action
+ *
+ * Called during STAGE 8 of options_init() after all initialization is complete.
+ * Enumerates and displays available webcam devices, then exits.
+ */
+static void execute_list_webcams(void) {
   webcam_device_info_t *devices = NULL;
   unsigned int device_count = 0;
 
@@ -65,6 +129,17 @@ void action_list_webcams(void) {
 // ============================================================================
 
 void action_list_microphones(void) {
+  // Defer execution until after options are fully parsed
+  actions_defer(ACTION_LIST_MICROPHONES, NULL);
+}
+
+/**
+ * @brief Internal implementation of list microphones action
+ *
+ * Called during STAGE 8 of options_init() after all initialization is complete.
+ * Enumerates and displays available microphone devices, then exits.
+ */
+static void execute_list_microphones(void) {
   audio_device_info_t *devices = NULL;
   unsigned int device_count = 0;
 
@@ -100,6 +175,17 @@ void action_list_microphones(void) {
 }
 
 void action_list_speakers(void) {
+  // Defer execution until after options are fully parsed
+  actions_defer(ACTION_LIST_SPEAKERS, NULL);
+}
+
+/**
+ * @brief Internal implementation of list speakers action
+ *
+ * Called during STAGE 8 of options_init() after all initialization is complete.
+ * Enumerates and displays available speaker devices, then exits.
+ */
+static void execute_list_speakers(void) {
   audio_device_info_t *devices = NULL;
   unsigned int device_count = 0;
 
@@ -139,14 +225,30 @@ void action_list_speakers(void) {
 // ============================================================================
 
 void action_show_capabilities(void) {
+  // Defer execution until after options are fully parsed and dimensions updated
+  // This ensures --width and --height flags are properly reflected in the output
+  actions_defer(ACTION_SHOW_CAPABILITIES, NULL);
+}
+
+/**
+ * @brief Internal implementation of show capabilities action
+ *
+ * Called during STAGE 8 of options_init() after all options are parsed,
+ * dimensions are calculated, and options are published via RCU.
+ *
+ * Displays terminal capabilities including color support, UTF-8 support,
+ * detected terminal type, and the final dimensions (which respect --width
+ * and --height flags), then exits.
+ */
+static void execute_show_capabilities(void) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  // Get terminal width and height via platform detection
-  unsigned short width = 110, height = 70; // Defaults
-  asciichat_error_t size_result = get_terminal_size(&width, &height);
-  (void)size_result; // Ignore error, we'll use defaults
+  // Get width and height from parsed options (respects --width and --height flags)
+  const options_t *opts = options_get();
+  unsigned short width = opts ? opts->width : 110;
+  unsigned short height = opts ? opts->height : 70;
 
-  // Use fprintf directly to ensure output appears, not log_plain which may have issues
+  // Use fprintf directly to ensure output appears
   printf("Terminal Capabilities:\n");
   printf("  Terminal Size: %ux%u\n", width, height);
   printf("  Color Level: %s\n", terminal_color_level_name(caps.color_level));
@@ -389,4 +491,38 @@ void action_completions(const char *shell_name, const char *output_path) {
 
   // Silently exit - completions are written (either to file or stdout)
   exit(0);
+}
+
+// ============================================================================
+// Deferred Action Execution
+// ============================================================================
+
+void actions_execute_deferred(void) {
+  deferred_action_t action = actions_get_deferred();
+
+  switch (action) {
+  case ACTION_NONE:
+    // No action to execute
+    break;
+
+  case ACTION_LIST_WEBCAMS:
+    execute_list_webcams();
+    break;
+
+  case ACTION_LIST_MICROPHONES:
+    execute_list_microphones();
+    break;
+
+  case ACTION_LIST_SPEAKERS:
+    execute_list_speakers();
+    break;
+
+  case ACTION_SHOW_CAPABILITIES:
+    execute_show_capabilities();
+    break;
+
+  default:
+    log_warn("Unknown deferred action: %d", action);
+    break;
+  }
 }

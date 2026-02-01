@@ -1331,6 +1331,14 @@ asciichat_error_t options_init(int argc, char **argv) {
     return result;
   }
 
+  // Handle the case where height is parsed as 0 (invalid) - restore to default
+  if (opts.height == 0) {
+    opts.height = OPT_HEIGHT_DEFAULT;
+  }
+  if (opts.width == 0) {
+    opts.width = OPT_WIDTH_DEFAULT;
+  }
+
   // ========================================================================
   // STAGE 6.5: Publish Parsed Options Early
   // ========================================================================
@@ -1400,6 +1408,17 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // After parsing command line options, update dimensions
   // First set any auto dimensions to terminal size, then apply full height logic
+
+  // Clear auto flags if dimensions were explicitly parsed from options
+  // This must happen before update_dimensions_to_terminal_size to prevent auto-detected
+  // values from overwriting user-specified dimensions
+  if (opts.width != OPT_WIDTH_DEFAULT) {
+    opts.auto_width = false;
+  }
+  if (opts.height != OPT_HEIGHT_DEFAULT) {
+    opts.auto_height = false;
+  }
+
   update_dimensions_to_terminal_size(&opts);
   update_dimensions_for_full_height(&opts);
 
@@ -1502,6 +1521,15 @@ asciichat_error_t options_init(int argc, char **argv) {
       log_warn("Failed to apply color scheme: %s", opts.color_scheme_name);
     }
   }
+
+  // ========================================================================
+  // STAGE 8: Execute deferred actions (after all options parsed and published)
+  // ========================================================================
+  // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
+  // are executed here after all options are fully parsed and published via RCU.
+  // This ensures action output reflects the final parsed state (e.g., final dimensions
+  // for --show-capabilities).
+  actions_execute_deferred();
 
   SAFE_FREE(allocated_mode_argv);
   return ASCIICHAT_OK;

@@ -178,8 +178,8 @@ analyze:
 cloc:
 	@printf $(Purple)"\n\ndocumentation:\n"$(Reset)
 	@cloc --progress=1 --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
-	@printf $(Purple)"\n\nbuild configuration and developer scripts:\n"$(Reset)
-	@cloc --progress=1 --include-lang='C,C/C++,CMake,CMakeLists.txt,JSON,Bash,Bourne Shell,Zsh,RTF' --force-lang='Bourne Shell,sh.in' --force-lang='XML,in' CMakeLists.txt cmake/ Makefile tests/scripts scripts/
+	@printf $(Purple)"\n\nbuild configuration:\n"$(Reset)
+	@cloc --progress=1 --include-lang='C,C/C++,CMake,CMakeLists.txt,JSON,Bash,Bourne Shell,Zsh,RTF' --force-lang='Bourne Shell,sh.in' --force-lang='XML,in' CMakeLists.txt src/**/CMakeLists.txt lib/**/CMakeLists.txt cmake/ Makefile
 	@printf $(Purple)"\n\ntests:\n"$(Reset)
 	@cloc --progress=1 --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
 	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
