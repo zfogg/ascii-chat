@@ -87,6 +87,9 @@
 
 #pragma once
 
+#ifndef OPTIONS_COMMON_H
+#define OPTIONS_COMMON_H
+
 #include "options/options.h"
 #include "platform/terminal.h"
 #include <stdbool.h>
@@ -585,3 +588,5 @@ void print_project_links(FILE *desc);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // OPTIONS_COMMON_H

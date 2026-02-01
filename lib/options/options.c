@@ -82,7 +82,6 @@
 #include "options/manpage.h"
 #include "options/presets.h"
 #include "options/actions.h"
-#include "network/mdns/discovery.h"
 
 #include "options/config.h"
 #include "options/schema.h"
@@ -91,12 +90,9 @@
 #include "log/logging.h"
 #include "colorscheme.h"
 #include "platform/system.h"
-#include "platform/terminal.h"
 #include "platform/util.h"
 #include "util/path.h"
 #include "util/time.h"
-#include "network/mdns/discovery.h"
-#include "version.h"
 
 #ifdef _WIN32
 #include <io.h>

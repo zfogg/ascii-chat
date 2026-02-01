@@ -242,9 +242,9 @@ public:
       // This avoids processing the same defer multiple times for child nodes
       bool shouldProcess = !isMacro || isa<DoStmt>(stmt);
 
-      if (shouldProcess && !invalid && stmtText.contains("defer(")) {
+      if (shouldProcess && !invalid && containsDeferCall(stmtText)) {
         // Found a defer() call - extract it
-        size_t deferPos = stmtText.find("defer(");
+        size_t deferPos = findDeferCall(stmtText);
         if (deferPos != StringRef::npos) {
           // Find matching closing parenthesis
           size_t openParen = deferPos + 5; // after "defer"
@@ -350,6 +350,28 @@ private:
 
     return StringRef::npos;
   }
+
+  // Find "defer(" with word boundary checking - must not be preceded by alphanumeric or underscore
+  // Returns position of 'd' in "defer(" or StringRef::npos if not found
+  size_t findDeferCall(StringRef text, size_t startPos = 0) const {
+    size_t pos = startPos;
+    while (pos < text.size()) {
+      size_t found = text.find("defer(", pos);
+      if (found == StringRef::npos) {
+        return StringRef::npos;
+      }
+      // Check if preceded by word boundary (not alphanumeric or underscore)
+      if (found == 0 || (!std::isalnum(text[found - 1]) && text[found - 1] != '_')) {
+        return found;
+      }
+      // Move past this match and keep searching
+      pos = found + 1;
+    }
+    return StringRef::npos;
+  }
+
+  // Check if text contains a standalone "defer(" call (not part of another identifier)
+  bool containsDeferCall(StringRef text) const { return findDeferCall(text) != StringRef::npos; }
 
   // Get defers for a specific scope in LIFO order (last registered first)
   std::vector<const DeferCall *> getDefersForScope(unsigned scopeId, const std::vector<DeferCall> &deferCalls) const {
@@ -485,10 +507,10 @@ private:
 
     unsigned offset = sourceManager.getFileOffset(macroLoc);
 
-    // Find "defer(" starting at offset
-    size_t deferStart = fileData.find("defer(", offset);
+    // Find "defer(" starting at offset, with word boundary check
+    size_t deferStart = findDeferCall(fileData, offset);
     if (deferStart == StringRef::npos || deferStart != offset) {
-      return; // Not at the expected position
+      return; // Not at the expected position or not a standalone defer call
     }
 
     // Find matching closing paren for defer(...)

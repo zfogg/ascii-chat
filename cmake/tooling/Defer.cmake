@@ -234,7 +234,19 @@ function(ascii_defer_prepare)
         set(${var} "${updated_list}" PARENT_SCOPE)
     endforeach()
 
+    # Collect unique source directories that contain defer-transformed files
+    # These need to be added as include paths so relative includes work
+    set(defer_source_dirs "")
+    foreach(rel_path IN LISTS defer_rel_paths)
+        get_filename_component(dir_path "${rel_path}" DIRECTORY)
+        if(dir_path AND NOT "${CMAKE_SOURCE_DIR}/${dir_path}" IN_LIST defer_source_dirs)
+            list(APPEND defer_source_dirs "${CMAKE_SOURCE_DIR}/${dir_path}")
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES defer_source_dirs)
+
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)
+    set(ASCII_DEFER_INCLUDE_DIRS "${defer_source_dirs}" PARENT_SCOPE)
 endfunction()
 
 function(ascii_defer_finalize)
@@ -258,12 +270,16 @@ function(ascii_defer_finalize)
         ascii-chat
     )
 
-    # Add compile definitions and dependencies for defer-transformed targets
+    # Add compile definitions, dependencies, and include directories for defer-transformed targets
     # Note: No runtime library is needed - defer cleanup is inlined directly into the code
+    # Include directories are needed so relative includes like #include "foo.h" work in transformed files
     foreach(lib_target IN LISTS ASCII_DEFER_TRANSFORM_LIBRARY_TARGETS)
         if(TARGET ${lib_target})
             add_dependencies(${lib_target} ascii-generate-defer-transformed-sources)
             target_compile_definitions(${lib_target} PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
+            if(ASCII_DEFER_INCLUDE_DIRS)
+                target_include_directories(${lib_target} PRIVATE ${ASCII_DEFER_INCLUDE_DIRS})
+            endif()
         endif()
     endforeach()
 
@@ -271,12 +287,18 @@ function(ascii_defer_finalize)
         if(TARGET ${exe_target})
             add_dependencies(${exe_target} ascii-generate-defer-transformed-sources)
             target_compile_definitions(${exe_target} PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
+            if(ASCII_DEFER_INCLUDE_DIRS)
+                target_include_directories(${exe_target} PRIVATE ${ASCII_DEFER_INCLUDE_DIRS})
+            endif()
         endif()
     endforeach()
 
     if(TARGET ascii-chat-shared)
         add_dependencies(ascii-chat-shared ascii-generate-defer-transformed-sources)
         target_compile_definitions(ascii-chat-shared PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
+        if(ASCII_DEFER_INCLUDE_DIRS)
+            target_include_directories(ascii-chat-shared PRIVATE ${ASCII_DEFER_INCLUDE_DIRS})
+        endif()
     endif()
 
 endfunction()

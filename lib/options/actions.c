@@ -17,7 +17,6 @@
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
-#include "options/common.h"
 #include "options/manpage.h"
 #include "options/presets.h"
 #include "options/config.h"
