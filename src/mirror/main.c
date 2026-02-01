@@ -121,13 +121,12 @@ static bool mirror_render_should_exit(void *user_data) {
  *
  * @param capture Capture context for media source control
  * @param key Keyboard key code
- * @param user_data Unused (NULL)
+ * @param user_data Display context for help screen toggle (borrowed reference)
  */
 static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, void *user_data) {
-  (void)user_data; // Unused parameter
-  // Mirror mode keyboard handler - pass NULL for display context
-  // Help screen will be silently ignored (no-op)
-  session_handle_keyboard_input(capture, NULL, (keyboard_key_t)key);
+  // user_data is the display context (session_display_ctx_t *)
+  session_display_ctx_t *display = (session_display_ctx_t *)user_data;
+  session_handle_keyboard_input(capture, display, (keyboard_key_t)key);
 }
 
 /**
@@ -424,12 +423,13 @@ int mirror_main(void) {
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
   // Synchronous mode: pass capture context, NULL for callbacks
-  // Keyboard support: pass handler and capture context for interactive controls
-  asciichat_error_t result = session_render_loop(capture, display, mirror_render_should_exit,
-                                                 NULL,                    // No custom capture callback
-                                                 NULL,                    // No custom sleep callback
-                                                 mirror_keyboard_handler, // Keyboard handler for interactive controls
-                                                 capture); // user_data (capture context for keyboard handler)
+  // Keyboard support: pass handler and display context for help screen toggle
+  asciichat_error_t result =
+      session_render_loop(capture, display, mirror_render_should_exit,
+                          NULL,                    // No custom capture callback
+                          NULL,                    // No custom sleep callback
+                          mirror_keyboard_handler, // Keyboard handler for interactive controls
+                          display);                // user_data (display context for help screen and frame rendering)
 
   // Re-enable terminal logging after rendering
   log_set_terminal_output(terminal_logging_was_enabled);
