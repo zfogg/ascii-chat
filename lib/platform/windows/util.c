@@ -7,6 +7,7 @@
 #ifdef _WIN32
 
 #include "../util.h"
+#include "../../common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -30,7 +31,11 @@ int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
 char *platform_strdup(const char *s) {
   if (!s)
     return NULL;
-  return _strdup(s);
+  size_t len = strlen(s) + 1;
+  char *dup = SAFE_MALLOC(len, char *);
+  if (dup)
+    strcpy(dup, s);
+  return dup;
 }
 
 char *platform_strndup(const char *s, size_t n) {
@@ -39,7 +44,7 @@ char *platform_strndup(const char *s, size_t n) {
   size_t len = strlen(s);
   if (len > n)
     len = n;
-  char *dup = (char *)malloc(len + 1);
+  char *dup = SAFE_MALLOC(len + 1, char *);
   if (dup) {
     strncpy_s(dup, len + 1, s, len);
     dup[len] = '\0';

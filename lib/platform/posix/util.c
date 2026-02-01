@@ -7,6 +7,7 @@
 #ifndef _WIN32
 
 #include "../util.h"
+#include "../../common.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -31,7 +32,7 @@ char *platform_strdup(const char *s) {
   if (!s)
     return NULL;
   size_t len = strlen(s) + 1;
-  char *dup = (char *)malloc(len);
+  char *dup = SAFE_MALLOC(len, char *);
   if (dup)
     strcpy(dup, s);
   return dup;
@@ -43,7 +44,7 @@ char *platform_strndup(const char *s, size_t n) {
   size_t len = strlen(s);
   if (len > n)
     len = n;
-  char *dup = (char *)malloc(len + 1);
+  char *dup = SAFE_MALLOC(len + 1, char *);
   if (dup) {
     strncpy(dup, s, len);
     dup[len] = '\0';
