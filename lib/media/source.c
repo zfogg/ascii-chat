@@ -57,10 +57,19 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     }
 
     source->webcam_index = index;
-    asciichat_error_t err = webcam_init_context(&source->webcam_ctx, index);
-    if (err != ASCIICHAT_OK) {
-      log_error("Failed to initialize webcam device %u", index);
+    asciichat_error_t webcam_error = webcam_init_context(&source->webcam_ctx, index);
+    if (webcam_error != ASCIICHAT_OK) {
+      // Webcam init failed - log and cleanup
+      log_error("Failed to initialize webcam device %u (error code: %d)", index, webcam_error);
       SAFE_FREE(source);
+
+      // Explicitly re-set errno to preserve the specific error code for the caller
+      // (log_error or other calls may have cleared the thread-local errno)
+      if (webcam_error == ERROR_WEBCAM_IN_USE) {
+        SET_ERRNO(ERROR_WEBCAM_IN_USE, "Webcam device %u is in use", index);
+      } else {
+        SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam device %u", index);
+      }
       return NULL;
     }
 
@@ -108,14 +117,10 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   }
 
   case MEDIA_SOURCE_TEST: {
-    // Test pattern uses webcam with special flag (existing behavior)
+    // Test pattern doesn't need webcam context - it's handled in webcam_read()
+    // which checks GET_OPTION(test_pattern) and generates a pattern directly
     source->webcam_index = 0;
-    asciichat_error_t err = webcam_init_context(&source->webcam_ctx, 0);
-    if (err != ASCIICHAT_OK) {
-      log_error("Failed to initialize test pattern");
-      SAFE_FREE(source);
-      return NULL;
-    }
+    source->webcam_ctx = NULL; // No context needed for test pattern
 
     log_info("Media source: Test pattern");
     break;

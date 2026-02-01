@@ -520,7 +520,7 @@ static void *audio_capture_thread_func(void *arg) {
       // Sleep longer to reduce CPU usage when idle (was 5ms → 50ms)
       // At 50ms polling, we wake 20 times/sec vs 200 times/sec
       // This reduces CPU from ~90% to <5% when no audio is being captured
-      platform_sleep_usec(50 * 1000); // 50ms
+      platform_sleep_usec(200); // 50ms
       continue;
     }
 
@@ -531,7 +531,7 @@ static void *audio_capture_thread_func(void *arg) {
 
     if (read_result != ASCIICHAT_OK) {
       log_error("Failed to read audio samples from ring buffer");
-      platform_sleep_usec(50 * 1000); // 50ms (error path, less critical but consistent with above)
+      platform_sleep_usec(200); // 50ms (error path, less critical but consistent with above)
       continue;
     }
 
@@ -680,7 +680,7 @@ static void *audio_capture_thread_func(void *arg) {
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
       platform_sleep_usec(1000); // 1ms
     } else {
-      platform_sleep_usec(50 * 1000); // 50ms (error path - no samples read)
+      platform_sleep_usec(200); // 50ms (error path - no samples read)
     }
   }
 
