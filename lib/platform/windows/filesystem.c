@@ -616,19 +616,34 @@ char *platform_get_config_dir(void) {
     return dir;
   }
 
-  /* Fallback to %USERPROFILE%/.ascii-chat/ */
+  /* Fallback to %USERPROFILE%\AppData\Roaming\ascii-chat\ if APPDATA not set */
   const char *userprofile = platform_getenv("USERPROFILE");
   if (userprofile && userprofile[0] != '\0') {
-    size_t len = strlen(userprofile) + strlen("\\.ascii-chat\\") + 1;
+    size_t len = strlen(userprofile) + strlen("\\AppData\\Roaming\\ascii-chat\\") + 1;
     char *dir = SAFE_MALLOC(len, char *);
     if (!dir) {
       return NULL;
     }
-    safe_snprintf(dir, len, "%s\\.ascii-chat\\", userprofile);
+    safe_snprintf(dir, len, "%s\\AppData\\Roaming\\ascii-chat\\", userprofile);
     return dir;
   }
 
-  return NULL;
+  /* Final fallback to HOME if both APPDATA and USERPROFILE are unset */
+  const char *home = platform_getenv("HOME");
+  if (home && home[0] != '\0') {
+    size_t len = strlen(home) + strlen("\\.config\\ascii-chat\\") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s\\.config\\ascii-chat\\", home);
+    return dir;
+  }
+
+  /* Absolute fallback: use C:\ProgramData\ascii-chat\ */
+  const char *fallback_path = "C:\\ProgramData\\ascii-chat\\";
+  char *dir = platform_strdup(fallback_path);
+  return dir;
 }
 
 // ============================================================================

@@ -519,7 +519,7 @@ const char *platform_get_home_dir(void);
  *
  * Platform-specific implementation:
  *   - POSIX: Returns $XDG_CONFIG_HOME/ascii-chat/ (default: ~/.config/ascii-chat/)
- *   - Windows: Returns %APPDATA%\ascii-chat\ (fallback: %USERPROFILE%\.ascii-chat\)
+ *   - Windows: Returns %APPDATA%\ascii-chat\
  *
  * @return Allocated string with config directory path (including trailing separator),
  *         or NULL on error. Caller must free with SAFE_FREE()
