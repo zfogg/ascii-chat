@@ -390,7 +390,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for get_terminal_size");
   }
 
-  struct winsize ws;
+  struct winsize ws = {0};
   const char *lines_env;
   const char *cols_env;
   int tty_fd;
