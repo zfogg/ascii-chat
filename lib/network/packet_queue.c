@@ -233,7 +233,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   }
 
   // Build packet header
-  node->packet.header.magic = HOST_TO_NET_U32(PACKET_MAGIC);
+  node->packet.header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
   node->packet.header.type = HOST_TO_NET_U16((uint16_t)type);
   node->packet.header.length = HOST_TO_NET_U32((uint32_t)data_len);
   node->packet.header.client_id = HOST_TO_NET_U32(client_id);
@@ -498,10 +498,10 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     atomic_fetch_add(&queue->packets_dequeued, (uint64_t)1);
 
     // Verify packet magic number for corruption detection
-    uint32_t magic = NET_TO_HOST_U32(head->packet.header.magic);
+    uint64_t magic = NET_TO_HOST_U64(head->packet.header.magic);
     if (magic != PACKET_MAGIC) {
-      SET_ERRNO(ERROR_BUFFER, "CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic,
-                PACKET_MAGIC, NET_TO_HOST_U16(head->packet.header.type));
+      SET_ERRNO(ERROR_BUFFER, "CORRUPTION: Invalid magic in try_dequeued packet: 0x%llx (expected 0x%llx), type=%u",
+                magic, PACKET_MAGIC, NET_TO_HOST_U16(head->packet.header.type));
       // Still return node to pool but don't return corrupted packet
       node_pool_put(queue->node_pool, head);
       return NULL;
@@ -550,8 +550,8 @@ void packet_queue_free_packet(queued_packet_t *packet) {
     return;
 
   // Check if packet was already freed (detect double-free)
-  if (packet->header.magic != HOST_TO_NET_U32(PACKET_MAGIC)) {
-    log_warn("Attempted double-free of packet (magic=0x%x, expected=0x%x)", NET_TO_HOST_U32(packet->header.magic),
+  if (packet->header.magic != HOST_TO_NET_U64(PACKET_MAGIC)) {
+    log_warn("Attempted double-free of packet (magic=0x%llx, expected=0x%llx)", NET_TO_HOST_U64(packet->header.magic),
              PACKET_MAGIC);
     return;
   }
@@ -568,7 +568,7 @@ void packet_queue_free_packet(queued_packet_t *packet) {
 
   // Mark as freed to detect future double-free attempts
   // Use network byte order for consistency on big-endian systems
-  packet->header.magic = HOST_TO_NET_U32(0xBEEFDEAD); // Different magic in network byte order
+  packet->header.magic = HOST_TO_NET_U64(0xBEEFDEADULL); // Different magic in network byte order
   SAFE_FREE(packet);
 }
 
@@ -633,9 +633,9 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
   }
 
   // Check magic number
-  uint32_t magic = NET_TO_HOST_U32(packet->header.magic);
+  uint64_t magic = NET_TO_HOST_U64(packet->header.magic);
   if (magic != PACKET_MAGIC) {
-    SET_ERRNO(ERROR_BUFFER, "Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
+    SET_ERRNO(ERROR_BUFFER, "Invalid packet magic: 0x%llx (expected 0x%llx)", magic, PACKET_MAGIC);
     return false;
   }
 

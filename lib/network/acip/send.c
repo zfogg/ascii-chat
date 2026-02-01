@@ -48,7 +48,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
 
   // Build packet header
   packet_header_t header;
-  header.magic = HOST_TO_NET_U32(PACKET_MAGIC);
+  header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
   header.type = HOST_TO_NET_U16(type);
   header.length = HOST_TO_NET_U32((uint32_t)payload_len);
   header.client_id = 0; // Set by caller if needed
@@ -60,7 +60,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     header.crc32 = 0;
   }
 
-  log_debug("★ PKT_SEND: type=%d, magic=0x%08x, length=%u, crc32=0x%08x", type, header.magic, header.length,
+  log_debug("★ PKT_SEND: type=%d, magic=0x%016llx, length=%u, crc32=0x%08x", type, header.magic, header.length,
             header.crc32);
 
   // Calculate total packet size

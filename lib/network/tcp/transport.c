@@ -117,7 +117,7 @@ static asciichat_error_t tcp_send(acip_transport_t *transport, const void *data,
 
   // Build PACKET_TYPE_ENCRYPTED header
   packet_header_t encrypted_header;
-  encrypted_header.magic = HOST_TO_NET_U32(PACKET_MAGIC);
+  encrypted_header.magic = HOST_TO_NET_U64(PACKET_MAGIC);
   encrypted_header.type = HOST_TO_NET_U16(PACKET_TYPE_ENCRYPTED);
   encrypted_header.length = HOST_TO_NET_U32((uint32_t)ciphertext_len);
   encrypted_header.crc32 = HOST_TO_NET_U32(asciichat_crc32(ciphertext, ciphertext_len));

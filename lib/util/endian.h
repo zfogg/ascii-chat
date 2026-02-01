@@ -196,3 +196,55 @@ static inline uint32_t endian_pack_u32(uint32_t val) {
 static inline uint16_t endian_pack_u16(uint16_t val) {
   return htons(val);
 }
+
+/**
+ * Convert a 64-bit value from host byte order to network byte order.
+ * Typically used when preparing data for transmission.
+ *
+ * @param val 64-bit unsigned integer in host byte order
+ * @return Same value in network byte order (big-endian)
+ *
+ * Usage:
+ * @code
+ * uint64_t magic = 0xA5C11C4A1;
+ * packet.magic = HOST_TO_NET_U64(magic);
+ * @endcode
+ */
+#define HOST_TO_NET_U64(val) htonll((val))
+
+/**
+ * Convert a 64-bit value from network byte order to host byte order.
+ * Typically used when receiving data from the network.
+ *
+ * @param val 64-bit unsigned integer in network byte order
+ * @return Same value in host byte order
+ *
+ * Usage:
+ * @code
+ * const packet_t *pkt = (const packet_t *)data;
+ * uint64_t magic = NET_TO_HOST_U64(pkt->magic);
+ * @endcode
+ */
+#define NET_TO_HOST_U64(val) ntohll((val))
+
+/**
+ * Unpack a 64-bit value from network byte order.
+ * Takes a uint64_t in network order and returns it in host order.
+ *
+ * @param val 64-bit unsigned integer in network byte order
+ * @return Same value in host byte order
+ */
+static inline uint64_t endian_unpack_u64(uint64_t val) {
+  return ntohll(val);
+}
+
+/**
+ * Pack a 64-bit value to network byte order.
+ * Takes a uint64_t in host order and returns it in network order.
+ *
+ * @param val 64-bit unsigned integer in host byte order
+ * @return Same value in network byte order
+ */
+static inline uint64_t endian_pack_u64(uint64_t val) {
+  return htonll(val);
+}

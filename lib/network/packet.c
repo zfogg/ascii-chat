@@ -87,7 +87,7 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
   }
 
   // Convert from network byte order using safe helpers
-  uint32_t magic = endian_unpack_u32(header->magic);
+  uint64_t magic = endian_unpack_u64(header->magic);
   uint16_t type = endian_unpack_u16(header->type);
   uint32_t len = endian_unpack_u32(pkt_len_network);
   uint32_t crc = endian_unpack_u32(header->crc32);
@@ -297,7 +297,7 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
 
-  packet_header_t header = {.magic = HOST_TO_NET_U32(PACKET_MAGIC),
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                             .type = HOST_TO_NET_U16((uint16_t)type),
                             .length = HOST_TO_NET_U32((uint32_t)len),
                             .crc32 = HOST_TO_NET_U32(len > 0 ? asciichat_crc32(data, len) : 0),
@@ -484,7 +484,7 @@ asciichat_error_t send_packet_secure(socket_t sockfd, packet_type_t type, const 
   }
 
   // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
-  packet_header_t header = {.magic = HOST_TO_NET_U32(PACKET_MAGIC),
+  packet_header_t header = {.magic = HOST_TO_NET_U64(PACKET_MAGIC),
                             .type = HOST_TO_NET_U16((uint16_t)type),
                             .length = HOST_TO_NET_U32((uint32_t)final_len),
                             .crc32 = HOST_TO_NET_U32(final_len > 0 ? asciichat_crc32(final_data, final_len) : 0),
@@ -597,14 +597,14 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
   }
 
   // Convert from network byte order
-  uint32_t magic = NET_TO_HOST_U32(header.magic);
+  uint64_t magic = NET_TO_HOST_U64(header.magic);
   uint16_t pkt_type = NET_TO_HOST_U16(header.type);
   uint32_t pkt_len = NET_TO_HOST_U32(header.length);
   uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
 
   // Validate magic number
   if (magic != PACKET_MAGIC) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet magic: 0x%llx (expected 0x%llx)", magic, PACKET_MAGIC);
     return PACKET_RECV_ERROR;
   }
 
