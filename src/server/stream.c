@@ -1181,9 +1181,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
  *
  * PACKET DETAILS:
  * ===============
- * - Uses PACKET_TYPE_AUDIO packet type
- * - Audio data is raw float samples
- * - No special headers or metadata required
+ * - Uses PACKET_TYPE_AUDIO_BATCH packet type
+ * - Audio data is raw float samples bundled together
+ * - Batch format reduces packet overhead ~32x
  * - Sample rate and format determined by audio system
  *
  * DELIVERY CHARACTERISTICS:
@@ -1215,7 +1215,7 @@ int queue_audio_for_client(client_info_t *client, const void *audio_data, size_t
     return -1;
   }
 
-  return packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO, audio_data, data_size, 0, true);
+  return packet_queue_enqueue(client->audio_queue, PACKET_TYPE_AUDIO_BATCH, audio_data, data_size, 0, true);
 }
 
 /**
