@@ -632,6 +632,7 @@ static const bool default_stretch_value = OPT_STRETCH_DEFAULT;
 static const bool default_strip_ansi_value = OPT_STRIP_ANSI_DEFAULT;
 static const bool default_snapshot_mode_value = OPT_SNAPSHOT_MODE_DEFAULT;
 static const double default_snapshot_delay_value = SNAPSHOT_DELAY_DEFAULT;
+static const int default_fps_value = OPT_FPS_DEFAULT;
 static const int default_compression_level_value = OPT_COMPRESSION_LEVEL_DEFAULT;
 static const bool default_no_compress_value = OPT_NO_COMPRESS_DEFAULT;
 static const bool default_encrypt_enabled_value = OPT_ENCRYPT_ENABLED_DEFAULT;
@@ -839,7 +840,7 @@ typedef struct options_state {
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
   int force_utf8;                       ///< UTF-8 support setting (auto/true/false)
-  int fps;                              ///< Target framerate (1-144, 0=use default)
+  int fps;                              ///< Target framerate (1-144, default: 60)
 
   // ============================================================================
   // Audio Configuration
