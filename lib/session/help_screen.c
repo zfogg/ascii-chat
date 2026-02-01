@@ -200,26 +200,26 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   char volume_bar[20];
   format_volume_bar(current_volume, volume_bar, sizeof(volume_bar));
 
-  // Volume line (always show the bar)
-  APPEND("\033[%d;%dH║  Volume: %s%-24s│", start_row + 17, start_col + 1, volume_bar, "");
+  // Volume line
+  APPEND("\033[%d;%dH║  Volume:    %s%-22s║", start_row + 17, start_col + 1, volume_bar, "");
 
   // Color mode line
   const char *color_str = color_mode_to_string(current_color_mode);
-  APPEND("\033[%d;%dH║  Color Mode: %-22s│", start_row + 18, start_col + 1, color_str);
+  APPEND("\033[%d;%dH║  Color:     %-26s║", start_row + 18, start_col + 1, color_str);
 
   // Render mode line
   const char *render_str = render_mode_to_string(current_render_mode);
-  APPEND("\033[%d;%dH║  Render Mode: %-21s│", start_row + 19, start_col + 1, render_str);
+  APPEND("\033[%d;%dH║  Render:    %-25s║", start_row + 19, start_col + 1, render_str);
 
   // Webcam flip line - with color coding
   const char *flip_text = current_flip ? "Flipped" : "Normal";
   const char *flip_colored = colored_string(current_flip ? LOG_COLOR_INFO : LOG_COLOR_ERROR, flip_text);
-  APPEND("\033[%d;%dH║  Webcam: %-29s│", start_row + 20, start_col + 1, flip_colored);
+  APPEND("\033[%d;%dH║  Webcam:    %s                ║", start_row + 20, start_col + 1, flip_colored);
 
   // Audio line - with color coding
   const char *audio_text = current_audio ? "Enabled" : "Disabled";
   const char *audio_colored = colored_string(current_audio ? LOG_COLOR_INFO : LOG_COLOR_ERROR, audio_text);
-  APPEND("\033[%d;%dH║  Audio: %-30s│", start_row + 21, start_col + 1, audio_colored);
+  APPEND("\033[%d;%dH║  Audio:     %s                 ║", start_row + 21, start_col + 1, audio_colored);
 
   // Footer
   APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
