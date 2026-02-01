@@ -720,6 +720,9 @@ static char *options_get_log_filepath(asciichat_mode_t detected_mode, options_t 
 // ============================================================================
 
 asciichat_error_t options_init(int argc, char **argv) {
+  log_debug("options_init called with argc=%d, argv[0]=%s, argv[1]=%s", argc, argc > 0 ? argv[0] : "NULL",
+            argc > 1 ? argv[1] : "NULL");
+
   // Validate arguments (safety check for tests)
   if (argc < 0 || argc > 128) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
@@ -928,6 +931,8 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Create local options struct and initialize with defaults
   options_t opts = options_t_new(); // Initialize with all defaults
+  log_info("After options_t_new(): webcam_flip=%d (should be 1), width=%d, height=%d", opts.webcam_flip, opts.width,
+           opts.height);
 
   // Set log file default for config file generation
   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
@@ -1217,6 +1222,7 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Initialize all defaults using options_t_new_preserve_binary() to keep binary-level
   // options (--quiet, --verbose, --log-level, etc.) from being reset
   opts = options_t_new_preserve_binary(&opts);
+  log_info("After options_t_new_preserve_binary(): webcam_flip=%d (should still be 1)", opts.webcam_flip);
 
   // If a session string was detected during mode detection, restore it after options reset
   // This ensures discovery mode knows which session to join
@@ -1281,11 +1287,16 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Load config files - now uses detected_mode directly for bitmask validation
+  // Save webcam_flip as it should not be reset by config files
+  bool saved_webcam_flip_from_config = opts.webcam_flip;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
   // Restore binary-level options (don't let config override command-line options)
   restore_binary_level(&opts, &binary_before_config);
+
+  // Restore webcam_flip - config shouldn't override the default
+  opts.webcam_flip = saved_webcam_flip_from_config;
 
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)
@@ -1306,6 +1317,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   int remaining_argc;
   char **remaining_argv;
 
+  // Save webcam_flip before applying defaults (should not be reset by defaults)
+  bool saved_webcam_flip = opts.webcam_flip;
+  log_info("Saved webcam_flip=%d before options_config_set_defaults", saved_webcam_flip);
+
   // Apply defaults from unified config
   asciichat_error_t defaults_result = options_config_set_defaults(config, &opts);
   if (defaults_result != ASCIICHAT_OK) {
@@ -1314,8 +1329,15 @@ asciichat_error_t options_init(int argc, char **argv) {
     return defaults_result;
   }
 
+  log_info("After options_config_set_defaults: webcam_flip=%d", opts.webcam_flip);
+
   // Restore binary-level options (they should never be overridden by defaults)
   restore_binary_level(&opts, &binary_before_defaults);
+
+  // Restore webcam_flip - it should keep the value from options_t_new()
+  // unless explicitly set by the user (but defaults shouldn't override it)
+  opts.webcam_flip = saved_webcam_flip;
+  log_info("Restored webcam_flip to %d", opts.webcam_flip);
 
   // CRITICAL: RESTORE detected_mode BEFORE parsing so mode validation works
   opts.detected_mode = mode_saved_for_parsing;
@@ -1492,12 +1514,15 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
   // This makes the options visible to all threads via lock-free reads
+  log_info("Before final options_state_set(): webcam_flip=%d (should still be 1), width=%d, height=%d",
+           opts.webcam_flip, opts.width, opts.height);
   asciichat_error_t publish_result = options_state_set(&opts);
   if (publish_result != ASCIICHAT_OK) {
-    log_error("Failed to publish parsed options to RCU state");
+    log_error("Failed to publish parsed options to RCU state: %d", publish_result);
     SAFE_FREE(allocated_mode_argv);
     return publish_result;
   }
+  log_info("After final options_state_set(): publish_result=%d, SUCCESS", publish_result);
 
   // Now update debug memory quiet mode with the saved quiet value
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)

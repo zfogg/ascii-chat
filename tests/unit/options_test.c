@@ -24,8 +24,8 @@
 // TEST_LOGGING_SETUP_AND_TEARDOWN_WITH_LOG_LEVELS(LOG_FATAL, LOG_DEBUG, false, false);
 // TestSuite(options, .init = setup_quiet_test_logging, .fini = restore_test_logging);
 
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options, LOG_FATAL, LOG_DEBUG, true, true);
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBUG, true, true);
+TEST_SUITE_WITH_DEBUG_LOGGING(options);
+TEST_SUITE_WITH_DEBUG_LOGGING(options_errors);
 
 // Macro helpers for argv construction without brace-literals at call sites
 #define ARGV_LIST(...) ((char *[]){"program", __VA_ARGS__, NULL})
@@ -58,9 +58,6 @@ TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(options_errors, LOG_FATAL, LOG_DEBU
       opterr = 1;                                                                                                      \
       optopt = 0;                                                                                                      \
       /* options_init now auto-detects mode from argv */                                                               \
-      /* Shutdown and reinit RCU state for parent process call */                                                      \
-      options_state_shutdown();                                                                                        \
-      options_state_init();                                                                                            \
       options_init(argc, argv);                                                                                        \
       /* Get options from RCU for assertions */                                                                        \
       const options_t *opts = options_get();                                                                           \

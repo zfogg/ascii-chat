@@ -92,6 +92,7 @@ static const options_t g_default_options = (options_t){
     // Webcam
     .test_pattern = false,
     .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
+    .webcam_flip = OPT_WEBCAM_FLIP_DEFAULT,
 
     // Network
     .max_clients = OPT_MAX_CLIENTS_DEFAULT,
