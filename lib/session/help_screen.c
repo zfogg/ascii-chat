@@ -112,11 +112,11 @@ static void build_settings_line(char *output, size_t output_size, const char *la
   int label_width = utf8_display_width(label);
   int value_width = utf8_display_width(value);
 
-  // Fixed part: "║  " (3 cols) + label (variable) + ":    " (5 chars, but we need to count them)
-  // "║  " = 3, label = label_width, ":" = 1, "    " = 4
-  // Total fixed: 3 + label_width + 1 + 4 = label_width + 8
-  int fixed_width = 3 + label_width + 1 + 4; // "║  " + label + ":" + "    "
-  int right_border = 1;                      // "║"
+  // Fixed part display width: "║" (1 col) + "  " (2 cols) + label + ":" (1 col) + "    " (4 cols)
+  // "║  " = 1+2 = 3, label = label_width, ":" = 1, "    " = 4
+  // Total fixed: 1 + 2 + label_width + 1 + 4 = label_width + 8
+  int fixed_width = 1 + 2 + label_width + 1 + 4; // "║  " + label + ":" + "    " (in display cols)
+  int right_border = 1;                          // "║" = 1 display col
 
   // Available space for value + padding: 48 - fixed_width - right_border
   int available = 48 - fixed_width - right_border; // Should be 33 columns for standard labels
