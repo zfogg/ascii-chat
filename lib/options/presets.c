@@ -158,8 +158,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   safe_snprintf(example_buf3, sizeof(example_buf3), "%s --discovery-server discovery.example.com",
                 example_session_string3);
   safe_snprintf(example_buf4, sizeof(example_buf4), "%s -f video.mp4", example_session_string4);
-  safe_snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
-                example_session_string5);
+  safe_snprintf(example_buf5, sizeof(example_buf5), "%s --url 'https://youtu.be/7ynHVGCehoM'", example_session_string5);
   safe_snprintf(example_buf6, sizeof(example_buf6), "%s -f '-'", example_session_string6);
   safe_snprintf(example_buf7, sizeof(example_buf7), "%s --palette-chars '@%%#*+=-:. '", example_session_string7);
 
@@ -191,7 +190,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to remote server", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port",
                               false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+  options_builder_add_example(b, OPTION_MODE_CLIENT, "--url 'https://youtu.be/7ynHVGCehoM'",
                               "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "-f video.mp4", "Stream from local video file", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "--color-mode mono --render-mode half-block --width 120",
@@ -206,7 +205,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
       "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
       false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "--color-mode mono", "View webcam in black and white", false);
-  options_builder_add_example(b, OPTION_MODE_MIRROR, "--url 'https://www.youtube.com/watch?v=tQSbms5MDvY'",
+  options_builder_add_example(b, OPTION_MODE_MIRROR, "--url 'https://youtu.be/7ynHVGCehoM'",
                               "Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)", false);
   options_builder_add_example(b, OPTION_MODE_MIRROR, "-f video.mp4",
                               "Stream from local video file (supports mp4, mkv, webm, mov, etc)", false);
