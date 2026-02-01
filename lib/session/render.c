@@ -107,7 +107,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Frame rate timing
   uint64_t frame_count = 0;
   uint64_t frame_start_ns = 0;
-  uint64_t prev_render_ns = 0; // Track when we actually rendered the last frame
   uint64_t frame_to_render_ns = 0;
 
   // Main render loop - works for both synchronous and event-driven modes
@@ -159,7 +158,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       // Profile: frame capture with detailed retry tracking
-      static uint64_t retry_count = 0;
       static uint64_t max_retries = 0;
       uint64_t loop_retry_count = 0;
       uint64_t capture_elapsed_ns = 0;
@@ -177,7 +175,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             break; // Exit render loop - end of media
           }
           loop_retry_count++;
-          retry_count++;
 
           // Brief delay before retry on temporary frame unavailability
           if (loop_retry_count <= 1 || frame_count % 100 == 0) {
@@ -285,7 +282,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         log_debug_every(3000000, "RENDER[%lu]: Frame render done (%.2f ms)", frame_count,
                         (double)render_elapsed_ns / 1000000.0);
         uint64_t render_complete_ns = time_get_ns();
-        prev_render_ns = render_complete_ns; // Record when this render completed
 
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, render_complete_ns);
