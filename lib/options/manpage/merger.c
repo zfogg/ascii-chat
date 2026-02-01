@@ -157,11 +157,14 @@ asciichat_error_t manpage_merger_generate_synopsis(const char *mode_name, char *
     // Binary-level synopsis - show main modes
     offset += safe_snprintf(buffer + offset, buffer_size - offset,
                             ".B ascii-chat\n"
-                            "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | "
-                            "\\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n"
+                            "[\\fIoptions\\fR]\n"
                             "\n"
                             ".B ascii-chat\n"
-                            "[\\fIoptions\\fR] \\fI<session-string>\\fR\n");
+                            "[\\fIoptions\\fR] \\fI<session-string>\\fR\n"
+                            "\n"
+                            ".B ascii-chat\n"
+                            "[\\fIoptions\\fR] [\\fBserver\\fR | \\fBclient\\fR | \\fBmirror\\fR | "
+                            "\\fBdiscovery-service\\fR] [\\fImode-options\\fR]\n");
   }
 
   offset += safe_snprintf(buffer + offset, buffer_size - offset, "\n");
