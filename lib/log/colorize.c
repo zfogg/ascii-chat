@@ -10,7 +10,6 @@
 #include "../platform/system.h"
 #include "../platform/terminal.h"
 #include "../platform/util.h"
-#include "../options/rcu.h"
 #include "../video/ansi.h"
 #include <ctype.h>
 #include <string.h>
@@ -395,6 +394,114 @@ static bool is_env_var(const char *str, size_t pos, size_t *end_pos) {
 }
 
 /**
+ * @brief Determine the color for a value based on its type
+ *
+ * @param value The value string to analyze
+ * @return log_color_t color code for this value
+ */
+static log_color_t get_value_color(const char *value) {
+  if (!value || *value == '\0') {
+    return LOG_COLOR_FATAL; // Default to magenta for empty/unknown
+  }
+
+  size_t end_pos = 0;
+
+  // Try to detect value type in order of specificity
+  if (is_numeric_pattern(value, 0, &end_pos)) {
+    return LOG_COLOR_DEBUG; // Cyan for numbers
+  }
+
+  if (is_url(value, 0, &end_pos)) {
+    return LOG_COLOR_INFO; // Blue for URLs
+  }
+
+  if (is_file_path(value, 0, &end_pos)) {
+    return LOG_COLOR_FATAL; // Magenta for paths
+  }
+
+  if (is_env_var(value, 0, &end_pos)) {
+    return LOG_COLOR_GREY; // Grey for environment variables
+  }
+
+  // Check for quoted strings or common value patterns
+  if ((value[0] == '"' || value[0] == '\'' || value[0] == '`') ||
+      strchr(value, ' ') != NULL) { // Space indicates likely string value
+    return LOG_COLOR_FATAL;         // Magenta for strings/unknown values
+  }
+
+  // Default: magenta for unrecognized values
+  return LOG_COLOR_FATAL;
+}
+
+/**
+ * @brief Check if character at position is the start of a key=value pair
+ *
+ * Detects: key=value, connection_id=12345, status=ACTIVE, etc.
+ * Key must be alphanumeric/underscore. Value extends until space or special chars.
+ *
+ * @param str Full string
+ * @param pos Current position
+ * @param key_end Output: position after the key (excluding the equals sign)
+ * @param value_start Output: position where the value begins (after = and whitespace)
+ * @param value_end Output: position after the value
+ * @return true if key=value pair found
+ */
+static bool is_key_value_pair(const char *str, size_t pos, size_t *key_end, size_t *value_start, size_t *value_end) {
+  // Check if we're at the start of an identifier (key)
+  if (!isalpha(str[pos]) && str[pos] != '_') {
+    return false;
+  }
+
+  // Must not be preceded by alphanumeric or underscore (to avoid matching mid-word)
+  if (pos > 0 && (isalnum(str[pos - 1]) || str[pos - 1] == '_')) {
+    return false;
+  }
+
+  size_t i = pos;
+
+  // Collect the key (alphanumeric and underscores)
+  while ((isalnum(str[i]) || str[i] == '_') && str[i] != '\0') {
+    i++;
+  }
+
+  size_t key_len = i - pos;
+
+  // Check for equals sign
+  if (str[i] != '=') {
+    return false;
+  }
+
+  i++; // Skip the equals sign
+
+  // Skip optional whitespace after equals (though unusual)
+  while (str[i] == ' ' || str[i] == '\t') {
+    i++;
+  }
+
+  // Record where the value actually starts
+  size_t val_start = i;
+
+  // Value continues until we hit whitespace or special ending characters
+  // Stop at: space, tab, newline, comma, semicolon, ), ], }, or null terminator
+  while (str[i] != '\0' && str[i] != ' ' && str[i] != '\t' && str[i] != '\n' && str[i] != ',' && str[i] != ';' &&
+         str[i] != ')' && str[i] != ']' && str[i] != '}') {
+    i++;
+  }
+
+  size_t value_len = i - val_start;
+
+  // Must have a non-empty value
+  if (value_len == 0) {
+    return false;
+  }
+
+  *key_end = pos + key_len; // Position after the key
+  *value_start = val_start; // Position where value begins
+  *value_end = i;           // Position after the value
+  return true;
+}
+
+/**
  * @brief Colorize a log message for terminal output
  *
  * Uses 4 rotating static buffers like colored_string() to handle multiple
@@ -429,6 +536,46 @@ const char *colorize_log_message(const char *message) {
 
     // Check if already colorized - only colorize if NOT already colored
     bool can_colorize = !ansi_is_already_colorized(message, i);
+
+    // Try key=value pair first (highest priority pattern)
+    size_t key_end = 0, value_start = 0, value_end = 0;
+    if (can_colorize && is_key_value_pair(message, i, &key_end, &value_start, &value_end)) {
+      size_t key_len = key_end - i;
+      size_t value_len = value_end - value_start;
+
+      // Extract key
+      char key_buf[256];
+      safe_snprintf(key_buf, sizeof(key_buf), "%.*s", (int)key_len, message + i);
+
+      // Extract value
+      char value_buf[512];
+      safe_snprintf(value_buf, sizeof(value_buf), "%.*s", (int)value_len, message + value_start);
+
+      // Color the key (magenta)
+      const char *colored_key = colored_string(LOG_COLOR_FATAL, key_buf);
+      size_t colored_key_len = strlen(colored_key);
+
+      // Check if we have enough space for key + equals + value
+      // (accounting for ANSI codes which will be added by colored_string)
+      if (out_pos + colored_key_len + 1 + value_len + 100 < max_size) {
+        memcpy(output + out_pos, colored_key, colored_key_len);
+        out_pos += colored_key_len;
+
+        // Add uncolored equals sign
+        output[out_pos++] = '=';
+
+        // Determine value color and add colored value
+        log_color_t value_color = get_value_color(value_buf);
+        const char *colored_value = colored_string(value_color, value_buf);
+        size_t colored_value_len = strlen(colored_value);
+        if (out_pos + colored_value_len < max_size) {
+          memcpy(output + out_pos, colored_value, colored_value_len);
+          out_pos += colored_value_len;
+        }
+      }
+      i = value_end - 1;
+      continue;
+    }
 
     // Try numeric pattern
     if (can_colorize && is_numeric_pattern(message, i, &end_pos)) {

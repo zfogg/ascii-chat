@@ -598,36 +598,6 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
 }
 
 /**
- * @brief Print detailed terminal capabilities report
- *
- * Outputs comprehensive terminal capability information for debugging
- * and user information purposes.
- *
- * @param caps Terminal capabilities structure to report
- */
-void print_terminal_capabilities(const terminal_capabilities_t *caps) {
-  // Use printf instead of log_info since logging may not be initialized
-  printf("Terminal Capabilities:\n");
-  printf("  Color Level: %s\n", terminal_color_level_name(caps->color_level));
-  printf("  Max Colors: %u\n", caps->color_count);
-  printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
-  printf("  Background Colors: %s\n", caps->render_mode == RENDER_MODE_BACKGROUND ? "Yes" : "No");
-  const char *render_mode_str_print;
-  if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
-    render_mode_str_print = "half-block";
-  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
-    render_mode_str_print = "background";
-  } else {
-    render_mode_str_print = "foreground";
-  }
-  printf("  Render Mode: %s\n", render_mode_str_print);
-  printf("  TERM: %s\n", caps->term_type);
-  printf("  COLORTERM: %s\n", strlen(caps->colorterm) ? caps->colorterm : "(not set)");
-  printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
-  printf("  Capabilities Bitmask: 0x%08x\n", caps->capabilities);
-}
-
-/**
  * @brief Test terminal output modes
  *
  * Outputs test patterns to verify terminal color and Unicode support.

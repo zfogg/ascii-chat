@@ -89,7 +89,7 @@
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
-#include "ui/colors.h"
+#include "colorscheme.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/util.h"
@@ -993,7 +993,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   opts.detected_mode = detected_mode;
   char *log_filename = options_get_log_filepath(detected_mode, opts);
   SAFE_SNPRINTF(opts.log_file, OPTIONS_BUFF_SIZE, "%s", log_filename);
-  log_init(opts.log_file, GET_OPTION(log_level), false, false);
+  // Force stderr when stdout is not a TTY (piping or redirecting output)
+  bool is_tty = platform_isatty(STDOUT_FILENO);
+  log_init(opts.log_file, GET_OPTION(log_level), !is_tty, false);
   log_debug("Initialized mode-specific logging for mode %d: %s", detected_mode, opts.log_file);
   SAFE_FREE(log_filename);
 
@@ -1489,9 +1491,9 @@ asciichat_error_t options_init(int argc, char **argv) {
   // ========================================================================
   // Now that options are parsed, set and apply the selected color scheme to logging
   if (opts.color_scheme_name[0] != '\0') {
-    asciichat_error_t scheme_result = colors_set_active_scheme(opts.color_scheme_name);
+    asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
     if (scheme_result == ASCIICHAT_OK) {
-      const color_scheme_t *scheme = colors_get_active_scheme();
+      const color_scheme_t *scheme = colorscheme_get_active_scheme();
       if (scheme) {
         log_set_color_scheme(scheme);
         log_debug("Color scheme applied: %s", opts.color_scheme_name);

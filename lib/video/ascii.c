@@ -219,6 +219,11 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 
     ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
     pad_height = (size_t)pad_height_ss;
+
+    log_debug_every(LOG_RATE_SLOW,
+                    "ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, "
+                    "pad_width=%zu, pad_height=%zu, stretch=%d",
+                    width, height, resized_width, resized_height, pad_width, pad_height, stretch);
   }
 
   // Resize the captured frame to the aspect-correct dimensions

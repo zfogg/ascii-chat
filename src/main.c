@@ -40,11 +40,11 @@
 #include "options/common.h"
 #include "options/rcu.h"
 #include "options/builder.h"
-#include "options/colors.h"
+#include "options/colorscheme.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
-#include "ui/colors.h"
+#include "options/colorscheme.h"
 
 #ifndef NDEBUG
 #include "asciichat_errno.h"
@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--color-scheme-create") == 0) {
       // Initialize colors system
-      if (colors_init() != ASCIICHAT_OK) {
+      if (colorscheme_init() != ASCIICHAT_OK) {
         fprintf(stderr, "Error: Failed to initialize color system\n");
         return ERROR_INIT;
       }
@@ -226,8 +226,8 @@ int main(int argc, char *argv[]) {
       }
 
       // Export the scheme
-      asciichat_error_t export_result = colors_export_scheme(scheme_name, output_file);
-      colors_shutdown();
+      asciichat_error_t export_result = colorscheme_export_scheme(scheme_name, output_file);
+      colorscheme_shutdown();
 
       if (export_result != ASCIICHAT_OK) {
         return export_result;
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
 
   // Load color scheme early (from config files and CLI) before logging initialization
   // This allows logging to use the correct colors from the start
-  options_colors_init_early(argc, argv);
+  options_colorscheme_init_early(argc, argv);
 
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {

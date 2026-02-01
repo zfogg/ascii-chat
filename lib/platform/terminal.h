@@ -658,24 +658,6 @@ const char *terminal_color_level_name(terminal_color_mode_t level);
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps);
 
 /**
- * @brief Print terminal capabilities to stdout
- * @param caps Terminal capabilities structure (must not be NULL)
- *
- * Prints a detailed report of terminal capabilities to stdout including:
- * - Color support level and count
- * - UTF-8 encoding support
- * - Render mode preferences
- * - Terminal type and environment variables
- * - Detection reliability
- *
- * @note Useful for debugging terminal capability detection.
- * @note Output is formatted for human readability.
- *
- * @ingroup platform
- */
-void print_terminal_capabilities(const terminal_capabilities_t *caps);
-
-/**
  * @brief Test terminal output modes
  *
  * Tests various terminal output modes to verify capabilities. Outputs

@@ -502,13 +502,6 @@ static int initialize_client_systems(bool shared_init_completed) {
  * @return 0 on success, error code on failure
  */
 int client_main(void) {
-  // Dispatcher already printed capabilities, but honor flag defensively
-  if (GET_OPTION(show_capabilities)) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
-    caps = apply_color_mode_override(caps);
-    print_terminal_capabilities(&caps);
-    return 0;
-  }
 
   // Initialize all client subsystems (shared init already completed)
   int init_result = initialize_client_systems(true);

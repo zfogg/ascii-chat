@@ -1,10 +1,14 @@
 /**
- * @file lib/ui/colors.c
- * @brief Color scheme management implementation
- * @ingroup ui
+ * @file lib/options/colorscheme.c
+ * @brief Color scheme management implementation and early initialization
+ * @ingroup options
+ *
+ * Implements color scheme selection, loading, and compilation for ascii-chat.
+ * Supports built-in themes, TOML configuration files, and early initialization
+ * before logging starts.
  */
 
-#include "colors.h"
+#include "colorscheme.h"
 #include "../common.h"
 #include "../video/ansi_fast.h"
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
@@ -19,14 +23,14 @@
  * ============================================================================ */
 
 static color_scheme_t g_active_scheme = {0};
-static bool g_ui_colors_initialized = false;
+static bool g_colorscheme_initialized = false;
 
-/* Mutex for color scheme compilation - used by both colors.c and logging.c */
+/* Mutex for color scheme compilation - used by both colorscheme.c and logging.c */
 /* Must be statically initialized with PTHREAD_MUTEX_INITIALIZER to avoid deadlock */
 #ifdef _WIN32
-mutex_t g_colors_mutex = {0}; /* Windows CRITICAL_SECTION - referenced from logging.c via extern */
+mutex_t g_colorscheme_mutex = {0}; /* Windows CRITICAL_SECTION - referenced from logging.c via extern */
 #else
-mutex_t g_colors_mutex = PTHREAD_MUTEX_INITIALIZER; /* POSIX pthread_mutex_t */
+mutex_t g_colorscheme_mutex = PTHREAD_MUTEX_INITIALIZER; /* POSIX pthread_mutex_t */
 #endif
 
 /* ============================================================================
@@ -234,8 +238,8 @@ static const color_scheme_t *find_builtin_scheme(const char *name) {
  * Public API: Initialization
  * ============================================================================ */
 
-asciichat_error_t colors_init(void) {
-  if (g_ui_colors_initialized) {
+asciichat_error_t colorscheme_init(void) {
+  if (g_colorscheme_initialized) {
     return ASCIICHAT_OK;
   }
 
@@ -245,7 +249,7 @@ asciichat_error_t colors_init(void) {
 #ifdef _WIN32
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
-    mutex_init(&g_colors_mutex);
+    mutex_init(&g_colorscheme_mutex);
     mutex_initialized = true;
   }
 #endif
@@ -257,12 +261,12 @@ asciichat_error_t colors_init(void) {
   }
 
   memcpy(&g_active_scheme, pastel, sizeof(color_scheme_t));
-  g_ui_colors_initialized = true;
+  g_colorscheme_initialized = true;
 
   return ASCIICHAT_OK;
 }
 
-void colors_cleanup_compiled(compiled_color_scheme_t *compiled) {
+void colorscheme_cleanup_compiled(compiled_color_scheme_t *compiled) {
   if (!compiled) {
     return;
   }
@@ -279,21 +283,21 @@ void colors_cleanup_compiled(compiled_color_scheme_t *compiled) {
   memset(compiled, 0, sizeof(compiled_color_scheme_t));
 }
 
-void colors_shutdown(void) {
-  if (!g_ui_colors_initialized) {
+void colorscheme_shutdown(void) {
+  if (!g_colorscheme_initialized) {
     return;
   }
 
-  mutex_lock(&g_colors_mutex);
+  mutex_lock(&g_colorscheme_mutex);
   memset(&g_active_scheme, 0, sizeof(color_scheme_t));
-  g_ui_colors_initialized = false;
-  mutex_unlock(&g_colors_mutex);
+  g_colorscheme_initialized = false;
+  mutex_unlock(&g_colorscheme_mutex);
 
   /* NOTE: Do NOT call mutex_destroy() on POSIX because the mutex is statically
    * initialized with PTHREAD_MUTEX_INITIALIZER. Destroying a statically-initialized
    * mutex is undefined behavior. On Windows, we must destroy the CRITICAL_SECTION. */
 #ifdef _WIN32
-  mutex_destroy(&g_colors_mutex);
+  mutex_destroy(&g_colorscheme_mutex);
 #endif
 }
 
@@ -301,23 +305,23 @@ void colors_shutdown(void) {
  * Public API: Scheme Management
  * ============================================================================ */
 
-const color_scheme_t *colors_get_active_scheme(void) {
-  if (!g_ui_colors_initialized) {
+const color_scheme_t *colorscheme_get_active_scheme(void) {
+  if (!g_colorscheme_initialized) {
     /* Lazy initialization of color system */
-    colors_init();
+    colorscheme_init();
   }
 
   return &g_active_scheme;
 }
 
-asciichat_error_t colors_set_active_scheme(const char *name) {
+asciichat_error_t colorscheme_set_active_scheme(const char *name) {
   if (!name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Scheme name is NULL");
   }
 
   /* Ensure color system is initialized */
-  if (!g_ui_colors_initialized) {
-    colors_init();
+  if (!g_colorscheme_initialized) {
+    colorscheme_init();
   }
 
   color_scheme_t scheme = {0};
@@ -329,7 +333,7 @@ asciichat_error_t colors_set_active_scheme(const char *name) {
     memcpy(&scheme, builtin, sizeof(color_scheme_t));
   } else if (strchr(name, '/') || strchr(name, '.')) {
     /* Try loading as file path if it contains / or . */
-    result = colors_load_from_file(name, &scheme);
+    result = colorscheme_load_from_file(name, &scheme);
     if (result != ASCIICHAT_OK) {
       return result;
     }
@@ -337,15 +341,15 @@ asciichat_error_t colors_set_active_scheme(const char *name) {
     return SET_ERRNO(ERROR_CONFIG, "Unknown color scheme: %s (not a built-in scheme or valid file path)", name);
   }
 
-  mutex_lock(&g_colors_mutex);
+  mutex_lock(&g_colorscheme_mutex);
   memcpy(&g_active_scheme, &scheme, sizeof(color_scheme_t));
-  mutex_unlock(&g_colors_mutex);
+  mutex_unlock(&g_colorscheme_mutex);
 
   log_debug("Switched to color scheme: %s", name);
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t colors_load_builtin(const char *name, color_scheme_t *scheme) {
+asciichat_error_t colorscheme_load_builtin(const char *name, color_scheme_t *scheme) {
   if (!name || !scheme) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL name or scheme pointer");
   }
@@ -359,7 +363,7 @@ asciichat_error_t colors_load_builtin(const char *name, color_scheme_t *scheme) 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t colors_load_from_file(const char *path, color_scheme_t *scheme) {
+asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *scheme) {
   if (!path || !scheme) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL path or scheme pointer");
   }
@@ -480,7 +484,7 @@ void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t si
  * Public API: Scheme Compilation
  * ============================================================================ */
 
-asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
+asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
                                         terminal_background_t background, compiled_color_scheme_t *compiled) {
   if (!scheme || !compiled) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL scheme or compiled pointer");
@@ -491,7 +495,7 @@ asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_c
 
   /* Free any previously compiled strings before recompiling */
   /* This prevents memory leaks when the color scheme is recompiled */
-  colors_cleanup_compiled(compiled);
+  colorscheme_cleanup_compiled(compiled);
 
   /* Select color array based on background */
   const rgb_color_t *colors = (background == TERM_BACKGROUND_LIGHT && scheme->has_light_variant)
@@ -567,13 +571,13 @@ asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_c
  * Public API: Export
  * ============================================================================ */
 
-asciichat_error_t colors_export_scheme(const char *scheme_name, const char *file_path) {
+asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char *file_path) {
   if (!scheme_name) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Scheme name is NULL");
   }
 
   color_scheme_t scheme = {0};
-  asciichat_error_t result = colors_load_builtin(scheme_name, &scheme);
+  asciichat_error_t result = colorscheme_load_builtin(scheme_name, &scheme);
   if (result != ASCIICHAT_OK) {
     return result;
   }
@@ -663,4 +667,110 @@ terminal_background_t detect_terminal_background(void) {
 
   /* Default: Dark (most terminals use dark backgrounds) */
   return TERM_BACKGROUND_DARK;
+}
+
+/* ============================================================================
+ * Early Color Scheme Loading (called from main() before log_init)
+ * ============================================================================ */
+
+/**
+ * @brief Scan argv for --color-scheme option (quick parse, no validation)
+ * @param argc Argument count
+ * @param argv Argument array
+ * @return Color scheme name if found, NULL otherwise
+ *
+ * This is a simple linear scan that doesn't do full option parsing.
+ * It's only used to find --color-scheme before logging is initialized.
+ */
+static const char *find_cli_color_scheme(int argc, const char *const argv[]) {
+  for (int i = 1; i < argc - 1; i++) {
+    if (strcmp(argv[i], "--color-scheme") == 0) {
+      return argv[i + 1];
+    }
+  }
+  return NULL;
+}
+
+/**
+ * @brief Load color scheme from config files (checks multiple locations)
+ * @param scheme Pointer to store loaded scheme
+ * @return ASCIICHAT_OK if loaded from any location, ERROR_NOT_FOUND if none found
+ *
+ * Attempts to load user's custom color scheme from TOML config files using the
+ * unified platform config search API. Searches standard locations in priority order:
+ * 1. ~/.config/ascii-chat/colors.toml (highest priority, user config)
+ * 2. /opt/homebrew/etc/ascii-chat/colors.toml (macOS Homebrew)
+ * 3. /usr/local/etc/ascii-chat/colors.toml (Unix/Linux local)
+ * 4. /etc/ascii-chat/colors.toml (system-wide, lowest priority)
+ *
+ * Uses override semantics: returns first match (highest priority).
+ * Built-in defaults are used if no config file found.
+ */
+static asciichat_error_t load_config_color_scheme(color_scheme_t *scheme) {
+  if (!scheme) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "scheme pointer is NULL");
+  }
+
+  /* Use platform abstraction to find colors.toml across standard locations */
+  config_file_list_t config_files = {0};
+  asciichat_error_t search_result = platform_find_config_file("colors.toml", &config_files);
+
+  if (search_result != ASCIICHAT_OK) {
+    /* Platform search failed - non-fatal, will use built-in defaults */
+    return ERROR_NOT_FOUND;
+  }
+
+  /* Use first match (highest priority) - override semantics */
+  asciichat_error_t load_result = ERROR_NOT_FOUND;
+  if (config_files.count > 0) {
+    load_result = colorscheme_load_from_file(config_files.files[0].path, scheme);
+  }
+
+  /* Clean up search results */
+  config_file_list_free(&config_files);
+
+  return load_result;
+}
+
+/**
+ * @brief Initialize color scheme early (before logging)
+ * @param argc Argument count
+ * @param argv Argument array
+ * @return ASCIICHAT_OK on success, error code on failure (non-fatal)
+ *
+ * This function is called from main() BEFORE log_init() to apply color scheme
+ * to logging before any log messages are printed.
+ *
+ * Priority order:
+ * 1. --color-scheme CLI argument (highest priority)
+ * 2. ~/.config/ascii-chat/colors.toml config file
+ * 3. Built-in "pastel" default scheme (lowest priority)
+ */
+asciichat_error_t options_colorscheme_init_early(int argc, const char *const argv[]) {
+  /* Initialize the color system with defaults */
+  asciichat_error_t result = colorscheme_init();
+  if (result != ASCIICHAT_OK) {
+    /* Non-fatal: use built-in defaults */
+    return ASCIICHAT_OK;
+  }
+
+  /* Step 1: Try to load from config file (~/.config/ascii-chat/colors.toml) */
+  color_scheme_t config_scheme = {0};
+  asciichat_error_t config_result = load_config_color_scheme(&config_scheme);
+  if (config_result == ASCIICHAT_OK) {
+    /* Config file loaded successfully, apply it */
+    colorscheme_set_active_scheme(config_scheme.name);
+  }
+
+  /* Step 2: CLI --color-scheme overrides config file */
+  const char *cli_scheme = find_cli_color_scheme(argc, argv);
+  if (cli_scheme) {
+    asciichat_error_t cli_result = colorscheme_set_active_scheme(cli_scheme);
+    if (cli_result != ASCIICHAT_OK) {
+      /* Invalid scheme name from CLI, continue with current scheme */
+      return cli_result;
+    }
+  }
+
+  return ASCIICHAT_OK;
 }

@@ -1,14 +1,19 @@
 /**
- * @file lib/ui/colors.h
+ * @file lib/options/colorscheme.h
  * @brief Color scheme management system for ascii-chat
- * @ingroup ui
+ * @ingroup options
  *
  * Provides comprehensive color scheme support with:
- * - Built-in themes (pastel, base16 variants, colourlovers palettes)
+ * - Built-in themes (pastel, nord, solarized, dracula, gruvbox, monokai)
  * - RGB to ANSI conversion (16, 256, truecolor)
  * - Light/dark mode variants
  * - TOML configuration file support
  * - Terminal background detection
+ * - Early initialization before logging
+ *
+ * Color schemes define how log messages are displayed with different colors
+ * for various log levels (debug, info, warn, error, etc.). Schemes can be
+ * selected via CLI arguments, config files, or programmatically.
  */
 
 #pragma once
@@ -87,14 +92,14 @@ typedef struct {
  *
  * Must be called once at program startup before using any color functions.
  */
-asciichat_error_t colors_init(void);
+asciichat_error_t colorscheme_init(void);
 
 /**
  * @brief Shutdown the color system
  *
  * Frees all allocated resources. Call at program shutdown.
  */
-void colors_shutdown(void);
+void colorscheme_shutdown(void);
 
 /**
  * @brief Get currently active color scheme
@@ -102,7 +107,7 @@ void colors_shutdown(void);
  *
  * Returns the currently active color scheme. Default is "pastel" if not set.
  */
-const color_scheme_t *colors_get_active_scheme(void);
+const color_scheme_t *colorscheme_get_active_scheme(void);
 
 /**
  * @brief Set the active color scheme
@@ -112,7 +117,7 @@ const color_scheme_t *colors_get_active_scheme(void);
  * Changes the active color scheme. Scheme must be either built-in or
  * previously loaded from a TOML file.
  */
-asciichat_error_t colors_set_active_scheme(const char *name);
+asciichat_error_t colorscheme_set_active_scheme(const char *name);
 
 /**
  * @brief Load a built-in color scheme
@@ -122,7 +127,7 @@ asciichat_error_t colors_set_active_scheme(const char *name);
  *
  * Loads a built-in color scheme by name. "default" is aliased to "pastel".
  */
-asciichat_error_t colors_load_builtin(const char *name, color_scheme_t *scheme);
+asciichat_error_t colorscheme_load_builtin(const char *name, color_scheme_t *scheme);
 
 /**
  * @brief Load a color scheme from a TOML file
@@ -133,7 +138,7 @@ asciichat_error_t colors_load_builtin(const char *name, color_scheme_t *scheme);
  * Loads a color scheme from a TOML configuration file.
  * See docs/colors.toml for format specification.
  */
-asciichat_error_t colors_load_from_file(const char *path, color_scheme_t *scheme);
+asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *scheme);
 
 /**
  * @brief Compile a color scheme to ANSI codes
@@ -146,7 +151,7 @@ asciichat_error_t colors_load_from_file(const char *path, color_scheme_t *scheme
  * Compiles RGB colors to ANSI escape codes for the specified terminal mode
  * and background. Applies background-appropriate color variant (light/dark).
  */
-asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
+asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
                                         terminal_background_t background, compiled_color_scheme_t *compiled);
 
 /**
@@ -155,7 +160,7 @@ asciichat_error_t colors_compile_scheme(const color_scheme_t *scheme, terminal_c
  *
  * Frees all allocated color code strings and zeros the structure.
  */
-void colors_cleanup_compiled(compiled_color_scheme_t *compiled);
+void colorscheme_cleanup_compiled(compiled_color_scheme_t *compiled);
 
 /**
  * @brief Export a color scheme to TOML format
@@ -165,7 +170,7 @@ void colors_cleanup_compiled(compiled_color_scheme_t *compiled);
  *
  * Exports a color scheme to TOML format. If file_path is NULL, writes to stdout.
  */
-asciichat_error_t colors_export_scheme(const char *scheme_name, const char *file_path);
+asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char *file_path);
 
 /* ============================================================================
  * Color Conversion Utilities
@@ -215,17 +220,34 @@ void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t si
 terminal_background_t detect_terminal_background(void);
 
 /* ============================================================================
+ * Early Color Initialization (for main() before log_init)
+ * ============================================================================ */
+
+/**
+ * @brief Initialize color scheme early, before logging
+ * @param argc Command-line argument count
+ * @param argv Command-line arguments
+ * @return ASCIICHAT_OK on success, error code on failure (non-fatal)
+ *
+ * Called from main() BEFORE log_init() to apply color scheme to logging.
+ * Scans for --color-scheme and loads ~/.config/ascii-chat/colors.toml.
+ *
+ * Priority: --color-scheme CLI > colors.toml > built-in default
+ */
+asciichat_error_t options_colorscheme_init_early(int argc, const char *const argv[]);
+
+/* ============================================================================
  * Internal: Shared Mutex for Color Compilation
  * ============================================================================ */
 
 /**
  * @brief Shared mutex for color scheme compilation
  *
- * Used by both lib/ui/colors.c and lib/log/logging.c to synchronize
- * color scheme compilation. Defined in colors.c and declared here
+ * Used by lib/options/colorscheme.c and lib/log/logging.c to synchronize
+ * color scheme compilation. Defined in colorscheme.c and declared here
  * for use by logging.c.
  */
-extern mutex_t g_colors_mutex;
+extern mutex_t g_colorscheme_mutex;
 
 #ifdef __cplusplus
 }

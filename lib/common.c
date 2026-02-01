@@ -16,7 +16,7 @@
 #include "video/palette.h"
 #include "video/simd/common.h"   // For simd_caches_destroy_all()
 #include "video/webcam/webcam.h" // For webcam_cleanup()
-#include "ui/colors.h"           // For colors_shutdown()
+#include "options/colorscheme.h" // For colorscheme_shutdown()
 #include "util/time.h"           // For timer_system_cleanup()
 #include "asciichat_errno.h"
 #include "crypto/known_hosts.h"
@@ -116,7 +116,7 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
 #endif
 
     // Register colors shutdown to free all ANSI code strings (before memory report)
-    (void)atexit(colors_shutdown);
+    (void)atexit(colorscheme_shutdown);
 
     // Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != ASCIICHAT_OK) {

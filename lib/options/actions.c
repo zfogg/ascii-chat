@@ -141,82 +141,32 @@ void action_list_speakers(void) {
 void action_show_capabilities(void) {
   terminal_capabilities_t caps = detect_terminal_capabilities();
 
-  // Print title with color
-  log_plain("%s", colored_string(LOG_COLOR_INFO, "Detected Terminal Capabilities:"));
+  // Get terminal width and height via platform detection
+  unsigned short width = 110, height = 70; // Defaults
+  asciichat_error_t size_result = get_terminal_size(&width, &height);
+  (void)size_result; // Ignore error, we'll use defaults
 
-  // Column alignment: calculate max label width
-  const char *label_color_level = "Color Level:";
-  const char *label_max_colors = "Max Colors:";
-  const char *label_utf8 = "UTF-8 Support:";
-  const char *label_render_mode = "Render Mode:";
-  const char *label_term = "TERM:";
-  const char *label_colorterm = "COLORTERM:";
-  const char *label_detection = "Detection Reliable:";
-  const char *label_bitmask = "Capabilities Bitmask:";
+  // Use fprintf directly to ensure output appears, not log_plain which may have issues
+  printf("Terminal Capabilities:\n");
+  printf("  Terminal Size: %ux%u\n", width, height);
+  printf("  Color Level: %s\n", terminal_color_level_name(caps.color_level));
+  printf("  Max Colors: %u\n", caps.color_count);
+  printf("  UTF-8 Support: %s\n", caps.utf8_support ? "Yes" : "No");
 
-  size_t max_label_width = 0;
-  max_label_width = MAX(max_label_width, strlen(label_color_level));
-  max_label_width = MAX(max_label_width, strlen(label_max_colors));
-  max_label_width = MAX(max_label_width, strlen(label_utf8));
-  max_label_width = MAX(max_label_width, strlen(label_render_mode));
-  max_label_width = MAX(max_label_width, strlen(label_term));
-  max_label_width = MAX(max_label_width, strlen(label_colorterm));
-  max_label_width = MAX(max_label_width, strlen(label_detection));
-  max_label_width = MAX(max_label_width, strlen(label_bitmask));
-
-#define PRINT_CAP_LINE(label, value_str, value_color)                                                                  \
-  do {                                                                                                                 \
-    char _cap_line_buf[1024];                                                                                          \
-    int _cap_pos = 0;                                                                                                  \
-    _cap_pos += safe_snprintf(_cap_line_buf + _cap_pos, sizeof(_cap_line_buf) - _cap_pos, "  %s",                      \
-                              colored_string(LOG_COLOR_GREY, label));                                                  \
-    for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
-      _cap_line_buf[_cap_pos++] = ' ';                                                                                 \
-    }                                                                                                                  \
-    _cap_pos += safe_snprintf(_cap_line_buf + _cap_pos, sizeof(_cap_line_buf) - _cap_pos, " %s",                       \
-                              colored_string(value_color, value_str));                                                 \
-    log_plain("%s", _cap_line_buf);                                                                                    \
-  } while (0)
-
-  // Print Color Level
-  const char *color_level_name = terminal_color_level_name(caps.color_level);
-  PRINT_CAP_LINE(label_color_level, color_level_name, LOG_COLOR_DEV);
-
-  // Print Max Colors
-  char max_colors_str[32];
-  safe_snprintf(max_colors_str, sizeof(max_colors_str), "%u", caps.color_count);
-  PRINT_CAP_LINE(label_max_colors, max_colors_str, LOG_COLOR_DEV);
-
-  // Print UTF-8 Support
-  PRINT_CAP_LINE(label_utf8, caps.utf8_support ? "Yes" : "No", caps.utf8_support ? LOG_COLOR_INFO : LOG_COLOR_ERROR);
-
-  // Print Render Mode
-  const char *render_mode_str;
-  if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
-    render_mode_str = "half-block";
+  const char *render_mode_str = "unknown";
+  if (caps.render_mode == RENDER_MODE_FOREGROUND) {
+    render_mode_str = "foreground";
   } else if (caps.render_mode == RENDER_MODE_BACKGROUND) {
     render_mode_str = "background";
-  } else {
-    render_mode_str = "foreground";
+  } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
+    render_mode_str = "half-block";
   }
-  PRINT_CAP_LINE(label_render_mode, render_mode_str, LOG_COLOR_DEV);
-
-  // Print TERM
-  PRINT_CAP_LINE(label_term, caps.term_type[0] ? caps.term_type : "Unknown", LOG_COLOR_DEV);
-
-  // Print COLORTERM
-  PRINT_CAP_LINE(label_colorterm, caps.colorterm[0] ? caps.colorterm : "(not set)", LOG_COLOR_DEV);
-
-  // Print Detection Reliable
-  PRINT_CAP_LINE(label_detection, caps.detection_reliable ? "Yes" : "No",
-                 caps.detection_reliable ? LOG_COLOR_INFO : LOG_COLOR_ERROR);
-
-  // Print Capabilities Bitmask
-  char bitmask_str[32];
-  safe_snprintf(bitmask_str, sizeof(bitmask_str), "0x%08x", caps.capabilities);
-  PRINT_CAP_LINE(label_bitmask, bitmask_str, LOG_COLOR_GREY);
-
-#undef PRINT_CAP_LINE
+  printf("  Render Mode: %s\n", render_mode_str);
+  printf("  TERM: %s\n", caps.term_type);
+  printf("  COLORTERM: %s\n", strlen(caps.colorterm) ? caps.colorterm : "(not set)");
+  printf("  Detection Reliable: %s\n", caps.detection_reliable ? "Yes" : "No");
+  printf("  Capabilities Bitmask: 0x%08x\n", caps.capabilities);
+  fflush(stdout);
 
   exit(0);
 }

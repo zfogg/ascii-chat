@@ -25,7 +25,7 @@
 #include "colorize.h"
 #include "log/mmap.h"
 #include "platform/terminal.h"
-#include "ui/colors.h"
+#include "options/colorscheme.h"
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "network/packet.h"
@@ -114,9 +114,9 @@ static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 
 /* Color scheme management - logging-specific state */
 static compiled_color_scheme_t g_compiled_colors = {0};
-static bool g_log_colors_initialized = false;
+static bool g_log_colorscheme_initialized = false;
 
-/* Note: g_colors_mutex is defined in lib/ui/colors.c and declared in lib/ui/colors.h */
+/* Note: g_colorscheme_mutex is defined in lib/ui/colors.c and declared in lib/ui/colors.h */
 
 /* Shutdown logging state */
 static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shutdown_begin/end */
@@ -1248,12 +1248,12 @@ const char **log_get_color_array(void) {
   init_terminal_capabilities();
 
   /* Initialize colors if not already done */
-  if (!g_log_colors_initialized) {
+  if (!g_log_colorscheme_initialized) {
     log_init_colors();
   }
 
   /* Safety check: if colors are not initialized, return NULL to prevent crashes from null pointers */
-  if (!g_log_colors_initialized) {
+  if (!g_log_colorscheme_initialized) {
     return NULL;
   }
 
@@ -1295,19 +1295,19 @@ void log_init_colors(void) {
     return;
   }
 
-  if (g_log_colors_initialized) {
+  if (g_log_colorscheme_initialized) {
     return;
   }
 
   /* Get active color scheme - this ensures color system is initialized */
-  const color_scheme_t *scheme = colors_get_active_scheme();
+  const color_scheme_t *scheme = colorscheme_get_active_scheme();
   if (!scheme) {
     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
     return;
   }
 
-  /* Acquire mutex for compilation (mutex is now initialized by colors_init) */
-  mutex_lock(&g_colors_mutex);
+  /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
+  mutex_lock(&g_colorscheme_mutex);
 
   /* Detect terminal background */
   terminal_background_t background = detect_terminal_background();
@@ -1323,10 +1323,10 @@ void log_init_colors(void) {
   }
 
   /* Compile the color scheme to ANSI codes */
-  asciichat_error_t result = colors_compile_scheme(scheme, mode, background, &g_compiled_colors);
+  asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_compiled_colors);
 
-  g_log_colors_initialized = true;
-  mutex_unlock(&g_colors_mutex);
+  g_log_colorscheme_initialized = true;
+  mutex_unlock(&g_colorscheme_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */
   if (result != ASCIICHAT_OK) {
@@ -1340,7 +1340,7 @@ void log_set_color_scheme(const color_scheme_t *scheme) {
   }
 
   /* Mutex is managed by colors.c - just use it */
-  mutex_lock(&g_colors_mutex);
+  mutex_lock(&g_colorscheme_mutex);
 
   /* Detect terminal background */
   terminal_background_t background = detect_terminal_background();
@@ -1356,10 +1356,10 @@ void log_set_color_scheme(const color_scheme_t *scheme) {
   }
 
   /* Compile the new color scheme */
-  asciichat_error_t result = colors_compile_scheme(scheme, mode, background, &g_compiled_colors);
+  asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_compiled_colors);
 
-  g_log_colors_initialized = true;
-  mutex_unlock(&g_colors_mutex);
+  g_log_colorscheme_initialized = true;
+  mutex_unlock(&g_colorscheme_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */
   if (result != ASCIICHAT_OK) {
@@ -1414,7 +1414,7 @@ void log_shutdown_begin(void) {
 
 void log_shutdown_end(void) {
   /* Clean up compiled color scheme (called as atexit handler even if shutdown wasn't started) */
-  colors_cleanup_compiled(&g_compiled_colors);
+  colorscheme_cleanup_compiled(&g_compiled_colors);
 
   if (!g_shutdown_in_progress) {
     return; /* Not in shutdown phase, skip terminal state restoration */

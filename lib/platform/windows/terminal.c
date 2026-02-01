@@ -871,29 +871,6 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps) {
   return summary;
 }
 
-void print_terminal_capabilities(const terminal_capabilities_t *caps) {
-  printf("Terminal Capabilities (Windows):\n");
-  printf("  Color Level: %s\n", terminal_color_level_name(caps->color_level));
-  printf("  Max Colors: %d\n", caps->color_count);
-  printf("  UTF-8 Support: %s\n", caps->utf8_support ? "Yes" : "No");
-  printf("  Background Colors: %s\n", (caps->capabilities & TERM_CAP_BACKGROUND) ? "Yes" : "No");
-  const char *render_mode_str;
-  if (caps->render_mode == RENDER_MODE_FOREGROUND) {
-    render_mode_str = "foreground";
-  } else if (caps->render_mode == RENDER_MODE_BACKGROUND) {
-    render_mode_str = "background";
-  } else if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
-    render_mode_str = "half-block";
-  } else {
-    render_mode_str = "unknown";
-  }
-  printf("  Render Mode: %s\n", render_mode_str);
-  printf("  TERM: %s\n", caps->term_type);
-  printf("  COLORTERM: %s\n", caps->colorterm);
-  printf("  Detection Reliable: %s\n", caps->detection_reliable ? "Yes" : "No");
-  printf("  Capabilities Bitmask: 0x%08x\n", caps->capabilities);
-}
-
 void test_terminal_output_modes(void) {
   printf("Testing Windows terminal output modes:\n");
 
