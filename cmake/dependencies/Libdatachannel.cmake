@@ -187,6 +187,17 @@ if(NOT libdatachannel_POPULATED)
         # Continue anyway - CMake build will fail later if submodules are actually required
     endif()
 
+    # Clean up unnecessary files to reduce cache size
+    # We only need src/, include/, cmake/, and deps/ subdirectories
+    message(STATUS "Cleaning libdatachannel cache (removing examples, tests, docs)...")
+    file(REMOVE_RECURSE
+        "${libdatachannel_SOURCE_DIR}/examples"  # 58MB of examples we don't need
+        "${libdatachannel_SOURCE_DIR}/test"      # Tests not needed for build
+        "${libdatachannel_SOURCE_DIR}/pages"     # Documentation
+        "${libdatachannel_SOURCE_DIR}/.github"   # GitHub workflows
+        "${libdatachannel_SOURCE_DIR}/.git"      # Remove .git to save 260MB+ (we have the code now)
+    )
+
     # Patch dependency CMakeLists to require modern CMake
     # plog
     set(PLOG_CMAKE_FILE "${libdatachannel_SOURCE_DIR}/deps/plog/CMakeLists.txt")
