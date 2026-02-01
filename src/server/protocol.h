@@ -16,7 +16,8 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
 void handle_audio_packet(client_info_t *client, const void *data, size_t len);
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len);
 void handle_size_packet(client_info_t *client, const void *data, size_t len);
-void handle_ping_packet(client_info_t *client);
+void handle_ping_packet(client_info_t *client, const void *data, size_t len);
+void handle_pong_packet(client_info_t *client, const void *data, size_t len);
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len);
 void handle_protocol_version_packet(client_info_t *client, const void *data, size_t len);
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len);

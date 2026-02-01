@@ -615,6 +615,40 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   log_info_client(client, "Stream stopped: %s", streams);
 }
 
+/**
+ * @brief Handle PING packet - respond with PONG
+ */
+void handle_ping_packet(client_info_t *client, const void *data, size_t len) {
+  (void)data;
+  (void)len;
+
+  // Get transport reference briefly to avoid deadlock on TCP buffer full
+  mutex_lock(&client->send_mutex);
+  if (atomic_load(&client->shutting_down) || !client->transport) {
+    mutex_unlock(&client->send_mutex);
+    return;
+  }
+  acip_transport_t *pong_transport = client->transport;
+  mutex_unlock(&client->send_mutex);
+
+  // Network I/O happens OUTSIDE the mutex
+  asciichat_error_t pong_result = acip_send_pong(pong_transport);
+  if (pong_result != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", atomic_load(&client->client_id),
+              asciichat_error_string(pong_result));
+  }
+}
+
+/**
+ * @brief Handle PONG packet - client acknowledged our PING
+ */
+void handle_pong_packet(client_info_t *client, const void *data, size_t len) {
+  (void)client;
+  (void)data;
+  (void)len;
+  // No action needed - client acknowledged our PING
+}
+
 /* ============================================================================
  * Media Data Packet Handlers
  * ============================================================================
@@ -1589,44 +1623,6 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
  * Protocol Control Packet Handlers
  * ============================================================================
  */
-
-/**
- * @brief Process PING packet - respond with PONG for keepalive
- *
- * Clients send periodic PING packets to verify the connection is still active.
- * The server responds with a PONG packet to confirm bi-directional connectivity.
- * This prevents network equipment from timing out idle connections.
- *
- * PACKET STRUCTURE:
- * - PING packets have no payload (header only)
- * - PONG responses also have no payload
- *
- * PROTOCOL BEHAVIOR:
- * - Every PING must be answered with exactly one PONG
- * - PONG is queued in client's video queue for delivery
- * - No state changes are made to client
- *
- * ERROR HANDLING:
- * - Queue failures are logged but not fatal
- * - Client disconnection during PONG delivery is handled gracefully
- * - Excessive PING rate is not rate-limited (client responsibility)
- *
- * PERFORMANCE CHARACTERISTICS:
- * - Very low overhead (no payload processing)
- * - Uses existing packet queue infrastructure
- * - Send thread delivers PONG asynchronously
- *
- * @param client Source client requesting keepalive confirmation
- *
- * @note PING/PONG packets help detect network failures
- * @note Response is queued, not sent immediately
- * @see packet_queue_enqueue() For response delivery mechanism
- */
-void handle_ping_packet(client_info_t *client) {
-  // PONG responses should be handled directly via socket in send thread
-  // For now, just log the ping
-  (void)client;
-}
 
 /* ============================================================================
  * Protocol Utility Functions

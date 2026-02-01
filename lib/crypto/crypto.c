@@ -550,43 +550,33 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
 // Utility functions
 // =============================================================================
 
+// O(1) array lookup for crypto result strings (indexed by -result)
+static const char *const g_crypto_result_strings[] = {
+    "Success",                      // 0: CRYPTO_OK
+    "Initialization failed",        // 1: -CRYPTO_ERROR_INIT_FAILED
+    "Invalid parameters",           // 2: -CRYPTO_ERROR_INVALID_PARAMS
+    "Memory allocation failed",     // 3: -CRYPTO_ERROR_MEMORY
+    "Libsodium error",              // 4: -CRYPTO_ERROR_LIBSODIUM
+    "Key generation failed",        // 5: -CRYPTO_ERROR_KEY_GENERATION
+    "Password derivation failed",   // 6: -CRYPTO_ERROR_PASSWORD_DERIVATION
+    "Encryption failed",            // 7: -CRYPTO_ERROR_ENCRYPTION
+    "Decryption failed",            // 8: -CRYPTO_ERROR_DECRYPTION
+    "Invalid MAC or corrupted data",// 9: -CRYPTO_ERROR_INVALID_MAC
+    "Buffer too small",             // 10: -CRYPTO_ERROR_BUFFER_TOO_SMALL
+    "Key exchange not complete",    // 11: -CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE
+    "Nonce counter exhausted",      // 12: -CRYPTO_ERROR_NONCE_EXHAUSTED
+    "Rekey already in progress",    // 13: -CRYPTO_ERROR_REKEY_IN_PROGRESS
+    "Rekey failed",                 // 14: -CRYPTO_ERROR_REKEY_FAILED
+    "Rekey rate limited",           // 15: -CRYPTO_ERROR_REKEY_RATE_LIMITED
+};
+#define CRYPTO_RESULT_STRING_COUNT (sizeof(g_crypto_result_strings) / sizeof(g_crypto_result_strings[0]))
+
 const char *crypto_result_to_string(crypto_result_t result) {
-  switch (result) {
-  case CRYPTO_OK:
-    return "Success";
-  case CRYPTO_ERROR_INIT_FAILED:
-    return "Initialization failed";
-  case CRYPTO_ERROR_INVALID_PARAMS:
-    return "Invalid parameters";
-  case CRYPTO_ERROR_MEMORY:
-    return "Memory allocation failed";
-  case CRYPTO_ERROR_LIBSODIUM:
-    return "Libsodium error";
-  case CRYPTO_ERROR_KEY_GENERATION:
-    return "Key generation failed";
-  case CRYPTO_ERROR_PASSWORD_DERIVATION:
-    return "Password derivation failed";
-  case CRYPTO_ERROR_ENCRYPTION:
-    return "Encryption failed";
-  case CRYPTO_ERROR_DECRYPTION:
-    return "Decryption failed";
-  case CRYPTO_ERROR_INVALID_MAC:
-    return "Invalid MAC or corrupted data";
-  case CRYPTO_ERROR_BUFFER_TOO_SMALL:
-    return "Buffer too small";
-  case CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE:
-    return "Key exchange not complete";
-  case CRYPTO_ERROR_NONCE_EXHAUSTED:
-    return "Nonce counter exhausted";
-  case CRYPTO_ERROR_REKEY_IN_PROGRESS:
-    return "Rekey already in progress";
-  case CRYPTO_ERROR_REKEY_FAILED:
-    return "Rekey failed";
-  case CRYPTO_ERROR_REKEY_RATE_LIMITED:
-    return "Rekey rate limited";
-  default:
-    return "Unknown error";
+  int idx = -result; // CRYPTO_OK=0, errors are negative
+  if (idx >= 0 && (size_t)idx < CRYPTO_RESULT_STRING_COUNT) {
+    return g_crypto_result_strings[idx];
   }
+  return "Unknown error";
 }
 
 void crypto_get_status(const crypto_context_t *ctx, char *status_buffer, size_t buffer_size) {

@@ -150,6 +150,66 @@
 #define DEBUG_THREADS 1
 #define DEBUG_MEMORY 1
 
+// =============================================================================
+// Packet Handler Dispatch (O(1) hash table lookup)
+// =============================================================================
+
+typedef void (*client_packet_handler_t)(client_info_t *client, const void *data, size_t len);
+
+#define CLIENT_DISPATCH_HASH_SIZE 32
+#define CLIENT_DISPATCH_HANDLER_COUNT 12
+
+typedef struct {
+  packet_type_t key;
+  uint8_t handler_idx;
+} client_dispatch_entry_t;
+
+#define CLIENT_DISPATCH_HASH(type) ((type) % CLIENT_DISPATCH_HASH_SIZE)
+
+static inline int client_dispatch_hash_lookup(const client_dispatch_entry_t *table, packet_type_t type) {
+  uint32_t h = CLIENT_DISPATCH_HASH(type);
+  for (int i = 0; i < CLIENT_DISPATCH_HASH_SIZE; i++) {
+    uint32_t slot = (h + i) % CLIENT_DISPATCH_HASH_SIZE;
+    if (table[slot].key == 0) return -1;
+    if (table[slot].key == type) return table[slot].handler_idx;
+  }
+  return -1;
+}
+
+// Handler array (indexed by hash lookup result)
+static const client_packet_handler_t g_client_dispatch_handlers[CLIENT_DISPATCH_HANDLER_COUNT] = {
+    (client_packet_handler_t)handle_protocol_version_packet,    // 0
+    (client_packet_handler_t)handle_image_frame_packet,         // 1
+    (client_packet_handler_t)handle_audio_batch_packet,         // 2
+    (client_packet_handler_t)handle_audio_opus_batch_packet,    // 3
+    (client_packet_handler_t)handle_client_join_packet,         // 4
+    (client_packet_handler_t)handle_client_leave_packet,        // 5
+    (client_packet_handler_t)handle_stream_start_packet,        // 6
+    (client_packet_handler_t)handle_stream_stop_packet,         // 7
+    (client_packet_handler_t)handle_client_capabilities_packet, // 8
+    (client_packet_handler_t)handle_ping_packet,                // 9
+    (client_packet_handler_t)handle_pong_packet,                // 10
+    (client_packet_handler_t)handle_remote_log_packet_from_client, // 11
+};
+
+// Hash table mapping packet type -> handler index
+// clang-format off
+static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH_SIZE] = {
+    [0]  = {PACKET_TYPE_AUDIO_BATCH,           2},   // hash(4000)=0
+    [1]  = {PACKET_TYPE_PROTOCOL_VERSION,      0},   // hash(1)=1
+    [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,      3},   // hash(4001)=1, probed->2
+    [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,   8},   // hash(5000)=8
+    [9]  = {PACKET_TYPE_PING,                  9},   // hash(5001)=9
+    [10] = {PACKET_TYPE_PONG,                  10},  // hash(5002)=10
+    [11] = {PACKET_TYPE_CLIENT_JOIN,           4},   // hash(5003)=11
+    [12] = {PACKET_TYPE_CLIENT_LEAVE,          5},   // hash(5004)=12
+    [13] = {PACKET_TYPE_STREAM_START,          6},   // hash(5005)=13
+    [14] = {PACKET_TYPE_STREAM_STOP,           7},   // hash(5006)=14
+    [20] = {PACKET_TYPE_REMOTE_LOG,            11},  // hash(2004)=20
+    [25] = {PACKET_TYPE_IMAGE_FRAME,           1},   // hash(3001)=25
+};
+// clang-format on
+
 // Forward declarations for static helper functions
 static inline void cleanup_client_all_buffers(client_info_t *client);
 
@@ -2592,73 +2652,12 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     }
   }
 
-  switch (type) {
-  case PACKET_TYPE_PROTOCOL_VERSION:
-    handle_protocol_version_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_IMAGE_FRAME:
-    handle_image_frame_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_AUDIO_BATCH:
-    handle_audio_batch_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_AUDIO_OPUS_BATCH:
-    handle_audio_opus_batch_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_CLIENT_JOIN:
-    handle_client_join_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_CLIENT_LEAVE:
-    handle_client_leave_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_STREAM_START:
-    handle_stream_start_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_STREAM_STOP:
-    handle_stream_stop_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_CLIENT_CAPABILITIES:
-    handle_client_capabilities_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_PING: {
-    // Respond with PONG using ACIP transport
-    // Get transport reference briefly to avoid deadlock on TCP buffer full
-    mutex_lock(&client->send_mutex);
-    if (atomic_load(&client->shutting_down) || !client->transport) {
-      mutex_unlock(&client->send_mutex);
-      break; // Client is shutting down, skip pong
-    }
-    acip_transport_t *pong_transport = client->transport;
-    mutex_unlock(&client->send_mutex);
-
-    // Network I/O happens OUTSIDE the mutex
-    asciichat_error_t pong_result = acip_send_pong(pong_transport);
-    if (pong_result != ASCIICHAT_OK) {
-      SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u: %s", client->client_id,
-                asciichat_error_string(pong_result));
-    }
-    break;
-  }
-
-  case PACKET_TYPE_PONG:
-    // Client acknowledged our PING - no action needed
-    break;
-
-  case PACKET_TYPE_REMOTE_LOG:
-    handle_remote_log_packet_from_client(client, data, len);
-    break;
-
-  default:
+  // O(1) dispatch via hash table lookup
+  int idx = client_dispatch_hash_lookup(g_client_dispatch_hash, type);
+  if (idx < 0) {
     disconnect_client_for_bad_data(client, "Unknown packet type: %d (len=%zu)", type, len);
-    break;
+    return;
   }
+
+  g_client_dispatch_handlers[idx](client, data, len);
 }
