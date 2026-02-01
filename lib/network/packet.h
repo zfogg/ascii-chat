@@ -259,26 +259,25 @@
  * @brief Network protocol packet type enumeration
  *
  * Defines all packet types used in the ascii-chat network protocol.
- * Packet types are organized by category: protocol negotiation, frames,
- * control, crypto handshake, multi-user extensions, messages, audio.
+ * Packet types are organized by priority: protocol negotiation, then all
+ * cryptographic operations, then media, control, audio, and messages.
  *
- * PACKET CATEGORIES:
+ * PACKET CATEGORIES (with expansion room):
  * - 1: Protocol negotiation
- * - 2-3: Frame packets (ASCII, image)
- * - 4-6: Control packets (capabilities, ping/pong)
- * - 7-12: Multi-user protocol extensions
- * - 13-26: Crypto handshake packets (ALWAYS UNENCRYPTED)
- * - 26: Encrypted packet (after handshake completion)
- * - 27-29: Crypto rekeying packets (ALWAYS UNENCRYPTED during rekey)
- * - 27-33: Message packets and audio batching
- * - 34-35: Opus-encoded audio (modern codec)
- * - 36: Client hello
- * - 100-199: Discovery/ACIP protocol
+ * - 2-1001: Cryptographic operations (1000 space reserved)
+ *   - 2: Client hello (expansion room: 3-101)
+ *   - 102-201: Handshake/exchange (expansion room: 113-201)
+ *   - 202-301: Rekeying (expansion room: 205-301)
+ * - 1002-2001: Message packets (1000 space reserved)
+ * - 2002-3001: Media frame packets (1000 space reserved)
+ * - 3002-4001: Audio packets (1000 space reserved)
+ * - 4002-5001: Control/state packets (1000 space reserved)
+ * - 6001+: Discovery/ACIP protocol
  *
- * @note Crypto handshake packets (13-25) and rekey packets (27-29) are
+ * @note Crypto handshake packets (2-12) and rekey packets (14-16) are
  *       ALWAYS sent unencrypted. Use packet_is_handshake_type() to check.
  *
- * @note PACKET_TYPE_ENCRYPTED (26) is used for encrypted session packets
+ * @note PACKET_TYPE_ENCRYPTED (13) is used for encrypted session packets
  *       after handshake completion.
  *
  * @ingroup packet
@@ -287,159 +286,191 @@ typedef enum {
   /** @brief Protocol version and capabilities negotiation */
   PACKET_TYPE_PROTOCOL_VERSION = 1,
 
-  /** @brief Complete ASCII frame with all metadata */
-  PACKET_TYPE_ASCII_FRAME = 2,
-  /** @brief Complete RGB image with dimensions */
-  PACKET_TYPE_IMAGE_FRAME = 3,
+  // ============================================================================
+  // Cryptographic Operations (Types 1000-1999)
+  // ============================================================================
 
-  /** @brief Client reports terminal capabilities */
-  PACKET_TYPE_CLIENT_CAPABILITIES = 4,
-  /** @brief Keepalive ping packet */
-  PACKET_TYPE_PING = 5,
-  /** @brief Keepalive pong response */
-  PACKET_TYPE_PONG = 6,
+  // ============================================================================
+  // Cryptographic Client Hello (Types 1000-1099)
+  // ============================================================================
 
-  /** @brief Client announces capability to send media */
-  PACKET_TYPE_CLIENT_JOIN = 7,
-  /** @brief Clean disconnect notification */
-  PACKET_TYPE_CLIENT_LEAVE = 8,
-  /** @brief Client requests to start sending video/audio */
-  PACKET_TYPE_STREAM_START = 9,
-  /** @brief Client stops sending media */
-  PACKET_TYPE_STREAM_STOP = 10,
-  /** @brief Server tells client to clear console */
-  PACKET_TYPE_CLEAR_CONSOLE = 11,
-  /** @brief Server sends current state to clients */
-  PACKET_TYPE_SERVER_STATE = 12,
+  /** @brief Client -> Server: Expected server key fingerprint for multi-key selection (UNENCRYPTED) */
+  PACKET_TYPE_CRYPTO_CLIENT_HELLO = 1000,
+
+  // ============================================================================
+  // Cryptographic Handshake (Types 1100-1199)
+  // ============================================================================
+  // ALWAYS UNENCRYPTED (except ENCRYPTED which wraps encrypted data)
 
   /** @brief Client -> Server: Supported crypto algorithms (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_CAPABILITIES = 13,
+  PACKET_TYPE_CRYPTO_CAPABILITIES = 1100,
   /** @brief Server -> Client: Chosen algorithms + data sizes (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_PARAMETERS = 14,
+  PACKET_TYPE_CRYPTO_PARAMETERS = 1101,
   /** @brief Server -> Client: {server_pubkey[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT = 15,
+  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT = 1102,
   /** @brief Client -> Server: {client_pubkey[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP = 16,
+  PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP = 1103,
   /** @brief Server -> Client: {nonce[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_AUTH_CHALLENGE = 17,
+  PACKET_TYPE_CRYPTO_AUTH_CHALLENGE = 1104,
   /** @brief Client -> Server: {HMAC[32]} (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_AUTH_RESPONSE = 18,
+  PACKET_TYPE_CRYPTO_AUTH_RESPONSE = 1105,
   /** @brief Server -> Client: "authentication failed" (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_AUTH_FAILED = 19,
+  PACKET_TYPE_CRYPTO_AUTH_FAILED = 1106,
   /** @brief Server -> Client: {HMAC[32]} server proves knowledge (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP = 20,
+  PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP = 1107,
   /** @brief Server -> Client: "encryption ready" (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 21,
+  PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE = 1108,
   /** @brief Client -> Server: "I want to proceed without encryption" (UNENCRYPTED) */
-  PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 22,
+  PACKET_TYPE_CRYPTO_NO_ENCRYPTION = 1109,
+
+  // ============================================================================
+  // Cryptographic Rekeying (Types 1200-1299)
+  // ============================================================================
+  // ALWAYS UNENCRYPTED during rekey phase
+
   /** @brief Encrypted packet (after handshake completion) */
-  PACKET_TYPE_ENCRYPTED = 23,
-
+  PACKET_TYPE_ENCRYPTED = 1200,
   /** @brief Initiator -> Responder: {new_ephemeral_pk[32]} (UNENCRYPTED during rekey) */
-  PACKET_TYPE_CRYPTO_REKEY_REQUEST = 24,
+  PACKET_TYPE_CRYPTO_REKEY_REQUEST = 1201,
   /** @brief Responder -> Initiator: {new_ephemeral_pk[32]} (UNENCRYPTED during rekey) */
-  PACKET_TYPE_CRYPTO_REKEY_RESPONSE = 25,
+  PACKET_TYPE_CRYPTO_REKEY_RESPONSE = 1202,
   /** @brief Initiator -> Responder: Empty (encrypted with NEW key, but still handshake) */
-  PACKET_TYPE_CRYPTO_REKEY_COMPLETE = 26,
+  PACKET_TYPE_CRYPTO_REKEY_COMPLETE = 1203,
 
-  /** @brief Batched audio packets for efficiency */
-  PACKET_TYPE_AUDIO_BATCH = 27,
+  // ============================================================================
+  // Message Packets (Types 2000-2999)
+  // ============================================================================
 
   /** @brief Terminal size message */
-  PACKET_TYPE_SIZE_MESSAGE = 28,
+  PACKET_TYPE_SIZE_MESSAGE = 2000,
   /** @brief Audio message */
-  PACKET_TYPE_AUDIO_MESSAGE = 29,
+  PACKET_TYPE_AUDIO_MESSAGE = 2001,
   /** @brief Text message */
-  PACKET_TYPE_TEXT_MESSAGE = 30,
+  PACKET_TYPE_TEXT_MESSAGE = 2002,
   /** @brief Error packet with asciichat_error_t code and human-readable message */
-  PACKET_TYPE_ERROR_MESSAGE = 31,
+  PACKET_TYPE_ERROR_MESSAGE = 2003,
   /** @brief Bidirectional remote logging packet */
-  PACKET_TYPE_REMOTE_LOG = 32,
+  PACKET_TYPE_REMOTE_LOG = 2004,
 
+  // ============================================================================
+  // Media Frames (Types 3000-3999)
+  // ============================================================================
+
+  /** @brief Complete ASCII frame with all metadata */
+  PACKET_TYPE_ASCII_FRAME = 3000,
+  /** @brief Complete RGB image with dimensions */
+  PACKET_TYPE_IMAGE_FRAME = 3001,
+
+  // ============================================================================
+  // Audio Packets (Types 4000-4999)
+  // ============================================================================
+
+  /** @brief Batched audio packets for efficiency */
+  PACKET_TYPE_AUDIO_BATCH = 4000,
   /** @brief Batched Opus-encoded audio frames */
-  PACKET_TYPE_AUDIO_OPUS_BATCH = 33,
-
-  /** @brief Client -> Server: Expected server key fingerprint for multi-key selection (UNENCRYPTED, handshake) */
-  PACKET_TYPE_CRYPTO_CLIENT_HELLO = 34,
+  PACKET_TYPE_AUDIO_OPUS_BATCH = 4001,
 
   // ============================================================================
-  // Discovery Service Protocol (ACDS)
+  // Control/State Packets (Types 5000-5999)
   // ============================================================================
-  // ACIP packets use range 100-199 to avoid conflicts with ascii-chat protocol (1-35)
+
+  /** @brief Client reports terminal capabilities */
+  PACKET_TYPE_CLIENT_CAPABILITIES = 5000,
+  /** @brief Keepalive ping packet */
+  PACKET_TYPE_PING = 5001,
+  /** @brief Keepalive pong response */
+  PACKET_TYPE_PONG = 5002,
+  /** @brief Client announces capability to send media */
+  PACKET_TYPE_CLIENT_JOIN = 5003,
+  /** @brief Clean disconnect notification */
+  PACKET_TYPE_CLIENT_LEAVE = 5004,
+  /** @brief Client requests to start sending video/audio */
+  PACKET_TYPE_STREAM_START = 5005,
+  /** @brief Client stops sending media */
+  PACKET_TYPE_STREAM_STOP = 5006,
+  /** @brief Server tells client to clear console */
+  PACKET_TYPE_CLEAR_CONSOLE = 5007,
+  /** @brief Server sends current state to clients */
+  PACKET_TYPE_SERVER_STATE = 5008,
+
+  // ============================================================================
+  // Discovery Service Protocol (ACDS) (Types 6000+)
+  // ============================================================================
+  // ACIP packets use range 6000+ for discovery mode operations
   // See network/acip/protocol.h for protocol overview and utility functions
   // See network/acip/acds.h for ACDS message structures and detailed documentation
 
   /** @brief Create new session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_CREATE = 100,
+  PACKET_TYPE_ACIP_SESSION_CREATE = 6000,
   /** @brief Session created response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_SESSION_CREATED = 101,
+  PACKET_TYPE_ACIP_SESSION_CREATED = 6001,
   /** @brief Lookup session by string (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_LOOKUP = 102,
+  PACKET_TYPE_ACIP_SESSION_LOOKUP = 6002,
   /** @brief Session info response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_SESSION_INFO = 103,
+  PACKET_TYPE_ACIP_SESSION_INFO = 6003,
   /** @brief Join existing session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_JOIN = 104,
+  PACKET_TYPE_ACIP_SESSION_JOIN = 6004,
   /** @brief Session joined response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_SESSION_JOINED = 105,
+  PACKET_TYPE_ACIP_SESSION_JOINED = 6005,
   /** @brief Leave session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_LEAVE = 106,
+  PACKET_TYPE_ACIP_SESSION_LEAVE = 6006,
   /** @brief End session (Host -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_END = 107,
+  PACKET_TYPE_ACIP_SESSION_END = 6007,
   /** @brief Reconnect to session (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_SESSION_RECONNECT = 108,
+  PACKET_TYPE_ACIP_SESSION_RECONNECT = 6008,
 
   /** @brief WebRTC SDP offer/answer (bidirectional) */
-  PACKET_TYPE_ACIP_WEBRTC_SDP = 110,
+  PACKET_TYPE_ACIP_WEBRTC_SDP = 6009,
   /** @brief WebRTC ICE candidate (bidirectional) */
-  PACKET_TYPE_ACIP_WEBRTC_ICE = 111,
+  PACKET_TYPE_ACIP_WEBRTC_ICE = 6010,
 
   /** @brief Reserve session string (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_STRING_RESERVE = 120,
+  PACKET_TYPE_ACIP_STRING_RESERVE = 6020,
   /** @brief String reserved response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_STRING_RESERVED = 121,
+  PACKET_TYPE_ACIP_STRING_RESERVED = 6021,
   /** @brief Renew string reservation (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_STRING_RENEW = 122,
+  PACKET_TYPE_ACIP_STRING_RENEW = 6022,
   /** @brief Release string reservation (Client -> Discovery Server) */
-  PACKET_TYPE_ACIP_STRING_RELEASE = 123,
+  PACKET_TYPE_ACIP_STRING_RELEASE = 6023,
 
   // ============================================================================
-  // Ring Consensus Protocol (128-129) - NEW P2P DESIGN
+  // Ring Consensus Protocol (6050-6051)
   // ============================================================================
   // Used for proactive future host election every 5 minutes
 
   /** @brief Participant list with ring order (ACDS -> Participants) */
-  PACKET_TYPE_ACIP_PARTICIPANT_LIST = 128,
+  PACKET_TYPE_ACIP_PARTICIPANT_LIST = 6050,
   /** @brief Ring collect request (Participant -> Next Participant) */
-  PACKET_TYPE_ACIP_RING_COLLECT = 129,
+  PACKET_TYPE_ACIP_RING_COLLECT = 6051,
 
   // ============================================================================
-  // Host Negotiation & Migration Protocol (130-139)
+  // Host Negotiation & Migration Protocol (6060-6069)
   // ============================================================================
   // Used by discovery mode for dynamic host selection and failover
 
   /** @brief NETWORK_QUALITY exchange (unified packet for all quality metrics) */
-  PACKET_TYPE_ACIP_NETWORK_QUALITY = 130,
+  PACKET_TYPE_ACIP_NETWORK_QUALITY = 6060,
   /** @brief Host announcement (Participant -> ACDS, "I won negotiation") */
-  PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT = 131,
+  PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT = 6061,
   /** @brief Host designated (ACDS -> All Participants) */
-  PACKET_TYPE_ACIP_HOST_DESIGNATED = 132,
+  PACKET_TYPE_ACIP_HOST_DESIGNATED = 6062,
   /** @brief Settings sync (Initiator -> Host -> All Participants) */
-  PACKET_TYPE_ACIP_SETTINGS_SYNC = 133,
+  PACKET_TYPE_ACIP_SETTINGS_SYNC = 6063,
   /** @brief Settings acknowledgment (Participant -> Initiator) */
-  PACKET_TYPE_ACIP_SETTINGS_ACK = 134,
+  PACKET_TYPE_ACIP_SETTINGS_ACK = 6064,
   /** @brief Host lost notification - lightweight (Participant -> ACDS) */
-  PACKET_TYPE_ACIP_HOST_LOST = 135,
+  PACKET_TYPE_ACIP_HOST_LOST = 6065,
   /** @brief Future host elected announcement (Quorum Leader -> ACDS -> All Participants) */
-  PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED = 136,
+  PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED = 6066,
   /** @brief Participant joined notification (ACDS -> Existing Participants) */
-  PACKET_TYPE_ACIP_PARTICIPANT_JOINED = 137,
+  PACKET_TYPE_ACIP_PARTICIPANT_JOINED = 6067,
   /** @brief Participant left notification (ACDS -> Remaining Participants) */
-  PACKET_TYPE_ACIP_PARTICIPANT_LEFT = 138,
+  PACKET_TYPE_ACIP_PARTICIPANT_LEFT = 6068,
 
   /** @brief Discovery server ping (keepalive) */
-  PACKET_TYPE_ACIP_DISCOVERY_PING = 150,
+  PACKET_TYPE_ACIP_DISCOVERY_PING = 6100,
   /** @brief Generic error response (Discovery Server -> Client) */
-  PACKET_TYPE_ACIP_ERROR = 199
+  PACKET_TYPE_ACIP_ERROR = 6199
 } packet_type_t;
 
 /**
@@ -469,16 +500,16 @@ typedef enum {
  * @ingroup packet
  */
 static inline bool packet_is_handshake_type(packet_type_t type) {
-  // Initial handshake packets (14-23)
+  // Client hello for multi-key selection (type 1000)
+  if (type == PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
+    return true;
+  }
+  // Crypto handshake packets (1100-1109)
   if (type >= PACKET_TYPE_CRYPTO_CAPABILITIES && type <= PACKET_TYPE_CRYPTO_NO_ENCRYPTION) {
     return true;
   }
-  // Rekey packets (25-27) - Note: REKEY_COMPLETE is encrypted with new key but still considered handshake
+  // Crypto rekey packets (1201-1203)
   if (type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
-    return true;
-  }
-  // Client hello for multi-key selection (36)
-  if (type == PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
     return true;
   }
   return false;

@@ -54,24 +54,6 @@ static asciichat_error_t handle_acds_host_lost(const void *payload, size_t paylo
                                                const char *client_ip, const acip_acds_callbacks_t *callbacks);
 
 // =============================================================================
-// ACDS Packet Dispatch Table (O(1) lookup)
-// =============================================================================
-
-static const acip_acds_handler_func_t g_acds_packet_handlers[200] = {
-    [PACKET_TYPE_PING] = handle_acds_ping,
-    [PACKET_TYPE_PONG] = handle_acds_pong,
-    [PACKET_TYPE_ACIP_SESSION_CREATE] = handle_acds_session_create,
-    [PACKET_TYPE_ACIP_SESSION_LOOKUP] = handle_acds_session_lookup,
-    [PACKET_TYPE_ACIP_SESSION_JOIN] = handle_acds_session_join,
-    [PACKET_TYPE_ACIP_SESSION_LEAVE] = handle_acds_session_leave,
-    [PACKET_TYPE_ACIP_WEBRTC_SDP] = handle_acds_webrtc_sdp,
-    [PACKET_TYPE_ACIP_WEBRTC_ICE] = handle_acds_webrtc_ice,
-    [PACKET_TYPE_ACIP_DISCOVERY_PING] = handle_acds_discovery_ping,
-    [PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT] = handle_acds_host_announcement,
-    [PACKET_TYPE_ACIP_HOST_LOST] = handle_acds_host_lost,
-};
-
-// =============================================================================
 // Public API
 // =============================================================================
 
@@ -85,21 +67,34 @@ asciichat_error_t acip_handle_acds_packet(acip_transport_t *transport, packet_ty
   // TODO: Implement transport abstraction for ACDS responses or future protocol features
   (void)transport;
 
-  // O(1) array-based dispatch - bounds check packet type
-  if (type >= 200) {
-    log_warn("Invalid ACDS packet type: %d (out of range)", type);
-    return ASCIICHAT_OK;
+  // Dispatch to handler based on packet type
+  switch (type) {
+    case PACKET_TYPE_PING:
+      return handle_acds_ping(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_PONG:
+      return handle_acds_pong(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_SESSION_CREATE:
+      return handle_acds_session_create(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_SESSION_LOOKUP:
+      return handle_acds_session_lookup(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_SESSION_JOIN:
+      return handle_acds_session_join(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_SESSION_LEAVE:
+      return handle_acds_session_leave(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_WEBRTC_SDP:
+      return handle_acds_webrtc_sdp(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_WEBRTC_ICE:
+      return handle_acds_webrtc_ice(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_DISCOVERY_PING:
+      return handle_acds_discovery_ping(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT:
+      return handle_acds_host_announcement(payload, payload_len, client_socket, client_ip, callbacks);
+    case PACKET_TYPE_ACIP_HOST_LOST:
+      return handle_acds_host_lost(payload, payload_len, client_socket, client_ip, callbacks);
+    default:
+      log_warn("Unhandled ACDS packet type: %d from %s", type, client_ip);
+      return ASCIICHAT_OK;
   }
-
-  // Lookup handler in dispatch table
-  acip_acds_handler_func_t handler = g_acds_packet_handlers[type];
-  if (!handler) {
-    log_warn("Unhandled ACDS packet type: %d from %s", type, client_ip);
-    return ASCIICHAT_OK;
-  }
-
-  // Dispatch to handler
-  return handler(payload, payload_len, client_socket, client_ip, callbacks);
 }
 
 // =============================================================================
