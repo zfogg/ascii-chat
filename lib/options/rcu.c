@@ -192,11 +192,20 @@ asciichat_error_t options_state_init(void) {
 
   // If we forked (pid changed), we need to clean up old state
   if (g_options_initialized && g_init_pid != current_pid) {
-    log_debug("Detected fork - reinitializing options state for child process");
+    log_debug("Detected fork (parent PID %d, child PID %d) - reinitializing options state", g_init_pid, current_pid);
     // Mutexes are in bad state after fork - they need to be destroyed and recreated
     // But we can't safely call mutex_destroy on inherited mutexes
-    // Just reset the flag and reinitialize
+    // Just reset the flags to force reinitialization
     g_options_initialized = false;
+    g_init_pid = -1; // Reset so we initialize fresh
+  }
+
+  // Also check if this is the very first call in a forked child where parent was never initialized
+  // In this case, g_options_initialized will be false but we might still have inherited invalid state
+  if (!g_options_initialized && g_init_pid != -1 && g_init_pid != current_pid) {
+    log_debug("First init in forked child - resetting inherited state (parent PID %d, child PID %d)", g_init_pid,
+              current_pid);
+    g_init_pid = -1; // Clear inherited parent's PID
   }
 
   // Initialize write mutex
@@ -285,7 +294,9 @@ void options_state_shutdown(void) {
   // Cleanup schema (frees all dynamically allocated config strings)
   config_schema_cleanup();
 
-  // Destroy mutexes
+  // Destroy dynamically created mutexes
+  // NOTE: Do NOT destroy g_options_init_mutex - it's statically initialized
+  // and needs to persist across shutdown/init cycles (especially in tests)
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
