@@ -37,7 +37,8 @@ Test(acds_signatures, session_create_sign_and_verify) {
 
   // Sign the message
   uint8_t signature[64];
-  asciichat_error_t sign_result = acds_sign_session_create(seckey, timestamp, capabilities, max_participants, signature);
+  asciichat_error_t sign_result =
+      acds_sign_session_create(seckey, timestamp, capabilities, max_participants, signature);
   cr_assert_eq(sign_result, ASCIICHAT_OK, "Signing should succeed");
 
   // Verify the signature

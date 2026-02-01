@@ -291,7 +291,7 @@ Test(ascii, ascii_convert_with_capabilities_basic) {
   }
   luminance_palette[256] = '\0'; // Null terminate
 
-  char *result = ascii_convert_with_capabilities(img, 4, 4, &caps, false, false, palette, luminance_palette);
+  char *result = ascii_convert_with_capabilities(img, 4, 4, &caps, false, false, palette);
   cr_assert_not_null(result);
   cr_assert_gt(strlen(result), 0);
 
@@ -318,7 +318,7 @@ Test(ascii, ascii_convert_with_capabilities_null_image) {
   }
   luminance_palette[256] = '\0'; // Null terminate
 
-  char *result = ascii_convert_with_capabilities(NULL, 4, 4, &caps, false, false, palette, luminance_palette);
+  char *result = ascii_convert_with_capabilities(NULL, 4, 4, &caps, false, false, palette);
   cr_assert_null(result);
 }
 
@@ -333,7 +333,7 @@ Test(ascii, ascii_convert_with_capabilities_null_caps) {
   }
   luminance_palette[256] = '\0'; // Null terminate
 
-  char *result = ascii_convert_with_capabilities(img, 4, 4, NULL, false, false, palette, luminance_palette);
+  char *result = ascii_convert_with_capabilities(img, 4, 4, NULL, false, false, palette);
   cr_assert_null(result);
 
   image_destroy(img);
@@ -367,7 +367,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
                                    .palette_type = 0,
                                    .palette_custom = ""};
 
-  char *result1 = ascii_convert_with_capabilities(img, 4, 4, &caps1, false, false, palette, luminance_palette);
+  char *result1 = ascii_convert_with_capabilities(img, 4, 4, &caps1, false, false, palette);
   cr_assert_not_null(result1);
   SAFE_FREE(result1);
 
@@ -382,7 +382,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
                                    .palette_type = 0,
                                    .palette_custom = ""};
 
-  char *result2 = ascii_convert_with_capabilities(img, 4, 4, &caps2, false, false, palette, luminance_palette);
+  char *result2 = ascii_convert_with_capabilities(img, 4, 4, &caps2, false, false, palette);
   cr_assert_not_null(result2);
   SAFE_FREE(result2);
 
@@ -397,7 +397,7 @@ Test(ascii, ascii_convert_with_capabilities_different_color_support) {
                                    .palette_type = 0,
                                    .palette_custom = ""};
 
-  char *result3 = ascii_convert_with_capabilities(img, 4, 4, &caps3, false, false, palette, luminance_palette);
+  char *result3 = ascii_convert_with_capabilities(img, 4, 4, &caps3, false, false, palette);
   cr_assert_not_null(result3);
   SAFE_FREE(result3);
 
@@ -748,7 +748,7 @@ Test(ascii, ascii_operations_with_invalid_parameters) {
   cr_assert_null(result);
 
   // ascii_convert_with_capabilities with invalid parameters
-  result = ascii_convert_with_capabilities(NULL, -1, -1, NULL, false, false, NULL, NULL);
+  result = ascii_convert_with_capabilities(NULL, -1, -1, NULL, false, false, NULL);
   cr_assert_null(result);
 
   // ascii_pad_frame_width with invalid parameters

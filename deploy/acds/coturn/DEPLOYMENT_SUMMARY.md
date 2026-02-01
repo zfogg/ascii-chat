@@ -68,7 +68,7 @@ turn.ascii-chat.com    AAAA    2a01:4f9:c012:d912::1    🌐 DNS only
 
 ---
 
-## ASCII-Chat Integration
+## ascii-chat Integration
 
 ### Default STUN/TURN Configuration
 

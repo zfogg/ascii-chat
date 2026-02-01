@@ -70,8 +70,8 @@ if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
     endif()
 
 # Fall back to building from submodule
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
-    set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
+    set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 
     if(WIN32)
         # Windows: Build to cache directory (ASCIICHAT_DEPS_CACHE_DIR already includes build type)
@@ -82,7 +82,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
 
         # Only build BearSSL if the cached library doesn't exist
         if(NOT EXISTS "${BEARSSL_LIB}")
-            message(STATUS "${BoldYellow}BearSSL${ColorReset} library not found in cache, will build from source: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
+            message(STATUS "${BoldYellow}BearSSL${ColorReset} library not found in cache, building from source...")
 
             # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
             apply_patch(
@@ -104,7 +104,6 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             set(CLANG_CL_EXECUTABLE "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
 
             # Prefer llvm-lib over MSVC lib.exe for consistency across architectures
-            # (x64 lib.exe can't archive ARM64 COFF objects anyway)
             if(ASCIICHAT_LLVM_LIB_EXECUTABLE)
                 set(BEARSSL_AR_EXECUTABLE "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
                 message(STATUS "BearSSL: Using llvm-lib: ${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
@@ -115,24 +114,43 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
                 message(FATAL_ERROR "No archiver found (llvm-lib or lib.exe). Required for building BearSSL on Windows.")
             endif()
 
-            # Add custom command to build BearSSL if library is missing
-            # This creates a build rule that Ninja/Make can use to rebuild the library
-            # Note: Use /F mk/NMake.mk for Windows-specific makefile with backslash paths
-            # Note: Output is NOT redirected to file so errors are visible in CI logs
-            add_custom_command(
-                OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${CMAKE_COMMAND} -E env
-                        MAKEFLAGS=
-                        NMAKEFLAGS=
-                        "${NMAKE_EXECUTABLE}" /F mk/NMake.mk "CC=${CLANG_CL_EXECUTABLE}" "AR=${BEARSSL_AR_EXECUTABLE}" lib
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
+            # Build BearSSL at configure time using PowerShell to avoid MAKEFLAGS issues
+            # PowerShell provides a clean environment without inheriting bash/make variables
+            set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
+
+            # Ensure obj directory exists
+            file(MAKE_DIRECTORY "${BEARSSL_SOURCE_DIR}/build/obj")
+
+            # Convert paths to Windows format for nmake
+            file(TO_NATIVE_PATH "${BEARSSL_SOURCE_DIR}" BEARSSL_SOURCE_DIR_NATIVE)
+            file(TO_NATIVE_PATH "${NMAKE_EXECUTABLE}" NMAKE_NATIVE)
+            file(TO_NATIVE_PATH "${CLANG_CL_EXECUTABLE}" CLANG_CL_NATIVE)
+            file(TO_NATIVE_PATH "${BEARSSL_AR_EXECUTABLE}" AR_NATIVE)
+
+            execute_process(
+                COMMAND powershell -NoProfile -Command "
+                    $env:MAKEFLAGS = $null;
+                    $env:NMAKEFLAGS = $null;
+                    Set-Location '${BEARSSL_SOURCE_DIR_NATIVE}';
+                    & '${NMAKE_NATIVE}' /F mk\\NMake.mk CC='${CLANG_CL_NATIVE}' AR='${AR_NATIVE}' lib
+                "
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                COMMENT "Building BearSSL..."
-                VERBATIM
+                RESULT_VARIABLE BEARSSL_BUILD_RESULT
+                OUTPUT_FILE "${BEARSSL_LOG_FILE}"
+                ERROR_FILE "${BEARSSL_LOG_FILE}"
             )
 
-            # Add custom target that depends on the library
-            add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
+            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
+                message(FATAL_ERROR "${BoldRed}BearSSL build failed${ColorReset}. Check log: ${BEARSSL_LOG_FILE}")
+            endif()
+
+            # Copy built library to cache
+            file(COPY_FILE "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}")
+
+            message(STATUS "  ${BoldGreen}BearSSL${ColorReset} library built and cached successfully")
+
+            # Create a dummy target so dependencies work
+            add_custom_target(bearssl_build)
         else()
             message(STATUS "${BoldGreen}BearSSL${ColorReset} library found in cache: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
             # Create a dummy target so dependencies work

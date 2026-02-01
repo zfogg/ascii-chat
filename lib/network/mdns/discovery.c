@@ -19,7 +19,8 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "log/logging.h"
-#include "mdns.h"
+#include "network/mdns/mdns.h"
+#include "util/time.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -47,7 +48,7 @@ void pubkey_to_hex(const uint8_t pubkey[32], char hex_out[65]) {
   if (!pubkey || !hex_out)
     return;
   for (int i = 0; i < 32; i++) {
-    sprintf(hex_out + (i * 2), "%02x", pubkey[i]);
+    safe_snprintf(hex_out + (i * 2), 3, "%02x", pubkey[i]);
   }
   hex_out[64] = '\0';
 }
@@ -80,146 +81,11 @@ asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]) {
   return ASCIICHAT_OK;
 }
 
-bool is_session_string(const char *str) {
-  if (!str || strlen(str) == 0)
-    return false;
-
-  // Parse as word-word-word where each word is 3-64 alphanumerics
-  // Hyphens are separators between words
-  // No leading/trailing hyphens, no consecutive hyphens
-  size_t len = strlen(str);
-
-  // Check length bounds (minimum: "a-a-a" = 5, maximum: 64 chars per word * 3 + 2 hyphens = 194)
-  if (len < 5 || len > 194) {
-    return false;
-  }
-
-  // Must not start or end with hyphen
-  if (str[0] == '-' || str[len - 1] == '-') {
-    return false;
-  }
-
-  // Count words separated by hyphens
-  int word_count = 1; // Start with 1 (not 0) to account for first word
-  int current_word_len = 0;
-  bool last_was_hyphen = false;
-
-  for (size_t i = 0; i < len; i++) {
-    char c = str[i];
-
-    if (isalnum(c)) {
-      current_word_len++;
-
-      // Individual word must be 3-64 characters
-      if (current_word_len > 64) {
-        return false;
-      }
-      last_was_hyphen = false;
-    } else if (c == '-') {
-      // Hyphen marks end of current word
-      if (last_was_hyphen) {
-        // Consecutive hyphens
-        return false;
-      }
-
-      // Current word must have been at least 3 chars
-      if (current_word_len < 3) {
-        return false;
-      }
-
-      word_count++;
-      current_word_len = 0;
-      last_was_hyphen = true;
-    } else {
-      // Invalid character
-      return false;
-    }
-  }
-
-  // Final word must be 3-64 characters
-  if (current_word_len < 3 || current_word_len > 64) {
-    return false;
-  }
-
-  // Must have exactly 3 words
-  return word_count == 3;
-}
+// NOTE: is_session_string() has been moved to lib/discovery/strings.c with enhanced
+// validation against cached wordlists. See that module for the implementation.
 
 // ============================================================================
 // TXT Record Parsing
-// ============================================================================
-
-/**
- * @brief Parse TXT records to extract session_string and host_pubkey
- *
- * TXT records should contain key=value pairs like:
- *   session_string=swift-river-mountain
- *   host_pubkey=a1b2c3d4...
- *
- * @param txt Raw TXT data (512 byte buffer from mDNS discovery)
- * @param session_string_out Session string (output, 49 bytes min)
- * @param host_pubkey_out Host pubkey in hex (output, 65 bytes min)
- * @return ASCIICHAT_OK if both found, ERROR_NOT_FOUND otherwise
- */
-static asciichat_error_t parse_txt_records(const char *txt, char *session_string_out, char *host_pubkey_out) {
-  if (!txt || !session_string_out || !host_pubkey_out) {
-    return ERROR_INVALID_PARAM;
-  }
-
-  memset(session_string_out, 0, 49);
-  memset(host_pubkey_out, 0, 65);
-
-  const char *ptr = txt;
-  while (*ptr && ptr < txt + 512) {
-    // Skip whitespace
-    while (*ptr && isspace(*ptr))
-      ptr++;
-    if (!*ptr)
-      break;
-
-    // Parse key=value pair
-    const char *key_start = ptr;
-    while (*ptr && *ptr != '=' && !isspace(*ptr))
-      ptr++;
-    size_t key_len = ptr - key_start;
-
-    // Skip '='
-    if (*ptr != '=') {
-      ptr++;
-      continue;
-    }
-    ptr++;
-
-    // Parse value until whitespace or end
-    const char *value_start = ptr;
-    while (*ptr && !isspace(*ptr))
-      ptr++;
-    size_t value_len = ptr - value_start;
-
-    // Check key and extract value
-    if (key_len == strlen("session_string") && strncmp(key_start, "session_string", key_len) == 0) {
-      if (value_len < 49) {
-        strncpy(session_string_out, value_start, value_len);
-        session_string_out[value_len] = '\0';
-      }
-    } else if (key_len == strlen("host_pubkey") && strncmp(key_start, "host_pubkey", key_len) == 0) {
-      if (value_len == 64) {
-        strncpy(host_pubkey_out, value_start, 64);
-        host_pubkey_out[64] = '\0';
-      }
-    }
-
-    // Move to next pair
-    ptr++;
-  }
-
-  if (session_string_out[0] && host_pubkey_out[0]) {
-    return ASCIICHAT_OK;
-  }
-
-  return ERROR_NOT_FOUND;
-}
-
 // ============================================================================
 // mDNS Query Implementation (Core Module)
 // ============================================================================
@@ -235,15 +101,6 @@ typedef struct {
   int timeout_ms;                  ///< Discovery timeout in milliseconds
   bool query_complete;             ///< Set when discovery completes
 } mdns_query_state_t;
-
-/**
- * @brief Get current time in milliseconds since epoch
- */
-static int64_t discovery_get_time_ms(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000;
-}
 
 /**
  * @brief mDNS callback for discovered services
@@ -262,7 +119,7 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   }
 
   // Check if timeout exceeded
-  int64_t elapsed = discovery_get_time_ms() - state->start_time_ms;
+  int64_t elapsed = (int64_t)time_ns_to_ms(time_get_ns()) - state->start_time_ms;
   if (elapsed > state->timeout_ms) {
     state->query_complete = true;
     return;
@@ -338,7 +195,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
   memset(&state, 0, sizeof(state));
   state.capacity = max_servers;
   state.timeout_ms = timeout_ms;
-  state.start_time_ms = discovery_get_time_ms();
+  state.start_time_ms = (int64_t)time_ns_to_ms(time_get_ns());
 
   // Allocate server array
   state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(discovery_tui_server_t), discovery_tui_server_t *);
@@ -349,8 +206,8 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
   memset(state.servers, 0, state.capacity * sizeof(discovery_tui_server_t));
 
   if (!quiet) {
-    log_info("mDNS: Searching for ASCII-Chat servers on local network (timeout: %dms)", state.timeout_ms);
-    printf("🔍 Searching for ASCII-Chat servers on LAN...\n");
+    log_info("mDNS: Searching for ascii-chat servers on local network (timeout: %dms)", state.timeout_ms);
+    printf("🔍 Searching for ascii-chat servers on LAN...\n");
   }
 
   // Initialize mDNS
@@ -374,8 +231,8 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 
   // Poll for responses until timeout
   int64_t deadline = state.start_time_ms + state.timeout_ms;
-  while (!state.query_complete && discovery_get_time_ms() < deadline) {
-    int poll_timeout = (int)(deadline - discovery_get_time_ms());
+  while (!state.query_complete && (int64_t)time_ns_to_ms(time_get_ns()) < deadline) {
+    int poll_timeout = (int)(deadline - (int64_t)time_ns_to_ms(time_get_ns()));
     if (poll_timeout < 0) {
       poll_timeout = 0;
     }
@@ -390,10 +247,10 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 
   if (!quiet) {
     if (state.count > 0) {
-      printf("✅ Found %d ASCII-Chat server%s on LAN\n", state.count, state.count == 1 ? "" : "s");
+      printf("✅ Found %d ascii-chat server%s on LAN\n", state.count, state.count == 1 ? "" : "s");
       log_info("mDNS: Found %d server(s)", state.count);
     } else {
-      printf("❌ No ASCII-Chat servers found on LAN\n");
+      printf("❌ No ascii-chat servers found on LAN\n");
       log_info("mDNS: No servers found");
     }
   }
@@ -645,7 +502,7 @@ void discovery_config_init_defaults(discovery_config_t *config) {
   strncpy(config->acds_server, "127.0.0.1", sizeof(config->acds_server) - 1);
 #endif
 
-  config->acds_port = 27225;
+  config->acds_port = OPT_ACDS_PORT_INT_DEFAULT;
   config->mdns_timeout_ms = 2000;
   config->acds_timeout_ms = 5000;
   config->insecure_mode = false;

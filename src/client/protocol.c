@@ -94,6 +94,7 @@
 #include "network/webrtc/peer_manager.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"
@@ -102,6 +103,7 @@
 #include "options/rcu.h" // For RCU-based options access
 #include "network/crc32.h"
 #include "util/fps.h"
+#include "util/time.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -140,7 +142,6 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  *
  * @ingroup client_protocol
  */
-__attribute__((unused)) static asciichat_thread_t g_data_thread;
 
 /**
  * @brief Flag indicating if data thread was successfully created
@@ -258,8 +259,8 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
   va_list args;
   va_start(args, format);
 
-  char message[256];
-  vsnprintf(message, sizeof(message), format, args);
+  char message[BUFFER_SIZE_SMALL];
+  safe_vsnprintf(message, sizeof(message), format, args);
   va_end(args);
 
   log_error("Server sent invalid data - disconnecting: %s", message);
@@ -332,17 +333,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Initialize FPS tracker on first frame
   if (!fps_tracker_initialized) {
-    extern int g_max_fps; // From common.c
-    int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
+    int fps = GET_OPTION(fps);
+    int expected_fps = fps > 0 ? ((fps > 144) ? 144 : fps) : DEFAULT_MAX_FPS;
     fps_init(&fps_tracker, expected_fps, "ASCII_RX");
     fps_tracker_initialized = true;
   }
 
-  struct timespec current_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
   // Track this frame and detect lag
-  fps_frame(&fps_tracker, &current_time, "ASCII frame");
+  fps_frame_ns(&fps_tracker, time_get_ns(), "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;
@@ -397,40 +395,33 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Handle snapshot mode timing
   bool take_snapshot = false;
   if (GET_OPTION(snapshot_mode)) {
-    // Use high-resolution monotonic clock instead of time(NULL) to avoid 1-second precision issues
-    static struct timespec first_frame_time = {0};
+    static uint64_t first_frame_time_ns = 0;
     static bool first_frame_recorded = false;
     static int snapshot_frame_count = 0;
 
     snapshot_frame_count++;
-    // DEBUG: Log every frame received (even when terminal output is disabled)
     log_debug("Snapshot frame %d received", snapshot_frame_count);
 
     if (!first_frame_recorded) {
-      (void)clock_gettime(CLOCK_MONOTONIC, &first_frame_time);
+      first_frame_time_ns = time_get_ns();
       first_frame_recorded = true;
 
-      // If delay is 0, take snapshot immediately on first frame
       if (GET_OPTION(snapshot_delay) == 0) {
-        log_info("Snapshot captured immediately (delay=0)!");
+        log_debug("Snapshot captured immediately (delay=0)!");
         take_snapshot = true;
         signal_exit();
       } else {
-        log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
-                 GET_OPTION(snapshot_delay));
+        log_debug("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...",
+                  GET_OPTION(snapshot_delay));
       }
     } else {
-      struct timespec current_time;
-      (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-      // Calculate elapsed time in seconds with microsecond precision
-      double elapsed = (double)(current_time.tv_sec - first_frame_time.tv_sec) +
-                       (double)(current_time.tv_nsec - first_frame_time.tv_nsec) / 1000000000.0;
+      uint64_t current_time_ns = time_get_ns();
+      double elapsed = time_ns_to_s(time_elapsed_ns(first_frame_time_ns, current_time_ns));
 
       if (elapsed >= GET_OPTION(snapshot_delay)) {
         char duration_str[32];
         format_duration_s(elapsed, duration_str, sizeof(duration_str));
-        log_info("Snapshot captured after %s!", duration_str);
+        log_debug("Snapshot captured after %s!", duration_str);
         take_snapshot = true;
         signal_exit();
       }
@@ -444,7 +435,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!first_frame_rendered) {
     // Always clear display and disable logging before rendering the first frame
     // This ensures clean ASCII display regardless of packet arrival order
-    log_info("First frame - clearing display and disabling terminal logging");
+    log_debug("First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
     display_full_reset();
     first_frame_rendered = true;
@@ -470,40 +461,24 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Client-side FPS limiting for rendering (display)
   // Server may send at 144fps for high-refresh displays, but this client renders at its requested FPS
-  static struct timespec last_render_time = {0, 0};
+  static uint64_t last_render_time_ns = 0;
 
   // Don't limit frame rate in snapshot mode - always render the final frame
   if (!take_snapshot) {
     // Get the client's desired FPS (what we told the server we can display)
-    int client_display_fps = MAX_FPS; // This respects the --fps command line flag
-    // Use microseconds for precision - avoid integer division loss
-    uint64_t render_interval_us = 1000000ULL / (uint64_t)client_display_fps;
+    int fps = GET_OPTION(fps);
+    int client_display_fps = fps > 0 ? fps : DEFAULT_MAX_FPS;
+    uint64_t render_interval_us = (NS_PER_SEC_INT / NS_PER_US_INT) / (uint64_t)client_display_fps;
 
-    struct timespec render_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &render_time);
-
-    // Calculate elapsed time since last render in microseconds (high precision)
+    uint64_t render_time_ns = time_get_ns();
     uint64_t render_elapsed_us = 0;
-    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
-      int64_t sec_diff = (int64_t)render_time.tv_sec - (int64_t)last_render_time.tv_sec;
-      int64_t nsec_diff = (int64_t)render_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
 
-      // Handle nanosecond underflow by borrowing from seconds
-      if (nsec_diff < 0) {
-        sec_diff -= 1;
-        nsec_diff += 1000000000LL; // Add 1 second worth of nanoseconds
-      }
-
-      // Convert to microseconds (now both values are properly normalized)
-      // sec_diff should be >= 0 for forward time progression
-      if (sec_diff >= 0) {
-        render_elapsed_us = (uint64_t)sec_diff * 1000000ULL + (uint64_t)(nsec_diff / 1000);
-      }
-      // If sec_diff is negative, time went backwards - treat as 0 elapsed
+    if (last_render_time_ns != 0) {
+      render_elapsed_us = time_ns_to_us(time_elapsed_ns(last_render_time_ns, render_time_ns));
     }
 
     // Skip rendering if not enough time has passed (frame rate limiting)
-    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
+    if (last_render_time_ns != 0) {
       if (render_elapsed_us > 0 && render_elapsed_us < render_interval_us) {
         // Drop this frame to maintain display FPS limit
         SAFE_FREE(frame_data);
@@ -512,7 +487,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     }
 
     // Update last render time
-    last_render_time = current_time;
+    last_render_time_ns = render_time_ns;
   }
 
   // DEBUG: Periodically log frame stats on client side
@@ -526,8 +501,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       if (frame_data[i] == '\n')
         line_count++;
     }
-    log_info("CLIENT_FRAME: received %zu bytes, %d newlines, header: %ux%u", frame_len, line_count, header.width,
-             header.height);
+    log_debug("CLIENT_FRAME: received %zu bytes, %d newlines, header: %ux%u", frame_len, line_count, header.width,
+              header.height);
   }
 
   display_render_frame(frame_data, take_snapshot);
@@ -577,93 +552,6 @@ static void handle_audio_packet(const void *data, size_t len) {
 }
 
 /**
- * @brief Handle incoming audio batch packet from server
- *
- * Processes batched audio packets more efficiently than individual packets.
- * Parses the audio batch header, converts quantized samples to float, and
- * processes them through the audio subsystem.
- *
- * @param data Packet payload containing audio batch header + quantized samples
- * @param len Total packet length in bytes
- *
- * @ingroup client_protocol
- */
-__attribute__((unused)) static void handle_audio_batch_packet(const void *data, size_t len) {
-  if (!data) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio batch packet data");
-    return;
-  }
-
-  if (!GET_OPTION(audio_enabled)) {
-    log_warn_every(1000000, "Received audio batch packet but audio is disabled");
-    return;
-  }
-
-  if (len < sizeof(audio_batch_packet_t)) {
-    log_warn("Audio batch packet too small: %zu bytes", len);
-    return;
-  }
-
-  // Parse batch header
-  const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t batch_count = NET_TO_HOST_U32(batch_header->batch_count);
-  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
-  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
-  uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
-
-  (void)batch_count;
-  (void)sample_rate;
-  (void)channels;
-
-  if (batch_count == 0 || total_samples == 0) {
-    log_warn("Empty audio batch: batch_count=%u, total_samples=%u", batch_count, total_samples);
-    return;
-  }
-
-  // Validate packet size
-  size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
-  if (len != expected_size) {
-    log_warn("Audio batch size mismatch: got %zu expected %zu", len, expected_size);
-    return;
-  }
-
-  if (total_samples > AUDIO_BATCH_SAMPLES * 2) {
-    log_warn("Audio batch too large: %u samples", total_samples);
-    return;
-  }
-
-  // Extract quantized samples (uint32_t network byte order)
-  const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
-
-  // Convert quantized samples to float
-  float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
-  if (!samples) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio batch conversion");
-    return;
-  }
-
-  // Use helper function to dequantize samples
-  asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
-  if (dq_result != ASCIICHAT_OK) {
-    SAFE_FREE(samples);
-    return;
-  }
-
-  // Track received packet for analysis
-  if (GET_OPTION(audio_analysis_enabled)) {
-    audio_analysis_track_received_packet(len);
-  }
-
-  // Process through audio subsystem
-  audio_process_received_samples(samples, (int)total_samples);
-
-  // Clean up
-  SAFE_FREE(samples);
-
-  log_debug_every(LOG_RATE_DEFAULT, "Processed audio batch: %u samples from server", total_samples);
-}
-
-/**
  * @brief Handle incoming Opus-encoded audio packet from server
  *
  * Decodes single Opus-encoded audio frame and processes for playback.
@@ -675,6 +563,8 @@ __attribute__((unused)) static void handle_audio_batch_packet(const void *data, 
  * @ingroup client_protocol
  */
 static void handle_audio_opus_packet(const void *data, size_t len) {
+  START_TIMER("audio_packet_total");
+
   // Validate parameters
   if (!data || len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio opus packet: data=%p, len=%zu", data, len);
@@ -691,7 +581,10 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
 
   // Opus max frame size is 2880 samples (120ms @ 48kHz)
   float samples[2880];
+
+  START_TIMER("opus_decode");
   int decoded_samples = audio_decode_opus(opus_data, len, samples, 2880);
+  double decode_ns = STOP_TIMER("opus_decode");
 
   if (decoded_samples <= 0) {
     log_warn("Failed to decode Opus audio packet, decoded=%d", decoded_samples);
@@ -704,7 +597,17 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   }
 
   // Process decoded audio through audio subsystem
+  START_TIMER("process_samples");
   audio_process_received_samples(samples, decoded_samples);
+  double process_ns = STOP_TIMER("process_samples");
+
+  double total_ns = STOP_TIMER("audio_packet_total");
+
+  static int timing_count = 0;
+  if (++timing_count % 100 == 0) {
+    log_debug("Audio packet timing #%d: decode=%.2fµs, process=%.2fµs, total=%.2fµs", timing_count, decode_ns / 1000.0,
+              process_ns / 1000.0, total_ns / 1000.0);
+  }
 
   log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,
                   len);
@@ -892,8 +795,8 @@ static void handle_server_state_packet(const void *data, size_t len) {
   // Check if connected count changed - if so, set flag to clear console before next frame
   if (g_server_state_initialized) {
     if (g_last_active_count != active_count) {
-      log_info("Active client count changed from %u to %u - will clear console before next frame", g_last_active_count,
-               active_count);
+      log_debug("Active client count changed from %u to %u - will clear console before next frame", g_last_active_count,
+                active_count);
       g_should_clear_before_next_frame = true;
     }
   } else {
@@ -1004,11 +907,10 @@ static void *data_reception_thread_func(void *arg) {
 #endif
 
   while (!should_exit()) {
-    socket_t sockfd = server_connection_get_socket();
-
-    if (sockfd == INVALID_SOCKET_VALUE || !server_connection_is_active()) {
+    // Check if connection is active (works for both TCP and WebRTC)
+    if (!server_connection_is_active()) {
       // Use rate-limited logging instead of logging every 10ms
-      log_debug_every(1000000, "Waiting for socket connection"); // Max once per second
+      log_debug_every(1000000, "Waiting for connection"); // Max once per second
       platform_sleep_usec(10 * 1000);
       continue;
     }
@@ -1084,26 +986,31 @@ int protocol_start_connection() {
 
   // Send CLIENT_CAPABILITIES packet FIRST before starting any threads
   // Server expects this as the first packet after crypto handshake
-  log_info("Sending client capabilities to server...");
-  if (threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height)) < 0) {
+  log_debug("Sending client capabilities to server...");
+  asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect(GET_OPTION(width), GET_OPTION(height));
+  log_debug("★ threaded_send_terminal_size_with_auto_detect returned %d", cap_result);
+  if (cap_result != ASCIICHAT_OK) {
     log_error("Failed to send client capabilities to server");
     return -1;
   }
-  log_info("Client capabilities sent successfully");
+  log_debug("Client capabilities sent successfully");
 
   // Send STREAM_START packet with combined stream types BEFORE starting worker threads
   // This tells the server what streams to expect before any data arrives
+  log_debug("★ About to send STREAM_START packet");
   uint32_t stream_types = STREAM_TYPE_VIDEO; // Always have video
   if (GET_OPTION(audio_enabled)) {
     stream_types |= STREAM_TYPE_AUDIO; // Add audio if enabled
   }
-  log_info("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
-           (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
-  if (threaded_send_stream_start_packet(stream_types) < 0) {
+  log_debug("Sending STREAM_START packet (types=0x%x: %s%s)...", stream_types, "video",
+            (stream_types & STREAM_TYPE_AUDIO) ? "+audio" : "");
+  asciichat_error_t stream_result = threaded_send_stream_start_packet(stream_types);
+  log_debug("★ threaded_send_stream_start_packet returned %d", stream_result);
+  if (stream_result != ASCIICHAT_OK) {
     log_error("Failed to send STREAM_START packet");
     return -1;
   }
-  log_info("STREAM_START packet sent successfully");
+  log_debug("STREAM_START packet sent successfully");
 
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
@@ -1114,28 +1021,28 @@ int protocol_start_connection() {
   }
 
   // Start webcam capture thread
-  log_info("Starting webcam capture thread...");
+  log_debug("Starting webcam capture thread...");
   if (capture_start_thread() != 0) {
     log_error("Failed to start webcam capture thread");
     return -1;
   }
-  log_info("Webcam capture thread started successfully");
+  log_debug("Webcam capture thread started successfully");
 
   // Start audio capture thread if audio is enabled
-  log_info("Starting audio capture thread...");
+  log_debug("Starting audio capture thread...");
   if (audio_start_thread() != 0) {
     log_error("Failed to start audio capture thread");
     return -1;
   }
-  log_info("Audio capture thread started successfully (or skipped if audio disabled)");
+  log_debug("Audio capture thread started successfully (or skipped if audio disabled)");
 
   // Start keepalive/ping thread to prevent server timeout
-  log_info("Starting keepalive/ping thread...");
+  log_debug("Starting keepalive/ping thread...");
   if (keepalive_start_thread() != 0) {
     log_error("Failed to start keepalive/ping thread");
     return -1;
   }
-  log_info("Keepalive/ping thread started successfully");
+  log_debug("Keepalive/ping thread started successfully");
 
   g_data_thread_created = true;
   return 0;
@@ -1193,7 +1100,7 @@ void protocol_stop_connection() {
   g_data_thread_created = false;
 
 #ifdef DEBUG_THREADS
-  log_info("Data reception thread stopped and joined by thread pool");
+  log_debug("Data reception thread stopped and joined by thread pool");
 #endif
 }
 
@@ -1226,7 +1133,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   // but handle_ascii_frame_packet() expects NETWORK byte order and does conversion.
   // So we need to convert back to network order before passing.
   size_t total_len = sizeof(*header) + data_len;
-  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
     log_error("Failed to allocate buffer for ASCII frame callback");
     return;
@@ -1245,7 +1152,7 @@ static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *
   memcpy(packet + sizeof(net_header), frame_data, data_len);
 
   handle_ascii_frame_packet(packet, total_len);
-  buffer_pool_free(NULL, packet, total_len);
+  SAFE_FREE(packet);
 }
 
 /**
@@ -1302,7 +1209,7 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
   size_t msg_len = message ? strlen(message) : 0;
   size_t total_len = sizeof(*header) + msg_len;
 
-  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
     log_error("Failed to allocate buffer for error packet callback");
     return;
@@ -1314,7 +1221,7 @@ static void acip_on_error(const error_packet_t *header, const char *message, voi
   }
 
   handle_error_message_packet(packet, total_len);
-  buffer_pool_free(NULL, packet, total_len);
+  SAFE_FREE(packet);
 }
 
 /**
@@ -1359,7 +1266,7 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
   size_t msg_len = strlen(message);
   size_t total_len = sizeof(*header) + msg_len;
 
-  uint8_t *packet = buffer_pool_alloc(NULL, total_len);
+  uint8_t *packet = SAFE_MALLOC(total_len, uint8_t *);
   if (!packet) {
     log_error("Failed to allocate buffer for remote log callback");
     return;
@@ -1369,7 +1276,7 @@ static void acip_on_remote_log(const remote_log_packet_t *header, const char *me
   memcpy(packet + sizeof(*header), message, msg_len);
 
   handle_remote_log_packet(packet, total_len);
-  buffer_pool_free(NULL, packet, total_len);
+  SAFE_FREE(packet);
 }
 
 /**
@@ -1388,7 +1295,7 @@ static void acip_on_clear_console(void *ctx) {
 
   // Server requested console clear
   display_full_reset();
-  log_info("Console cleared by server");
+  log_debug("Console cleared by server");
 }
 
 /**
@@ -1453,7 +1360,8 @@ static void acip_on_webrtc_sdp(const acip_webrtc_sdp_t *sdp, size_t total_len, v
 
   // Log SDP type for debugging
   const char *sdp_type_str = (sdp->sdp_type == 0) ? "offer" : "answer";
-  log_info("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str, (const char *)sdp->session_id);
+  log_debug("Received WebRTC SDP %s from participant (session_id=%.8s...)", sdp_type_str,
+            (const char *)sdp->session_id);
 
   // Handle SDP through peer manager (extracts variable data internally)
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_peer_manager, sdp);
@@ -1529,18 +1437,18 @@ static void acip_on_session_joined(const acip_session_joined_t *joined, void *ct
   }
 
   // Join succeeded - we have session context now
-  log_info("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)",
-           (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
-           joined->server_address, joined->server_port);
+  log_debug("ACDS session join succeeded (participant_id=%.8s..., session_type=%s, server=%s:%u)",
+            (const char *)joined->participant_id, joined->session_type == 1 ? "WebRTC" : "DirectTCP",
+            joined->server_address, joined->server_port);
 
   // Check if this is a WebRTC session
   if (joined->session_type == SESSION_TYPE_WEBRTC) {
     // TODO: Phase 3 - Initialize WebRTC connection with TURN credentials
     // webrtc_initialize_session(joined->session_id, joined->participant_id,
     //                           joined->turn_username, joined->turn_password);
-    log_info("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
+    log_debug("WebRTC session detected - TODO: initialize WebRTC with TURN credentials");
   } else {
     // Direct TCP - connection is already established or will be established
-    log_info("Direct TCP session - using existing connection");
+    log_debug("Direct TCP session - using existing connection");
   }
 }

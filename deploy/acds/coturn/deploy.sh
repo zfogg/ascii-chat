@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ASCII-Chat Coturn STUN/TURN Server Deployment Script
+# ascii-chat Coturn STUN/TURN Server Deployment Script
 # This script deploys coturn to /opt/ascii-chat on the server
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,7 +10,7 @@ SERVICE_FILE="coturn.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_FILE}"
 
 echo "========================================="
-echo "ASCII-Chat Coturn Deployment"
+echo "ascii-chat Coturn Deployment"
 echo "========================================="
 
 # Check if running as root

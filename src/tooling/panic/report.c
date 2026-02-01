@@ -6,7 +6,7 @@
 #include "platform/util.h"
 #include "tooling/panic/instrument_log.h"
 
-#include "util/uthash.h"
+#include "uthash/uthash.h"
 #include "util/parsing.h"
 
 #include <errno.h>
@@ -565,7 +565,7 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
     }
 
     char path_buffer[MAX_PATH];
-    int written = snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, data.name);
+    int written = safe_snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, data.name);
     if (written < 0 || written >= (int)sizeof(path_buffer)) {
       log_warn("Skipping path that exceeds buffer: %s/%s", config->log_dir, data.name);
       continue;
@@ -598,7 +598,7 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
     }
 
     char path_buffer[PATH_MAX];
-    int written = snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, entry->d_name);
+    int written = safe_snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, entry->d_name);
     if (written < 0 || written >= (int)sizeof(path_buffer)) {
       log_warn("Skipping path that exceeds buffer: %s/%s", config->log_dir, entry->d_name);
       continue;

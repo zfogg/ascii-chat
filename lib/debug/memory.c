@@ -13,19 +13,25 @@
 
 #include "debug/memory.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "asciichat_errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
 #include "platform/memory.h"
 #include "util/format.h"
 #include "util/path.h"
+#include "util/string.h"
+#include "util/time.h"
+#include "log/logging.h"
 
 typedef struct mem_block {
   void *ptr;
   size_t size;
-  char file[256];
+  char file[BUFFER_SIZE_SMALL];
   int line;
   bool is_aligned;
+  void *backtrace_ptrs[16]; // Store up to 16 return addresses
+  int backtrace_count;      // Number of frames captured
   struct mem_block *next;
 } mem_block_t;
 
@@ -125,6 +131,12 @@ void *debug_malloc(size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
+      // Capture backtrace (skip 1 frame for this function)
+      block->backtrace_count = platform_backtrace(block->backtrace_ptrs, 16);
+      // Ensure valid backtrace count
+      if (block->backtrace_count < 0) {
+        block->backtrace_count = 0;
+      }
       block->next = g_mem.head;
       g_mem.head = block;
     }
@@ -168,6 +180,12 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
       const char *normalized_file = extract_project_relative_path(file);
       SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
       block->line = line;
+      // Capture backtrace (skip 1 frame for this function)
+      block->backtrace_count = platform_backtrace(block->backtrace_ptrs, 16);
+      // Ensure valid backtrace count
+      if (block->backtrace_count < 0) {
+        block->backtrace_count = 0;
+      }
       block->next = g_mem.head;
       g_mem.head = block;
     }
@@ -226,7 +244,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
     if (!found) {
       log_warn_every(LOG_RATE_FAST, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
-      platform_print_backtrace(1);
+      // Don't print backtrace - log_warn_every already rate-limits the warning
     }
 
     mutex_unlock(&g_mem.mutex);
@@ -237,13 +255,6 @@ void debug_free(void *ptr, const char *file, int line) {
   if (found) {
     atomic_fetch_add(&g_mem.total_freed, freed_size);
     atomic_fetch_sub(&g_mem.current_usage, freed_size);
-  } else {
-    size_t real_size = platform_malloc_size(ptr);
-
-    if (real_size > 0) {
-      atomic_fetch_add(&g_mem.total_freed, real_size);
-      atomic_fetch_sub(&g_mem.current_usage, real_size);
-    }
   }
 
 #ifdef _WIN32
@@ -485,9 +496,15 @@ static const char *strip_project_path(const char *full_path) {
 void debug_memory_report(void) {
   asciichat_errno_cleanup();
 
+  // Skip memory report if an action flag was passed (for clean action output)
+  extern bool has_action_flag(void);
+  if (has_action_flag()) {
+    return;
+  }
+
   bool quiet = g_mem.quiet_mode;
   if (!quiet) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n=== Memory Report ===\n"));
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "=== Memory Report ===")));
 
     size_t total_allocated = atomic_load(&g_mem.total_allocated);
     size_t total_freed = atomic_load(&g_mem.total_freed);
@@ -506,34 +523,144 @@ void debug_memory_report(void) {
     format_bytes_pretty(current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
 
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total allocated: %s\n", pretty_total));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total freed: %s\n", pretty_freed));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Current usage: %s\n", pretty_current));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Peak usage: %s\n", pretty_peak));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "malloc calls: %zu\n", malloc_calls));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "calloc calls: %zu\n", calloc_calls));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "free calls: %zu\n", free_calls));
-    size_t diff = (malloc_calls + calloc_calls) - free_calls;
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff));
+    // Calculate max label width for column alignment
+    const char *label_total = "Total allocated:";
+    const char *label_freed = "Total freed:";
+    const char *label_current = "Current usage:";
+    const char *label_peak = "Peak usage:";
+    const char *label_malloc = "malloc calls:";
+    const char *label_calloc = "calloc calls:";
+    const char *label_free = "free calls:";
+    const char *label_diff = "unfreed allocations:";
+
+    size_t max_label_width = 0;
+    max_label_width = MAX(max_label_width, strlen(label_total));
+    max_label_width = MAX(max_label_width, strlen(label_freed));
+    max_label_width = MAX(max_label_width, strlen(label_current));
+    max_label_width = MAX(max_label_width, strlen(label_peak));
+    max_label_width = MAX(max_label_width, strlen(label_malloc));
+    max_label_width = MAX(max_label_width, strlen(label_calloc));
+    max_label_width = MAX(max_label_width, strlen(label_free));
+    max_label_width = MAX(max_label_width, strlen(label_diff));
+
+#define PRINT_MEM_LINE(label, value_str)                                                                               \
+  do {                                                                                                                 \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label)));                      \
+    for (size_t i = strlen(label); i < max_label_width; i++) {                                                         \
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));                                                            \
+    }                                                                                                                  \
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " %s\n", value_str));                                               \
+  } while (0)
+
+    PRINT_MEM_LINE(label_total, pretty_total);
+    PRINT_MEM_LINE(label_freed, pretty_freed);
+    PRINT_MEM_LINE(label_current, pretty_current);
+    PRINT_MEM_LINE(label_peak, pretty_peak);
+
+    // malloc calls
+    char malloc_str[32];
+    safe_snprintf(malloc_str, sizeof(malloc_str), "%zu", malloc_calls);
+    PRINT_MEM_LINE(label_malloc, malloc_str);
+
+    // calloc calls
+    char calloc_str[32];
+    safe_snprintf(calloc_str, sizeof(calloc_str), "%zu", calloc_calls);
+    PRINT_MEM_LINE(label_calloc, calloc_str);
+
+    // free calls
+    char free_str[32];
+    safe_snprintf(free_str, sizeof(free_str), "%zu", free_calls);
+    PRINT_MEM_LINE(label_free, free_str);
+
+    // diff - count actual unfreed allocations in the linked list
+    size_t unfreed_count = 0;
+    if (g_mem.head) {
+      if (ensure_mutex_initialized()) {
+        mutex_lock(&g_mem.mutex);
+        mem_block_t *curr = g_mem.head;
+        while (curr) {
+          unfreed_count++;
+          curr = curr->next;
+        }
+        mutex_unlock(&g_mem.mutex);
+      }
+    }
+    char diff_str[32];
+    safe_snprintf(diff_str, sizeof(diff_str), "%zu", unfreed_count);
+    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "%s", colored_string(LOG_COLOR_GREY, label_diff)));
+    for (size_t i = strlen(label_diff); i < max_label_width; i++) {
+      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, " "));
+    }
+    SAFE_IGNORE_PRINTF_RESULT(
+        safe_fprintf(stderr, " %s\n", colored_string(unfreed_count == 0 ? LOG_COLOR_INFO : LOG_COLOR_WARN, diff_str)));
+
+#undef PRINT_MEM_LINE
 
     if (g_mem.head) {
       if (ensure_mutex_initialized()) {
         mutex_lock(&g_mem.mutex);
 
-        SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\nCurrent allocations:\n"));
+        SAFE_IGNORE_PRINTF_RESULT(
+            safe_fprintf(stderr, "\n%s\n", colored_string(LOG_COLOR_DEV, "Current allocations:")));
+
+        // Check if we should print backtraces
+        const char *print_backtrace = SAFE_GETENV("ASCII_CHAT_MEMORY_REPORT_BACKTRACE");
+        int backtrace_count = 0;
+        int backtrace_limit = (print_backtrace != NULL) ? 5 : 0; // Only print first 5 backtraces to save time
+
         mem_block_t *curr = g_mem.head;
         while (curr) {
           char pretty_size[64];
           format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
+          const char *file_location = strip_project_path(curr->file);
+
+          // Determine color based on unit (1 MB and over=red, KB=yellow, B=light blue)
+          log_color_t size_color = LOG_COLOR_DEBUG; // Default to light blue for bytes
+          if (strstr(pretty_size, "MB") || strstr(pretty_size, "GB") || strstr(pretty_size, "TB") ||
+              strstr(pretty_size, "PB") || strstr(pretty_size, "EB")) {
+            size_color = LOG_COLOR_ERROR; // Red for 1 MB and over (MB, GB, TB, PB, EB)
+          } else if (strstr(pretty_size, "KB")) {
+            size_color = LOG_COLOR_WARN; // Yellow for kilobytes
+          } else if (strstr(pretty_size, " B")) {
+            size_color = LOG_COLOR_DEBUG; // Light blue for bytes
+          }
+
+          char line_str[32];
+          safe_snprintf(line_str, sizeof(line_str), "%d", curr->line);
           SAFE_IGNORE_PRINTF_RESULT(
-              safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
+              safe_fprintf(stderr, "  - %s:%s - %s\n", colored_string(LOG_COLOR_GREY, file_location),
+                           colored_string(LOG_COLOR_FATAL, line_str), colored_string(size_color, pretty_size)));
+
+          // Print backtrace if environment variable is set and we haven't hit the limit
+          if (backtrace_count < backtrace_limit && curr->backtrace_count > 0) {
+            backtrace_count++;
+            // CRITICAL: Unlock mutex before calling platform_backtrace_symbols to avoid deadlock
+            // when backtrace symbol resolution allocates memory
+            mutex_unlock(&g_mem.mutex);
+
+            // Print backtrace with symbol names
+            char **symbols = platform_backtrace_symbols(curr->backtrace_ptrs, curr->backtrace_count);
+            if (symbols) {
+              SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "    Backtrace (%d frames):\n", curr->backtrace_count));
+              for (int i = 0; i < curr->backtrace_count; i++) {
+                SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "      [%d] %s\n", i, symbols[i]));
+              }
+              platform_backtrace_symbols_free(symbols);
+            }
+
+            // Re-acquire mutex for next iteration
+            mutex_lock(&g_mem.mutex);
+          }
+
           curr = curr->next;
         }
 
         mutex_unlock(&g_mem.mutex);
       } else {
         SAFE_IGNORE_PRINTF_RESULT(
-            safe_fprintf(stderr, "\nCurrent allocations unavailable: failed to initialize debug memory mutex\n"));
+            safe_fprintf(stderr, "\n%s\n",
+                         colored_string(LOG_COLOR_ERROR,
+                                        "Current allocations unavailable: failed to initialize debug memory mutex")));
       }
     }
   }

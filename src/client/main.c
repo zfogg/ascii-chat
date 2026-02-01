@@ -81,6 +81,7 @@
 #include "platform/symbols.h"
 #include "platform/system.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "log/logging.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -107,12 +108,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#ifndef _WIN32
 #include <unistd.h>
-#include <fcntl.h>
-
-#ifdef _WIN32
-#include <windows.h>
 #endif
+#include <fcntl.h>
 
 /* ============================================================================
  * Global State Variables
@@ -192,11 +191,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
   if (count > 1) {
-#ifdef _WIN32
-    TerminateProcess(GetCurrentProcess(), 1);
-#else
-    _exit(1);
-#endif
+    platform_force_exit(1);
   }
 
   // Signal all subsystems to shutdown (async-signal-safe operations only)
@@ -209,6 +204,26 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
 
   return true; // Event handled
 }
+
+/**
+ * Unix signal handler for graceful shutdown on SIGTERM
+ *
+ * @param sig The signal number (unused)
+ */
+#ifndef _WIN32
+static void sigterm_handler(int sig) {
+  (void)sig; // Unused
+  // Signal all subsystems to shutdown (async-signal-safe operations only)
+  atomic_store(&g_should_exit, true);
+  server_connection_shutdown(); // Only uses atomics and socket_shutdown
+}
+#else
+// Windows-compatible signal handler (no-op implementation)
+static void sigterm_handler(int sig) {
+  (void)sig;
+  // SIGTERM handled via console_ctrl_handler on Windows
+}
+#endif
 
 /**
  * Platform-compatible SIGWINCH handler for terminal resize events
@@ -226,7 +241,12 @@ static void sigwinch_handler(int sigwinch) {
   // Terminal was resized, update dimensions and recalculate aspect ratio
   // ONLY if both width and height are auto (not manually set)
   if (GET_OPTION(auto_width) && GET_OPTION(auto_height)) {
-    update_dimensions_to_terminal_size((options_t *)options_get());
+    // Get terminal size and update via proper RCU setters
+    unsigned short int term_width, term_height;
+    if (get_terminal_size(&term_width, &term_height) == ASCIICHAT_OK) {
+      options_set_int("width", (int)term_width);
+      options_set_int("height", (int)term_height);
+    }
 
     // Send new size to server if connected
     if (server_connection_is_active()) {
@@ -304,6 +324,9 @@ static void shutdown_client() {
   // Cleanup core systems
   buffer_pool_cleanup_global();
 
+  // Disable keepawake mode (re-allow OS to sleep)
+  platform_disable_keepawake();
+
   // Clean up symbol cache (before log_destroy)
   // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
   // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
@@ -320,7 +343,7 @@ static void shutdown_client() {
   // Clean up RCU-based options state
   options_state_shutdown();
 
-  log_info("Client shutdown complete");
+  log_debug("Client shutdown complete");
   log_destroy();
 
 #ifndef NDEBUG
@@ -328,6 +351,9 @@ static void shutdown_client() {
   lock_debug_cleanup_thread();
 #endif
 }
+
+#ifndef NDEBUG
+#endif
 
 /**
  * Initialize all client subsystems
@@ -366,13 +392,16 @@ static int initialize_client_systems(bool shared_init_completed) {
       if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
         // Invalid log file path, fall back to default and warn
         (void)fprintf(stderr, "WARNING: Invalid log file path specified, using default 'client.log'\n");
-        log_init("client.log", log_level, true, true /* use_mmap */);
+        // Use regular file logging (not mmap) by default so developers can tail -f the log file
+        log_init("client.log", log_level, true, false /* use_mmap */);
       } else {
-        log_init(validated_log_file, log_level, true, true /* use_mmap */);
+        // Use regular file logging (not mmap) by default so developers can tail -f the log file
+        log_init(validated_log_file, log_level, true, false /* use_mmap */);
       }
       SAFE_FREE(validated_log_file);
     } else {
-      log_init("client.log", log_level, true, true /* use_mmap */);
+      // Use regular file logging (not mmap) by default so developers can tail -f the log file
+      log_init("client.log", log_level, true, false /* use_mmap */);
     }
 
     // Initialize memory debugging if enabled
@@ -408,8 +437,10 @@ static int initialize_client_systems(bool shared_init_completed) {
     }
   }
 
-  // Ensure logging output is available for connection attempts
-  log_set_terminal_output(true);
+  // Ensure logging output is available for connection attempts (unless it was disabled with --quiet)
+  if (!GET_OPTION(quiet)) {
+    log_set_terminal_output(true);
+  }
   log_truncate_if_large();
 
   // Initialize display subsystem
@@ -482,29 +513,65 @@ int client_main(void) {
   // Initialize all client subsystems (shared init already completed)
   int init_result = initialize_client_systems(true);
   if (init_result != 0) {
-    // Check if this is a webcam-related error and print help
-    if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
-      webcam_print_init_error_help(init_result);
-      FATAL(init_result, "%s", asciichat_error_string(init_result));
+#ifndef NDEBUG
+    // Debug builds: automatically fall back to test pattern if webcam is in use
+    if (init_result == ERROR_WEBCAM_IN_USE && !GET_OPTION(test_pattern)) {
+      log_warn("Webcam is in use - automatically falling back to test pattern mode (debug build only)");
+
+      // Enable test pattern mode via RCU update
+      asciichat_error_t update_result = options_set_bool("test_pattern", true);
+      if (update_result != ASCIICHAT_OK) {
+        log_error("Failed to update options for test pattern fallback");
+        FATAL(init_result, "%s", asciichat_error_string(init_result));
+      }
+
+      // Retry initialization with test pattern enabled
+      init_result = initialize_client_systems(true);
+      if (init_result != 0) {
+        log_error("Failed to initialize even with test pattern fallback");
+        webcam_print_init_error_help(init_result);
+        FATAL(init_result, "%s", asciichat_error_string(init_result));
+      }
+      log_debug("Successfully initialized with test pattern fallback");
+
+      // Clear the error state since we successfully recovered
+      CLEAR_ERRNO();
+    } else
+#endif
+    {
+      // Release builds or other errors: print help and exit
+      if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
+        webcam_print_init_error_help(init_result);
+        FATAL(init_result, "%s", asciichat_error_string(init_result));
+      }
+      // For other errors, just exit with the error code
+      return init_result;
     }
-    // For other errors, just exit with the error code
-    return init_result;
   }
 
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
 
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Client default: keepawake ENABLED (use --no-keepawake to disable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (!GET_OPTION(disable_keepawake)) {
+    (void)platform_enable_keepawake();
+  }
+
   // Install console control handler for graceful Ctrl+C handling
   // Uses SetConsoleCtrlHandler on Windows, sigaction on Unix - more reliable than CRT signal()
   platform_set_console_ctrl_handler(console_ctrl_handler);
 
-  // Install SIGWINCH handler for terminal resize (Unix only, no-op on Windows)
-  platform_signal(SIGWINCH, sigwinch_handler);
-
-#ifndef _WIN32
-  // Ignore SIGPIPE - we'll handle write errors ourselves (not available on Windows)
-  platform_signal(SIGPIPE, SIG_IGN);
-#endif
+  // Register signal handlers for graceful shutdown, terminal resize, and error handling
+  platform_signal_handler_t signal_handlers[] = {
+      {SIGWINCH, sigwinch_handler}, // Terminal resize (Unix only)
+      {SIGTERM, sigterm_handler},   // SIGTERM for timeout(1) support
+      {SIGPIPE, SIG_IGN},           // Ignore broken pipe (we handle write errors ourselves)
+  };
+  platform_register_signal_handlers(signal_handlers, 3);
 
   // Keep terminal logging enabled so user can see connection attempts
   // It will be disabled after first successful connection
@@ -521,14 +588,13 @@ int client_main(void) {
    */
 
   int reconnect_attempt = 0;
-  bool first_connection = true;
 
   // LAN Discovery: If --scan flag is set, discover servers on local network
   const options_t *opts = options_get();
   if (opts && opts->lan_discovery &&
       (opts->address[0] == '\0' || strcmp(opts->address, "127.0.0.1") == 0 ||
        strcmp(opts->address, "localhost") == 0)) {
-    log_info("LAN discovery: --scan flag set, querying for available servers");
+    log_debug("LAN discovery: --scan flag set, querying for available servers");
 
     discovery_tui_config_t lan_config;
     memset(&lan_config, 0, sizeof(lan_config));
@@ -550,13 +616,13 @@ int client_main(void) {
         log_lock_terminal();
 
         fprintf(stderr, "\n");
-        fprintf(stderr, "No ASCII-Chat servers found on the local network.\n");
+        fprintf(stderr, "No ascii-chat servers found on the local network.\n");
         fprintf(stderr, "Use 'ascii-chat client <address>' to connect manually.\n");
         fflush(stderr);
 
         // Log to file for debugging
         log_file_msg("\n");
-        log_file_msg("No ASCII-Chat servers found on the local network.\n");
+        log_file_msg("No ascii-chat servers found on the local network.\n");
         log_file_msg("Use 'ascii-chat client <address>' to connect manually.\n");
 
         // Redirect stderr and stdout to /dev/null so cleanup handlers can't write to console
@@ -567,7 +633,7 @@ int client_main(void) {
         exit(1);
       }
       // User cancelled (had servers to choose from but pressed cancel)
-      log_info("LAN discovery: User cancelled server selection");
+      log_debug("LAN discovery: User cancelled server selection");
       if (discovered_servers) {
         discovery_tui_free_results(discovered_servers);
       }
@@ -587,10 +653,10 @@ int client_main(void) {
 
       // Format port as string for compatibility
       char port_str[16];
-      snprintf(port_str, sizeof(port_str), "%u", selected->port);
+      safe_snprintf(port_str, sizeof(port_str), "%u", selected->port);
       SAFE_STRNCPY(opts_new->port, port_str, sizeof(opts_new->port));
 
-      log_info("LAN discovery: Selected server '%s' at %s:%s", selected->name, opts_new->address, opts_new->port);
+      log_debug("LAN discovery: Selected server '%s' at %s:%s", selected->name, opts_new->address, opts_new->port);
 
       // Note: In a real scenario, we'd update the global options via RCU
       // For now, we'll use the updated values directly for connection
@@ -649,7 +715,7 @@ int client_main(void) {
       opts_discovery && opts_discovery->session_string[0] != '\0' ? opts_discovery->session_string : "";
 
   if (session_string[0] != '\0') {
-    log_info("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
+    log_debug("Session string detected: '%s' - performing parallel discovery (mDNS + ACDS)", session_string);
 
     // Configure discovery coordinator
     discovery_config_t discovery_cfg;
@@ -662,24 +728,24 @@ int client_main(void) {
       asciichat_error_t parse_err = hex_to_pubkey(opts_discovery->server_key, expected_pubkey);
       if (parse_err == ASCIICHAT_OK) {
         discovery_cfg.expected_pubkey = expected_pubkey;
-        log_info("Server key verification enabled");
+        log_debug("Server key verification enabled");
       } else {
         log_warn("Failed to parse server key - skipping verification");
       }
     }
 
     // Enable insecure mode if requested
-    if (opts_discovery && opts_discovery->acds_insecure) {
+    if (opts_discovery && opts_discovery->discovery_insecure) {
       discovery_cfg.insecure_mode = true;
       log_warn("ACDS insecure mode enabled - no server key verification");
     }
 
     // Configure ACDS connection details
-    if (opts_discovery && opts_discovery->acds_server[0] != '\0') {
-      SAFE_STRNCPY(discovery_cfg.acds_server, opts_discovery->acds_server, sizeof(discovery_cfg.acds_server));
+    if (opts_discovery && opts_discovery->discovery_server[0] != '\0') {
+      SAFE_STRNCPY(discovery_cfg.acds_server, opts_discovery->discovery_server, sizeof(discovery_cfg.acds_server));
     }
-    if (opts_discovery && opts_discovery->acds_port > 0) {
-      discovery_cfg.acds_port = (uint16_t)opts_discovery->acds_port;
+    if (opts_discovery && opts_discovery->discovery_port > 0) {
+      discovery_cfg.acds_port = (uint16_t)opts_discovery->discovery_port;
     }
 
     // Set password for session join (use pointer since it persists through discovery)
@@ -706,15 +772,15 @@ int client_main(void) {
 
     // Log discovery result
     const char *source_name = discovery_result.source == DISCOVERY_SOURCE_MDNS ? "mDNS (LAN)" : "ACDS (internet)";
-    log_info("Session discovered via %s: %s:%d", source_name, discovery_result.server_address,
-             discovery_result.server_port);
+    log_debug("Session discovered via %s: %s:%d", source_name, discovery_result.server_address,
+              discovery_result.server_port);
 
     // Set discovered address/port for connection
     // Copy to static buffers since discovery_result goes out of scope after this block
-    static char address_buffer[256];
+    static char address_buffer[BUFFER_SIZE_SMALL];
     static char port_buffer[8];
     SAFE_STRNCPY(address_buffer, discovery_result.server_address, sizeof(address_buffer));
-    snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
+    safe_snprintf(port_buffer, sizeof(port_buffer), "%d", discovery_result.server_port);
     discovered_address = address_buffer;
     discovered_port = port_buffer;
 
@@ -730,7 +796,7 @@ int client_main(void) {
       log_debug("Populated session context for WebRTC fallback (session='%s')", session_string);
     }
 
-    log_info("Connecting to server: %s:%d", discovered_address, discovery_result.server_port);
+    log_info("Connecting to %s:%d", discovered_address, discovery_result.server_port);
   }
 
   const options_t *opts_conn = options_get();
@@ -739,26 +805,33 @@ int client_main(void) {
     const char *address = discovered_address
                               ? discovered_address
                               : (opts_conn && opts_conn->address[0] != '\0' ? opts_conn->address : "localhost");
-    const char *port_str =
-        discovered_port ? discovered_port : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : "27224");
+    const char *port_str = discovered_port
+                               ? discovered_port
+                               : (opts_conn && opts_conn->port[0] != '\0' ? opts_conn->port : OPT_PORT_DEFAULT);
     int port = atoi(port_str);
 
     // Update connection context with current attempt number
     connection_ctx.reconnect_attempt = reconnect_attempt;
 
     // Get ACDS server configuration from CLI options (defaults: 127.0.0.1:27225)
-    const char *acds_server = GET_OPTION(acds_server);
+    const char *acds_server = GET_OPTION(discovery_server);
     if (!acds_server || acds_server[0] == '\0') {
       acds_server = "127.0.0.1"; // Fallback if option not set
     }
-    int acds_port = GET_OPTION(acds_port);
+    int acds_port = GET_OPTION(discovery_port);
     if (acds_port <= 0 || acds_port > 65535) {
-      acds_port = 27225; // Fallback to default ACDS port
+      acds_port = OPT_ACDS_PORT_INT_DEFAULT;
     }
 
     // Attempt connection with 3-stage fallback (TCP → STUN → TURN)
     asciichat_error_t connection_result =
         connection_attempt_with_fallback(&connection_ctx, address, (uint16_t)port, acds_server, (uint16_t)acds_port);
+
+    // Check if shutdown was requested during connection attempt
+    if (should_exit()) {
+      log_info("Shutdown requested during connection attempt");
+      return 0;
+    }
 
     // Check if connection attempt succeeded
     // Handle the error result appropriately
@@ -797,7 +870,9 @@ int client_main(void) {
 
       if (has_ever_connected) {
         display_full_reset();
-        log_set_terminal_output(true);
+        if (!GET_OPTION(quiet)) {
+          log_set_terminal_output(true);
+        }
       } else {
         // Add newline to separate from ASCII art display for first-time connection failures
         printf("\n");
@@ -805,15 +880,15 @@ int client_main(void) {
 
       if (has_ever_connected) {
         if (reconnect_attempts == -1) {
-          log_info("Reconnection attempt #%d... (unlimited retries)", reconnect_attempt);
+          log_info("Reconnecting (attempt %d)...", reconnect_attempt);
         } else {
-          log_info("Reconnection attempt #%d/%d...", reconnect_attempt, reconnect_attempts);
+          log_info("Reconnecting (attempt %d/%d)...", reconnect_attempt, reconnect_attempts);
         }
       } else {
         if (reconnect_attempts == -1) {
-          log_info("Connection attempt #%d... (unlimited retries)", reconnect_attempt);
+          log_info("Connecting (attempt %d)...", reconnect_attempt);
         } else {
-          log_info("Connection attempt #%d/%d...", reconnect_attempt, reconnect_attempts);
+          log_info("Connecting (attempt %d/%d)...", reconnect_attempt, reconnect_attempts);
         }
       }
 
@@ -823,7 +898,6 @@ int client_main(void) {
 
     // Connection successful - reset counters and flags
     reconnect_attempt = 0;
-    first_connection = false;
 
     // Integrate the active transport from connection fallback into server connection layer
     // (Transport is TCP for Stage 1, WebRTC DataChannel for Stages 2/3)
@@ -843,10 +917,10 @@ int client_main(void) {
 
     // Show appropriate connection message based on whether this is first connection or reconnection
     if (!has_ever_connected) {
-      log_info("Connected successfully, starting worker threads");
+      log_info("Connected");
       has_ever_connected = true;
     } else {
-      log_info("Reconnected successfully, starting worker threads");
+      log_info("Reconnected");
     }
 
     // Start all worker threads for this connection
@@ -876,7 +950,7 @@ int client_main(void) {
     while (!should_exit() && server_connection_is_active()) {
       // Check if any critical threads have exited (indicates connection lost)
       if (protocol_connection_lost()) {
-        log_info("Connection lost detected by protocol threads");
+        log_debug("Connection lost detected by protocol threads");
         break;
       }
 
@@ -884,16 +958,16 @@ int client_main(void) {
     }
 
     if (should_exit()) {
-      log_info("Shutdown requested, exiting main loop");
+      log_debug("Shutdown requested, exiting main loop");
       break;
     }
 
     // Connection broken - clean up this connection and prepare for reconnect
-    log_info("Connection lost, cleaning up for reconnection");
+    log_debug("Connection lost, cleaning up for reconnection");
 
     // Re-enable terminal logging when connection is lost for debugging reconnection
-    // (but only if we've ever successfully connected before)
-    if (has_ever_connected) {
+    // (but only if we've ever successfully connected before and --quiet wasn't set)
+    if (has_ever_connected && !GET_OPTION(quiet)) {
       printf("\n");
       log_set_terminal_output(true);
     }
@@ -910,16 +984,16 @@ int client_main(void) {
 
     // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
     if (has_ever_connected) {
-      log_info("Waiting 1 second before attempting reconnection...");
+      log_debug("Waiting 1 second before attempting reconnection...");
       platform_sleep_usec(1000000); // 1 second delay
     }
 
-    log_info("Cleanup complete, will attempt reconnection");
+    log_debug("Cleanup complete, will attempt reconnection");
   }
 
   // Cleanup connection context (closes any active transports)
   connection_context_cleanup(&connection_ctx);
 
-  log_info("ascii-chat client shutting down");
+  log_debug("ascii-chat client shutting down");
   return 0;
 }

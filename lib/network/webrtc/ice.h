@@ -222,35 +222,44 @@ uint32_t ice_calculate_priority(ice_candidate_type_t type, uint16_t local_prefer
  * ICE Connectivity
  * ============================================================================ */
 
+/* Forward declaration */
+struct webrtc_peer_connection;
+
 /**
  * @brief Add remote candidate to peer connection
  *
  * Called when receiving candidate from peer.
  * The WebRTC agent will test connectivity with this candidate.
  *
+ * @param pc Peer connection to add candidate to
  * @param candidate Remote candidate from peer
  * @param mid Media stream ID
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t ice_add_remote_candidate(const ice_candidate_t *candidate, const char *mid);
+asciichat_error_t ice_add_remote_candidate(struct webrtc_peer_connection *pc, const ice_candidate_t *candidate,
+                                           const char *mid);
 
 /**
  * @brief Check ICE connection state
  *
- * @return true if at least one candidate pair is connected, false otherwise
+ * @param pc Peer connection to check
+ * @return true if connected, false otherwise
  */
-bool ice_is_connected(void);
+bool ice_is_connected(struct webrtc_peer_connection *pc);
 
 /**
  * @brief Get selected candidate pair
  *
  * Returns the local and remote candidates that were selected for data flow.
+ * Uses libdatachannel's rtcGetSelectedCandidatePair() API via C++ bindings.
  *
+ * @param pc Peer connection to query
  * @param local_candidate Selected local candidate (output, may be NULL)
  * @param remote_candidate Selected remote candidate (output, may be NULL)
- * @return ASCIICHAT_OK if pair selected, error if not yet determined
+ * @return ASCIICHAT_OK if pair selected, ERROR_INVALID_STATE if no pair selected yet
  */
-asciichat_error_t ice_get_selected_pair(ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate);
+asciichat_error_t ice_get_selected_pair(struct webrtc_peer_connection *pc, ice_candidate_t *local_candidate,
+                                        ice_candidate_t *remote_candidate);
 
 /* ============================================================================
  * Utility Functions

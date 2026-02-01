@@ -14,6 +14,7 @@
 #include "network/webrtc/webrtc.h"
 #include "common.h"
 #include "log/logging.h"
+#include "platform/init.h"
 
 #include <string.h>
 #include <rtc/rtc.h>
@@ -39,7 +40,10 @@ struct webrtc_data_channel {
 // Global State
 // ============================================================================
 
-static bool g_webrtc_initialized = false;
+// WebRTC library reference counting (same pattern as PortAudio)
+// Supports multiple init/cleanup pairs from different code paths
+static unsigned int g_webrtc_init_refcount = 0;
+static static_mutex_t g_webrtc_refcount_mutex = STATIC_MUTEX_INIT;
 
 // ============================================================================
 // libdatachannel Callback Adapters
@@ -65,6 +69,11 @@ static void rtc_log_callback(rtcLogLevel level, const char *message) {
     break;
   }
 }
+
+// Forward declarations for callback functions
+static void on_datachannel_open_adapter(int dc_id, void *user_data);
+static void on_datachannel_message_adapter(int dc_id, const char *data, int size, void *user_data);
+static void on_datachannel_error_adapter(int dc_id, const char *error, void *user_data);
 
 static void on_state_change_adapter(int pc_id, rtcState state, void *user_data) {
   (void)pc_id; // Unused - we get peer connection from user_data
@@ -129,9 +138,15 @@ static void on_local_candidate_adapter(int pc_id, const char *candidate, const c
 
 static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   (void)pc_id; // Unused - we get peer connection from user_data
+  log_info("on_datachannel_adapter: pc_id=%d, dc_id=%d, user_data=%p", pc_id, dc_id, user_data);
+
   webrtc_peer_connection_t *pc = (webrtc_peer_connection_t *)user_data;
-  if (!pc)
+  if (!pc) {
+    log_error("on_datachannel_adapter: peer connection user_data is NULL!");
     return;
+  }
+
+  log_info("on_datachannel_adapter: received DataChannel (dc_id=%d) from remote peer", dc_id);
 
   // Allocate data channel wrapper
   webrtc_data_channel_t *dc = SAFE_MALLOC(sizeof(webrtc_data_channel_t), webrtc_data_channel_t *);
@@ -144,32 +159,66 @@ static void on_datachannel_adapter(int pc_id, int dc_id, void *user_data) {
   dc->rtc_id = dc_id;
   dc->pc = pc;
   dc->is_open = false;
+  log_debug("Initialized DataChannel wrapper: dc=%p, is_open=false", (void *)dc);
 
   // Store in peer connection
   pc->dc = dc;
 
-  // Set up data channel callbacks (will be done when we receive open event)
-  log_debug("Received DataChannel (id=%d) from remote peer", dc_id);
+  // Set up data channel callbacks for incoming channel
+  rtcSetUserPointer(dc_id, dc);
+  rtcSetOpenCallback(dc_id, on_datachannel_open_adapter);
+  rtcSetMessageCallback(dc_id, on_datachannel_message_adapter);
+  rtcSetErrorCallback(dc_id, on_datachannel_error_adapter);
+
+  log_info("Set up callbacks for incoming DataChannel (dc_id=%d, dc=%p)", dc_id, (void *)dc);
+
+  // Check if DataChannel is already open (can happen if it opened before callbacks were set)
+  // In libdatachannel, negotiated DataChannels may be open immediately when received
+  // We manually trigger the open callback if that's the case
+  if (rtcIsOpen(dc_id)) {
+    log_info("DataChannel was already open when received, manually triggering open callback");
+    on_datachannel_open_adapter(dc_id, dc);
+  }
 }
 
 static void on_datachannel_open_adapter(int dc_id, void *user_data) {
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
-  if (!dc)
+  log_info("on_datachannel_open_adapter called: dc_id=%d, dc=%p", dc_id, (void *)dc);
+  if (!dc) {
+    log_error("on_datachannel_open_adapter: dc is NULL!");
     return;
+  }
 
   dc->is_open = true;
-  log_debug("DataChannel opened (id=%d)", dc_id);
+  log_info("DataChannel opened (id=%d, dc=%p), set is_open=true", dc_id, (void *)dc);
 
   if (dc->pc && dc->pc->config.on_datachannel_open) {
+    log_debug("Calling user on_datachannel_open callback");
     dc->pc->config.on_datachannel_open(dc, dc->pc->config.user_data);
+  } else {
+    log_warn("No user on_datachannel_open callback registered");
   }
 }
 
 static void on_datachannel_message_adapter(int dc_id, const char *data, int size, void *user_data) {
   (void)dc_id; // Unused - we get data channel from user_data
+
+  // Log at libdatachannel callback level (debug level for normal operation)
+  if (size >= 20 && data) {
+    const uint8_t *pkt = (const uint8_t *)data;
+    log_debug("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
+              "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+              dc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
+              pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
+  } else {
+    log_debug("★ LIBDATACHANNEL_RX: dc_id=%d, size=%d (no data or too small)", dc_id, size);
+  }
+
   webrtc_data_channel_t *dc = (webrtc_data_channel_t *)user_data;
-  if (!dc)
+  if (!dc) {
+    log_debug("★ LIBDATACHANNEL_RX: dc=NULL, dropping message");
     return;
+  }
 
   if (dc->pc && dc->pc->config.on_datachannel_message) {
     dc->pc->config.on_datachannel_message(dc, (const uint8_t *)data, (size_t)size, dc->pc->config.user_data);
@@ -192,30 +241,59 @@ static void on_datachannel_error_adapter(int dc_id, const char *error, void *use
 // Initialization and Cleanup
 // ============================================================================
 
-asciichat_error_t webrtc_init(void) {
-  if (g_webrtc_initialized) {
-    return ASCIICHAT_OK; // Already initialized
+/**
+ * @brief Ensure WebRTC library is initialized with reference counting
+ *
+ * Supports multiple init/cleanup pairs from different code paths.
+ * rtcInitLogger() and rtcPreload() are called exactly once.
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t webrtc_ensure_initialized(void) {
+  static_mutex_lock(&g_webrtc_refcount_mutex);
+
+  // If already initialized, just increment refcount
+  if (g_webrtc_init_refcount > 0) {
+    g_webrtc_init_refcount++;
+    static_mutex_unlock(&g_webrtc_refcount_mutex);
+    return ASCIICHAT_OK;
   }
 
-  // Initialize libdatachannel logger
+  // First initialization - call library initialization exactly once
   rtcInitLogger(RTC_LOG_INFO, rtc_log_callback);
-
-  // Preload global resources to avoid lazy-loading delays
   rtcPreload();
 
-  g_webrtc_initialized = true;
-  log_info("WebRTC library initialized (libdatachannel)");
+  g_webrtc_init_refcount = 1;
+  static_mutex_unlock(&g_webrtc_refcount_mutex);
+
+  log_debug("WebRTC library initialized (libdatachannel)");
   return ASCIICHAT_OK;
 }
 
-void webrtc_cleanup(void) {
-  if (!g_webrtc_initialized) {
-    return;
+/**
+ * @brief Release WebRTC, cleaning up when refcount reaches zero
+ *
+ * Counterpart to webrtc_ensure_initialized().
+ * Decrements refcount and calls rtcCleanup() only when it reaches zero.
+ */
+static void webrtc_release(void) {
+  static_mutex_lock(&g_webrtc_refcount_mutex);
+  if (g_webrtc_init_refcount > 0) {
+    g_webrtc_init_refcount--;
+    if (g_webrtc_init_refcount == 0) {
+      rtcCleanup();
+      log_info("WebRTC library cleaned up");
+    }
   }
+  static_mutex_unlock(&g_webrtc_refcount_mutex);
+}
 
-  rtcCleanup();
-  g_webrtc_initialized = false;
-  log_info("WebRTC library cleaned up");
+asciichat_error_t webrtc_init(void) {
+  return webrtc_ensure_initialized();
+}
+
+void webrtc_cleanup(void) {
+  webrtc_release();
 }
 
 // ============================================================================
@@ -227,7 +305,11 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid config or output parameter");
   }
 
-  if (!g_webrtc_initialized) {
+  static_mutex_lock(&g_webrtc_refcount_mutex);
+  bool is_initialized = (g_webrtc_init_refcount > 0);
+  static_mutex_unlock(&g_webrtc_refcount_mutex);
+
+  if (!is_initialized) {
     return SET_ERRNO(ERROR_INIT, "WebRTC library not initialized");
   }
 
@@ -427,19 +509,42 @@ asciichat_error_t webrtc_datachannel_send(webrtc_data_channel_t *dc, const uint8
   }
 
   if (!dc->is_open) {
+    log_error("★ WEBRTC_DATACHANNEL_SEND: Channel not open! size=%zu, dc->rtc_id=%d", size, dc ? dc->rtc_id : -1);
     return SET_ERRNO(ERROR_NETWORK, "DataChannel not open");
   }
 
+  // Log packet details at network layer (debug level for normal operation)
+  if (size >= 20) {
+    const uint8_t *pkt = (const uint8_t *)data;
+    log_debug("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu, first_20_bytes: %02x%02x%02x%02x %02x%02x%02x%02x "
+              "%02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
+              dc->rtc_id, size, pkt[0], pkt[1], pkt[2], pkt[3], pkt[4], pkt[5], pkt[6], pkt[7], pkt[8], pkt[9], pkt[10],
+              pkt[11], pkt[12], pkt[13], pkt[14], pkt[15], pkt[16], pkt[17], pkt[18], pkt[19]);
+  } else {
+    log_debug("★ RTCSENDMESSAGE_BEFORE: dc_id=%d, size=%zu (too small to log content)", dc->rtc_id, size);
+  }
+
   int result = rtcSendMessage(dc->rtc_id, (const char *)data, (int)size);
+
+  log_debug("★ RTCSENDMESSAGE_AFTER: dc_id=%d, rtcSendMessage returned %d for size=%zu", dc->rtc_id, result, size);
+
   if (result < 0) {
+    log_error("★ WEBRTC_DATACHANNEL_SEND: FAILED with error code %d", result);
     return SET_ERRNO(ERROR_NETWORK, "Failed to send data (rtc error %d)", result);
   }
 
+  log_debug("★ WEBRTC_DATACHANNEL_SEND: SUCCESS - sent %zu bytes", size);
   return ASCIICHAT_OK;
 }
 
 bool webrtc_datachannel_is_open(webrtc_data_channel_t *dc) {
   return dc && dc->is_open;
+}
+
+void webrtc_datachannel_set_open_state(webrtc_data_channel_t *dc, bool is_open) {
+  if (dc) {
+    dc->is_open = is_open;
+  }
 }
 
 const char *webrtc_datachannel_get_label(webrtc_data_channel_t *dc) {
@@ -461,8 +566,11 @@ void webrtc_close_datachannel(webrtc_data_channel_t *dc) {
     return;
   }
 
-  rtcDeleteDataChannel(dc->rtc_id);
-  log_debug("Closed DataChannel (dc_id=%d)", dc->rtc_id);
+  // Save the ID before freeing (dc might be partially freed already)
+  int dc_id = dc->rtc_id;
+
+  rtcDeleteDataChannel(dc_id);
+  log_debug("Closed DataChannel (dc_id=%d)", dc_id);
 
   SAFE_FREE(dc);
 }

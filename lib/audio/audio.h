@@ -75,8 +75,11 @@
 #endif
 
 #include "common.h"
+#include "platform/thread.h"
 #include "platform/mutex.h"
+#include "platform/cond.h"
 #include "ringbuffer.h"
+#include "options/options.h"
 
 /* ============================================================================
  * Audio Configuration Constants
@@ -105,6 +108,22 @@
  * (speaker output) and capture (microphone input) at the EXACT same instant,
  * enabling perfect timing for WebRTC AEC3 echo cancellation.
  *
+ * WORKER THREAD ARCHITECTURE:
+ * The audio system now uses a dedicated worker thread to move ALL heavy
+ * processing (AEC3, resampling, RMS calculations) out of the real-time
+ * PortAudio callbacks. This ensures callbacks complete in <2ms (was 50-80ms).
+ *
+ * Architecture:
+ * - PortAudio Callback (Real-Time, <2ms): Lock-free ring buffer copies only
+ * - Worker Thread (Non-Real-Time): Heavy processing (AEC3, filters, resampling)
+ *
+ * Ring Buffers:
+ * - raw_capture_rb: Callback → Worker (raw mic samples)
+ * - raw_render_rb: Callback → Worker (raw speaker samples for AEC3 reference)
+ * - processed_capture_rb: Worker → Network (after AEC3/filters, ready for encoder)
+ * - processed_playback_rb: Worker → Callback (ready for speakers)
+ * - network_playback_rb: Network → Worker (decoded Opus from network)
+ *
  * @note The audio context must be initialized with audio_init() before use.
  * @note Use audio_start_duplex()/audio_stop_duplex() to control the stream.
  * @note State is protected by state_mutex for thread-safe operations.
@@ -112,21 +131,47 @@
  * @ingroup audio
  */
 typedef struct {
-  PaStream *duplex_stream;              ///< PortAudio full-duplex stream (simultaneous input+output)
-  PaStream *input_stream;               ///< Separate input stream (when full-duplex unavailable)
-  PaStream *output_stream;              ///< Separate output stream (when full-duplex unavailable)
-  audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for processed capture (after AEC3) for encoder thread
-  audio_ring_buffer_t *playback_buffer; ///< Ring buffer for decoded audio from network
+  // PortAudio streams
+  PaStream *duplex_stream; ///< PortAudio full-duplex stream (simultaneous input+output)
+  PaStream *input_stream;  ///< Separate input stream (when full-duplex unavailable)
+  PaStream *output_stream; ///< Separate output stream (when full-duplex unavailable)
+
+  // New architecture: 5 ring buffers for lock-free callback → worker → network
+  audio_ring_buffer_t *raw_capture_rb;        ///< Callback → Worker: Raw mic samples (no processing)
+  audio_ring_buffer_t *raw_render_rb;         ///< Callback → Worker: Raw speaker samples (AEC3 reference)
+  audio_ring_buffer_t *processed_playback_rb; ///< Worker → Callback: Ready for speakers
+
+  // Legacy ring buffers (will be migrated to new architecture)
+  audio_ring_buffer_t *capture_buffer;  ///< OLD: Worker → Network (will become processed_capture_rb)
+  audio_ring_buffer_t *playback_buffer; ///< OLD: Network → Worker (will become network_playback_rb)
   audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
-  bool initialized;                     ///< True if context has been initialized
-  bool running;                         ///< True if duplex stream is active
-  bool separate_streams;                ///< True if using separate input/output streams
-  _Atomic bool shutting_down;           ///< True when shutdown started - callback outputs silence
-  mutex_t state_mutex;                  ///< Mutex protecting context state
-  void *audio_pipeline;                 ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
-  double sample_rate;                   ///< Actual sample rate of streams (48kHz)
-  double input_device_rate;             ///< Native sample rate of input device
-  double output_device_rate;            ///< Native sample rate of output device
+
+  // Worker thread for heavy processing (AEC3, resampling, filters)
+  asciichat_thread_t worker_thread; ///< Worker thread for audio processing
+  mutex_t worker_mutex;             ///< Mutex protecting worker state
+  cond_t worker_cond;               ///< Condition variable for worker signaling
+  bool worker_running;              ///< True if worker thread is running
+  _Atomic bool worker_should_stop;  ///< Signal worker thread to exit
+
+  // Pre-allocated worker buffers (avoid malloc in worker loop)
+  float *worker_capture_batch;  ///< Pre-allocated buffer for batch capture processing
+  float *worker_render_batch;   ///< Pre-allocated buffer for batch render processing
+  float *worker_playback_batch; ///< Pre-allocated buffer for batch playback processing
+
+  // State flags
+  bool initialized;           ///< True if context has been initialized
+  bool running;               ///< True if duplex stream is active
+  bool separate_streams;      ///< True if using separate input/output streams
+  bool playback_only;         ///< True for playback-only mode (mirror), skip microphone capture
+  _Atomic bool shutting_down; ///< True when shutdown started - callback outputs silence
+  mutex_t state_mutex;        ///< Mutex protecting context state
+
+  // Audio pipeline and device info
+  void *audio_pipeline;      ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
+  void *media_source;        ///< Media source for direct audio reading in mirror mode (opaque pointer)
+  double sample_rate;        ///< Actual sample rate of streams (48kHz)
+  double input_device_rate;  ///< Native sample rate of input device
+  double output_device_rate; ///< Native sample rate of output device
 } audio_context_t;
 
 /* ============================================================================
@@ -167,6 +212,18 @@ asciichat_error_t audio_init(audio_context_t *ctx);
  * @ingroup audio
  */
 void audio_destroy(audio_context_t *ctx);
+
+/**
+ * @brief Terminate PortAudio and free all device resources
+ *
+ * This must be called at program shutdown to free device structures allocated
+ * by ALSA/libpulse during Pa_Initialize(). Should be called AFTER all audio
+ * contexts are destroyed and other session cleanup is complete.
+ *
+ * @note This is only needed if you want to ensure all memory is freed at exit.
+ *       In normal operation, the OS will clean up when the process terminates.
+ */
+void audio_terminate_portaudio_final(void);
 
 /**
  * @brief Set audio pipeline for echo cancellation
@@ -733,5 +790,50 @@ asciichat_error_t audio_validate_batch_params(const audio_batch_info_t *batch);
  * @ingroup audio
  */
 bool audio_is_supported_sample_rate(uint32_t sample_rate);
+
+/**
+ * @brief Flush all audio buffers to synchronize with seek operations
+ * @param ctx Audio context (must not be NULL)
+ *
+ * Clears the playback buffers when seeking occurs. This prevents 5-10 seconds
+ * of old audio from playing after a seek operation. Called by keyboard handler
+ * when user presses seek arrow keys.
+ *
+ * @ingroup audio
+ */
+void audio_flush_playback_buffers(audio_context_t *ctx);
+
+/**
+ * @brief Determine if microphone should be enabled based on audio source setting and media state
+ *
+ * Smart helper function for determining microphone input availability based on:
+ * - User's --audio-source preference (auto, microphone, media, both)
+ * - Whether media audio is currently being played (--file or --url)
+ *
+ * @param source Audio source preference from --audio-source option
+ * @param has_media_audio True if media with audio is being played, false otherwise
+ *
+ * @return true if microphone should be enabled, false otherwise
+ *
+ * Behavior by audio_source value:
+ * - AUDIO_SOURCE_AUTO: Enable microphone only when no media audio (smart default)
+ * - AUDIO_SOURCE_MICROPHONE: Always enable microphone (ignore media state)
+ * - AUDIO_SOURCE_MEDIA: Never enable microphone (media-only)
+ * - AUDIO_SOURCE_BOTH: Always enable microphone (allow simultaneous capture)
+ *
+ * Usage:
+ * @code
+ * bool has_media = (media_file && strlen(media_file) > 0);
+ * bool enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), has_media);
+ * if (enable_mic) {
+ *     audio_ctx->playback_only = false;  // Allow microphone capture
+ * } else {
+ *     audio_ctx->playback_only = true;   // Disable microphone to prevent interference
+ * }
+ * @endcode
+ *
+ * @ingroup audio
+ */
+bool audio_should_enable_microphone(audio_source_t source, bool has_media_audio);
 
 /** @} */

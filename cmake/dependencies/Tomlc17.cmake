@@ -14,7 +14,7 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 
 function(configure_tomlc17)
-    set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/tomlc17")
+    set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17")
     set(PATCHES_DIR "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches")
 
     # Apply patch #0: align8 overflow fix (all platforms)

@@ -56,6 +56,7 @@
 
 #include <stdbool.h>
 #include "common.h"
+#include "options/options.h" // For asciichat_mode_t
 
 /**
  * @brief Load configuration from TOML file and apply to global options
@@ -103,7 +104,8 @@
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict, options_t *opts);
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
+                                        options_t *opts);
 
 /**
  * @brief Load system config first, then user config (user config overrides system)
@@ -125,7 +127,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
  *
  * @ingroup config
  */
-asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict,
+asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, const char *user_config_path, bool strict,
                                               options_t *opts);
 
 /**

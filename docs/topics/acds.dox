@@ -1,0 +1,673 @@
+/**
+ * @defgroup module_acds Discovery Service (ACDS)
+ * @brief 🔍 ascii-chat Discovery Service for session management and NAT traversal
+ *
+ * ACDS enables clients to discover servers using memorable session strings,
+ * provides WebRTC signaling for P2P connections, and handles NAT traversal.
+ */
+
+/**
+ * @defgroup acds_server ACDS Server
+ * @ingroup module_acds
+ * @brief 🌐 Discovery server TCP connection manager
+ */
+
+/**
+ * @defgroup acds_database ACDS Database
+ * @ingroup module_acds
+ * @brief 💾 SQLite-based session management
+ */
+
+/**
+ * @defgroup acds_signaling ACDS Signaling
+ * @ingroup module_acds
+ * @brief 🎬 WebRTC SDP/ICE signaling relay
+ */
+
+/**
+ * @defgroup acds_identity ACDS Identity
+ * @ingroup module_acds
+ * @brief 🔑 Ed25519 identity key management
+ */
+
+/**
+ * @defgroup acds_strings ACDS Session Strings
+ * @ingroup module_acds
+ * @brief 🏷️ Human-friendly session string generation
+ */
+
+/**
+ * @page topic_acds ascii-chat Discovery Service (ACDS)
+ * @ingroup module_acds
+ *
+ * @tableofcontents
+ *
+ * @section acds_overview Overview
+ *
+ * Welcome to ACDS—the magic that makes ascii-chat "just work" without dealing with networking headaches!
+ *
+ * **The Problem:** Running a video chat server should be as easy as starting a Zoom call. But networking
+ * is complicated:
+ * - **Port forwarding**: Most home routers block incoming connections, requiring manual router configuration
+ * - **IP addresses**: You need to know your public IP and communicate it to friends—tedious and error-prone
+ * - **NAT traversal**: Symmetric NAT makes peer-to-peer connections nearly impossible without help
+ * - **Firewalls**: Corporate and university networks often block non-standard ports
+ *
+ * **The ACDS Solution:** Instead of dealing with IP addresses and ports, you get:
+ *
+ * **Three-word session strings** like `purple-mountain-lake` that uniquely identify your session.
+ * Share those three words and people can join—no IP addresses, no port forwarding, no network configuration.
+ *
+ * ACDS transforms ascii-chat from a **LAN-only toy** into a **production-ready video conferencing system**
+ * that works anywhere, for anyone.
+ *
+ * **Implementation**: src/acds/*.c, lib/acds/*.c
+ *
+ * What makes ACDS powerful?
+ * -------------------------
+ * - **Human-friendly**: Share "happy-sunset-ocean" instead of "73.251.42.118:27224"
+ * - **Automatic NAT traversal**: Works behind firewalls without manual configuration
+ * - **Fallback strategy**: Tries best connection first (direct TCP), falls back gracefully (WebRTC/TURN)
+ * - **mDNS for local**: Zero-config on LANs—no internet/server required
+ * - **Privacy-first**: ACDS never sees your media—only exchanges connection metadata
+ * - **Open protocol**: Run your own ACDS server for complete privacy
+ *
+ * @section acds_architecture Architecture
+ *
+ * @subsection acds_components Core Components
+ *
+ * ACDS consists of several tightly integrated components:
+ *
+ * @subsubsection acds_server_component Discovery Server
+ * @ingroup acds_server
+ * **File**: src/acds/main.c, src/acds/server.c
+ *
+ * The main ACDS server that:
+ * - Listens for TCP connections on port 27225 (default)
+ * - Handles session creation, lookup, and join requests
+ * - Relays WebRTC signaling (SDP offers/answers, ICE candidates)
+ * - Manages rate limiting to prevent abuse
+ * - Runs cleanup threads for expired sessions
+ *
+ * **Threading Model**:
+ * - **Main Thread**: Accept loop using select() for responsive shutdown
+ * - **Per-Client Handler Threads**: One thread per connected client
+ * - **Cleanup Thread**: Background thread for rate limit and session expiration cleanup
+ * - **Worker Pool**: Thread pool for background tasks
+ *
+ * **Key Functions**:
+ * @code{.c}
+ * // Initialize ACDS server
+ * asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *config);
+ *
+ * // Run server (blocking until shutdown)
+ * asciichat_error_t acds_server_run(acds_server_t *server);
+ *
+ * // Graceful shutdown
+ * void acds_server_shutdown(acds_server_t *server);
+ * @endcode
+ *
+ * @subsubsection acds_database_component Session Database
+ * @ingroup acds_database
+ * **File**: lib/acds/database.c, lib/acds/database.h
+ *
+ * SQLite-based session storage:
+ * - **Sessions table**: session_id, session_string, host_pubkey, password_hash, participants, capabilities
+ * - **Participants table**: participant_id, session_id, identity_pubkey, joined_at
+ * - **Rate events table**: IP address, event type, timestamp for rate limiting
+ * - **WAL mode**: Write-Ahead Logging for concurrent read performance
+ *
+ * **Database Schema**:
+ * @code{.sql}
+ * CREATE TABLE sessions (
+ *   session_id BLOB PRIMARY KEY,
+ *   session_string TEXT UNIQUE NOT NULL,
+ *   host_pubkey BLOB NOT NULL,
+ *   password_hash TEXT,
+ *   max_participants INTEGER DEFAULT 4,
+ *   current_participants INTEGER DEFAULT 0,
+ *   capabilities INTEGER DEFAULT 3,  -- video + audio
+ *   has_password INTEGER DEFAULT 0,
+ *   expose_ip_publicly INTEGER DEFAULT 0,
+ *   session_type INTEGER DEFAULT 0,  -- DirectTCP or WebRTC
+ *   server_address TEXT,
+ *   server_port INTEGER DEFAULT 0,
+ *   created_at INTEGER NOT NULL,
+ *   expires_at INTEGER NOT NULL
+ * );
+ *
+ * CREATE TABLE participants (
+ *   participant_id BLOB PRIMARY KEY,
+ *   session_id BLOB NOT NULL,
+ *   identity_pubkey BLOB NOT NULL,
+ *   joined_at INTEGER NOT NULL,
+ *   FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+ * );
+ * @endcode
+ *
+ * **Key Functions**:
+ * @code{.c}
+ * // Database lifecycle
+ * asciichat_error_t database_init(const char *db_path, sqlite3 **db);
+ * void database_close(sqlite3 *db);
+ *
+ * // Session operations
+ * asciichat_error_t database_session_create(sqlite3 *db, const acip_session_create_t *req,
+ *                                           const acds_config_t *config, acip_session_created_t *resp);
+ * asciichat_error_t database_session_lookup(sqlite3 *db, const char *session_string,
+ *                                           const acds_config_t *config, acip_session_info_t *resp);
+ * asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *req,
+ *                                         const acds_config_t *config, acip_session_joined_t *resp);
+ * asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[16],
+ *                                          const uint8_t participant_id[16]);
+ *
+ * // Maintenance
+ * void database_session_cleanup_expired(sqlite3 *db);
+ * @endcode
+ *
+ * @subsubsection acds_signaling_component WebRTC Signaling
+ * @ingroup acds_signaling
+ * **File**: src/acds/signaling.c, src/acds/signaling.h
+ *
+ * Pure relay server for WebRTC signaling—no media processing:
+ * - Relays SDP offers/answers between participants
+ * - Relays ICE candidates for P2P connection establishment
+ * - Supports unicast (to specific participant) and broadcast (to all in session)
+ * - Uses participant_id → socket mapping from TCP server registry
+ *
+ * **Key Functions**:
+ * @code{.c}
+ * // Relay SDP offer/answer
+ * asciichat_error_t signaling_relay_sdp(sqlite3 *db, tcp_server_t *tcp_server,
+ *                                       const acip_webrtc_sdp_t *sdp, size_t total_packet_len);
+ *
+ * // Relay ICE candidate
+ * asciichat_error_t signaling_relay_ice(sqlite3 *db, tcp_server_t *tcp_server,
+ *                                       const acip_webrtc_ice_t *ice, size_t total_packet_len);
+ *
+ * // Broadcast to all participants in session
+ * asciichat_error_t signaling_broadcast(sqlite3 *db, tcp_server_t *tcp_server,
+ *                                       const uint8_t session_id[16], packet_type_t packet_type,
+ *                                       const void *packet, size_t packet_len);
+ * @endcode
+ *
+ * @subsubsection acds_identity_component Identity Management
+ * @ingroup acds_identity
+ * **File**: lib/acds/identity.c, lib/acds/identity.h
+ *
+ * Ed25519 identity key management for ACDS server:
+ * - Auto-generates identity key on first run
+ * - Loads existing key from `~/.config/ascii-chat/acds_identity`
+ * - Computes SHA256 fingerprint for display
+ * - Cross-platform key storage (Unix and Windows paths)
+ *
+ * **Key Functions**:
+ * @code{.c}
+ * // Key lifecycle
+ * asciichat_error_t acds_identity_generate(uint8_t public_key[32], uint8_t secret_key[64]);
+ * asciichat_error_t acds_identity_load(const char *path, uint8_t public_key[32], uint8_t secret_key[64]);
+ * asciichat_error_t acds_identity_save(const char *path, const uint8_t public_key[32],
+ *                                      const uint8_t secret_key[64]);
+ *
+ * // Display
+ * void acds_identity_fingerprint(const uint8_t public_key[32], char fingerprint[65]);
+ * asciichat_error_t acds_identity_default_path(char *path_out, size_t path_size);
+ * @endcode
+ *
+ * @subsubsection acds_strings_component Session Strings
+ * @ingroup acds_strings
+ * **File**: lib/acds/strings.c, lib/acds/strings.h
+ *
+ * Human-friendly session identifier generation:
+ * - Format: `adjective-noun-noun` (e.g., `bright-forest-river`)
+ * - ~100 adjectives, ~100 nouns = 1,000,000+ unique combinations
+ * - Cryptographically random selection via libsodium
+ * - Easy to speak, remember, and type without errors
+ *
+ * **Key Functions**:
+ * @code{.c}
+ * // Initialize generator (requires sodium_init())
+ * asciichat_error_t acds_string_init(void);
+ *
+ * // Generate random session string
+ * asciichat_error_t acds_string_generate(char *output, size_t output_size);
+ *
+ * // Validate session string format
+ * bool acds_string_validate(const char *str);
+ * @endcode
+ *
+ * **Validation Rules**:
+ * - Only lowercase letters and hyphens allowed
+ * - Exactly 2 hyphens (3 words)
+ * - No consecutive hyphens
+ * - Cannot start or end with hyphen
+ * - Maximum 47 characters
+ *
+ * @section acds_protocol Protocol
+ *
+ * @subsection acds_packet_flow Packet Flow
+ *
+ * ACDS uses the ACIP (ascii-chat Internet Protocol) packet format over TCP.
+ *
+ * **Session Creation Flow**:
+ * @code{.text}
+ * Server                                    ACDS
+ *   |                                        |
+ *   |--- ACIP_SESSION_CREATE --------------->|  (identity, capabilities, max_participants)
+ *   |                                        |  [Rate limit check]
+ *   |                                        |  [Signature verification (optional)]
+ *   |                                        |  [IP reachability check (Direct TCP)]
+ *   |                                        |  [Generate session_string]
+ *   |<-- ACIP_SESSION_CREATED ---------------|  (session_string, STUN/TURN servers)
+ *   |                                        |
+ * @endcode
+ *
+ * **Session Join Flow**:
+ * @code{.text}
+ * Client                                   ACDS
+ *   |                                        |
+ *   |--- ACIP_SESSION_LOOKUP --------------->|  (session_string)
+ *   |                                        |  [Rate limit check]
+ *   |<-- ACIP_SESSION_INFO ------------------|  (found, capabilities, has_password)
+ *   |                                        |
+ *   |--- ACIP_SESSION_JOIN ----------------->|  (session_string, identity, password)
+ *   |                                        |  [Rate limit check]
+ *   |                                        |  [Signature verification (optional)]
+ *   |                                        |  [Password verification (if required)]
+ *   |<-- ACIP_SESSION_JOINED ----------------|  (participant_id, server_address, TURN creds)
+ *   |                                        |
+ * @endcode
+ *
+ * **WebRTC Signaling Flow**:
+ * @code{.text}
+ * Client A                ACDS               Client B
+ *   |                      |                    |
+ *   |--- WEBRTC_SDP ------>|                    |  (SDP offer)
+ *   |                      |--- WEBRTC_SDP ---->|  (relay to recipient)
+ *   |                      |                    |
+ *   |                      |<-- WEBRTC_SDP ----|  (SDP answer)
+ *   |<-- WEBRTC_SDP -------|                    |  (relay to sender)
+ *   |                      |                    |
+ *   |--- WEBRTC_ICE ------>|                    |  (ICE candidates)
+ *   |                      |--- WEBRTC_ICE --->|  (relay)
+ *   |                      |                    |
+ * @endcode
+ *
+ * @subsection acds_packet_types Packet Types
+ *
+ * ACDS handles these ACIP packet types:
+ *
+ * | Packet Type | Direction | Description |
+ * |-------------|-----------|-------------|
+ * | ACIP_SESSION_CREATE | Client→ACDS | Create new session |
+ * | ACIP_SESSION_CREATED | ACDS→Client | Session created response |
+ * | ACIP_SESSION_LOOKUP | Client→ACDS | Query session info |
+ * | ACIP_SESSION_INFO | ACDS→Client | Session info response |
+ * | ACIP_SESSION_JOIN | Client→ACDS | Join existing session |
+ * | ACIP_SESSION_JOINED | ACDS→Client | Join response with connection info |
+ * | ACIP_SESSION_LEAVE | Client→ACDS | Leave session |
+ * | ACIP_WEBRTC_SDP | Client↔ACDS | SDP offer/answer relay |
+ * | ACIP_WEBRTC_ICE | Client↔ACDS | ICE candidate relay |
+ * | ACIP_ERROR | ACDS→Client | Error response |
+ *
+ * @section acds_nat_traversal NAT Traversal Technologies
+ *
+ * ACDS leverages multiple NAT traversal techniques to maximize connectivity:
+ *
+ * @subsection acds_upnp UPnP (Universal Plug and Play)
+ *
+ * - Works on ~70% of home routers
+ * - Automatic port forwarding via miniupnpc library
+ * - Enables direct TCP connections (lowest latency)
+ * - Server registers with `--upnp` flag
+ *
+ * @subsection acds_nat_pmp NAT-PMP (NAT Port Mapping Protocol)
+ *
+ * - Apple's alternative to UPnP
+ * - Common on Apple routers and some enterprise equipment
+ * - Also enables direct TCP connections
+ * - Supported via libnatpmp integration
+ *
+ * @subsection acds_webrtc WebRTC (ICE/STUN/TURN)
+ *
+ * - **STUN**: Discovers public IP/port mapping through NAT
+ * - **ICE**: Negotiates P2P connection through NAT using candidate gathering
+ * - **TURN**: Provides relay fallback when P2P fails (always succeeds, higher latency)
+ * - WebRTC DataChannels provide reliable data transfer
+ *
+ * **Connection Priority**:
+ * 1. **Direct TCP** (if UPnP/NAT-PMP succeeded) — Best latency
+ * 2. **WebRTC P2P** (via ICE/STUN) — Good latency, works behind most NATs
+ * 3. **TURN relay** (fallback) — Higher latency, always works
+ *
+ * @section acds_mdns mDNS Support (Local Network Discovery)
+ *
+ * ACDS also supports **mDNS (multicast DNS)** for local network discovery:
+ *
+ * @code{.bash}
+ * # Server announces on local network
+ * ascii-chat server --mdns
+ *
+ * # Client discovers servers automatically
+ * ascii-chat client --mdns
+ * @endcode
+ *
+ * **How it works**:
+ * - ACDS server advertises as `_ascii-chat-discovery-service._tcp.local`
+ * - Clients can discover ACDS servers on the LAN without knowing their IP
+ * - Zero-configuration for local sessions
+ * - No internet connectivity required
+ *
+ * @section acds_security Security
+ *
+ * @subsection acds_security_identity Identity Verification
+ *
+ * ACDS supports optional Ed25519 identity verification:
+ *
+ * **Server Identity** (`--require-server-identity`):
+ * - Servers must sign their SESSION_CREATE request with Ed25519
+ * - Prevents impersonation attacks
+ * - Signature covers: timestamp, capabilities, max_participants
+ *
+ * **Client Identity** (`--require-client-identity`):
+ * - Clients must sign their SESSION_JOIN request with Ed25519
+ * - Enables client whitelisting
+ * - Signature covers: timestamp, session_string
+ *
+ * **Timestamp Validation**:
+ * - All signed requests include Unix timestamp
+ * - 5-minute window for replay attack protection
+ * - Prevents captured requests from being replayed later
+ *
+ * @subsection acds_security_privacy Privacy Protection
+ *
+ * **IP Address Protection**:
+ * - By default, server IP is NOT revealed to clients
+ * - IP revealed only when:
+ *   - Password authentication succeeds, OR
+ *   - Server explicitly opts in with `expose_ip_publicly` flag
+ * - Prevents IP harvesting attacks
+ *
+ * **ACDS Never Sees Media**:
+ * - Only exchanges connection metadata (IPs, ports, session strings)
+ * - All media flows **directly between peers** using ACIP encryption
+ * - ACDS doesn't decrypt, proxy, or store media content
+ *
+ * @subsection acds_security_rate_limiting Rate Limiting
+ *
+ * ACDS implements rate limiting to prevent abuse:
+ *
+ * - **SESSION_CREATE**: Max 10 per hour per IP
+ * - **SESSION_LOOKUP**: Max 60 per minute per IP
+ * - **SESSION_JOIN**: Max 30 per minute per IP
+ * - Events stored in SQLite with automatic cleanup (1 hour retention)
+ * - Rate limit exceeded returns `ACIP_ERROR` packet
+ *
+ * @section acds_configuration Configuration
+ *
+ * @subsection acds_command_line Command-Line Options
+ *
+ * Run `ascii-chat discovery-server --help` for complete options:
+ *
+ * **Network Options**:
+ * - `-p --port PORT`: TCP listen port (default: 27225)
+ * - `[address] [address]`: IPv4 and/or IPv6 bind addresses (default: 127.0.0.1 ::1)
+ *
+ * **Database & Identity**:
+ * - `-d --database PATH`: SQLite database file path (default: ~/.config/ascii-chat/acds.db)
+ * - `-k --key PATH`: Ed25519 identity key file path (default: ~/.config/ascii-chat/acds_identity)
+ *
+ * **Security Policies**:
+ * - `-S --require-server-identity`: Require servers to provide signed identity
+ * - `-C --require-client-identity`: Require clients to provide signed identity
+ * - `-V --require-server-verify`: Require servers to verify client identity during handshake
+ * - `-c --require-client-verify`: Require clients to verify server identity during handshake
+ *
+ * **WebRTC Configuration**:
+ * - `--stun-servers LIST`: Comma-separated STUN server URLs
+ * - `--turn-servers LIST`: Comma-separated TURN server URLs
+ * - `--turn-username USER`: Username for TURN server authentication
+ * - `--turn-credential PASS`: Credential/password for TURN server authentication
+ * - `--turn-secret SECRET`: Shared secret for dynamic TURN credential generation (HMAC-SHA1)
+ * - `--upnp`: Enable UPnP/NAT-PMP for automatic router port mapping
+ *
+ * @subsection acds_examples Usage Examples
+ *
+ * @code{.bash}
+ * # Run discovery server on all interfaces
+ * ascii-chat discovery-server 0.0.0.0 :: --port 27225
+ *
+ * # Run with custom database and identity key
+ * ascii-chat discovery-server --database /var/lib/acds/sessions.db --key /etc/acds/identity.key
+ *
+ * # Run with strict identity requirements
+ * ascii-chat discovery-server --require-server-identity --require-client-identity
+ *
+ * # Run with debug logging
+ * ascii-chat -V --log-level debug discovery-server --port 27225
+ *
+ * # Run with custom STUN/TURN servers
+ * ascii-chat discovery-server \
+ *   --stun-servers "stun:stun.example.com:3478,stun:stun.l.google.com:19302" \
+ *   --turn-servers "turn:turn.example.com:3478" \
+ *   --turn-username myuser --turn-credential mypassword
+ * @endcode
+ *
+ * @section acds_integration Integration with Client and Server
+ *
+ * @subsection acds_server_integration Server Integration
+ *
+ * When starting an ascii-chat server with ACDS registration:
+ *
+ * @code{.bash}
+ * # Server registers with ACDS and gets a session string
+ * ascii-chat server --acds --acds-server acds.example.com --acds-port 27225
+ *
+ * # Server displays session string for users to share
+ * # "Session: happy-sunset-ocean"
+ * @endcode
+ *
+ * **Server Registration Process**:
+ * 1. Server sends ACIP_SESSION_CREATE to ACDS
+ * 2. ACDS generates unique session_string and stores session info
+ * 3. ACDS returns session_string and STUN/TURN servers
+ * 4. Server displays session_string to user
+ * 5. Server maintains keepalive with ACDS
+ *
+ * @subsection acds_client_integration Client Integration
+ *
+ * When connecting to an ascii-chat server via ACDS:
+ *
+ * @code{.bash}
+ * # Client looks up session and connects
+ * ascii-chat client happy-sunset-ocean
+ *
+ * # Or with explicit ACDS server
+ * ascii-chat client happy-sunset-ocean --acds-server acds.example.com
+ * @endcode
+ *
+ * **Client Connection Process**:
+ * 1. Client sends ACIP_SESSION_LOOKUP to ACDS
+ * 2. If session found, client sends ACIP_SESSION_JOIN
+ * 3. ACDS returns server address/port (if allowed) or TURN credentials
+ * 4. Client attempts connection:
+ *    - Direct TCP to server_address:server_port (if available)
+ *    - WebRTC P2P via ICE/STUN (if direct fails)
+ *    - TURN relay (fallback)
+ *
+ * @section acds_error_handling Error Handling
+ *
+ * ACDS returns standardized error codes via ACIP_ERROR packets:
+ *
+ * | Error Code | Meaning |
+ * |------------|---------|
+ * | ERROR_SESSION_NOT_FOUND | Invalid session string |
+ * | ERROR_SESSION_FULL | Session at max capacity |
+ * | ERROR_INVALID_PASSWORD | Password verification failed |
+ * | ERROR_CRYPTO_VERIFICATION | Signature verification failed |
+ * | ERROR_RATE_LIMITED | Too many requests from IP |
+ * | ERROR_INVALID_PARAM | Malformed request |
+ *
+ * @section acds_deployment ACDS Deployment & Operation
+ *
+ * @subsection acds_official_operation Official ACDS Infrastructure
+ *
+ * The official ACDS infrastructure consists of two components:
+ *
+ * 1. **discovery.ascii-chat.com** - Public key distribution website (HTTPS)
+ * 2. **discovery-server.ascii-chat.com:27225** - ACDS server (TCP)
+ *
+ * **Public Key Distribution via HTTPS** (discovery.ascii-chat.com):
+ * - SSH Ed25519 public key: `https://discovery.ascii-chat.com/key.pub` (OpenSSH format)
+ * - GPG public key: `https://discovery.ascii-chat.com/key.gpg` (GPG export format)
+ * - Both key types are provided as a convenience - clients can use either
+ * - Keys served over **HTTPS** for integrity and authenticity
+ * - HTML landing page displays key fingerprints and usage instructions
+ * - Plaintext rendering allows users to verify keys manually before downloading
+ *
+ * **ACDS Server** (discovery-server.ascii-chat.com:27225):
+ * - Default ACDS server address built into ascii-chat client
+ * - Handles session creation, lookup, join, and WebRTC signaling
+ * - Operates transparently - no manual configuration needed
+ * - Uses the Ed25519 keys published at discovery.ascii-chat.com
+ *
+ * **Client Trust Model**:
+ * - ascii-chat client automatically trusts keys downloaded from `discovery.ascii-chat.com` over HTTPS
+ * - Connects to `discovery-server.ascii-chat.com:27225` by default for ACDS operations
+ * - Keys are cached locally and trusted for subsequent connections
+ * - **User verification required** if ACDS keys ever change (prevents MITM attacks)
+ * - Alternative: Users can manually specify ACDS server and keys via command-line flags
+ *
+ * **Default Behavior** (no flags needed):
+ * @code{.bash}
+ * # Client automatically uses discovery-server.ascii-chat.com:27225
+ * # and trusts keys from discovery.ascii-chat.com
+ * ascii-chat client happy-sunset-ocean
+ *
+ * # Or explicitly specify ACDS server and key
+ * ascii-chat client happy-sunset-ocean \
+ *   --acds-server discovery-server.ascii-chat.com \
+ *   --acds-key https://discovery.ascii-chat.com/key.pub
+ * @endcode
+ *
+ * **Manual Key Specification** (optional):
+ * @code{.bash}
+ * # Download and verify SSH key
+ * curl -O https://discovery.ascii-chat.com/key.pub
+ * ssh-keygen -lf key.pub  # Verify fingerprint
+ *
+ * # Use local key file
+ * ascii-chat client happy-sunset-ocean \
+ *   --acds-key ~/.config/ascii-chat/acds_known_keys/discovery.ascii-chat.com.pub
+ * @endcode
+ *
+ * @subsection acds_operator_guidance Running Your Own ACDS Server
+ *
+ * If you want to run your own ACDS instance for privacy or custom deployments,
+ * you should follow the same pattern as the official server:
+ *
+ * **Public Key Hosting via HTTPS** (Required for public ACDS servers):
+ *
+ * To make your ACDS server usable by clients, you **must** host at least one public key
+ * over HTTPS at a URL of your choice:
+ *
+ * - Host your ACDS key (SSH Ed25519 or GPG) at any HTTPS URL
+ * - Examples: `https://your-domain.com/acds-key.pub` (SSH) or `https://your-domain.com/acds.gpg` (GPG)
+ * - You can provide both SSH and GPG keys (like the official server) or just one type
+ * - **HTTPS is required** - HTTP is not acceptable for key distribution
+ * - Serve keys as plaintext so users can verify them in their browser
+ * - Provide an HTML landing page with key fingerprints and usage instructions
+ *
+ * **Why HTTPS Key Hosting is Critical**:
+ *
+ * For third-party ACDS servers, ascii-chat clients will **not work** unless they can:
+ * 1. Download your public key from your HTTPS URL, OR
+ * 2. Be manually configured with your public key file via `--acds-key` flag
+ *
+ * Note: The official `discovery.ascii-chat.com` server is special-cased in the client - it
+ * automatically trusts keys downloaded from that domain over HTTPS. Your ACDS server
+ * will require explicit client configuration.
+ *
+ * **Client Configuration for Custom ACDS**:
+ *
+ * Clients connecting to your ACDS server must explicitly trust your key:
+ *
+ * @code{.bash}
+ * # Method 1: Download SSH key from your HTTPS endpoint (recommended)
+ * ascii-chat client session-name \
+ *   --acds-server acds.example.com \
+ *   --acds-key https://acds.example.com/acds-key.pub
+ *
+ * # Or download GPG key from your HTTPS endpoint
+ * ascii-chat client session-name \
+ *   --acds-server acds.example.com \
+ *   --acds-key https://acds.example.com/acds.gpg
+ *
+ * # Method 2: Distribute key file to users manually
+ * ascii-chat client session-name \
+ *   --acds-server acds.example.com \
+ *   --acds-key /path/to/acds-example-com.pub
+ * @endcode
+ *
+ * **IMPORTANT**: Without the `--acds-key` flag, ascii-chat will **not connect**
+ * to third-party ACDS servers. Only the official `discovery.ascii-chat.com` server
+ * has automatic HTTPS key trust built into the client.
+ *
+ * @section acds_best_practices Best Practices
+ *
+ * **For Public ACDS Operators**:
+ * - **Host at least one public key (SSH or GPG) over HTTPS** - this is mandatory for clients to use your server
+ * - You can provide both SSH and GPG keys (like discovery.ascii-chat.com) or just one type
+ * - Serve keys as plaintext for easy browser verification
+ * - Display key fingerprints on your HTML landing page
+ * - Document the `--acds-key https://your-domain.com/path/to/key` flag usage for your server
+ * - Clients must explicitly configure your key - only discovery.ascii-chat.com has automatic trust
+ * - Enable identity requirements for production (`--require-server-identity`, `--require-client-identity`)
+ * - Monitor rate limit events for abuse detection
+ * - Configure appropriate STUN/TURN servers for your region
+ * - Regular database backups (SQLite file)
+ * - Consider key rotation policies (with advance user notification)
+ *
+ * **For Private ACDS Operators** (Corporate/Organizational):
+ * - Distribute ACDS public key via internal documentation or HTTPS
+ * - Require client/server identity verification (`--require-*-identity` flags)
+ * - Run ACDS on internal network (no public internet exposure)
+ * - Use mDNS for local network discovery where appropriate
+ * - Implement monitoring and alerting for session activity
+ *
+ * **For Server Hosts**:
+ * - Enable `--upnp` for automatic port forwarding
+ * - Use identity keys for server authentication
+ * - Consider password-protecting sensitive sessions
+ * - Don't expose IP publicly unless necessary
+ *
+ * **For Clients**:
+ * - Verify server identity when possible (`--server-key`)
+ * - Use identity keys for authenticated sessions
+ * - Prefer local mDNS discovery on trusted networks
+ *
+ * @section acds_files Implementation Files
+ *
+ * **Source Files (src/acds/)**:
+ * - `main.c` - ACDS entry point and initialization
+ * - `server.c` - TCP server and packet dispatch
+ * - `signaling.c` - WebRTC SDP/ICE relay
+ *
+ * **Library Files (lib/acds/)**:
+ * - `database.c` - SQLite session storage
+ * - `session.c` - Session data structures
+ * - `identity.c` - Ed25519 key management
+ * - `strings.c` - Session string generation
+ *
+ * **Network Protocol (lib/network/acip/)**:
+ * - `acds.c` - ACDS packet parsing
+ * - `acds_handlers.c` - ACDS packet type handlers
+ * - `acds_client.c` - Client-side ACDS protocol
+ * - `send.c` - ACDS packet sending helpers
+ *
+ * @see @ref topic_network "Network Protocol"
+ * @see @ref topic_handshake "Cryptographic Handshake"
+ * @see @ref topic_server "Server Architecture"
+ * @see @ref topic_client "Client Architecture"
+ */
+

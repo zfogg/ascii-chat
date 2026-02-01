@@ -15,22 +15,18 @@
 #include "util/bytes.h"
 #include "ssh_agent.h"
 #include "../gpg/gpg.h" // For GPG agent signing support
-#include <bearssl.h>
-#include <sodium_bcrypt_pbkdf.h>
+#include <ascii-chat-deps/bearssl/inc/bearssl.h>
+#include <ascii-chat-deps/libsodium-bcrypt-pbkdf/include/sodium_bcrypt_pbkdf.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef _WIN32
-#include <io.h>
-#include <sys/stat.h>
-#define unlink _unlink
-#else
+#ifndef _WIN32
 #include <sys/wait.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #endif
+#include <sys/stat.h>
 
 // =============================================================================
 // Helper Functions
@@ -236,7 +232,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
         // Check if this key is in ssh-agent
         if (ssh_agent_has_key(&pub_key)) {
           fclose(pub_f);
-          log_info("Key found in ssh-agent - using cached key (no password required)");
+          log_debug("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
           key_out->type = KEY_TYPE_ED25519;
           key_out->use_ssh_agent = true;
@@ -726,10 +722,10 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     log_debug("Successfully parsed decrypted Ed25519 key");
 
     // Attempt to add the decrypted key to ssh-agent for future password-free use
-    log_info("Attempting to add decrypted key to ssh-agent");
+    log_debug("Attempting to add decrypted key to ssh-agent");
     asciichat_error_t agent_result = ssh_agent_add_key(key_out, key_path);
     if (agent_result == ASCIICHAT_OK) {
-      log_info("Successfully added key to ssh-agent - password will not be required on next run");
+      log_debug("Successfully added key to ssh-agent - password will not be required on next run");
     } else {
       // Non-fatal: key is already decrypted and loaded, just won't be cached in agent
       log_warn("Failed to add key to ssh-agent (non-fatal): %s", asciichat_error_string(agent_result));
@@ -997,20 +993,21 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);
   }
 
-  // Check if this is an SSH key file by looking for the header
+  // Check if this is an SSH key file or GPG armored key by looking for the header
   char header[BUFFER_SIZE_SMALL];
-  bool is_ssh_key_file = false;
+  bool is_valid_key_file = false;
   if (fgets(header, sizeof(header), test_file) != NULL) {
     if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||
-        strstr(header, "BEGIN EC PRIVATE KEY") != NULL) {
-      is_ssh_key_file = true;
+        strstr(header, "BEGIN EC PRIVATE KEY") != NULL || strstr(header, "BEGIN PGP PRIVATE KEY") != NULL ||
+        strstr(header, "BEGIN PGP SECRET KEY") != NULL) {
+      is_valid_key_file = true;
     }
   }
   (void)fclose(test_file);
 
-  if (!is_ssh_key_file) {
+  if (!is_valid_key_file) {
     SAFE_FREE(normalized_path);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "File is not a valid SSH key: %s", key_path);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "File is not a valid SSH or GPG key: %s", key_path);
   }
 
   // Check permissions for SSH key files (should be 600 or 400)
@@ -1084,7 +1081,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
     log_debug("GPG agent connection result: %d", agent_sock);
 
     if (agent_sock < 0) {
-      log_info("GPG agent not available, falling back to gpg --detach-sign for signing");
+      log_debug("GPG agent not available, falling back to gpg --detach-sign for signing");
 
       // Extract GPG key ID from key comment ("GPG key <key_id>")
       const char *key_id_prefix = "GPG key ";
@@ -1108,7 +1105,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
         return SET_ERRNO(ERROR_CRYPTO, "GPG fallback signing failed (both agent and gpg command failed)");
       }
 
-      log_info("Successfully signed message with gpg --detach-sign fallback (64 bytes)");
+      log_debug("Successfully signed message with gpg --detach-sign fallback (64 bytes)");
       return ASCIICHAT_OK;
     }
 
@@ -1129,7 +1126,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
       return SET_ERRNO(ERROR_CRYPTO, "GPG agent returned invalid signature length: %zu (expected 64)", sig_len);
     }
 
-    log_info("Successfully signed message with GPG agent (64 bytes)");
+    log_debug("Successfully signed message with GPG agent (64 bytes)");
     return ASCIICHAT_OK;
   }
 
@@ -1148,7 +1145,7 @@ asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *
       return result; // Error already set by ssh_agent_sign
     }
 
-    log_info("Successfully signed message with SSH agent (64 bytes)");
+    log_debug("Successfully signed message with SSH agent (64 bytes)");
     return ASCIICHAT_OK;
   }
 

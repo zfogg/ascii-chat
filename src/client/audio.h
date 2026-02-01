@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "audio/audio.h"
 #include "audio/client_audio_pipeline.h"
 
 /**
@@ -84,3 +85,13 @@ client_audio_pipeline_t *audio_get_pipeline(void);
  * @ingroup client_audio
  */
 int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, int max_samples);
+
+/**
+ * @brief Get the global audio context for use by other subsystems
+ * @return Pointer to the audio context, or NULL if not initialized
+ *
+ * Used by capture subsystem to enable microphone fallback when file has no audio.
+ *
+ * @ingroup client_audio
+ */
+audio_context_t *audio_get_context(void);

@@ -122,6 +122,31 @@
  * color = true
  * @endcode
  *
+ * @subsection config_toml_sections Configuration Sections
+ *
+ * **Section Names**: The section names in the TOML file (`[server]`, `[client]`, `[video]`, `[audio]`, `[logging]`)
+ * correspond directly to the option categories displayed in `ascii-chat --help` and the man page.
+ * You can find the complete list of available sections by running `ascii-chat --help` and looking at the
+ * category labels for each option.
+ *
+ * **Key Names**: Configuration keys are the long-form command-line option names with dashes converted to underscores.
+ * For example:
+ * - `--color-mode` flag becomes `color_mode` key in config
+ * - `--max-clients` flag becomes `max_clients` key in config
+ * - `--server-key` flag becomes `server_key` key in config
+ *
+ * To find the correct key name for any configuration option, take the long-form flag name
+ * (displayed in `--help` output), remove the leading dashes, and replace all dashes with underscores.
+ *
+ * **Conflicting Options**: Some configuration options conflict with each other and will cause the
+ * configuration file to fail loading if set simultaneously. For example:
+ * - `--file` and `--url` cannot both be set (URL takes priority)
+ * - `--loop` cannot be used with `--url` (network streams cannot be looped)
+ * - `--seek` requires either `--file` or `--url`
+ *
+ * If your configuration file fails to load with validation errors, check the error message
+ * for conflicting options and remove one of them.
+ *
  * @subsection config_toml_loading Loading Configuration
  *
  * **Load Config File**:

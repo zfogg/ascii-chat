@@ -16,7 +16,7 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 
 function(configure_libsodium_bcrypt_pbkdf)
-    set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf")
+    set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf")
     set(PATCHES_DIR "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches")
 
     # Apply patch #0: UBSAN fix (all platforms)

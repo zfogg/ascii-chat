@@ -33,6 +33,7 @@ RUN pacman -Sy --noconfirm git
 # - Add --noconfirm for non-interactive pacman installs
 # - Remove sudo (running as root in Docker)
 COPY scripts/install-deps.sh /tmp/install-deps.sh
+COPY .git /app/.git
 RUN chmod +x /tmp/install-deps.sh && \
     sed -i 's/^git submodule/#git submodule/g' /tmp/install-deps.sh && \
     sed -i 's/sudo pacman -S --needed/pacman -S --noconfirm --needed/g' /tmp/install-deps.sh && \
@@ -42,6 +43,7 @@ RUN chmod +x /tmp/install-deps.sh && \
 # These are not in install-deps.sh but required for the test environment
 RUN pacman -S --noconfirm --needed \
   which \
+  clang-tools \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 

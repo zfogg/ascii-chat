@@ -151,6 +151,12 @@
  * - **@ref topic_server_stats "Statistics and Monitoring"**: Performance monitoring and resource tracking
  * - **@ref topic_server_crypto "Server Cryptography"**: Per-client handshake and session encryption
  *
+ * **Discovery Service (ACDS):**
+ * - **@ref topic_acds "ACDS Overview"**: Session discovery, NAT traversal, and WebRTC signaling
+ * - **@ref acds_server "ACDS Server"**: TCP connection handling and packet dispatch
+ * - **@ref acds_database "Session Database"**: SQLite-based session storage
+ * - **@ref acds_signaling "WebRTC Signaling"**: SDP/ICE relay for P2P connections
+ *
  * For more details, explore the **@ref topic_categories "Topic Categories"** page, which provides
  * links to all topics organized by category. Key topics include:
  *

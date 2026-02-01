@@ -5,32 +5,31 @@
  */
 
 #include "options/config.h"
+#include "common/error_codes.h"
 #include "options/options.h"
 #include "options/validation.h"
+#include "options/schema.h"
+#include "options/rcu.h"
 #include "util/path.h"
+#include "util/utf8.h"
 #include "common.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
 #include "platform/question.h"
+#include "platform/stat.h"
+#include "platform/filesystem.h"
 #include "crypto/crypto.h"
 #include "log/logging.h"
+#include "video/palette.h"
 #include "version.h"
 #include "tooling/defer/defer.h"
 
-#include "tomlc17.h"
+#include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
-#ifdef _WIN32
-#include <io.h>
-#include <direct.h>
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
-#define mkdir(path, mode) _mkdir(path)
-#else
-#include <unistd.h>
-#endif
 
 /**
  * @name Internal Macros
@@ -38,16 +37,14 @@
  */
 
 /**
- * @brief Print configuration warning to stderr
+ * @brief Print configuration warning using the logging system
  *
- * Config warnings are printed directly to stderr because logging may not be
- * initialized yet when configuration is loaded. This ensures users see
- * validation errors immediately.
+ * Uses log_warn so that config warnings respect the --quiet flag and
+ * are routed through the logging system for proper filtering.
  */
 #define CONFIG_WARN(fmt, ...)                                                                                          \
   do {                                                                                                                 \
-    (void)fprintf(stderr, "WARNING: Config file: " fmt "\n", ##__VA_ARGS__);                                           \
-    (void)fflush(stderr);                                                                                              \
+    log_warn("Config file: " fmt, ##__VA_ARGS__);                                                                      \
   } while (0)
 
 /**
@@ -65,71 +62,8 @@
 
 /** @} */
 
-/**
- * @name Configuration State Tracking
- * @{
- *
- * These flags track which options were set from the config file. They are
- * primarily used for debugging and logging purposes, as CLI arguments will
- * override config values regardless of these flags.
- */
-
-/** @brief Track if network address was set from config */
-static bool config_address_set = false;
-/** @brief Track if IPv6 bind address was set from config (server only) */
-static bool config_address6_set = false;
-/** @brief Track if network port was set from config */
-static bool config_port_set = false;
-/** @brief Track if client width was set from config */
-static bool config_width_set = false;
-/** @brief Track if client height was set from config */
-static bool config_height_set = false;
-/** @brief Track if webcam index was set from config */
-static bool config_webcam_index_set = false;
-/** @brief Track if webcam flip was set from config */
-static bool config_webcam_flip_set = false;
-/** @brief Track if color mode was set from config */
-static bool config_color_mode_set = false;
-/** @brief Track if render mode was set from config */
-static bool config_render_mode_set = false;
-/** @brief Track if palette type was set from config */
-static bool config_palette_set = false;
-/** @brief Track if palette chars were set from config */
-static bool config_palette_chars_set = false;
-/** @brief Track if audio enabled was set from config */
-static bool config_audio_enabled_set = false;
-/** @brief Track if microphone index was set from config */
-static bool config_microphone_index_set = false;
-/** @brief Track if speakers index was set from config */
-static bool config_speakers_index_set = false;
-/** @brief Track if stretch was set from config */
-static bool config_stretch_set = false;
-/** @brief Track if quiet mode was set from config */
-static bool config_quiet_set = false;
-/** @brief Track if snapshot mode was set from config */
-static bool config_snapshot_mode_set = false;
-/** @brief Track if mirror mode was set from config */
-static bool config_mirror_mode_set = false;
-/** @brief Track if snapshot delay was set from config */
-static bool config_snapshot_delay_set = false;
-/** @brief Track if log file was set from config */
-static bool config_log_file_set = false;
-/** @brief Track if encryption enabled was set from config */
-static bool config_encrypt_enabled_set = false;
-/** @brief Track if encryption key was set from config */
-static bool config_encrypt_key_set = false;
-/** @brief Track if password was set from config */
-static bool config_password_set = false;
-/** @brief Track if keyfile was set from config */
-static bool config_encrypt_keyfile_set = false;
-/** @brief Track if no_encrypt flag was set from config */
-static bool config_no_encrypt_set = false;
-/** @brief Track if server key was set from config (client only) */
-static bool config_server_key_set = false;
-/** @brief Track if client keys were set from config (server only) */
-static bool config_client_keys_set = false;
-
-/** @} */
+// Configuration state tracking removed - not needed with schema-driven approach
+// CLI arguments always override config values, so no need to track what was set
 
 /* Validation functions are now provided by options/validation.h */
 
@@ -141,670 +75,674 @@ static bool config_client_keys_set = false;
  */
 
 /**
- * @brief Extract string value from TOML datum
- * @param datum TOML datum structure
- * @return Pointer to string value, or NULL if not a string type
+ * @brief Validate and return a TOML string value
+ * @param datum TOML datum to extract string from
+ * @return String value if valid UTF-8, NULL otherwise
  *
+ * Validates that the TOML string value contains valid UTF-8.
+ * Rejects invalid UTF-8 sequences for security and robustness.
  * @ingroup config
  */
-static const char *get_toml_string(toml_datum_t datum) {
-  if (datum.type == TOML_STRING) {
-    return datum.u.s;
+static const char *get_toml_string_validated(toml_datum_t datum) {
+  if (datum.type != TOML_STRING) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "not a toml string");
+    return NULL;
   }
-  return NULL;
+
+  const char *str = datum.u.s;
+  if (!str) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "no toml string");
+    return NULL;
+  }
+
+  // Validate UTF-8 encoding using utility function
+  if (!utf8_is_valid(str)) {
+    log_warn("Config value contains invalid UTF-8 sequence");
+    return NULL;
+  }
+
+  return str;
 }
 
 /** @} */
 
-/**
- * @name Internal Configuration Application Functions
- * @{
- *
- * These functions apply configuration values from TOML sections to global
- * options, with validation and error handling.
- */
+// ============================================================================
+// Type Handler Registry - Consolidates 4 duplicated switch statements
+// ============================================================================
+// TECHNICAL DEBT FIX: The code previously had 4 separate switch(meta->type)
+// blocks for extract, parse, write, and format operations. This consolidated
+// registry eliminates ~300 lines of code duplication while maintaining all
+// type-specific logic and special case handling.
 
 /**
- * @brief Load and apply network configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[network]` section:
- * - `network.port`: Port number (1-65535), can be integer or string (shared between server and client)
- *
- * For client:
- * - `client.address` or `network.address`: Server address to connect to
- *
- * For server:
- * - `server.bind_ipv4`: IPv4 bind address (default: 127.0.0.1)
- * - `server.bind_ipv6`: IPv6 bind address (default: ::1)
- * - `network.address`: Legacy/fallback bind address (used if server.bind_ipv4/bind_ipv6 not set)
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
+ * @brief Union holding all possible parsed option values
  */
-static void apply_network_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  if (is_client) {
-    // Client: Get connect address from client.address or network.address (legacy)
-    toml_datum_t address = toml_seek(toptab, "client.address");
-    const char *address_str = get_toml_string(address);
-    if (!address_str || strlen(address_str) == 0) {
-      // Fallback to legacy network.address
-      toml_datum_t network = toml_seek(toptab, "network");
-      if (network.type == TOML_TABLE) {
-        address = toml_seek(toptab, "network.address");
-        address_str = get_toml_string(address);
-      }
+typedef union {
+  char str_value[OPTIONS_BUFF_SIZE]; // STRING type
+  int int_value;                     // INT type
+  bool bool_value;                   // BOOL type
+  float float_value;                 // DOUBLE type (float variant)
+  double double_value;               // DOUBLE type (double variant)
+} option_parsed_value_t;
+
+/**
+ * @brief Type handler - encapsulates all 4 operations for one option type
+ *
+ * Each operation is a stage in the config parsing pipeline:
+ * 1. Extract: TOML datum → intermediate (value_str, int_val, etc)
+ * 2. Parse: intermediate → validated parsed value
+ * 3. Write: parsed value → struct field
+ * 4. Format: struct field → TOML output string
+ */
+typedef struct {
+  void (*extract)(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                  bool *has_value);
+  asciichat_error_t (*parse_validate)(const char *value_str, const config_option_metadata_t *meta,
+                                      option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+  asciichat_error_t (*write_to_struct)(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                       options_t *opts, char *error_msg, size_t error_size);
+  void (*format_output)(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                        size_t bufsize);
+} option_type_handler_t;
+
+// Forward declarations
+static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                           bool *has_value);
+static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                        bool *has_value);
+static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                         bool *has_value);
+static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                           bool *has_value);
+static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta,
+                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta,
+                                            option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta,
+                                             option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta,
+                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size);
+static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                      options_t *opts, char *error_msg, size_t error_size);
+static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                   options_t *opts, char *error_msg, size_t error_size);
+static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                    options_t *opts, char *error_msg, size_t error_size);
+static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                      options_t *opts, char *error_msg, size_t error_size);
+static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                          size_t bufsize);
+static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                       size_t bufsize);
+static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                        size_t bufsize);
+static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                          size_t bufsize);
+
+// Handler registry - indexed by option_type_t
+static const option_type_handler_t g_type_handlers[] = {
+    [OPTION_TYPE_STRING] = {extract_string, parse_validate_string, write_string, format_string},
+    [OPTION_TYPE_INT] = {extract_int, parse_validate_int, write_int, format_int},
+    [OPTION_TYPE_BOOL] = {extract_bool, parse_validate_bool, write_bool, format_bool},
+    [OPTION_TYPE_DOUBLE] = {extract_double, parse_validate_double, write_double, format_double},
+    [OPTION_TYPE_CALLBACK] = {NULL, NULL, NULL, NULL},
+    [OPTION_TYPE_ACTION] = {NULL, NULL, NULL, NULL},
+};
+
+// ============================================================================
+// Type Handler Implementations
+// ============================================================================
+
+/**
+ * @brief Extract STRING value from TOML datum
+ */
+static void extract_string(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                           bool *has_value) {
+  (void)int_val;
+  (void)bool_val;
+  (void)double_val;
+
+  if (datum.type == TOML_STRING) {
+    const char *str = get_toml_string_validated(datum);
+    if (str && strlen(str) > 0) {
+      SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+      *has_value = true;
     }
-    if (address_str && strlen(address_str) > 0 && !config_address_set) {
-      char parsed_addr[OPTIONS_BUFF_SIZE];
-      char error_msg[256];
-      if (validate_opt_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                  sizeof(error_msg)) == 0) {
-        SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-        config_address_set = true;
-      } else {
-        CONFIG_WARN("%s (skipping client address)", error_msg);
+  } else if (datum.type == TOML_INT64) {
+    // Convert integer to string (e.g., port = 7777)
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%lld", (long long)datum.u.int64);
+    *has_value = true;
+  }
+}
+
+/**
+ * @brief Extract INT value from TOML datum
+ */
+static void extract_int(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                        bool *has_value) {
+  (void)bool_val;
+  (void)double_val;
+
+  if (datum.type == TOML_INT64) {
+    *int_val = (int)datum.u.int64;
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%d", *int_val);
+    *has_value = true;
+  } else if (datum.type == TOML_STRING) {
+    const char *str = get_toml_string_validated(datum);
+    if (str) {
+      SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+      *has_value = true;
+    }
+  }
+}
+
+/**
+ * @brief Extract BOOL value from TOML datum
+ */
+static void extract_bool(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                         bool *has_value) {
+  (void)int_val;
+  (void)double_val;
+
+  if (datum.type == TOML_BOOLEAN) {
+    *bool_val = datum.u.boolean;
+    // Also set value_str for parse_validate phase
+    SAFE_STRNCPY(value_str, *bool_val ? "true" : "false", BUFFER_SIZE_MEDIUM);
+    *has_value = true;
+  }
+}
+
+/**
+ * @brief Extract DOUBLE value from TOML datum
+ */
+static void extract_double(toml_datum_t datum, char *value_str, int *int_val, bool *bool_val, double *double_val,
+                           bool *has_value) {
+  (void)int_val;
+  (void)bool_val;
+
+  if (datum.type == TOML_FP64) {
+    *double_val = datum.u.fp64;
+    SAFE_SNPRINTF(value_str, BUFFER_SIZE_MEDIUM, "%.10g", *double_val);
+    *has_value = true;
+  } else if (datum.type == TOML_STRING) {
+    const char *str = get_toml_string_validated(datum);
+    if (str) {
+      SAFE_STRNCPY(value_str, str, BUFFER_SIZE_MEDIUM);
+      *has_value = true;
+    }
+  }
+}
+
+/**
+ * @brief Parse and validate STRING value
+ */
+static asciichat_error_t parse_validate_string(const char *value_str, const config_option_metadata_t *meta,
+                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  (void)meta;
+  (void)error_msg;
+  (void)error_size;
+
+  SAFE_STRNCPY(parsed->str_value, value_str, sizeof(parsed->str_value));
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Parse and validate INT value
+ */
+static asciichat_error_t parse_validate_int(const char *value_str, const config_option_metadata_t *meta,
+                                            option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  // Detect enum fields by checking field_offset
+  int enum_val = -1;
+  bool is_enum = false;
+
+  if (meta->field_offset == offsetof(options_t, color_mode)) {
+    enum_val = validate_opt_color_mode(value_str, error_msg, error_size);
+    is_enum = true;
+  } else if (meta->field_offset == offsetof(options_t, render_mode)) {
+    enum_val = validate_opt_render_mode(value_str, error_msg, error_size);
+    is_enum = true;
+  } else if (meta->field_offset == offsetof(options_t, palette_type)) {
+    enum_val = validate_opt_palette(value_str, error_msg, error_size);
+    is_enum = true;
+  }
+
+  if (is_enum) {
+    // Enum parsing
+    if (enum_val < 0) {
+      if (strlen(error_msg) == 0) {
+        SAFE_SNPRINTF(error_msg, error_size, "Invalid enum value: %s", value_str);
       }
+      return ERROR_CONFIG;
+    }
+    parsed->int_value = enum_val;
+  } else {
+    // Regular integer parsing
+    char *endptr = NULL;
+    long parsed_val = strtol(value_str, &endptr, 10);
+    if (*endptr != '\0') {
+      SAFE_SNPRINTF(error_msg, error_size, "Invalid integer: %s", value_str);
+      return ERROR_CONFIG;
+    }
+    if (parsed_val < INT_MIN || parsed_val > INT_MAX) {
+      SAFE_SNPRINTF(error_msg, error_size, "Integer out of range: %s", value_str);
+      return ERROR_CONFIG;
+    }
+    parsed->int_value = (int)parsed_val;
+  }
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Parse and validate BOOL value
+ */
+static asciichat_error_t parse_validate_bool(const char *value_str, const config_option_metadata_t *meta,
+                                             option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  (void)meta;
+  (void)error_msg;
+  (void)error_size;
+
+  // Parse boolean from string representation ("true" or "false")
+  if (value_str && (strcmp(value_str, "true") == 0 || strcmp(value_str, "1") == 0 || strcmp(value_str, "yes") == 0)) {
+    parsed->bool_value = true;
+  } else {
+    parsed->bool_value = false;
+  }
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Parse and validate DOUBLE value
+ */
+static asciichat_error_t parse_validate_double(const char *value_str, const config_option_metadata_t *meta,
+                                               option_parsed_value_t *parsed, char *error_msg, size_t error_size) {
+  (void)meta;
+
+  char *endptr = NULL;
+  double parsed_val = strtod(value_str, &endptr);
+  if (*endptr != '\0') {
+    SAFE_SNPRINTF(error_msg, error_size, "Invalid float: %s", value_str);
+    return ERROR_CONFIG;
+  }
+  parsed->float_value = (float)parsed_val;
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write STRING value to struct field
+ */
+static asciichat_error_t write_string(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                      options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+  const char *final_value = parsed->str_value;
+
+  // Special handling for path-based options (keys, log files)
+  bool is_path_option = (strstr(meta->toml_key, "key") != NULL || strstr(meta->toml_key, "log_file") != NULL ||
+                         strstr(meta->toml_key, "keyfile") != NULL);
+  if (is_path_option) {
+    // Check if it's a path that needs normalization
+    if (path_looks_like_path(final_value)) {
+      char *normalized = NULL;
+      path_role_t role = PATH_ROLE_CONFIG_FILE; // Default
+      if (strstr(meta->toml_key, "key") != NULL) {
+        role = (strstr(meta->toml_key, "server_key") != NULL || strstr(meta->toml_key, "client_keys") != NULL)
+                   ? PATH_ROLE_KEY_PUBLIC
+                   : PATH_ROLE_KEY_PRIVATE;
+      } else if (strstr(meta->toml_key, "log_file") != NULL) {
+        role = PATH_ROLE_LOG_FILE;
+      }
+
+      asciichat_error_t path_result = path_validate_user_path(final_value, role, &normalized);
+      if (path_result != ASCIICHAT_OK) {
+        SAFE_FREE(normalized);
+        return path_result;
+      }
+      SAFE_STRNCPY(field_ptr, normalized, meta->field_size);
+      SAFE_FREE(normalized);
+    } else {
+      // Not a path, just an identifier (e.g., "gpg:keyid", "github:user")
+      SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+    }
+
+    // Auto-enable encryption for crypto.key, crypto.password, crypto.keyfile
+    if (strstr(meta->toml_key, "crypto.key") != NULL || strstr(meta->toml_key, "crypto.password") != NULL ||
+        strstr(meta->toml_key, "crypto.keyfile") != NULL) {
+      opts->encrypt_enabled = 1;
     }
   } else {
-    // Server: Get bind addresses from server.bind_ipv4 and server.bind_ipv6
-    toml_datum_t server = toml_seek(toptab, "server");
-    if (server.type == TOML_TABLE) {
-      // IPv4 bind address - seek from the server table, not root
-      toml_datum_t bind_ipv4 = toml_get(server, "bind_ipv4");
-      const char *ipv4_str = get_toml_string(bind_ipv4);
-      if (ipv4_str && strlen(ipv4_str) > 0 && !config_address_set) {
-        char parsed_addr[OPTIONS_BUFF_SIZE];
-        char error_msg[256];
-        if (validate_opt_ip_address(ipv4_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                    sizeof(error_msg)) == 0) {
-          SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-          config_address_set = true;
-        } else {
-          const char *errmsg = (strlen(error_msg) > 0) ? error_msg : "Invalid IPv4 address";
-          CONFIG_WARN("Invalid server.bind_ipv4 value '%s': %s (skipping)", ipv4_str, errmsg);
-        }
+    SAFE_STRNCPY(field_ptr, final_value, meta->field_size);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write INT value to struct field
+ */
+static asciichat_error_t write_int(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                   options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+
+  // Handle unsigned short int fields (webcam_index)
+  if (meta->field_size == sizeof(unsigned short int)) {
+    *(unsigned short int *)field_ptr = (unsigned short int)parsed->int_value;
+  } else {
+    *(int *)field_ptr = parsed->int_value;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write BOOL value to struct field
+ */
+static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                    options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+
+  // Handle unsigned short int bool fields (common in options_t)
+  if (meta->field_size == sizeof(unsigned short int)) {
+    *(unsigned short int *)field_ptr = parsed->bool_value ? 1 : 0;
+  } else {
+    *(bool *)field_ptr = parsed->bool_value;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Write DOUBLE value to struct field
+ */
+static asciichat_error_t write_double(const option_parsed_value_t *parsed, const config_option_metadata_t *meta,
+                                      options_t *opts, char *error_msg, size_t error_size) {
+  (void)error_msg;
+  (void)error_size;
+
+  char *field_ptr = ((char *)opts) + meta->field_offset;
+
+  // Check field_size to distinguish float from double
+  // Use memcpy for alignment-safe writes
+  if (meta->field_size == sizeof(float)) {
+    float float_val = (float)parsed->float_value;
+    memcpy(field_ptr, &float_val, sizeof(float));
+  } else {
+    double double_val = (double)parsed->float_value;
+    memcpy(field_ptr, &double_val, sizeof(double));
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Format STRING value for TOML output
+ */
+static void format_string(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                          size_t bufsize) {
+  (void)field_size;
+  (void)meta;
+
+  const char *str_value = (const char *)field_ptr;
+  if (str_value && strlen(str_value) > 0) {
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", str_value);
+  } else {
+    SAFE_SNPRINTF(buf, bufsize, "\"\"");
+  }
+}
+
+/**
+ * @brief Format INT value for TOML output
+ */
+static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                       size_t bufsize) {
+  (void)meta;
+
+  int int_value = 0;
+  if (field_size == sizeof(unsigned short int)) {
+    int_value = *(unsigned short int *)field_ptr;
+  } else {
+    int_value = *(int *)field_ptr;
+  }
+  SAFE_SNPRINTF(buf, bufsize, "%d", int_value);
+}
+
+/**
+ * @brief Format BOOL value for TOML output
+ */
+static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                        size_t bufsize) {
+  (void)meta;
+
+  bool bool_value = false;
+  if (field_size == sizeof(unsigned short int)) {
+    bool_value = *(unsigned short int *)field_ptr != 0;
+  } else {
+    bool_value = *(bool *)field_ptr;
+  }
+  SAFE_SNPRINTF(buf, bufsize, "%s", bool_value ? "true" : "false");
+}
+
+/**
+ * @brief Format DOUBLE value for TOML output
+ */
+static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                          size_t bufsize) {
+  (void)meta;
+
+  if (field_size == sizeof(float)) {
+    float float_value = 0.0f;
+    memcpy(&float_value, field_ptr, sizeof(float));
+    SAFE_SNPRINTF(buf, bufsize, "%.1f", (double)float_value);
+  } else {
+    double double_value = 0.0;
+    memcpy(&double_value, field_ptr, sizeof(double));
+    SAFE_SNPRINTF(buf, bufsize, "%.1f", double_value);
+  }
+}
+
+/**
+ * @name Schema-Based Configuration Parser
+ * @{
+ */
+
+/**
+ * @brief Apply configuration from TOML using schema metadata
+ * @param toptab Root TOML table
+ * @param is_client True for client mode, false for server mode
+ * @param opts Options structure to populate
+ * @param strict If true, return error on first validation failure
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Generic schema-driven parser that:
+ * 1. Iterates through all options in schema
+ * 2. Checks if option applies to current mode
+ * 3. Looks up TOML value
+ * 4. Validates and converts type
+ * 5. Writes to options_t using field_offset
+ *
+ * Handles special cases:
+ * - palette.chars auto-setting palette_type
+ * - Path normalization for keys/log files
+ * - Type coercion (int/string, float/string)
+ * - crypto.no_encrypt special logic
+ */
+static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode_t detected_mode, options_t *opts,
+                                             bool strict) {
+  size_t metadata_count = 0;
+  const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
+  asciichat_error_t first_error = ASCIICHAT_OK;
+
+  // Track which options were set to avoid duplicates (e.g., log_file vs logging.log_file)
+  // Use a simple array on the stack - metadata_count is small (< 50)
+  bool option_set_flags[64] = {0}; // Max expected options
+  if (metadata_count > 64) {
+    CONFIG_WARN("Too many options in schema (%zu), some may be skipped", metadata_count);
+  }
+
+  for (size_t i = 0; i < metadata_count; i++) {
+    const config_option_metadata_t *meta = &metadata[i];
+
+    // Validate mode compatibility using mode_bitmask
+    // If mode_bitmask is 0 or BINARY, option applies to all modes
+    if (meta->mode_bitmask != 0 && !(meta->mode_bitmask & OPTION_MODE_BINARY)) {
+      // Option has specific mode restrictions - check if current mode matches
+      bool applies_to_mode = false;
+      if (detected_mode >= 0 && detected_mode <= MODE_DISCOVERY) {
+        option_mode_bitmask_t mode_bit = (1 << detected_mode);
+        applies_to_mode = (meta->mode_bitmask & mode_bit) != 0;
       }
 
-      // IPv6 bind address - seek from the server table, not root
-      toml_datum_t bind_ipv6 = toml_get(server, "bind_ipv6");
-      const char *ipv6_str = get_toml_string(bind_ipv6);
-      if (ipv6_str && strlen(ipv6_str) > 0 && !config_address6_set) {
-        char parsed_addr[OPTIONS_BUFF_SIZE];
-        char error_msg[256];
-        if (validate_opt_ip_address(ipv6_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                    sizeof(error_msg)) == 0) {
-          SAFE_SNPRINTF(opts->address6, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-          config_address6_set = true;
-        } else {
-          const char *errmsg = (strlen(error_msg) > 0) ? error_msg : "Invalid IPv6 address";
-          CONFIG_WARN("Invalid server.bind_ipv6 value '%s': %s (skipping)", ipv6_str, errmsg);
+      if (!applies_to_mode) {
+        log_debug("Config: Option '%s' is not supported for this mode (skipping)", meta->toml_key);
+        if (strict) {
+          return SET_ERRNO(ERROR_CONFIG, "Option '%s' is not supported for this mode", meta->toml_key);
         }
+        continue;
       }
     }
 
-    // Fallback to legacy network.address if no server-specific bind addresses found
-    if (!config_address_set) {
-      toml_datum_t network = toml_seek(toptab, "network");
-      if (network.type == TOML_TABLE) {
-        toml_datum_t address = toml_get(network, "address");
-        const char *address_str = get_toml_string(address);
-        if (address_str && strlen(address_str) > 0) {
-          char parsed_addr[OPTIONS_BUFF_SIZE];
-          char error_msg[256];
-          if (validate_opt_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                      sizeof(error_msg)) == 0) {
-            SAFE_SNPRINTF(opts->address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
-            config_address_set = true;
-          } else {
-            CONFIG_WARN("%s (skipping network.address)", error_msg);
+    // Skip if already set (avoid processing duplicates like log_file vs logging.log_file)
+    if (option_set_flags[i]) {
+      continue;
+    }
+
+    // Look up TOML value
+    toml_datum_t datum = toml_seek(toptab, meta->toml_key);
+    if (datum.type == TOML_UNKNOWN) {
+      continue; // Option not present in config
+    }
+
+    // Extract value based on type using handler
+    char value_str[BUFFER_SIZE_MEDIUM] = {0};
+    bool has_value = false;
+    int int_val = 0;
+    bool bool_val = false;
+    double double_val = 0.0;
+
+    // Use type handler for extraction (consolidated from 5 switch cases)
+    if (g_type_handlers[meta->type].extract) {
+      g_type_handlers[meta->type].extract(datum, value_str, &int_val, &bool_val, &double_val, &has_value);
+    }
+
+    if (!has_value) {
+      continue;
+    }
+
+    // Special handling for palette.chars (auto-sets palette_type to CUSTOM)
+    if (strcmp(meta->toml_key, "palette.chars") == 0) {
+      const char *chars_str = get_toml_string_validated(datum);
+      if (chars_str && strlen(chars_str) > 0) {
+        if (strlen(chars_str) < sizeof(opts->palette_custom)) {
+          SAFE_STRNCPY(opts->palette_custom, chars_str, sizeof(opts->palette_custom));
+          opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
+          opts->palette_custom_set = true;
+          opts->palette_type = PALETTE_CUSTOM;
+          option_set_flags[i] = true;
+        } else {
+          CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(chars_str),
+                      sizeof(opts->palette_custom) - 1);
+          if (strict) {
+            return SET_ERRNO(ERROR_CONFIG, "palette.chars too long");
           }
         }
       }
+      continue;
     }
-  }
 
-  // Port (shared between server and client)
-  toml_datum_t network = toml_seek(toptab, "network");
-  if (network.type != TOML_TABLE) {
-    return; // No network section
-  }
+    // Parse and validate value using handler
+    char error_msg[BUFFER_SIZE_SMALL] = {0};
+    option_parsed_value_t parsed = {0};
+    asciichat_error_t parse_result = ASCIICHAT_OK;
 
-  // Port (can be string or integer in TOML)
-  toml_datum_t port = toml_seek(toptab, "network.port");
-  if (port.type == TOML_STRING && !config_port_set) {
-    const char *port_str = port.u.s;
-    char error_msg[256];
-    if (validate_opt_port(port_str, error_msg, sizeof(error_msg)) == 0) {
-      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%s", port_str);
-      config_port_set = true;
+    // Use type handler for parsing/validation (consolidated from 5 switch cases)
+    if (g_type_handlers[meta->type].parse_validate) {
+      parse_result = g_type_handlers[meta->type].parse_validate(value_str, meta, &parsed, error_msg, sizeof(error_msg));
+    } else if (meta->type != OPTION_TYPE_CALLBACK && meta->type != OPTION_TYPE_ACTION) {
+      // Handler exists for all types except CALLBACK and ACTION
+      parse_result = ERROR_CONFIG;
     } else {
-      CONFIG_WARN("%s (skipping network.port)", error_msg);
+      // Skip callback and action types (not loaded from config)
+      continue;
     }
-  } else if (port.type == TOML_INT64 && !config_port_set) {
-    int64_t port_val = port.u.int64;
-    if (port_val >= 1 && port_val <= 65535) {
-      SAFE_SNPRINTF(opts->port, OPTIONS_BUFF_SIZE, "%lld", (long long)port_val);
-      config_port_set = true;
-    } else {
-      CONFIG_WARN("Invalid port value %lld (must be 1-65535, skipping network.port)", (long long)port_val);
-    }
-  }
-}
 
-/**
- * @brief Load and apply client configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[client]` section. Only processes config
- * when `is_client` is true (server ignores client-specific options).
- *
- * Supported options:
- * - `client.width`: Terminal width (positive integer)
- * - `client.height`: Terminal height (positive integer)
- * - `client.webcam_index`: Webcam device index (non-negative integer)
- * - `client.webcam_flip`: Flip webcam image horizontally (boolean)
- * - `client.color_mode`: Color mode ("none", "16", "256", "truecolor")
- * - `client.render_mode`: Render mode ("half-block", "block", "char")
- * - `client.fps`: Frames per second (1-144), can be integer or string
- * - `client.stretch`: Stretch video to terminal size (boolean)
- * - `client.quiet`: Quiet mode (boolean)
- * - `client.snapshot_mode`: Snapshot mode (boolean)
- * - `client.mirror_mode`: Mirror mode (boolean) - view webcam locally without server
- * - `client.snapshot_delay`: Snapshot delay in seconds (non-negative float)
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_client_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  if (!is_client) {
-    return; // Server doesn't use client config
-  }
-
-  toml_datum_t client = toml_seek(toptab, "client");
-  if (client.type != TOML_TABLE) {
-    return; // No client section
-  }
-
-  // Width
-  toml_datum_t width = toml_seek(toptab, "client.width");
-  if (width.type == TOML_INT64 && !config_width_set && !opts->auto_width) {
-    int64_t width_val = width.u.int64;
-    if (width_val > 0) {
-      opts->width = (int)width_val;
-      opts->auto_width = false;
-      config_width_set = true;
-    }
-  } else if (width.type == TOML_STRING && !config_width_set) {
-    const char *width_str = width.u.s;
-    char error_msg[256];
-    int width_val = validate_opt_positive_int(width_str, error_msg, sizeof(error_msg));
-    if (width_val > 0) {
-      opts->width = width_val;
-      opts->auto_width = false;
-      config_width_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.width)", error_msg);
-    }
-  }
-
-  // Height
-  toml_datum_t height = toml_seek(toptab, "client.height");
-  if (height.type == TOML_INT64 && !config_height_set && !opts->auto_height) {
-    int64_t height_val = height.u.int64;
-    if (height_val > 0) {
-      opts->height = (int)height_val;
-      opts->auto_height = false;
-      config_height_set = true;
-    }
-  } else if (height.type == TOML_STRING && !config_height_set) {
-    const char *height_str = height.u.s;
-    char error_msg[256];
-    int height_val = validate_opt_positive_int(height_str, error_msg, sizeof(error_msg));
-    if (height_val > 0) {
-      opts->height = height_val;
-      opts->auto_height = false;
-      config_height_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.height)", error_msg);
-    }
-  }
-
-  // Webcam index
-  toml_datum_t webcam_index = toml_seek(toptab, "client.webcam_index");
-  if (webcam_index.type == TOML_INT64 && !config_webcam_index_set) {
-    int64_t idx = webcam_index.u.int64;
-    if (idx >= 0) {
-      opts->webcam_index = (unsigned short int)idx;
-      config_webcam_index_set = true;
-    }
-  } else if (webcam_index.type == TOML_STRING && !config_webcam_index_set) {
-    const char *idx_str = webcam_index.u.s;
-    char error_msg[256];
-    int idx = validate_opt_non_negative_int(idx_str, error_msg, sizeof(error_msg));
-    if (idx >= 0) {
-      opts->webcam_index = (unsigned short int)idx;
-      config_webcam_index_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.webcam_index)", error_msg);
-    }
-  }
-
-  // Webcam flip
-  toml_datum_t webcam_flip = toml_seek(toptab, "client.webcam_flip");
-  if (webcam_flip.type == TOML_BOOLEAN && !config_webcam_flip_set) {
-    opts->webcam_flip = webcam_flip.u.boolean;
-    config_webcam_flip_set = true;
-  }
-
-  // Color mode
-  toml_datum_t color_mode = toml_seek(toptab, "client.color_mode");
-  const char *color_mode_str = get_toml_string(color_mode);
-  if (color_mode_str && !config_color_mode_set) {
-    char error_msg[256];
-    int mode = validate_opt_color_mode(color_mode_str, error_msg, sizeof(error_msg));
-    if (mode >= 0) {
-      opts->color_mode = (terminal_color_mode_t)mode;
-      config_color_mode_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.color_mode)", error_msg);
-    }
-  }
-
-  // Render mode
-  toml_datum_t render_mode = toml_seek(toptab, "client.render_mode");
-  const char *render_mode_str = get_toml_string(render_mode);
-  if (render_mode_str && !config_render_mode_set) {
-    char error_msg[256];
-    int mode = validate_opt_render_mode(render_mode_str, error_msg, sizeof(error_msg));
-    if (mode >= 0) {
-      opts->render_mode = (render_mode_t)mode;
-      config_render_mode_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.render_mode)", error_msg);
-    }
-  }
-
-  // FPS (NOTE: FPS is still a global variable g_max_fps, not in options_t)
-  toml_datum_t fps = toml_seek(toptab, "client.fps");
-  extern int g_max_fps; // From common.c
-  if (fps.type == TOML_INT64) {
-    int64_t fps_val = fps.u.int64;
-    if (fps_val >= 1 && fps_val <= 144) {
-      g_max_fps = (int)fps_val;
-    } else {
-      CONFIG_WARN("Invalid FPS value %lld (must be 1-144, skipping client.fps)", (long long)fps_val);
-    }
-  } else if (fps.type == TOML_STRING) {
-    const char *fps_str = fps.u.s;
-    char error_msg[256];
-    int fps_val = validate_opt_fps(fps_str, error_msg, sizeof(error_msg));
-    if (fps_val > 0) {
-      g_max_fps = fps_val;
-    } else {
-      CONFIG_WARN("%s (skipping client.fps)", error_msg);
-    }
-  }
-
-  // Stretch
-  toml_datum_t stretch = toml_seek(toptab, "client.stretch");
-  if (stretch.type == TOML_BOOLEAN && !config_stretch_set) {
-    opts->stretch = stretch.u.boolean ? 1 : 0;
-    config_stretch_set = true;
-  }
-
-  // Quiet
-  toml_datum_t quiet = toml_seek(toptab, "client.quiet");
-  if (quiet.type == TOML_BOOLEAN && !config_quiet_set) {
-    opts->quiet = quiet.u.boolean ? 1 : 0;
-    config_quiet_set = true;
-  }
-
-  // Snapshot mode
-  toml_datum_t snapshot_mode = toml_seek(toptab, "client.snapshot_mode");
-  if (snapshot_mode.type == TOML_BOOLEAN && !config_snapshot_mode_set) {
-    opts->snapshot_mode = snapshot_mode.u.boolean ? 1 : 0;
-    config_snapshot_mode_set = true;
-  }
-
-  // Snapshot delay
-  toml_datum_t snapshot_delay = toml_seek(toptab, "client.snapshot_delay");
-  if (snapshot_delay.type == TOML_FP64 && !config_snapshot_delay_set) {
-    double delay = snapshot_delay.u.fp64;
-    if (delay >= 0.0) {
-      opts->snapshot_delay = (float)delay;
-      config_snapshot_delay_set = true;
-    } else {
-      CONFIG_WARN("Invalid snapshot_delay value %.2f (must be non-negative, skipping)", delay);
-    }
-  } else if (snapshot_delay.type == TOML_STRING && !config_snapshot_delay_set) {
-    const char *delay_str = snapshot_delay.u.s;
-    char error_msg[256];
-    float delay = validate_opt_float_non_negative(delay_str, error_msg, sizeof(error_msg));
-    if (delay >= 0.0f) {
-      opts->snapshot_delay = delay;
-      config_snapshot_delay_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping client.snapshot_delay)", error_msg);
-    }
-  }
-}
-
-/**
- * @brief Load and apply audio configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[audio]` section. Only processes config
- * when `is_client` is true (server doesn't use audio options).
- *
- * Supported options:
- * - `audio.enabled`: Enable audio streaming (boolean)
- * - `audio.microphone_index`: Microphone device index (integer, -1 for default)
- * - `audio.speakers_index`: Speakers device index (integer, -1 for default)
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_audio_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  if (!is_client) {
-    return; // Server doesn't use audio config
-  }
-
-  toml_datum_t audio = toml_seek(toptab, "audio");
-  if (audio.type != TOML_TABLE) {
-    return; // No audio section
-  }
-
-  // Audio enabled
-  toml_datum_t audio_enabled = toml_seek(toptab, "audio.enabled");
-  if (audio_enabled.type == TOML_BOOLEAN && !config_audio_enabled_set) {
-    opts->audio_enabled = audio_enabled.u.boolean ? 1 : 0;
-    config_audio_enabled_set = true;
-  }
-
-  // Microphone index
-  toml_datum_t microphone_index = toml_seek(toptab, "audio.microphone_index");
-  if (microphone_index.type == TOML_INT64 && !config_microphone_index_set) {
-    int64_t mic_idx = microphone_index.u.int64;
-    if (mic_idx >= -1) {
-      opts->microphone_index = (int)mic_idx;
-      config_microphone_index_set = true;
-    }
-  } else if (microphone_index.type == TOML_STRING && !config_microphone_index_set) {
-    const char *mic_str = microphone_index.u.s;
-    char error_msg[256];
-    int mic_idx = validate_opt_device_index(mic_str, error_msg, sizeof(error_msg));
-    if (mic_idx != INT_MIN) {
-      opts->microphone_index = mic_idx;
-      config_microphone_index_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
-    }
-  }
-
-  // Speakers index
-  toml_datum_t speakers_index = toml_seek(toptab, "audio.speakers_index");
-  if (speakers_index.type == TOML_INT64 && !config_speakers_index_set) {
-    int64_t spk_idx = speakers_index.u.int64;
-    if (spk_idx >= -1) {
-      opts->speakers_index = (int)spk_idx;
-      config_speakers_index_set = true;
-    }
-  } else if (speakers_index.type == TOML_STRING && !config_speakers_index_set) {
-    const char *spk_str = speakers_index.u.s;
-    char error_msg[256];
-    int spk_idx = validate_opt_device_index(spk_str, error_msg, sizeof(error_msg));
-    if (spk_idx != INT_MIN) {
-      opts->speakers_index = spk_idx;
-      config_speakers_index_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
-    }
-  }
-}
-
-/**
- * @brief Load and apply palette configuration from TOML
- * @param toptab Root TOML table
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[palette]` section:
- * - `palette.type`: Palette type ("blocks", "half-blocks", "chars", "custom")
- * - `palette.chars`: Custom palette character string (max 255 chars)
- *
- * If `palette.chars` is provided, `palette.type` is automatically set to "custom".
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static void apply_palette_config_from_toml(toml_datum_t toptab, options_t *opts) {
-  toml_datum_t palette = toml_seek(toptab, "palette");
-  if (palette.type != TOML_TABLE) {
-    return; // No palette section
-  }
-
-  // Palette type
-  toml_datum_t palette_type = toml_seek(toptab, "palette.type");
-  const char *palette_type_str = get_toml_string(palette_type);
-  if (palette_type_str && !config_palette_set) {
-    char error_msg[256];
-    int type = validate_opt_palette(palette_type_str, error_msg, sizeof(error_msg));
-    if (type >= 0) {
-      opts->palette_type = (palette_type_t)type;
-      config_palette_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping palette.type)", error_msg);
-    }
-  }
-
-  // Palette chars (custom palette)
-  toml_datum_t palette_chars = toml_seek(toptab, "palette.chars");
-  const char *palette_chars_str = get_toml_string(palette_chars);
-  if (palette_chars_str && !config_palette_chars_set) {
-    if (strlen(palette_chars_str) < sizeof(opts->palette_custom)) {
-      SAFE_STRNCPY(opts->palette_custom, palette_chars_str, sizeof(opts->palette_custom));
-      opts->palette_custom[sizeof(opts->palette_custom) - 1] = '\0';
-      opts->palette_custom_set = true;
-      opts->palette_type = PALETTE_CUSTOM; // Automatically set to custom
-      config_palette_chars_set = true;
-    } else {
-      CONFIG_WARN("Invalid palette.chars: too long (%zu chars, max %zu, skipping)", strlen(palette_chars_str),
-                  sizeof(opts->palette_custom) - 1);
-    }
-  }
-}
-
-/**
- * @brief Load and apply crypto configuration from TOML
- * @param toptab Root TOML table
- * @param is_client `true` if loading client config, `false` for server config
- * @param opts Options structure to write configuration to
- *
- * Applies configuration from the `[crypto]` section:
- * - `crypto.encrypt_enabled`: Enable encryption (boolean)
- * - `crypto.key`: Encryption key identifier (string, e.g., "gpg:keyid")
- * - `crypto.password`: Password for encryption (string, **warning**: insecure!)
- * - `crypto.keyfile`: Path to key file (string)
- * - `crypto.no_encrypt`: Disable encryption (boolean)
- * - `crypto.server_key`: Server public key (client only, string)
- * - `crypto.client_keys`: Client keys directory (server only, string)
- *
- * @warning Storing passwords in config files is insecure. A warning is printed
- *          if a password is found. Use CLI `--password` or environment variables instead.
- *
- * Invalid values are skipped with warnings.
- *
- * @ingroup config
- */
-static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client, options_t *opts) {
-  toml_datum_t crypto = toml_seek(toptab, "crypto");
-  if (crypto.type != TOML_TABLE) {
-    return ASCIICHAT_OK; // No crypto section
-  }
-
-  // Encrypt enabled
-  toml_datum_t encrypt_enabled = toml_seek(toptab, "crypto.encrypt_enabled");
-  if (encrypt_enabled.type == TOML_BOOLEAN && !config_encrypt_enabled_set) {
-    opts->encrypt_enabled = encrypt_enabled.u.boolean ? 1 : 0;
-    config_encrypt_enabled_set = true;
-  }
-
-  // Key
-  toml_datum_t key = toml_seek(toptab, "crypto.key");
-  const char *key_str = get_toml_string(key);
-  if (key_str && strlen(key_str) > 0 && !config_encrypt_key_set) {
-    if (path_looks_like_path(key_str)) {
-      char *normalized_key = NULL;
-      asciichat_error_t key_result = path_validate_user_path(key_str, PATH_ROLE_KEY_PRIVATE, &normalized_key);
-      if (key_result != ASCIICHAT_OK) {
-        SAFE_FREE(normalized_key);
-        return key_result;
+    if (parse_result != ASCIICHAT_OK) {
+      CONFIG_WARN("Invalid %s value '%s': %s (skipping)", meta->toml_key, value_str, error_msg);
+      if (strict) {
+        if (first_error == ASCIICHAT_OK) {
+          first_error = SET_ERRNO(ERROR_CONFIG, "Invalid %s: %s", meta->toml_key, error_msg);
+        }
+        continue;
       }
-      SAFE_SNPRINTF(opts->encrypt_key, OPTIONS_BUFF_SIZE, "%s", normalized_key);
-      SAFE_FREE(normalized_key);
-    } else {
-      SAFE_SNPRINTF(opts->encrypt_key, OPTIONS_BUFF_SIZE, "%s", key_str);
+      continue;
     }
-    opts->encrypt_enabled = 1; // Auto-enable encryption when key provided
-    config_encrypt_key_set = true;
-  }
 
-  // Password (WARNING: storing passwords in config file is insecure!)
-  // We only load it if explicitly set, but warn user
-  toml_datum_t password = toml_seek(toptab, "crypto.password");
-  const char *password_str = get_toml_string(password);
-  if (password_str && strlen(password_str) > 0 && !config_password_set) {
-    char error_msg[256];
-    if (validate_opt_password(password_str, error_msg, sizeof(error_msg)) == 0) {
-      CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
-      SAFE_SNPRINTF(opts->password, OPTIONS_BUFF_SIZE, "%s", password_str);
-      opts->encrypt_enabled = 1; // Auto-enable encryption when password provided
-      config_password_set = true;
-    } else {
-      CONFIG_WARN("%s (skipping crypto.password)", error_msg);
-    }
-  }
-
-  // Keyfile
-  toml_datum_t keyfile = toml_seek(toptab, "crypto.keyfile");
-  const char *keyfile_str = get_toml_string(keyfile);
-  if (keyfile_str && strlen(keyfile_str) > 0 && !config_encrypt_keyfile_set) {
-    if (path_looks_like_path(keyfile_str)) {
-      char *normalized_keyfile = NULL;
-      asciichat_error_t keyfile_result =
-          path_validate_user_path(keyfile_str, PATH_ROLE_KEY_PRIVATE, &normalized_keyfile);
-      if (keyfile_result != ASCIICHAT_OK) {
-        SAFE_FREE(normalized_keyfile);
-        return keyfile_result;
+    // Write value to options_t using handler
+    if (g_type_handlers[meta->type].write_to_struct) {
+      char error_msg_write[BUFFER_SIZE_SMALL] = {0};
+      asciichat_error_t write_result =
+          g_type_handlers[meta->type].write_to_struct(&parsed, meta, opts, error_msg_write, sizeof(error_msg_write));
+      if (write_result != ASCIICHAT_OK) {
+        CONFIG_WARN("Failed to write %s: %s (skipping)", meta->toml_key, error_msg_write);
+        if (strict) {
+          if (first_error == ASCIICHAT_OK) {
+            first_error = write_result;
+          }
+          continue;
+        }
+        continue;
       }
-      SAFE_SNPRINTF(opts->encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", normalized_keyfile);
-      SAFE_FREE(normalized_keyfile);
-    } else {
-      SAFE_SNPRINTF(opts->encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", keyfile_str);
     }
-    opts->encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
-    config_encrypt_keyfile_set = true;
+
+    // Call builder's validate function if it exists (for cross-field validation)
+    if (meta->validate_fn) {
+      char *validate_error = NULL;
+      if (!meta->validate_fn(opts, &validate_error)) {
+        CONFIG_WARN("Validation failed for %s: %s (skipping)", meta->toml_key,
+                    validate_error ? validate_error : "validation failed");
+        if (validate_error) {
+          SAFE_FREE(validate_error);
+        }
+        if (strict) {
+          if (first_error == ASCIICHAT_OK) {
+            first_error = SET_ERRNO(ERROR_CONFIG, "Validation failed for %s", meta->toml_key);
+          }
+          continue;
+        }
+        continue;
+      }
+    }
+
+    // Mark this option as set
+    option_set_flags[i] = true;
   }
 
-  // No encrypt
+  // Handle special crypto.no_encrypt logic
   toml_datum_t no_encrypt = toml_seek(toptab, "crypto.no_encrypt");
-  if (no_encrypt.type == TOML_BOOLEAN && !config_no_encrypt_set) {
-    if (no_encrypt.u.boolean) {
-      opts->no_encrypt = 1;
-      opts->encrypt_enabled = 0;
-      config_no_encrypt_set = true;
+  if (no_encrypt.type == TOML_BOOLEAN && no_encrypt.u.boolean) {
+    opts->no_encrypt = 1;
+    opts->encrypt_enabled = 0;
+  }
+
+  // Handle password warning (check both crypto and security sections)
+  toml_datum_t password = toml_seek(toptab, "crypto.password");
+  if (password.type == TOML_UNKNOWN) {
+    password = toml_seek(toptab, "security.password");
+  }
+  if (password.type == TOML_STRING) {
+    const char *password_str = get_toml_string_validated(password);
+    if (password_str && strlen(password_str) > 0) {
+      CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
     }
   }
 
-  // Server key (client only)
-  if (is_client) {
-    toml_datum_t server_key = toml_seek(toptab, "crypto.server_key");
-    const char *server_key_str = get_toml_string(server_key);
-    if (server_key_str && strlen(server_key_str) > 0 && !config_server_key_set) {
-      if (path_looks_like_path(server_key_str)) {
-        char *normalized_server_key = NULL;
-        asciichat_error_t server_key_result =
-            path_validate_user_path(server_key_str, PATH_ROLE_KEY_PUBLIC, &normalized_server_key);
-        if (server_key_result != ASCIICHAT_OK) {
-          SAFE_FREE(normalized_server_key);
-          return server_key_result;
-        }
-        SAFE_SNPRINTF(opts->server_key, OPTIONS_BUFF_SIZE, "%s", normalized_server_key);
-        SAFE_FREE(normalized_server_key);
-      } else {
-        SAFE_SNPRINTF(opts->server_key, OPTIONS_BUFF_SIZE, "%s", server_key_str);
-      }
-      config_server_key_set = true;
-    }
-  }
-
-  // Client keys (server only)
-  if (!is_client) {
-    toml_datum_t client_keys = toml_seek(toptab, "crypto.client_keys");
-    const char *client_keys_str = get_toml_string(client_keys);
-    if (client_keys_str && strlen(client_keys_str) > 0 && !config_client_keys_set) {
-      if (path_looks_like_path(client_keys_str)) {
-        char *normalized_client_keys = NULL;
-        asciichat_error_t client_keys_result =
-            path_validate_user_path(client_keys_str, PATH_ROLE_CLIENT_KEYS, &normalized_client_keys);
-        if (client_keys_result != ASCIICHAT_OK) {
-          SAFE_FREE(normalized_client_keys);
-          return client_keys_result;
-        }
-        SAFE_SNPRINTF(opts->client_keys, OPTIONS_BUFF_SIZE, "%s", normalized_client_keys);
-        SAFE_FREE(normalized_client_keys);
-      } else {
-        SAFE_SNPRINTF(opts->client_keys, OPTIONS_BUFF_SIZE, "%s", client_keys_str);
-      }
-      config_client_keys_set = true;
-    }
-  }
-
-  return ASCIICHAT_OK;
-}
-
-/**
- * @brief Load and apply log file configuration from TOML
- * @param toptab Root TOML table
- * @param opts Options structure to write configuration to
- *
- * Applies log file configuration. The log file path can be specified either:
- * - At the root level: `log_file = "path/to/log"`
- * - In a `[logging]` section: `logging.log_file = "path/to/log"`
- *
- * The root-level `log_file` takes precedence if both are present.
- *
- * @ingroup config
- */
-static asciichat_error_t apply_log_config(toml_datum_t toptab, options_t *opts) {
-  // Log file can be in root or in a [logging] section
-  toml_datum_t log_file = toml_seek(toptab, "log_file");
-  if (log_file.type == TOML_UNKNOWN) {
-    log_file = toml_seek(toptab, "logging.log_file");
-  }
-
-  const char *log_file_str = get_toml_string(log_file);
-  if (log_file_str && strlen(log_file_str) > 0 && !config_log_file_set) {
-    char *normalized_log = NULL;
-    asciichat_error_t log_result = path_validate_user_path(log_file_str, PATH_ROLE_LOG_FILE, &normalized_log);
-    if (log_result != ASCIICHAT_OK) {
-      SAFE_FREE(normalized_log);
-      return log_result;
-    }
-    SAFE_SNPRINTF(opts->log_file, OPTIONS_BUFF_SIZE, "%s", normalized_log);
-    SAFE_FREE(normalized_log);
-    config_log_file_set = true;
-  }
-  return ASCIICHAT_OK;
+  return first_error;
 }
 
 /** @} */
@@ -839,7 +777,9 @@ static asciichat_error_t apply_log_config(toml_datum_t toptab, options_t *opts) 
  *
  * @ingroup config
  */
-asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict, options_t *opts) {
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
+                                        options_t *opts) {
+  // detected_mode is used in config_apply_schema for bitmask validation
   char *config_path_expanded = NULL;
   defer(SAFE_FREE(config_path_expanded));
 
@@ -858,11 +798,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
       if (config_path_expanded) {
-#ifdef _WIN32
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#else
-        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#endif
       }
     }
 
@@ -890,6 +826,12 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
 
   // Determine display path for error messages (before any early returns)
   const char *display_path = config_path ? config_path : config_path_expanded;
+
+  // Log that we're attempting to load config (before logging is initialized, use stderr)
+  // Only print if terminal output is enabled (suppress with --quiet)
+  if (config_path && log_get_terminal_output()) {
+    log_debug("Loading configuration from: %s", display_path);
+  }
 
   // Check if config file exists
   struct stat st;
@@ -922,7 +864,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
       // For strict mode, return detailed error message directly
       // Note: SET_ERRNO stores the message in context, but asciichat_error_string() only returns generic codes
       // So we need to format the error message ourselves here
-      char error_buffer[512];
+      char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
@@ -930,314 +872,358 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     return ASCIICHAT_OK; // Non-fatal error
   }
 
-  // Apply configuration from each section
-  apply_network_config(result.toptab, is_client, opts);
-  apply_client_config(result.toptab, is_client, opts);
-  apply_audio_config(result.toptab, is_client, opts);
-  apply_palette_config_from_toml(result.toptab, opts);
-  asciichat_error_t crypto_result = apply_crypto_config(result.toptab, is_client, opts);
-  if (crypto_result != ASCIICHAT_OK) {
-    return crypto_result;
+  // Apply configuration using schema-driven parser with bitmask validation
+  asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
+  if (schema_result != ASCIICHAT_OK && strict) {
+    return schema_result;
   }
-  asciichat_error_t log_result = apply_log_config(result.toptab, opts);
-  if (log_result != ASCIICHAT_OK) {
-    return log_result;
-  }
-
-  // Reset all config flags for next call
-  config_address_set = false;
-  config_address6_set = false;
-  config_port_set = false;
-  config_width_set = false;
-  config_height_set = false;
-  config_webcam_index_set = false;
-  config_webcam_flip_set = false;
-  config_color_mode_set = false;
-  config_render_mode_set = false;
-  config_palette_set = false;
-  config_palette_chars_set = false;
-  config_audio_enabled_set = false;
-  config_microphone_index_set = false;
-  config_speakers_index_set = false;
-  config_stretch_set = false;
-  config_quiet_set = false;
-  config_snapshot_mode_set = false;
-  config_mirror_mode_set = false;
-  config_snapshot_delay_set = false;
-  config_log_file_set = false;
-  config_encrypt_enabled_set = false;
-  config_encrypt_key_set = false;
-  config_password_set = false;
-  config_encrypt_keyfile_set = false;
-  config_no_encrypt_set = false;
-  config_server_key_set = false;
-  config_client_keys_set = false;
+  // In non-strict mode, continue even if some options failed validation
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
+
+  // Log successful config load (use stderr since logging may not be initialized yet)
+  // Only print if terminal output is enabled (suppress with --quiet)
+  if (log_get_terminal_output()) {
+    log_debug("Loaded configuration from: %s", display_path);
+  }
+
+  // Update RCU system with modified options (for test compatibility)
+  // In real usage, options_state_set is called later after CLI parsing
+  asciichat_error_t rcu_result = options_state_set(opts);
+  if (rcu_result != ASCIICHAT_OK) {
+    // Non-fatal - RCU might not be initialized yet in some test scenarios
+    // But log as warning so tests can see if this is the issue
+    CONFIG_WARN("Failed to update RCU options state: %d (values may not be persisted)", rcu_result);
+  }
+
   return ASCIICHAT_OK;
 }
 
 /**
- * @brief Create default configuration file with all default values
- * @param config_path Path to config file to create (NULL uses default location)
- * @param opts Options structure with values to write (use defaults for a "default" config)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Creates a new configuration file at the specified path (or default location
- * if config_path is NULL) with all configuration options set to values from opts.
- *
- * The created file includes:
- * - Version comment at the top (current ascii-chat version)
- * - All supported configuration sections with values from opts
- * - Comments explaining each option
- *
- * @note The function will create the directory structure if needed.
- * @note If the file already exists, it will not be overwritten (returns error).
- *
- * @ingroup config
+ * @brief Helper structure for building config content in a buffer
  */
+typedef struct {
+  char *buffer;    // Dynamically allocated buffer
+  size_t size;     // Current bytes used
+  size_t capacity; // Total capacity
+  bool overflow;   // Set if buffer overflows
+} config_builder_t;
+
+/**
+ * @brief Append formatted text to config builder buffer
+ * @param builder The config builder
+ * @param fmt Format string (printf-style)
+ * @return true if successful, false if buffer overflow
+ */
+static bool config_builder_append(config_builder_t *builder, const char *fmt, ...) {
+  if (builder->overflow) {
+    return false;
+  }
+
+  if (builder->size >= builder->capacity) {
+    builder->overflow = true;
+    return false;
+  }
+
+  va_list args;
+  va_start(args, fmt);
+  int written = safe_vsnprintf(builder->buffer + builder->size, builder->capacity - builder->size, fmt, args);
+  va_end(args);
+
+  if (written < 0 || builder->size + written >= builder->capacity) {
+    builder->overflow = true;
+    return false;
+  }
+
+  builder->size += written;
+  return true;
+}
+
 asciichat_error_t config_create_default(const char *config_path, const options_t *opts) {
   char *config_path_expanded = NULL;
+
   defer(SAFE_FREE(config_path_expanded));
 
-  if (config_path) {
-    // Use custom path provided
+  // Allocate buffer for building config content (256KB should be plenty)
+  const size_t BUFFER_CAPACITY = 256 * 1024;
+  config_builder_t builder = {0};
+  builder.buffer = SAFE_MALLOC(BUFFER_CAPACITY, char *);
+  if (!builder.buffer) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate config buffer");
+  }
+  defer(SAFE_FREE(builder.buffer));
+  builder.capacity = BUFFER_CAPACITY;
+
+  // Build version comment in buffer
+  if (!config_builder_append(&builder, "# ascii-chat configuration file\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR,
+                             ASCII_CHAT_VERSION_MINOR, ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION)) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "#\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "# All options below are commented out because some configuration options\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "# conflict with each other (e.g., --file vs --url, --loop vs --url).\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "# Uncomment only the options you need and avoid conflicting combinations.\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "#\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder,
+                             "# If you upgrade ascii-chat and this version comment changes, you may need to\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "# delete and regenerate this file with: ascii-chat --config-create\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+  if (!config_builder_append(&builder, "#\n\n")) {
+    return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+  }
+
+  // Get all options from schema
+  size_t metadata_count = 0;
+  const config_option_metadata_t *metadata = config_schema_get_all(&metadata_count);
+
+  // Build list of unique categories in order of first appearance
+  const char *categories[16] = {0}; // Max expected categories
+  size_t category_count = 0;
+
+  for (size_t i = 0; i < metadata_count && category_count < 16; i++) {
+    const char *category = metadata[i].category;
+    if (!category) {
+      continue;
+    }
+
+    // Check if category already in list
+    bool found = false;
+    for (size_t j = 0; j < category_count; j++) {
+      if (categories[j] && strcmp(categories[j], category) == 0) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      categories[category_count++] = category;
+    }
+  }
+
+  // Build each section dynamically from schema
+  for (size_t cat_idx = 0; cat_idx < category_count; cat_idx++) {
+    const char *category = categories[cat_idx];
+    if (!category) {
+      continue;
+    }
+
+    // Get all options for this category
+    size_t cat_option_count = 0;
+    const config_option_metadata_t **cat_options = config_schema_get_by_category(category, &cat_option_count);
+
+    if (!cat_options || cat_option_count == 0) {
+      continue;
+    }
+
+    // Add section header
+    if (!config_builder_append(&builder, "[%s]\n", category)) {
+      return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+    }
+
+    // Track which options we've written (to avoid duplicates)
+    bool written_flags[64] = {0}; // Max options per category
+
+    // Add each option in this category
+    for (size_t opt_idx = 0; opt_idx < cat_option_count && opt_idx < 64; opt_idx++) {
+      const config_option_metadata_t *meta = cat_options[opt_idx];
+      if (!meta || !meta->toml_key) {
+        continue;
+      }
+
+      // Skip if already written (duplicate)
+      if (written_flags[opt_idx]) {
+        continue;
+      }
+
+      // Skip if this is a duplicate of another option (check by field_offset)
+      bool is_duplicate = false;
+      for (size_t j = 0; j < opt_idx; j++) {
+        if (cat_options[j] && cat_options[j]->field_offset == meta->field_offset) {
+          is_duplicate = true;
+          break;
+        }
+      }
+      if (is_duplicate) {
+        continue;
+      }
+
+      // Get field pointer
+      const char *field_ptr = ((const char *)opts) + meta->field_offset;
+
+      // Add description comment if available
+      if (meta->description && strlen(meta->description) > 0) {
+        if (!config_builder_append(&builder, "# %s\n", meta->description)) {
+          return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+        }
+      }
+
+      // Format and add the option value using handler (commented out to avoid conflicts)
+      if (g_type_handlers[meta->type].format_output) {
+        char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
+        g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value,
+                                                  sizeof(formatted_value));
+        if (!config_builder_append(&builder, "# %s = %s\n", meta->toml_key, formatted_value)) {
+          return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+        }
+      }
+
+      // Add blank line after each option
+      if (!config_builder_append(&builder, "\n")) {
+        return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+      }
+
+      written_flags[opt_idx] = true;
+    }
+
+    // Add blank line between sections (but not after the last section)
+    if (cat_idx < category_count - 1) {
+      if (!config_builder_append(&builder, "\n")) {
+        return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+      }
+    }
+  }
+
+  // Now write the buffer to either stdout or a file
+  if (config_path && strlen(config_path) > 0) {
+    // User provided a filepath - write to that file with overwrite prompt
+
+    // Expand and validate the path
     config_path_expanded = expand_path(config_path);
     if (!config_path_expanded) {
-      // If expansion fails, try using as-is (might already be absolute)
       config_path_expanded = platform_strdup(config_path);
     }
-  } else {
-    // Use default location with XDG support
-    char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
-    if (config_dir) {
-      size_t len = strlen(config_dir) + strlen("config.toml") + 1;
-      config_path_expanded = SAFE_MALLOC(len, char *);
-      if (config_path_expanded) {
-#ifdef _WIN32
-        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#else
-        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
-#endif
-      }
-    }
 
-    // Fallback to ~/.ascii-chat/config.toml
     if (!config_path_expanded) {
-      config_path_expanded = expand_path("~/.ascii-chat/config.toml");
+      return SET_ERRNO(ERROR_CONFIG, "Failed to resolve config file path");
     }
-  }
 
-  if (!config_path_expanded) {
-    return SET_ERRNO(ERROR_CONFIG, "Failed to resolve config file path");
-  }
-
-  char *validated_config_path = NULL;
-  asciichat_error_t validate_result =
-      path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  if (validate_result != ASCIICHAT_OK) {
+    char *validated_config_path = NULL;
+    asciichat_error_t validate_result =
+        path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+    if (validate_result != ASCIICHAT_OK) {
+      return validate_result;
+    }
     SAFE_FREE(config_path_expanded);
-    return validate_result;
-  }
-  SAFE_FREE(config_path_expanded);
-  config_path_expanded = validated_config_path;
+    config_path_expanded = validated_config_path;
 
-  // Check if file already exists
-  struct stat st;
-  if (stat(config_path_expanded, &st) == 0) {
-    // File exists - ask user if they want to overwrite
-    log_plain_stderr("Config file already exists: %s", config_path_expanded);
+    // Check if file already exists
+    struct stat st;
+    if (stat(config_path_expanded, &st) == 0) {
+      // File exists - ask user if they want to overwrite
+      log_plain("Config file already exists: %s", config_path_expanded);
 
-    bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
-    if (!overwrite) {
-      log_plain_stderr("Config file creation cancelled.");
-      return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
-    }
-
-    // User confirmed overwrite - continue to create file (will overwrite existing)
-    log_plain_stderr("Overwriting existing config file...");
-  }
-
-  // Create directory if needed
-  char *dir_path = platform_strdup(config_path_expanded);
-  if (!dir_path) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
-  }
-
-  // Find the last path separator
-  char *last_sep = strrchr(dir_path, PATH_DELIM);
-
-  if (last_sep) {
-    *last_sep = '\0';
-    // Create directory (similar to known_hosts.c approach)
-#ifdef _WIN32
-    // Windows: Create directory (creates only one level)
-    int mkdir_result = _mkdir(dir_path);
-#else
-    // POSIX: Create directory with DIR_PERM_PRIVATE permissions
-    int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
-#endif
-    if (mkdir_result != 0 && errno != EEXIST) {
-      // mkdir failed and it's not because the directory already exists
-      // Verify if directory actually exists despite the error (Windows compatibility)
-      struct stat test_st;
-      if (stat(dir_path, &test_st) != 0) {
-        // Directory doesn't exist and we couldn't create it
-        asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
-        SAFE_FREE(dir_path);
-        return err;
+      bool overwrite = platform_prompt_yes_no("Overwrite", false); // Default to No
+      if (!overwrite) {
+        log_plain("Config file creation cancelled.");
+        return SET_ERRNO(ERROR_CONFIG, "User cancelled overwrite");
       }
-      // Directory exists despite error, proceed
+
+      log_plain("Overwriting existing config file...");
+    }
+
+    // Create directory if needed
+    char *dir_path = platform_strdup(config_path_expanded);
+    if (!dir_path) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
+    }
+    defer(SAFE_FREE(dir_path));
+
+    // Find the last path separator
+    char *last_sep = strrchr(dir_path, PATH_DELIM);
+
+    if (last_sep) {
+      *last_sep = '\0';
+      // Create directory recursively
+      asciichat_error_t mkdir_result = platform_mkdir_recursive(dir_path, DIR_PERM_PRIVATE);
+      if (mkdir_result != ASCIICHAT_OK) {
+        return mkdir_result;
+      }
+    }
+
+    // Open file for writing
+    FILE *output_file = platform_fopen(config_path_expanded, "w");
+    if (!output_file) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config file for writing: %s", config_path_expanded);
+    }
+    defer(SAFE_FCLOSE(output_file));
+
+    // Write buffer to file
+    size_t written = fwrite(builder.buffer, 1, builder.size, output_file);
+    if (written != builder.size) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to file: %s", config_path_expanded);
+    }
+  } else {
+    // No filepath provided - write buffer to stdout
+    size_t written = fwrite(builder.buffer, 1, builder.size, stdout);
+    if (written != builder.size) {
+      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to stdout");
     }
   }
-  SAFE_FREE(dir_path);
-
-  // Create file with default values
-  FILE *f = platform_fopen(config_path_expanded, "w");
-  defer(SAFE_FCLOSE(f));
-  if (!f) {
-    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
-  }
-
-  // Write version comment
-  (void)fprintf(f, "# ascii-chat configuration file\n");
-  (void)fprintf(f, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-                ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION);
-  (void)fprintf(f, "#\n");
-  (void)fprintf(f, "# If you upgrade ascii-chat and this version comment changes, you may need to\n");
-  (void)fprintf(f, "# delete and regenerate this file with: ascii-chat --config-create\n");
-  (void)fprintf(f, "#\n\n");
-
-  // Write network section with defaults
-  (void)fprintf(f, "[network]\n");
-  (void)fprintf(f, "# Port number (1-65535, shared between server and client)\n");
-  (void)fprintf(f, "#port = %s\n\n", opts->port);
-
-  // Write server section with bind addresses
-  (void)fprintf(f, "[server]\n");
-  (void)fprintf(f, "# IPv4 bind address (default: 127.0.0.1)\n");
-  (void)fprintf(f, "#bind_ipv4 = \"127.0.0.1\"\n");
-  (void)fprintf(f, "# IPv6 bind address (default: ::1 for IPv6-only, or :: for dual-stack)\n");
-  (void)fprintf(f, "#bind_ipv6 = \"::1\"\n");
-  (void)fprintf(f, "# Legacy bind address (fallback if bind_ipv4/bind_ipv6 not set)\n");
-  (void)fprintf(f, "#address = \"::\"\n\n");
-
-  // Write client section with defaults
-  (void)fprintf(f, "[client]\n");
-  (void)fprintf(f, "# Server address to connect to\n");
-  (void)fprintf(f, "#address = \"%s\"\n", opts->address);
-  (void)fprintf(f, "# Alternative: set via network.address (legacy)\n");
-  (void)fprintf(f, "#network.address = \"%s\"\n\n", opts->address);
-  (void)fprintf(f, "# Terminal width in characters (0 = auto-detect)\n");
-  (void)fprintf(f, "#width = %hu\n", opts->width);
-  (void)fprintf(f, "# Terminal height in characters (0 = auto-detect)\n");
-  (void)fprintf(f, "#height = %hu\n", opts->height);
-  (void)fprintf(f, "# Webcam device index (0 = first webcam)\n");
-  (void)fprintf(f, "#webcam_index = %hu\n", opts->webcam_index);
-  (void)fprintf(f, "# Flip webcam image horizontally\n");
-  (void)fprintf(f, "#webcam_flip = %s\n", opts->webcam_flip ? "true" : "false");
-  (void)fprintf(f, "# Color mode: \"none\", \"16\", \"256\", \"truecolor\" (or \"auto\" for auto-detect)\n");
-  (void)fprintf(f, "#color_mode = \"auto\"\n");
-  (void)fprintf(f, "# Render mode: \"foreground\", \"background\", \"half-block\"\n");
-  (void)fprintf(f, "#render_mode = \"foreground\"\n");
-  (void)fprintf(f, "# Frames per second (1-144, default: 30 for Windows, 60 for Unix)\n");
-#if defined(_WIN32)
-  (void)fprintf(f, "#fps = 30\n");
-#else
-  (void)fprintf(f, "#fps = 60\n");
-#endif
-  (void)fprintf(f, "# Stretch video to terminal size (without preserving aspect ratio)\n");
-  (void)fprintf(f, "#stretch = %s\n", opts->stretch ? "true" : "false");
-  (void)fprintf(f, "# Quiet mode (disable console logging)\n");
-  (void)fprintf(f, "#quiet = %s\n", opts->quiet ? "true" : "false");
-  (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
-  (void)fprintf(f, "#snapshot_mode = %s\n", opts->snapshot_mode ? "true" : "false");
-  (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
-  (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opts->snapshot_delay);
-  (void)fprintf(f, "# Use test pattern instead of real webcam\n");
-  (void)fprintf(f, "#test_pattern = %s\n", opts->test_pattern ? "true" : "false");
-  (void)fprintf(f, "# Show terminal capabilities and exit\n");
-  (void)fprintf(f, "#show_capabilities = %s\n", opts->show_capabilities ? "true" : "false");
-  (void)fprintf(f, "# Force UTF-8 support\n");
-  (void)fprintf(f, "#force_utf8 = %s\n\n", opts->force_utf8 ? "true" : "false");
-
-  // Write audio section (client only)
-  (void)fprintf(f, "[audio]\n");
-  (void)fprintf(f, "# Enable audio streaming\n");
-  (void)fprintf(f, "#enabled = %s\n", opts->audio_enabled ? "true" : "false");
-  (void)fprintf(f, "# Microphone device index (-1 = use default)\n");
-  (void)fprintf(f, "#microphone_index = %d\n", opts->microphone_index);
-  (void)fprintf(f, "# Speakers device index (-1 = use default)\n");
-  (void)fprintf(f, "#speakers_index = %d\n\n", opts->speakers_index);
-
-  // Write palette section
-  (void)fprintf(f, "[palette]\n");
-  (void)fprintf(f, "# Palette type: \"blocks\", \"half-blocks\", \"chars\", \"custom\"\n");
-  (void)fprintf(f, "#type = \"half-blocks\"\n");
-  (void)fprintf(f, "# Custom palette characters (only used if type = \"custom\")\n");
-  (void)fprintf(f, "#chars = \"   ...',;:clodxkO0KXNWM\"\n\n");
-
-  // Write crypto section
-  (void)fprintf(f, "[crypto]\n");
-  (void)fprintf(f, "# Enable encryption\n");
-  (void)fprintf(f, "#encrypt_enabled = %s\n", opts->encrypt_enabled ? "true" : "false");
-  (void)fprintf(f, "# Encryption key identifier (e.g., \"gpg:keyid\" or \"github:username\")\n");
-  (void)fprintf(f, "#key = \"%s\"\n", opts->encrypt_key);
-  (void)fprintf(f, "# Password for encryption (WARNING: storing passwords in config files is insecure!)\n");
-  (void)fprintf(f, "# Use CLI --password or environment variables instead.\n");
-  (void)fprintf(f, "#password = \"%s\"\n", opts->password);
-  (void)fprintf(f, "# Key file path\n");
-  (void)fprintf(f, "#keyfile = \"%s\"\n", opts->encrypt_keyfile);
-  (void)fprintf(f, "# Disable encryption (opt-out)\n");
-  (void)fprintf(f, "#no_encrypt = %s\n", opts->no_encrypt ? "true" : "false");
-  (void)fprintf(f, "# Server public key (client only)\n");
-  (void)fprintf(f, "#server_key = \"%s\"\n", opts->server_key);
-  (void)fprintf(f, "# Client keys directory (server only)\n");
-  (void)fprintf(f, "#client_keys = \"%s\"\n\n", opts->client_keys);
-
-  // Write logging section
-  (void)fprintf(f, "[logging]\n");
-  (void)fprintf(f, "# Log file path (empty string = no file logging)\n");
-  (void)fprintf(f, "#log_file = \"%s\"\n", opts->log_file);
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict,
+asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, const char *user_config_path, bool strict,
                                               options_t *opts) {
-  // Fallback for ASCIICHAT_INSTALL_PREFIX if paths.h hasn't been generated yet
-  // (prevents defer tool compilation errors during initial builds)
-#ifndef ASCIICHAT_INSTALL_PREFIX
-#define ASCIICHAT_INSTALL_PREFIX "/usr"
-#endif
+  // Use platform abstraction to find all config.toml files across standard locations
+  config_file_list_t config_files = {0};
+  asciichat_error_t search_result = platform_find_config_file("config.toml", &config_files);
 
-  // Build system config path: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml
-  char system_config_path[1024];
-#ifdef _WIN32
-  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path), "%s\\etc\\ascii-chat\\config.toml",
-                ASCIICHAT_INSTALL_PREFIX);
-#else
-  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path), "%s/etc/ascii-chat/config.toml",
-                ASCIICHAT_INSTALL_PREFIX);
-#endif
-
-  // Load system config first (non-strict - it's optional)
-  CONFIG_DEBUG("Attempting to load system config from: %s", system_config_path);
-  asciichat_error_t system_result = config_load_and_apply(is_client, system_config_path, false, opts);
-  if (system_result == ASCIICHAT_OK) {
-    CONFIG_DEBUG("System config loaded successfully");
-  } else {
-    CONFIG_DEBUG("System config not loaded (this is normal if file doesn't exist)");
-    // Clear the error context since this failure is expected/non-fatal
-    CLEAR_ERRNO();
+  if (search_result != ASCIICHAT_OK) {
+    CONFIG_DEBUG("Failed to search for config files: %d", search_result);
+    return search_result;
   }
 
-  // Load user config second (with user-specified strictness)
-  // User config values will override system config values
-  CONFIG_DEBUG("Loading user config (strict=%s)", strict ? "true" : "false");
-  asciichat_error_t user_result = config_load_and_apply(is_client, user_config_path, strict, opts);
+  // Cascade load: Load all found configs in reverse order (lowest priority first)
+  // This allows higher-priority configs to override lower-priority values.
+  // Example: System configs load first, then user configs override them.
 
-  // Return user config result - errors in user config should be reported
-  return user_result;
+  asciichat_error_t result = ASCIICHAT_OK;
+  for (size_t i = config_files.count; i > 0; i--) {
+    const config_file_result_t *file = &config_files.files[i - 1];
+
+    // Determine strictness based on whether this is a system or user config
+    // System configs are non-strict (values can be missing, errors are non-fatal)
+    // User config is strict or non-strict based on parameter
+    bool is_user_config = !file->is_system_config;
+    bool file_strict = is_user_config ? strict : false;
+
+    CONFIG_DEBUG("Loading config from %s (system=%s, strict=%s)", file->path, file->is_system_config ? "yes" : "no",
+                 file_strict ? "true" : "false");
+
+    asciichat_error_t load_result = config_load_and_apply(detected_mode, file->path, file_strict, opts);
+
+    if (load_result != ASCIICHAT_OK) {
+      if (file_strict) {
+        // Strict mode: errors are fatal
+        CONFIG_DEBUG("Strict config loading failed for %s", file->path);
+        result = load_result;
+      } else {
+        // Non-strict mode: errors are non-fatal, just log and continue
+        CONFIG_DEBUG("Non-strict config loading warning for %s: %d (continuing)", file->path, load_result);
+        CLEAR_ERRNO(); // Clear error context for next file
+      }
+    }
+  }
+
+  // Clean up search results
+  config_file_list_free(&config_files);
+
+  return result;
 }

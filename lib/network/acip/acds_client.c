@@ -8,7 +8,7 @@
  * - WebRTC signaling relay
  * - String reservation (future)
  *
- * ACIP (ASCII-Chat IP Protocol) is the wire protocol for session
+ * ACIP (ascii-chat IP Protocol) is the wire protocol for session
  * discovery and WebRTC signaling. ACDS is the reference server implementation.
  */
 
@@ -18,17 +18,24 @@
 #include "crypto/crypto.h"
 #include "log/logging.h"
 #include "network/packet.h"
+#include "network/parallel_connect.h"
 #include "platform/socket.h"
 #include "util/endian.h"
+#include "util/time.h"
 
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #else
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/select.h>
+#include <fcntl.h>
 #endif
 
 // ============================================================================
@@ -60,42 +67,42 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   client->socket = INVALID_SOCKET_VALUE;
   client->connected = false;
 
-  // Create TCP socket
-  client->socket = socket(AF_INET, SOCK_STREAM, 0);
-  if (client->socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to create socket: %s", socket_get_error_string());
+  // Resolve server address (supports both hostnames and IP addresses, IPv4 and IPv6)
+  struct addrinfo hints;
+  struct addrinfo *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;     // IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM; // TCP
+
+  char port_str[16];
+  safe_snprintf(port_str, sizeof(port_str), "%d", config->server_port);
+
+  log_debug("ACDS: Resolving address '%s:%s'...", config->server_address, port_str);
+  int gai_result = getaddrinfo(config->server_address, port_str, &hints, &result);
+  if (gai_result != 0) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to resolve server address '%s': %s", config->server_address,
+                     gai_strerror(gai_result));
+  }
+  log_debug("ACDS: Address resolved successfully");
+  freeaddrinfo(result);
+
+  // Use parallel_connect to attempt IPv4 and IPv6 connections concurrently
+  parallel_connect_config_t pconn_config = {
+      .hostname = config->server_address,
+      .port = config->server_port,
+      .timeout_ms = config->timeout_ms,
+      .should_exit_callback = config->should_exit_callback,
+      .callback_data = config->callback_data,
+  };
+
+  asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);
+  if (pconn_result == ASCIICHAT_OK) {
+    client->connected = true;
+    log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
+    return ASCIICHAT_OK;
   }
 
-  // Set socket timeouts using platform abstraction
-  if (socket_set_timeout(client->socket, config->timeout_ms) != 0) {
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to set socket timeouts");
-  }
-
-  // Connect to server
-  struct sockaddr_in server_addr;
-  memset(&server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(config->server_port);
-
-  if (inet_pton(AF_INET, config->server_address, &server_addr.sin_addr) <= 0) {
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-    return SET_ERRNO(ERROR_NETWORK, "Invalid server address: %s", config->server_address);
-  }
-
-  if (connect(client->socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-    socket_close(client->socket);
-    client->socket = INVALID_SOCKET_VALUE;
-    return SET_ERRNO(ERROR_NETWORK, "Failed to connect to %s:%d: %s", config->server_address, config->server_port,
-                     socket_get_error_string());
-  }
-
-  client->connected = true;
-  log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
-
-  return ASCIICHAT_OK;
+  return pconn_result;
 }
 
 void acds_client_disconnect(acds_client_t *client) {
@@ -182,6 +189,7 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   }
 
   log_debug("Sent SESSION_CREATE request");
+  log_debug("★ ACDS_CLIENT: About to receive SESSION_CREATED on socket %d", client->socket);
 
   // Receive SESSION_CREATED response
   packet_type_t resp_type;
@@ -189,6 +197,7 @@ asciichat_error_t acds_session_create(acds_client_t *client, const acds_session_
   size_t resp_size = 0;
 
   int recv_result = receive_packet(client->socket, &resp_type, &resp_payload, &resp_size);
+  log_debug("★ ACDS_CLIENT: receive_packet returned %d", recv_result);
   if (recv_result < 0) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to receive SESSION_CREATED response");
   }
@@ -554,37 +563,24 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], ui
 }
 
 bool acds_validate_timestamp(uint64_t timestamp_ms, uint32_t window_seconds) {
-  // Get current time in milliseconds
-  struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-    log_error("clock_gettime failed");
-    return false;
-  }
-
-  uint64_t now_ms = (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+  uint64_t now_ms = time_ns_to_ms(time_get_realtime_ns());
   uint64_t window_ms = (uint64_t)window_seconds * 1000;
 
-  // Check if timestamp is too far in the future (allow 60 second clock skew)
   if (timestamp_ms > now_ms + 60000) {
-    // Cast to signed before subtraction to avoid unsigned underflow
     int64_t skew = (int64_t)timestamp_ms - (int64_t)now_ms;
     log_warn("Timestamp is in the future: %llu > %llu (skew: %lld ms)", (unsigned long long)timestamp_ms,
              (unsigned long long)now_ms, (long long)skew);
     return false;
   }
 
-  // Check if timestamp is too old
-  // To avoid unsigned underflow, check if now_ms is large enough before subtracting
   uint64_t min_valid_timestamp = (now_ms >= window_ms) ? (now_ms - window_ms) : 0;
   if (timestamp_ms < min_valid_timestamp) {
-    // Cast to signed before subtraction to avoid unsigned underflow
     int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
     log_warn("Timestamp is too old: %llu < %llu (age: %lld ms, max: %u seconds)", (unsigned long long)timestamp_ms,
              (unsigned long long)min_valid_timestamp, (long long)age, window_seconds);
     return false;
   }
 
-  // Cast to signed before subtraction to avoid unsigned underflow
   int64_t age = (int64_t)now_ms - (int64_t)timestamp_ms;
   log_debug("Timestamp validation passed (age: %lld ms, window: %u seconds)", (long long)age, window_seconds);
   return true;

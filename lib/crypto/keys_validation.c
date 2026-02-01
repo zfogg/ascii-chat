@@ -7,18 +7,14 @@
 #include "keys_validation.h"
 #include "common.h"
 #include "asciichat_errno.h"
+#include "util/utf8.h"
 #include "crypto/crypto.h" // Includes <sodium.h>
+#include "platform/filesystem.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
-
-#ifdef _WIN32
 #include <sys/stat.h>
-#else
-#include <unistd.h>
-#include <sys/stat.h>
-#endif
 
 // =============================================================================
 // Key Validation Implementation
@@ -58,6 +54,12 @@ asciichat_error_t validate_public_key(const public_key_t *key) {
   // Check comment length
   if (strlen(key->comment) >= MAX_COMMENT_LEN) {
     SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment too long: %zu (maximum %d)", strlen(key->comment), MAX_COMMENT_LEN - 1);
+    return ERROR_CRYPTO_KEY;
+  }
+
+  // Validate comment is valid UTF-8 (user-provided text in key files)
+  if (key->comment[0] != '\0' && !utf8_is_valid(key->comment)) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Key comment contains invalid UTF-8 sequence");
     return ERROR_CRYPTO_KEY;
   }
 
@@ -104,6 +106,12 @@ asciichat_error_t validate_private_key(const private_key_t *key) {
     return ERROR_CRYPTO_KEY;
   }
 
+  // Validate comment is valid UTF-8 (user-provided text in key files)
+  if (key->key_comment[0] != '\0' && !utf8_is_valid(key->key_comment)) {
+    SET_ERRNO(ERROR_CRYPTO_KEY, "Private key comment contains invalid UTF-8 sequence");
+    return ERROR_CRYPTO_KEY;
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -127,7 +135,7 @@ asciichat_error_t validate_key_security(const char *key_path) {
   }
 
   // Check file permissions
-  asciichat_error_t perm_result = validate_key_permissions(key_path);
+  asciichat_error_t perm_result = platform_validate_key_file_permissions(key_path);
   if (perm_result != ASCIICHAT_OK) {
     return perm_result;
   }
@@ -290,29 +298,6 @@ asciichat_error_t check_key_strength(const public_key_t *key, bool *is_weak) {
   // Additional weak key pattern detection:
   // - Check for repeated patterns (handled in check_key_patterns)
   // - Check for known weak sequences (see check_key_patterns)
-
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t validate_key_permissions(const char *key_path) {
-  if (!key_path) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
-    return ERROR_INVALID_PARAM;
-  }
-
-#ifndef _WIN32
-  struct stat st;
-  if (stat(key_path, &st) != 0) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot stat key file: %s", key_path);
-    return ERROR_CRYPTO_KEY;
-  }
-
-  // Check for overly permissive permissions
-  if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
-    SET_ERRNO(ERROR_CRYPTO_KEY, "Key file has overly permissive permissions: %o (recommended: 600)", st.st_mode & 0777);
-    return ERROR_CRYPTO_KEY;
-  }
-#endif
 
   return ASCIICHAT_OK;
 }

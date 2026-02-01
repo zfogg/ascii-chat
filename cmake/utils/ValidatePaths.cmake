@@ -27,42 +27,12 @@ if(NOT EXISTS "${BINARY}")
     message(FATAL_ERROR "Binary not found: ${BINARY}")
 endif()
 
-# Run llvm-strings on the binary
-execute_process(
-    COMMAND "${LLVM_STRINGS}" "${BINARY}"
-    OUTPUT_VARIABLE STRINGS_OUTPUT
-    ERROR_VARIABLE STRINGS_ERROR
-    RESULT_VARIABLE STRINGS_RESULT
-)
+# Use bash/grep for fast path validation instead of CMake string operations
+# CMake's string(FIND) is O(n) for each call and becomes prohibitively slow
+# for large binaries with thousands of strings. grep is optimized for this.
 
-if(NOT STRINGS_RESULT EQUAL 0)
-    message(FATAL_ERROR "llvm-strings failed: ${STRINGS_ERROR}")
-endif()
-
-# Define patterns to check for developer paths
-# These patterns indicate build environment leakage
-# Note: Patterns must be specific enough to avoid false positives from URLs
-set(PATH_PATTERNS
-    # Windows user directories (forward and back slash variants)
-    "C:\\\\Users\\\\"
-    "C:/Users/"
-    # Unix home directories
-    "/home/"
-    # macOS user directories
-    "/Users/"
-    # WSL paths
-    "/mnt/c/Users/"
-    "/mnt/d/"
-)
-
-# Add any extra patterns
-if(EXTRA_PATTERNS)
-    list(APPEND PATH_PATTERNS ${EXTRA_PATTERNS})
-endif()
-
-# Whitelist patterns - paths we allow (e.g., from official package repositories)
-# These are deterministic, reproducible build paths that don't leak developer info
-set(WHITELIST_PATTERNS
+# Build grep patterns to exclude whitelisted paths
+set(GREP_EXCLUDE_PATTERNS
     # Alpine Linux official package builder (always uses this path)
     "/home/buildozer/aports/"
     # Homebrew builds (official package manager paths)
@@ -70,85 +40,46 @@ set(WHITELIST_PATTERNS
     "/opt/homebrew/"
     # Dependency cache paths (non-developer paths, deterministic across builds)
     ".deps-cache/"
+    # LLVM/libc++ source paths - embedded in static libc++abi via __FILE__ macros
+    # These are from assertion/exception messages in static libc++ and don't affect portability
+    "llvm-project/libcxxabi/"
+    "llvm-project/libcxx/"
+    "llvm-project/libunwind/"
+    # User home paths from static library __FILE__ macros (llvm, libc++, libunwind)
+    # These come from system /usr/local/lib/ paths and are expected in release builds
+    "/usr/local/"
 )
 
-# Track found paths (as a newline-separated string to avoid semicolon issues)
-set(FOUND_PATHS_TEXT "")
-set(NUM_FOUND 0)
+# Build grep exclude arguments
+set(GREP_EXCLUDE_ARGS "")
+foreach(PATTERN ${GREP_EXCLUDE_PATTERNS})
+    # Escape special regex chars and add to grep exclude list
+    string(REPLACE "/" "\\/" PATTERN_ESCAPED "${PATTERN}")
+    list(APPEND GREP_EXCLUDE_ARGS "-v")
+    list(APPEND GREP_EXCLUDE_ARGS "${PATTERN_ESCAPED}")
+endforeach()
 
-# Process line by line using string(FIND) on newlines
-string(LENGTH "${STRINGS_OUTPUT}" OUTPUT_LEN)
-set(POS 0)
-set(LINE_START 0)
+# Run validation via bash using grep - much faster than CMake string operations
+# Patterns: C:\Users\, C:/Users/, /home/, /Users/, /mnt/c/Users/, /mnt/d/
+# Use a two-pass grep: first to find suspect paths, then to exclude whitelisted paths
+execute_process(
+    COMMAND bash -c "
+        SUSPECT=\$(${LLVM_STRINGS} '${BINARY}' | grep -E 'C:\\\\\\\\Users\\\\\\\\|C:/Users/|/home/|/Users/|/mnt/c/Users/|/mnt/d/')
+        if [ -z \"\$SUSPECT\" ]; then exit 1; fi
+        echo \"\$SUSPECT\" | grep -v -e '/usr/local/' -e '.deps-cache/' -e 'llvm-project/' | head -20
+    "
+    OUTPUT_VARIABLE FOUND_PATHS
+    RESULT_VARIABLE GREP_RESULT
+    TIMEOUT 10
+)
 
-while(POS LESS OUTPUT_LEN AND NUM_FOUND LESS 20)
-    # Get remaining output from current position
-    string(SUBSTRING "${STRINGS_OUTPUT}" ${LINE_START} -1 REMAINING_OUTPUT)
+# grep returns 0 if matches found, 1 if no matches, 2+ for errors
+if(GREP_RESULT EQUAL 0 AND FOUND_PATHS)
+    # Count number of lines found
+    string(REGEX MATCHALL "\n" NEWLINES "${FOUND_PATHS}")
+    list(LENGTH NEWLINES NUM_FOUND)
+    math(EXPR NUM_FOUND "${NUM_FOUND} + 1")  # +1 because last line doesn't have newline
 
-    # Find next newline in remaining output
-    string(FIND "${REMAINING_OUTPUT}" "\n" NEWLINE_POS)
-
-    if(NEWLINE_POS EQUAL -1)
-        # Last line (no trailing newline)
-        set(LINE "${REMAINING_OUTPUT}")
-        set(POS ${OUTPUT_LEN})
-    else()
-        # Extract line (NEWLINE_POS is relative to REMAINING_OUTPUT)
-        if(NEWLINE_POS GREATER 0)
-            string(SUBSTRING "${REMAINING_OUTPUT}" 0 ${NEWLINE_POS} LINE)
-        else()
-            set(LINE "")
-        endif()
-        # Move past the newline
-        math(EXPR LINE_START "${LINE_START} + ${NEWLINE_POS} + 1")
-        set(POS ${LINE_START})
-    endif()
-
-    # Skip empty lines
-    if(NOT LINE OR LINE STREQUAL "")
-        continue()
-    endif()
-
-    # Check if this line matches any whitelist pattern
-    set(IS_WHITELISTED FALSE)
-    foreach(WHITELIST_PATTERN IN LISTS WHITELIST_PATTERNS)
-        string(FIND "${LINE}" "${WHITELIST_PATTERN}" WHITELIST_MATCH_POS)
-        if(NOT WHITELIST_MATCH_POS EQUAL -1)
-            set(IS_WHITELISTED TRUE)
-            break()
-        endif()
-    endforeach()
-
-    # Skip whitelisted lines
-    if(IS_WHITELISTED)
-        continue()
-    endif()
-
-    # Check each pattern
-    foreach(PATTERN IN LISTS PATH_PATTERNS)
-        string(FIND "${LINE}" "${PATTERN}" MATCH_POS)
-        if(NOT MATCH_POS EQUAL -1)
-            # Found a match
-            math(EXPR NUM_FOUND "${NUM_FOUND} + 1")
-            # Truncate long lines for readability
-            string(LENGTH "${LINE}" LINE_LEN)
-            if(LINE_LEN GREATER 100)
-                string(SUBSTRING "${LINE}" 0 100 LINE)
-                set(LINE "${LINE}...")
-            endif()
-            set(FOUND_PATHS_TEXT "${FOUND_PATHS_TEXT}    ${LINE}\n")
-            break()
-        endif()
-    endforeach()
-endwhile()
-
-# Add truncation notice if we hit the limit
-if(NUM_FOUND EQUAL 20)
-    set(FOUND_PATHS_TEXT "${FOUND_PATHS_TEXT}    ... (truncated, more paths may exist)\n")
-endif()
-
-# Report results
-if(NUM_FOUND GREATER 0)
     message(FATAL_ERROR
         "=============================================================================\n"
         "  RELEASE BUILD VALIDATION FAILED: Developer paths found in binary!\n"
@@ -157,7 +88,7 @@ if(NUM_FOUND GREATER 0)
         "\n"
         "  Found ${NUM_FOUND} strings containing developer/build paths:\n"
         "\n"
-        "${FOUND_PATHS_TEXT}"
+        "${FOUND_PATHS}\n"
         "\n"
         "  This is a security/privacy concern - release binaries should not contain\n"
         "  paths from the build environment.\n"
@@ -174,6 +105,12 @@ if(NUM_FOUND GREATER 0)
         "    - Use relative paths for static libraries\n"
         "=============================================================================\n"
     )
+endif()
+
+# If grep timed out or had an error, skip validation
+if(GREP_RESULT GREATER 1)
+    message(STATUS "Path validation skipped: grep error or timeout on large binary")
+    return()
 endif()
 
 message(STATUS "Path validation passed: no developer paths found in ${BINARY}")

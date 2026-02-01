@@ -43,6 +43,9 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport");
   }
 
+  log_debug("★ PACKET_SEND_VIA_TRANSPORT: type=%d, payload_len=%zu, transport=%p", type, payload_len,
+            (void *)transport);
+
   // Build packet header
   packet_header_t header;
   header.magic = HOST_TO_NET_U32(PACKET_MAGIC);
@@ -56,6 +59,9 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   } else {
     header.crc32 = 0;
   }
+
+  log_debug("★ PKT_SEND: type=%d, magic=0x%08x, length=%u, crc32=0x%08x", type, header.magic, header.length,
+            header.crc32);
 
   // Calculate total packet size
   size_t total_size = sizeof(header) + payload_len;
@@ -72,8 +78,15 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     memcpy(packet + sizeof(header), payload, payload_len);
   }
 
+  log_debug("★ PACKET_SEND: total_size=%zu, calling acip_transport_send...", total_size);
   // Send via transport (transport handles encryption if crypto_ctx present)
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
+
+  if (result == ASCIICHAT_OK) {
+    log_debug("★ PACKET_SEND: SUCCESS - sent %zu bytes (type=%d)", total_size, type);
+  } else {
+    log_error("★ PACKET_SEND: FAILED - acip_transport_send returned %d (%s)", result, asciichat_error_string(result));
+  }
 
   buffer_pool_free(NULL, packet, total_size);
   return result;

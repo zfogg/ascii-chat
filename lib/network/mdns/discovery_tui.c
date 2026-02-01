@@ -15,7 +15,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 /**
  * @brief TUI wrapper around core mDNS discovery
@@ -55,7 +57,7 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
   }
 
   // Display available servers
-  printf("\nAvailable ASCII-Chat servers on LAN:\n");
+  printf("\nAvailable ascii-chat servers on LAN:\n");
   for (int i = 0; i < count; i++) {
     const discovery_tui_server_t *srv = &servers[i];
     const char *addr = discovery_tui_get_best_address(srv);
@@ -132,7 +134,7 @@ int discovery_tui_select(const discovery_tui_server_t *servers, int count) {
 
   // Display header
   log_plain("\n");
-  log_plain("%s╭─ 🔍 ASCII-Chat Server Discovery %s────────────╮%s\n", ANSI_BOLD, ANSI_RESET, ANSI_BOLD);
+  log_plain("%s╭─ 🔍 ascii-chat Server Discovery %s────────────╮%s\n", ANSI_BOLD, ANSI_RESET, ANSI_BOLD);
   log_plain("│%s\n", ANSI_RESET);
   log_plain("%s│%s Found %d server%s on your local network:%s\n", ANSI_BOLD, ANSI_GREEN, count, count == 1 ? "" : "s",
             ANSI_RESET);

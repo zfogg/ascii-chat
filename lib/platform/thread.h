@@ -49,6 +49,37 @@ typedef pthread_key_t tls_key_t;
 #include "../common.h" // For asciichat_error_t (must come AFTER type definitions)
 
 // ============================================================================
+// Thread-Local Storage Macros
+// ============================================================================
+
+/**
+ * @brief Platform-specific thread-local storage declaration
+ *
+ * Use this macro to declare thread-local storage variables that are
+ * initialized once per thread with zero/null value.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses __declspec(thread)
+ *   - POSIX: Uses __thread
+ *
+ * @par Example:
+ * @code{.c}
+ * PLATFORM_THREAD_LOCAL bool g_in_callback = false;
+ * @endcode
+ *
+ * @note Not compatible with dynamic TLS (ascii_tls_key_*). Use one or the other.
+ * @note Static thread-local storage is allocated at program start.
+ * @note Initialization is zero/null, per language spec.
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PLATFORM_THREAD_LOCAL __declspec(thread)
+#else
+#define PLATFORM_THREAD_LOCAL __thread
+#endif
+
+// ============================================================================
 // Thread Functions
 // ============================================================================
 

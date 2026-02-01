@@ -1,32 +1,94 @@
 /**
  * @file common.h
- * @brief Common utilities and helpers for option parsing
+ * @brief Common utilities and helpers for option parsing across all modes
  * @ingroup options
  *
- * Shared helper functions, validators, and utilities used by client.c, server.c,
- * and mirror.c option parsing modules. This module provides:
- * - String parsing and validation utilities
- * - Option argument validation (ports, FPS, webcam indices)
- * - SSH key detection
- * - Terminal dimension management
- * - Error handling helpers
+ * This module provides shared utilities used by the entire options system:
+ * - Validators for numeric ranges, file existence, formats (IP, port, etc.)
+ * - String parsing helpers (safe integer conversion, color mode parsing, etc.)
+ * - Terminal dimension management functions
+ * - Option lookup and typo suggestion (Levenshtein distance)
+ * - SSH key detection and defaults
  *
  * **Design Philosophy**:
- * - Single Responsibility: Each function does one validation task
- * - Consistent Error Reporting: All validators use fprintf to stderr
- * - No Side Effects: Validators don't modify global state
- * - Reusability: Used by all mode-specific parsers
  *
- * @see options.h
- * @see client.h
- * @see server.h
- * @see mirror.h
+ * - **Single Responsibility**: Each validator handles one specific type of validation
+ * - **Consistent Error Reporting**: All validators provide helpful error messages
+ * - **No Side Effects**: Validators are pure functions (no global state modification)
+ * - **Reusability**: These functions are used by registry, builder, and parsers modules
+ * - **Cross-Cutting Concerns**: Handles validation needs for all modes uniformly
+ *
+ * **Validator Functions**:
+ *
+ * Return conventions:
+ * - Numeric validators: Return parsed value on success, INT_MIN/-1 on error
+ * - Boolean validators: Return true/false with error message on failure
+ * - String validators: Validate format, write to output buffer
+ *
+ * **Typical Usage**:
+ *
+ * ```c
+ * // Validate port number
+ * uint16_t port;
+ * if (!validate_port_opt("8080", &port)) {
+ *     fprintf(stderr, "Invalid port: 8080\\n");
+ *     return false;
+ * }
+ *
+ * // Parse color mode from string
+ * asciichat_error_t err = parse_color_mode_option("256", opts);
+ * if (err != ASCIICHAT_OK) {
+ *     fprintf(stderr, "Unknown color mode\\n");
+ *     return false;
+ * }
+ *
+ * // Find similar option if user misspelled
+ * const char *suggestion = find_similar_option("prot", all_options);
+ * if (suggestion) {
+ *     fprintf(stderr, "Did you mean: --%s?\\n", suggestion);
+ * }
+ * ```
+ *
+ * **Option Parsing Helpers**:
+ *
+ * - `strtoint_safe()`: Safe integer parsing with range checking
+ * - `find_similar_option()`: Typo detection using Levenshtein distance
+ * - `validate_positive_int_opt()`: Validate positive integers
+ * - `validate_port_opt()`: Validate port numbers (1-65535)
+ * - `validate_fps_opt()`: Validate frame rates
+ * - `validate_webcam_index()`: Validate webcam device indices
+ *
+ * **Display Option Parsers**:
+ *
+ * - `parse_color_mode_option()`: Parse color mode strings (auto, mono, 16, 256, truecolor)
+ * - `parse_render_mode_option()`: Parse render mode (foreground, background, half-block)
+ * - `parse_palette_option()`: Parse palette type selection
+ * - `parse_palette_chars_option()`: Parse custom palette character set
+ *
+ * **Terminal Functions**:
+ *
+ * - `update_dimensions_for_full_height()`: Adjust dimensions to use full terminal height
+ * - `update_dimensions_to_terminal_size()`: Sync dimensions with current terminal size
+ * - `print_project_links()`: Print ascii-chat project links and info
+ *
+ * **Cryptography Helpers**:
+ *
+ * - `detect_default_ssh_key()`: Find default SSH key if not specified
+ * - `validate_options_and_report()`: Cross-field validation with error reporting
+ *
+ * @see options.h - Main options module
+ * @see registry.h - Central registry of all options
+ * @see builder.h - Builder API using these validators
+ * @see validation.h - Additional validation functions
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date January 2026
  */
 
 #pragma once
 
 #include "options/options.h"
-#include <getopt.h>
+#include "platform/terminal.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -205,6 +267,30 @@ bool validate_fps_opt(const char *value_str, int *out_fps);
  * @endcode
  */
 bool validate_webcam_index(const char *value_str, unsigned short int *out_index);
+
+/**
+ * @brief Validate options and report errors to stderr
+ *
+ * Calls options_config_validate() and handles error message display and cleanup.
+ * Validates all option dependencies, conflicts, and custom validators.
+ *
+ * @param config Options configuration (opaque pointer, defined in builder.h)
+ * @param opts Options struct to validate
+ * @return ASCIICHAT_OK if valid, error code otherwise
+ *
+ * @note Prints error message to stderr if validation fails
+ * @note Frees error message internally
+ *
+ * Example:
+ * @code
+ * asciichat_error_t result = validate_options_and_report(config, opts);
+ * if (result != ASCIICHAT_OK) {
+ *     options_config_destroy(config);
+ *     return result;
+ * }
+ * @endcode
+ */
+asciichat_error_t validate_options_and_report(const void *config, const void *opts);
 
 /**
  * @brief Detect default SSH key path for the current user
@@ -490,154 +576,11 @@ void update_dimensions_for_full_height(options_t *opts);
  */
 void update_dimensions_to_terminal_size(options_t *opts);
 
-// ============================================================================
-// Usage String Macros (Complete Format Strings)
-// ============================================================================
-
-// Formatting
-#define USAGE_INDENT "        "
-
-// Common Options
-#define USAGE_HELP_LINE USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n"
-#define USAGE_VERSION_LINE USAGE_INDENT "-v --version            " USAGE_INDENT "print version information\n"
-
-// Network Options
-#define USAGE_PORT_LINE                                                                                                \
-  USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port to listen on (default: %d)\n"
-#define USAGE_PORT_CLIENT_LINE                                                                                         \
-  USAGE_INDENT "-p --port PORT               " USAGE_INDENT "override port from address (default: 27224)\n"
-#define USAGE_RECONNECT_LINE                                                                                           \
-  USAGE_INDENT "   --reconnect VALUE         " USAGE_INDENT                                                            \
-               "reconnection behavior: off, auto, or 1-999 (default: auto)\n"
-
-// Server Options
-#define USAGE_MAX_CLIENTS_LINE                                                                                         \
-  USAGE_INDENT "   --max-clients N   " USAGE_INDENT "maximum simultaneous clients (1-9, default: 9)\n"
-#define USAGE_NO_AUDIO_MIXER_LINE                                                                                      \
-  USAGE_INDENT "   --no-audio-mixer  " USAGE_INDENT "disable audio mixer - send silence (debug mode only)\n"
-
-// Terminal Dimensions
-#define USAGE_WIDTH_LINE                                                                                               \
-  USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n"
-#define USAGE_HEIGHT_LINE                                                                                              \
-  USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n"
-
-// Webcam Options
-#define USAGE_WEBCAM_INDEX_LINE                                                                                        \
-  USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT "webcam device index (0-based) (default: 0)\n"
-#define USAGE_LIST_WEBCAMS_LINE                                                                                        \
-  USAGE_INDENT "   --list-webcams            " USAGE_INDENT "list available webcam devices and exit\n"
-#define USAGE_WEBCAM_FLIP_LINE                                                                                         \
-  USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT                                                            \
-               "toggle horizontal flip of webcam image (default: flipped)\n"
-#define USAGE_TEST_PATTERN_CLIENT_LINE                                                                                 \
-  USAGE_INDENT "   --test-pattern            " USAGE_INDENT                                                            \
-               "use test pattern instead of webcam (for testing multiple clients)\n"
-#define USAGE_TEST_PATTERN_MIRROR_LINE                                                                                 \
-  USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam (for testing)\n"
-
-// Display Options (platform-specific FPS handled separately)
-#define USAGE_FPS_WIN_LINE                                                                                             \
-  USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 (default: 30 for Windows)\n"
-#define USAGE_FPS_UNIX_LINE                                                                                            \
-  USAGE_INDENT "   --fps FPS                 " USAGE_INDENT "desired frame rate 1-144 (default: 60 for Unix)\n"
-#define USAGE_COLOR_MODE_LINE                                                                                          \
-  USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT                                                            \
-               "color modes: auto, none, 16, 256, truecolor (default: auto)\n"
-#define USAGE_SHOW_CAPABILITIES_LINE                                                                                   \
-  USAGE_INDENT "   --show-capabilities       " USAGE_INDENT "show detected terminal capabilities and exit\n"
-#define USAGE_UTF8_LINE                                                                                                \
-  USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support (default: [unset])\n"
-#define USAGE_RENDER_MODE_LINE                                                                                         \
-  USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT                                                            \
-               "Rendering modes: foreground, background, half-block (default: foreground)\n"
-#define USAGE_PALETTE_LINE                                                                                             \
-  USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT                                                            \
-               "ASCII character palette: standard, blocks, digital, minimal, cool, custom (default: standard)\n"
-#define USAGE_PALETTE_CHARS_LINE                                                                                       \
-  USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT                                                            \
-               "Custom palette characters (implies --palette=custom) (default: [unset])\n"
-#define USAGE_STRETCH_LINE                                                                                             \
-  USAGE_INDENT "-s --stretch                 " USAGE_INDENT                                                            \
-               "stretch or shrink video to fit (ignore aspect ratio) (default: [unset])\n"
-
-// Snapshot Options
-#define USAGE_SNAPSHOT_LINE                                                                                            \
-  USAGE_INDENT "-S --snapshot                " USAGE_INDENT "capture single frame and exit (default: [unset])\n"
-#define USAGE_SNAPSHOT_DELAY_LINE                                                                                      \
-  USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n"
-#define USAGE_STRIP_ANSI_LINE                                                                                          \
-  USAGE_INDENT "   --strip-ansi              " USAGE_INDENT                                                            \
-               "remove all ANSI escape codes from output (default: [unset])\n"
-
-// Audio Options
-#define USAGE_AUDIO_LINE                                                                                               \
-  USAGE_INDENT "-A --audio                   " USAGE_INDENT "enable audio capture and playback (default: [unset])\n"
-#define USAGE_AUDIO_ANALYSIS_LINE                                                                                      \
-  USAGE_INDENT "   --audio-analysis          " USAGE_INDENT                                                            \
-               "track and report audio quality metrics (with --audio) (default: [unset])\n"
-#define USAGE_NO_AUDIO_PLAYBACK_LINE                                                                                   \
-  USAGE_INDENT "   --no-audio-playback       " USAGE_INDENT                                                            \
-               "disable speaker playback but keep recording received audio (debug mode) (default: [unset])\n"
-#define USAGE_LIST_MICROPHONES_LINE                                                                                    \
-  USAGE_INDENT "   --list-microphones        " USAGE_INDENT "list available audio input devices and exit\n"
-#define USAGE_LIST_SPEAKERS_LINE                                                                                       \
-  USAGE_INDENT "   --list-speakers           " USAGE_INDENT "list available audio output devices and exit\n"
-#define USAGE_MICROPHONE_INDEX_LINE                                                                                    \
-  USAGE_INDENT "   --microphone-index INDEX  " USAGE_INDENT "microphone device index (-1 for default) (default: -1)\n"
-#define USAGE_SPEAKERS_INDEX_LINE                                                                                      \
-  USAGE_INDENT "   --speakers-index INDEX    " USAGE_INDENT "speakers device index (-1 for default) (default: -1)\n"
-
-// Encryption Options
-#define USAGE_ENCRYPT_LINE                                                                                             \
-  USAGE_INDENT "-E --encrypt                 " USAGE_INDENT "enable packet encryption (default: [unset])\n"
-#define USAGE_KEY_SERVER_LINE                                                                                          \
-  USAGE_INDENT "-K --key KEY         " USAGE_INDENT                                                                    \
-               "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' "     \
-               "(implies --encrypt) (default: [unset])\n"
-#define USAGE_KEY_CLIENT_LINE                                                                                          \
-  USAGE_INDENT "-K --key KEY                  " USAGE_INDENT                                                           \
-               "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' for " \
-               "auto-detect (implies --encrypt) (default: [unset])\n"
-#define USAGE_PASSWORD_LINE                                                                                            \
-  USAGE_INDENT "   --password [PASS]          " USAGE_INDENT                                                           \
-               "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n"
-#define USAGE_KEYFILE_LINE                                                                                             \
-  USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT                                                            \
-               "read encryption key from FILE (implies --encrypt) (default: [unset])\n"
-#define USAGE_NO_ENCRYPT_LINE                                                                                          \
-  USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n"
-#define USAGE_SERVER_KEY_LINE                                                                                          \
-  USAGE_INDENT "   --server-key KEY           " USAGE_INDENT                                                           \
-               "expected server public key for verification (default: [unset])\n"
-#define USAGE_CLIENT_KEYS_LINE                                                                                         \
-  USAGE_INDENT "   --client-keys KEYS" USAGE_INDENT                                                                    \
-               "allowed client public keys (comma-separated, supports github:user, gitlab:user, gpg:keyid, or SSH "    \
-               "pubkey) (default: [unset])\n"
-
-// Compression Options
-#define USAGE_COMPRESSION_LEVEL_LINE                                                                                   \
-  USAGE_INDENT "   --compression-level N " USAGE_INDENT "zstd compression level 1-9 (default: 1)\n"
-#define USAGE_NO_COMPRESS_LINE                                                                                         \
-  USAGE_INDENT "   --no-compress     " USAGE_INDENT "disable frame compression (default: [unset])\n"
-#define USAGE_ENCODE_AUDIO_LINE                                                                                        \
-  USAGE_INDENT "   --encode-audio    " USAGE_INDENT "enable Opus audio encoding (default: enabled)\n"
-#define USAGE_NO_ENCODE_AUDIO_LINE USAGE_INDENT "   --no-encode-audio " USAGE_INDENT "disable Opus audio encoding\n"
-
-// ACDS Options
-#ifdef _WIN32
-#define USAGE_DATABASE_LINE                                                                                            \
-  USAGE_INDENT "-d --db PATH                " USAGE_INDENT                                                             \
-               "SQLite database path (default: %APPDATA%\\ascii-chat\\acds.db)\n"
-#else
-#define USAGE_DATABASE_LINE                                                                                            \
-  USAGE_INDENT "-d --db PATH                " USAGE_INDENT                                                             \
-               "SQLite database path (default: ~/.config/ascii-chat/acds.db)\n"
-#endif
-#define USAGE_LOG_FILE_LINE USAGE_INDENT "-L --log-file FILE      " USAGE_INDENT "log file path (default: stderr)\n"
-#define USAGE_LOG_LEVEL_LINE                                                                                           \
-  USAGE_INDENT "-l --log-level LEVEL    " USAGE_INDENT                                                                 \
-               "log level: dev, debug, info, warn, error, fatal (default: info)\n"
+/**
+ * @brief Print project links with link emoji and colored styling
+ * @param desc Output file stream (typically stdout)
+ */
+void print_project_links(FILE *desc);
 
 #ifdef __cplusplus
 }

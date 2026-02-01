@@ -17,10 +17,6 @@
 #include <string.h>
 #include <stdatomic.h>
 
-#ifndef _WIN32
-#include <netinet/tcp.h>
-#endif
-
 /* ============================================================================
  * Core Network I/O Operations
  * ============================================================================
@@ -29,80 +25,6 @@
  */
 
 // Use network_network_is_test_environment() from network.h
-
-/**
- * @brief Platform-specific send operation
- * @param sockfd Socket file descriptor
- * @param data Data to send
- * @param len Length of data
- * @return Number of bytes sent, or -1 on error
- */
-static ssize_t network_platform_send(socket_t sockfd, const void *data, size_t len) {
-#ifdef _WIN32
-  // Windows send() expects int for length and const char* for buffer
-  if (len > INT_MAX) {
-    len = INT_MAX;
-  }
-  int raw_sent = send(sockfd, (const char *)data, (int)len, 0);
-
-  // Check for SOCKET_ERROR before casting to avoid corruption
-  ssize_t sent;
-  if (raw_sent == SOCKET_ERROR) {
-    sent = -1;
-    // On Windows, use WSAGetLastError() and save to WSA error field
-    errno = EIO; // Set a generic errno, but save the real WSA error
-  } else {
-    sent = (ssize_t)raw_sent;
-    // CORRUPTION DETECTION: Check Windows send() return value
-    if (raw_sent > (int)len) {
-      SET_ERRNO(ERROR_INVALID_STATE, "CRITICAL: Windows send() returned more than requested: raw_sent=%d > len=%zu",
-                raw_sent, len);
-    }
-  }
-  return sent;
-#elif defined(MSG_NOSIGNAL)
-  return send(sockfd, data, len, MSG_NOSIGNAL);
-#else
-  // macOS doesn't have MSG_NOSIGNAL, but we ignore SIGPIPE signal instead
-  return send(sockfd, data, len, 0);
-#endif
-}
-
-/**
- * @brief Platform-specific recv operation
- * @param sockfd Socket file descriptor
- * @param buf Buffer to receive data
- * @param len Length of buffer
- * @return Number of bytes received, or -1 on error
- */
-static ssize_t network_platform_recv(socket_t sockfd, void *buf, size_t len) {
-#ifdef _WIN32
-  int raw_received = recv(sockfd, (char *)buf, (int)len, 0);
-
-  if (raw_received == SOCKET_ERROR) {
-    return -1;
-  }
-  return (ssize_t)raw_received;
-#else
-  return recv(sockfd, buf, len, 0);
-#endif
-}
-
-/**
- * @brief Platform-specific error string retrieval
- * @param error Error code
- * @return Error string
- */
-static const char *network_get_error_string(int error) {
-#ifdef _WIN32
-  // For socket errors, use socket-specific function
-  (void)error; // Windows doesn't use the error parameter
-  return socket_get_error_string();
-#else
-  // For standard errno, use platform abstraction
-  return SAFE_STRERROR(error);
-#endif
-}
 
 /**
  * @brief Platform-specific error handling for send operations
@@ -117,7 +39,7 @@ static int network_handle_send_error(int error) {
     SET_ERRNO_SYS(ERROR_NETWORK, "Connection closed by peer during send");
     return 0; // Fatal
   }
-  SET_ERRNO_SYS(ERROR_NETWORK, "send_with_timeout failed: %s", network_get_error_string(error));
+  SET_ERRNO_SYS(ERROR_NETWORK, "send_with_timeout failed: %s", socket_get_error_string());
   return 0; // Fatal
 }
 
@@ -127,31 +49,24 @@ static int network_handle_send_error(int error) {
  * @return 1 if should retry, 0 if fatal error
  */
 static int network_handle_recv_error(int error) {
-#ifdef _WIN32
-  if (error == WSAEWOULDBLOCK) {
+  // Check for "would block" - retry operation
+  if (socket_is_would_block_error(error)) {
     return 1; // Retry
   }
-  if (error == WSAEINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
-    log_debug("recv interrupted by signal, retrying");
-    return 1; // Retry
-  }
-#else
-  if (error == EAGAIN || error == EWOULDBLOCK) {
-    return 1; // Retry
-  }
+
+  // Check for signal interruption - recoverable, retry
   if (error == EINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
     log_debug("recv interrupted by signal, retrying");
     return 1; // Retry
   }
-  if (error == EBADF) {
-    // Socket is not a socket (WSAENOTSOCK on Windows) - socket was closed
+
+  // Check for invalid/closed socket - fatal
+  if (socket_is_invalid_socket_error(error)) {
     SET_ERRNO_SYS(ERROR_NETWORK, "Socket is not a socket (closed by another thread)");
     return 0; // Fatal
   }
-#endif
-  SET_ERRNO_SYS(ERROR_NETWORK, "recv_with_timeout failed: %s", network_get_error_string(error));
+
+  SET_ERRNO_SYS(ERROR_NETWORK, "recv_with_timeout failed: %s", socket_get_error_string());
   return 0; // Fatal
 }
 
@@ -170,22 +85,16 @@ static int network_handle_select_error(int result) {
     return 0; // Not an error, but don't retry
   }
 
-#ifdef _WIN32
-  int error = WSAGetLastError();
-  if (error == WSAEINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
+  // Get error code (cross-platform)
+  int error = socket_get_last_error();
+
+  // Check for signal interruption - recoverable, retry
+  if (error == EINTR) {
     log_debug("select interrupted by signal, retrying");
     return 1; // Retry
   }
-  SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(error));
-#else
-  if (errno == EINTR) {
-    // Signal interrupted the call - this is recoverable, just retry
-    log_debug("select interrupted by signal, retrying");
-    return 1; // Retry
-  }
-  SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(errno));
-#endif
+
+  SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", socket_get_error_string());
   return 0; // Fatal
 }
 
@@ -243,7 +152,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
     }
 
     // Use platform-specific send
-    ssize_t sent = network_platform_send(sockfd, data_ptr + total_sent, bytes_to_send);
+    ssize_t sent = socket_send(sockfd, data_ptr + total_sent, bytes_to_send, 0);
 
     if (sent < 0) {
       int error = errno;
@@ -271,7 +180,6 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
  */
 ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds) {
   if (sockfd == INVALID_SOCKET_VALUE) {
-    log_error("NETWORK_DEBUG: recv_with_timeout called with INVALID_SOCKET_VALUE");
     errno = EBADF;
     return -1;
   }
@@ -309,17 +217,13 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
 
     // Calculate how much we still need to receive
     size_t bytes_to_recv = len - (size_t)total_received;
-    ssize_t received = network_platform_recv(sockfd, data + total_received, bytes_to_recv);
+    ssize_t received = socket_recv(sockfd, data + total_received, bytes_to_recv, 0);
 
     if (received < 0) {
       int error = errno;
-      log_error("NETWORK_DEBUG: network_platform_recv failed with error %d (errno=%d), sockfd=%d, buf=%p, len=%zu",
-                received, error, sockfd, data + total_received, bytes_to_recv);
       if (network_handle_recv_error(error)) {
-        log_debug("NETWORK_DEBUG: retrying after error %d", error);
         continue; // Retry
       }
-      log_error("NETWORK_DEBUG: fatal error %d, giving up", error);
       return -1; // Fatal error
     }
 
@@ -390,37 +294,16 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
 
   if (accept_result == INVALID_SOCKET_VALUE) {
     // Check if this is a socket closed error (common during shutdown)
-#ifdef _WIN32
-    // On Windows, use WSAGetLastError() instead of errno
-    int error_code = WSAGetLastError();
-    // Windows-specific error codes for closed/invalid sockets
-    // WSAENOTSOCK = 10038, WSAEBADF = 10009, WSAENOTCONN = 10057
-    if (error_code == WSAENOTSOCK || error_code == WSAEBADF || error_code == WSAENOTCONN) {
+    int error_code = socket_get_last_error();
+
+    if (socket_is_invalid_socket_error(error_code)) {
       // During shutdown, don't log this as an error since it's expected behavior
       asciichat_errno = ERROR_NETWORK;
       asciichat_errno_context.code = ERROR_NETWORK;
       asciichat_errno_context.has_system_error = false;
     } else {
-      // Save Windows socket error to WSA error field for debugging
-      errno = EIO; // Set a generic errno
-#ifdef NDEBUG
-      asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, NULL, 0, NULL, error_code);
-#else
-      asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, __FILE__, __LINE__, __func__, error_code);
-#endif
+      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", socket_get_error_string());
     }
-#else
-    // POSIX error codes for closed/invalid sockets
-    int error_code = errno;
-    if (error_code == EBADF || error_code == ENOTSOCK) {
-      // During shutdown, don't log this as an error since it's expected behavior
-      asciichat_errno = ERROR_NETWORK;
-      asciichat_errno_context.code = ERROR_NETWORK;
-      asciichat_errno_context.has_system_error = false;
-    } else {
-      SET_ERRNO_SYS(ERROR_NETWORK_BIND, "accept_with_timeout accept failed: %s", network_get_error_string(errno));
-    }
-#endif
     return -1;
   }
 
@@ -563,16 +446,11 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
     return true;
   }
 
-#ifdef _WIN32
-  int error = WSAGetLastError();
-  if (error != WSAEWOULDBLOCK && error != WSAEINPROGRESS) {
+  // Check if connection is in progress (expected for non-blocking sockets)
+  int error = socket_get_last_error();
+  if (!socket_is_in_progress_error(error) && !socket_is_would_block_error(error)) {
     return false;
   }
-#else
-  if (errno != EINPROGRESS && errno != EWOULDBLOCK) {
-    return false;
-  }
-#endif
 
   // Use select to wait for connection with timeout
   fd_set write_fds;

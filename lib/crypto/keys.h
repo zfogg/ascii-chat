@@ -53,6 +53,7 @@
  *
  * Supported formats:
  * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment" (direct key string)
+ * - HTTPS URL: "https://example.com/key.pub" or "https://example.com/key.gpg" (fetches from URL, parses response)
  * - GitHub SSH: "github:username" (fetches from https://github.com/username.keys, returns first Ed25519 key)
  * - GitLab SSH: "gitlab:username" (fetches from https://gitlab.com/username.keys, returns first Ed25519 key)
  * - GitHub GPG: "github:username.gpg" (fetches GPG key from https://github.com/username.gpg)
@@ -72,6 +73,11 @@
  *
  * @note GPG support: GPG Ed25519 keys are fully supported. Accepts 8, 16, or 40 character
  *       key IDs (short/long/full fingerprint). Requires `gpg` binary in PATH and gpg-agent running.
+ *
+ * @note HTTPS URLs: Can be any HTTPS URL (e.g., https://discovery.ascii-chat.com/key.pub).
+ *       Response content is parsed as key format. Uses BearSSL with system CA certificates.
+ *       Requires network connectivity. Only first key is returned; for multiple keys,
+ *       store them one per line in the response and use `parse_public_keys()` instead.
  *
  * @note GitHub/GitLab fetching: Uses BearSSL for HTTPS requests. Requires network connectivity.
  *       Only first Ed25519 key is returned. For multiple keys, use `parse_public_keys()` instead.
@@ -101,15 +107,23 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out);
  * - GitHub SSH: "github:username" - returns ALL Ed25519 keys from user's profile
  * - GitLab SSH: "gitlab:username" - returns ALL Ed25519 keys from user's profile
  * - File path: Returns all keys from file (one per line)
+ * - Comma-separated list: "github:user1, /path/to/keys.pub, https://example.com/key.pub" - returns all keys from all
+ * sources
  *
  * **Single key formats (behaves like parse_public_key):**
  * - SSH Ed25519: "ssh-ed25519 AAAAC3..." - returns single key
  * - Raw hex: 64 hex chars - returns single key
  * - GPG formats: Returns single key
  *
+ * **Comma-separated support:**
+ * When input contains commas, each comma-separated specifier is parsed independently.
+ * Whitespace around commas is automatically trimmed. If any specifier fails to parse,
+ * that specifier is skipped with a warning, but parsing continues for remaining specifiers.
+ * Returns ASCIICHAT_OK if at least one specifier parsed successfully.
+ *
  * This function is useful when you need to verify against ANY of a user's keys,
  * such as when a user has multiple SSH keys for different machines on their
- * GitHub/GitLab account.
+ * GitHub/GitLab account, or keys from multiple sources.
  *
  * @note GitHub/GitLab: Users often have multiple SSH keys for different machines.
  *       This function fetches all keys so you can verify against any of them.

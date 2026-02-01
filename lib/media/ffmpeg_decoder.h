@@ -113,17 +113,64 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void);
  * @param decoder Decoder to destroy (can be NULL)
  *
  * Cleans up FFmpeg decoder and releases all resources. Safe to call with NULL.
+ * Automatically stops the background prefetch thread if running.
  *
  * **Cleanup process:**
- * 1. Free swscale/swresample contexts
- * 2. Close codec contexts
- * 3. Close format context
- * 4. Free frame and packet structures
- * 5. Free decoder structure
+ * 1. Stop prefetch thread if running
+ * 2. Free video frame ringbuffer
+ * 3. Free swscale/swresample contexts
+ * 4. Close codec contexts
+ * 5. Close format context
+ * 6. Free frame and packet structures
+ * 7. Free decoder structure
  *
  * @ingroup media
  */
 void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder);
+
+/**
+ * @brief Start background frame prefetching thread
+ * @param decoder Decoder (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Starts a background thread that continuously reads and decodes video frames,
+ * storing them in an internal ringbuffer. The render loop then pulls pre-decoded
+ * frames from this buffer without blocking on network I/O.
+ *
+ * **Purpose:** Solves YouTube HTTP streaming performance issues by decoupling
+ * the blocking av_read_frame() calls from the render loop. Without this, frames
+ * take 93ms to arrive instead of the expected 41.7ms at 24 FPS.
+ *
+ * @note Should be called after decoder creation for FILE/HTTP sources
+ * @note Automatically called when media source is created
+ * @note Thread is stopped in ffmpeg_decoder_destroy()
+ *
+ * @ingroup media
+ */
+asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder);
+
+/**
+ * @brief Stop background frame prefetching thread
+ * @param decoder Decoder (must not be NULL)
+ *
+ * Stops the background prefetch thread. Automatically called by
+ * ffmpeg_decoder_destroy(). Safe to call even if thread isn't running.
+ *
+ * @ingroup media
+ */
+void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder);
+
+/**
+ * @brief Check if background frame prefetching thread is running
+ * @param decoder Decoder (must not be NULL)
+ * @return true if prefetch thread is running, false otherwise
+ *
+ * Utility function to check if the prefetch thread is currently active.
+ * Used during seeking to determine if thread needs to be stopped/restarted.
+ *
+ * @ingroup media
+ */
+bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder);
 
 /* ============================================================================
  * Video Operations
@@ -256,6 +303,28 @@ bool ffmpeg_decoder_has_audio(ffmpeg_decoder_t *decoder);
  * @ingroup media
  */
 asciichat_error_t ffmpeg_decoder_rewind(ffmpeg_decoder_t *decoder);
+
+/**
+ * @brief Seek to specific timestamp in media
+ * @param decoder Decoder (must not be NULL)
+ * @param timestamp_sec Seek target in seconds
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Seeks to the specified timestamp in the media file. Used for audio/video
+ * synchronization in multi-decoder scenarios.
+ *
+ * **Seek process:**
+ * 1. Flush codec buffers (avcodec_flush_buffers)
+ * 2. Seek to timestamp (av_seek_frame with AV_TIME_BASE conversion)
+ * 3. Clear decoder state
+ *
+ * @note Stdin decoders cannot seek (returns ERROR_NOT_SUPPORTED)
+ * @note Some formats may not support seeking
+ * @note Seeks approximately - may land before/after exact timestamp
+ *
+ * @ingroup media
+ */
+asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, double timestamp_sec);
 
 /**
  * @brief Check if decoder reached end of stream

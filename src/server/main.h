@@ -44,8 +44,14 @@
 #include "network/tcp/server.h"
 #include "audio/mixer.h"
 #include "crypto/key_types.h"
+#include "session/host.h"
+#include "options/options.h"
 #include "stats.h"
 #include "client.h"
+
+/* ============================================================================
+ * Global Server State
+ * ============================================================================ */
 
 /**
  * @brief Global connection rate limiter
@@ -54,6 +60,82 @@
  * Tracks connection attempts and packet rates per IP address.
  */
 extern rate_limiter_t *g_rate_limiter;
+
+/**
+ * @brief Global client manager
+ *
+ * Registry for all connected clients. Used to track client state, routing,
+ * and lifecycle management across server threads.
+ */
+extern client_manager_t g_client_manager;
+
+/**
+ * @brief Read-write lock protecting client manager
+ *
+ * Protects concurrent access to g_client_manager from server threads.
+ * Use rwlock_rdlock() for reads, rwlock_wrlock() for writes.
+ */
+extern rwlock_t g_client_manager_rwlock;
+
+/**
+ * @brief Server shutdown flag
+ *
+ * Atomic boolean used to signal all threads to exit gracefully.
+ * Set to true when server receives SIGINT or other shutdown signal.
+ */
+extern atomic_bool g_server_should_exit;
+
+/**
+ * @brief Global audio mixer
+ *
+ * Volatile pointer to the multi-client audio mixer instance.
+ * Used to mix audio from multiple clients for playback.
+ */
+extern mixer_t *volatile g_audio_mixer;
+
+/**
+ * @brief Server encryption enabled flag
+ *
+ * Indicates whether end-to-end encryption is enabled for this server.
+ */
+extern bool g_server_encryption_enabled;
+
+/**
+ * @brief Server's private key
+ *
+ * Server's Ed25519 private key used for digital signatures and key exchange.
+ */
+extern private_key_t g_server_private_key;
+
+/**
+ * @brief Array of server identity keys
+ *
+ * Additional server identity keys for multi-key support.
+ * Size is limited by MAX_IDENTITY_KEYS.
+ */
+extern private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS];
+
+/**
+ * @brief Number of server identity keys in use
+ *
+ * Tracks how many keys in g_server_identity_keys are valid.
+ */
+extern size_t g_num_server_identity_keys;
+
+/**
+ * @brief Whitelist of allowed client public keys
+ *
+ * Array of allowed client Ed25519 public keys for authentication.
+ * Size is limited by MAX_CLIENTS.
+ */
+extern public_key_t g_client_whitelist[MAX_CLIENTS];
+
+/**
+ * @brief Number of whitelisted clients
+ *
+ * Tracks how many keys in g_client_whitelist are valid.
+ */
+extern size_t g_num_whitelisted_clients;
 
 /**
  * @brief Server context - encapsulates all server state
@@ -104,6 +186,9 @@ typedef struct server_context_t {
   private_key_t *server_private_key; ///< Server's private key
   public_key_t *client_whitelist;    ///< Whitelisted client public keys
   size_t num_whitelisted_clients;    ///< Number of whitelisted clients
+
+  // Session library integration
+  session_host_t *session_host; ///< Session host for discovery mode support
 } server_context_t;
 
 /**

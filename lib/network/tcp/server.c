@@ -7,8 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <netdb.h>
 #include <errno.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <netdb.h>
+#endif
 
 #include "network/tcp/server.h"
 #include "common.h"
@@ -157,7 +163,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
                      "client_handler is required for tcp_server_run() - use custom accept loop if handler is NULL");
   }
 
-  log_info("TCP server starting accept loop...");
+  log_debug("TCP server starting accept loop...");
 
   while (atomic_load(&server->running)) {
     // Build fd_set for select()
@@ -231,7 +237,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
       SAFE_STRNCPY(client_ip, "(unknown)", sizeof(client_ip));
     }
 
-    log_info("Accepted connection from %s", client_ip);
+    log_debug("Accepted connection from %s", client_ip);
 
     // Allocate client context
     tcp_client_context_t *ctx = SAFE_MALLOC(sizeof(tcp_client_context_t), tcp_client_context_t *);
@@ -266,7 +272,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     (void)thread; // Suppress unused warning
   }
 
-  log_info("TCP server accept loop exited");
+  log_debug("TCP server accept loop exited");
   return ASCIICHAT_OK;
 }
 
@@ -275,7 +281,7 @@ void tcp_server_shutdown(tcp_server_t *server) {
     return;
   }
 
-  log_info("Shutting down TCP server...");
+  log_debug("Shutting down TCP server...");
 
   // Signal server to stop
   atomic_store(&server->running, false);
@@ -296,7 +302,7 @@ void tcp_server_shutdown(tcp_server_t *server) {
   // Clean up client registry
   mutex_lock(&server->clients_mutex);
 
-  tcp_client_entry_t *entry, *tmp;
+  tcp_client_entry_t *entry = NULL, *tmp = NULL;
   HASH_ITER(hh, server->clients, entry, tmp) {
     // Call cleanup callback if set
     if (server->cleanup_fn && entry->client_data) {
@@ -320,7 +326,7 @@ void tcp_server_shutdown(tcp_server_t *server) {
   // Note: This function does NOT wait for client threads to exit
   // Caller is responsible for thread lifecycle management
 
-  log_info("TCP server shutdown complete");
+  log_debug("TCP server shutdown complete");
 }
 
 // ============================================================================
@@ -524,8 +530,28 @@ asciichat_error_t tcp_server_spawn_thread(tcp_server_t *server, socket_t client_
     return SET_ERRNO(ERROR_INVALID_PARAM, "server or thread_func is NULL");
   }
 
+  // For WebRTC clients (no socket): create thread directly without TCP server thread pool tracking
+  // This allows render threads to work for both TCP and WebRTC clients
   if (client_socket == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "client_socket is invalid");
+    // Extract thread handle from thread_arg if it's a client_info_t
+    // We need to store the thread handle somewhere, but for now just create the thread
+    // The caller must manage the thread handle directly for WebRTC clients
+    log_debug("Spawning standalone thread '%s' (no socket, WebRTC client)", thread_name ? thread_name : "unnamed");
+
+    // For WebRTC clients, we can't use thread_pool since there's no socket entry
+    // Instead, create the thread directly - the caller must handle the thread
+    // This is a hack to allow reusing tcp_server_spawn_thread for WebRTC
+    // In the future, consider a unified thread management system
+    asciichat_thread_t temp_thread;
+    asciichat_error_t result = asciichat_thread_create(&temp_thread, thread_func, thread_arg);
+    if (result != ASCIICHAT_OK) {
+      return result;
+    }
+
+    // Note: temp_thread handle is lost here, but the thread is running
+    // The caller must manage thread lifecycle for WebRTC clients differently
+    (void)temp_thread; // Suppress unused warning
+    return ASCIICHAT_OK;
   }
 
   // Find client entry

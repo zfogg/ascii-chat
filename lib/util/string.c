@@ -5,7 +5,12 @@
  */
 
 #include "util/string.h"
+#include "util/utf8.h"
 #include "common.h"
+#include "platform/system.h"
+#include "platform/terminal.h"
+#include "options/rcu.h"
+#include "log/logging.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -60,39 +65,62 @@ bool validate_shell_safe(const char *str, const char *allowed_chars) {
   // ; & | $ ` \ " ' < > ( ) [ ] { } * ? ! ~ # @ space tab newline
   const char *dangerous = ";|$`\\\"'<>()[]{}*?!~#@ \t\n\r";
 
-  for (size_t i = 0; str[i] != '\0'; i++) {
-    unsigned char c = (unsigned char)str[i];
+  // First pass: validate UTF-8 encoding
+  if (!utf8_is_valid(str)) {
+    return false;
+  }
 
-    // Allow alphanumeric characters
-    if (isalnum(c)) {
-      continue;
+  // Second pass: validate each character for shell safety
+  // Convert to codepoints and check only ASCII range for dangerous characters
+  // (non-ASCII characters are allowed by default)
+  const uint8_t *p = (const uint8_t *)str;
+  while (*p) {
+    uint32_t codepoint;
+    int decode_len = utf8_decode(p, &codepoint);
+    if (decode_len < 0) {
+      return false; // Should not happen after utf8_is_valid check
     }
 
-    // Check if character is in allowed_chars list
-    if (allowed_chars) {
-      bool is_allowed = false;
-      for (size_t j = 0; allowed_chars[j] != '\0'; j++) {
-        if (c == (unsigned char)allowed_chars[j]) {
-          is_allowed = true;
+    // Only validate ASCII range where shell metacharacters exist
+    // Non-ASCII characters (codepoint > 127) are allowed
+    if (codepoint <= 127) {
+      unsigned char c = (unsigned char)codepoint;
+
+      // Allow ASCII alphanumeric characters
+      if (isalnum(c)) {
+        p += decode_len;
+        continue;
+      }
+
+      // Check if character is in allowed_chars list
+      if (allowed_chars) {
+        bool is_allowed = false;
+        for (size_t j = 0; allowed_chars[j] != '\0'; j++) {
+          if (c == (unsigned char)allowed_chars[j]) {
+            is_allowed = true;
+            break;
+          }
+        }
+        if (is_allowed) {
+          p += decode_len;
+          continue;
+        }
+      }
+
+      // Check if character is dangerous
+      bool is_dangerous = false;
+      for (size_t j = 0; dangerous[j] != '\0'; j++) {
+        if (c == (unsigned char)dangerous[j]) {
+          is_dangerous = true;
           break;
         }
       }
-      if (is_allowed) {
-        continue;
+      if (is_dangerous) {
+        return false;
       }
     }
 
-    // Check if character is dangerous
-    bool is_dangerous = false;
-    for (size_t j = 0; dangerous[j] != '\0'; j++) {
-      if (c == (unsigned char)dangerous[j]) {
-        is_dangerous = true;
-        break;
-      }
-    }
-    if (is_dangerous) {
-      return false;
-    }
+    p += decode_len;
   }
 
   return true;
@@ -234,4 +262,38 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
 #else
   return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
 #endif
+}
+
+// ============================================================================
+// String Formatting and Display
+// ============================================================================
+
+const char *colored_string(log_color_t color, const char *text) {
+#define COLORED_BUFFERS 4
+#define COLORED_BUFFER_SIZE 256
+  static char buffers[COLORED_BUFFERS][COLORED_BUFFER_SIZE];
+  static int buffer_idx = 0;
+
+  // Check if we should use colors
+  bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+
+  if (!text) {
+    return "";
+  }
+
+  if (!use_colors) {
+    // No colors, just return the text directly
+    return text;
+  }
+
+  // Use rotating buffer to handle multiple calls in same fprintf
+  char *current_buf = buffers[buffer_idx];
+  buffer_idx = (buffer_idx + 1) % COLORED_BUFFERS;
+
+  const char *color_code = log_level_color(color);
+  const char *reset_code = log_level_color(LOG_COLOR_RESET);
+
+  // Format into rotating static buffer: color_code + text + reset_code
+  safe_snprintf(current_buf, COLORED_BUFFER_SIZE, "%s%s%s", color_code, text, reset_code);
+  return current_buf;
 }

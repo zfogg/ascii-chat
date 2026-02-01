@@ -1,4 +1,4 @@
-# Network Code Improvements for ASCII Chat
+# Network Code Improvements for ascii-chat
 
 ## Current Architecture Analysis
 

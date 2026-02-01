@@ -32,11 +32,11 @@ TEST_SUITE_WITH_DEBUG_LOGGING(gpg_handshake);
 // Test GPG key ID - obtained from environment variable set by setup script
 // If not set, tests will be skipped
 static const char *get_test_gpg_key_id(void) {
-    const char *key_id = getenv("TEST_GPG_KEY_ID");
-    if (!key_id || strlen(key_id) != 16) {
-        return NULL;
-    }
-    return key_id;
+  const char *key_id = getenv("TEST_GPG_KEY_ID");
+  if (!key_id || strlen(key_id) != 16) {
+    return NULL;
+  }
+  return key_id;
 }
 
 // Network state for testing

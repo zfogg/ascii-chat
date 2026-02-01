@@ -11,6 +11,7 @@
 #include "common.h"
 #include "util/time.h"
 #include "util/overflow.h"
+#include "platform/system.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
@@ -27,6 +28,7 @@ struct webcam_context_t {
   int height;
   BOOL mf_initialized;
   BOOL com_initialized;
+  image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
 };
 
 static HRESULT enumerate_devices_and_print(void) {
@@ -114,11 +116,15 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   UINT32 count = 0;
   int result = -1;
 
+  // Suppress Windows Media Foundation's verbose initialization output
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
   // Initialize COM
   hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
   if (SUCCEEDED(hr)) {
     cam->com_initialized = TRUE;
   } else if (hr != RPC_E_CHANGED_MODE) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to initialize COM: 0x%08x", hr);
     goto error;
   }
@@ -126,10 +132,13 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   // Initialize Media Foundation
   hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
   if (FAILED(hr)) {
+    platform_stderr_restore(stderr_handle);
     SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to startup Media Foundation: 0x%08x", hr);
     goto error;
   }
   cam->mf_initialized = TRUE;
+
+  platform_stderr_restore(stderr_handle);
 
   // Enumerate and print all devices
   enumerate_devices_and_print();
@@ -176,7 +185,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     log_error("  0x80070005 = E_ACCESSDENIED (device in use)");
     log_error("  0xc00d3704 = Device already in use");
     log_error("  0xc00d3e85 = MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED");
-    result = ERROR_WEBCAM_IN_USE;
+    result = SET_ERRNO(ERROR_WEBCAM_IN_USE, "Media Foundation device %d is in use (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -186,7 +195,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   hr = MFCreateAttributes(&readerAttrs, 1);
   if (FAILED(hr)) {
     log_error("Failed to create reader attributes: 0x%08x", hr);
-    result = ERROR_WEBCAM;
+    result =
+        SET_ERRNO(ERROR_WEBCAM, "Failed to create reader attributes for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -206,7 +216,9 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to create MF source reader: 0x%08x", hr);
-    result = ERROR_WEBCAM_IN_USE;
+    result =
+        SET_ERRNO(ERROR_WEBCAM_IN_USE,
+                  "Failed to create Media Foundation source reader for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -221,6 +233,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   log_info("SetStreamSelection (select video) returned: 0x%08x", hr);
   if (FAILED(hr)) {
     log_error("Failed to select video stream: 0x%08x", hr);
+    result = SET_ERRNO(ERROR_WEBCAM, "Failed to select video stream for device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -286,7 +299,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   if (FAILED(hr)) {
     log_error("CRITICAL: Failed to read test frame during initialization: 0x%08x", hr);
-    result = ERROR_WEBCAM_IN_USE;
+    result =
+        SET_ERRNO(ERROR_WEBCAM_IN_USE, "Failed to read test frame from device %d (HRESULT: 0x%08x)", device_index, hr);
     goto error;
   }
 
@@ -376,6 +390,11 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
     if (ctx->com_initialized) {
       CoUninitialize();
       ctx->com_initialized = FALSE;
+    }
+    // Free cached frame if it was allocated
+    if (ctx->cached_frame) {
+      image_destroy(ctx->cached_frame);
+      ctx->cached_frame = NULL;
     }
     SAFE_FREE(ctx);
     log_debug("Windows Media Foundation webcam closed");
@@ -508,12 +527,24 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Create image_t structure
-  image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
-  img->w = (int)(unsigned int)width;
-  img->h = (int)(unsigned int)height;
-  // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-  img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_pixel_t *);
+  // Allocate or reuse cached frame (allocated once, reused for each call)
+  // This matches the documented API contract: "Subsequent calls reuse the same buffer"
+  if (!ctx->cached_frame || ctx->cached_frame->w != (int)width || ctx->cached_frame->h != (int)height) {
+    // Free old cached frame if it exists with different dimensions
+    if (ctx->cached_frame) {
+      image_destroy(ctx->cached_frame);
+    }
+
+    // Create new image_t structure
+    image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
+    img->w = (int)(unsigned int)width;
+    img->h = (int)(unsigned int)height;
+    // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
+    img->pixels = SAFE_MALLOC_SIMD(pixel_buffer_size, rgb_pixel_t *);
+    ctx->cached_frame = img;
+  }
+
+  image_t *img = ctx->cached_frame;
 
   // Copy RGB32 data (BGRA order in Media Foundation)
   // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline
@@ -600,21 +631,28 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   BOOL com_initialized = FALSE;
   BOOL mf_initialized = FALSE;
 
+  // Suppress Windows Media Foundation's verbose initialization output
+  platform_stderr_redirect_handle_t stderr_handle = platform_stderr_redirect_to_null();
+
   // Initialize COM
   hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
   if (SUCCEEDED(hr)) {
     com_initialized = TRUE;
   } else if (hr != RPC_E_CHANGED_MODE) {
+    platform_stderr_restore(stderr_handle);
     return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to initialize COM: 0x%08x", hr);
   }
 
   // Initialize Media Foundation
   hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
   if (FAILED(hr)) {
+    platform_stderr_restore(stderr_handle);
     result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to startup Media Foundation: 0x%08x", hr);
     goto cleanup;
   }
   mf_initialized = TRUE;
+
+  platform_stderr_restore(stderr_handle);
 
   // Create attribute store for device enumeration
   hr = MFCreateAttributes(&attr, 1);

@@ -358,6 +358,9 @@ typedef enum {
   /** @brief Batched Opus-encoded audio frames */
   PACKET_TYPE_AUDIO_OPUS_BATCH = 35,
 
+  /** @brief Client -> Server: Expected server key fingerprint for multi-key selection (UNENCRYPTED, handshake) */
+  PACKET_TYPE_CRYPTO_CLIENT_HELLO = 36,
+
   // ============================================================================
   // Discovery Service Protocol (ACDS)
   // ============================================================================
@@ -398,6 +401,40 @@ typedef enum {
   /** @brief Release string reservation (Client -> Discovery Server) */
   PACKET_TYPE_ACIP_STRING_RELEASE = 123,
 
+  // ============================================================================
+  // Ring Consensus Protocol (128-129) - NEW P2P DESIGN
+  // ============================================================================
+  // Used for proactive future host election every 5 minutes
+
+  /** @brief Participant list with ring order (ACDS -> Participants) */
+  PACKET_TYPE_ACIP_PARTICIPANT_LIST = 128,
+  /** @brief Ring collect request (Participant -> Next Participant) */
+  PACKET_TYPE_ACIP_RING_COLLECT = 129,
+
+  // ============================================================================
+  // Host Negotiation & Migration Protocol (130-139)
+  // ============================================================================
+  // Used by discovery mode for dynamic host selection and failover
+
+  /** @brief NETWORK_QUALITY exchange (unified packet for all quality metrics) */
+  PACKET_TYPE_ACIP_NETWORK_QUALITY = 130,
+  /** @brief Host announcement (Participant -> ACDS, "I won negotiation") */
+  PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT = 131,
+  /** @brief Host designated (ACDS -> All Participants) */
+  PACKET_TYPE_ACIP_HOST_DESIGNATED = 132,
+  /** @brief Settings sync (Initiator -> Host -> All Participants) */
+  PACKET_TYPE_ACIP_SETTINGS_SYNC = 133,
+  /** @brief Settings acknowledgment (Participant -> Initiator) */
+  PACKET_TYPE_ACIP_SETTINGS_ACK = 134,
+  /** @brief Host lost notification - lightweight (Participant -> ACDS) */
+  PACKET_TYPE_ACIP_HOST_LOST = 135,
+  /** @brief Future host elected announcement (Quorum Leader -> ACDS -> All Participants) */
+  PACKET_TYPE_ACIP_FUTURE_HOST_ELECTED = 136,
+  /** @brief Participant joined notification (ACDS -> Existing Participants) */
+  PACKET_TYPE_ACIP_PARTICIPANT_JOINED = 137,
+  /** @brief Participant left notification (ACDS -> Remaining Participants) */
+  PACKET_TYPE_ACIP_PARTICIPANT_LEFT = 138,
+
   /** @brief Discovery server ping (keepalive) */
   PACKET_TYPE_ACIP_DISCOVERY_PING = 150,
   /** @brief Generic error response (Discovery Server -> Client) */
@@ -437,6 +474,10 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
   }
   // Rekey packets (25-27) - Note: REKEY_COMPLETE is encrypted with new key but still considered handshake
   if (type >= PACKET_TYPE_CRYPTO_REKEY_REQUEST && type <= PACKET_TYPE_CRYPTO_REKEY_COMPLETE) {
+    return true;
+  }
+  // Client hello for multi-key selection (36)
+  if (type == PACKET_TYPE_CRYPTO_CLIENT_HELLO) {
     return true;
   }
   return false;

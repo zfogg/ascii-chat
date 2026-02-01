@@ -91,6 +91,15 @@ typedef enum {
  * Forward declaration of media source structure. Use media_source_create()
  * to create and media_source_destroy() to cleanup.
  *
+ * THREAD SAFETY:
+ * ==============
+ * - media_source_read_video() and media_source_read_audio() may be called
+ *   from different threads (e.g., video render thread + audio callback thread)
+ * - Both operations access the shared FFmpeg decoder
+ * - FFmpeg decoders are NOT thread-safe for concurrent operations
+ * - media_source_t uses internal synchronization to protect decoder access
+ * - Callers do NOT need external locking
+ *
  * @ingroup media
  */
 typedef struct media_source_t media_source_t;
@@ -249,6 +258,62 @@ bool media_source_has_audio(media_source_t *source);
 void media_source_set_loop(media_source_t *source, bool loop);
 
 /**
+ * @brief Pause media playback
+ * @param source Media source (must not be NULL)
+ *
+ * Pauses the media source. When paused, read_video and read_audio return
+ * no new data (NULL/silence) while maintaining the current playback position.
+ * Resume with media_source_resume() to continue from the paused position.
+ *
+ * **Behavior:**
+ * - media_source_read_video() returns NULL when paused
+ * - media_source_read_audio() returns 0 (silence) when paused
+ * - Playback position is preserved (no seeking occurs)
+ *
+ * @note All source types support pause (has no effect for WEBCAM/TEST)
+ * @note Pausing is instantaneous (next read will return no data)
+ *
+ * @ingroup media
+ */
+void media_source_pause(media_source_t *source);
+
+/**
+ * @brief Resume media playback after pause
+ * @param source Media source (must not be NULL)
+ *
+ * Resumes playback from where it was paused. Continues reading frames
+ * and audio samples from the current position.
+ *
+ * @note Safe to call if not paused (no-op)
+ * @note Resume is instantaneous (next read will return new data)
+ *
+ * @ingroup media
+ */
+void media_source_resume(media_source_t *source);
+
+/**
+ * @brief Check if media source is paused
+ * @param source Media source (must not be NULL)
+ * @return true if paused, false if playing
+ *
+ * Determines if the media source is currently paused.
+ *
+ * @ingroup media
+ */
+bool media_source_is_paused(media_source_t *source);
+
+/**
+ * @brief Toggle pause state of media source
+ * @param source Media source (must not be NULL)
+ *
+ * Toggles between paused and playing states. If paused, resumes playback.
+ * If playing, pauses playback.
+ *
+ * @ingroup media
+ */
+void media_source_toggle_pause(media_source_t *source);
+
+/**
  * @brief Check if media source reached end of stream
  * @param source Media source (must not be NULL)
  * @return true if end reached, false otherwise
@@ -286,6 +351,55 @@ bool media_source_at_end(media_source_t *source);
  * @ingroup media
  */
 asciichat_error_t media_source_rewind(media_source_t *source);
+
+/**
+ * @brief DEPRECATED: Synchronize audio decoder to video position
+ * @param source Media source (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @deprecated This function is deprecated and causes audio playback issues.
+ * Forcing audio to video position via seeking every ~1 second interrupts
+ * audio playback with skips and loops. For file/media playback (mirror mode),
+ * audio and video decoders naturally stay in sync when decoding from the same
+ * source at their independent rates. Forced synchronization is not needed and
+ * causes more problems than it solves.
+ *
+ * DO NOT USE in mirror mode. Audio/video sync should only be needed for
+ * complex multi-client scenarios (server mode), and even then, seeking is
+ * a poor solution that causes discontinuities.
+ *
+ * @note This function is being phased out. Use natural decode rates instead.
+ * @ingroup media
+ */
+asciichat_error_t media_source_sync_audio_to_video(media_source_t *source)
+    __attribute__((deprecated("Use natural audio/video decode rates instead - seeking causes skips and loops")));
+
+/**
+ * @brief Seek media source to timestamp
+ * @param source Media source (must not be NULL)
+ * @param timestamp_sec Timestamp in seconds
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Seeks both video and audio decoders to the specified timestamp.
+ * Handles shared decoder locking for YouTube URLs.
+ *
+ * **Behavior:**
+ * - FILE sources: Seek to timestamp (if seekable)
+ * - STDIN sources: ERROR_NOT_SUPPORTED (cannot seek stdin)
+ * - WEBCAM/TEST sources: No-op (always returns OK)
+ *
+ * **Thread safety:**
+ * - For YouTube URLs with shared decoder, automatically locks during seek
+ * - Safe to call from any thread
+ *
+ * @note FILE sources only (returns OK for others)
+ * @note STDIN sources: ERROR_NOT_SUPPORTED (cannot seek stdin)
+ * @note Negative timestamps are rejected
+ * @note Seeks are approximate (may land before requested timestamp)
+ *
+ * @ingroup media
+ */
+asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec);
 
 /**
  * @brief Get media source type
@@ -334,5 +448,36 @@ double media_source_get_duration(media_source_t *source);
  * @ingroup media
  */
 double media_source_get_position(media_source_t *source);
+
+/**
+ * @brief Get video frame rate in frames per second
+ * @param source Media source (must not be NULL)
+ * @return Frame rate in FPS, or 0.0 if unknown
+ *
+ * Returns the native frame rate of the video stream.
+ *
+ * **Return values:**
+ * - Positive value: Frame rate in FPS (e.g., 30.0, 60.0)
+ * - 0.0: Frame rate unknown or not applicable
+ *
+ * @note WEBCAM sources return 0.0 (variable rate)
+ * @note TEST sources return 0.0
+ * @note FILE/STDIN sources return the video stream's fps from FFmpeg
+ *
+ * @ingroup media
+ */
+double media_source_get_video_fps(media_source_t *source);
+
+/**
+ * @brief Set audio context for playback buffer management
+ * @param source Media source (must not be NULL)
+ * @param audio_ctx Audio context pointer (opaque, may be NULL)
+ *
+ * Associates an audio context with the media source. Used to clear playback
+ * buffers during seeking to prevent audio lag.
+ *
+ * @ingroup media
+ */
+void media_source_set_audio_context(media_source_t *source, void *audio_ctx);
 
 /** @} */

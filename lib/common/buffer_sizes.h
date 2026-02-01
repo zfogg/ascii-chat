@@ -75,4 +75,71 @@
  */
 #define BUFFER_SIZE_HUGE 16384
 
+/* ============================================================================
+ * Image Frame Buffer Constants
+ * ============================================================================ */
+
+/**
+ * @brief Bytes per pixel in RGB24 format (red + green + blue)
+ *
+ * @ingroup buffer_sizes
+ */
+#define BYTES_PER_RGB_PIXEL 3
+
+/**
+ * @brief Legacy image frame header size (width:4 + height:4)
+ *
+ * Used for backward compatibility with older frame format.
+ *
+ * @ingroup buffer_sizes
+ */
+#define IMAGE_FRAME_HEADER_SIZE_LEGACY 8
+
+/**
+ * @brief New image frame header size (width:4 + height:4 + compressed:4 + size:4)
+ *
+ * Used for new compressed frame format with compression flag and data size.
+ *
+ * @ingroup buffer_sizes
+ */
+#define IMAGE_FRAME_HEADER_SIZE_NEW 16
+
+/**
+ * @brief Maximum reasonable frame width (prevents memory exhaustion)
+ *
+ * @ingroup buffer_sizes
+ */
+#define MAX_FRAME_WIDTH 1920
+
+/**
+ * @brief Maximum reasonable frame height (prevents memory exhaustion)
+ *
+ * @ingroup buffer_sizes
+ */
+#define MAX_FRAME_HEIGHT 1080
+
+/**
+ * @brief Maximum total frame pixels (width * height)
+ *
+ * @ingroup buffer_sizes
+ */
+#define MAX_FRAME_PIXELS (MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT)
+
+/**
+ * @brief Maximum RGB buffer size (MAX_FRAME_PIXELS * BYTES_PER_RGB_PIXEL)
+ *
+ * @ingroup buffer_sizes
+ */
+#define MAX_FRAME_RGB_SIZE (MAX_FRAME_PIXELS * BYTES_PER_RGB_PIXEL)
+
+/**
+ * @brief Maximum frame buffer size including headers and compression
+ *
+ * Used as a practical limit to prevent memory exhaustion from oversized frames.
+ * This is larger than typical compressed frames but smaller than uncompressed RGB.
+ *
+ * @ingroup buffer_sizes
+ */
+#define MAX_FRAME_BUFFER_SIZE (2 * 1024 * 1024)
+
 /** @} */

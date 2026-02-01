@@ -37,7 +37,7 @@ typedef struct {
 } discovery_tui_config_t;
 
 /**
- * @brief Discover ASCII-Chat servers on the local network via mDNS
+ * @brief Discover ascii-chat servers on the local network via mDNS
  *
  * Performs an mDNS query for _ascii-chat._tcp services on the local network.
  * Collects responses and returns discovered servers to the caller.
@@ -106,7 +106,7 @@ void discovery_tui_free_results(discovery_tui_server_t *servers);
  *
  * **User Experience:**
  * ```
- * Available ASCII-Chat servers on LAN:
+ * Available ascii-chat servers on LAN:
  *   1. swift-river-canyon (192.168.1.100:27224)
  *   2. quiet-mountain-lake (192.168.1.101:27224)
  *   3. gentle-forest-breeze (192.168.1.102:27224)
@@ -141,7 +141,7 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
  *
  * **Display Example (3 servers):**
  * ```
- * ╭─ 🔍 ASCII-Chat Server Discovery ────────────╮
+ * ╭─ 🔍 ascii-chat Server Discovery ────────────╮
  * │
  * │ Found 3 servers on your local network:
  * │
@@ -156,11 +156,11 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
  *
  * **No Results Display:**
  * ```
- * ╭─ 🔍 ASCII-Chat Server Discovery ─╮
+ * ╭─ 🔍 ascii-chat Server Discovery ─╮
  * │
  * │   No servers found on local network
  * │
- * │   Make sure an ASCII-Chat server is running on your LAN
+ * │   Make sure an ascii-chat server is running on your LAN
  * │   Or provide a server address manually: ascii-chat client <address>
  * │
  * ╰─────────────────────────────────────────╯

@@ -131,7 +131,7 @@
  *
  *   // Second Ctrl+C forces immediate exit
  *   if (sigint_count > 1) {
- *     _exit(1);
+ *     exit(1);
  *   }
  *
  *   // First Ctrl+C: Graceful shutdown

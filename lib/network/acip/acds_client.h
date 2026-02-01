@@ -5,7 +5,7 @@
  * @brief ACIP client-side protocol library
  * @ingroup acip
  *
- * Client-side ACIP (ASCII-Chat IP Protocol) implementation for:
+ * Client-side ACIP (ascii-chat IP Protocol) implementation for:
  * - Session discovery and management (create, lookup, join, leave)
  * - WebRTC signaling relay (SDP, ICE candidates)
  * - String reservation (future feature)
@@ -17,7 +17,7 @@
  * - Optional password protection
  *
  * **Primary Use Case:**
- * Connecting to ACDS (ASCII-Chat Discovery Service) servers for
+ * Connecting to ACDS (ascii-chat Discovery Service) servers for
  * session discovery and WebRTC peer coordination.
  *
  * **Integration:**
@@ -38,6 +38,9 @@
 // ACDS Client Configuration
 // ============================================================================
 
+// Forward declaration of callback type from parallel_connect.h
+typedef bool (*parallel_connect_should_exit_fn)(void *user_data);
+
 /**
  * @brief ACDS client connection configuration
  */
@@ -45,6 +48,10 @@ typedef struct {
   char server_address[256]; ///< ACDS server address (e.g., "discovery.ascii.chat" or "127.0.0.1")
   uint16_t server_port;     ///< ACDS server port (default: 27225)
   uint32_t timeout_ms;      ///< Connection timeout in milliseconds
+
+  // Optional: callback to check if connection should be abandoned (e.g., shutdown signal)
+  parallel_connect_should_exit_fn should_exit_callback;
+  void *callback_data;
 } acds_client_config_t;
 
 /**

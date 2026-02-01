@@ -10,11 +10,13 @@
 #include "../asciichat_errno.h"
 #include "../platform/rwlock.h"
 #include "../platform/abstraction.h"
-#include "uthash.h"
+// uthash wrapper is already included via time.h -> upstream uthash
+// The wrapper macros are applied when .c files include uthash/uthash.h
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 // ============================================================================
 // Global State
@@ -31,6 +33,67 @@ static struct {
     .timers = NULL,
     .initialized = false,
 };
+
+/**
+ * @brief Track if sokol_time has been initialized (separate from full timer system init)
+ */
+static bool g_sokol_time_initialized = false;
+
+// ============================================================================
+// Core Monotonic Timing Implementation
+// ============================================================================
+
+uint64_t time_get_ns(void) {
+  // sokol_time provides monotonic clock that never goes backwards
+  // stm_ns() converts ticks to nanoseconds
+  // Ensure sokol_time is initialized before use (defensive programming)
+  if (!g_sokol_time_initialized) {
+    stm_setup();
+    g_sokol_time_initialized = true;
+  }
+  return (uint64_t)stm_ns(stm_now());
+}
+
+uint64_t time_get_realtime_ns(void) {
+#ifdef _WIN32
+  // Windows: Use GetSystemTimePreciseAsFileTime (Win8+) for high-precision wall clock
+  // FILETIME is 100-nanosecond intervals since January 1, 1601
+  FILETIME ft;
+  GetSystemTimePreciseAsFileTime(&ft);
+  // Convert FILETIME to nanoseconds
+  uint64_t filetime = ((uint64_t)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
+  // Convert 100-nanosecond intervals to nanoseconds
+  return filetime * 100;
+#else
+  // Get wall-clock (real-time) timestamp
+  struct timespec ts;
+  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+    // Fallback on error (unlikely)
+    return 0;
+  }
+  return time_timespec_to_ns(&ts);
+#endif
+}
+
+void time_sleep_ns(uint64_t ns) {
+  // Use platform abstraction for cross-platform sleep
+  // Convert nanoseconds to microseconds (1 us = 1000 ns)
+  unsigned int usec = (unsigned int)(ns / 1000);
+  if (usec == 0 && ns > 0) {
+    usec = 1; // Minimum 1 microsecond
+  }
+  platform_sleep_usec(usec);
+}
+
+uint64_t time_elapsed_ns(uint64_t start_ns, uint64_t end_ns) {
+  // Handle wraparound (defensive - uint64_t won't wrap in practice at nanosecond resolution)
+  // but this is safe and handles any theoretical edge cases
+  if (end_ns >= start_ns) {
+    return end_ns - start_ns;
+  }
+  // Wraparound case (extremely unlikely)
+  return (UINT64_MAX - start_ns) + end_ns + 1;
+}
 
 // ============================================================================
 // Timer System Implementation
@@ -65,11 +128,13 @@ void timer_system_cleanup(void) {
   rwlock_wrlock(&g_timer_manager.rwlock);
 
   // Free all timer records
+  int timer_count = 0;
   timer_record_t *current, *tmp;
   HASH_ITER(hh, g_timer_manager.timers, current, tmp) {
     HASH_DEL(g_timer_manager.timers, current);
     SAFE_FREE(current->name);
     SAFE_FREE(current);
+    timer_count++;
   }
 
   g_timer_manager.timers = NULL;
@@ -78,7 +143,7 @@ void timer_system_cleanup(void) {
   rwlock_wrunlock(&g_timer_manager.rwlock);
   rwlock_destroy(&g_timer_manager.rwlock);
 
-  log_debug("Timer system cleaned up");
+  log_debug("Timer system cleaned up (freed %d timers)", timer_count);
 }
 
 bool timer_start(const char *name) {
@@ -164,8 +229,8 @@ double timer_stop(const char *name) {
   char duration_str[32];
   format_duration_ns(elapsed_ns, duration_str, sizeof(duration_str));
 
-  // Log the result (debug level - caller can use return value for production logging)
-  log_debug("Timer '%s': %s", name, duration_str);
+  // Log the result (dev level - only shown with --verbose)
+  log_dev("Timer '%s': %s", name, duration_str);
 
   // Remove from hashtable
   HASH_DEL(g_timer_manager.timers, timer);
@@ -198,40 +263,40 @@ int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size) {
 
   // Nanoseconds (< 1µs)
   if (nanoseconds < NS_PER_US) {
-    written = snprintf(buffer, buffer_size, "%.0fns", nanoseconds);
+    written = safe_snprintf(buffer, buffer_size, "%.0fns", nanoseconds);
   }
   // Microseconds (< 1ms)
   else if (nanoseconds < NS_PER_MS) {
     double us = nanoseconds / NS_PER_US;
     if (us < 10.0) {
-      written = snprintf(buffer, buffer_size, "%.1fµs", us);
+      written = safe_snprintf(buffer, buffer_size, "%.1fµs", us);
     } else {
-      written = snprintf(buffer, buffer_size, "%.0fµs", us);
+      written = safe_snprintf(buffer, buffer_size, "%.0fµs", us);
     }
   }
   // Milliseconds (< 1s)
   else if (nanoseconds < NS_PER_SEC) {
     double ms = nanoseconds / NS_PER_MS;
     if (ms < 10.0) {
-      written = snprintf(buffer, buffer_size, "%.1fms", ms);
+      written = safe_snprintf(buffer, buffer_size, "%.1fms", ms);
     } else {
-      written = snprintf(buffer, buffer_size, "%.0fms", ms);
+      written = safe_snprintf(buffer, buffer_size, "%.0fms", ms);
     }
   }
   // Seconds (< 1m)
   else if (nanoseconds < NS_PER_MIN) {
     double s = nanoseconds / NS_PER_SEC;
     if (s < 10.0) {
-      written = snprintf(buffer, buffer_size, "%.2fs", s);
+      written = safe_snprintf(buffer, buffer_size, "%.2fs", s);
     } else {
-      written = snprintf(buffer, buffer_size, "%.1fs", s);
+      written = safe_snprintf(buffer, buffer_size, "%.1fs", s);
     }
   }
   // Minutes (< 1h) - show minutes and seconds
   else if (nanoseconds < NS_PER_HOUR) {
     int minutes = (int)(nanoseconds / NS_PER_MIN);
     int seconds = (int)((nanoseconds - (minutes * NS_PER_MIN)) / NS_PER_SEC);
-    written = snprintf(buffer, buffer_size, "%dm%ds", minutes, seconds);
+    written = safe_snprintf(buffer, buffer_size, "%dm%ds", minutes, seconds);
   }
   // Hours (< 1d) - show hours, minutes, and seconds
   else if (nanoseconds < NS_PER_DAY) {
@@ -240,7 +305,7 @@ int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size) {
     int minutes = (int)(remaining_ns / NS_PER_MIN);
     double remaining_after_min = remaining_ns - ((double)minutes * NS_PER_MIN);
     int seconds = (int)(remaining_after_min / NS_PER_SEC);
-    written = snprintf(buffer, buffer_size, "%dh%dm%ds", hours, minutes, seconds);
+    written = safe_snprintf(buffer, buffer_size, "%dh%dm%ds", hours, minutes, seconds);
   }
   // Days (< 1y) - show days, hours, minutes, and seconds
   else if (nanoseconds < NS_PER_YEAR) {
@@ -251,12 +316,12 @@ int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size) {
     int minutes = (int)(remaining_ns / NS_PER_MIN);
     double remaining_after_min = remaining_ns - ((double)minutes * NS_PER_MIN);
     int seconds = (int)(remaining_after_min / NS_PER_SEC);
-    written = snprintf(buffer, buffer_size, "%dd%dh%dm%ds", days, hours, minutes, seconds);
+    written = safe_snprintf(buffer, buffer_size, "%dd%dh%dm%ds", days, hours, minutes, seconds);
   }
   // Years - show years with one decimal
   else {
     double years = nanoseconds / NS_PER_YEAR;
-    written = snprintf(buffer, buffer_size, "%.1fy", years);
+    written = safe_snprintf(buffer, buffer_size, "%.1fy", years);
   }
 
   if (written < 0 || (size_t)written >= buffer_size) {

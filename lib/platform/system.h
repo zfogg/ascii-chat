@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <time.h>
 #include "../common.h"
 
@@ -69,6 +70,25 @@ asciichat_error_t platform_init(void);
 void platform_cleanup(void);
 
 /**
+ * @brief Forcefully terminate the process immediately without cleanup
+ * @param exit_code Exit code to return to the operating system
+ *
+ * Forcefully terminates the current process immediately without running atexit handlers
+ * or cleanup code. Used when normal exit() won't suffice (e.g., handling
+ * second Ctrl+C during shutdown).
+ *
+ * Platform-specific implementations:
+ *   - Windows: ExitProcess(exit_code)
+ *   - POSIX: _exit(exit_code)
+ *
+ * @note This function does not return. Process is terminated immediately.
+ * @note Use this sparingly - prefer normal exit() whenever possible.
+ *
+ * @ingroup platform
+ */
+void platform_force_exit(int exit_code);
+
+/**
  * @brief Sleep for a specified number of milliseconds
  * @param ms Number of milliseconds to sleep
  *
@@ -96,6 +116,86 @@ void platform_sleep_ms(unsigned int ms);
  * @ingroup platform
  */
 uint64_t platform_get_monotonic_time_us(void);
+
+/**
+ * @brief Request coarse (reduced resolution) timer precision
+ *
+ * Requests the OS to use coarse timer precision, reducing power consumption
+ * and improving system responsiveness at the cost of lower timer accuracy.
+ *
+ * Platform-specific implementations:
+ *   - Windows: Calls timeBeginPeriod(1) to reduce timer resolution from ~15ms to ~1ms
+ *   - POSIX: No-op (POSIX systems don't provide this feature)
+ *
+ * This is typically called during application startup if you need timer precision
+ * (e.g., for real-time audio/video). Must be balanced with platform_restore_timer_resolution().
+ *
+ * @param precision Desired timer precision in milliseconds (typically 1)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note On Windows, this increases power consumption slightly
+ * @note POSIX systems return ASCIICHAT_OK but do nothing
+ * @note Must call platform_restore_timer_resolution() to restore default behavior
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_request_timer_precision(int precision);
+
+/**
+ * @brief Restore default timer precision
+ *
+ * Restores the default system timer precision, undoing a previous call to
+ * platform_request_timer_precision(). Reduces power consumption.
+ *
+ * Platform-specific implementations:
+ *   - Windows: Calls timeEndPeriod(1) to restore default timer resolution
+ *   - POSIX: No-op (POSIX systems don't provide this feature)
+ *
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Safe to call without a matching platform_request_timer_precision() call
+ * @note POSIX systems return ASCIICHAT_OK but do nothing
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_restore_timer_resolution(void);
+
+/**
+ * @brief Enable system sleep prevention (keepawake mode)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Prevents the operating system from entering sleep mode while the application is running.
+ *
+ * Platform-specific implementations:
+ *   - macOS: Uses IOKit power assertions (IOPMAssertionCreateWithName)
+ *   - Linux: Uses systemd-inhibit if available, gracefully degrades if unavailable
+ *   - Windows: Uses SetThreadExecutionState with ES_SYSTEM_REQUIRED and ES_DISPLAY_REQUIRED
+ *
+ * @note Logs warning and returns OK if platform doesn't support keepawake
+ * @note Safe to call multiple times (checks for already-enabled state)
+ * @note Call platform_disable_keepawake() to revert
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_enable_keepawake(void);
+
+/**
+ * @brief Disable system sleep prevention (allow OS to sleep)
+ *
+ * Allows the operating system to enter sleep mode. This reverts the effect
+ * of platform_enable_keepawake().
+ *
+ * Platform-specific implementations:
+ *   - macOS: Releases the IOKit power assertion
+ *   - Linux: Closes the systemd-inhibit file descriptor
+ *   - Windows: Clears all execution state flags
+ *
+ * @note Safe to call even if keepawake was never enabled
+ * @note Safe to call multiple times
+ *
+ * @ingroup platform
+ */
+void platform_disable_keepawake(void);
 
 #ifdef _WIN32
 // usleep macro - only define if not already declared (GCC's unistd.h declares it as a function)
@@ -172,6 +272,38 @@ const char *platform_get_username(void);
  * @ingroup platform
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
+
+/**
+ * @brief Signal handler descriptor for bulk registration
+ * @ingroup platform
+ */
+typedef struct {
+  int sig;                  /**< Signal number to handle */
+  signal_handler_t handler; /**< Handler function */
+} platform_signal_handler_t;
+
+/**
+ * @brief Register multiple signal handlers at once
+ * @param handlers Array of signal handler descriptors
+ * @param count Number of handlers in the array
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Registers multiple signal handlers in one call, reducing repeated
+ * #ifdef _WIN32 blocks. On Windows, this handles SIGINT and SIGTERM
+ * via console control handlers. On POSIX, uses platform_signal() for each.
+ *
+ * @par Example:
+ * @code{.c}
+ * platform_signal_handler_t handlers[] = {
+ *     {SIGTERM, sigterm_handler},
+ *     {SIGINT, sigint_handler},
+ * };
+ * platform_register_signal_handlers(handlers, 2);
+ * @endcode
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count);
 
 /**
  * @brief Console control event types (cross-platform Ctrl+C handling)
@@ -329,6 +461,34 @@ platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void);
 void platform_stderr_restore(platform_stderr_redirect_handle_t handle);
 
 /**
+ * @brief Redirect both stdout and stderr to /dev/null (restorable)
+ *
+ * Suppresses output from both stdout and stderr. This is useful when initializing
+ * libraries that may output diagnostic messages that would corrupt terminal rendering.
+ *
+ * @return Handle to pass to platform_stdout_stderr_restore() to restore streams
+ *
+ * @note Always call platform_stdout_stderr_restore() with the returned handle
+ * @note The returned handle uses original_fd for stdout, devnull_fd for stderr
+ *
+ * @ingroup platform
+ */
+platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void);
+
+/**
+ * @brief Restore stdout and stderr after platform_stdout_stderr_redirect_to_null()
+ *
+ * Restores both stdout and stderr to their original destinations.
+ *
+ * @param handle Handle returned by platform_stdout_stderr_redirect_to_null()
+ *
+ * @note Safe to call with invalid handle - will do nothing
+ *
+ * @ingroup platform
+ */
+void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle);
+
+/**
  * @brief Permanently redirect stderr and stdout to /dev/null
  *
  * This is used before exit() to prevent cleanup handlers from writing to the console
@@ -483,6 +643,22 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
  * @ingroup platform
  */
 int safe_fprintf(FILE *stream, const char *format, ...);
+
+/**
+ * @brief Platform-safe vsnprintf wrapper
+ *
+ * Uses the appropriate vsnprintf implementation for the platform.
+ * Safely formats a string with va_list argument.
+ *
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param format Format string
+ * @param ap Variable argument list
+ * @return Number of characters written (excluding null terminator) or negative on error
+ *
+ * @ingroup platform
+ */
+int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list ap);
 
 /**
  * Check return value of snprintf/fprintf and cast to void if needed

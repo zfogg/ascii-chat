@@ -54,7 +54,8 @@
  *
  * # Core dependencies
  * sudo apt-get install libzstd-dev portaudio19-dev libsodium-dev libopus-dev \
- *   libsqlite3-dev liburcu-dev libssl-dev libminiupnpc-dev
+ *   libsqlite3-dev libssl-dev libminiupnpc-dev libabsl-dev \
+ *   libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev
  *
  * # Testing (optional)
  * sudo apt-get install libcriterion-dev
@@ -66,13 +67,13 @@
  * **Arch Linux**:
  * @code{.bash}
  * sudo pacman -S pkg-config clang llvm cmake ninja make zstd portaudio libsodium \
- *   opus sqlite liburcu openssl miniupnpc criterion musl mimalloc
+ *   opus sqlite openssl miniupnpc abseil-cpp ffmpeg criterion musl mimalloc
  * @endcode
  *
  * **macOS (Homebrew)**:
  * @code{.bash}
  * brew install cmake ninja make llvm zstd portaudio libsodium opus sqlite3 \
- *   userspace-rcu openssl miniupnpc criterion mimalloc
+ *   openssl miniupnpc abseil ffmpeg criterion mimalloc
  * @endcode
  *
  * **Windows (Scoop + vcpkg)**:
@@ -86,8 +87,8 @@
  *
  * # Dependencies via vcpkg
  * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows \
- *   opus:x64-windows sqlite3:x64-windows liburcu:x64-windows openssl:x64-windows \
- *   miniupnpc:x64-windows mimalloc:x64-windows
+ *   opus:x64-windows sqlite3:x64-windows openssl:x64-windows \
+ *   miniupnpc:x64-windows abseil:x64-windows mimalloc:x64-windows
  * @endcode
  *
  * @subsection dependencies_ready Ready to Build
@@ -213,19 +214,31 @@
  * clients with minimal latency and bandwidth overhead. Used in the audio
  * pipeline for encoding outgoing audio and decoding incoming audio.
  *
- * @subsection dependencies_liburcu liburcu - Userspace Read-Copy-Update
+ * @subsection dependencies_webrtc_aec3 WebRTC AEC3 - Acoustic Echo Cancellation
  *
- * **Purpose**: Lock-free synchronization for high-performance concurrent data structures
+ * **Purpose**: Real-time acoustic echo cancellation for voice chat
  *
- * **Website**: https://liburcu.org/
+ * **Website**: https://github.com/nicnacnic/webrtc_AEC3
  *
- * **License**: LGPLv2.1
+ * **License**: BSD License (WebRTC)
  *
- * **Version**: 0.13.0 or later
+ * Extracted WebRTC audio processing module providing production-grade acoustic
+ * echo cancellation (AEC3). Used in the audio pipeline to remove echo when
+ * speakers and microphone are active simultaneously. This is the same AEC
+ * technology used by Google Meet, Zoom, Discord, and other major conferencing apps.
  *
- * Used in the ACDS (ASCII-Chat Discovery Service) for scalable concurrent access.
- * Provides read-side access that scales linearly with CPU cores, achieving 5-10x
- * performance improvement on read-heavy workloads compared to traditional rwlock.
+ * @subsection dependencies_ffmpeg FFmpeg - Multimedia Framework
+ *
+ * **Purpose**: Media file streaming support
+ *
+ * **Website**: https://ffmpeg.org/
+ *
+ * **License**: LGPL/GPL (depending on configuration)
+ *
+ * **Version**: 4.0 or later
+ *
+ * Enables streaming media files (video/audio) instead of live webcam capture.
+ * Used for testing, demos, and scenarios where a webcam isn't available.
  *
  * @subsection dependencies_sqlite SQLite3 - Embedded Database
  *
@@ -237,7 +250,7 @@
  *
  * **Version**: 3.35.0 or later
  *
- * Used in the ACDS (ASCII-Chat Discovery Service) to store active sessions,
+ * Used in the ACDS (ascii-chat Discovery Service) to store active sessions,
  * user identities, and connection metadata. Zero-configuration embedded database.
  *
  * @subsection dependencies_openssl OpenSSL - Cryptography Toolkit
@@ -395,14 +408,14 @@
  * |---------|--------------|
  * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17 |
  * | ISC | libsodium |
- * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf, miniupnpc, Opus |
+ * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf, miniupnpc, Opus, WebRTC AEC3 |
  * | zlib | sokol |
- * | Apache 2.0 | OpenSSL |
+ * | Apache 2.0 | OpenSSL, Abseil |
  * | MPL 2.0 | libdatachannel |
- * | LGPLv2.1 | liburcu |
+ * | LGPL/GPL | FFmpeg |
  * | Public Domain | SQLite3 |
  *
- * liburcu uses LGPLv2.1 but is dynamically linked, maintaining ascii-chat's MIT license.
+ * FFmpeg license depends on configuration; ascii-chat uses LGPL-compatible features.
  *
  * @section dependencies_versioning Version Requirements
  *
@@ -414,9 +427,9 @@
  * | libsodium | 1.0.18 | Ed25519 support |
  * | zstd | 1.4.0 | Streaming API |
  * | Opus | 1.3.0 | Stable audio codec API |
+ * | FFmpeg | 4.0 | Stable libav API |
  * | SQLite3 | 3.35.0 | Returning clause support |
  * | OpenSSL | 3.0.0 | Modern TLS/crypto API |
- * | liburcu | 0.13.0 | Stable RCU API |
  * | libdatachannel | 0.20.0 | WebRTC DataChannels |
  * | miniupnpc | 2.3.x | UPnP IGD client (API changes in 2.3) |
  * | Criterion | 2.4.0 | Theories and fixtures |
@@ -431,8 +444,8 @@
  * git submodule update --remote --merge
  *
  * # Update specific submodule
- * cd deps/uthash && git checkout v2.3.0
- * cd ../.. && git add deps/uthash && git commit -m "Update uthash"
+ * cd deps/ascii-chat-deps/bearssl && git checkout v0.6
+ * cd ../.. && git add deps/ascii-chat-deps/bearssl && git commit -m "Update bearssl"
  * @endcode
  *
  * **System Libraries**:

@@ -272,7 +272,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       - name: Build and package with CPack
@@ -409,6 +409,32 @@ jobs:
           extra-packages: ""
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download LLVM static libraries
+        id: llvm-static
+        run: |
+          # Download official LLVM release which includes static libc++ libraries
+          # Homebrew LLVM doesn't include static libs, so we need the official binaries
+          # Note: LLVM 20+ dropped X64 macOS binaries, so we use different versions per arch
+          if [[ "$(uname -m)" == "arm64" ]]; then
+            LLVM_VERSION="21.1.8"
+            LLVM_ARCH="ARM64"
+          else
+            LLVM_VERSION="19.1.6"  # Last version with X64 macOS binaries
+            LLVM_ARCH="X64"
+          fi
+          LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/LLVM-${LLVM_VERSION}-macOS-${LLVM_ARCH}.tar.xz"
+          LLVM_DIR="${PWD}/.deps-cache/llvm-static"
+
+          echo "Downloading LLVM ${LLVM_VERSION} for macOS ${LLVM_ARCH}..."
+          mkdir -p "${LLVM_DIR}"
+          curl -fsSL "${LLVM_URL}" | tar -xJ -C "${LLVM_DIR}" --strip-components=1
+
+          # Verify static libs exist
+          ls -la "${LLVM_DIR}/lib/libc++.a" "${LLVM_DIR}/lib/libc++abi.a" "${LLVM_DIR}/lib/libunwind.a"
+
+          echo "llvm-static-dir=${LLVM_DIR}" >> $GITHUB_OUTPUT
+          echo "LLVM static libraries downloaded to ${LLVM_DIR}"
+
       - name: Clear WebRTC cache to force re-fetch with libc++ header fix
         if: runner.os == 'macOS'
         run: |
@@ -423,12 +449,17 @@ jobs:
       - name: Configure with CMake
         run: |
           DEFER_TOOL="${{ steps.install-deps.outputs.defer-tool-path }}"
+          LLVM_STATIC_DIR="${{ steps.llvm-static.outputs.llvm-static-dir }}"
           CMAKE_ARGS="--preset release"
           if [ -n "$DEFER_TOOL" ] && [ -x "$DEFER_TOOL" ]; then
             echo "Using pre-built defer tool: $DEFER_TOOL"
             CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_DEFER_TOOL=$DEFER_TOOL"
           else
             echo "No pre-built defer tool available - CMake will build from source"
+          fi
+          if [ -n "$LLVM_STATIC_DIR" ]; then
+            echo "Using LLVM static libraries from: $LLVM_STATIC_DIR"
+            CMAKE_ARGS="$CMAKE_ARGS -DASCIICHAT_LIBCXX_STATIC_ROOT=$LLVM_STATIC_DIR"
           fi
           cmake $CMAKE_ARGS
 
@@ -438,7 +469,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       - name: Build and package with CPack
@@ -546,16 +577,16 @@ jobs:
         run: |
           # Verify BearSSL source files exist (debug for CI issues)
           Write-Host "=== BearSSL submodule verification ==="
-          Write-Host "Checking if deps/bearssl exists..."
-          if (!(Test-Path "deps/bearssl")) {
-            Write-Host "ERROR: deps/bearssl directory not found!"
+          Write-Host "Checking if deps/ascii-chat-deps/bearssl exists..."
+          if (!(Test-Path "deps/ascii-chat-deps/bearssl")) {
+            Write-Host "ERROR: deps/ascii-chat-deps/bearssl directory not found!"
             exit 1
           }
-          Write-Host "Checking if deps/bearssl/src/aead/ccm.c exists..."
-          if (!(Test-Path "deps/bearssl/src/aead/ccm.c")) {
-            Write-Host "ERROR: deps/bearssl/src/aead/ccm.c not found!"
-            Write-Host "Contents of deps/bearssl:"
-            Get-ChildItem -Path "deps/bearssl" -Recurse | Select-Object -First 50
+          Write-Host "Checking if deps/ascii-chat-deps/bearssl/src/aead/ccm.c exists..."
+          if (!(Test-Path "deps/ascii-chat-deps/bearssl/src/aead/ccm.c")) {
+            Write-Host "ERROR: deps/ascii-chat-deps/bearssl/src/aead/ccm.c not found!"
+            Write-Host "Contents of deps/ascii-chat-deps/bearssl:"
+            Get-ChildItem -Path "deps/ascii-chat-deps/bearssl" -Recurse | Select-Object -First 50
             exit 1
           }
           Write-Host "BearSSL source files verified OK"
@@ -592,7 +623,7 @@ jobs:
         with:
           path: |
             .deps-cache
-            deps/bearssl/build
+            deps/ascii-chat-deps/bearssl/build
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       - name: Build and package with CPack

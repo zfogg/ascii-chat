@@ -434,4 +434,38 @@ int platform_chmod(const char *pathname, int mode);
 #define PLATFORM_O_BINARY 0 // Not needed on POSIX
 #endif
 
+/* ============================================================================
+ * String Formatting
+ * ============================================================================
+ */
+
+/**
+ * @brief Cross-platform asprintf implementation
+ * @param strp Output pointer for allocated string
+ * @param format Printf-style format string
+ * @param ... Format arguments
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Allocates and formats a string like sprintf, but automatically determines
+ * the required buffer size. Caller must free() the returned string.
+ *
+ * @ingroup platform
+ */
+int platform_asprintf(char **strp, const char *format, ...);
+
+/**
+ * @brief Cross-platform getline implementation
+ * @param lineptr Pointer to buffer (can be NULL, will be allocated/reallocated)
+ * @param n Pointer to buffer size
+ * @param stream File stream to read from
+ * @return Number of characters read (including newline), or -1 on error/EOF
+ *
+ * Reads an entire line from stream, allocating/reallocating the buffer as needed.
+ * The buffer will include the newline character if present.
+ * Caller must free() the buffer when done.
+ *
+ * @ingroup platform
+ */
+ssize_t platform_getline(char **lineptr, size_t *n, FILE *stream);
+
 /** @} */

@@ -19,6 +19,53 @@
 #include "video/palette.h"
 #include "options/options.h"
 
+// ============================================================================
+// Generic Integer Range Validator
+// ============================================================================
+
+/**
+ * @brief Generic validator for integers within a range
+ *
+ * Used by multiple specific validators (FPS, max clients, compression level, etc.)
+ * to eliminate code duplication.
+ *
+ * @param value_str String to validate
+ * @param min Minimum allowed value (inclusive)
+ * @param max Maximum allowed value (inclusive)
+ * @param param_name Parameter name for error messages
+ * @param error_msg Buffer for error message
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed integer value on success, INT_MIN on error
+ */
+static int validate_int_range(const char *value_str, int min, int max, const char *param_name, char *error_msg,
+                              size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "%s value is required", param_name);
+    }
+    return INT_MIN;
+  }
+
+  int val = strtoint_safe(value_str);
+  if (val == INT_MIN || val < min || val > max) {
+    if (error_msg) {
+      if (min == max) {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be exactly %d.", param_name, value_str, min);
+      } else if (min == 1 && max == INT_MAX) {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a positive integer.", param_name, value_str);
+      } else if (min == 0 && max == INT_MAX) {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be a non-negative integer.", param_name,
+                      value_str);
+      } else {
+        SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid %s '%s'. Must be between %d and %d.", param_name, value_str,
+                      min, max);
+      }
+    }
+    return INT_MIN;
+  }
+  return val;
+}
+
 /**
  * Validate port number (1-65535)
  * Returns 0 on success, non-zero on error
@@ -48,21 +95,8 @@ int validate_opt_port(const char *value_str, char *error_msg, size_t error_msg_s
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_positive_int(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val <= 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a positive integer.", value_str);
-    }
-    return -1;
-  }
-  return val;
+  int result = validate_int_range(value_str, 1, INT_MAX, "Value", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -70,21 +104,8 @@ int validate_opt_positive_int(const char *value_str, char *error_msg, size_t err
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_non_negative_int(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val < 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a non-negative integer.", value_str);
-    }
-    return -1;
-  }
-  return val;
+  int result = validate_int_range(value_str, 0, INT_MAX, "Value", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -299,25 +320,41 @@ float validate_opt_float_non_negative(const char *value_str, char *error_msg, si
 }
 
 /**
+ * Validate volume value (0.0-1.0)
+ * Returns parsed value on success, -1.0f on error
+ */
+float validate_opt_volume(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Volume value is required");
+    }
+    return -1.0f;
+  }
+
+  char *endptr;
+  float val = strtof(value_str, &endptr);
+  if (*endptr != '\0' || value_str == endptr) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid volume value '%s'. Must be a number.", value_str);
+    }
+    return -1.0f;
+  }
+  if (val < 0.0f || val > 1.0f) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Volume must be between 0.0 and 1.0 (got %.2f)", val);
+    }
+    return -1.0f;
+  }
+  return val;
+}
+
+/**
  * Validate max clients (1-32)
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_max_clients(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Max clients value is required");
-    }
-    return -1;
-  }
-
-  int max = strtoint_safe(value_str);
-  if (max == INT_MIN || max < 1 || max > 32) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid max clients '%s'. Must be between 1 and 32.", value_str);
-    }
-    return -1;
-  }
-  return max;
+  int result = validate_int_range(value_str, 1, 32, "Max clients", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -325,21 +362,8 @@ int validate_opt_max_clients(const char *value_str, char *error_msg, size_t erro
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_compression_level(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Compression level value is required");
-    }
-    return -1;
-  }
-
-  int level = strtoint_safe(value_str);
-  if (level == INT_MIN || level < 1 || level > 9) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid compression level '%s'. Must be between 1 and 9.", value_str);
-    }
-    return -1;
-  }
-  return level;
+  int result = validate_int_range(value_str, 1, 9, "Compression level", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -347,21 +371,8 @@ int validate_opt_compression_level(const char *value_str, char *error_msg, size_
  * Returns parsed value on success, -1 on error
  */
 int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "FPS value is required");
-    }
-    return -1;
-  }
-
-  int fps_val = strtoint_safe(value_str);
-  if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid FPS value '%s'. FPS must be between 1 and 144.", value_str);
-    }
-    return -1;
-  }
-  return fps_val;
+  int result = validate_int_range(value_str, 1, 144, "FPS", error_msg, error_msg_size);
+  return (result == INT_MIN) ? -1 : result;
 }
 
 /**
@@ -477,4 +488,67 @@ int validate_opt_password(const char *value_str, char *error_msg, size_t error_m
   // so by definition there are no null bytes within [0, len).
 
   return 0;
+}
+
+/**
+ * Collect multiple --key flags into identity_keys array
+ *
+ * Scans argv for all --key or -K flags and populates:
+ * - opts->encrypt_key with the first key (backward compatibility)
+ * - opts->identity_keys[] with all keys
+ * - opts->num_identity_keys with count
+ *
+ * This enables multi-key support for servers/ACDS that need to present
+ * different identity keys (SSH, GPG) based on client expectations.
+ */
+int options_collect_identity_keys(options_t *opts, int argc, char *argv[]) {
+  if (!opts || !argv) {
+    log_error("options_collect_identity_keys: Invalid arguments");
+    return -1;
+  }
+
+  size_t key_count = 0;
+
+  // Scan argv for all --key or -K flags
+  for (int i = 1; i < argc && key_count < MAX_IDENTITY_KEYS; i++) {
+    const char *arg = argv[i];
+
+    // Check if this is a --key or -K flag
+    bool is_key_flag = false;
+    const char *key_value = NULL;
+
+    if (strcmp(arg, "--key") == 0 || strcmp(arg, "-K") == 0) {
+      // Next argument is the key path
+      if (i + 1 < argc) {
+        key_value = argv[i + 1];
+        is_key_flag = true;
+        i++; // Skip the value argument
+      }
+    } else if (strncmp(arg, "--key=", 6) == 0) {
+      // --key=value format
+      key_value = arg + 6;
+      is_key_flag = true;
+    }
+
+    if (is_key_flag && key_value && strlen(key_value) > 0) {
+      // Store in identity_keys array
+      SAFE_STRNCPY(opts->identity_keys[key_count], key_value, OPTIONS_BUFF_SIZE);
+
+      // First key also goes into encrypt_key for backward compatibility
+      if (key_count == 0) {
+        SAFE_STRNCPY(opts->encrypt_key, key_value, OPTIONS_BUFF_SIZE);
+      }
+
+      key_count++;
+      log_debug("Collected identity key #%zu: %s", key_count, key_value);
+    }
+  }
+
+  opts->num_identity_keys = key_count;
+
+  if (key_count > 0) {
+    log_info("Collected %zu identity key(s) for multi-key support", key_count);
+  }
+
+  return (int)key_count;
 }

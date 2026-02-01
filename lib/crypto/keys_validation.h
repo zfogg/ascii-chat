@@ -234,30 +234,6 @@ asciichat_error_t validate_x25519_key_format(const char *key_hex);
 asciichat_error_t check_key_strength(const public_key_t *key, bool *is_weak);
 
 /**
- * @brief Validate key file permissions
- * @param key_path Path to key file (must not be NULL)
- * @return ASCIICHAT_OK if permissions are secure, error code on failure
- *
- * Validates key file permissions by checking Unix file permissions.
- * Ensures file has restrictive permissions (0600).
- *
- * @note Permission checking: Checks file permissions on Unix systems.
- *       Validates that file has owner read/write only (0600).
- *
- * @note Platform-specific: Permission checking is Unix-specific.
- *       Windows does not have Unix-style permissions.
- *
- * @note Recommended permissions: Private key files should have 0600 permissions.
- *       Public key files can have more permissive permissions (0644).
- *
- * @warning Platform-specific: Permission checking is Unix-specific.
- *          Windows does not have Unix-style permissions.
- *
- * @ingroup keys
- */
-asciichat_error_t validate_key_permissions(const char *key_path);
-
-/**
  * @brief Check for key reuse or weak patterns
  * @param key Key to check (must not be NULL)
  * @param has_weak_patterns Output: true if weak patterns found, false otherwise (must not be NULL)

@@ -50,14 +50,11 @@
 
 #ifdef _WIN32
 #include <io.h>
-#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
-#include <winsock2.h>
-#include <mmsystem.h> // For timeEndPeriod()
 #else
-#include <unistd.h>    // For write() and STDOUT_FILENO (signal-safe I/O)
-#include <netdb.h>     // For getaddrinfo(), gai_strerror()
-#include <arpa/inet.h> // For inet_ntop()
+#include <unistd.h> // For write() and STDOUT_FILENO (signal-safe I/O)
 #endif
+
+#include "platform/network.h" // Consolidates platform-specific network headers
 
 #include <errno.h>
 #include <limits.h>
@@ -70,13 +67,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <stdatomic.h>
 
 #include "main.h"
 #include "common.h"
 #include "util/endian.h"
 #include "util/ip.h"
-#include "util/uthash.h"
+#include "uthash/uthash.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
@@ -88,6 +84,7 @@
 #include "network/network.h"
 #include "network/tcp/server.h"
 #include "network/acip/acds_client.h"
+#include "network/webrtc/stun.h"
 #include "thread_pool.h"
 #include "options/options.h"
 #include "options/rcu.h" // For RCU-based options access
@@ -154,8 +151,9 @@ static bool check_shutdown(void) {
  *
  * THREAD SAFETY: The mixer itself is thread-safe and can be used concurrently
  * by multiple render.c audio threads without external synchronization.
+ * During shutdown, set to NULL before destroying to prevent use-after-free.
  */
-mixer_t *g_audio_mixer = NULL;
+mixer_t *volatile g_audio_mixer = NULL;
 
 /**
  * @brief Global shutdown condition variable for waking blocked threads
@@ -245,6 +243,14 @@ static acds_client_t *g_acds_client = NULL;
 static acip_transport_t *g_acds_transport = NULL;
 
 /**
+ * @brief Server's participant ID in the ACDS session
+ *
+ * Used as sender_id in WebRTC SDP/ICE packets sent via ACDS relay.
+ * Set during SESSION_JOIN, all zeros if not using ACDS.
+ */
+static uint8_t g_server_participant_id[16] = {0};
+
+/**
  * @brief Global WebRTC peer manager for accepting client connections
  *
  * Manages WebRTC peer connections when acting as session creator (server role).
@@ -296,15 +302,6 @@ static asciichat_thread_t g_acds_ping_thread;
 static bool g_acds_ping_thread_started = false;
 
 /**
- * @brief Global client manager for signal handler access
- *
- * Made global so signal handler can close client sockets immediately
- * during shutdown to interrupt blocking recv() calls.
- */
-extern client_manager_t g_client_manager;
-extern rwlock_t g_client_manager_rwlock;
-
-/**
  * @brief Background worker thread pool for server operations
  *
  * Manages background threads like stats logger, lock debugging, etc.
@@ -330,16 +327,40 @@ static thread_pool_t *g_server_worker_pool = NULL;
 bool g_server_encryption_enabled = false;
 
 /**
- * @brief Global server private key
+ * @brief Global server private key (first identity key, for backward compatibility)
  *
- * Stores the server's private key loaded from the key file. Used for
- * cryptographic handshakes and packet encryption/decryption. Initialized
- * during server startup from the configured key file path.
+ * Stores the server's primary private key loaded from the first --key flag.
+ * Used for cryptographic handshakes and packet encryption/decryption.
+ * Initialized during server startup from the configured key file path.
  *
+ * @note This is an alias to g_server_identity_keys[0] for backward compatibility
  * @note Accessed from crypto.c for server-side crypto operations
  * @ingroup server_main
  */
 private_key_t g_server_private_key = {0};
+
+/**
+ * @brief Global server identity keys array (multi-key support)
+ *
+ * Stores all server identity keys loaded from multiple --key flags.
+ * Enables servers to present different keys (SSH, GPG) based on client expectations.
+ * Server selects the appropriate key during handshake based on what the client
+ * downloaded from ACDS.
+ *
+ * @note g_server_private_key points to g_server_identity_keys[0] for compatibility
+ * @ingroup server_main
+ */
+private_key_t g_server_identity_keys[MAX_IDENTITY_KEYS] = {0};
+
+/**
+ * @brief Number of loaded server identity keys
+ *
+ * Tracks how many identity keys were successfully loaded from --key flags.
+ * Zero means server is running in simple mode (no identity key).
+ *
+ * @ingroup server_main
+ */
+size_t g_num_server_identity_keys = 0;
 
 /**
  * @brief Global client public key whitelist
@@ -496,9 +517,8 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uin
   // Fill header
   acip_webrtc_sdp_t *header = (acip_webrtc_sdp_t *)packet;
   memcpy(header->session_id, session_id, 16);
-  // Server participant_id: Currently zero, ACDS relay identifies sender by socket connection
-  // NOTE: If ACDS requires explicit participant_id, server needs to join its own session
-  memset(header->sender_id, 0, 16);
+  // Use server's participant_id from SESSION_JOIN as sender
+  memcpy(header->sender_id, g_server_participant_id, 16);
   memcpy(header->recipient_id, recipient_id, 16);
   header->sdp_type = (strcmp(sdp_type, "offer") == 0) ? 0 : 1;
   header->sdp_len = HOST_TO_NET_U16((uint16_t)sdp_len);
@@ -506,7 +526,8 @@ static asciichat_error_t server_send_sdp(const uint8_t session_id[16], const uin
   // Copy SDP string after header
   memcpy(packet + sizeof(acip_webrtc_sdp_t), sdp, sdp_len);
 
-  log_debug("Server sending WebRTC SDP %s to participant (%.8s...) via ACDS", sdp_type, (const char *)recipient_id);
+  log_debug("Server sending WebRTC SDP %s to participant (sender=%02x%02x..., recipient=%02x%02x...) via ACDS",
+            sdp_type, g_server_participant_id[0], g_server_participant_id[1], recipient_id[0], recipient_id[1]);
 
   // Send via ACDS transport using generic packet sender
   asciichat_error_t result =
@@ -561,8 +582,8 @@ static asciichat_error_t server_send_ice(const uint8_t session_id[16], const uin
   // Fill header
   acip_webrtc_ice_t *header = (acip_webrtc_ice_t *)packet;
   memcpy(header->session_id, session_id, 16);
-  // Server participant_id: Currently zero, ACDS relay identifies sender by socket connection
-  memset(header->sender_id, 0, 16);
+  // Use server's participant_id from SESSION_JOIN as sender
+  memcpy(header->sender_id, g_server_participant_id, 16);
   memcpy(header->recipient_id, recipient_id, 16);
   header->candidate_len = HOST_TO_NET_U16((uint16_t)payload_len);
 
@@ -609,12 +630,12 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
     return;
   }
 
-  log_info("WebRTC transport ready for participant %.8s...", (const char *)participant_id);
+  log_debug("WebRTC transport ready for participant %.8s...", (const char *)participant_id);
 
   // Convert participant_id to string for logging (ASCII-safe portion)
   char participant_str[33];
   for (int i = 0; i < 16; i++) {
-    snprintf(participant_str + (i * 2), 3, "%02x", participant_id[i]);
+    safe_snprintf(participant_str + (i * 2), 3, "%02x", participant_id[i]);
   }
   participant_str[32] = '\0';
 
@@ -626,7 +647,7 @@ static void on_webrtc_transport_ready(acip_transport_t *transport, const uint8_t
     return;
   }
 
-  log_info("Successfully added WebRTC client ID=%d for participant %s", client_id, participant_str);
+  log_debug("Successfully added WebRTC client ID=%d for participant %s", client_id, participant_str);
 }
 
 /**
@@ -658,7 +679,8 @@ static void on_webrtc_sdp_server(const acip_webrtc_sdp_t *sdp, size_t total_len,
   // Determine SDP type (offer=0, answer=1)
   const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
 
-  log_info("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id, sdp_len);
+  log_debug("Received WebRTC SDP %s from participant %.8s... (len=%u)", sdp_type, (const char *)sdp->sender_id,
+            sdp_len);
 
   // Forward to peer_manager (pass full packet structure)
   asciichat_error_t result = webrtc_peer_manager_handle_sdp(g_webrtc_peer_manager, sdp);
@@ -723,9 +745,9 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
 
   // Build session name from hostname for mDNS service name
   char hostname[256] = {0};
-  char session_name[256] = "ASCII-Chat-Server";
+  char session_name[256] = "ascii-chat-Server";
   if (gethostname(hostname, sizeof(hostname) - 1) == 0 && strlen(hostname) > 0) {
-    snprintf(session_name, sizeof(session_name), "%s", hostname);
+    safe_snprintf(session_name, sizeof(session_name), "%s", hostname);
   }
 
   // Prepare TXT records with session string and host public key
@@ -735,7 +757,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   int txt_count = 0;
 
   // Add session string to TXT records (for client discovery)
-  snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
+  safe_snprintf(txt_session_string, sizeof(txt_session_string), "session_string=%s", session_string);
   txt_records[txt_count++] = txt_session_string;
 
   // Add host public key to TXT records (for cryptographic verification)
@@ -743,14 +765,14 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
   if (g_server_encryption_enabled) {
     char hex_pubkey[65];
     pubkey_to_hex(g_server_private_key.public_key, hex_pubkey);
-    snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
+    safe_snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=%s", hex_pubkey);
     txt_records[txt_count++] = txt_host_pubkey;
     log_debug("mDNS: Host pubkey=%s", hex_pubkey);
   } else {
     // If encryption is disabled, still advertise a zero pubkey for clients to detect
-    snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
+    safe_snprintf(txt_host_pubkey, sizeof(txt_host_pubkey), "host_pubkey=");
     for (int i = 0; i < 32; i++) {
-      snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
+      safe_snprintf(txt_host_pubkey + strlen(txt_host_pubkey), sizeof(txt_host_pubkey) - strlen(txt_host_pubkey), "00");
     }
     txt_records[txt_count++] = txt_host_pubkey;
     log_debug("mDNS: Encryption disabled, advertising zero pubkey");
@@ -772,11 +794,9 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
     asciichat_mdns_shutdown(g_mdns_ctx);
     g_mdns_ctx = NULL;
   } else {
-    printf("🌐 mDNS: Server advertised as '%s.local' on LAN\n", session_name);
-    printf("📋 Session String: %s\n", session_string);
-    printf("   Join with: ascii-chat %s\n", session_string);
-    log_info("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
-             service.name, service.port, session_string, service.txt_count);
+    log_info("🌐 mDNS: Server advertised as '%s.local' on LAN", session_name);
+    log_debug("mDNS: Service advertised as '%s.local' (name=%s, port=%d, session=%s, txt_count=%d)", service.type,
+              service.name, service.port, session_string, service.txt_count);
   }
 }
 
@@ -792,7 +812,7 @@ static void advertise_mdns_with_session(const char *session_string, uint16_t por
 static void *acds_ping_thread(void *arg) {
   (void)arg;
 
-  log_info("ACDS keepalive ping thread started");
+  log_debug("ACDS keepalive ping thread started");
 
   while (!atomic_load(&g_server_should_exit)) {
     if (!g_acds_transport) {
@@ -817,7 +837,7 @@ static void *acds_ping_thread(void *arg) {
     }
   }
 
-  log_info("ACDS keepalive ping thread exiting");
+  log_debug("ACDS keepalive ping thread exiting");
   return NULL;
 }
 
@@ -830,18 +850,39 @@ static void *acds_ping_thread(void *arg) {
  * @param arg Unused (server uses globals)
  * @return NULL
  */
+/**
+ * @brief ACDS PING callback - respond with PONG to keep connection alive
+ */
+static void on_acds_ping(void *ctx) {
+  (void)ctx;
+  log_debug("ACDS keepalive: Received PING from ACDS, responding with PONG");
+  if (g_acds_transport) {
+    packet_send_via_transport(g_acds_transport, PACKET_TYPE_PONG, NULL, 0);
+  }
+}
+
+/**
+ * @brief ACDS PONG callback - log keepalive response
+ */
+static void on_acds_pong(void *ctx) {
+  (void)ctx;
+  log_debug("ACDS keepalive: Received PONG from ACDS server");
+}
+
 static void *acds_receive_thread(void *arg) {
   (void)arg;
 
-  log_info("ACDS receive thread started");
+  log_debug("ACDS receive thread started");
 
-  // Configure callbacks for WebRTC signaling packets
+  // Configure callbacks for WebRTC signaling packets and keepalive
   acip_client_callbacks_t callbacks = {
       .on_ascii_frame = NULL,
       .on_audio = NULL,
       .on_webrtc_sdp = on_webrtc_sdp_server,
       .on_webrtc_ice = on_webrtc_ice_server,
       .on_session_joined = NULL,
+      .on_ping = on_acds_ping,
+      .on_pong = on_acds_pong,
       .app_ctx = NULL,
   };
 
@@ -849,23 +890,54 @@ static void *acds_receive_thread(void *arg) {
   // Keepalive is handled by separate ping thread
   while (!atomic_load(&g_server_should_exit)) {
     if (!g_acds_transport) {
-      log_debug("ACDS transport destroyed, exiting receive thread");
+      log_warn("ACDS transport is NULL, exiting receive thread");
       break;
     }
 
     asciichat_error_t result = acip_client_receive_and_dispatch(g_acds_transport, &callbacks);
 
     if (result != ASCIICHAT_OK) {
-      if (result == ERROR_NETWORK) {
-        log_info("ACDS connection closed");
-      } else {
-        log_error("ACDS receive error: %s", asciichat_error_string(result));
+      // Check error context to see if connection actually closed
+      asciichat_error_context_t err_ctx;
+      bool has_context = HAS_ERRNO(&err_ctx);
+
+      // Timeouts are normal when there are no packets - just continue waiting
+      if (result == ERROR_NETWORK_TIMEOUT) {
+        continue;
       }
+
+      // ERROR_NETWORK could be:
+      // 1. Receive timeout (non-fatal - continue waiting)
+      // 2. EOF/connection closed (fatal - exit thread)
+      // Check the error context message to distinguish
+      if (result == ERROR_NETWORK) {
+        if (has_context && strstr(err_ctx.context_message, "Failed to receive packet") != NULL) {
+          // Generic receive failure (likely timeout) - continue waiting
+          log_debug("ACDS receive timeout, continuing to wait for packets");
+          continue;
+        } else if (has_context && (strstr(err_ctx.context_message, "EOF") != NULL ||
+                                   strstr(err_ctx.context_message, "closed") != NULL)) {
+          // Connection actually closed
+          log_warn("ACDS connection closed: %s", err_ctx.context_message);
+          break;
+        } else {
+          // Unknown ERROR_NETWORK - log and exit
+          log_warn("ACDS connection error: %s", has_context ? err_ctx.context_message : "unknown");
+          break;
+        }
+      }
+
+      // Other errors - exit thread
+      log_error("ACDS receive error: %s, exiting receive thread", asciichat_error_string(result));
       break;
     }
   }
 
-  log_info("ACDS receive thread exiting");
+  if (atomic_load(&g_server_should_exit)) {
+    log_debug("ACDS receive thread exiting (server shutdown)");
+  } else {
+    log_warn("ACDS receive thread exiting unexpectedly");
+  }
   return NULL;
 }
 
@@ -979,7 +1051,7 @@ static void *ascii_chat_client_handler(void *arg) {
     client_port = 0;
   }
 
-  log_info("Client handler started for %s:%d", client_ip, client_port);
+  log_debug("Client handler started for %s:%d", client_ip, client_port);
 
   // Check connection rate limit (prevent DoS attacks)
   if (server_ctx->rate_limiter) {
@@ -1025,7 +1097,7 @@ static void *ascii_chat_client_handler(void *arg) {
   socket_close(client_socket);
   SAFE_FREE(ctx);
 
-  log_info("Client handler finished for %s:%d", client_ip, client_port);
+  log_debug("Client handler finished for %s:%d", client_ip, client_port);
   return NULL;
 }
 
@@ -1103,26 +1175,80 @@ static int init_server_crypto(void) {
     return 0;
   }
 
-  // Load server private key if provided via --key
-  if (strlen(GET_OPTION(encrypt_key)) > 0) {
-    // --key requires signing capabilities (SSH key files or GPG keys with gpg-agent)
+  // Load server identity keys (supports multiple --key flags for multi-key mode)
+  size_t num_keys = GET_OPTION(num_identity_keys);
 
-    // Validate SSH key file (skip validation for special prefixes - they have their own validation)
-    bool is_special_key =
-        (strncmp(GET_OPTION(encrypt_key), "gpg:", 4) == 0 || strncmp(GET_OPTION(encrypt_key), "github:", 7) == 0 ||
-         strncmp(GET_OPTION(encrypt_key), "gitlab:", 7) == 0);
+  if (num_keys > 0) {
+    // Multi-key mode: load all identity keys from identity_keys[] array
+    log_info("Loading %zu identity key(s) for multi-key support...", num_keys);
+
+    for (size_t i = 0; i < num_keys && i < MAX_IDENTITY_KEYS; i++) {
+      const char *key_path = GET_OPTION(identity_keys[i]);
+
+      if (strlen(key_path) == 0) {
+        continue; // Skip empty entries
+      }
+
+      // Validate SSH key file (skip validation for special prefixes)
+      bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 ||
+                             strncmp(key_path, "gitlab:", 7) == 0);
+
+      if (!is_special_key) {
+        if (validate_ssh_key_file(key_path) != 0) {
+          log_warn("Skipping invalid SSH key file: %s", key_path);
+          continue;
+        }
+      }
+
+      // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
+      log_debug("Loading identity key #%zu: %s", i + 1, key_path);
+      if (parse_private_key(key_path, &g_server_identity_keys[g_num_server_identity_keys]) == ASCIICHAT_OK) {
+        log_debug("Successfully loaded identity key #%zu: %s", i + 1, key_path);
+
+        // Display key fingerprint for verification
+        char hex_pubkey[65];
+        pubkey_to_hex(g_server_identity_keys[g_num_server_identity_keys].public_key, hex_pubkey);
+        log_debug("  Key fingerprint: %s", hex_pubkey);
+
+        g_num_server_identity_keys++;
+      } else {
+        log_warn("Failed to parse identity key #%zu: %s (skipping)", i + 1, key_path);
+      }
+    }
+
+    if (g_num_server_identity_keys == 0) {
+      log_error("No valid identity keys loaded despite %zu --key flag(s)", num_keys);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "No valid identity keys loaded");
+      return -1;
+    }
+
+    // Copy first key to g_server_private_key for backward compatibility
+    memcpy(&g_server_private_key, &g_server_identity_keys[0], sizeof(private_key_t));
+    log_info("Loaded %zu identity key(s) total", g_num_server_identity_keys);
+
+  } else if (strlen(GET_OPTION(encrypt_key)) > 0) {
+    // Single-key mode (backward compatibility): load from encrypt_key field
+    const char *key_path = GET_OPTION(encrypt_key);
+
+    // Validate SSH key file (skip validation for special prefixes)
+    bool is_special_key = (strncmp(key_path, "gpg:", 4) == 0 || strncmp(key_path, "github:", 7) == 0 ||
+                           strncmp(key_path, "gitlab:", 7) == 0);
 
     if (!is_special_key) {
-      if (validate_ssh_key_file(GET_OPTION(encrypt_key)) != 0) {
-        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", GET_OPTION(encrypt_key));
+      if (validate_ssh_key_file(key_path) != 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", key_path);
         return -1;
       }
     }
 
-    // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
-    log_info("Loading key for authentication: %s", GET_OPTION(encrypt_key));
-    if (parse_private_key(GET_OPTION(encrypt_key), &g_server_private_key) == ASCIICHAT_OK) {
-      log_info("Successfully loaded server key: %s", GET_OPTION(encrypt_key));
+    // Parse key
+    log_info("Loading key for authentication: %s", key_path);
+    if (parse_private_key(key_path, &g_server_private_key) == ASCIICHAT_OK) {
+      log_info("Successfully loaded server key: %s", key_path);
+
+      // Also store in identity_keys array for consistency
+      memcpy(&g_server_identity_keys[0], &g_server_private_key, sizeof(private_key_t));
+      g_num_server_identity_keys = 1;
     } else {
       log_error("Failed to parse key: %s\n"
                 "This may be due to:\n"
@@ -1132,14 +1258,15 @@ static int init_server_crypto(void) {
                 "\n"
                 "Note: RSA and ECDSA keys are not yet supported\n"
                 "To generate an Ed25519 key: ssh-keygen -t ed25519\n",
-                GET_OPTION(encrypt_key));
-      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", GET_OPTION(encrypt_key));
+                key_path);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", key_path);
       return -1;
     }
   } else if (strlen(GET_OPTION(password)) == 0) {
     // No identity key provided - server will run in simple mode
     // The server will still generate ephemeral keys for encryption, but no identity key
     g_server_private_key.type = KEY_TYPE_UNKNOWN;
+    g_num_server_identity_keys = 0;
     log_info("Server running without identity key (simple mode)");
   }
 
@@ -1165,18 +1292,27 @@ int server_main(void) {
   shutdown_register_callback(check_shutdown);
 
   // Initialize crypto after logging is ready
-  log_info("Initializing crypto...");
+  log_debug("Initializing crypto...");
   if (init_server_crypto() != 0) {
     // Print detailed error context if available
     LOG_ERRNO_IF_SET("Crypto initialization failed");
     FATAL(ERROR_CRYPTO, "Crypto initialization failed");
   }
-  log_info("Crypto initialized successfully");
+  log_debug("Crypto initialized successfully");
 
   // Handle quiet mode - disable terminal output when GET_OPTION(quiet) is enabled
   log_set_terminal_output(!GET_OPTION(quiet));
 
-  log_info("ASCII Chat server starting...");
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Server default: keepawake DISABLED (use --keepawake to enable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (GET_OPTION(enable_keepawake)) {
+    (void)platform_enable_keepawake();
+  }
+
+  log_info("ascii-chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = strtoint_safe(GET_OPTION(port));
@@ -1228,7 +1364,7 @@ int server_main(void) {
   if (thread_pool_spawn(g_server_worker_pool, stats_logger_thread, NULL, 0, "stats_logger") != ASCIICHAT_OK) {
     LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
   } else {
-    log_info("Statistics logger thread started");
+    log_debug("Statistics logger thread started");
   }
 
   // Network setup - Use tcp_server abstraction for dual-stack IPv4/IPv6 binding
@@ -1292,6 +1428,7 @@ int server_main(void) {
       .server_private_key = &g_server_private_key,
       .client_whitelist = g_client_whitelist,
       .num_whitelisted_clients = g_num_whitelisted_clients,
+      .session_host = NULL, // Will be created after TCP server init
   };
 
   // Configure TCP server
@@ -1328,7 +1465,7 @@ int server_main(void) {
   //   2. NAT-PMP fallback (Apple routers)
   //   3. If both fail: use ACDS + WebRTC (reliable, but slightly higher latency)
   if (GET_OPTION(enable_upnp)) {
-    asciichat_error_t upnp_result = nat_upnp_open(port, "ASCII-Chat Server", &g_upnp_ctx);
+    asciichat_error_t upnp_result = nat_upnp_open(port, "ascii-chat Server", &g_upnp_ctx);
 
     if (upnp_result == ASCIICHAT_OK && g_upnp_ctx) {
       char public_addr[22];
@@ -1344,9 +1481,6 @@ int server_main(void) {
   } else {
     log_debug("UPnP: Disabled (use --upnp to enable automatic port mapping)");
   }
-
-  struct timespec last_stats_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock) != 0) {
@@ -1420,6 +1554,33 @@ int server_main(void) {
   }
 
   // ========================================================================
+  // Session Host Creation (for discovery mode support)
+  // ========================================================================
+  // Create session_host to track clients in a transport-agnostic way.
+  // This enables future discovery mode where participants can become hosts.
+  if (!atomic_load(&g_server_should_exit)) {
+    session_host_config_t host_config = {
+        .port = port,
+        .ipv4_address = ipv4_address,
+        .ipv6_address = ipv6_address,
+        .max_clients = GET_OPTION(max_clients),
+        .encryption_enabled = g_server_encryption_enabled,
+        .key_path = GET_OPTION(encrypt_key),
+        .password = GET_OPTION(password),
+        .callbacks = {0}, // No callbacks for now
+        .user_data = NULL,
+    };
+
+    server_ctx.session_host = session_host_create(&host_config);
+    if (!server_ctx.session_host) {
+      // Non-fatal: session_host is optional, server can work without it
+      log_warn("Failed to create session_host (discovery mode support disabled)");
+    } else {
+      log_debug("Session host created for discovery mode support");
+    }
+  }
+
+  // ========================================================================
   // MAIN CONNECTION LOOP - Delegated to tcp_server
   // ========================================================================
   //
@@ -1438,8 +1599,8 @@ int server_main(void) {
   // This also determines the session string for mDNS (if --acds is enabled)
   char session_string[64] = {0};
 
-  // ACDS Registration (conditional on --acds flag)
-  if (GET_OPTION(acds)) {
+  // ACDS Registration (conditional on --discovery flag)
+  if (GET_OPTION(discovery)) {
     // Security Requirement Check (Issue #239):
     // Server IP must be protected by password, identity verification, or explicit opt-in
 
@@ -1448,7 +1609,7 @@ int server_main(void) {
     bool has_password = password && strlen(password) > 0;
     const char *encrypt_key = GET_OPTION(encrypt_key);
     bool has_identity = encrypt_key && strlen(encrypt_key) > 0;
-    bool explicit_expose = GET_OPTION(acds_expose_ip) != 0;
+    bool explicit_expose = GET_OPTION(discovery_expose_ip) != 0;
 
     // Validate security configuration BEFORE attempting ACDS connection
     bool acds_expose_ip_flag = false;
@@ -1459,20 +1620,26 @@ int server_main(void) {
       log_plain("🔒 ACDS privacy enabled: IP disclosed only after %s verification",
                 has_password ? "password" : "identity");
     } else if (explicit_expose) {
-      // Explicit opt-in to public IP disclosure - requires confirmation
-      log_plain_stderr("");
-      log_plain_stderr("⚠️  WARNING: You are about to allow PUBLIC IP disclosure!");
-      log_plain_stderr("⚠️  Anyone with the session string will be able to see your IP address.");
-      log_plain_stderr("⚠️  This is NOT RECOMMENDED unless you understand the privacy implications.");
-      log_plain_stderr("");
+      // Explicit opt-in to public IP disclosure
+      // Only prompt if running interactively (stdin is a TTY)
+      // When stdin is not a TTY (automated/scripted), treat explicit flag as confirmation
+      bool is_interactive = platform_isatty(STDIN_FILENO);
 
-      if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
+      if (is_interactive) {
         log_plain_stderr("");
-        log_plain_stderr("❌ IP disclosure not confirmed. Server will run WITHOUT discovery service.");
-        goto skip_acds_session;
+        log_plain_stderr("⚠️  WARNING: You are about to allow PUBLIC IP disclosure!");
+        log_plain_stderr("⚠️  Anyone with the session string will be able to see your IP address.");
+        log_plain_stderr("⚠️  This is NOT RECOMMENDED unless you understand the privacy implications.");
+        log_plain_stderr("");
+
+        if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
+          log_plain_stderr("");
+          log_plain_stderr("❌ IP disclosure not confirmed. Server will run WITHOUT discovery service.");
+          goto skip_acds_session;
+        }
       }
 
-      // User confirmed - proceed with public IP disclosure
+      // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
       acds_expose_ip_flag = true;
       log_plain_stderr("");
       log_plain_stderr("⚠️  Public IP disclosure CONFIRMED");
@@ -1490,8 +1657,8 @@ int server_main(void) {
     }
 
     // Security is configured, proceed with ACDS connection
-    const char *acds_server = GET_OPTION(acds_server);
-    uint16_t acds_port = (uint16_t)GET_OPTION(acds_port);
+    const char *acds_server = GET_OPTION(discovery_server);
+    uint16_t acds_port = (uint16_t)GET_OPTION(discovery_port);
 
     log_info("Attempting to create session on ACDS server at %s:%d...", acds_server, acds_port);
 
@@ -1509,6 +1676,11 @@ int server_main(void) {
     }
 
     asciichat_error_t acds_connect_result = acds_client_connect(g_acds_client, &acds_config);
+    if (acds_connect_result != ASCIICHAT_OK) {
+      log_error("Failed to connect to ACDS server at %s:%d: %s", acds_server, acds_port,
+                asciichat_error_string(acds_connect_result));
+      goto skip_acds_session;
+    }
     if (acds_connect_result == ASCIICHAT_OK) {
       // Prepare session creation parameters
       acds_session_create_params_t create_params;
@@ -1527,6 +1699,7 @@ int server_main(void) {
 
       create_params.capabilities = 0x03; // Video + Audio
       create_params.max_participants = GET_OPTION(max_clients);
+      log_debug("ACDS: max_clients option value = %d", GET_OPTION(max_clients));
 
       // Set password if configured
       create_params.has_password = has_password;
@@ -1537,6 +1710,8 @@ int server_main(void) {
 
       // Set IP disclosure policy (determined above)
       create_params.acds_expose_ip = acds_expose_ip_flag;
+      log_info("DEBUG: Server setting acds_expose_ip=%d (explicit_expose=%d, has_password=%d, has_identity=%d)",
+               create_params.acds_expose_ip, explicit_expose, has_password, has_identity);
 
       // Set session type (Direct TCP or WebRTC)
       // Auto-detect: Use WebRTC if UPnP failed OR if explicitly requested via --webrtc
@@ -1544,20 +1719,22 @@ int server_main(void) {
       const char *bind_addr = GET_OPTION(address);
       bool bind_all_interfaces = (strcmp(bind_addr, "0.0.0.0") == 0);
 
+      // Determine session type: prefer WebRTC by default (unless explicitly disabled)
+      // Priority: explicit --webrtc flag > connection type detection > UPnP > default
       if (GET_OPTION(webrtc)) {
         // Explicit WebRTC request
         create_params.session_type = SESSION_TYPE_WEBRTC;
         log_info("ACDS session type: WebRTC (explicitly requested via --webrtc)");
       } else if (bind_all_interfaces) {
-        // Bind to 0.0.0.0 means server is publicly accessible
-        create_params.session_type = SESSION_TYPE_DIRECT_TCP;
-        log_info("ACDS session type: Direct TCP (bind address 0.0.0.0, server is publicly accessible)");
+        // Bind to 0.0.0.0: use WebRTC as default (better NAT compatibility)
+        create_params.session_type = SESSION_TYPE_WEBRTC;
+        log_info("ACDS session type: WebRTC (default for 0.0.0.0 binding, provides NAT-agnostic connections)");
       } else if (upnp_succeeded) {
-        // UPnP port mapping worked
+        // UPnP port mapping worked - can use direct TCP
         create_params.session_type = SESSION_TYPE_DIRECT_TCP;
         log_info("ACDS session type: Direct TCP (UPnP succeeded, server is publicly accessible)");
       } else {
-        // UPnP failed and not on public IP - use WebRTC
+        // UPnP failed and not on public IP - use WebRTC for NAT traversal
         create_params.session_type = SESSION_TYPE_WEBRTC;
         log_info("ACDS session type: WebRTC (UPnP failed, server behind NAT)");
       }
@@ -1572,16 +1749,18 @@ int server_main(void) {
       }
       create_params.server_port = port;
 
+      // DEBUG: Log what we're sending to ACDS
+      log_info("DEBUG: Before SESSION_CREATE - expose_ip_publicly=%d, server_address='%s' port=%u, session_type=%u",
+               create_params.acds_expose_ip, create_params.server_address, create_params.server_port,
+               create_params.session_type);
+
       // Create session
       acds_session_create_result_t create_result;
       asciichat_error_t create_err = acds_session_create(g_acds_client, &create_params, &create_result);
 
       if (create_err == ASCIICHAT_OK) {
         SAFE_STRNCPY(session_string, create_result.session_string, sizeof(session_string));
-        log_plain("✨ Session created successfully!");
-        log_plain("📋 Session string: %s", session_string);
-        log_plain("🔗 Share this with others to join:");
-        log_plain("   ascii-chat %s", session_string);
+        log_info("Session created: %s", session_string);
 
         // Server must join its own session so ACDS can route signaling messages
         log_debug("Server joining session as first participant for WebRTC signaling...");
@@ -1604,9 +1783,12 @@ int server_main(void) {
                     join_result.error_message[0] ? join_result.error_message : "unknown");
           // Continue anyway - this is not fatal for Direct TCP sessions
         } else {
-          log_info("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
-                   join_result.participant_id[1]);
+          log_debug("Server joined session successfully (participant_id: %02x%02x...)", join_result.participant_id[0],
+                    join_result.participant_id[1]);
           // Store participant ID for WebRTC signaling (needed to identify server in SDP/ICE messages)
+          memcpy(g_server_participant_id, join_result.participant_id, 16);
+          log_debug("Stored server participant_id for signaling: %02x%02x...", g_server_participant_id[0],
+                    g_server_participant_id[1]);
           memcpy(create_result.session_id, join_result.session_id, 16);
         }
 
@@ -1625,59 +1807,82 @@ int server_main(void) {
           if (ping_thread_result != 0) {
             log_error("Failed to create ACDS ping thread: %d", ping_thread_result);
           } else {
-            log_info("ACDS ping thread started to keep connection alive");
+            log_debug("ACDS ping thread started to keep connection alive");
             g_acds_ping_thread_started = true;
           }
         }
 
         // Initialize WebRTC peer_manager if session type is WebRTC
         if (create_params.session_type == SESSION_TYPE_WEBRTC) {
-          log_info("Initializing WebRTC peer manager for session (role=CREATOR)...");
+          log_debug("Initializing WebRTC library and peer manager for session (role=CREATOR)...");
 
-          // Configure STUN servers for ICE gathering
-          stun_server_t stun_servers[2];
-          stun_servers[0].host_len = (uint8_t)strlen("stun:stun.l.google.com:19302");
-          SAFE_STRNCPY(stun_servers[0].host, "stun:stun.l.google.com:19302", sizeof(stun_servers[0].host));
-          stun_servers[1].host_len = (uint8_t)strlen("stun:stun1.l.google.com:19302");
-          SAFE_STRNCPY(stun_servers[1].host, "stun:stun1.l.google.com:19302", sizeof(stun_servers[1].host));
-
-          // Configure peer_manager
-          webrtc_peer_manager_config_t pm_config = {
-              .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
-              .stun_servers = stun_servers,
-              .stun_count = 2,
-              .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
-              .turn_count = 0,
-              .on_transport_ready = on_webrtc_transport_ready,
-              .user_data = &server_ctx,
-              .crypto_ctx = NULL // WebRTC handles crypto internally
-          };
-
-          // Configure signaling callbacks for relaying SDP/ICE via ACDS
-          webrtc_signaling_callbacks_t signaling_callbacks = {
-              .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
-
-          // Create peer_manager
-          asciichat_error_t pm_result =
-              webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
-          if (pm_result != ASCIICHAT_OK) {
-            log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
+          // Initialize WebRTC library (libdatachannel)
+          asciichat_error_t webrtc_init_result = webrtc_init();
+          if (webrtc_init_result != ASCIICHAT_OK) {
+            log_error("Failed to initialize WebRTC library: %s", asciichat_error_string(webrtc_init_result));
             g_webrtc_peer_manager = NULL;
           } else {
-            log_info("WebRTC peer_manager initialized successfully");
+            log_debug("WebRTC library initialized successfully");
 
-            // Start ACDS receive thread for WebRTC signaling relay
-            int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
-            if (thread_result != 0) {
-              log_error("Failed to create ACDS receive thread: %d", thread_result);
-              // Cleanup peer_manager since signaling won't work
-              webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+            // Configure STUN servers for ICE gathering (static to persist for peer_manager lifetime)
+            static stun_server_t stun_servers[4] = {0};
+            static unsigned int g_stun_init_refcount = 0;
+            static static_mutex_t g_stun_init_mutex = STATIC_MUTEX_INIT;
+            static int stun_count = 0; // Store actual count separately
+
+            static_mutex_lock(&g_stun_init_mutex);
+            if (g_stun_init_refcount == 0) {
+              int count =
+                  stun_servers_parse(GET_OPTION(stun_servers), OPT_ENDPOINT_STUN_SERVERS_DEFAULT, stun_servers, 4);
+              if (count > 0) {
+                stun_count = count;
+              } else {
+                log_warn("Failed to parse STUN servers, using defaults");
+                stun_count = stun_servers_parse(OPT_ENDPOINT_STUN_SERVERS_DEFAULT, OPT_ENDPOINT_STUN_SERVERS_DEFAULT,
+                                                stun_servers, 4);
+              }
+              g_stun_init_refcount = 1;
+            }
+            static_mutex_unlock(&g_stun_init_mutex);
+
+            // Configure peer_manager
+            webrtc_peer_manager_config_t pm_config = {
+                .role = WEBRTC_ROLE_CREATOR, // Server accepts offers, generates answers
+                .stun_servers = stun_servers,
+                .stun_count = stun_count,
+                .turn_servers = NULL, // No TURN for server (clients should have public IP or use TURN)
+                .turn_count = 0,
+                .on_transport_ready = on_webrtc_transport_ready,
+                .user_data = &server_ctx,
+                .crypto_ctx = NULL // WebRTC handles crypto internally
+            };
+
+            // Configure signaling callbacks for relaying SDP/ICE via ACDS
+            webrtc_signaling_callbacks_t signaling_callbacks = {
+                .send_sdp = server_send_sdp, .send_ice = server_send_ice, .user_data = NULL};
+
+            // Create peer_manager
+            asciichat_error_t pm_result =
+                webrtc_peer_manager_create(&pm_config, &signaling_callbacks, &g_webrtc_peer_manager);
+            if (pm_result != ASCIICHAT_OK) {
+              log_error("Failed to create WebRTC peer_manager: %s", asciichat_error_string(pm_result));
               g_webrtc_peer_manager = NULL;
             } else {
-              log_info("ACDS receive thread started for WebRTC signaling relay");
-              g_acds_receive_thread_started = true;
+              log_debug("WebRTC peer_manager initialized successfully");
+
+              // Start ACDS receive thread for WebRTC signaling relay
+              int thread_result = asciichat_thread_create(&g_acds_receive_thread, acds_receive_thread, NULL);
+              if (thread_result != 0) {
+                log_error("Failed to create ACDS receive thread: %d", thread_result);
+                // Cleanup peer_manager since signaling won't work
+                webrtc_peer_manager_destroy(g_webrtc_peer_manager);
+                g_webrtc_peer_manager = NULL;
+              } else {
+                log_debug("ACDS receive thread started for WebRTC signaling relay");
+                g_acds_receive_thread_started = true;
+              }
             }
-          }
+          } // Close else block from webrtc_init() success
         } else {
           log_debug("Session type is DIRECT_TCP, skipping WebRTC peer_manager initialization");
         }
@@ -1708,9 +1913,10 @@ skip_acds_session:
     log_debug("No ACDS session string available, generating random session for mDNS");
 
     // Generate a proper word-word-word session string for mDNS discovery
+    // Format: adjective-noun-noun (matching ACDS session string format)
     // This uses simple word lists to create memorable session strings
     static const char *adjectives[] = {
-        "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "proud",
+        "swift", "bright", "gentle", "calm", "bold", "quiet", "happy", "fast",
         "quick", "warm",   "wise",   "true", "safe", "keen",  "just",  "fair",
     };
     static const char *nouns[] = {
@@ -1724,18 +1930,33 @@ skip_acds_session:
     uint32_t seed = (uint32_t)time(NULL) ^ (uint32_t)getpid();
     uint32_t adj1_idx = (seed / 1) % adj_count;
     uint32_t noun1_idx = (seed / 13) % noun_count;
-    uint32_t adj2_idx = (seed / 31) % adj_count;
+    uint32_t noun2_idx = (seed / 31) % noun_count; // Second noun (not adjective!)
 
-    snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
-             adjectives[adj2_idx]);
+    safe_snprintf(session_string, sizeof(session_string), "%s-%s-%s", adjectives[adj1_idx], nouns[noun1_idx],
+                  nouns[noun2_idx]);
 
-    log_info("Generated random session string for mDNS: '%s'", session_string);
+    log_debug("Generated random session string for mDNS: '%s'", session_string);
 
     // Advertise mDNS with random session string
     advertise_mdns_with_session(session_string, (uint16_t)port);
   }
 
-  log_info("Server entering accept loop (port %d)...", port);
+  // ====================================================================
+  // Display session string prominently as the FINAL startup message
+  // This ensures users see the connection info clearly without logs
+  // wiping it away
+  // ====================================================================
+  if (session_string[0] != '\0') {
+    log_plain("");
+    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    log_plain("📋 Session String: %s", session_string);
+    log_plain("🔗 Share this with others to join:");
+    log_plain("   ascii-chat %s", session_string);
+    log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    log_plain("");
+  }
+
+  log_debug("Server entering accept loop (port %d)...", port);
 
   // Run TCP server (blocks until shutdown signal received)
   // tcp_server_run() handles:
@@ -1748,11 +1969,11 @@ skip_acds_session:
     log_error("TCP server exited with error");
   }
 
-  log_info("Server accept loop exited");
+  log_debug("Server accept loop exited");
 
 cleanup:
   // Cleanup
-  log_info("Server shutting down...");
+  log_debug("Server shutting down...");
   atomic_store(&g_server_should_exit, true);
 
   // Wake up any threads that might be blocked on condition variables
@@ -1766,7 +1987,7 @@ cleanup:
   // CRITICAL: Close all client sockets immediately to unblock receive threads
   // The signal handler only closed the listening socket, but client receive threads
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
-  log_info("Closing all client sockets to unblock receive threads...");
+  log_debug("Closing all client sockets to unblock receive threads...");
 
   // Use write lock since we're modifying client->socket
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -1779,13 +2000,13 @@ cleanup:
   }
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  log_info("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
+  log_debug("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
 
   // Stop and destroy server worker thread pool (stats logger, etc.)
   if (g_server_worker_pool) {
     thread_pool_destroy(g_server_worker_pool);
     g_server_worker_pool = NULL;
-    log_info("Server worker thread pool stopped");
+    log_debug("Server worker thread pool stopped");
   }
 
   // Destroy rate limiter
@@ -1795,7 +2016,7 @@ cleanup:
   }
 
   // Clean up all connected clients
-  log_info("Cleaning up connected clients...");
+  log_debug("Cleaning up connected clients...");
   // FIXED: Simplified to collect client IDs first, then remove them without holding locks
   uint32_t clients_to_remove[MAX_CLIENTS];
   int client_count = 0;
@@ -1842,15 +2063,20 @@ cleanup:
 
   // Clean up audio mixer
   if (g_audio_mixer) {
-    mixer_destroy(g_audio_mixer);
+    // CRITICAL: Set to NULL FIRST before destroying
+    // Client handler threads may still be running and checking g_audio_mixer
+    // Setting it to NULL first prevents use-after-free race condition
+    // volatile ensures this write is visible to other threads immediately
+    mixer_t *mixer_to_destroy = g_audio_mixer;
     g_audio_mixer = NULL;
+    mixer_destroy(mixer_to_destroy);
   }
 
   // Clean up mDNS context
   if (g_mdns_ctx) {
     asciichat_mdns_shutdown(g_mdns_ctx);
     g_mdns_ctx = NULL;
-    log_info("mDNS context shut down");
+    log_debug("mDNS context shut down");
   }
 
   // Clean up synchronization primitives
@@ -1867,6 +2093,13 @@ cleanup:
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
   lock_debug_cleanup();
 #endif
+
+  // Destroy session host (before TCP server shutdown)
+  if (server_ctx.session_host) {
+    log_debug("Destroying session host");
+    session_host_destroy(server_ctx.session_host);
+    server_ctx.session_host = NULL;
+  }
 
   // Shutdown TCP server (closes listen sockets and cleans up)
   tcp_server_shutdown(&g_tcp_server);
@@ -1923,6 +2156,9 @@ cleanup:
   // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
   buffer_pool_cleanup_global();
 
+  // Disable keepawake mode (re-allow OS to sleep)
+  platform_disable_keepawake();
+
   // Clean up binary path cache explicitly
   // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent
   // (checks g_cache_initialized and sets it to false, sets g_bin_path_cache to NULL)
@@ -1937,10 +2173,8 @@ cleanup:
 
   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
   // POSIX: minimal cleanup (symbol cache already handled above on Windows)
-#ifdef _WIN32
   socket_cleanup();
-  timeEndPeriod(1); // Restore Windows timer resolution
-#endif
+  platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
 #ifndef NDEBUG
   // Join the lock debug thread as one of the very last things before exit

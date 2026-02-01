@@ -20,11 +20,12 @@
 if(USE_MIMALLOC)
     message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} memory allocator...")
 
-    # Try to find system-installed mimalloc first (Linux only, via CMake config)
-    # Skip on macOS: Homebrew's mimalloc has MI_OVERRIDE=ON which causes crashes
+    # Try to find system-installed mimalloc first (Linux, or macOS with ASCIICHAT_SHARED_DEPS)
+    # Skip on macOS by default: Homebrew's mimalloc has MI_OVERRIDE=ON which causes crashes
     # when system libraries (getaddrinfo/freeaddrinfo) try to free memory.
+    # Exception: When ASCIICHAT_SHARED_DEPS=ON (Homebrew formula), use system shared library.
     set(_MIMALLOC_FROM_SYSTEM FALSE)
-    if(NOT WIN32 AND NOT USE_MUSL AND NOT APPLE)
+    if(NOT WIN32 AND NOT USE_MUSL AND (NOT APPLE OR ASCIICHAT_SHARED_DEPS))
         # Try to find mimalloc via CMake's find_package (uses mimalloc-config.cmake)
         # Detect multiarch directory (e.g., x86_64-linux-gnu, aarch64-linux-gnu)
         if(NOT CMAKE_LIBRARY_ARCHITECTURE)
@@ -66,9 +67,34 @@ if(USE_MIMALLOC)
             # Found system mimalloc via CMake config
             message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} via find_package, version ${BoldGreen}${mimalloc_VERSION}${ColorReset}")
 
-            # The system mimalloc provides 'mimalloc-static' and 'mimalloc' targets
-            # We'll use mimalloc-static for consistency with our FetchContent build
-            if(TARGET mimalloc-static)
+            # When ASCIICHAT_SHARED_DEPS is set, prefer the shared library (for Homebrew builds)
+            # Otherwise use mimalloc-static for consistency with our FetchContent build
+            if(ASCIICHAT_SHARED_DEPS AND TARGET mimalloc)
+                # Get the actual library path from the imported target
+                get_target_property(_mimalloc_shared_lib mimalloc IMPORTED_LOCATION_RELEASE)
+                if(NOT _mimalloc_shared_lib)
+                    get_target_property(_mimalloc_shared_lib mimalloc IMPORTED_LOCATION)
+                endif()
+                message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} shared library (ASCIICHAT_SHARED_DEPS=ON)")
+                message(STATUS "  Library path: ${_mimalloc_shared_lib}")
+                # Use the actual library path, not just the target name
+                if(_mimalloc_shared_lib)
+                    set(MIMALLOC_LIBRARIES "${_mimalloc_shared_lib}")
+                    set(ASCIICHAT_MIMALLOC_LINK_LIB "${_mimalloc_shared_lib}")
+                else()
+                    set(MIMALLOC_LIBRARIES mimalloc)
+                    set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
+                endif()
+                set(_MIMALLOC_FROM_SYSTEM TRUE)
+                set(MIMALLOC_IS_SHARED_LIB TRUE CACHE INTERNAL "Using shared mimalloc library")
+                # Create alias for compatibility
+                if(NOT TARGET mimalloc-static)
+                    add_library(mimalloc-static ALIAS mimalloc)
+                endif()
+                if(NOT TARGET mimalloc-shared)
+                    add_library(mimalloc-shared ALIAS mimalloc)
+                endif()
+            elseif(TARGET mimalloc-static)
                 message(STATUS "  Using system ${BoldCyan}mimalloc-static${ColorReset} target")
                 set(MIMALLOC_LIBRARIES mimalloc-static)
                 set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc-static)
@@ -125,55 +151,25 @@ if(USE_MIMALLOC)
     endif()
 
     # On Windows, prefer vcpkg; on Unix (if system not found), use FetchContent
-    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TARGET_TRIPLET AND DEFINED VCPKG_ROOT)
-        # Try to find mimalloc from vcpkg
-        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include")
-        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib")
-        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib")
+    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TARGET_TRIPLET)
+        # Use find_package - vcpkg hooks into this automatically
+        find_package(mimalloc CONFIG QUIET)
+        if(mimalloc_FOUND)
+            message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg via find_package: ${mimalloc_VERSION}")
 
-        find_library(MIMALLOC_LIBRARY_RELEASE NAMES mimalloc-static mimalloc PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
-        find_library(MIMALLOC_LIBRARY_DEBUG NAMES mimalloc-static mimalloc PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
-        find_path(MIMALLOC_INCLUDE_DIR NAMES mimalloc.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
-
-        if(MIMALLOC_LIBRARY_RELEASE OR MIMALLOC_LIBRARY_DEBUG)
-            # Try to get version from vcpkg (version is in directory path)
-            string(REGEX MATCH "mimalloc_([0-9]+\\.[0-9]+\\.[0-9]+)" MIMALLOC_VERSION_MATCH "${MIMALLOC_LIBRARY_RELEASE}")
-            if(CMAKE_MATCH_1)
-                set(MIMALLOC_VERSION "${CMAKE_MATCH_1}")
-                message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${MIMALLOC_LIBRARY_RELEASE}${ColorReset}")
-            else()
-                message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg: ${BoldCyan}${MIMALLOC_LIBRARY_RELEASE}${ColorReset}")
+            # Use vcpkg-provided target directly
+            if(TARGET mimalloc-static)
+                set(MIMALLOC_LIBRARIES mimalloc-static)
+            elseif(TARGET mimalloc)
+                set(MIMALLOC_LIBRARIES mimalloc)
             endif()
 
-            # Create imported target
-            add_library(mimalloc-static STATIC IMPORTED)
-            if(MIMALLOC_LIBRARY_RELEASE AND MIMALLOC_LIBRARY_DEBUG)
-                set_target_properties(mimalloc-static PROPERTIES
-                    IMPORTED_LOCATION_RELEASE "${MIMALLOC_LIBRARY_RELEASE}"
-                    IMPORTED_LOCATION_DEBUG "${MIMALLOC_LIBRARY_DEBUG}"
-                    INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
-                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
-                )
-            elseif(MIMALLOC_LIBRARY_RELEASE)
-                set_target_properties(mimalloc-static PROPERTIES
-                    IMPORTED_LOCATION "${MIMALLOC_LIBRARY_RELEASE}"
-                    INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
-                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
-                )
-            else()
-                set_target_properties(mimalloc-static PROPERTIES
-                    IMPORTED_LOCATION "${MIMALLOC_LIBRARY_DEBUG}"
-                    INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
-                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${MIMALLOC_INCLUDE_DIR}"
-                )
+            # Get library path for ASCIICHAT_MIMALLOC_LINK_LIB
+            get_target_property(MIMALLOC_LIBRARY_RELEASE ${MIMALLOC_LIBRARIES} IMPORTED_LOCATION_RELEASE)
+            if(NOT MIMALLOC_LIBRARY_RELEASE)
+                get_target_property(MIMALLOC_LIBRARY_RELEASE ${MIMALLOC_LIBRARIES} IMPORTED_LOCATION)
             endif()
-
-            set(MIMALLOC_LIBRARIES mimalloc-static)
-            get_target_property(_mimalloc_vcpkg_static mimalloc-static IMPORTED_LOCATION)
-            if(_mimalloc_vcpkg_static)
-            set(MIMALLOC_LIBRARIES "${_mimalloc_vcpkg_static}")
-            set(ASCIICHAT_MIMALLOC_LINK_LIB "${_mimalloc_vcpkg_static}")
-            endif()
+            set(ASCIICHAT_MIMALLOC_LINK_LIB "${MIMALLOC_LIBRARY_RELEASE}")
             set(_MIMALLOC_FROM_VCPKG TRUE)
         else()
             message(WARNING "Could not find ${BoldYellow}mimalloc${ColorReset} from vcpkg - falling back to FetchContent")
@@ -183,7 +179,7 @@ if(USE_MIMALLOC)
         set(_MIMALLOC_FROM_VCPKG FALSE)
     endif()
 
-    # Fall back to FetchContent if not using system, vcpkg, or vcpkg didn't have mimalloc
+    # Fall back to FetchContent if not using system or vcpkg
     if(NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
         set(MIMALLOC_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src")
         set(MIMALLOC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/mimalloc")
@@ -218,7 +214,7 @@ if(USE_MIMALLOC)
         if(EXISTS "${_MIMALLOC_LIB_PATH}")
             message(STATUS "Detected mimalloc archive: ${_MIMALLOC_LIB_PATH}")
             # Extract version from FetchContent declaration above (v2.1.7)
-            set(MIMALLOC_VERSION "2.1.7")
+            set(MIMALLOC_VERSION "2.2.4")
             message(STATUS "Using cached ${BoldGreen}mimalloc${ColorReset}, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${_MIMALLOC_LIB_PATH}${ColorReset}")
 
             # Create an imported target for the cached library
@@ -267,7 +263,7 @@ if(USE_MIMALLOC)
             FetchContent_Declare(
                 mimalloc
                 GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
-                GIT_TAG v2.1.7  # Latest stable v2.x release
+                GIT_TAG v2.2.4  # Match vcpkg version
                 GIT_SHALLOW TRUE
                 # Use persistent cache directories (survives build/ deletion)
                 SOURCE_DIR "${MIMALLOC_SOURCE_DIR}"
@@ -416,7 +412,7 @@ if(USE_MIMALLOC)
         endif()
 
         # Update status messages based on ASAN support
-        set(MIMALLOC_VERSION "2.1.7")
+        set(MIMALLOC_VERSION "2.2.4")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             message(STATUS "Created two ${BoldGreen}mimalloc${ColorReset} targets with ${BoldCyan}AddressSanitizer${ColorReset} support:")
             message(STATUS "  - ${BoldCyan}mimalloc-static${ColorReset} → ${BoldBlue}${_MIMALLOC_OUTPUT_NAME}.a${ColorReset}: for executables (uses -fPIE from global flags)")
@@ -460,7 +456,12 @@ if(USE_MIMALLOC)
 
     # Define USE_MIMALLOC for all source files so they can use mi_malloc/mi_free directly
     # Also define MI_STATIC_LIB to tell mimalloc headers we're using static library (prevents dllimport)
-    add_compile_definitions(USE_MIMALLOC MI_STATIC_LIB)
+    # Skip MI_STATIC_LIB when using shared library (ASCIICHAT_SHARED_DEPS)
+    if(MIMALLOC_IS_SHARED_LIB)
+        add_compile_definitions(USE_MIMALLOC)
+    else()
+        add_compile_definitions(USE_MIMALLOC MI_STATIC_LIB)
+    endif()
 
     if(MIMALLOC_LIBRARIES)
         message(STATUS "mimalloc static library resolved to: ${MIMALLOC_LIBRARIES}")

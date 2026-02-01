@@ -8,11 +8,17 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/string.h"
+#include "platform/util.h"
+#include "platform/process.h"
+#include "platform/filesystem.h"
+#include "util/url.h" // For parse_https_url()
 #include "network/http_client.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <fcntl.h>
 
 // =============================================================================
@@ -30,33 +36,17 @@ static asciichat_error_t https_fetch_keys(const char *url, char **response_text,
   }
 
   // Parse URL to extract hostname and path
-  // Expected format: https://hostname/path
-  if (strncmp(url, "https://", 8) != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "URL must start with https://");
-    return ERROR_INVALID_PARAM;
+  https_url_parts_t url_parts;
+  asciichat_error_t parse_result = parse_https_url(url, &url_parts);
+  if (parse_result != ASCIICHAT_OK) {
+    return parse_result;
   }
-
-  const char *hostname_start = url + 8; // Skip "https://"
-  const char *path_start = strchr(hostname_start, '/');
-
-  if (!path_start) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "URL must include a path");
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Extract hostname
-  size_t hostname_len = path_start - hostname_start;
-  if (hostname_len == 0 || hostname_len > 255) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid hostname length");
-    return ERROR_INVALID_PARAM;
-  }
-
-  char hostname[256];
-  memcpy(hostname, hostname_start, hostname_len);
-  hostname[hostname_len] = '\0';
 
   // Use https_get from http_client
-  char *response = https_get(hostname, path_start);
+  char *response = https_get(url_parts.hostname, url_parts.path);
+  SAFE_FREE(url_parts.hostname);
+  SAFE_FREE(url_parts.path);
+
   if (!response) {
     SET_ERRNO(ERROR_NETWORK, "Failed to fetch from %s", url);
     return ERROR_NETWORK;
@@ -125,7 +115,7 @@ asciichat_error_t build_github_gpg_url(const char *username, char *url_out, size
   }
 
   // Strip .gpg suffix if user already included it (e.g., "github:zfogg.gpg")
-  char clean_username[256];
+  char clean_username[BUFFER_SIZE_SMALL];
   SAFE_STRNCPY(clean_username, username, sizeof(clean_username) - 1);
   size_t len = strlen(clean_username);
   if (len > 4 && strcmp(clean_username + len - 4, ".gpg") == 0) {
@@ -154,7 +144,7 @@ asciichat_error_t build_gitlab_gpg_url(const char *username, char *url_out, size
   }
 
   // Strip .gpg suffix if user already included it (e.g., "gitlab:zfogg.gpg")
-  char clean_username[256];
+  char clean_username[BUFFER_SIZE_SMALL];
   SAFE_STRNCPY(clean_username, username, sizeof(clean_username) - 1);
   size_t len = strlen(clean_username);
   if (len > 4 && strcmp(clean_username + len - 4, ".gpg") == 0) {
@@ -183,7 +173,7 @@ asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitHub SSH keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_github_ssh_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -215,7 +205,7 @@ asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitLab SSH keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_gitlab_ssh_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -247,7 +237,7 @@ asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitHub GPG keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_github_gpg_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -279,7 +269,7 @@ asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, 
   }
 
   // Build the GitLab GPG keys URL
-  char url[256];
+  char url[BUFFER_SIZE_SMALL];
   asciichat_error_t url_result = build_gitlab_gpg_url(username, url, sizeof(url));
   if (url_result != ASCIICHAT_OK) {
     return url_result;
@@ -423,34 +413,43 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   }
 
   // Write armored block to temp file
-  char temp_file[] = "/tmp/asciichat_gpg_import_XXXXXX";
-  int fd = mkstemp(temp_file);
-  if (fd < 0) {
+  char temp_file[PLATFORM_MAX_PATH_LENGTH];
+  int fd = -1;
+  if (platform_create_temp_file(temp_file, sizeof(temp_file), "asc_gpg_import", &fd) != 0) {
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create temp file for GPG import");
   }
+
+#ifdef _WIN32
+  // On Windows, platform_create_temp_file returns fd=-1, need to open separately
+  fd = open(temp_file, O_WRONLY | O_BINARY);
+  if (fd < 0) {
+    platform_delete_temp_file(temp_file);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open temp file for writing");
+  }
+#endif
 
   ssize_t written = write(fd, response_text, response_len);
   close(fd);
 
   if (written != (ssize_t)response_len) {
-    unlink(temp_file);
+    platform_unlink(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write GPG key to temp file");
   }
 
   // Import the key using gpg --import
-  char import_cmd[512];
-  snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
-  FILE *import_fp = popen(import_cmd, "r");
-  if (!import_fp) {
-    unlink(temp_file);
+  char import_cmd[BUFFER_SIZE_MEDIUM];
+  safe_snprintf(import_cmd, sizeof(import_cmd), "gpg --import '%s' 2>&1", temp_file);
+  FILE *import_fp = NULL;
+  if (platform_popen(import_cmd, "r", &import_fp) != ASCIICHAT_OK || !import_fp) {
+    platform_unlink(temp_file);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to run gpg --import");
   }
 
   char import_output[2048];
   size_t import_len = fread(import_output, 1, sizeof(import_output) - 1, import_fp);
   import_output[import_len] = '\0';
-  pclose(import_fp);
-  unlink(temp_file);
+  platform_pclose(&import_fp);
+  platform_unlink(temp_file);
 
   // Extract ALL key IDs from import output (format: "gpg: key KEYID: ...")
   // GitHub often returns multiple keys in one armored block
@@ -497,17 +496,18 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
   size_t valid_keys = 0;
   for (size_t k = 0; k < key_count; k++) {
     // Get full fingerprint from gpg --list-keys output
-    char list_cmd[256];
-    snprintf(list_cmd, sizeof(list_cmd), "gpg --list-keys --with-colons --fingerprint '%s' 2>/dev/null", key_ids[k]);
-    FILE *list_fp = popen(list_cmd, "r");
-    if (!list_fp) {
+    char list_cmd[BUFFER_SIZE_SMALL];
+    safe_snprintf(list_cmd, sizeof(list_cmd),
+                  "gpg --list-keys --with-colons --fingerprint '%s' " PLATFORM_SHELL_NULL_REDIRECT, key_ids[k]);
+    FILE *list_fp = NULL;
+    if (platform_popen(list_cmd, "r", &list_fp) != ASCIICHAT_OK || !list_fp) {
       continue; // Skip this key if we can't list it
     }
 
     char list_output[4096];
     size_t list_len = fread(list_output, 1, sizeof(list_output) - 1, list_fp);
     list_output[list_len] = '\0';
-    pclose(list_fp);
+    platform_pclose(&list_fp);
 
     // Check if it contains an Ed25519 key (algorithm 22)
     if (!strstr(list_output, ":22:") && !strstr(list_output, "ed25519")) {
@@ -560,7 +560,7 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG key string");
     }
 
-    snprintf((*keys_out)[valid_keys], gpg_key_len, "gpg:%s", fingerprint);
+    safe_snprintf((*keys_out)[valid_keys], gpg_key_len, "gpg:%s", fingerprint);
     log_debug("Added valid Ed25519 key #%zu: %s", valid_keys, (*keys_out)[valid_keys]);
     valid_keys++;
   }

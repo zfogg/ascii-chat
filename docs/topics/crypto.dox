@@ -293,7 +293,7 @@
  * **See also:**
  * - lib/crypto/keys/ssh_keys.c - Native decryption implementation
  * - cmake/LibsodiumBcryptPbkdf.cmake - Library integration
- * - deps/bearssl/ - BearSSL minimal TLS library (AES-CTR/CBC)
+ * - deps/ascii-chat-deps/bearssl/ - BearSSL minimal TLS library (AES-CTR/CBC)
  *
  * @subsection crypto_randomness Randomness Source
  *

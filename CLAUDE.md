@@ -409,13 +409,13 @@ BearSSL is a third-party SSL library that rarely changes. CMake automatically bu
 ```
 -- Building BearSSL library (one-time setup)...
 -- BearSSL library built successfully
--- Using BearSSL library: deps/bearssl/build/libbearssl.a
+-- Using BearSSL library: deps/ascii-chat-deps/bearssl/build/libbearssl.a
 ```
 
 **Subsequent builds** (including after `rm -rf build`):
 
 ```
--- Using BearSSL library: deps/bearssl/build/libbearssl.a
+-- Using BearSSL library: deps/ascii-chat-deps/bearssl/build/libbearssl.a
 ```
 
 **Build time comparison:**
@@ -424,7 +424,7 @@ BearSSL is a third-party SSL library that rarely changes. CMake automatically bu
 - Clean rebuilds (reuses bearssl): ~8 seconds
 - **Speedup: 3.75x faster clean builds**
 
-The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -rf build`, so you only rebuild bearssl if you delete it or update the bearssl submodule.
+The pre-built library at `deps/ascii-chat-deps/bearssl/build/libbearssl.a` persists across `rm -rf build`, so you only rebuild bearssl if you delete it or update the bearssl submodule.
 
 ### Essential Commands
 
@@ -640,7 +640,7 @@ Mirror mode (local webcam preview, no networking):
 
 #### Binary-Level Options (`acds` binary)
 
-The ACDS (ASCII-Chat Discovery Service) is a separate binary for running the discovery server:
+The ACDS (ascii-chat Discovery Service) is a separate binary for running the discovery server:
 
 ```bash
 # General

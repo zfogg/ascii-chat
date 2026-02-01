@@ -29,13 +29,6 @@ static bool is_network_available(void) {
   return false;
 }
 
-__attribute__((unused)) static bool response_contains(const char *response, const char *substring) {
-  if (!response || !substring) {
-    return false;
-  }
-  return strstr(response, substring) != NULL;
-}
-
 // =============================================================================
 // Basic HTTPS GET Tests
 // =============================================================================

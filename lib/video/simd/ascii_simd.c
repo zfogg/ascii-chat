@@ -11,6 +11,7 @@
 #include <stdarg.h>
 
 #include "platform/abstraction.h"
+#include "platform/init.h"
 #include "common.h"
 #include "ascii_simd.h"
 #include "video/palette.h"
@@ -19,6 +20,7 @@
 #include "avx2.h"
 #include "util/math.h"
 #include "util/overflow.h"
+#include "util/time.h"
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 
@@ -32,11 +34,16 @@ size_t write_rgb_triplet(uint8_t value, char *dst) {
 // Default luminance palette for legacy functions
 char g_default_luminance_palette[256];
 static bool g_default_palette_initialized = false;
+static static_mutex_t g_default_palette_mutex = STATIC_MUTEX_INIT;
 
-// Initialize default luminance palette
+// Initialize default luminance palette (thread-safe with mutex protection)
 void init_default_luminance_palette(void) {
-  if (g_default_palette_initialized)
+  static_mutex_lock(&g_default_palette_mutex);
+
+  if (g_default_palette_initialized) {
+    static_mutex_unlock(&g_default_palette_mutex);
     return;
+  }
 
   // Build default luminance mapping using standard palette
   const size_t len = DEFAULT_ASCII_PALETTE_LEN;
@@ -48,6 +55,7 @@ void init_default_luminance_palette(void) {
     g_default_luminance_palette[i] = DEFAULT_ASCII_PALETTE[palette_index];
   }
   g_default_palette_initialized = true;
+  static_mutex_unlock(&g_default_palette_mutex);
 }
 
 // Helper function for benchmarks and fallback cases
@@ -142,7 +150,7 @@ void str_printf(Str *s, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   char stackbuf[256];
-  int n = vsnprintf(stackbuf, sizeof(stackbuf), fmt, ap);
+  int n = safe_vsnprintf(stackbuf, sizeof(stackbuf), fmt, ap);
   va_end(ap);
   if (n < 0)
     return;
@@ -153,7 +161,7 @@ void str_printf(Str *s, const char *fmt, ...) {
   char *heap;
   heap = SAFE_MALLOC((size_t)n + 1, char *);
   va_start(ap, fmt);
-  (void)vsnprintf(heap, (size_t)n + 1, fmt, ap);
+  safe_vsnprintf(heap, (size_t)n + 1, fmt, ap);
   va_end(ap);
   str_append_bytes(s, heap, (size_t)n);
   SAFE_FREE(heap);
@@ -298,18 +306,10 @@ void print_simd_capabilities(void) {
  * ============================================================================
  */
 
-static double get_time_seconds(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-    // Fallback to clock() if CLOCK_MONOTONIC not available
-    return (double)clock() / CLOCKS_PER_SEC;
-  }
-  return ts.tv_sec + ts.tv_nsec / 1e9;
-}
-
 // High-resolution adaptive timing for small workloads
 // Returns the number of iterations needed to achieve target_duration_ms minimum
-static int calculate_adaptive_iterations(int pixel_count, double __attribute__((unused)) target_duration_ms) {
+static int calculate_adaptive_iterations(int pixel_count, double target_duration_ms) {
+  (void)target_duration_ms; // Intentionally unused - uses fixed iteration counts based on pixel_count
   // Base iterations: scale with image size for consistent measurement accuracy
   int base_iterations = 100; // Minimum iterations for good statistics
 
@@ -331,7 +331,8 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
   return (base_iterations > minimum_iterations) ? base_iterations : minimum_iterations;
 }
 
-simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
+simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations) {
+  (void)iterations; // Intentionally unused - uses adaptive iteration counts instead
   simd_benchmark_t result = {0};
 
   // Check for integer overflow in pixel count calculation
@@ -386,61 +387,61 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   // Benchmark scalar using image-based API
   ensure_default_palette_ready();
-  double start_mono = get_time_seconds();
+  double start_mono = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = image_print(test_image, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.scalar_time = (get_time_seconds() - start_mono) / adaptive_iterations;
+  result.scalar_time = (time_ns_to_s(time_get_ns()) - start_mono) / adaptive_iterations;
 
 #if SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using new image-based timing function
   // Benchmark SSE2 monochrome rendering
-  double start_sse2 = get_time_seconds();
+  double start_sse2 = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_sse2(test_image, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.sse2_time = (get_time_seconds() - start_sse2) / adaptive_iterations;
+  result.sse2_time = (time_ns_to_s(time_get_ns()) - start_sse2) / adaptive_iterations;
 #endif
 
 #if SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using new image-based timing function
   // Benchmark SSSE3 monochrome rendering
-  double start_ssse3 = get_time_seconds();
+  double start_ssse3 = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_ssse3(test_image, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.ssse3_time = (get_time_seconds() - start_ssse3) / adaptive_iterations;
+  result.ssse3_time = (time_ns_to_s(time_get_ns()) - start_ssse3) / adaptive_iterations;
 #endif
 
 #if SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using optimized single-pass implementation
   // Benchmark AVX2 monochrome rendering
-  double start_avx2 = get_time_seconds();
+  double start_avx2 = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_avx2(test_image, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.avx2_time = (get_time_seconds() - start_avx2) / adaptive_iterations;
+  result.avx2_time = (time_ns_to_s(time_get_ns()) - start_avx2) / adaptive_iterations;
 #endif
 
 #if SIMD_SUPPORT_NEON
   // Benchmark NEON using new image-based timing function
   // TODO: Update benchmark to use custom palette testing
   // Benchmark NEON monochrome rendering
-  double start_neon = get_time_seconds();
+  double start_neon = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     char *result_str = render_ascii_image_monochrome_neon(test_image, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.neon_time = (get_time_seconds() - start_neon) / adaptive_iterations;
+  result.neon_time = (time_ns_to_s(time_get_ns()) - start_neon) / adaptive_iterations;
 #endif
 
 #if SIMD_SUPPORT_SVE
@@ -527,7 +528,6 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
   // Use synthetic gradient data for consistent cross-platform benchmarking
   printf("Using coherent gradient data for realistic color testing\n");
-  // NOLINTNEXTLINE(bugprone-random-generator-seed)
   srand(12345); // For consistent gradient variation across runs
   for (size_t i = 0; i < pixel_count; i++) {
     int x = i % width;
@@ -555,50 +555,50 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
          iterations);
 
   // Benchmark scalar color version
-  double start = get_time_seconds();
+  double start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str = image_print_color(frame, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.scalar_time = get_time_seconds() - start;
+  result.scalar_time = time_ns_to_s(time_get_ns()) - start;
 
 #if SIMD_SUPPORT_SSE2
   // Benchmark SSE2 color using unified function
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *ascii_output = render_ascii_sse2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (ascii_output)
       SAFE_FREE(ascii_output);
   }
-  result.sse2_time = get_time_seconds() - start;
+  result.sse2_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 color using unified function
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *ascii_output = render_ascii_ssse3_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (ascii_output)
       SAFE_FREE(ascii_output);
   }
-  result.ssse3_time = get_time_seconds() - start;
+  result.ssse3_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_AVX2
   // Benchmark AVX2 color using unified function
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *ascii_output = render_ascii_avx2_unified_optimized(frame, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (ascii_output)
       SAFE_FREE(ascii_output);
   }
-  result.avx2_time = get_time_seconds() - start;
+  result.avx2_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_NEON
   // Benchmark NEON color
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height, .alloc_method = IMAGE_ALLOC_SIMD};
@@ -606,7 +606,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
     if (ascii_output)
       SAFE_FREE(ascii_output);
   }
-  result.neon_time = get_time_seconds() - start;
+  result.neon_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
   // Find best method
@@ -735,78 +735,78 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
   // Benchmark scalar using color conversion
   ensure_default_palette_ready();
-  double start_scalar = get_time_seconds();
+  double start_scalar = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str = image_print_color(frame, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.scalar_time = (get_time_seconds() - start_scalar) / iterations;
+  result.scalar_time = (time_ns_to_s(time_get_ns()) - start_scalar) / iterations;
 
 #if SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using unified optimized renderer
   // Benchmark SSE2 color rendering
   ensure_default_palette_ready();
-  double start_sse2_color = get_time_seconds();
+  double start_sse2_color = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str = render_ascii_sse2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.sse2_time = (get_time_seconds() - start_sse2_color) / iterations;
+  result.sse2_time = (time_ns_to_s(time_get_ns()) - start_sse2_color) / iterations;
 #endif
 
 #if SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using unified optimized renderer
   // Benchmark SSSE3 color rendering
   ensure_default_palette_ready();
-  double start_ssse3_color = get_time_seconds();
+  double start_ssse3_color = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str =
         render_ascii_ssse3_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.ssse3_time = (get_time_seconds() - start_ssse3_color) / iterations;
+  result.ssse3_time = (time_ns_to_s(time_get_ns()) - start_ssse3_color) / iterations;
 #endif
 
 #if SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using unified optimized renderer
   // Benchmark AVX2 color rendering
   ensure_default_palette_ready();
-  double start_avx2_color = get_time_seconds();
+  double start_avx2_color = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str = render_ascii_avx2_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.avx2_time = (get_time_seconds() - start_avx2_color) / iterations;
+  result.avx2_time = (time_ns_to_s(time_get_ns()) - start_avx2_color) / iterations;
 #endif
 
 #if SIMD_SUPPORT_NEON
   // Benchmark NEON using unified optimized renderer
   // Benchmark NEON color rendering
   ensure_default_palette_ready();
-  double start_neon_color = get_time_seconds();
+  double start_neon_color = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str = render_ascii_neon_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.neon_time = (get_time_seconds() - start_neon_color) / iterations;
+  result.neon_time = (time_ns_to_s(time_get_ns()) - start_neon_color) / iterations;
 #endif
 
 #if SIMD_SUPPORT_SVE
   // Benchmark SVE using unified optimized renderer
   // Benchmark SVE color rendering
   ensure_default_palette_ready();
-  double start_sve_color = get_time_seconds();
+  double start_sve_color = time_ns_to_s(time_get_ns());
   for (int i = 0; i < iterations; i++) {
     char *result_str = render_ascii_sve_unified_optimized(frame, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result_str)
       SAFE_FREE(result_str);
   }
-  result.sve_time = (get_time_seconds() - start_sve_color) / iterations;
+  result.sve_time = (time_ns_to_s(time_get_ns()) - start_sve_color) / iterations;
 #endif
 
   // Find best method
@@ -858,10 +858,10 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 }
 
 // Enhanced color benchmark function with image source support
-simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height,
-                                                             int __attribute__((unused)) iterations,
+simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
                                                              bool use_256color) {
+  (void)iterations; // Intentionally unused - uses adaptive iteration counts instead
   simd_benchmark_t result = {0};
   (void)use_256color; // Suppress unused parameter warning
 
@@ -930,7 +930,6 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     printf("Using synthetic gradient data for COLOR %s %dx%d benchmarking with %d iterations...\n", mode_str, width,
            height, adaptive_iterations);
 
-    // NOLINTNEXTLINE(bugprone-random-generator-seed)
     srand(12345); // Consistent results across runs
     for (size_t i = 0; i < pixel_count; i++) {
       int x = i % width;
@@ -956,7 +955,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   prewarm_sgr256_cache();    // Warmup 65,536-entry FG+BG cache
 
   // Benchmark scalar color conversion (pure conversion, no I/O)
-  double start = get_time_seconds();
+  double start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
     if (test_image == NULL) {
@@ -971,14 +970,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       SAFE_FREE(result_ascii);
     image_destroy(test_image);
   }
-  result.scalar_time = get_time_seconds() - start;
+  result.scalar_time = time_ns_to_s(time_get_ns()) - start;
 
   // Find best method -- default to scalar and let simd beat it.
   double best_time = result.scalar_time;
   result.best_method = "scalar";
 
 #if SIMD_SUPPORT_SSE2
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
     if (test_image) {
@@ -990,11 +989,11 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       image_destroy(test_image);
     }
   }
-  result.sse2_time = get_time_seconds() - start;
+  result.sse2_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_SSSE3
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
     if (test_image) {
@@ -1006,11 +1005,11 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       image_destroy(test_image);
     }
   }
-  result.ssse3_time = get_time_seconds() - start;
+  result.ssse3_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_AVX2
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
     if (test_image) {
@@ -1022,11 +1021,11 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
       image_destroy(test_image);
     }
   }
-  result.avx2_time = get_time_seconds() - start;
+  result.avx2_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_NEON
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height, .alloc_method = IMAGE_ALLOC_SIMD};
@@ -1035,11 +1034,11 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     if (result)
       SAFE_FREE(result);
   }
-  result.neon_time = get_time_seconds() - start;
+  result.neon_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_SVE
-  start = get_time_seconds();
+  start = time_ns_to_s(time_get_ns());
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height, .alloc_method = IMAGE_ALLOC_SIMD};
@@ -1048,7 +1047,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     if (result)
       SAFE_FREE(result);
   }
-  result.sve_time = get_time_seconds() - start;
+  result.sve_time = time_ns_to_s(time_get_ns()) - start;
 #endif
 
 #if SIMD_SUPPORT_SSE2

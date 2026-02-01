@@ -5,13 +5,10 @@
  */
 
 #include "network/crc32.h"
+#include "platform/system.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
-// unistd.h is POSIX-only (not available on Windows)
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)
@@ -47,11 +44,7 @@ static void check_crc32_hw_support(void) {
       spin_count++;
       if (spin_count > 100) {
         // After 100 spins, sleep briefly to avoid CPU waste
-#ifdef _WIN32
-        Sleep(0); // Yield to other threads
-#else
-        usleep(1); // Sleep 1 microsecond
-#endif
+        platform_sleep_usec(1); // Sleep 1 microsecond (Windows rounds up to 1ms)
         spin_count = 0;
       }
     }

@@ -25,16 +25,10 @@
 /** @brief Default maximum frame rate (frames per second) */
 #define DEFAULT_MAX_FPS 60
 
-/** @brief Runtime configurable maximum frame rate (can be overridden via environment or command line) */
-extern int g_max_fps;
+/** @brief Frame interval in milliseconds based on default FPS (compile-time constant) */
+#define FRAME_INTERVAL_MS (1000 / DEFAULT_MAX_FPS)
 
-/** @brief Maximum frame rate macro (uses g_max_fps if set, otherwise DEFAULT_MAX_FPS) */
-#define MAX_FPS (g_max_fps > 0 ? g_max_fps : DEFAULT_MAX_FPS)
-
-/** @brief Frame interval in milliseconds based on MAX_FPS */
-#define FRAME_INTERVAL_MS (1000 / MAX_FPS)
-
-/** @brief Frame buffer capacity based on MAX_FPS */
-#define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
+/** @brief Frame buffer capacity based on default FPS (compile-time constant) */
+#define FRAME_BUFFER_CAPACITY (DEFAULT_MAX_FPS / 4)
 
 /** @} */

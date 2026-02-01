@@ -173,7 +173,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 COMMAND ${CMAKE_SOURCE_DIR}/cmake/utils/clean_comment.sh $<TARGET_FILE:ascii-chat>
                 # Strip symbols but keep custom sections
                 # Use --strip-debug instead of --strip-unneeded to preserve custom sections
-                COMMAND ${STRIP_EXECUTABLE} --strip-debug --keep-section=.comment --keep-section=.ascii_chat --keep-section=.version $<TARGET_FILE:ascii-chat>
+                COMMAND timeout 3 ${STRIP_EXECUTABLE} --strip-debug --keep-section=.comment --keep-section=.ascii_chat --keep-section=.version $<TARGET_FILE:ascii-chat>
                 COMMENT "Deduplicating .comment section and stripping debug symbols"
             )
             # Remove embedded file paths from binary using bash script (much faster than PowerShell)
@@ -204,7 +204,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             if(WIN32)
                 # Strip symbols first
                 add_custom_command(TARGET ascii-chat POST_BUILD
-                    COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                    COMMAND timeout 3 ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols and debug info from ascii-chat"
                 )
                 # Then remove embedded file paths from binary using bash script (much faster than PowerShell)
@@ -245,7 +245,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             else()
                 # macOS: strip symbols then codesign (must strip BEFORE codesigning)
                 add_custom_command(TARGET ascii-chat POST_BUILD
-                    COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+                    COMMAND timeout 3 ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols from ascii-chat"
                 )
                 # Code sign after stripping (codesign_target is defined in CodeSigning.cmake)
@@ -256,14 +256,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Fallback: just strip symbols if objcopy not available
         if (APPLE)
             add_custom_command(TARGET ascii-chat POST_BUILD
-                COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+                COMMAND timeout 3 ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                 COMMENT "Stripping symbols from ascii-chat"
             )
             # Code sign after stripping (codesign_target is defined in CodeSigning.cmake)
             codesign_target(ascii-chat)
         else()
             add_custom_command(TARGET ascii-chat POST_BUILD
-                COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                COMMAND timeout 3 ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
                 COMMENT "Stripping symbols from ascii-chat"
             )
         endif()

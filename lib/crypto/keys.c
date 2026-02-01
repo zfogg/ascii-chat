@@ -8,14 +8,19 @@
 #include "key_types.h"
 #include "ssh/ssh_keys.h"
 #include "gpg/gpg_keys.h"
+#include "gpg/openpgp.h"
 #include "https_keys.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
-#include "gpg/export.h" // For gpg_get_public_key()
+#include "util/url.h"            // For parse_https_url()
+#include "platform/util.h"       // For platform_strtok_r
+#include "gpg/export.h"          // For gpg_get_public_key()
+#include "network/http_client.h" // For https_get()
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
 // =============================================================================
 // High-Level Key Parsing Functions
@@ -42,6 +47,30 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
   // Try GPG key parsing
   if (strncmp(input, "gpg:", 4) == 0) {
     return parse_gpg_key(input + 4, key_out);
+  }
+
+  // Try HTTPS URLs (https://...)
+  if (strncmp(input, "https://", 8) == 0) {
+    // Parse HTTPS URL to extract hostname and path
+    https_url_parts_t url_parts;
+    asciichat_error_t parse_result = parse_https_url(input, &url_parts);
+    if (parse_result != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse HTTPS URL: %s", input);
+    }
+
+    // Fetch the key via HTTPS
+    char *response = https_get(url_parts.hostname, url_parts.path);
+    SAFE_FREE(url_parts.hostname);
+    SAFE_FREE(url_parts.path);
+
+    if (!response) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch key from HTTPS URL: %s", input);
+    }
+
+    // Parse the fetched content as a public key
+    asciichat_error_t result = parse_public_key(response, key_out);
+    SAFE_FREE(response);
+    return result;
   }
 
   // Try HTTPS key fetching (GitHub/GitLab) - delegate to parse_public_keys and return first
@@ -77,6 +106,11 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
       platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-hex", sizeof(key_out->comment) - 1);
       return ASCIICHAT_OK;
     }
+  }
+
+  // Try PGP armored format (-----BEGIN PGP PUBLIC KEY BLOCK-----)
+  if (strstr(input, "-----BEGIN PGP PUBLIC KEY BLOCK-----") != NULL) {
+    return parse_gpg_key_binary((const uint8_t *)input, strlen(input), key_out);
   }
 
   if (path_looks_like_path(input)) {
@@ -164,17 +198,89 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
     // This is for compatibility with code that expects the public key at offset 32
     memcpy(key_out->key.ed25519 + 32, public_key, 32);
 
-    log_info("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
+    log_debug("Loaded GPG key %s (keygrip: %.40s) for agent signing", key_id, keygrip);
     return ASCIICHAT_OK;
   }
 
-  // Try SSH private key parsing
+  // Try to load file and detect format
   char *normalized_path = NULL;
   asciichat_error_t path_result = path_validate_user_path(key_path, PATH_ROLE_KEY_PRIVATE, &normalized_path);
   if (path_result != ASCIICHAT_OK) {
     SAFE_FREE(normalized_path);
     return path_result;
   }
+
+  // Read file content to detect format
+  FILE *f = platform_fopen(normalized_path, "r");
+  if (!f) {
+    SAFE_FREE(normalized_path);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open private key file: %s", key_path);
+  }
+
+  // Read first 50 bytes to detect format
+  char header[50];
+  size_t bytes_read = fread(header, 1, sizeof(header) - 1, f);
+  header[bytes_read] = '\0';
+  fclose(f);
+
+  log_debug("parse_private_key: Read %zu bytes from %s, header: %.50s", bytes_read, key_path, header);
+
+  // Check for PGP armored secret key format
+  if (strstr(header, "-----BEGIN PGP PRIVATE KEY") != NULL || strstr(header, "-----BEGIN PGP SECRET KEY") != NULL) {
+    log_debug("Detected PGP armored secret key format in %s", key_path);
+    // Load entire file for OpenPGP parsing
+    f = platform_fopen(normalized_path, "r");
+    if (!f) {
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open GPG key file: %s", key_path);
+    }
+
+    // Get file size
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size <= 0 || file_size > 1024 * 1024) { // Sanity check: max 1MB
+      fclose(f);
+      SAFE_FREE(normalized_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid GPG key file size: %ld bytes", file_size);
+    }
+
+    char *file_content = SAFE_MALLOC((size_t)file_size + 1, char *);
+    size_t content_read = fread(file_content, 1, (size_t)file_size, f);
+    file_content[content_read] = '\0';
+    fclose(f);
+
+    // Parse OpenPGP armored secret key
+    uint8_t ed25519_pk[32];
+    uint8_t ed25519_sk[32];
+    asciichat_error_t openpgp_result = openpgp_parse_armored_seckey(file_content, ed25519_pk, ed25519_sk);
+    SAFE_FREE(file_content);
+    SAFE_FREE(normalized_path);
+
+    if (openpgp_result != ASCIICHAT_OK) {
+      return openpgp_result;
+    }
+
+    // Populate private_key_t structure
+    key_out->type = KEY_TYPE_ED25519;
+    key_out->use_gpg_agent = false;
+    key_out->use_ssh_agent = false;
+
+    // Store keypair in Ed25519 format (64 bytes: 32-byte seed + 32-byte public key)
+    // libsodium expects the seed in first 32 bytes and public key in second 32 bytes
+    memcpy(key_out->key.ed25519, ed25519_sk, 32);      // Secret key (seed)
+    memcpy(key_out->key.ed25519 + 32, ed25519_pk, 32); // Public key
+    memcpy(key_out->public_key, ed25519_pk, 32);       // Also store in public_key field
+
+    // Store comment
+    safe_snprintf(key_out->key_comment, sizeof(key_out->key_comment), "GPG Ed25519 key from %s", key_path);
+
+    log_debug("Loaded unencrypted GPG Ed25519 key from %s", key_path);
+    return ASCIICHAT_OK;
+  }
+
+  // Fall back to SSH private key parsing
   asciichat_error_t result = parse_ssh_private_key(normalized_path, key_out);
   SAFE_FREE(normalized_path);
   return result;
@@ -190,6 +296,49 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
   }
 
   *num_keys = 0;
+
+  // Handle comma-separated key specifiers
+  if (strchr(input, ',') != NULL) {
+    char *input_copy = SAFE_MALLOC(strlen(input) + 1, char *);
+    strcpy(input_copy, input);
+
+    char *saveptr = NULL;
+    char *specifier = platform_strtok_r(input_copy, ",", &saveptr);
+
+    while (specifier != NULL && *num_keys < max_keys) {
+      // Trim leading/trailing whitespace
+      while (*specifier && isspace((unsigned char)*specifier)) {
+        specifier++;
+      }
+      char *end = specifier + strlen(specifier) - 1;
+      while (end > specifier && isspace((unsigned char)*end)) {
+        *end-- = '\0';
+      }
+
+      // Skip empty specifiers
+      if (strlen(specifier) > 0) {
+        // Recursively parse this single specifier (will not re-enter comma handling)
+        size_t current_num = 0;
+        asciichat_error_t result =
+            parse_public_keys(specifier, &keys_out[*num_keys], &current_num, max_keys - *num_keys);
+        if (result == ASCIICHAT_OK && current_num > 0) {
+          *num_keys += current_num;
+        } else {
+          log_warn("Failed to parse key specifier: %s", specifier);
+          // Continue parsing remaining specifiers even if one fails
+        }
+      }
+
+      specifier = platform_strtok_r(NULL, ",", &saveptr);
+    }
+
+    SAFE_FREE(input_copy);
+
+    if (*num_keys == 0) {
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found in comma-separated list: %s", input);
+    }
+    return ASCIICHAT_OK;
+  }
 
   // Check for direct SSH Ed25519 key format BEFORE checking for file paths
   // (SSH keys can contain '/' in base64, which would match path_looks_like_path)
@@ -249,7 +398,7 @@ asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, s
                        username);
     }
 
-    log_info("Parsed %zu Ed25519 key(s) from %s user: %s", *num_keys, is_github ? "GitHub" : "GitLab", username);
+    log_debug("Parsed %zu Ed25519 key(s) from %s user: %s", *num_keys, is_github ? "GitHub" : "GitLab", username);
     return ASCIICHAT_OK;
   }
 

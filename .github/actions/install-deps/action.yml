@@ -176,7 +176,7 @@ runs:
       with:
         path: |
           .deps-cache
-          deps/bearssl/build
+          deps/ascii-chat-deps/bearssl/build
         # Use computed key from cache-keys step (hashFiles not available in composite actions)
         # v8: Fix cache timing - cache is now saved by workflows AFTER cmake configure
         key: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}
@@ -770,13 +770,31 @@ runs:
 
     - name: Setup vcpkg and install packages (Windows)
       if: inputs.os == 'windows'
-      uses: lukka/run-vcpkg@v11
-      with:
-        # Keep in sync with vcpkg.json builtin-baseline and vcpkg-configuration.json baseline
-        vcpkgGitCommitId: "530d2d2f0864684f20b32a0596459646906d35fe"
-        # Run vcpkg install from manifest (vcpkg.json) before cmake configure
-        # This pre-installs packages to speed up cmake configure and enable caching
-        runVcpkgInstall: true
+      shell: pwsh
+      run: |
+        # Clone vcpkg to a temp location
+        $vcpkgDir = "$env:RUNNER_TEMP\vcpkg"
+        if (-not (Test-Path $vcpkgDir)) {
+          Write-Host "Cloning vcpkg..."
+          git clone https://github.com/microsoft/vcpkg.git $vcpkgDir
+          Push-Location $vcpkgDir
+          # Keep in sync with vcpkg.json builtin-baseline
+          git checkout 530d2d2f0864684f20b32a0596459646906d35fe
+          Pop-Location
+        }
+
+        # Bootstrap vcpkg
+        Write-Host "Bootstrapping vcpkg..."
+        & "$vcpkgDir\bootstrap-vcpkg.bat" -disableMetrics
+
+        # Install packages from vcpkg.json manifest
+        Write-Host "Installing packages from vcpkg.json..."
+        $vcpkgExe = "$vcpkgDir\vcpkg.exe"
+        & $vcpkgExe install --triplet=$env:VCPKG_DEFAULT_TRIPLET
+
+        # Set VCPKG_ROOT for CMake
+        Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkgDir"
+        Add-Content -Path $env:GITHUB_PATH -Value "$vcpkgDir"
 
 
     # =========================================================================

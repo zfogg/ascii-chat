@@ -238,7 +238,7 @@ for item in *; do
 done
 
 # Remove additional unwanted build directories if they got copied
-rm -rf "${OUTPUT_DIR}/deps/bearssl/build" 2>/dev/null || true
+rm -rf "${OUTPUT_DIR}/deps/ascii-chat-deps/bearssl/build" 2>/dev/null || true
 rm -rf "${OUTPUT_DIR}/deps/mimalloc/build" 2>/dev/null || true
 
 # Remove source files (they'll be replaced by instrumented versions)
@@ -442,7 +442,7 @@ find "${PWD}" -type f -name '*.h' \
   ! -path "*/build_*/*" \
   ! -path "*/.git/*" \
   ! -path "*/.deps-cache/*" \
-  ! -path "*/deps/bearssl/build/*" \
+  ! -path "*/deps/ascii-chat-deps/bearssl/build/*" \
   ! -path "*/deps/mimalloc/build/*" \
   -print0 2>/dev/null | while IFS= read -r -d '' header_file; do
   rel_path="${header_file#${PWD}/}"

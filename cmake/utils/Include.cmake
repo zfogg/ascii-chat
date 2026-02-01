@@ -20,13 +20,15 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 function(configure_include_directories)
     # Base include directories (source tree). Panic-instrumentation-enabled builds prepend
     # instrumented include directories later during ascii_panic_finalize().
+    # Note: All installable dependencies are in deps/ascii-chat-deps/
     include_directories(
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/deps/tomlc17/src
-        ${CMAKE_SOURCE_DIR}/deps/uthash/src
-        ${CMAKE_SOURCE_DIR}/deps/mdns
     )
+    # deps/ must use SYSTEM to ensure -isystem (not -iquote) for angle bracket includes
+    # Code uses: #include <ascii-chat-deps/uthash/src/uthash.h>
+    # Also includes utf8proc: #include <ascii-chat-deps/utf8proc/utf8proc.h>
+    include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/deps)
 
     # Add dependency include directories (matching pkg-config approach)
     if(WIN32)

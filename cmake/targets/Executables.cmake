@@ -27,9 +27,21 @@ endif()
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
-# For Release: static library
+# For Release: static library (unless ASCIICHAT_SHARED_DEPS is ON)
 # For USE_MUSL: always static (musl requires static linking)
-if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
+# Determine if we should use shared library linking
+set(_use_shared_lib FALSE)
+if(NOT USE_MUSL)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+        set(_use_shared_lib TRUE)
+    elseif(ASCIICHAT_SHARED_DEPS)
+        # Homebrew builds: link against shared library for smaller binary
+        set(_use_shared_lib TRUE)
+        message(STATUS "ascii-chat will link against libasciichat.dylib (ASCIICHAT_SHARED_DEPS=ON)")
+    endif()
+endif()
+
+if(_use_shared_lib)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
     target_link_libraries(ascii-chat ascii-chat-shared)
 
@@ -71,16 +83,23 @@ if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NO
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
             target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
         endif()
+
+        # Suppress linker warnings about duplicate debug symbols in libdatachannel
+        # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+        if(APPLE)
+            target_link_options(ascii-chat PRIVATE "-Wl,-w")
+        endif()
+
+        # Ensure C++ standard library is linked
+        # Use CXX language for linking to automatically link C++ runtime
+        set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
     endif()
 else()
     # Release builds OR USE_MUSL builds: use static library
     # USE_MUSL needs static library because musl requires static linking
     add_dependencies(ascii-chat ascii-chat-static-build generate_version)
     target_link_libraries(ascii-chat PRIVATE ascii-chat-static)
-    # Link FFmpeg for media file streaming (required for static builds)
-    if(FFMPEG_FOUND)
-        target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LINK_LIBRARIES})
-    endif()
+    # FFmpeg is already provided via ascii-chat-static-lib INTERFACE library, no need to add again
     # Define BUILDING_STATIC_LIB for executable when using static library (Windows)
     # This prevents LNK4217 warnings about dllimport on locally defined symbols
     if(WIN32)
@@ -89,11 +108,20 @@ else()
             _WIN32_WINNT=0x0A00  # Windows 10
         )
     endif()
+
+    # Suppress linker warnings about duplicate debug symbols in libdatachannel
+    # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+    if(APPLE)
+        target_link_options(ascii-chat PRIVATE "LINKER:-suppress_warnings")
+    endif()
+
+    set_property(TARGET ascii-chat PROPERTY LINKER_LANGUAGE CXX)
 endif()
 
 # Ensure build directory takes precedence in rpath for Debug/Dev builds
 # This prevents conflicts with installed libraries in system directories
 # Skip for Release builds - they use static linking and shouldn't embed developer paths
+# EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
@@ -101,6 +129,22 @@ if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
     )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_SHARED_DEPS)
+    # Release builds with shared deps (Homebrew) need rpath for dynamic linking
+    # Include:
+    #   - @loader_path/../lib for libasciichat.dylib (relative to binary)
+    #   - CMAKE_BUILD_RPATH for LLVM library paths (libc++, libunwind)
+    if(APPLE)
+        set(_install_rpath "@loader_path/../lib;${CMAKE_BUILD_RPATH}")
+    else()
+        set(_install_rpath "$ORIGIN/../lib;${CMAKE_BUILD_RPATH}")
+    endif()
+    set_target_properties(ascii-chat PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
+        INSTALL_RPATH "${_install_rpath}"
+        INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
+    message(STATUS "ascii-chat using rpath for SHARED_DEPS build: ${_install_rpath}")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Release builds use static linking - no rpath needed
     set_target_properties(ascii-chat PROPERTIES
@@ -275,7 +319,7 @@ if(APPLE AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     find_program(DSYMUTIL_EXECUTABLE dsymutil)
     if(DSYMUTIL_EXECUTABLE)
         add_custom_command(TARGET ascii-chat POST_BUILD
-            COMMAND ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat> -o $<TARGET_FILE:ascii-chat>.dSYM
+            COMMAND timeout 3 ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat> -o $<TARGET_FILE:ascii-chat>.dSYM
             COMMENT "Generating dSYM for ascii-chat (enables atos backtraces with line numbers)"
             VERBATIM
         )

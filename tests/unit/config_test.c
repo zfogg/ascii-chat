@@ -610,9 +610,6 @@ Test(config_sections, client_fps_as_integer) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  extern int g_max_fps;
-  int original_fps = g_max_fps;
-
   const char *content = "[client]\n"
                         "fps = 30\n";
 
@@ -621,9 +618,7 @@ Test(config_sections, client_fps_as_integer) {
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid FPS should succeed");
-  cr_assert_eq(g_max_fps, 30, "FPS should be set to 30");
-
-  g_max_fps = original_fps;
+  cr_assert_eq(GET_OPTION(fps), 30, "FPS should be set to 30");
   unlink(config_path);
   SAFE_FREE(config_path);
   restore_config_options(&backup);
@@ -633,18 +628,17 @@ Test(config_sections, client_fps_invalid_too_high) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  extern int g_max_fps;
-  int original_fps = g_max_fps;
-
   const char *content = "[client]\n"
                         "fps = 200\n"; // Too high (max 144)
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
+  int original_fps = GET_OPTION(fps);
+
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Invalid FPS should be skipped but return OK");
-  cr_assert_eq(g_max_fps, original_fps, "FPS should remain unchanged for invalid value");
+  cr_assert_eq(GET_OPTION(fps), original_fps, "FPS should remain unchanged for invalid value");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1395,7 +1389,6 @@ Test(config, inline_comments) {
   memcpy(&writable_opts, current_opts, sizeof(options_t));
   writable_opts.auto_width = 0;
   options_state_set(&writable_opts);
-
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false, &backup);
   cr_assert_eq(result, ASCIICHAT_OK, "Config with inline comments should succeed");

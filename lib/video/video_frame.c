@@ -28,7 +28,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   vfb->back_buffer = &vfb->frames[1];
 
   // Pre-allocate frame data buffers (2MB each for HD video)
-  const size_t frame_size = (size_t)2 * 1024 * 1024;
+  const size_t frame_size = (size_t)MAX_FRAME_BUFFER_SIZE;
   buffer_pool_t *pool = buffer_pool_get_global();
 
   // Initialize frames - size starts at 0 until actual data is written!
@@ -204,7 +204,7 @@ simple_frame_swap_t *simple_frame_swap_create(void) {
   simple_frame_swap_t *sfs = SAFE_CALLOC(1, sizeof(simple_frame_swap_t), simple_frame_swap_t *);
 
   // Pre-allocate both frames
-  const size_t frame_size = (size_t)2 * 1024 * 1024;
+  const size_t frame_size = (size_t)MAX_FRAME_BUFFER_SIZE;
   sfs->frame_a.data = SAFE_MALLOC(frame_size, void *);
   sfs->frame_b.data = SAFE_MALLOC(frame_size, void *);
 
@@ -235,7 +235,7 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
   video_frame_t *write_frame = use_a ? &sfs->frame_a : &sfs->frame_b;
 
   // Copy data to write frame
-  if (size <= (size_t)2 * 1024 * 1024) {
+  if (size <= (size_t)MAX_FRAME_BUFFER_SIZE) {
     SAFE_MEMCPY(write_frame->data, size, data, size);
     write_frame->size = size;
     write_frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;

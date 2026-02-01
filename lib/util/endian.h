@@ -48,12 +48,7 @@
 #pragma once
 
 #include <stdint.h>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#else
-#include <netinet/in.h>
-#endif
+#include "platform/network.h"
 
 /**
  * Convert a 32-bit value from host byte order to network byte order.

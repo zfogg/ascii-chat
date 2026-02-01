@@ -18,7 +18,7 @@
 
 #include "video/webcam/webcam.h"
 #include "common.h"
-#include "platform/file.h"
+#include "platform/filesystem.h"
 #include "platform/util.h"
 #include "util/overflow.h"
 #include "util/image.h"
@@ -27,6 +27,9 @@
 #define WEBCAM_BUFFER_COUNT_MAX 8
 #define WEBCAM_DEVICE_INDEX_MAX 99
 #define WEBCAM_READ_RETRY_COUNT 3
+
+// Module-scope cached frame (freed in webcam_cleanup_context when webcam closes)
+static image_t *v4l2_cached_frame = NULL;
 
 typedef struct {
   void *start;
@@ -40,6 +43,7 @@ struct webcam_context_t {
   uint32_t pixelformat; // Actual pixel format from driver (RGB24 or YUYV)
   webcam_buffer_t *buffers;
   int buffer_count;
+  image_t *cached_frame; // Reusable frame buffer (allocated once, reused for each read)
 };
 
 /**
@@ -118,7 +122,7 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->pixelformat = V4L2_PIX_FMT_RGB24;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
-    log_info("V4L2 format set to RGB24 %dx%d", ctx->width, ctx->height);
+    log_debug("V4L2 format set to RGB24 %dx%d", ctx->width, ctx->height);
     return 0;
   }
 
@@ -128,11 +132,23 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->pixelformat = V4L2_PIX_FMT_YUYV;
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
-    log_info("V4L2 format set to YUYV %dx%d (will convert to RGB)", ctx->width, ctx->height);
+    log_debug("V4L2 format set to YUYV %dx%d (will convert to RGB)", ctx->width, ctx->height);
     return 0;
   }
 
-  log_error("Failed to set V4L2 format: device supports neither RGB24 nor YUYV");
+  // Save errno before log_error() clears it
+  int saved_errno = errno;
+
+  // Check if format setting failed because device is busy
+  if (saved_errno == EBUSY) {
+    log_error("Failed to set V4L2 format: device is busy (another application is using it)");
+    errno = saved_errno; // Restore errno for caller to check
+    return -1;
+  }
+
+  log_error("Failed to set V4L2 format: device supports neither RGB24 nor YUYV (errno=%d: %s)", saved_errno,
+            SAFE_STRERROR(saved_errno));
+  errno = saved_errno; // Restore errno for caller
   return -1;
 }
 
@@ -213,7 +229,7 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
     return -1;
   }
 
-  log_info("V4L2 streaming started");
+  log_debug("V4L2 streaming started");
   return 0;
 }
 
@@ -280,16 +296,21 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   // Set format (try 640x480 first, fallback to whatever the device supports)
   if (webcam_v4l2_set_format(context, 640, 480) != 0) {
+    int saved_errno = errno; // Save errno before close() potentially changes it
     close(context->fd);
     SAFE_FREE(context);
-    return ERROR_WEBCAM;
+    // If format setting failed because device is busy, return ERROR_WEBCAM_IN_USE
+    if (saved_errno == EBUSY) {
+      return SET_ERRNO(ERROR_WEBCAM_IN_USE, "V4L2 device %s is in use - cannot set format", device_path);
+    }
+    return SET_ERRNO(ERROR_WEBCAM, "Failed to set V4L2 format for device %s", device_path);
   }
 
   // Initialize buffers
   if (webcam_v4l2_init_buffers(context) != 0) {
     close(context->fd);
     SAFE_FREE(context);
-    return ERROR_WEBCAM;
+    return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize V4L2 buffers for device %s", device_path);
   }
 
   // Start streaming
@@ -303,11 +324,11 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     SAFE_FREE(context->buffers);
     close(context->fd);
     SAFE_FREE(context);
-    return -1;
+    return SET_ERRNO(ERROR_WEBCAM, "Failed to start V4L2 streaming for device %s", device_path);
   }
 
   *ctx = context;
-  log_info("V4L2 webcam initialized successfully on %s", device_path);
+  log_debug("V4L2 webcam initialized successfully on %s", device_path);
   return 0;
 }
 
@@ -328,6 +349,12 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;
 
+  // Free cached frame if it was allocated
+  if (v4l2_cached_frame) {
+    image_destroy(v4l2_cached_frame);
+    v4l2_cached_frame = NULL;
+  }
+
   // Stop streaming
   enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   ioctl(ctx->fd, VIDIOC_STREAMOFF, &type);
@@ -344,7 +371,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
 
   close(ctx->fd);
   SAFE_FREE(ctx);
-  log_info("V4L2 webcam cleaned up");
+  log_debug("V4L2 webcam cleaned up");
 }
 
 image_t *webcam_read_context(webcam_context_t *ctx) {
@@ -388,16 +415,23 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Create image_t structure
-  image_t *img = image_new(ctx->width, ctx->height);
-  if (!img) {
-    log_error("Failed to allocate image buffer");
-    // Re-queue the buffer - use safe error handling
-    if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-      log_error("Failed to re-queue buffer after image allocation failure: %s", SAFE_STRERROR(errno));
+  // Allocate or reallocate cached frame if needed
+  if (!v4l2_cached_frame || v4l2_cached_frame->w != ctx->width || v4l2_cached_frame->h != ctx->height) {
+    if (v4l2_cached_frame) {
+      image_destroy(v4l2_cached_frame);
     }
-    return NULL;
+    v4l2_cached_frame = image_new(ctx->width, ctx->height);
+    if (!v4l2_cached_frame) {
+      log_error("Failed to allocate image buffer");
+      // Re-queue the buffer - use safe error handling
+      if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+        log_error("Failed to re-queue buffer after image allocation failure: %s", SAFE_STRERROR(errno));
+      }
+      return NULL;
+    }
   }
+
+  image_t *img = v4l2_cached_frame;
 
   // Copy and convert frame data based on pixel format
   if (ctx->pixelformat == V4L2_PIX_FMT_YUYV) {
@@ -445,7 +479,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   unsigned int device_count = 0;
   for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX; i++) {
     char device_path[32];
-    snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
+    safe_snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
 
     int fd = open(device_path, O_RDONLY);
     if (fd < 0) {
@@ -474,7 +508,7 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   unsigned int idx = 0;
   for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX && idx < device_count; i++) {
     char device_path[32];
-    snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
+    safe_snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
 
     int fd = open(device_path, O_RDONLY);
     if (fd < 0) {

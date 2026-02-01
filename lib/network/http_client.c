@@ -11,7 +11,7 @@
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 
-#include <bearssl.h>
+#include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #ifndef _WIN32
 #include <netdb.h>
 #include <sys/socket.h>

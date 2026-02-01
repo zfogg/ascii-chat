@@ -9,7 +9,9 @@
  */
 
 #include "ice.h"
+#include "webrtc.h"
 #include "log/logging.h"
+#include "platform/util.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -103,20 +105,20 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
   char *token = NULL;
 
   // 1. Parse foundation
-  token = strtok_r(line_copy, " ", &saveptr);
+  token = platform_strtok_r(line_copy, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing foundation in candidate");
   }
   SAFE_STRNCPY(candidate->foundation, token, sizeof(candidate->foundation));
 
   // 2. Parse component ID
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || sscanf(token, "%u", &candidate->component_id) != 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid component ID");
   }
 
   // 3. Parse protocol (udp/tcp)
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing protocol");
   }
@@ -129,32 +131,32 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
   }
 
   // 4. Parse priority
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || sscanf(token, "%u", &candidate->priority) != 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid priority");
   }
 
   // 5. Parse IP address
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing IP address");
   }
   SAFE_STRNCPY(candidate->ip_address, token, sizeof(candidate->ip_address));
 
   // 6. Parse port
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || sscanf(token, "%hu", &candidate->port) != 1) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid port");
   }
 
   // 7. Expect "typ" keyword
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token || strcmp(token, "typ") != 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing 'typ' keyword");
   }
 
   // 8. Parse candidate type
-  token = strtok_r(NULL, " ", &saveptr);
+  token = platform_strtok_r(NULL, " ", &saveptr);
   if (!token) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Missing candidate type");
   }
@@ -174,20 +176,20 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
   // 9. If srflx/prflx/relay: parse raddr and rport
   if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX ||
       candidate->type == ICE_CANDIDATE_RELAY) {
-    token = strtok_r(NULL, " ", &saveptr);
+    token = platform_strtok_r(NULL, " ", &saveptr);
     if (token && strcmp(token, "raddr") == 0) {
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
       if (!token) {
         return SET_ERRNO(ERROR_INVALID_PARAM, "Missing raddr value");
       }
       SAFE_STRNCPY(candidate->raddr, token, sizeof(candidate->raddr));
 
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
       if (!token || strcmp(token, "rport") != 0) {
         return SET_ERRNO(ERROR_INVALID_PARAM, "Missing 'rport' keyword");
       }
 
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
       if (!token || sscanf(token, "%hu", &candidate->rport) != 1) {
         return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid rport value");
       }
@@ -196,10 +198,10 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
 
   // 10. Parse any extensions (tcptype for TCP candidates)
   if (candidate->protocol == ICE_PROTOCOL_TCP) {
-    token = strtok_r(NULL, " ", &saveptr);
+    token = platform_strtok_r(NULL, " ", &saveptr);
     while (token) {
       if (strcmp(token, "tcptype") == 0) {
-        token = strtok_r(NULL, " ", &saveptr);
+        token = platform_strtok_r(NULL, " ", &saveptr);
         if (token) {
           if (strcmp(token, "active") == 0) {
             candidate->tcp_type = ICE_TCP_TYPE_ACTIVE;
@@ -210,7 +212,7 @@ asciichat_error_t ice_parse_candidate(const char *line, ice_candidate_t *candida
           }
         }
       }
-      token = strtok_r(NULL, " ", &saveptr);
+      token = platform_strtok_r(NULL, " ", &saveptr);
     }
   }
 
@@ -226,9 +228,9 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   // Example: 1 1 udp 2130706431 192.168.1.1 54321 typ host
   // Example with raddr: 1 1 udp 2130706431 203.0.113.45 54321 typ srflx raddr 192.168.1.1 rport 12345
 
-  int written = snprintf(line, line_size, "%s %u %s %u %s %u typ %s", candidate->foundation, candidate->component_id,
-                         ice_protocol_name(candidate->protocol), candidate->priority, candidate->ip_address,
-                         candidate->port, ice_candidate_type_name(candidate->type));
+  int written = safe_snprintf(line, line_size, "%s %u %s %u %s %u typ %s", candidate->foundation,
+                              candidate->component_id, ice_protocol_name(candidate->protocol), candidate->priority,
+                              candidate->ip_address, candidate->port, ice_candidate_type_name(candidate->type));
 
   if (written < 0 || (size_t)written >= line_size) {
     return SET_ERRNO(ERROR_BUFFER_FULL, "Candidate line too large for buffer");
@@ -241,7 +243,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
   if (candidate->type == ICE_CANDIDATE_SRFLX || candidate->type == ICE_CANDIDATE_PRFLX ||
       candidate->type == ICE_CANDIDATE_RELAY) {
     if (candidate->raddr[0] != '\0') {
-      int appended = snprintf(pos, remaining, " raddr %s rport %u", candidate->raddr, candidate->rport);
+      int appended = safe_snprintf(pos, remaining, " raddr %s rport %u", candidate->raddr, candidate->rport);
       if (appended < 0 || (size_t)appended >= remaining) {
         return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append raddr/rport to candidate line");
       }
@@ -259,7 +261,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
       tcptype_str = "so";
     }
 
-    int appended = snprintf(pos, remaining, " tcptype %s", tcptype_str);
+    int appended = safe_snprintf(pos, remaining, " tcptype %s", tcptype_str);
     if (appended < 0 || (size_t)appended >= remaining) {
       return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append tcptype to candidate line");
     }
@@ -269,7 +271,7 @@ asciichat_error_t ice_format_candidate(const ice_candidate_t *candidate, char *l
 
   // 4. Append any extensions
   if (candidate->extensions[0] != '\0') {
-    int appended = snprintf(pos, remaining, " %s", candidate->extensions);
+    int appended = safe_snprintf(pos, remaining, " %s", candidate->extensions);
     if (appended < 0 || (size_t)appended >= remaining) {
       return SET_ERRNO(ERROR_BUFFER_FULL, "Cannot append extensions to candidate line");
     }
@@ -317,8 +319,9 @@ asciichat_error_t ice_gather_candidates(const ice_config_t *config) {
  * ICE Connectivity
  * ============================================================================ */
 
-asciichat_error_t ice_add_remote_candidate(const ice_candidate_t *candidate, const char *mid) {
-  if (!candidate || !mid) {
+asciichat_error_t ice_add_remote_candidate(webrtc_peer_connection_t *pc, const ice_candidate_t *candidate,
+                                           const char *mid) {
+  if (!pc || !candidate || !mid) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid remote candidate parameters");
   }
 
@@ -330,45 +333,33 @@ asciichat_error_t ice_add_remote_candidate(const ice_candidate_t *candidate, con
   log_debug("ICE: Adding remote candidate %s:%u (type=%s, foundation=%s) on mid=%s", candidate->ip_address,
             candidate->port, ice_candidate_type_name(candidate->type), candidate->foundation, mid);
 
-  // TODO: Implement remote candidate addition to peer connection
-  // Integration point with libdatachannel peer manager:
-  // Steps:
-  // 1. Get current peer connection from global state (webrtc_get_transport() or similar)
-  // 2. Call libdatachannel's addIceCandidate(candidate) function
-  // 3. libdatachannel will:
-  //    - Add to remote candidate list
-  //    - Begin connectivity checks with local candidates
-  //    - Measure RTT, jitter, packet loss
-  //    - Select best working pair
-  // 4. When connection succeeds, data channel becomes ready
+  // Format candidate to SDP attribute line for libdatachannel
+  char candidate_line[512];
+  asciichat_error_t err = ice_format_candidate(candidate, candidate_line, sizeof(candidate_line));
+  if (err != ASCIICHAT_OK) {
+    return err;
+  }
 
-  // For now, log the candidate and return success
-  // Real implementation will integrate with webrtc_peer_manager_add_remote_candidate()
-  // or similar function that will be called by the signaling relay
-
-  return ASCIICHAT_OK;
+  // Delegate to WebRTC layer
+  return webrtc_add_remote_candidate(pc, candidate_line, mid);
 }
 
-bool ice_is_connected(void) {
-  // TODO: Implement connectivity check
-  // This requires integration with libdatachannel peer connection state machine.
-  // For now, return false - will be implemented when peer_manager state tracking is added.
-  // Step 1: Get current peer connection from global state
-  // Step 2: Check if state == CONNECTED or READY
-  // Step 3: Return true if at least one candidate pair has data flowing
-  return false;
+bool ice_is_connected(webrtc_peer_connection_t *pc) {
+  if (!pc) {
+    return false;
+  }
+
+  // Check peer connection state
+  webrtc_state_t state = webrtc_get_state(pc);
+  return (state == WEBRTC_STATE_CONNECTED);
 }
 
-asciichat_error_t ice_get_selected_pair(ice_candidate_t *local_candidate, ice_candidate_t *remote_candidate) {
-  // TODO: Implement selected pair retrieval
-  // This requires integration with libdatachannel peer connection.
-  // For now, return error - will be implemented when peer_manager is integrated.
-  // Steps:
-  // 1. Get current peer connection from global state
-  // 2. Find the candidate pair in "Ready" state (data is flowing)
-  // 3. Copy local candidate if local_candidate != NULL
-  // 4. Copy remote candidate if remote_candidate != NULL
-  // 5. Return error if no pair selected yet
+// Forward declaration of C++ implementation (in ice_selected_pair.cpp)
+asciichat_error_t ice_get_selected_pair_impl(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
+                                             ice_candidate_t *remote_candidate);
 
-  return SET_ERRNO(ERROR_INVALID_STATE, "No candidate pair selected yet");
+asciichat_error_t ice_get_selected_pair(webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
+                                        ice_candidate_t *remote_candidate) {
+  // Delegate to C++ implementation which uses libdatachannel's C++ API
+  return ice_get_selected_pair_impl(pc, local_candidate, remote_candidate);
 }

@@ -134,13 +134,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include "main.h"
 #include "stats.h"
 #include "client.h"
 #include "render.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "buffer_pool.h"
 #include "network/packet_queue.h"
 #include "debug/lock.h"
+#include "platform/init.h"
 
 /**
  * @brief Global server statistics structure
@@ -176,6 +179,8 @@ mutex_t g_stats_mutex = {0};
  * @ingroup server_stats
  */
 static bool g_stats_mutex_initialized = false;
+// Mutex to protect the initialization check (TOCTOU race prevention)
+static static_mutex_t g_stats_init_check_mutex = STATIC_MUTEX_INIT;
 
 /**
  * @brief Initialize the stats mutex
@@ -191,21 +196,20 @@ int stats_init(void) {
 
 /**
  * @brief Cleanup the stats mutex
+ *
+ * Uses static_mutex to protect flag changes (TOCTOU race prevention).
+ * Ensures other threads don't attempt to use the mutex after it's destroyed.
  */
 void stats_cleanup(void) {
+  static_mutex_lock(&g_stats_init_check_mutex);
   if (g_stats_mutex_initialized) {
+    g_stats_mutex_initialized = false; // Clear flag before destroying mutex
+    static_mutex_unlock(&g_stats_init_check_mutex);
     mutex_destroy(&g_stats_mutex);
-    g_stats_mutex_initialized = false;
+  } else {
+    static_mutex_unlock(&g_stats_init_check_mutex);
   }
 }
-
-/**
- * @brief Global shutdown flag from main.c - coordinate statistics thread termination
- *
- * The statistics thread monitors this flag to detect server shutdown and exit
- * its monitoring loop gracefully, ensuring clean resource cleanup.
- */
-extern atomic_bool g_server_should_exit;
 
 /* ============================================================================
  * Statistics Collection and Reporting Thread
@@ -346,7 +350,7 @@ void *stats_logger_thread(void *arg) {
 
     // Collect all statistics data first
 #ifndef NDEBUG
-    char lock_debug_info[512] = {0};
+    char lock_debug_info[BUFFER_SIZE_MEDIUM] = {0};
     // CRITICAL: Check exit condition again before accessing lock_debug
     // lock_debug might be destroyed during shutdown
     if (!atomic_load(&g_server_should_exit) && lock_debug_is_initialized()) {
@@ -376,7 +380,7 @@ void *stats_logger_thread(void *arg) {
     int active_clients = 0;
     int clients_with_audio = 0;
     int clients_with_video = 0;
-    char client_details[2048] = {0};
+    char client_details[BUFFER_SIZE_XLARGE] = {0};
     int client_details_len = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -404,9 +408,9 @@ void *stats_logger_thread(void *arg) {
           packet_queue_get_stats(client->audio_queue, &enqueued, &dequeued, &dropped);
           if (enqueued > 0 || dequeued > 0 || dropped > 0) {
             int len =
-                snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
-                         "  Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
-                         (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
+                safe_snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
+                              "  Client %u audio queue: %llu enqueued, %llu dequeued, %llu dropped", client_id_snapshot,
+                              (unsigned long long)enqueued, (unsigned long long)dequeued, (unsigned long long)dropped);
             if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
               client_details_len += len;
             }
@@ -417,10 +421,10 @@ void *stats_logger_thread(void *arg) {
           video_frame_stats_t stats;
           video_frame_get_stats(client->outgoing_video_buffer, &stats);
           if (stats.total_frames > 0) {
-            int len = snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
-                               "  Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)",
-                               client_id_snapshot, (unsigned long long)stats.total_frames,
-                               (unsigned long long)stats.dropped_frames, stats.drop_rate * 100.0f);
+            int len = safe_snprintf(client_details + client_details_len, sizeof(client_details) - client_details_len,
+                                    "  Client %u video buffer: %llu frames, %llu dropped (%.1f%% drop rate)",
+                                    client_id_snapshot, (unsigned long long)stats.total_frames,
+                                    (unsigned long long)stats.dropped_frames, stats.drop_rate * 100.0f);
             if (len > 0 && client_details_len + len < (int)sizeof(client_details)) {
               client_details_len += len;
             }
@@ -557,12 +561,17 @@ void update_server_stats(void) {
  * @see update_server_stats() For statistics update implementation
  */
 void log_server_stats(void) {
-  // Check if stats mutex is initialized before trying to lock it
+  // Use static_mutex to protect initialization check (TOCTOU race prevention)
   // In debug builds, stats_init() may not be called (it's guarded by #ifdef NDEBUG)
-  // Skip logging if mutex is not initialized to avoid crashing
+  // Use lock to prevent cleanup from destroying mutex while we're about to lock it
+  static_mutex_lock(&g_stats_init_check_mutex);
   if (!g_stats_mutex_initialized) {
+    static_mutex_unlock(&g_stats_init_check_mutex);
     return; // Mutex not initialized, skip logging
   }
+  static_mutex_unlock(&g_stats_init_check_mutex);
+
+  // Now safe to use the mutex (it was initialized and not being cleaned up)
   mutex_lock(&g_stats_mutex);
   log_info("Server Statistics:\n"
            "  frames_captured=%llu\n"

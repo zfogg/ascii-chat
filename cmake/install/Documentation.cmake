@@ -6,11 +6,11 @@
 #   - docs target: Generates full Doxygen API documentation (requires Doxygen)
 #
 # Prerequisites:
-#   - man1: None - uses CMake script for template substitution
+#   - man1: Requires ascii-chat binary to be built (uses --man-page-create option)
 #   - docs: Doxygen executable must be installed
 #
 # Outputs:
-#   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1 and acds.1
+#   - man1: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1 (uncompressed for development)
 #   - docs: ${CMAKE_BINARY_DIR}/docs/html/ and ${CMAKE_BINARY_DIR}/docs/man/man3/
 # =============================================================================
 
@@ -19,39 +19,44 @@
 # =============================================================================
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
 
-# Generate ascii-chat man page at build time, not configure time
+# Determine the executable path (handles Windows .exe extension)
+if(WIN32)
+    set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat.exe")
+else()
+    set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat")
+endif()
+
+# Generate ascii-chat man page at build time using --man-page-create option
+# This merges the template (.1.in) with manual content (.1.content) and auto-generates
+# option documentation from the options builder
+# Note: --man-page-create writes to stdout, so we redirect output to the target file
+# Development builds generate uncompressed .1 only; packaging compresses at install time
+#
+# NOTE: Release builds skip man page generation due to a parsing issue with Release optimizations.
+# Debug/Dev builds work fine. For Release, manually run: ./build/bin/ascii-chat --man-page-create > share/man/man1/ascii-chat.1
+# Create output directory for man pages
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
+
+# Generate man page using platform-appropriate shell redirection
+if(UNIX)
+    set(_MAN_PAGE_COMMAND sh -c "timeout 3 ${ASCII_CHAT_EXECUTABLE} --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
+else()
+    set(_MAN_PAGE_COMMAND cmd /c "\"${ASCII_CHAT_EXECUTABLE}\" --man-page-create > \"${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1\"")
+endif()
+
 add_custom_command(
     OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating ascii-chat man page from template..."
-    COMMAND ${CMAKE_COMMAND}
-        -DINPUT_FILE=${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in
-        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1
-        -DPROJECT_VERSION=${PROJECT_VERSION_FROM_GIT}
-        -P ${CMAKE_SOURCE_DIR}/cmake/scripts/ConfigureManPage.cmake
-    COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    DEPENDS "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-    COMMENT "Generating ascii-chat.1 from share/man/man1/ascii-chat.1.in"
+    COMMAND ${_MAN_PAGE_COMMAND}
+    DEPENDS
+        ascii-chat
+        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
+    COMMENT "Building man page"
     VERBATIM
 )
 
-# Generate acds man page at build time
-add_custom_command(
-    OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating acds man page from template..."
-    COMMAND ${CMAKE_COMMAND}
-        -DINPUT_FILE=${CMAKE_SOURCE_DIR}/share/man/man1/acds.1.in
-        -DOUTPUT_FILE=${CMAKE_BINARY_DIR}/share/man/man1/acds.1
-        -DPROJECT_VERSION=${PROJECT_VERSION_FROM_GIT}
-        -P ${CMAKE_SOURCE_DIR}/cmake/scripts/ConfigureManPage.cmake
-    COMMAND ${CMAKE_COMMAND} -E echo "✓ Generated man page: ${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
-    DEPENDS "${CMAKE_SOURCE_DIR}/share/man/man1/acds.1.in"
-    COMMENT "Generating acds.1 from share/man/man1/acds.1.in"
-    VERBATIM
-)
-
-# Build man pages by default for release/packaging - they're needed by CPack install
+# Build man pages target (works for both Debug and Release)
 add_custom_target(man1 ALL
-    DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1" "${CMAKE_BINARY_DIR}/share/man/man1/acds.1"
+    DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
     COMMENT "Man pages build complete"
 )
 
@@ -117,7 +122,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
 
     # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
     add_custom_target(docs
-        COMMAND ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+        COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/docs/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

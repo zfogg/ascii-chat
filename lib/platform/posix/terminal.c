@@ -7,7 +7,7 @@
 #ifndef _WIN32
 
 #include "../terminal.h"
-#include "../file.h"
+#include "../filesystem.h"
 #include "../internal.h"
 #include "../../options/options.h"
 #include "../../options/rcu.h" // For RCU-based options access
@@ -16,6 +16,7 @@
 #include "../../util/parsing.h"
 #include <errno.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <string.h>
@@ -39,9 +40,9 @@ asciichat_error_t terminal_get_size(terminal_size_t *size) {
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0) {
     size->rows = ws.ws_row;
     size->cols = ws.ws_col;
-    return 0;
+    return ASCIICHAT_OK;
   }
-  return -1;
+  return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to get terminal size");
 }
 
 /**
@@ -71,12 +72,17 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-    return tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set raw mode");
+    }
+    return ASCIICHAT_OK;
   }
   if (saved) {
-    return tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) != 0) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to restore terminal mode");
+    }
   }
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -95,28 +101,48 @@ asciichat_error_t terminal_set_echo(bool enable) {
     tty.c_lflag &= ~(tcflag_t)ECHO;
   }
 
-  return tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+  if (tcsetattr(STDIN_FILENO, TCSANOW, &tty) != 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to set echo mode");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Check if terminal supports color output
  * @return True if color is supported, false otherwise
  */
-bool terminal_supports_color(void) {
-  const char *term = SAFE_GETENV("TERM");
-  if (!term)
-    return false;
+// ============================================================================
+// Terminal Capability Caching (POSIX Implementation)
+// ============================================================================
 
-  // Check for common color-capable terminals
-  return (strstr(term, "color") != NULL || strstr(term, "xterm") != NULL || strstr(term, "screen") != NULL ||
-          strstr(term, "vt100") != NULL || strstr(term, "linux") != NULL);
-}
+// Static cache variables for terminal capabilities (initialized on first use)
+static struct {
+  int initialized;
+  int color_support;
+  int unicode_support;
+} g_terminal_cache = {0};
 
 /**
- * @brief Check if terminal supports Unicode output
- * @return True if Unicode is supported, false otherwise
+ * @brief Initialize terminal capability cache
+ *
+ * Detects terminal capabilities once and caches results to avoid repeated
+ * environment variable lookups on each function call.
  */
-bool terminal_supports_unicode(void) {
+static void _init_terminal_cache(void) {
+  if (g_terminal_cache.initialized) {
+    return;
+  }
+
+  // Detect color support
+  const char *term = SAFE_GETENV("TERM");
+  if (term && (strstr(term, "color") != NULL || strstr(term, "xterm") != NULL || strstr(term, "screen") != NULL ||
+               strstr(term, "vt100") != NULL || strstr(term, "linux") != NULL)) {
+    g_terminal_cache.color_support = 1;
+  } else {
+    g_terminal_cache.color_support = 0;
+  }
+
+  // Detect unicode support
   const char *lang = SAFE_GETENV("LANG");
   const char *lc_all = SAFE_GETENV("LC_ALL");
   const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
@@ -129,10 +155,28 @@ bool terminal_supports_unicode(void) {
   } else {
     check = lang;
   }
-  if (!check)
-    return false;
 
-  return (strstr(check, "UTF-8") != NULL || strstr(check, "utf8") != NULL);
+  if (check && (strstr(check, "UTF-8") != NULL || strstr(check, "utf8") != NULL)) {
+    g_terminal_cache.unicode_support = 1;
+  } else {
+    g_terminal_cache.unicode_support = 0;
+  }
+
+  g_terminal_cache.initialized = 1;
+}
+
+bool terminal_supports_color(void) {
+  _init_terminal_cache();
+  return g_terminal_cache.color_support;
+}
+
+/**
+ * @brief Check if terminal supports Unicode output
+ * @return True if Unicode is supported, false otherwise
+ */
+bool terminal_supports_unicode(void) {
+  _init_terminal_cache();
+  return g_terminal_cache.unicode_support;
 }
 
 /**
@@ -150,8 +194,10 @@ bool terminal_supports_utf8(void) {
 asciichat_error_t terminal_clear_screen(void) {
   // Use ANSI escape codes instead of system("clear") to avoid command processor
   // \033[2J clears entire screen, \033[H moves cursor to home position
-  printf("\033[2J\033[H");
-  fflush(stdout);
+  int fd = STDOUT_FILENO;
+  if (dprintf(fd, "\033[2J\033[H") < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to clear screen");
+  }
   return ASCIICHAT_OK;
 }
 
@@ -296,15 +342,9 @@ tty_info_t get_current_tty(void) {
     return result;
   }
 
-  // Method 3: Try controlling terminal device
-  result.fd = platform_open("/dev/tty", PLATFORM_O_WRONLY);
-  if (result.fd >= 0) {
-    result.path = "/dev/tty";
-    result.owns_fd = true;
-    log_debug("POSIX TTY from /dev/tty (fd=%d)", result.fd);
-    return result;
-  }
-
+  // Method 3: Try controlling terminal device (but only if stdout is not piped)
+  // If stdout is piped/redirected, don't try /dev/tty - respect the user's intent to pipe output
+  // Instead of opening /dev/tty when stdout is piped, just fail gracefully
   log_debug("POSIX TTY: No TTY available");
   return result; // No TTY available
 }
@@ -632,7 +672,9 @@ void test_terminal_output_modes(void) {
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
 #ifndef NDEBUG
   // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
-  if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
+  // However, respect --color=true which explicitly forces colors ON
+  if (GET_OPTION(color_mode) == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE") &&
+      GET_OPTION(color) != COLOR_SETTING_TRUE) {
     log_debug("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
@@ -700,9 +742,9 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   caps.render_mode = GET_OPTION(render_mode);
 
   // Set default FPS based on platform
-  extern int g_max_fps;
-  if (g_max_fps > 0) {
-    caps.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    caps.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     caps.desired_fps = DEFAULT_MAX_FPS; // 60 FPS on Unix by default
   }

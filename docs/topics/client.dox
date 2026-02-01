@@ -66,6 +66,38 @@
  * protocol_stop_connection();
  * @endcode
  *
+ * @subsection client_acds ACDS Session Discovery
+ *
+ * Instead of connecting via IP addresses, the client can use human-friendly session strings:
+ *
+ * @code{.bash}
+ * # Connect using session string (via ACDS lookup)
+ * ascii-chat client happy-sunset-ocean
+ *
+ * # Connect with explicit ACDS server
+ * ascii-chat client happy-sunset-ocean --acds-server acds.example.com
+ * @endcode
+ *
+ * **ACDS Connection Flow**:
+ * 1. Client sends ACIP_SESSION_LOOKUP to ACDS server
+ * 2. ACDS returns session info (capabilities, password requirement, etc.)
+ * 3. Client sends ACIP_SESSION_JOIN with credentials (if required)
+ * 4. ACDS returns server connection info:
+ *    - Direct TCP address/port (if server allows IP exposure)
+ *    - TURN credentials and STUN servers (for WebRTC fallback)
+ * 5. Client attempts connection in priority order:
+ *    - **Direct TCP** (lowest latency, if available)
+ *    - **WebRTC P2P** via ICE/STUN (when direct fails)
+ *    - **TURN relay** (always succeeds, higher latency)
+ *
+ * **Benefits of ACDS**:
+ * - No need to share IP addresses or configure port forwarding
+ * - Works behind NATs and firewalls automatically
+ * - Human-friendly session strings (e.g., "purple-mountain-lake")
+ * - Graceful fallback from direct TCP to WebRTC to TURN relay
+ *
+ * @see @ref topic_acds "ACDS Overview" for complete discovery service documentation
+ *
  * @subsection client_reconnection Reconnection Logic
  *
  * The client implements exponential backoff with jitter for reconnection:
@@ -443,8 +475,12 @@
  * @section client_command_line Command-Line Options
  *
  * **Connection Options**:
- * - `[address][:port]` (positional): Server address with optional port (default: localhost:27224)
+ * - `[address][:port]` or `[session_string]` (positional): Server address/port OR ACDS session string
  * - `--port <port>`: Server port (default: 27224) - conflicts with port in positional argument
+ *
+ * **ACDS Options** (for session string connections):
+ * - `--acds-server <address>`: ACDS discovery server address (default: auto-detect)
+ * - `--acds-port <port>`: ACDS discovery server port (default: 27225)
  *
  * **Media Options**:
  * - \c --audio: Enable audio capture and playback
@@ -668,4 +704,5 @@
  * @see lib/crypto/keys/keys.h
  * @see lib/video/webcam/webcam.h
  * @see lib/platform/terminal.h
+ * @see topic_acds For ACDS discovery service and session strings
  */

@@ -43,6 +43,16 @@
 #include <stdbool.h>
 #include "thread_pool.h"
 #include "network/tcp/client.h"
+#include "crypto/handshake/common.h"
+
+/**
+ * @brief Global crypto handshake context for this client connection
+ *
+ * Stores the cryptographic state for secure communication with the server.
+ * Initialized once per client execution and cleaned up on shutdown.
+ * Thread-safe for use across multiple client threads.
+ */
+extern crypto_handshake_context_t g_crypto_ctx;
 
 /**
  * @brief Global client worker thread pool

@@ -574,6 +574,57 @@
  * but the video will always feel responsive. No weird lag where someone asks a question
  * and you respond 5 seconds later!
  *
+ * @section server_acds ACDS Integration (Discovery Service)
+ *
+ * The server can register with the ascii-chat Discovery Service (ACDS) to enable easy connection
+ * via human-friendly session strings instead of IP addresses.
+ *
+ * @subsection server_acds_registration Session Registration
+ *
+ * When started with `--acds`, the server:
+ * 1. Connects to ACDS server (default: 127.0.0.1:27225)
+ * 2. Sends ACIP_SESSION_CREATE with server identity, capabilities, and participant limits
+ * 3. Receives session_string (e.g., "happy-sunset-ocean") and STUN/TURN server list
+ * 4. Displays session_string to user for sharing
+ * 5. Maintains keepalive with ACDS for session validity
+ *
+ * **Usage**:
+ * @code{.bash}
+ * # Register with default ACDS server
+ * ascii-chat server --acds
+ *
+ * # Register with custom ACDS server
+ * ascii-chat server --acds --acds-server acds.example.com --acds-port 27225
+ *
+ * # Register with explicit public IP exposure (for NAT traversal)
+ * ascii-chat server --acds --acds-expose-ip
+ * @endcode
+ *
+ * @subsection server_acds_nat NAT Traversal
+ *
+ * The server supports multiple NAT traversal techniques for remote connectivity:
+ *
+ * **UPnP/NAT-PMP** (`--upnp`):
+ * - Automatically configures port forwarding on home routers
+ * - Works on ~70% of home networks
+ * - Enables direct TCP connections (lowest latency)
+ *
+ * **WebRTC Fallback**:
+ * - When direct TCP fails, clients can connect via WebRTC DataChannels
+ * - ACDS provides STUN/TURN servers for ICE negotiation
+ * - TURN relay ensures connectivity even behind restrictive NATs
+ *
+ * @subsection server_acds_privacy Privacy Considerations
+ *
+ * By default, the server's public IP is NOT revealed to clients until:
+ * - They provide the correct session password (if password-protected), OR
+ * - The server explicitly opts in with `--acds-expose-ip`
+ *
+ * This prevents IP harvesting attacks while allowing legitimate users to connect.
+ *
+ * @see @ref topic_acds "ACDS Overview" for complete discovery service documentation
+ * @see @ref acds_server "ACDS Server" for server-side ACDS implementation
+ *
  * @section server_integration Integration with Library Modules
  *
  * The server integrates with many library modules:
@@ -587,6 +638,7 @@
  * - **Logging** (@ref topic_logging "Logging System"): Structured logging with levels
  * - **Error Handling** (@ref ERRNO_SYSTEM "Error System"): Typed error codes and context
  * - **Platform Abstraction** (@ref topic_platform "Platform Layer"): Cross-platform threading/sockets
+ * - **Discovery Service** (@ref topic_acds "ACDS"): Session discovery and NAT traversal
  *
  * @section server_performance Performance Characteristics
  *
@@ -666,5 +718,6 @@
  * @see topic_handshake For handshake protocol details
  * @see topic_keys For key management details
  * @see topic_network For network I/O details
+ * @see topic_acds For ACDS discovery service integration
  */
 

@@ -301,11 +301,14 @@
 #include "platform/system.h"
 #include "platform/memory.h"
 #include "platform/process.h"
-#include "platform/fs.h"
-#include "util/uthash.h" // Wrapper ensures common.h is included first
-#include "platform/file.h"
+#include "platform/filesystem.h"
+// NOTE: uthash/uthash.h is NOT included here to avoid circular dependencies
+// Files that need uthash should include it directly AFTER common.h
+#include "platform/filesystem.h"
 #include "platform/pipe.h"
+#ifndef __cplusplus
 #include "debug/lock.h"
+#endif
 
 // ============================================================================
 // Thread-Local Storage and Alignment Macros
@@ -731,6 +734,48 @@ ssize_t platform_write(int fd, const void *buf, size_t count);
  */
 #ifndef UNUSED
 #define UNUSED(x) ((void)(x))
+#endif
+
+/**
+ * @brief Platform-specific binary executable name with extension
+ *
+ * Expands to "ascii-chat.exe" on Windows, "ascii-chat" on other platforms.
+ * Use this macro instead of hardcoding platform-specific executable names.
+ *
+ * @par Example:
+ * @code{.c}
+ * const char *binary_name = PLATFORM_BINARY_NAME;  // "ascii-chat.exe" or "ascii-chat"
+ * printf("Usage: %s [options]\n", binary_name);
+ * @endcode
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PLATFORM_BINARY_NAME "ascii-chat.exe"
+#else
+#define PLATFORM_BINARY_NAME "ascii-chat"
+#endif
+
+/**
+ * @brief Shell null device/error redirect for platform
+ *
+ * Expands to "2>nul" on Windows, "2>/dev/null" on other platforms.
+ * Use this macro when building shell commands that need to redirect stderr.
+ *
+ * @par Example:
+ * @code{.c}
+ * char cmd[256];
+ * snprintf(cmd, sizeof(cmd), "gpg --export 0x%s " PLATFORM_SHELL_NULL_REDIRECT, key_id);
+ * system(cmd);  // On Windows: gpg --export 0x... 2>nul
+ *               // On Unix: gpg --export 0x... 2>/dev/null
+ * @endcode
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PLATFORM_SHELL_NULL_REDIRECT "2>nul"
+#else
+#define PLATFORM_SHELL_NULL_REDIRECT "2>/dev/null"
 #endif
 
 /** @} */

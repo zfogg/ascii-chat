@@ -35,6 +35,15 @@
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Vcpkg.cmake)
 
 # =============================================================================
+# Platform-Specific Configuration (EARLY - needed by other dependencies)
+# =============================================================================
+
+# Windows SDK detection and configuration (Windows + Clang only)
+# Must be included early so WINDOWS_SDK_VERSION and WINDOWS_KITS_DIR are available
+# for dependencies like WebRTC that need to pass library paths to subprojects
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WindowsSDK.cmake)
+
+# =============================================================================
 # Core Dependencies
 # =============================================================================
 # These dependencies are required on all platforms
@@ -54,6 +63,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Opus.cmake)
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WebRTC.cmake)
 
+# OpenSSL - SSL/TLS library (required by libdatachannel and TURN credentials)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/OpenSSL.cmake)
+
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
 
@@ -70,6 +82,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
 configure_mdns()
 
+# FFmpeg - Media file decoding (optional - enables --file support)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
+
 # =============================================================================
 # Test Dependencies
 # =============================================================================
@@ -77,11 +92,8 @@ configure_mdns()
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Criterion.cmake)
 
 # =============================================================================
-# Platform-Specific Configuration
+# Platform-Specific Configuration (LATE)
 # =============================================================================
-
-# Windows SDK detection and configuration (Windows + Clang only)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WindowsSDK.cmake)
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PlatformLibraries.cmake)

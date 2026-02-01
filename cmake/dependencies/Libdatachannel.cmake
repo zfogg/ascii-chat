@@ -89,36 +89,22 @@ if(USE_VCPKG AND VCPKG_ROOT)
 
         # Platform-specific system libraries
         if(APPLE)
-            # macOS: use Security framework for TLS, but also need OpenSSL for TURN credentials
-            if(NOT TARGET OpenSSL::Crypto)
-                find_package(OpenSSL REQUIRED)
-            endif()
             target_link_libraries(libdatachannel INTERFACE
                 "-framework Foundation"
                 "-framework Security"
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                c++
+                ${ASCIICHAT_STATIC_LIBCXX_LIBS}
             )
         elseif(WIN32)
-            target_link_libraries(libdatachannel INTERFACE
-                ws2_32
-                iphlpapi
-                bcrypt
-            )
+            target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
         else()
-            # Linux: link with pthread and OpenSSL
-            # Skip find_package if OpenSSL targets already exist (e.g., from MuslDependencies.cmake)
-            if(NOT TARGET OpenSSL::Crypto)
-                find_package(OpenSSL REQUIRED)
-            endif()
-            target_link_libraries(libdatachannel INTERFACE
-                OpenSSL::SSL
-                OpenSSL::Crypto
-                $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
-                pthread
-            )
+            target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
         endif()
+
+        # OpenSSL for TURN credentials
+        if(NOT TARGET OpenSSL::Crypto)
+            find_package(OpenSSL REQUIRED)
+        endif()
+        target_link_libraries(libdatachannel INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 
         target_include_directories(libdatachannel INTERFACE ${LIBDATACHANNEL_INCLUDE_DIR})
 
@@ -129,7 +115,33 @@ if(USE_VCPKG AND VCPKG_ROOT)
 endif()
 
 # =============================================================================
-# Build from source if not found in vcpkg
+# Try system package if not found in vcpkg (skip for musl builds)
+# =============================================================================
+if(NOT LIBDATACHANNEL_FOUND AND NOT USE_MUSL)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking system packages...")
+
+    # Try find_package for system installation (e.g., Arch extra repo)
+    find_package(LibDataChannel QUIET)
+
+    if(LibDataChannel_FOUND)
+        set(LIBDATACHANNEL_FOUND TRUE)
+        message(STATUS "${BoldGreen}libdatachannel${ColorReset} found via system package manager")
+
+        # Create INTERFACE library that wraps the found package
+        # LibDataChannel::LibDataChannel is the imported target from find_package
+        if(NOT TARGET libdatachannel)
+            add_library(libdatachannel INTERFACE)
+            target_link_libraries(libdatachannel INTERFACE LibDataChannel::LibDataChannel)
+        endif()
+    else()
+        message(STATUS "${BoldYellow}libdatachannel${ColorReset} not found in system packages")
+    endif()
+elseif(USE_MUSL)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Skipping system packages (USE_MUSL=ON, will build from source)")
+endif()
+
+# =============================================================================
+# Build from source if not found anywhere
 # =============================================================================
 if(NOT LIBDATACHANNEL_FOUND)
     message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Building from source...")
@@ -306,9 +318,13 @@ if(NOT libdatachannel_POPULATED)
                 message(STATUS "libdatachannel macOS build: using system clang")
             endif()
 
-            # Only add -w to suppress warnings in C code (this is safe)
-            set(_libdc_c_flags "-w")
+            # Suppress debug symbols to avoid linker warnings about duplicate debug map objects
+            # libdatachannel's debug symbols have invalid timestamps that cause ld64.lld to warn
+            # Strip debug symbols and use -w to suppress compiler/linker warnings
+            set(_libdc_c_flags "-w -g0")
+            set(_libdc_cxx_flags "-w -g0")
             list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_libdc_c_flags}")
+            list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_libdc_cxx_flags}")
 
             # Pass the macOS SDK sysroot for proper SDK header resolution
             if(CMAKE_OSX_SYSROOT)
@@ -410,6 +426,23 @@ if(NOT libdatachannel_POPULATED)
             message(FATAL_ERROR "Failed to build libdatachannel")
         endif()
 
+        # Strip debug symbols from libdatachannel.a to eliminate linker warnings
+        # about duplicate debug map objects with invalid timestamps
+        if(APPLE)
+            find_program(STRIP_EXECUTABLE strip)
+            if(STRIP_EXECUTABLE)
+                execute_process(
+                    COMMAND ${STRIP_EXECUTABLE} -x "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                    RESULT_VARIABLE STRIP_RESULT
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+                if(STRIP_RESULT EQUAL 0)
+                    message(STATUS "Stripped debug symbols from libdatachannel.a")
+                endif()
+            endif()
+        endif()
+
         message(STATUS "${BoldGreen}libdatachannel${ColorReset} library built and cached successfully")
     else()
         message(STATUS "${BoldGreen}libdatachannel${ColorReset} library found in cache: ${BoldCyan}${LIBDATACHANNEL_BUILD_DIR}/lib${ColorReset}")
@@ -434,47 +467,31 @@ endif()
 
     add_library(libdatachannel INTERFACE)
 
+    # Link static libs from source build
+    target_link_libraries(libdatachannel INTERFACE
+        "${LIBDATACHANNEL_STATIC_LIB}"
+        "${LIBJUICE_STATIC_LIB}"
+        "${LIBUSRSCTP_STATIC_LIB}"
+    )
+
+    # Platform-specific system libraries
     if(APPLE)
-        # macOS: link with necessary frameworks and OpenSSL for TURN credentials
-        if(NOT TARGET OpenSSL::Crypto)
-            find_package(OpenSSL REQUIRED)
-        endif()
         target_link_libraries(libdatachannel INTERFACE
-            "${LIBDATACHANNEL_STATIC_LIB}"
-            "${LIBJUICE_STATIC_LIB}"
-            "${LIBUSRSCTP_STATIC_LIB}"
             "-framework Foundation"
             "-framework Security"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-            c++
+            ${ASCIICHAT_STATIC_LIBCXX_LIBS}
         )
     elseif(WIN32)
-        # Windows: link with Winsock and other system libraries
-        target_link_libraries(libdatachannel INTERFACE
-            "${LIBDATACHANNEL_STATIC_LIB}"
-            "${LIBJUICE_STATIC_LIB}"
-            "${LIBUSRSCTP_STATIC_LIB}"
-            ws2_32
-            iphlpapi
-            bcrypt
-        )
+        target_link_libraries(libdatachannel INTERFACE ws2_32 iphlpapi bcrypt)
     else()
-        # Linux/Unix: link with pthread and OpenSSL
-        # Skip find_package if OpenSSL targets already exist (e.g., from MuslDependencies.cmake)
-        if(NOT TARGET OpenSSL::Crypto)
-            find_package(OpenSSL REQUIRED)
-        endif()
-        target_link_libraries(libdatachannel INTERFACE
-            "${LIBDATACHANNEL_STATIC_LIB}"
-            "${LIBJUICE_STATIC_LIB}"
-            "${LIBUSRSCTP_STATIC_LIB}"
-            OpenSSL::SSL
-            OpenSSL::Crypto
-            $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++>
-            pthread
-        )
+        target_link_libraries(libdatachannel INTERFACE $<$<NOT:$<BOOL:${USE_MUSL}>>:stdc++> pthread)
     endif()
+
+    # OpenSSL for TURN credentials
+    if(NOT TARGET OpenSSL::Crypto)
+        find_package(OpenSSL REQUIRED)
+    endif()
+    target_link_libraries(libdatachannel INTERFACE OpenSSL::SSL OpenSSL::Crypto)
 
     # Add include path for libdatachannel headers
     target_include_directories(libdatachannel

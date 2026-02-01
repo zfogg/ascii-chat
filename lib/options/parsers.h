@@ -19,6 +19,41 @@
 #include "log/logging.h"
 
 /**
+ * @brief Parse color setting option (--color flag)
+ * @param arg String argument (e.g., "auto", "true", "false")
+ * @param dest Destination pointer (int*, will store color_setting_t value)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto", "a", "0" - Smart detection (COLOR_SETTING_AUTO, default)
+ * - "true", "yes", "1", "on" - Force colors ON (COLOR_SETTING_TRUE)
+ * - "false", "no", "-1", "off" - Force colors OFF (COLOR_SETTING_FALSE)
+ *
+ * This controls whether colors are enabled ("auto"), always on ("true"),
+ * or always off ("false") regardless of TTY detection or environment variables.
+ */
+bool parse_color_setting(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse UTF-8 setting option (--utf8 flag)
+ * @param arg String argument (e.g., "auto", "true", "false"), or NULL/empty for default
+ * @param dest Destination pointer (int*, will store utf8_setting_t value)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto", "a", "0" - Smart detection (UTF8_SETTING_AUTO, default)
+ * - "true", "yes", "1", "on" - Force UTF-8 ON (UTF8_SETTING_TRUE)
+ * - "false", "no", "-1", "off" - Force UTF-8 OFF (UTF8_SETTING_FALSE)
+ *
+ * When no argument is provided (--utf8 with no value), defaults to UTF8_SETTING_TRUE.
+ * This controls whether UTF-8 is auto-detected ("auto"), always on ("true"),
+ * or always off ("false") regardless of terminal capability detection.
+ */
+bool parse_utf8_setting(const char *arg, void *dest, char **error_msg);
+
+/**
  * @brief Parse terminal color level option
  * @param arg String argument (e.g., "auto", "none", "16", "256", "truecolor")
  * @param dest Destination pointer (terminal_color_mode_t*)
@@ -96,6 +131,17 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg);
  */
 bool parse_log_level(const char *arg, void *dest, char **error_msg);
 
+/**
+ * @brief Parse and validate port option for CLI
+ * @param arg Port string to parse
+ * @param dest Destination pointer (char* for port string storage)
+ * @param error_msg Error message output (set on failure, caller must free)
+ * @return true on success, false on error
+ *
+ * Validates port is a number in the range 1-65535.
+ */
+bool parse_port_option(const char *arg, void *dest, char **error_msg);
+
 // ============================================================================
 // Positional Argument Parsers
 // ============================================================================
@@ -165,3 +211,68 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
  * ```
  */
 int parse_client_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
+
+/**
+ * @brief Custom parser for --verbose flag
+ *
+ * Allows --verbose to work both as a flag (without argument) and with an optional
+ * count argument. Increments verbose_level each time called.
+ */
+bool parse_verbose_flag(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for --cookies-from-browser flag
+ *
+ * Allows --cookies-from-browser to work both as a flag (without argument) and with an optional
+ * argument. Sets cookies_from_browser to the provided browser name.
+ */
+bool parse_cookies_from_browser(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for --no-cookies-from-browser flag
+ */
+bool parse_no_cookies_from_browser(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for --timestamp flag
+ *
+ * Allows --timestamp to work both as a flag with an argument.
+ * Sets media_seek_timestamp to the provided timestamp in seconds.
+ */
+bool parse_timestamp(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for volume options (--volume, --speakers-volume, --microphone-volume)
+ *
+ * Validates that the volume is a float value between 0.0 and 1.0.
+ * Sets the destination float to the parsed volume value.
+ */
+bool parse_volume(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Custom parser for log file paths (--log-file, -L)
+ *
+ * Validates that the log file path is safe:
+ * - Rejects attempts to write to protected system directories (/etc, /System, /Windows, etc.)
+ * - Allows overwriting existing ascii-chat log files
+ * - Allows paths in safe locations (/tmp, /var/log, home directory, cwd, etc.)
+ * - Returns error message if validation fails
+ */
+bool parse_log_file(const char *arg, void *dest, char **error_msg);
+
+/**
+ * @brief Parse audio source option (--audio-source)
+ * @param arg String argument (e.g., "auto", "mic", "media", "both")
+ * @param dest Destination pointer (audio_source_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values:
+ * - "auto" - Smart selection (AUDIO_SOURCE_AUTO, default)
+ *   When media is playing (--file or --url): media only
+ *   When no media: mic only
+ * - "mic" - Microphone only (AUDIO_SOURCE_MIC)
+ * - "media" - Media only (AUDIO_SOURCE_MEDIA)
+ * - "both" - Both microphone and media (AUDIO_SOURCE_BOTH)
+ */
+bool parse_audio_source(const char *arg, void *dest, char **error_msg);

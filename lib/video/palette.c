@@ -8,41 +8,18 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include <wchar.h>
 #include <locale.h>
 #include <stdlib.h>
+#include <wchar.h>
 #ifndef _WIN32
 #include <langinfo.h>
 #include <unistd.h>
-#else
-// Windows compatibility - wcwidth is not available
-static int wcwidth(wchar_t wc) {
-  // Simple implementation for Windows - most characters are width 1
-  // Wide characters (CJK) are width 2, control characters are -1
-  if (wc < 32)
-    return -1; // Control characters
-  if (wc >= 0x1100 && wc <= 0x115F)
-    return 2; // Hangul Jamo
-  if (wc >= 0x2E80 && wc <= 0x9FFF)
-    return 2; // CJK range
-  if (wc >= 0xAC00 && wc <= 0xD7AF)
-    return 2; // Hangul Syllables
-  if (wc >= 0xF900 && wc <= 0xFAFF)
-    return 2; // CJK Compatibility Ideographs
-  if (wc >= 0xFE10 && wc <= 0xFE19)
-    return 2; // Vertical forms
-  if (wc >= 0xFE30 && wc <= 0xFE6F)
-    return 2; // CJK Compatibility Forms
-  if (wc >= 0xFF00 && wc <= 0xFF60)
-    return 2; // Fullwidth Forms
-  if (wc >= 0xFFE0 && wc <= 0xFFE6)
-    return 2; // Fullwidth Forms
-  return 1;   // Most characters are width 1
-}
 #endif
+
 #include "palette.h"
 #include "common.h"
 #include "platform/terminal.h"
+#include "util/utf8.h" // For UTF-8 character width detection
 
 /* Default palette constants for legacy functions */
 const char DEFAULT_ASCII_PALETTE[] = PALETTE_CHARS_STANDARD;
@@ -102,72 +79,68 @@ bool validate_palette_chars(const char *chars, size_t len) {
     return false;
   }
 
-  // Set locale for UTF-8 support
-  char *current_locale = setlocale(LC_CTYPE, NULL);
-  char *old_locale = NULL;
-  if (current_locale) {
-    // Copy the locale string before calling setlocale again (CERT ENV30-C)
-    SAFE_STRDUP(old_locale, current_locale);
-  }
-  if (!setlocale(LC_CTYPE, "")) {
-    log_warn("Failed to set locale for UTF-8 validation, continuing anyway");
+  // Decode UTF-8 string into codepoints
+  uint32_t codepoints[256];
+  size_t codepoint_count = utf8_to_codepoints(chars, codepoints, 256);
+
+  if (codepoint_count == SIZE_MAX) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: invalid UTF-8 sequence");
+    return false;
   }
 
-  const char *p = chars;
-  size_t char_count = 0;
-  size_t byte_count = 0;
-
-  while (byte_count < len && *p) {
-    wchar_t wc;
-    int bytes = mbtowc(&wc, p, len - byte_count);
-
-    if (bytes <= 0) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: invalid UTF-8 sequence at position %zu", char_count);
-      // Restore old locale
-      if (old_locale) {
-        (void)setlocale(LC_CTYPE, old_locale);
-        SAFE_FREE(old_locale);
-      }
-      return false;
-    }
-
-    // Check character width - allow width 1 and 2 (for emoji and wide characters)
-    int width = wcwidth(wc);
-    if (width < 0 || width > 2) {
-      SET_ERRNO(ERROR_INVALID_PARAM,
-                "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)",
-                char_count, width);
-      // Restore old locale
-      if (old_locale) {
-        (void)setlocale(LC_CTYPE, old_locale);
-        SAFE_FREE(old_locale);
-      }
-      return false;
-    }
+  // Validate each codepoint
+  for (size_t i = 0; i < codepoint_count; i++) {
+    uint32_t cp = codepoints[i];
 
     // Check for control characters (except tab)
-    if (wc < 32 && wc != '\t') {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: control character at position %zu", char_count);
-      // Restore old locale
-      if (old_locale) {
-        (void)setlocale(LC_CTYPE, old_locale);
-        SAFE_FREE(old_locale);
-      }
+    if (cp < 32 && cp != '\t') {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: control character at position %zu", i);
       return false;
     }
 
-    char_count++;
-    byte_count += bytes;
-    p += bytes;
+    // Convert codepoint to UTF-8 and check display width
+    // For ASCII characters, this is straightforward
+    // For multi-byte UTF-8, we need to check the display width
+    if (cp < 128) {
+      // ASCII character - always width 1
+      continue;
+    } else {
+      // Non-ASCII: use utf8_display_width to check character width
+      // Create a temporary buffer with the UTF-8 encoded character
+      char utf8_buf[5] = {0};
+
+      // Encode codepoint to UTF-8 (simple for demo, should use proper encoder)
+      if (cp <= 0x7F) {
+        utf8_buf[0] = cp;
+      } else if (cp <= 0x7FF) {
+        utf8_buf[0] = 0xC0 | (cp >> 6);
+        utf8_buf[1] = 0x80 | (cp & 0x3F);
+      } else if (cp <= 0xFFFF) {
+        utf8_buf[0] = 0xE0 | (cp >> 12);
+        utf8_buf[1] = 0x80 | ((cp >> 6) & 0x3F);
+        utf8_buf[2] = 0x80 | (cp & 0x3F);
+      } else if (cp <= 0x10FFFF) {
+        utf8_buf[0] = 0xF0 | (cp >> 18);
+        utf8_buf[1] = 0x80 | ((cp >> 12) & 0x3F);
+        utf8_buf[2] = 0x80 | ((cp >> 6) & 0x3F);
+        utf8_buf[3] = 0x80 | (cp & 0x3F);
+      } else {
+        SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: invalid codepoint at position %zu", i);
+        return false;
+      }
+
+      // Check character width - allow width 1 and 2 (for emoji and wide characters)
+      int width = utf8_display_width(utf8_buf);
+      if (width < 0 || width > 2) {
+        SET_ERRNO(ERROR_INVALID_PARAM,
+                  "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)", i,
+                  width);
+        return false;
+      }
+    }
   }
 
-  // Restore old locale
-  if (old_locale) {
-    (void)setlocale(LC_CTYPE, old_locale);
-    SAFE_FREE(old_locale);
-  }
-
-  log_debug("Palette validation successful: %zu characters validated", char_count);
+  log_debug("Palette validation successful: %zu characters validated", codepoint_count);
   return true;
 }
 
@@ -278,7 +251,7 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
   // This function is now used only for client-side initialization
   // Server uses initialize_client_palette() for per-client palettes
 
-  log_info("Client palette config: type=%d, custom_chars=%s", type, custom_chars ? custom_chars : "(none)");
+  log_debug("Client palette config: type=%d, custom_chars=%s", type, custom_chars ? custom_chars : "(none)");
 
   // Just validate the palette - no global state changes
   if (type == PALETTE_CUSTOM) {
@@ -378,8 +351,8 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
     return -1;
   }
 
-  log_info("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
-           chars_to_use[0], chars_to_use[len_to_use - 1]);
+  log_debug("Initialized client palette: type=%d, %zu chars, first_char='%c', last_char='%c'", palette_type, len_to_use,
+            chars_to_use[0], chars_to_use[len_to_use - 1]);
 
   return 0;
 }
@@ -491,14 +464,9 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
     }
     char_info->byte_len = bytes;
 
-    // Get display width
-    wchar_t wc;
-    if (mbtowc(&wc, p, bytes) > 0) {
-      int width = wcwidth(wc);
-      char_info->display_width = (width > 0 && width <= 2) ? width : 1;
-    } else {
-      char_info->display_width = 1;
-    }
+    // Get display width using utf8_display_width
+    int width = utf8_display_width_n(p, bytes);
+    char_info->display_width = (width > 0 && width <= 2) ? width : 1;
 
     p += bytes;
     bytes_processed += bytes;

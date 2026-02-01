@@ -35,22 +35,27 @@ RUN apt-get update && apt-get install -y \
   libffi-dev \
   libprotobuf-c-dev libprotobuf-c1 \
   libssl-dev \
+  libsqlite3-dev \
   dpkg-dev rpm \
+  cppcheck \
   && rm -rf /var/lib/apt/lists/*
 
 # Install LLVM/Clang (try versions from newest to oldest)
 RUN apt-get update && \
-  ( apt-get install -y clang-21 clang-tools-21 llvm-21 llvm-21-dev lld-21 2>/dev/null && LLVM_VERSION=21 || \
-    apt-get install -y clang-20 clang-tools-20 llvm-20 llvm-20-dev lld-20 2>/dev/null && LLVM_VERSION=20 || \
-    apt-get install -y clang-19 clang-tools-19 llvm-19 llvm-19-dev lld-19 2>/dev/null && LLVM_VERSION=19 || \
-    apt-get install -y clang-18 clang-tools-18 llvm-18 llvm-18-dev lld-18 2>/dev/null && LLVM_VERSION=18 ) && \
+  ( apt-get install -y clang-21 clang-tools-21 clang-tidy-21 llvm-21 llvm-21-dev lld-21 2>/dev/null && LLVM_VERSION=21 || \
+    apt-get install -y clang-20 clang-tools-20 clang-tidy-20 llvm-20 llvm-20-dev lld-20 2>/dev/null && LLVM_VERSION=20 || \
+    apt-get install -y clang-19 clang-tools-19 clang-tidy-19 llvm-19 llvm-19-dev lld-19 2>/dev/null && LLVM_VERSION=19 || \
+    apt-get install -y clang-18 clang-tools-18 clang-tidy-18 llvm-18 llvm-18-dev lld-18 2>/dev/null && LLVM_VERSION=18 ) && \
   rm -rf /var/lib/apt/lists/*
 
-# Set up LLVM as default compiler
+# Set up LLVM as default compiler and clang-tidy
 RUN LLVM_VERSION=$(ls /usr/lib/llvm-* -d 2>/dev/null | sort -V | tail -1 | grep -oE '[0-9]+$') && \
   LLVM_BIN="/usr/lib/llvm-${LLVM_VERSION}/bin" && \
   update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200 && \
-  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
+  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200 && \
+  if [ -f /usr/bin/clang-tidy-${LLVM_VERSION} ]; then \
+    update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-${LLVM_VERSION} 200; \
+  fi
 
 # Set compiler environment variables
 ENV CC=clang \
@@ -66,10 +71,13 @@ COPY . /build/
 RUN git submodule init && git submodule update --recursive
 
 # Build ascii-chat in Release mode and install to /usr/local
+# Disable defer tool and analyzers (to speed up emulated builds)
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DCMAKE_C_COMPILER=clang \
     -DCMAKE_CXX_COMPILER=clang++ \
+    -DASCIICHAT_ENABLE_DEFER_TRANSFORM=OFF \
+    -DASCIICHAT_ENABLE_ANALYZERS=OFF \
     -GNinja && \
     cmake --build build -j$(nproc) && \
     cmake --install build

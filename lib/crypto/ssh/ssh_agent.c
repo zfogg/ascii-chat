@@ -12,79 +12,39 @@
 #include <string.h>
 #include <sodium.h>
 #include "platform/pipe.h"
+#include "platform/agent.h"
+#include "log/logging.h"
 
 #ifdef _WIN32
 #include <io.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#define SAFE_CLOSE _close
-#define SAFE_UNLINK _unlink
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
 #else
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#define SAFE_CLOSE close
-#define SAFE_UNLINK unlink
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
 #endif
 
 // Open the SSH agent pipe/socket
 static pipe_t ssh_agent_open_pipe(void) {
-  const char *auth_sock = SAFE_GETENV("SSH_AUTH_SOCK");
-
-#ifdef _WIN32
-  // On Windows, use named pipe path (default or from SSH_AUTH_SOCK)
-  const char *pipe_path = (auth_sock && strlen(auth_sock) > 0) ? auth_sock : "\\\\.\\pipe\\openssh-ssh-agent";
-  return platform_pipe_connect(pipe_path);
-#else
-  // On Unix, use Unix domain socket path from SSH_AUTH_SOCK
-  if (!auth_sock || strlen(auth_sock) == 0) {
-    log_debug("SSH_AUTH_SOCK not set, cannot connect to ssh-agent");
+  char pipe_path[256];
+  if (platform_get_ssh_agent_socket(pipe_path, sizeof(pipe_path)) != 0) {
+    log_debug("Failed to get SSH agent socket path");
     return INVALID_PIPE_VALUE;
   }
-  return platform_pipe_connect(auth_sock);
-#endif
+  return platform_pipe_connect(pipe_path);
 }
 
 bool ssh_agent_is_available(void) {
-  // Check if SSH_AUTH_SOCK environment variable is set
-  const char *auth_sock = SAFE_GETENV("SSH_AUTH_SOCK");
-
-#ifdef _WIN32
-  // On Windows, if SSH_AUTH_SOCK is not set, try to open the Windows named pipe to check availability
-  if (!auth_sock || strlen(auth_sock) == 0) {
-    pipe_t pipe = ssh_agent_open_pipe();
-    if (pipe != INVALID_PIPE_VALUE) {
-      platform_pipe_close(pipe); // Close immediately after checking
-      log_debug("ssh-agent is available via Windows named pipe (SSH_AUTH_SOCK not set)");
-      return true;
-    } else {
-      log_debug("ssh-agent not available: SSH_AUTH_SOCK not set and Windows named pipe not accessible");
-      return false;
-    }
+  /* Try to open the SSH agent connection */
+  pipe_t pipe = ssh_agent_open_pipe();
+  if (pipe != INVALID_PIPE_VALUE) {
+    platform_pipe_close(pipe);
+    log_debug("ssh-agent is available");
+    return true;
   }
-
-  // SSH_AUTH_SOCK is set on Windows
-  log_debug("ssh-agent appears available (SSH_AUTH_SOCK=%s)", auth_sock);
-  return true;
-#else
-  // Unix: SSH_AUTH_SOCK is required
-  if (!auth_sock || strlen(auth_sock) == 0) {
-    log_debug("ssh-agent not available: SSH_AUTH_SOCK not set");
-    return false;
-  }
-
-  // Check if Unix socket exists and is accessible
-  if (access(auth_sock, W_OK) != 0) {
-    log_debug("ssh-agent not available: cannot access socket at %s", auth_sock);
-    return false;
-  }
-  log_debug("ssh-agent is available at %s", auth_sock);
-  return true;
-#endif
+  log_debug("ssh-agent not available");
+  return false;
 }
 
 bool ssh_agent_has_key(const public_key_t *public_key) {
@@ -190,7 +150,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot add key to ssh-agent: only Ed25519 keys supported");
   }
 
-  log_info("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
+  log_debug("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
 
   // Open the pipe/socket for this operation (works on both Windows and Unix)
   pipe_t pipe = ssh_agent_open_pipe();
@@ -217,7 +177,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   uint32_t len = 11;
   write_u32_be(buf + pos, len);
   pos += 4;
-  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - Binary protocol, intentionally not null-terminated
+  // Binary protocol: intentionally not null-terminated
   memcpy(buf + pos, "ssh-ed25519", 11);
   pos += 11;
 
@@ -283,7 +243,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   // Response format: uint32 length, byte message_type
   uint8_t response_type = response[4];
   if (response_type == 6) {
-    log_info("Successfully added key to ssh-agent");
+    log_debug("Successfully added key to ssh-agent");
     return ASCIICHAT_OK;
   } else if (response_type == 5) {
     return SET_ERRNO(ERROR_CRYPTO, "ssh-agent rejected key (SSH_AGENT_FAILURE)");

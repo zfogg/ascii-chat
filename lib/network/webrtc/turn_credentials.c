@@ -158,8 +158,8 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
   time_t expires_at = now + (time_t)validity_seconds;
 
   // Format username: "{timestamp}:{session_id}"
-  int username_len =
-      snprintf(out_credentials->username, sizeof(out_credentials->username), "%ld:%s", (long)expires_at, session_id);
+  int username_len = safe_snprintf(out_credentials->username, sizeof(out_credentials->username), "%ld:%s",
+                                   (long)expires_at, session_id);
   if (username_len < 0 || (size_t)username_len >= sizeof(out_credentials->username)) {
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "TURN credentials: username too long");
   }

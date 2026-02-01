@@ -2,34 +2,35 @@
 
 Video chat in your terminal
 
+🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
+
 Probably the first command line video chat program (let me know if this isn't
 true). Initial commits _November 20-24, 2013_, with
-[@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon
-(I forget which one).
+[@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon.
 
 ascii-chat is a client-server application that operates over TCP/IP. It
 supports color and audio and crypto and compression and multiple clients
-and has lots of other little features and options.
+and has many little features and options.
 
 The client functions by simply printing text and terminal escape codes to your
 terminal, so it works EVERYWHERE that terminals work: on rxvt-unicode in
 OpenBox, in a Putty SSH session, in iTerm and Kitty.app on macOS, and
 theoretically everywhere else terminals run. You just need a webcam.
 
-ascii-chat even works in an initial UNIX login shell. You know, the shell that
-runs 'startx' and launches your desktop environment so you can open a GUI
-terminal app like Konsole or Kitty or Alacritty. You don't need a desktop
-environment at all to video chat with ascii-chat. (\*)
+ascii-chat even works in an initial unix login shell. You know, the shell that
+runs 'startx' and launches your desktop environment so you can open a gui
+terminal app like Konsole or Kitty or Alacritty in kde or xfce. You don't need a
+desktop environment at all to video chat with ascii-chat. (\*)
 
-🆕 We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
+🆕 We support UTF-8 now so it's not just ASCII anymore. However, the name is still ascii-chat.
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol docs](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**.
 
-🆕 Audio is now supported - turn on your microphone and start talking! (TODO: buggy - needs work) See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**.
+🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work, audio isn't crisp)
 
 📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
 
-\(\*) Testing needed to verify a decent framerate on different systems and environments.
+\(\*) Testing needed to verify a decent framerate.
 
 ## Animated Demonstrations
 
@@ -54,37 +55,14 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
   - [Code Coverage](#code-coverage)
   - [Table of Contents](#table-of-contents)
   - [Get ascii-chat](#get-ascii-chat)
+  - [Build From Source](#build-from-source)
   - [Usage](#usage)
-  - [Command line flags](#command-line-flags)
-    - [Client Options](#client-options)
-    - [Server Options](#server-options)
   - [Cryptography](#cryptography)
-    - [Authentication Options](#authentication-options)
-    - [Usage Examples](#usage-examples)
-  - [Open Source](#open-source)
-    - [Dependencies](#dependencies)
-      - [List of Dependencies and What We Use Them For](#list-of-dependencies-and-what-we-use-them-for)
-      - [Operating System APIs](#operating-system-apis)
-      - [Install Dependencies on Linux or macOS](#install-dependencies-on-linux-or-macos)
-      - [Install Dependencies on Windows](#install-dependencies-on-windows)
-    - [Build from source](#build-from-source)
-      - [What is musl and mimalloc?](#what-is-musl-and-mimalloc)
-      - [Development Tools](#development-tools)
-      - [Configuration Options](#configuration-options)
-      - [Documentation](#documentation)
-    - [Testing](#testing)
-      - [Testing Framework](#testing-framework)
-      - [Quick Start](#quick-start)
-      - [Test Types](#test-types)
-      - [Using the Test Script Directly](#using-the-test-script-directly)
-      - [Windows Docker Testing](#windows-docker-testing)
-      - [Manual Test Execution](#manual-test-execution)
   - [Environment Variables](#environment-variables)
-    - [Security Variables](#security-variables)
-    - [Terminal Variables (Used for Display Detection)](#terminal-variables-used-for-display-detection)
-    - [POSIX-Specific Variables](#posix-specific-variables)
-    - [Windows-Specific Variables](#windows-specific-variables)
-    - [Development/Testing Variables](#developmenttesting-variables)
+  - [ascii-chat Internet Protocol (ACIP)](#ascii-chat-internet-protocol-acip)
+  - [ascii-chat Discovery Service (ACDS)](#ascii-chat-discovery-service-acds)
+  - [libasciichat](#libasciichat)
+  - [Open Source](#open-source)
   - [TODO](#todo)
   - [Notes](#notes)
 
@@ -105,6 +83,11 @@ brew install libasciichat
 
 **Arch Linux (AUR):**
 
+[![ascii-chat](https://img.shields.io/aur/version/ascii-chat?color=1793d1&label=ascii-chat&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/ascii-chat/)
+[![libasciichat](https://img.shields.io/aur/version/libasciichat?color=1793d1&label=libasciichat&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/libasciichat/)
+[![ascii-chat-git](https://img.shields.io/aur/version/ascii-chat-git?color=1793d1&label=ascii-chat-git&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/ascii-chat-git/)
+[![libasciichat-git](https://img.shields.io/aur/version/libasciichat-git?color=1793d1&label=libasciichat-git&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/libasciichat-git/)
+
 ```bash
 # Stable releases
 paru -S ascii-chat           # Runtime binary
@@ -117,354 +100,270 @@ paru -S libasciichat-git     # Development libraries from git
 
 **All Platforms:**
 
-- Latest release: [v0.4.12](https://github.com/zfogg/ascii-chat/releases/tag/v0.4.12)
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
 - Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
-- Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
+- Source installation: follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
+
+## Build From Source
+
+> 📚 **Complete build guide: [Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)** — CMake presets, configuration options, troubleshooting, and platform-specific details.
+
+**Quick start:**
+
+```bash
+# 1. Clone the repository
+git clone git@github.com:zfogg/ascii-chat.git
+cd ascii-chat
+
+# 2. Get submodules
+git submodule update --init --recursive
+
+# 3. Install dependencies (see supported platforms above)
+./scripts/install-deps.sh      # Linux or macOS
+# ./scripts/install-deps.ps1   # Windows
+
+# 4. Build
+cmake --preset default
+cmake --build build
+
+# 5. Run
+./build/bin/ascii-chat server  # Start server
+./build/bin/ascii-chat client  # Connect client (in another terminal)
+```
+
+For detailed build instructions, configuration options, and troubleshooting, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
+
+### Useful CMake Targets
+
+Common development targets (run with `cmake --build build --target <name>`):
+
+| Target | Description |
+|--------|-------------|
+| `ascii-chat` | Build the main executable (default) |
+| `shared-lib` | Build shared library (`libasciichat.so`/`.dylib`/`.dll`) |
+| `static-lib` | Build static library (`libasciichat.a`) |
+| `tests` | Build and run all unit and integration tests |
+| `man1` | Generate man page for `ascii-chat(1)` |
+| `completions` | Generate shell completions (bash, fish, zsh, powershell) |
+| `docs` | Generate API documentation with Doxygen |
+| `docs-open` | Generate documentation and open in browser |
+| `format` | Format all C/C++ code with clang-format |
+| `format-check` | Check code formatting without modifying files |
+| `scan-build` | Run Clang static analyzer with detailed reports |
+| `scan-build-view` | Run Clang analyzer and open report in browser |
+| `package` | Create platform-specific installer packages |
+| `package-tar`, `package-deb`, `package-rpm`, `package-dmg`, `package-zip` | Create specific package formats (`.tar.gz` on Unix/Linux, `.deb` on Debian/Ubuntu, `.rpm` on RedHat/Fedora, `.dmg` on macOS, `.zip` on Windows/all platforms) |
 
 ## Usage
 
-ascii-chat uses a unified binary with three modes: `server`, `client`, and `mirror`.
+ascii-chat uses a unified binary with four modes: `server`, `client`, `mirror`, and `discovery-service`.
 
-**Start a server** and wait for client connections:
+**Get help:**
 
 ```bash
-# NOTE: on Windows the filename is ascii-chat.exe
-ascii-chat [binary-options...] server [server-options...]
+ascii-chat --help                      # Top-level help
+ascii-chat server --help               # Server-specific help
+ascii-chat client --help               # Client-specific help
+ascii-chat mirror --help               # Mirror-specific help
+ascii-chat discovery-service --help     # Discovery-service-specific help
 ```
 
-**Connect to a server** as a client:
+**Read the manual:**
 
 ```bash
-ascii-chat [binary-options...] client [<address>] [client-options...]
+man ascii-chat                         # Full manual page
 ```
 
-**View your local webcam** without a network connection (mirror mode):
+Or create it from source:
 
 ```bash
-ascii-chat [binary-options...] mirror [mirror-options...]
+cmake --build build --target man1
+man build/share/man/man1/ascii-chat.1
 ```
 
-**Get help** for any mode:
+Or view online: **[ascii-chat.com/man](https://ascii-chat.com/man)**
+
+**Shell Completions:**
+
+Tab completion is available for Bash, Fish, Zsh, and PowerShell. Completions are auto-generated from the options registry at build time.
+
+**If installed via package manager (Homebrew, AUR, etc.):** Completions are already installed in standard directories. You may need to setup your shell's completion path:
 
 ```bash
-ascii-chat --help             # Top-level help
-ascii-chat server --help      # Server-specific help
-ascii-chat client --help      # Client-specific help
-ascii-chat mirror --help      # Mirror-specific help
+# Zsh: Add Homebrew/Linuxbrew completions to FPATH (~/.zshrc)
+export FPATH=$(brew --prefix)/share/zsh/site-functions:$FPATH
+
+# Bash: if you have a custom BASH_COMPLETION_USER_DIR
+export BASH_COMPLETION_USER_DIR=~/.bash-completions
+ascii-chat --completions bash > $BASH_COMPLETION_USER_DIR/completions/completions/ascii-chat.bash
 ```
 
-**Man Page:**
-
-ascii-chat includes a man page with comprehensive documentation. When installed via Homebrew or a package manager:
+**If building from source or without a package manager:** Generate completions on-demand:
 
 ```bash
-man ascii-chat
-```
+# Bash (~/.bashrc)
+eval "$(ascii-chat --completions bash)"
 
-From the build directory (after running `cmake --build build --target docs`):
+# Fish (~/.config/fish/config.fish)
+ascii-chat --completions fish | source
 
-```bash
-man build/docs/ascii-chat.1
-```
+# Zsh (~/.zshrc)
+eval "$(ascii-chat --completions zsh)"
 
-## Command line flags
-
-### Binary-Level Options
-
-These options apply to all modes (server, client, mirror) and must be specified **before** the mode:
-
-**Configuration:**
-
-- `--config FILE`: Load configuration from TOML file
-- `--config-create [PATH]`: Create default configuration file and exit
-
-**Logging:**
-
-- `-L --log-file FILE`: Redirect logs to file (default: server.log/client.log/mirror.log based on mode)
-- `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal (default: info in release, debug in debug builds)
-- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
-- `-q --quiet`: Disable console logging (logs only to file)
-
-**Information:**
-
-- `--version`: Display version information
-- `--help`: Show help message
-
-**Example:**
-
-```bash
-# Binary options come before the mode
-ascii-chat -V --log-level debug --log-file /tmp/debug.log client
-ascii-chat --config ~/my-config.toml server
-```
-
-### Client Options
-
-Run `ascii-chat client --help` to see all client options.
-
-**Connection (positional argument):**
-
-Client accepts 0-1 positional argument for server address:
-- `[address][:port]`: Server address with optional port
-  - `address`: IPv4, IPv6, or hostname (default: localhost)
-  - `:port`: Optional port suffix (default: 27224)
-
-Examples:
-```bash
-ascii-chat client                      # Connect to localhost:27224
-ascii-chat client 192.168.1.1          # Connect to 192.168.1.1:27224
-ascii-chat client example.com:8080     # Connect to example.com:8080
-ascii-chat client [::1]:8080           # Connect to IPv6 ::1:8080
-```
-
-**Connection (flags):**
-
-- `-p --port PORT`: TCP port (default: 27224) - conflicts with port in positional argument
-- `--reconnect VALUE`: Automatic reconnection behavior: `off`, `auto`, or number 1-999 (default: auto)
-
-**Terminal Dimensions:**
-
-- `-x --width WIDTH`: Terminal width in characters (auto-detected by default)
-- `-y --height HEIGHT`: Terminal height in characters (auto-detected by default)
-- `--stretch`: Stretch video to fit without preserving aspect ratio
-
-**Webcam Options:**
-
-- `-c --webcam-index INDEX`: Webcam device index (0-based, default: 0)
-- `-f --webcam-flip`: Toggle horizontal flip of webcam image (default: flipped)
-- `--test-pattern`: Use test pattern instead of real webcam (for debugging/testing)
-- `--list-webcams`: List available webcam devices and exit
-
-**Display & Color:**
-
-- `--color-mode MODE`: Color modes: auto, none, 16, 256, truecolor (default: auto)
-- `-M --render-mode MODE`: Render modes: foreground (fg), background (bg), half-block (default: foreground)
-- `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
-- `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
-- `--show-capabilities`: Display detected terminal color capabilities and exit
-- `--utf8`: Force enable UTF-8/Unicode support
-
-**Audio Options:**
-
-- `-A --audio`: Enable audio capture and playback
-- `--microphone-index INDEX`: Microphone device index (-1 for system default)
-- `--speakers-index INDEX`: Speakers device index (-1 for system default)
-- `--list-microphones`: List available audio input devices and exit
-- `--list-speakers`: List available audio output devices and exit
-- `--audio-analysis`: Enable audio analysis for debugging audio quality issues
-- `--no-audio-playback`: Disable speaker playback while keeping received audio recording
-
-**Performance:**
-
-- `--fps FPS`: Desired frame rate, 1-144 (default: 60)
-- `--compression-level LEVEL`: zstd compression level 1-9 (default: 1, fastest)
-- `--no-compress`: Disable video frame compression and audio encoding entirely
-- `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
-- `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
-
-**Snapshot Mode:**
-
-- `-S --snapshot`: Capture single frame from server and exit (useful for scripting, CI/CD)
-- `-D --snapshot-delay SECONDS`: Delay in seconds before capturing snapshot (default: 3.0-4.0 for webcam warmup)
-- `--strip-ansi`: Remove all ANSI escape codes from output (plain ASCII only)
-
-**Encryption:**
-
-- `-E --encrypt`: Enable packet encryption (default: enabled if keys are available)
-- `-K --key FILE`: SSH/GPG key file for authentication (supports /path/to/key, github:user, gitlab:user, or 'ssh' for auto-detect)
-- `--password PASSWORD`: Password for connection encryption
-- `-F --keyfile FILE`: Alternative way to specify key file (alias for --key)
-- `--no-encrypt`: Disable encryption (for local testing)
-- `--server-key KEY`: Expected server public key for identity verification (prevents MITM attacks)
-
-### Server Options
-
-Run `ascii-chat server --help` to see all server options.
-
-**Network Binding (positional arguments):**
-
-Server accepts 0-2 positional arguments for bind addresses:
-- 0 arguments: bind to defaults (127.0.0.1 and ::1)
-- 1 argument: bind to this IPv4 OR IPv6 address
-- 2 arguments: bind to both (must be one IPv4 and one IPv6)
-
-Examples:
-```bash
-ascii-chat server                      # Bind to 127.0.0.1 and ::1
-ascii-chat server 0.0.0.0              # Bind to all IPv4 interfaces
-ascii-chat server ::                   # Bind to all IPv6 interfaces
-ascii-chat server 0.0.0.0 ::           # Bind to all interfaces (IPv4 and IPv6)
-ascii-chat server 127.0.0.1 ::1        # Bind to localhost (IPv4 and IPv6)
-```
-
-**Network Binding (flags):**
-
-- `-p --port PORT`: TCP port to listen on (default: 27224)
-- `--max-clients N`: Maximum concurrent client connections, 1-32 (default: 10)
-
-**Display & Palette:**
-
-- `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
-- `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
-
-**Performance:**
-
-- `--compression-level LEVEL`: zstd compression level 1-9 (default: 1, fastest)
-- `--no-compress`: Disable video frame compression entirely
-- `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
-- `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
-- `--no-audio-mixer`: Disable audio mixer, send silence instead of mixing (debug only)
-
-**Encryption:**
-
-- `-E --encrypt`: Enable packet encryption (default: enabled if keys are available)
-- `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, github:user, gitlab:user, or 'ssh' for auto-detect
-- `--password PASSWORD`: Password for connection encryption
-- `-F --keyfile FILE`: Alternative way to specify key file (alias for --key)
-- `--no-encrypt`: Disable encryption (for local testing)
-- `--client-keys FILE`: File containing allowed client public keys for authentication (whitelist, one per line in authorized_keys format)
-
-### Mirror Mode Options
-
-Run `ascii-chat mirror --help` to see all mirror mode options.
-
-Mirror mode displays your local webcam as ASCII art without any network connection - perfect for testing your webcam, palette settings, and terminal rendering.
-
-**Terminal Dimensions:**
-
-- `-x --width WIDTH`: Terminal width in characters (auto-detected by default)
-- `-y --height HEIGHT`: Terminal height in characters (auto-detected by default)
-- `--stretch`: Stretch video to fit without preserving aspect ratio
-
-**Webcam Options:**
-
-- `-c --webcam-index INDEX`: Webcam device index (0-based, default: 0)
-- `-f --webcam-flip`: Toggle horizontal flip of webcam image (default: flipped)
-- `--test-pattern`: Use test pattern instead of real webcam
-- `--list-webcams`: List available webcam devices and exit
-
-**Display & Color:**
-
-- `--color-mode MODE`: Color modes: auto, none, 16, 256, truecolor (default: auto)
-- `-M --render-mode MODE`: Render modes: foreground (fg), background (bg), half-block (default: foreground)
-- `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
-- `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
-- `--show-capabilities`: Display detected terminal color capabilities and exit
-- `--utf8`: Force enable UTF-8/Unicode support
-
-**Performance:**
-
-- `--fps FPS`: Desired frame rate, 1-144 (default: 60)
-
-**Snapshot Mode:**
-
-- `-S --snapshot`: Capture single frame and exit (useful for testing palettes)
-- `-D --snapshot-delay SECONDS`: Delay in seconds before capturing snapshot (default: 3.0-4.0 for webcam warmup)
-- `--strip-ansi`: Remove all ANSI escape codes from output (plain ASCII only)
-
-**Example:**
-
-```bash
-# View webcam with custom palette
-ascii-chat mirror --palette blocks
-
-# Test truecolor rendering with half-block mode
-ascii-chat mirror --color-mode truecolor --render-mode half-block
-
-# Capture a single snapshot with debug logging
-ascii-chat -V --log-level debug mirror --snapshot
+# PowerShell ($PROFILE)
+ascii-chat --completions powershell | Out-String | Invoke-Expression
 ```
 
 ## Cryptography
 
-> 🔐 **Protocol details: [Cryptographic Handshake Documentation](https://zfogg.github.io/ascii-chat/group__handshake.html#topic_handshake)**
+See **[ascii-chat.com/crypto](https://ascii-chat.com/crypto)** for complete cryptography documentation.
 
-ascii-chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
+## Environment Variables
 
-ascii-chat's crypto works like your web browser's HTTPS: the client and server perform the Diffie-Hellman exchange to establish secure communication with ephemeral keys every connection. HTTPS depends on certificates tied to DNS names with a certificate authority roots build into the operating system, but ascii-chat is built on TCP so DNS doesn't work for us to secure our servers. ascii-chat users need to verify their server's public keys manually until ACDS (ascii-chat discovery service) is built.
+See **[ascii-chat.com/env](https://ascii-chat.com/env)** for complete environment variable documentation.
 
-### Authentication Options
+## ascii-chat Internet Protocol (ACIP)
 
-**SSH/GPG Key Authentication** (`--key`):
+> 📡 **Protocol Reference: [Network Protocol Documentation](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**
 
-- Use your existing SSH Ed25519 keys for authentication
-- Use GPG Ed25519 keys via gpg-agent (no passphrase prompts)
-- Supports encrypted SSH keys (prompts for passphrase or uses ssh-agent)
-- Supports GitHub public keys with `--client-keys github:username` and `--server-key github:username`
-- GPG key formats: `gpg:KEYID` where KEYID is 8, 16, or 40 hex characters (short/long/full fingerprint)
+### Philosophy
 
-**Password-Based Encryption** (`--password`):
+When I started building ascii-chat, no existing protocol fit the requirements for real-time terminal-based video conferencing. HTTP/WebSocket are too heavyweight and browser-focused. RTP/RTSP are designed for traditional video streams, not ASCII frames. VNC/RDP are for desktop sharing, not peer-to-peer.
 
-- Simple password string for encrypting connections
-- Can be combined with `--key` for dual authentication + encryption
+So I designed ACIP. It's a binary protocol over TCP built for low-latency, encrypted, multi-client conference calling in terminals.
 
-**Ephemeral Keys** (default):
+### Protocol Overview
 
-- When no authentication is provided, generates temporary keypair for the session
+ACIP is a binary packet protocol over TCP. It starts with a TCP handshake and capability negotiation, followed by a cryptographic handshake using X25519 Diffie-Hellman key exchange with Ed25519 authentication. Clients send their terminal dimensions, color support, and audio capabilities. The server sends session info, connected clients, and grid layout.
 
-### Usage Examples
+All packets are encrypted with XSalsa20-Poly1305 (AEAD cipher). Ephemeral session keys provide perfect forward secrecy. Optional SSH/GPG key verification prevents MITM attacks. Session keys rotate periodically for long-lived connections.
+
+Clients must complete the crypto handshake before sending media. TCP guarantees packet order, and ACIP relies on this. Senders adapt to slow receivers via TCP flow control. Hardware-accelerated CRC32 checksums detect corruption.
+
+Single packets contain complete ASCII/image frames (no app-layer fragmentation). Multiple audio samples are bundled for efficiency. Frames use zstd compression (configurable level 1-9). Audio uses Opus encoding (optional, can send raw PCM). Comprehensive packet tracing is available in debug builds. Error signaling will be added to the main protocol (currently only ACDS has proper error packets). Rate limiting and QoS are planned.
+
+### Why ACIP
+
+The protocol is efficient (20-byte headers, binary), reliable (TCP handles packet loss/ordering), encrypted by default, and extensible (new packet types don't break old clients). It understands terminal capabilities like color depth and dimensions. The server mixes video/audio from multiple clients. Implementation is ~3000 lines of C in `lib/network/`.
+
+### Technical Details
+
+**Packet Structure:**
+
+```c
+typedef struct {
+    uint32_t magic;     // 0xDEADBEEF - packet validation
+    uint16_t type;      // packet_type_t enum
+    uint32_t length;    // payload size in bytes
+    uint32_t crc32;     // CRC32C checksum (hardware accelerated)
+    uint32_t client_id; // source client (0 = server)
+} __attribute__((packed)) packet_header_t;
+```
+
+**Packet Types:**
+
+- `PACKET_TYPE_ASCII_FRAME` - Server→Client complete ASCII frame
+- `PACKET_TYPE_IMAGE_FRAME` - Client→Server complete RGB image
+- `PACKET_TYPE_AUDIO` / `PACKET_TYPE_AUDIO_BATCH` - Audio samples
+- `PACKET_TYPE_CLIENT_CAPABILITIES` - Terminal info
+- `PACKET_TYPE_CLIENT_JOIN` / `PACKET_TYPE_CLIENT_LEAVE` - Session management
+- `PACKET_TYPE_STREAM_START` / `PACKET_TYPE_STREAM_STOP` - Media control
+- `PACKET_TYPE_SERVER_STATE` - Session state updates
+- `PACKET_TYPE_PING` / `PACKET_TYPE_PONG` - Keepalive
+- `PACKET_TYPE_CLEAR_CONSOLE` - Terminal reset
+
+The protocol is **fully documented** in the [Network Protocol Reference](https://zfogg.github.io/ascii-chat/group__network.html#topic_network) with packet formats, state machines, and implementation notes.
+
+## ascii-chat Discovery Service (ACDS)
+
+> 🔍 **ACDS Documentation: [Discovery Service Reference](https://zfogg.github.io/ascii-chat/group__module__acds.html#topic_acds)**
+>
+> 🔑 **Official ACDS Server: discovery-server.ascii-chat.com:27225** (trusted by default)
+>
+> 📄 **Public Keys: [discovery.ascii-chat.com](https://discovery.ascii-chat.com)** — Server authentication keys
+
+### Philosophy
+
+**The Problem:** Running a video chat server should be as easy as opening a Zoom meeting. But networking is hard. Most home routers block incoming connections, requiring manual UPnP/NAT-PMP configuration. You need to know your public IP and share it with others. Symmetric NAT makes peer-to-peer connections nearly impossible. Corporate/university networks often block non-standard ports.
+
+**The ACDS Solution:** Share a three-word session string like `purple-mountain-lake` and people can join. No IP addresses, no port forwarding, no network configuration.
+
+### How ACDS Works
+
+ACDS is a rendezvous server that helps clients find each other. The server registers with ACDS and gets a memorable session string (e.g., `happy-sunset-ocean`). ACDS attempts NAT traversal using UPnP, NAT-PMP, and WebRTC ICE/STUN/TURN. The server shares the session string with potential clients.
+
+When a client queries ACDS with the session string, ACDS returns connection info: IP address(es), ports, NAT type, and relay options. The client tries direct TCP first (if UPnP/NAT-PMP succeeded, best latency), then WebRTC DataChannel (P2P via ICE/STUN, good latency, works behind NAT), and finally TURN relay as a fallback (higher latency, always works).
+
+It all happens automatically. No user intervention required.
+
+### mDNS Support (No Server Required!)
+
+ACDS also supports **local network discovery via mDNS** (multicast DNS). On the same LAN, you can:
 
 ```bash
-# SSH key authentication (prompts for passphrase if encrypted)
-ascii-chat client --key ~/.ssh/id_ed25519
+# Server announces on local network
+ascii-chat server --mdns
 
-# GPG key authentication (uses gpg-agent, no passphrase prompt)
-ascii-chat server --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
-
-# Password-based encryption
-ascii-chat server --password "hunter2"
-
-# Both SSH key + password (double security)
-ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
-
-# Disable encryption (for local testing)
-ascii-chat server --no-encrypt
-
-# Server key verification with SSH (client verifies server identity)
-ascii-chat client --key ~/.ssh/id_ed25519 --server-key ~/.ssh/server1.pub
-# This .pub file format is standard OpenSSH public key format (ssh-ed25519).
-
-# Server key verification with GPG (client verifies server identity)
-ascii-chat client --server-key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3
-
-# Server key verification using GitHub GPG keys (fetches server's GPG keys from GitHub)
-ascii-chat client --server-key github:zfogg.gpg
-
-# Server key verification using GitLab GPG keys
-ascii-chat client --server-key gitlab:username.gpg
-
-# Client key whitelisting (server only accepts specific clients)
-ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
-# This .txt file contains multiple .pub file contents, 1 per line, where each line is a client key that is allowed to connect to the server.
-
-# GitHub GPG key whitelisting (fetch client's public GPG keys from GitHub)
-ascii-chat server --key gpg:MYKEYID --client-keys github:zfogg.gpg
-# Server fetches all GPG public keys from https://github.com/zfogg.gpg and whitelists them
-# Client must authenticate with their GPG key:
-ascii-chat client --key gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3 --server-key gpg:MYKEYID
-
-# GitLab GPG key whitelisting (same but from GitLab)
-ascii-chat server --key gpg:MYKEYID --client-keys gitlab:username.gpg
-
-# Combine all three for maximum security!
-ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --password "password123"
-# You need to know (1) the server public key and (2) the password before connecting, and the server needs to know (3) your public key and (4) the same password.
-
-# GPG key with password for extra security
-ascii-chat server --key gpg:7FE90A79F2E80ED3 --password "password123"
+# Client discovers servers automatically
+ascii-chat client --mdns
 ```
+
+This enables local sessions without any configuration - good for office environments, conferences, or home networks where you don't need internet-wide discovery.
+
+### Session Strings
+
+ACDS generates memorable session identifiers from a curated word list. The format is `adjective-noun-noun` (e.g., `bright-forest-river`), with 16.7M+ possible combinations for collision resistance. They're easy to speak over the phone, remember briefly, and type without errors. Session strings expire when the server disconnects.
+
+### NAT Traversal Technologies
+
+ACDS leverages multiple NAT traversal techniques. UPnP (Universal Plug and Play) works on ~70% of home routers with automatic port forwarding, enabling direct TCP connections with lowest latency. NAT-PMP (NAT Port Mapping Protocol) is Apple's alternative to UPnP, common on Apple routers and some enterprise gear, also enabling direct TCP connections. WebRTC (ICE/STUN/TURN) uses STUN to discover public IP/port mapping, ICE to negotiate P2P connections through NAT, and TURN as a relay fallback that always succeeds. Higher overhead but works in 99% of networks.
+
+### Network Error Handling
+
+ACDS implements **proper error signaling** that will eventually propagate to the main protocol:
+
+- `ERROR_SESSION_NOT_FOUND` - Invalid session string
+- `ERROR_SESSION_FULL` - Server at max capacity
+- `ERROR_AUTHENTICATION_FAILED` - Key/password mismatch
+- `ERROR_NETWORK_UNREACHABLE` - Cannot establish connection
+- `ERROR_PROTOCOL_VERSION_MISMATCH` - Client/server version incompatibility
+
+Future enhancement: ACIP will adopt this error framework for comprehensive error handling across the stack.
+
+### Privacy & Security
+
+**ACDS never sees your data:**
+
+- Only exchanges connection metadata (IP addresses, ports)
+- All media flows **directly between peers** using ACIP encryption
+- ACDS doesn't decrypt, proxy, or store media content
+
+**Official server (trusted by default):**
+
+- The official ACDS server runs at **discovery-server.ascii-chat.com:27225**
+- Its Ed25519 public keys available at **[discovery.ascii-chat.com](https://discovery.ascii-chat.com)**
+- Manual verification via SSH and GPG fingerprints on the website
+
+**Session database:**
+
+- SQLite database stores active sessions (IP, port, timestamp, session string)
+- Automatic cleanup of expired sessions
+- Optional: private ACDS instances for corporate deployments
+
+### Why ACDS
+
+"Join happy-sunset-ocean" is easier than "Connect to 73.251.42.118:27224". Works behind firewalls without manual configuration. Tries the best connection first, falls back gracefully. mDNS support for LANs without a server. You can run your own ACDS server for privacy.
 
 ## libasciichat
 
-ascii-chat is built on a modern, reusable C library called **libasciichat** that can be embedded in other projects. The library provides production-ready implementations for video processing, networking, cryptography, and cross-platform development. You can install libasciichat as a development dependency and use it in your own applications.
+ascii-chat is built on a modern, reusable C library called **libasciichat** that can be embedded in other projects. The library provides cross-platform code for developing ascii-chat internet protocol (ACIP) applications. You can install libasciichat as a development dependency and use to build other ACIP applications.
 
 **What's in the library:**
 
-- **Network Protocol**: Full implementation of the ascii-chat client/server protocol with encrypted packet exchange, lossless frame compression (zstd), and audio codec integration (Opus). See the protocol reference in the docs.
-- **Image Processing**: The `video` module converts images to ASCII art with hardware acceleration via SIMD (AVX2, NEON, SSE) for 1-4x performance gains. Includes grid layout algorithms for multi-client rendering.
+- **Network Protocol**: Full implementation of the ascii-chat internet protocol with encrypted packet exchange, lossless frame compression (zstd), and audio codec integration (Opus). See the protocol reference in the docs.
+- **Image Processing**: The `video` module converts images and videos to ASCII art with hardware acceleration via SIMD (AVX2, NEON, SSE) for 1-4x performance gains. Includes grid layout algorithms for multi-client rendering.
 - **Platform Abstraction**: Write once, run anywhere. Cross-platform abstractions for threads, mutexes, read-write locks, condition variables, sockets, and terminal I/O that work identically on Windows, macOS, and Linux.
-- **Media Support**: Audio capture, mixing, and playback via PortAudio; webcam integration with V4L2 (Linux), AVFoundation (macOS), and Media Foundation (Windows); frame buffering and synchronization.
+- **Media Support**: Audio capture, mixing, and playback via PortAudio; webcam integration with V4L2 (Linux), AVFoundation (macOS), and Media Foundation (Windows); frame buffering and synchronization. File media support via ffmpeg.
 - **Cryptography**: End-to-end encryption with libsodium (X25519 key exchange, XSalsa20-Poly1305 AEAD, Ed25519 signatures) and SSH key authentication with agent support.
 - **Debugging & Profiling**: Built-in memory leak detection with source file/line tracking, lock contention analysis, AddressSanitizer integration, and comprehensive logging infrastructure.
 - **Memory Management**: High-performance buffer pooling, lock-free ring buffers, and thread-safe packet queues designed for real-time video/audio applications.
@@ -520,80 +419,24 @@ ascii-chat is built on operating system code and several libraries.
 
 #### List of Dependencies and What We Use Them For
 
-- [musl libc](https://musl.libc.org/) - A small and focused implementation of the C standard library for Linux
-
-  - **Purpose**: This enables us to nicely make static builds that work on any Linux system. This is just for Linux releases - you can build ascii-chat with your system libc if you don't want to use musl (`cmake -B build -DUSE_MUSL=OFF`).
-  - **License**: MIT
-
-- [mimalloc](https://github.com/microsoft/mimalloc) - A drop-in replacement for `malloc()`
-
-  - **Purpose**: Better performing memory allocation. ascii-chat releases are build with mimalloc but you can build without it if you want to use the system default allocator (`cmake -B build -DUSE_MIMALLOC=OFF`).
-  - **License**: MIT
-
-- [PortAudio](http://www.portaudio.com/) - Audio I/O Library
-
-  - **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
-  - **License**: MIT
-
-- [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
-
-  - **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
-  - **License**: MIT
-
-- [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
-
-  - **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
-  - **License**: BSD revised
-
-- [libsodium](https://libsodium.org/) - Cryptographic Library
-
-  - **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
-  - **License**: ISC
-
-- [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
-
-  - **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This code for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
-  - **License**: [none]
-
-- [BearSSL](https://bearssl.org/) - SSL/TLS Library
-
-  - **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
-  - **License**: MIT
-
-- [zstd](https://facebook.github.io/zstd/) - Compression Library
-
-  - **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
-  - **License**: BSD/GPLv2
-
-- [Opus](https://opus-codec.org/) - Audio Codec Library
-
-  - **Purpose**: Real-time audio compression for low-bandwidth audio transmission. Enables high-quality bidirectional voice and audio communication between clients with minimal latency and bandwidth overhead.
-  - **License**: BSD
-
-- [Sokol](https://github.com/floooh/sokol) - Utility Library
-
-  - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
-  - **License**: zlib/libpng
-
-- [SQLite3](https://www.sqlite.org/) - Embedded SQL Database Engine
-
-  - **Purpose**: Persistent storage for the ACDS (ASCII-Chat Discovery Service) session database. Stores active sessions, user identities, and connection metadata for the discovery service.
-  - **License**: Public Domain
-
-- [OpenSSL](https://www.openssl.org/) - Cryptography and SSL/TLS Toolkit
-
-  - **Purpose**: Used by libdatachannel for TURN server credential generation and secure WebRTC connections. Also used for the musl static builds to provide a complete TLS implementation.
-  - **License**: Apache 2.0
-
-- [libdatachannel](https://github.com/paullouisageneau/libdatachannel) - WebRTC Data Channels Library
-
-  - **Purpose**: Lightweight (~50k LOC) WebRTC library providing DataChannels for P2P connections. Used for NAT traversal and direct peer-to-peer communication via ICE/STUN/TURN.
-  - **License**: MPL 2.0
-
-- [miniupnpc](https://miniupnp.tuxfamily.org/) - UPnP IGD Client Library
-
-  - **Purpose**: Enables automatic port forwarding on home routers via UPnP (Universal Plug and Play). Allows approximately 70% of home users to establish direct TCP connections without requiring WebRTC fallback. This is an optional dependency - if not available, ascii-chat gracefully falls back to WebRTC for NAT traversal.
-  - **License**: BSD
+- [**musl libc**](https://musl.libc.org/) - Static builds for Linux releases (optional for development)
+- [**mimalloc**](https://github.com/microsoft/mimalloc) - High-performance memory allocator (optional for development)
+- [**PortAudio**](http://www.portaudio.com/) - Cross-platform audio I/O for bidirectional voice communication
+- [**tomlc17**](https://github.com/cktan/tomlc17) - TOML config file parsing (`~/.config/ascii-chat/config.toml`)
+- [**uthash**](https://troydhanson.github.io/uthash/) - Hash tables for fast O(1) client lookups
+- [**utf8proc**](https://github.com/JuliaStrings/utf8proc) - UTF-8 string processing and character width calculations for proper terminal display of Unicode
+- [**libsodium**](https://libsodium.org/) - End-to-end encryption (X25519, XSalsa20-Poly1305, Ed25519)
+- [**libsodium-bcrypt-pbkdf**](https://github.com/imaami/libsodium-bcrypt-pbkdf) - Decrypt password-protected SSH Ed25519 keys
+- [**BearSSL**](https://bearssl.org/) - HTTPS client for GitHub/GitLab key fetching; AES for SSH key decryption
+- [**zstd**](https://facebook.github.io/zstd/) - Frame compression for bandwidth efficiency
+- [**Opus**](https://opus-codec.org/) - Real-time audio codec for low-latency voice transmission
+- [**WebRTC AEC3**](https://github.com/nicnacnic/webrtc_AEC3) - Extracted WebRTC audio processing for acoustic echo cancellation
+- [**Sokol**](https://github.com/floooh/sokol) - Header-only cross-platform utilities (timing, audio)
+- [**SQLite3**](https://www.sqlite.org/) - Database for ACDS discovery service
+- [**OpenSSL**](https://www.openssl.org/) - TLS for WebRTC TURN servers and musl static builds
+- [**libdatachannel**](https://github.com/paullouisageneau/libdatachannel) - WebRTC DataChannels for P2P NAT traversal
+- [**miniupnpc**](https://miniupnp.tuxfamily.org/) - Automatic UPnP port forwarding (optional, fallback to WebRTC)
+- [**FFmpeg**](https://ffmpeg.org/) - Media file streaming support
 
 #### Operating System APIs
 
@@ -605,109 +448,29 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 - **macOS**: AVFoundation native macOS API
 - **Windows**: Media Foundation native Windows API
 
-#### Install Dependencies on Linux or macOS
+#### Install Dependencies
 
-**Linux (apt/yum/pacman)**:
+**Supported platforms:**
+
+- macOS (Homebrew)
+- Linux: Debian/Ubuntu (apt), Fedora/RedHat/CentOS (yum), Arch (pacman)
+- Windows (vcpkg via PowerShell)
+
+**Linux or macOS:**
 
 ```bash
 ./scripts/install-deps.sh
 ```
 
-**macOS**:
+**Windows:**
 
-```bash
-brew install make cmake ninja llvm zstd portaudio opus libsodium criterion sqlite3 openssl miniupnpc
+```powershell
+./scripts/install-deps.ps1
 ```
 
-#### Install Dependencies on Windows
+For detailed installation instructions and troubleshooting, see the **[Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)** documentation.
 
-1. **Install Scoop** (if not already installed):
-
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   irm get.scoop.sh | iex
-   ```
-
-2. **Install build tools via Scoop**:
-
-   ```powershell
-   scoop install cmake ninja llvm
-   ```
-
-3. **Install Windows SDK**:
-
-   - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
-   - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
-
-4. **Install vcpkg and dependencies**:
-
-   ```powershell
-   # Install vcpkg (if not already installed)
-   git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
-   C:\vcpkg\bootstrap-vcpkg.bat
-
-   # Set VCPKG_ROOT environment variable
-   [Environment]::SetEnvironmentVariable("VCPKG_ROOT", "C:\vcpkg", "User")
-   $env:VCPKG_ROOT = "C:\vcpkg"
-   ```
-
-   **Option A: Manifest mode (recommended)** — Dependencies install automatically during CMake configure:
-
-   ```powershell
-   # Just build - vcpkg.json handles dependencies automatically
-   cmake --preset windows-release
-   cmake --build build_release
-   ```
-
-   **Option B: Classic mode** — Install packages manually:
-
-   ```powershell
-   # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows sqlite3:x64-windows openssl:x64-windows miniupnpc:x64-windows
-
-   # For release builds (static linking)
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static sqlite3:x64-windows-static openssl:x64-windows-static mimalloc:x64-windows-static miniupnpc:x64-windows-static
-   ```
-
-‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
-
-#### Using vcpkg on Unix (Optional)
-
-On Linux and macOS, the default is to use system package managers (apt/brew). However, you can optionally use vcpkg for consistent cross-platform builds:
-
-```bash
-# Install vcpkg
-git clone https://github.com/Microsoft/vcpkg.git ~/.local/share/vcpkg
-~/.local/share/vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT=~/.local/share/vcpkg
-
-# Option A: Manifest mode - dependencies install automatically
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
-cmake --build build
-
-# Option B: Classic mode - install packages manually, then build with USE_VCPKG
-vcpkg install zstd libsodium opus portaudio miniupnpc openssl sqlite3 libdatachannel
-cmake -B build -DUSE_VCPKG=ON
-cmake --build build
-```
-
-### Build from source
-
-> 📚 **See also: [Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)** — CMake presets, configuration options, and platform-specific build details.
-
-For open source developers who want a working copy:
-
-1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
-2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__dependencies.html)).
-3. Build an optimized-with-debug build: `make CMAKE_BUILD_TYPE=RelWithDebInfo`.
-4. Run `./build/bin/ascii-chat server`.
-5. Open a second terminal window, tab, split, or pane. Or go to another computer.
-6. Run `./build/bin/ascii-chat client`.
-7. 👯 _Optional:_ open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
-
-`make` configures CMake for you; if you prefer manual steps, you can still run cmake directly: `cmake --preset default && cmake --build build` (or choose another --preset).
-
-#### What is musl and mimalloc?
+### What is musl and mimalloc?
 
 **musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. `Release` builds (`cmake --preset release`) use musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
 
@@ -718,61 +481,15 @@ For open source developers who want a working copy:
 - Lower memory fragmentation
 - Optimized for multi-threaded workloads
 
-#### Development Tools
+### Development Tools & Configuration
 
-First configure a debug build so the cmake targets we want will be available:
+For development tools (formatting, linting, documentation generation, packaging) and CMake configuration options (presets, sanitizers, build types, etc.), see the comprehensive **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
 
-```bash
-cmake --preset debug
-```
+### Documentation
 
-Now we can access useful development targets:
+📖 **[Online Documentation](https://zfogg.github.io/ascii-chat/)** — API reference, architecture guides, and module documentation
 
-- `cmake --build build --target format` - Format all source code using clang-format
-- `cmake --build build --target format-check` - Error if the code is not formatted correctly
-- `cmake --build build --target clang-tidy` - Run clang-tidy across the tree
-- `cmake --build build --target docs` - Generate the Doxygen API reference into `build/docs/html`
-- `cmake --build build --target docs-open` - Build and open the docs in your default browser
-- `cmake --build build --target package-productbuild` - Build a release and make a `.pkg` installer for macOS (analogous targets exist per platform.. try `--target package-deb` for a `.deb` installer on Linux)
-- `./build.ps1` - PowerShell helper that stops running binaries, cleans, configures, builds, and syncs artifacts into `bin/` when developing on Windows
-- `ctest --test-dir build --output-on-failure --parallel 0` - Run all tests with ctest (auto-detects CPU cores).
-- `./tests/scripts/run-docker-tests.ps1` - Runs tests in a Docker container. Useful on Windows where Criterion tests don't compile.
-- `./scripts/*` - Developer utilities (dependency installers, useful aliases and functions, etc.)
-
-Sanitizers giving you trouble? Here's how to build a `Dev` build, which is like `Debug` but with sanitizers disabled:
-
-```bash
-cmake --preset dev && cmake --build build --target ascii-chat
-```
-
-#### Configuration Options
-
-Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for example `cmake -B build -DASCIICHAT_ENABLE_ANALYZERS=ON`). Defaults reflect the logic in our CMake modules. For complete details, see the **[Build System Reference](https://zfogg.github.io/ascii-chat/group__build.html)**.
-
-- `USE_MUSL` (Linux only): defaults to `ON` for `Release`/`RelWithDebInfo` builds to produce static PIE binaries with musl + mimalloc; `OFF` for other build types and on non-Linux hosts.
-- `USE_MIMALLOC`: defaults to `ON` whenever we're optimizing for performance (Release/RelWithDebInfo or musl builds), and `OFF` for `Debug`/`Dev` configurations to keep debugging predictable.
-- `BUILD_TESTS`: defaults to `ON` so Criterion unit/integration/performance tests are compiled.
-- `USE_PRECOMPILED_HEADERS`: defaults to `ON` (requires CMake ≥ 3.16 and is disabled automatically for musl builds) to accelerate core library builds.
-- `USE_CCACHE`: defaults to `ON` to speed up rebuilds with `ccache` (forced `OFF` when musl is enabled).
-- `USE_CPACK`: defaults to `ON` to make packaging targets (`package`, `package-productbuild`, etc.) available. The release preset turns this `ON`.
-- `ASCIICHAT_RELEASE_ENABLE_FAST_MATH`: defaults to `OFF`; flip to `ON` to allow aggressive fast-math optimizations in Release builds. The release preset turns this `ON`.
-- `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS`: defaults to `ON`; set `OFF` if you want slightly tighter Release binaries and are okay with poorer stack traces. The release preset turns this `OFF`.
-- `ASCIICHAT_ENABLE_ANALYZERS`: defaults to `OFF`; enable to wire clang-tidy/cppcheck into the build (respecting `ASCIICHAT_CLANG_TIDY`/`ASCIICHAT_CPPCHECK` overrides). The release preset turns this `OFF`.
-- `ASCIICHAT_ENABLE_UNITY_BUILDS`: defaults to `OFF`, but the presets turn it `ON`; enable to batch-compile sources for faster rebuilds on some toolchains.
-- `ASCIICHAT_ENABLE_CTEST_DASHBOARD`: defaults to `OFF`; enable to include CTest dashboard configuration (`include(CTest)`). All presets except release and release-musl turn this `ON`.
-
-#### Documentation
-
-📖 **Online Documentation: [zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)**
-
-The documentation is automatically generated from source code comments using Doxygen and published to GitHub Pages on every push to master.
-
-**To build documentation locally:**
-
-1. Install Doxygen (`brew install doxygen`, `apt-get install doxygen`, etc.) to enable the documentation targets.
-2. Configure a build (`cmake --preset default`) to let cmake find the doxygen binary.
-3. Run `cmake --build build --target docs` to generate HTML + manpage docs in `build/docs/`.
-4. Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
+The documentation is automatically generated from source code using Doxygen and published to GitHub Pages. For local documentation builds, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
 
 ### Testing
 
@@ -816,10 +533,6 @@ ctest --test-dir build --label-regex "^performance$" --output-on-failure
 
 # Run specific tests by name pattern
 ctest --test-dir build -R "buffer_pool" --output-on-failure
-ctest --test-dir build -R "test_unit_options" --output-on-failure
-
-# Verbose output
-ctest --test-dir build --output-on-failure --verbose
 
 # List available tests
 ctest --test-dir build -N
@@ -839,11 +552,7 @@ On Windows, since Criterion is POSIX-based, tests must be run in a Docker contai
 ./tests/scripts/run-docker-tests.ps1 performance
 
 # Run tests matching a pattern
-./tests/scripts/run-docker-tests.ps1 -Filter "buffer"
-
-# This script can also run clang-tidy static analysis
-./tests/scripts/run-docker-tests.ps1 clang-tidy
-./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+./tests/scripts/run-docker-tests.ps1 -Filter "*buffer*"
 
 # INFO: powershell doesn't like when you pass -Verbose to a script - use -VerboseOutput
 ./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
@@ -869,127 +578,6 @@ cmake --preset debug && cmake --build build
 build/bin/test_unit_mixer --verbose
 build/bin/test_performance_ascii_simd --filter "*monochrome*"
 ```
-
-## Environment Variables
-
-ascii-chat uses several environment variables for configuration and security
-controls. These variables can be set to modify the program's behavior without
-changing command-line arguments.
-
-### Security Variables
-
-- `ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`
-
-  - **Purpose**: Disables host identity verification (known_hosts checking)
-  - **Values**: `1` (enable), unset or any other value (disable, default)
-  - **⚠️ DANGER**: This completely bypasses security checks and makes connections vulnerable to man-in-the-middle attacks
-
-- `SSH_AUTH_SOCK`
-
-  - **Purpose**: SSH agent socket for secure key authentication
-  - **Values**: Path to SSH agent socket (e.g., `/tmp/ssh-XXXXXX/agent.12345`)
-  - **Security**: ✅ **Secure** - uses SSH agent for key management
-  - **When to use**: Preferred method for SSH key authentication (automatically detected)
-  - **Used for**: SSH key authentication without storing passphrases in environment
-
-- `ASCII_CHAT_KEY_PASSWORD`
-
-  - **Purpose**: Provides key passphrase for encrypted SSH or GPG keys
-  - **Values**: The passphrase string for your encrypted key
-  - **Security**: ⚠️ **Sensitive data** - contains your key passphrase - prefer ssh-agent/gpg-agent over this (we support both)
-  - **When to use**: When using encrypted keys and you want to avoid interactive passphrase prompts
-
-### Terminal Variables (Used for Display Detection)
-
-- `TERM`
-
-  - **Purpose**: Terminal type detection for display capabilities
-  - **Usage**: Automatically set by terminal emulators
-  - **Used for**: Determining color support, character encoding, and display features
-
-- `COLORTERM`
-
-  - **Purpose**: Additional terminal color capability detection
-  - **Usage**: Automatically set by modern terminal emulators
-  - **Used for**: Enhanced color support detection beyond `TERM`
-
-- `LANG`, `LC_ALL`, `LC_CTYPE`
-
-  - **Purpose**: Locale and character encoding detection
-  - **Usage**: Automatically set by system locale
-  - **Used for**: UTF-8 support detection and character encoding
-
-- `TTY`
-
-  - **Purpose**: Terminal device detection
-  - **Usage**: Automatically set by terminal sessions
-  - **Used for**: Determining if running in a real terminal vs. script
-
-- `LINES`, `COLUMNS`
-  - **Purpose**: Terminal size detection for display dimensions
-  - **Usage**: Automatically set by terminal emulators
-  - **Used for**: Auto-detecting optimal video dimensions
-
-### POSIX-Specific Variables
-
-- `USER`
-
-  - **Purpose**: Username detection for system identification on POSIX systems
-  - **Usage**: Automatically set by POSIX systems
-  - **Used for**: System user identification and logging
-
-- `HOME`
-
-  - **Purpose**: Determines user home directory for configuration files on POSIX systems
-  - **Usage**: Automatically detected by the system
-  - **Used for**:
-    - SSH key auto-detection (`~/.ssh/`)
-    - Configuration file paths (`~/.ascii-chat/`)
-    - Path expansion with `~` prefix
-
-### Windows-Specific Variables
-
-- `USERNAME`
-
-  - **Purpose**: Username detection for system identification on Windows
-  - **Usage**: Automatically set by Windows system
-  - **Used for**: System user identification and logging
-
-- `USERPROFILE`
-
-  - **Purpose**: Determines user home directory for configuration files on Windows
-  - **Usage**: Automatically detected by the Windows system
-  - **Used for**:
-    - SSH key auto-detection (`~/.ssh/`)
-    - Configuration file paths (`~/.ascii-chat/`)
-    - Path expansion with `~` prefix
-
-- `_NT_SYMBOL_PATH`
-
-  - **Purpose**: Windows debug symbol path for crash analysis
-  - **Usage**: Automatically set by Windows debug tools
-  - **Used for**: Enhanced crash reporting and debugging
-
-### Development/Testing Variables
-
-- `CI`
-
-  - **Purpose**: Continuous Integration environment detection
-  - **Values**: Any non-empty value indicates CI environment
-  - **Used for**: Adjusting test behavior and terminal detection in automated environments
-
-- `TESTING`, `CRITERION_TEST`
-
-  - **Purpose**: Test environment detection
-  - **Values**: Any non-empty value indicates test environment
-  - **Used for**: Reducing test data sizes and adjusting performance expectations
-
-- `WEBCAM_DISABLED`
-
-  - **Purpose**: Automatically enables test pattern mode without requiring `--test-pattern` flag
-  - **Values**: `1`, `true`, `yes`, or `on` (case-insensitive for string values)
-  - **Used for**: CI/CD pipelines and testing environments where no physical webcam is available
-  - **Effect**: Sets `opt_test_pattern = true`, causing the client to use a generated test pattern instead of webcam input
 
 ## TODO
 

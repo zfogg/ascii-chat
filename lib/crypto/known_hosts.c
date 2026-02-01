@@ -17,10 +17,10 @@
 #include "crypto/keys.h"
 #include "util/ip.h"
 #include "platform/util.h"
-#include "platform/system.h"   // For platform_isatty() and FILE_PERM_* constants
-#include "platform/fs.h"       // For platform_mkdir(), platform_stat()
-#include "platform/question.h" // For platform_prompt_yes_no
-#include "options/options.h"   // For opt_snapshot_mode
+#include "platform/system.h"     // For platform_isatty() and FILE_PERM_* constants
+#include "platform/filesystem.h" // For platform_mkdir(), platform_stat()
+#include "platform/question.h"   // For platform_prompt_yes_no
+#include "options/options.h"     // For opt_snapshot_mode
 #include "util/path.h"
 #include "util/string.h"
 #include "tooling/defer/defer.h"
@@ -80,140 +80,142 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: server_ip=%p, server_key=%p", server_ip, server_key);
   }
 
-  const char *path = get_known_hosts_path();
-  int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
-  if (fd < 0) {
-    // File doesn't exist - this is an unknown host that needs verification
-    log_warn("Known hosts file does not exist: %s", path);
-    return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
-  }
-  FILE *f = platform_fdopen(fd, "r");
-  defer(SAFE_FCLOSE(f));
-  if (!f) {
-    // Failed to open file descriptor as FILE*
-    platform_close(fd);
-    log_warn("Failed to open known hosts file: %s", path);
-    return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
-  }
-
-  char line[BUFFER_SIZE_XLARGE];
-  char expected_prefix[BUFFER_SIZE_MEDIUM];
-
   // Format IP:port with proper bracket notation for IPv6
   char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
-
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
 
   // Add space after IP:port for prefix matching
+  char expected_prefix[BUFFER_SIZE_MEDIUM];
   safe_snprintf(expected_prefix, sizeof(expected_prefix), "%s ", ip_with_port);
 
-  // Search through ALL matching entries to find one that matches the server key
-  bool found_entries = false;
-  while (fgets(line, sizeof(line), f)) {
-    if (line[0] == '#')
-      continue; // Comment
+  // Use platform abstraction to find all known_hosts files across standard locations
+  // Append semantics: search ALL files for matching entries (user + system)
+  config_file_list_t known_hosts_files = {0};
+  asciichat_error_t search_result = platform_find_config_file("known_hosts", &known_hosts_files);
 
-    if (strncmp(line, expected_prefix, strlen(expected_prefix)) == 0) {
-      // Found matching IP:port - check if this entry matches the server key
-      found_entries = true;
-      size_t prefix_len = strlen(expected_prefix);
-      size_t line_len = strlen(line);
-      if (line_len < prefix_len) {
-        // Line is too short to contain the prefix - skip this entry
-        continue;
-      }
-      char *key_type = line + prefix_len;
-
-      if (strncmp(key_type, NO_IDENTITY_MARKER, strlen(NO_IDENTITY_MARKER)) == 0) {
-        // This is a "no-identity" entry, but server is presenting an identity key
-        // This is a key mismatch - continue searching for a matching identity key
-        log_debug("SECURITY_DEBUG: Found no-identity entry, but server has identity key - continuing search");
-        continue;
-      }
-
-      // Parse key from line (normal identity key)
-      // Format: x25519 <hex_key> <comment>
-      // Extract just the hex key part
-      char *hex_key_start = strchr(key_type, ' ');
-      if (!hex_key_start) {
-        log_debug("SECURITY_DEBUG: No space found in key type: %s", key_type);
-        continue; // Try next entry
-      }
-      hex_key_start++; // Skip the space
-
-      // Find the end of the hex key (next space or end of line)
-      char *hex_key_end = strchr(hex_key_start, ' ');
-      if (hex_key_end) {
-        *hex_key_end = '\0'; // Null-terminate the hex key
-      }
-
-      public_key_t stored_key;
-      if (parse_public_key(hex_key_start, &stored_key) != 0) {
-        log_debug("SECURITY_DEBUG: Failed to parse key from hex: %s", hex_key_start);
-        continue; // Try next entry
-      }
-
-      // DEBUG: Print both keys for comparison
-      char server_key_hex[CRYPTO_HEX_KEY_SIZE_NULL], stored_key_hex[CRYPTO_HEX_KEY_SIZE_NULL];
-      for (int i = 0; i < CRYPTO_KEY_SIZE; i++) {
-        safe_snprintf(server_key_hex + i * 2, 3, "%02x", server_key[i]);
-        safe_snprintf(stored_key_hex + i * 2, 3, "%02x", stored_key.key[i]);
-      }
-      server_key_hex[CRYPTO_HEX_KEY_SIZE] = '\0';
-      stored_key_hex[CRYPTO_HEX_KEY_SIZE] = '\0';
-      log_debug("SECURITY_DEBUG: Server key: %s", server_key_hex);
-      log_debug("SECURITY_DEBUG: Stored key: %s", stored_key_hex);
-
-      // Check if server key is all zeros (no-identity server)
-      bool server_key_is_zero = true;
-      for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
-        if (server_key[i] != 0) {
-          server_key_is_zero = false;
-          break;
-        }
-      }
-
-      // Check if stored key is all zeros
-      bool stored_key_is_zero = true;
-      for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
-        if (stored_key.key[i] != 0) {
-          stored_key_is_zero = false;
-          break;
-        }
-      }
-
-      // If both keys are zero, this is a no-identity connection
-      // that was previously accepted by the user. Note: This provides weaker
-      // security than key-based verification since any server at this IP:port
-      // without an identity key will match.
-      if (server_key_is_zero && stored_key_is_zero) {
-        log_warn("SECURITY: Connecting to no-identity server at known IP:port. "
-                 "This provides weaker security than key-based verification.");
-        return 1; // Match found (no-identity server)
-      }
-
-      // Compare keys (constant-time to prevent timing attacks)
-      if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
-        log_info("SECURITY: Server key matches known_hosts - connection verified");
-        return 1; // Match found!
-      }
-      log_debug("SECURITY_DEBUG: Key mismatch, continuing search...");
-    }
+  if (search_result != ASCIICHAT_OK) {
+    // Platform search failed - non-fatal, treat as unknown host
+    log_debug("KNOWN_HOSTS: Failed to search for known_hosts files: %d", search_result);
+    return ASCIICHAT_OK;
   }
 
-  // No matching key found - check if we found any entries at all
+  // If no files found, this is an unknown host (first connection)
+  if (known_hosts_files.count == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  // Search through ALL known_hosts files for matching entry (append semantics)
+  bool found_entries = false;
+  for (size_t file_idx = 0; file_idx < known_hosts_files.count; file_idx++) {
+    const char *path = known_hosts_files.files[file_idx].path;
+
+    int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+    if (fd < 0) {
+      log_debug("KNOWN_HOSTS: Cannot open file: %s", path);
+      continue; // Skip files that can't be opened
+    }
+
+    FILE *f = platform_fdopen(fd, "r");
+    if (!f) {
+      platform_close(fd);
+      log_debug("KNOWN_HOSTS: Failed to fdopen: %s", path);
+      continue;
+    }
+
+    char line[BUFFER_SIZE_XLARGE];
+
+    // Search this file for matching IP:port entries
+    while (fgets(line, sizeof(line), f)) {
+      if (line[0] == '#')
+        continue; // Comment
+
+      if (strncmp(line, expected_prefix, strlen(expected_prefix)) == 0) {
+        // Found matching IP:port - check if this entry matches the server key
+        found_entries = true;
+        size_t prefix_len = strlen(expected_prefix);
+        size_t line_len = strlen(line);
+        if (line_len < prefix_len) {
+          continue; // Line too short
+        }
+        char *key_type = line + prefix_len;
+
+        if (strncmp(key_type, NO_IDENTITY_MARKER, strlen(NO_IDENTITY_MARKER)) == 0) {
+          // No-identity entry but server has identity - continue searching
+          log_debug("SECURITY_DEBUG: Found no-identity entry, but server has identity key");
+          continue;
+        }
+
+        // Parse identity key from line
+        char *hex_key_start = strchr(key_type, ' ');
+        if (!hex_key_start) {
+          continue; // Invalid format
+        }
+        hex_key_start++; // Skip the space
+
+        char *hex_key_end = strchr(hex_key_start, ' ');
+        if (hex_key_end) {
+          *hex_key_end = '\0'; // Null-terminate the hex key
+        }
+
+        public_key_t stored_key;
+        if (parse_public_key(hex_key_start, &stored_key) != 0) {
+          continue; // Invalid key format
+        }
+
+        // Check if server key is all zeros (no-identity server)
+        bool server_key_is_zero = true;
+        for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
+          if (server_key[i] != 0) {
+            server_key_is_zero = false;
+            break;
+          }
+        }
+
+        // Check if stored key is all zeros
+        bool stored_key_is_zero = true;
+        for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
+          if (stored_key.key[i] != 0) {
+            stored_key_is_zero = false;
+            break;
+          }
+        }
+
+        // Both zero = no-identity connection (weaker security)
+        if (server_key_is_zero && stored_key_is_zero) {
+          log_warn("SECURITY: Connecting to no-identity server at known IP:port");
+          fclose(f);
+          config_file_list_free(&known_hosts_files);
+          return 1; // Match found
+        }
+
+        // Compare keys (constant-time)
+        if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+          log_info("SECURITY: Server key matches known_hosts - connection verified");
+          fclose(f);
+          config_file_list_free(&known_hosts_files);
+          return 1; // Match found!
+        }
+      }
+    }
+
+    fclose(f);
+  }
+
+  config_file_list_free(&known_hosts_files);
+
+  // Check if we found any entries at all
   if (found_entries) {
     // We found entries for this IP:port but none matched the server key
-    // This is a key mismatch (potential MITM attack)
+    // This is a MITM warning!
     log_error("SECURITY: Server key does NOT match any known_hosts entries!");
     log_error("SECURITY: This indicates a possible man-in-the-middle attack!");
-    return ERROR_CRYPTO_VERIFICATION; // Key mismatch - MITM warning!
+    return ERROR_CRYPTO_VERIFICATION;
   }
 
   // No entries found for this IP:port - first connection
-  return ASCIICHAT_OK; // Not found = first connection
+  return ASCIICHAT_OK;
 }
 
 // Check known_hosts for servers without identity key (no-identity entries)

@@ -8,6 +8,7 @@
 #include "video/simd/ascii_simd.h"
 #include "ansi_fast.h"
 #include "util/math.h"
+#include "platform/init.h"
 #include <string.h>
 #include <time.h>
 #ifndef _WIN32
@@ -18,6 +19,7 @@
 // 256-color lookup table (optional)
 static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
 static bool color256_initialized = false;
+static static_mutex_t g_color256_mutex = STATIC_MUTEX_INIT;
 
 // Fast foreground color: \033[38;2;R;G;Bm
 // Maximum output: 19 bytes (\033[38;2;255;255;255m)
@@ -184,15 +186,21 @@ void ansi_fast_init(void) {
 }
 
 // 256-color mode initialization (optional high-speed mode)
+// Thread-safe: uses mutex to prevent duplicate initialization
 void ansi_fast_init_256color(void) {
-  if (color256_initialized)
+  static_mutex_lock(&g_color256_mutex);
+
+  if (color256_initialized) {
+    static_mutex_unlock(&g_color256_mutex);
     return;
+  }
 
   for (int i = 0; i < 256; i++) {
     SAFE_SNPRINTF(color256_strings[i], sizeof(color256_strings[i]), "\033[38;5;%dm", i);
   }
 
   color256_initialized = true;
+  static_mutex_unlock(&g_color256_mutex);
 }
 
 // Fast 256-color foreground
@@ -229,10 +237,15 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
 static char color16_fg_strings[16][16];
 static char color16_bg_strings[16][16];
 static bool color16_initialized = false;
+static static_mutex_t g_color16_mutex = STATIC_MUTEX_INIT;
 
 void ansi_fast_init_16color(void) {
-  if (color16_initialized)
+  static_mutex_lock(&g_color16_mutex);
+
+  if (color16_initialized) {
+    static_mutex_unlock(&g_color16_mutex);
     return;
+  }
 
   // Standard ANSI color codes
   const char *fg_codes[] = {"30", "31", "32", "33", "34", "35", "36", "37",          // Normal colors (30-37)
@@ -246,6 +259,7 @@ void ansi_fast_init_16color(void) {
   }
 
   color16_initialized = true;
+  static_mutex_unlock(&g_color16_mutex);
 }
 
 char *append_16color_fg(char *dst, uint8_t color_index) {

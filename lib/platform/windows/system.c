@@ -10,10 +10,15 @@
 #include "../internal.h"
 #include "../socket.h"
 #include "common.h"
+#include "common/buffer_sizes.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
 #include "util/ip.h"
+#include "util/string.h"
+#include "util/time.h"
+#include "util/utf8.h"
 #include "../symbols.h"
+#include "options/options.h"
 
 #include <dbghelp.h>
 #include <wincrypt.h>
@@ -39,7 +44,7 @@
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-  static char username[256] = {'\0'};
+  static char username[BUFFER_SIZE_SMALL] = {'\0'};
   if (username[0] != '\0') {
     log_debug("Username already cached: %s", username);
     return username;
@@ -287,10 +292,11 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
 /**
  * @brief Get environment variable value
  * @param name Environment variable name
- * @return Variable value or NULL if not found
+ * @return Variable value or NULL if not found or contains invalid UTF-8
  * @note Uses thread-local static buffer to avoid memory leaks.
  *       The returned pointer is valid until the next call to platform_getenv
  *       from the same thread.
+ *       Returns NULL if the environment variable contains invalid UTF-8 sequences.
  */
 const char *platform_getenv(const char *name) {
   if (!name || name[0] == '\0') {
@@ -307,6 +313,13 @@ const char *platform_getenv(const char *name) {
     // Variable not found or error
     return NULL;
   }
+
+  // Validate UTF-8 encoding
+  if (!utf8_is_valid(buffer)) {
+    log_warn("Environment variable '%s' contains invalid UTF-8, ignoring", name);
+    return NULL;
+  }
+
   return buffer;
 }
 
@@ -775,7 +788,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
           cache_success = false;
         } else {
           // Clean up mangled CRT symbols from cache (e.g., memcpy_$fo_rvas$() -> memcpy())
-          char cleaned_sym[1024];
+          char cleaned_sym[BUFFER_SIZE_LARGE];
           if (dollar_pos) {
             // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
             size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - sym));
@@ -817,7 +830,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
 
     // Fall back to DbgHelp if cache failed
     if (!cache_success && atomic_load(&g_symbols_initialized)) {
-      char temp_buffer[1024];
+      char temp_buffer[BUFFER_SIZE_LARGE];
       resolve_windows_symbol(buffer[i], temp_buffer, sizeof(temp_buffer));
 
       // Check if DbgHelp actually resolved the symbol (not just "0x...")
@@ -883,9 +896,6 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     return;
   }
 
-  // Print header with color
-  log_labeled(label, LOG_COLOR_WARN, "");
-
   // Calculate frame limits
   int start = skip_frames;
   int end = count;
@@ -893,9 +903,16 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Print backtrace frames with colored frame numbers
+  // Build entire backtrace output in buffer for single logging statement
+  char buffer[8192] = {0};
+  int offset = 0;
+
+  // Add header
+  offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
+
+  // Build backtrace frames with colored frame numbers
   int frame_num = 0;
-  for (int i = start; i < end; i++) {
+  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -903,8 +920,28 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    // Build colored frame number string and manually embed it in buffer
+    char frame_str[16];
+    safe_snprintf(frame_str, sizeof(frame_str), "%d", frame_num);
+    const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_str);
+    size_t colored_len = strlen(colored_frame);
+
+    // Append "  ["
+    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [");
+
+    // Append colored frame number
+    if (offset + colored_len < sizeof(buffer)) {
+      memcpy(buffer + offset, colored_frame, colored_len);
+      offset += (int)colored_len;
+    }
+
+    // Append "] symbol\n"
+    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "] %s\n", symbol);
+    frame_num++;
   }
+
+  // Log entire backtrace in single statement using logging system
+  log_plain_stderr("%s", buffer);
 }
 
 /**
@@ -931,8 +968,8 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
   int offset = 0;
 
   // Header with color
-  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s%s:%s\n", log_level_color(LOG_COLOR_WARN),
-                     label, log_level_color(LOG_COLOR_RESET));
+  offset +=
+      safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n", colored_string(LOG_COLOR_WARN, label));
 
   // Calculate frame limits
   int start = skip_frames;
@@ -951,8 +988,23 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
       continue;
     }
 
-    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [%s%d%s] %s\n",
-                       log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    // Build colored frame number and manually embed it in buffer
+    char frame_buf[16];
+    safe_snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
+    const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
+    size_t colored_len = strlen(colored_frame);
+
+    // Append "    ["
+    offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "    [");
+
+    // Append colored frame number
+    if (offset + colored_len < (int)buffer_size) {
+      memcpy(buffer + offset, colored_frame, colored_len);
+      offset += (int)colored_len;
+    }
+
+    // Append "] symbol\n"
+    offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "] %s\n", symbol);
   }
 
   return offset;
@@ -1110,7 +1162,7 @@ int clock_gettime(int clk_id, struct timespec *tp) {
 
     // Convert to seconds and nanoseconds
     tp->tv_sec = (time_t)(counter.QuadPart / freq.QuadPart);
-    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart));
+    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * NS_PER_SEC_INT) / freq.QuadPart));
   }
 
   return 0;
@@ -1174,7 +1226,7 @@ void platform_memory_barrier(void) {
 // ============================================================================
 
 // Thread-local storage for error strings
-static __declspec(thread) char error_buffer[256];
+static __declspec(thread) char error_buffer[BUFFER_SIZE_SMALL];
 
 /**
  * @brief Get thread-safe error string
@@ -1619,6 +1671,85 @@ void platform_stderr_restore(platform_stderr_redirect_handle_t handle) {
 
 void platform_stdio_redirect_to_null_permanent(void) {
   // Windows: No-op
+}
+
+platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) {
+  // Windows: No-op
+  return (platform_stderr_redirect_handle_t){-1, -1};
+}
+
+void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle) {
+  // Windows: No-op
+  (void)handle; // unused
+}
+
+/**
+ * @brief Forcefully terminate the process immediately without cleanup (Windows)
+ * @param exit_code Exit code to return
+ * @note Does not return - process is terminated
+ *
+ * Windows implementation uses ExitProcess() to terminate without running
+ * cleanup handlers or atexit functions.
+ */
+void platform_force_exit(int exit_code) {
+  ExitProcess((UINT)exit_code);
+}
+
+/**
+ * @brief Register multiple signal handlers at once (Windows)
+ * @param handlers Array of signal handler descriptors
+ * @param count Number of handlers
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Windows implementation converts SIGTERM and SIGINT to console control events
+ * and registers via platform_set_console_ctrl_handler(). Other signals are logged
+ * as warnings since Windows doesn't have POSIX signals.
+ */
+asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count) {
+  if (!handlers || count <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handlers or count");
+  }
+
+  // On Windows, we only support SIGINT and SIGTERM via console control handlers
+  // Find handlers for these signals
+  console_ctrl_handler_t ctrl_handler = NULL;
+
+  for (int i = 0; i < count; i++) {
+    if (handlers[i].sig == SIGINT || handlers[i].sig == SIGTERM) {
+      // Create a wrapper that adapts console control handler to signal handler
+      // Note: This is a limitation - Windows console handlers are different from POSIX signal handlers
+      // For now, just log that we got a handler registered
+      log_debug("Registered signal handler for signal %d", handlers[i].sig);
+    } else {
+      log_warn("Signal %d is not supported on Windows (only SIGINT/SIGTERM)", handlers[i].sig);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Request coarse timer precision (Windows implementation)
+ */
+asciichat_error_t platform_request_timer_precision(int precision) {
+  /* timeBeginPeriod requests coarse timer precision on Windows */
+  MMRESULT result = timeBeginPeriod((UINT)precision);
+  if (result != TIMERR_NOERROR) {
+    return SET_ERRNO(ERROR_GENERAL, "timeBeginPeriod() failed with error %u", result);
+  }
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Restore default timer precision (Windows implementation)
+ */
+asciichat_error_t platform_restore_timer_resolution(void) {
+  /* timeEndPeriod restores default timer resolution on Windows */
+  MMRESULT result = timeEndPeriod(1);
+  if (result != TIMERR_NOERROR) {
+    return SET_ERRNO(ERROR_GENERAL, "timeEndPeriod() failed with error %u", result);
+  }
+  return ASCIICHAT_OK;
 }
 
 // Include cross-platform system utilities (binary PATH detection)

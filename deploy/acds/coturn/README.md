@@ -1,4 +1,4 @@
-# ASCII-Chat Coturn STUN/TURN Server
+# ascii-chat Coturn STUN/TURN Server
 
 This directory contains the deployment configuration for the ascii-chat STUN/TURN server using [coturn](https://github.com/coturn/coturn).
 
@@ -305,7 +305,7 @@ sudo systemctl daemon-reload
 5. **Monitor logs** for abuse/unusual traffic
 6. **Consider rate limiting** at firewall level
 
-## Integration with ASCII-Chat
+## Integration with ascii-chat
 
 To use these STUN/TURN servers in ascii-chat WebRTC code:
 

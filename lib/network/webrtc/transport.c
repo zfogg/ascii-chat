@@ -32,6 +32,7 @@
 #include "network/webrtc/webrtc.h"
 #include "log/logging.h"
 #include "ringbuffer.h"
+#include "buffer_pool.h"
 #include "platform/mutex.h"
 #include "platform/cond.h"
 #include <string.h>
@@ -77,22 +78,21 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
   webrtc_transport_data_t *wrtc = (webrtc_transport_data_t *)user_data;
 
   if (!wrtc || !data || len == 0) {
-    log_error("Invalid DataChannel message callback parameters");
     return;
   }
 
-  // Allocate message structure
+  // Allocate message buffer using buffer pool (will be freed by acip_client_receive_and_dispatch)
   webrtc_recv_msg_t msg;
-  msg.data = SAFE_MALLOC(len, uint8_t *);
+  msg.data = buffer_pool_alloc(NULL, len);
   if (!msg.data) {
-    log_error("Failed to allocate receive message buffer (%zu bytes)", len);
     return;
   }
 
+  // Copy data
   memcpy(msg.data, data, len);
   msg.len = len;
 
-  // Push to receive queue (thread-safe)
+  // Push to receive queue
   mutex_lock(&wrtc->queue_mutex);
 
   bool success = ringbuffer_write(wrtc->recv_queue, &msg);
@@ -100,15 +100,13 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
     // Queue full - drop oldest message to make room
     webrtc_recv_msg_t dropped_msg;
     if (ringbuffer_read(wrtc->recv_queue, &dropped_msg)) {
-      log_warn("Receive queue full, dropping oldest message (%zu bytes)", dropped_msg.len);
-      SAFE_FREE(dropped_msg.data);
+      buffer_pool_free(NULL, dropped_msg.data, dropped_msg.len);
     }
 
     // Try again
     success = ringbuffer_write(wrtc->recv_queue, &msg);
     if (!success) {
-      log_error("Failed to write to receive queue after drop");
-      SAFE_FREE(msg.data);
+      buffer_pool_free(NULL, msg.data, len);
       mutex_unlock(&wrtc->queue_mutex);
       return;
     }
@@ -117,9 +115,6 @@ static void webrtc_on_message(webrtc_data_channel_t *channel, const uint8_t *dat
   // Signal waiting recv() call
   cond_signal(&wrtc->queue_cond);
   mutex_unlock(&wrtc->queue_mutex);
-
-  log_debug_every(1000000, "WebRTC message received (%zu bytes), queue size: %zu", len,
-                  ringbuffer_size(wrtc->recv_queue));
 }
 
 /**
@@ -199,11 +194,11 @@ static asciichat_error_t webrtc_send(acip_transport_t *transport, const void *da
 
   // Send via DataChannel
   asciichat_error_t result = webrtc_datachannel_send(wrtc->data_channel, data, len);
+
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO(ERROR_NETWORK, "Failed to send on WebRTC DataChannel");
   }
 
-  log_debug_every(1000000, "WebRTC sent %zu bytes", len);
   return ASCIICHAT_OK;
 }
 
@@ -241,9 +236,6 @@ static asciichat_error_t webrtc_recv(acip_transport_t *transport, void **buffer,
   *buffer = msg.data;
   *out_len = msg.len;
   *out_allocated_buffer = msg.data;
-
-  log_debug_every(1000000, "WebRTC received %zu bytes, queue remaining: %zu", msg.len,
-                  ringbuffer_size(wrtc->recv_queue));
 
   return ASCIICHAT_OK;
 }
@@ -455,6 +447,26 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
     SET_ERRNO(ERROR_INTERNAL, "Failed to set DataChannel callbacks");
     return NULL;
   }
+
+  // IMPORTANT: The transport is always created from peer_manager's on_datachannel_open callback,
+  // which means the DataChannel is ALREADY OPEN when we get here. However, by setting our own
+  // callbacks above (webrtc_datachannel_set_callbacks), we replaced the callbacks that would
+  // have set dc->is_open=true. So we need to manually mark both the transport AND the DataChannel
+  // as open/connected now.
+  //
+  // We cannot rely on webrtc_on_open being called later because:
+  // 1. The DataChannel is already open
+  // 2. libdatachannel won't fire the open event again
+  // 3. Setting callbacks after open doesn't trigger a retroactive open event
+
+  // Mark DataChannel as open (needed for webrtc_datachannel_send() check)
+  webrtc_datachannel_set_open_state(data_channel, true);
+
+  // Mark transport as connected
+  mutex_lock(&wrtc_data->state_mutex);
+  wrtc_data->is_connected = true;
+  mutex_unlock(&wrtc_data->state_mutex);
+  log_debug("Transport and DataChannel marked as connected/open (already open from peer_manager callback)");
 
   // Initialize transport
   transport->methods = &webrtc_methods;

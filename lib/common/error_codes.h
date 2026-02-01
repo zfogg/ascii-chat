@@ -33,6 +33,9 @@
 #undef ERROR_BUFFER_OVERFLOW
 #undef ERROR_INVALID_STATE
 #undef ERROR_FILE_NOT_FOUND
+#undef ERROR_NOT_SUPPORTED
+#undef ERROR_INVALID_PASSWORD
+#undef ERROR_NOT_FOUND
 #endif
 
 /**
@@ -125,6 +128,13 @@ typedef enum {
 
   /* Process errors (110-119) */
   ERROR_PROCESS_FAILED = 110, /**< Process execution or termination failed */
+
+  /* YouTube/URL streaming errors (111-116) */
+  ERROR_YOUTUBE_INVALID_URL = 111,    /**< Invalid YouTube URL format */
+  ERROR_YOUTUBE_EXTRACT_FAILED = 112, /**< YouTube URL extraction/parsing failed */
+  ERROR_YOUTUBE_UNPLAYABLE = 113,     /**< Video cannot be played (age-restricted, geo-blocked, etc.) */
+  ERROR_YOUTUBE_NETWORK = 114,        /**< Network error fetching YouTube watch page */
+  ERROR_YOUTUBE_NOT_SUPPORTED = 115,  /**< YouTube support not compiled in (requires libytdl) */
 
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
@@ -259,6 +269,16 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "File or directory not found";
   case ERROR_PROCESS_FAILED:
     return "Process execution or termination failed";
+  case ERROR_YOUTUBE_INVALID_URL:
+    return "Invalid YouTube URL format";
+  case ERROR_YOUTUBE_EXTRACT_FAILED:
+    return "YouTube URL extraction failed";
+  case ERROR_YOUTUBE_UNPLAYABLE:
+    return "Video cannot be played";
+  case ERROR_YOUTUBE_NETWORK:
+    return "YouTube network error";
+  case ERROR_YOUTUBE_NOT_SUPPORTED:
+    return "YouTube support not compiled";
   default:
     return "Unknown error";
   }

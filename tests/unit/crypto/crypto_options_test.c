@@ -71,7 +71,7 @@ typedef struct {
 
 // clang-format off
 static crypto_options_test_case_t crypto_options_cases[] = {
-    // Note: --help and --version tests are separate (they call _exit(0))
+    // Note: --help and --version tests are separate (they call exit(0))
     // Use "" instead of NULL for static char arrays (Criterion fork compatibility)
     {"Disable encryption", 3, {"program", "client", "--no-encrypt"}, true, true, false, false, false, "", "", "", 0},
     {"Set password key",
@@ -245,7 +245,8 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 
   if (tc->expected_server_key[0] != '\0') {
     cr_assert(opts->server_key[0] != '\0', "Server key should not be empty for case: %s", tc->description);
-    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s", tc->description);
+    cr_assert_str_eq(opts->server_key, tc->expected_server_key, "Server key should match for case: %s",
+                     tc->description);
   }
 
   if (tc->expected_client_keys[0] != '\0') {
@@ -477,25 +478,25 @@ Test(crypto_options, relative_file_paths) {
 // Help and Usage Tests
 // =============================================================================
 
-// Test that --help calls _exit(0) - runs in separate process
+// Test that --help calls exit(0) - runs in separate process
 Test(crypto_options, help_display, .exit_code = 0) {
   const char *argv[] = {"program", "--help"};
 
-  // This will call _exit(0) after printing help
+  // This will call exit(0) after printing help
   options_init(2, (char **)argv);
 
-  // Should never reach here due to _exit(0)
+  // Should never reach here due to exit(0)
   cr_fatal("Should have exited before reaching this line");
 }
 
-// Test that --version calls _exit(0) - runs in separate process
+// Test that --version calls exit(0) - runs in separate process
 Test(crypto_options, version_display, .exit_code = 0) {
   const char *argv[] = {"program", "--version"};
 
-  // This will call _exit(0) after printing version
+  // This will call exit(0) after printing version
   options_init(2, (char **)argv);
 
-  // Should never reach here due to _exit(0)
+  // Should never reach here due to exit(0)
   cr_fatal("Should have exited before reaching this line");
 }
 

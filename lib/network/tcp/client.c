@@ -456,7 +456,7 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
       // Try IPv6 loopback connection
       client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (client->sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
         if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
           SAFE_STRNCPY(client->server_ip, "::1", sizeof(client->server_ip));
@@ -479,7 +479,7 @@ int tcp_client_connect(tcp_client_t *client, const char *address, int port, int 
     if (ipv4_result == 0 && res != NULL) {
       client->sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (client->sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
         if (connect_with_timeout(client->sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
           SAFE_STRNCPY(client->server_ip, "127.0.0.1", sizeof(client->server_ip));
@@ -777,10 +777,10 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
     SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
   }
 
-  // Set desired FPS (from global g_max_fps if available, otherwise from caps)
-  extern int g_max_fps; // Will be passed via options in future refactoring
-  if (g_max_fps > 0) {
-    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  // Set desired FPS (from options if available, otherwise from caps)
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     net_packet.desired_fps = caps.desired_fps;
   }
@@ -796,7 +796,8 @@ int tcp_client_send_terminal_capabilities(tcp_client_t *client, unsigned short w
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
-  net_packet.utf8_support = GET_OPTION(force_utf8) ? 1 : 0;
+  // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
+  net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
 
   SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 

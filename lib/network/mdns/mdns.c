@@ -1,8 +1,8 @@
 /**
  * @file lib/network/mdns/mdns.c
- * @brief mDNS service discovery implementation for ASCII-Chat
+ * @brief mDNS service discovery implementation for ascii-chat
  *
- * Wraps the mdns library (https://github.com/mjansson/mdns) with ASCII-Chat specific API.
+ * Wraps the mdns library (https://github.com/mjansson/mdns) with ascii-chat specific API.
  * This implementation provides service advertisement and discovery for LAN-based sessions.
  */
 
@@ -11,8 +11,13 @@
 #include "platform/socket.h"
 #include <string.h>
 #include <stdio.h>
-#include <mdns.h>
+#include <ascii-chat-deps/mdns/mdns.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <netinet/in.h> /* For struct sockaddr_in, sockaddr_in6 */
+#endif
 
 /** @brief Internal mDNS context structure */
 struct asciichat_mdns_t {
@@ -54,7 +59,7 @@ asciichat_mdns_t *asciichat_mdns_init(void) {
     return NULL;
   }
 
-  log_info("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
+  log_debug("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
   return mdns;
 }
 
@@ -69,7 +74,7 @@ void asciichat_mdns_shutdown(asciichat_mdns_t *mdns) {
 
   SAFE_FREE(mdns->buffer);
   SAFE_FREE(mdns);
-  log_info("mDNS context shutdown");
+  log_debug("mDNS context shutdown");
 }
 
 asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciichat_mdns_service_t *service) {
@@ -81,7 +86,7 @@ asciichat_error_t asciichat_mdns_advertise(asciichat_mdns_t *mdns, const asciich
     return SET_ERRNO(ERROR_INVALID_PARAM, "Service name, type, or host is NULL");
   }
 
-  log_info("Advertising mDNS service: %s (%s:%d)", service->name, service->host, service->port);
+  log_debug("Advertising mDNS service: %s (%s:%d)", service->name, service->host, service->port);
 
   /* TODO: Implement actual advertisement using mdns library
    * This will involve creating service records and sending announcements
@@ -167,7 +172,7 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
 
     /* Convert network address to dotted decimal notation */
     uint8_t *bytes = (uint8_t *)&addr_in.sin_addr;
-    snprintf(discovery.ipv4, sizeof(discovery.ipv4), "%d.%d.%d.%d", bytes[0], bytes[1], bytes[2], bytes[3]);
+    safe_snprintf(discovery.ipv4, sizeof(discovery.ipv4), "%d.%d.%d.%d", bytes[0], bytes[1], bytes[2], bytes[3]);
     log_debug("mDNS A: %s -> %s (TTL: %u)", discovery.type, discovery.ipv4, ttl);
     break;
   }
@@ -181,10 +186,10 @@ static int mdns_record_callback(int sock, const struct sockaddr *from, size_t ad
 
     /* Convert IPv6 address to colon-separated hex notation */
     const uint8_t *bytes = (const uint8_t *)&addr_in6.sin6_addr;
-    snprintf(discovery.ipv6, sizeof(discovery.ipv6),
-             "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", bytes[0], bytes[1], bytes[2],
-             bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12],
-             bytes[13], bytes[14], bytes[15]);
+    safe_snprintf(discovery.ipv6, sizeof(discovery.ipv6),
+                  "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", bytes[0], bytes[1],
+                  bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8], bytes[9], bytes[10], bytes[11],
+                  bytes[12], bytes[13], bytes[14], bytes[15]);
     log_debug("mDNS AAAA: %s -> %s (TTL: %u)", discovery.type, discovery.ipv6, ttl);
     break;
   }

@@ -9,9 +9,14 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../../common.h" // For log_error()
+#include "../../common/buffer_sizes.h"
 #include "../../asciichat_errno.h"
 #include "../../util/ip.h"
-#include "../symbols.h" // For symbol cache
+#include "../../util/string.h"
+#include "../../util/time.h"
+#include "../../util/utf8.h"
+#include "../symbols.h"            // For symbol cache
+#include "../../options/options.h" // For options_get()
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -44,7 +49,7 @@ extern char **backtrace_symbols(void *const *buffer, int size) __attribute__((we
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-  static char username[256];
+  static char username[BUFFER_SIZE_SMALL];
   const char *user = getenv("USER");
   if (!user) {
     user = getenv("USERNAME");
@@ -114,7 +119,7 @@ uint64_t platform_get_monotonic_time_us(void) {
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
     return 0; // Fallback on error (shouldn't happen)
   }
-  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+  return time_ns_to_us(time_timespec_to_ns(&ts));
 }
 
 /**
@@ -205,6 +210,7 @@ static console_ctrl_handler_t g_console_ctrl_handler = NULL;
  */
 static void posix_console_ctrl_signal_handler(int sig) {
   if (!g_console_ctrl_handler) {
+    SET_ERRNO(ERROR_INVALID_STATE, "No console control handler registered");
     return;
   }
 
@@ -265,10 +271,19 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
 /**
  * @brief Get environment variable value
  * @param name Environment variable name
- * @return Variable value or NULL if not found
+ * @return Variable value or NULL if not found or contains invalid UTF-8
+ *
+ * Returns NULL if the environment variable contains invalid UTF-8 sequences,
+ * helping prevent corruption from malformed environment data.
  */
 const char *platform_getenv(const char *name) {
-  return getenv(name);
+  const char *value = getenv(name);
+  if (value && !utf8_is_valid(value)) {
+    // Invalid UTF-8 detected - log warning and return NULL
+    log_warn("Environment variable '%s' contains invalid UTF-8, ignoring", name);
+    return NULL;
+  }
+  return value;
 }
 
 /**
@@ -353,7 +368,7 @@ void platform_memory_barrier(void) {
 // ============================================================================
 
 // Thread-local storage for error strings
-static __thread char error_buffer[256];
+static __thread char error_buffer[BUFFER_SIZE_SMALL];
 
 /**
  * @brief Get thread-safe error string
@@ -503,6 +518,7 @@ int platform_chmod(const char *pathname, int mode) {
  */
 static int manual_backtrace(void **buffer, int size) {
   if (!buffer || size <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid buffer or size: buffer=%p, size=%d", buffer, size);
     return 0;
   }
 
@@ -591,6 +607,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
  */
 void platform_backtrace_symbols_free(char **strings) {
   if (!strings) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: strings=%p", strings);
     return;
   }
 
@@ -622,11 +639,9 @@ void platform_backtrace_symbols_free(char **strings) {
 void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
                                       backtrace_frame_filter_t filter) {
   if (!symbols || count <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: symbols=%p, count=%d", symbols, count);
     return;
   }
-
-  // Print header with color
-  log_labeled(label, LOG_COLOR_WARN, "");
 
   // Calculate frame limits
   int start = skip_frames;
@@ -635,9 +650,16 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
     end = start + max_frames;
   }
 
-  // Print backtrace frames with colored frame numbers
+  // Build entire backtrace output in buffer for single logging statement
+  char buffer[8192] = {0};
+  int offset = 0;
+
+  // Add header
+  offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "%s\n", label);
+
+  // Build backtrace frames with colored frame numbers
   int frame_num = 0;
-  for (int i = start; i < end; i++) {
+  for (int i = start; i < end && offset < (int)sizeof(buffer) - 256; i++) {
     const char *symbol = symbols[i] ? symbols[i] : "???";
 
     // Skip frame if filter says to
@@ -645,8 +667,13 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
       continue;
     }
 
-    log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    // Append frame number and symbol
+    offset += safe_snprintf(buffer + offset, sizeof(buffer) - (size_t)offset, "  [%d] %s\n", frame_num, symbol);
+    frame_num++;
   }
+
+  // Log entire backtrace in single statement using logging system
+  log_plain_stderr("%s", buffer);
 }
 
 /**
@@ -673,8 +700,8 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
   int offset = 0;
 
   // Header with color
-  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s%s:%s\n", log_level_color(LOG_COLOR_WARN),
-                     label, log_level_color(LOG_COLOR_RESET));
+  offset +=
+      safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s:\n", colored_string(LOG_COLOR_WARN, label));
 
   // Calculate frame limits
   int start = skip_frames;
@@ -693,8 +720,23 @@ int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const ch
       continue;
     }
 
-    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [%s%d%s] %s\n",
-                       log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+    // Build colored frame number and manually embed it in buffer
+    char frame_buf[16];
+    safe_snprintf(frame_buf, sizeof(frame_buf), "%d", frame_num++);
+    const char *colored_frame = colored_string(LOG_COLOR_FATAL, frame_buf);
+    size_t colored_len = strlen(colored_frame);
+
+    // Append "    ["
+    offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "    [");
+
+    // Append colored frame number
+    if (offset + colored_len < buffer_size) {
+      memcpy(buffer + offset, colored_frame, colored_len);
+      offset += colored_len;
+    }
+
+    // Append "] symbol\n"
+    offset += safe_snprintf(buffer + offset, buffer_size - (size_t)offset, "] %s\n", symbol);
   }
 
   return offset;
@@ -932,16 +974,22 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   }
 
   // Common CA certificate bundle paths (ordered by likelihood)
-  static const char *ca_paths[] = {"/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo/Arch
-                                   "/etc/pki/tls/certs/ca-bundle.crt",                  // RHEL/CentOS/Fedora
-                                   "/etc/ssl/cert.pem",                                 // OpenBSD/macOS/Alpine
-                                   "/usr/local/etc/openssl/cert.pem",                   // Homebrew OpenSSL on macOS
-                                   "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
-                                   "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7+
-                                   "/usr/share/ssl/certs/ca-bundle.crt",                // Old Red Hat
-                                   "/usr/local/share/certs/ca-root-nss.crt",            // FreeBSD
-                                   "/etc/openssl/certs/ca-certificates.crt",            // OpenWall (musl)
-                                   NULL};
+  // On macOS, prefer Homebrew ca-certificates if installed (more up-to-date than system)
+  static const char *ca_paths[] = {
+#ifdef __APPLE__
+      "/opt/homebrew/opt/ca-certificates/share/ca-certificates/cacert.pem", // Homebrew ca-certificates (Apple Silicon)
+      "/usr/local/opt/ca-certificates/share/ca-certificates/cacert.pem",    // Homebrew ca-certificates (Intel Mac)
+#endif
+      "/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu/Gentoo/Arch
+      "/etc/pki/tls/certs/ca-bundle.crt",                  // RHEL/CentOS/Fedora
+      "/etc/ssl/cert.pem",                                 // OpenBSD/macOS/Alpine
+      "/usr/local/etc/openssl/cert.pem",                   // Homebrew OpenSSL on macOS
+      "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
+      "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // CentOS/RHEL 7+
+      "/usr/share/ssl/certs/ca-bundle.crt",                // Old Red Hat
+      "/usr/local/share/certs/ca-root-nss.crt",            // FreeBSD
+      "/etc/openssl/certs/ca-certificates.crt",            // OpenWall (musl)
+      NULL};
 
   // Try each path until we find one that exists and is readable
   for (int i = 0; ca_paths[i] != NULL; i++) {
@@ -980,12 +1028,12 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
     // Null-terminate (PEM is text format)
     // We verified bytes_read == file_size above, and allocated file_size + 1 bytes.
     // file_size is bounded by the check on line 863 (0 < file_size <= 10MB).
-    // NOLINTNEXTLINE(clang-analyzer-security.ArrayBound) - file_size is bounded above
     pem_data[file_size] = '\0';
 
     // Success!
     *pem_data_out = pem_data;
     *pem_size_out = bytes_read;
+    log_debug("Loaded CA certificates from: %s (%zu bytes)", ca_paths[i], bytes_read);
     return ASCIICHAT_OK;
   }
 
@@ -1004,6 +1052,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  */
 bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
   if (temp_dir == NULL || path_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: temp_dir=%s, path_size=%zu", temp_dir, path_size);
     return false;
   }
 
@@ -1028,6 +1077,7 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
 
 bool platform_get_cwd(char *cwd, size_t path_size) {
   if (!cwd || path_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: cwd=%s, path_size=%zu", cwd, path_size);
     return false;
   }
 
@@ -1040,6 +1090,7 @@ bool platform_get_cwd(char *cwd, size_t path_size) {
 
 int platform_access(const char *path, int mode) {
   if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: path=%s", path);
     return -1;
   }
 
@@ -1115,6 +1166,126 @@ void platform_stdio_redirect_to_null_permanent(void) {
     dup2(dev_null, STDOUT_FILENO);
     close(dev_null);
   }
+}
+
+/**
+ * @brief Redirect both stdout and stderr to /dev/null (restorable)
+ * @return Handle that can be passed to platform_stdout_stderr_restore()
+ *
+ * This is useful for suppressing library output during initialization.
+ * Always call platform_stdout_stderr_restore() with the returned handle
+ * to restore the original file descriptors.
+ */
+platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void) {
+  platform_stderr_redirect_handle_t handle = {.original_fd = -1, .devnull_fd = -1};
+
+  // For stdout, we'll use original_fd to store the saved stdout
+  // We reuse the same structure but use it differently:
+  // original_fd stores the saved stdout
+  // devnull_fd stores the saved stderr (to be restored together)
+  int saved_stdout = dup(STDOUT_FILENO);
+  int saved_stderr = dup(STDERR_FILENO);
+  if (saved_stdout < 0 || saved_stderr < 0) {
+    if (saved_stdout >= 0)
+      close(saved_stdout);
+    if (saved_stderr >= 0)
+      close(saved_stderr);
+    return handle;
+  }
+
+  // Open /dev/null for redirection
+  int devnull = platform_open("/dev/null", O_WRONLY, 0);
+  if (devnull < 0) {
+    close(saved_stdout);
+    close(saved_stderr);
+    return handle;
+  }
+
+  // Redirect both stdout and stderr to /dev/null
+  if (dup2(devnull, STDOUT_FILENO) < 0 || dup2(devnull, STDERR_FILENO) < 0) {
+    close(devnull);
+    close(saved_stdout);
+    close(saved_stderr);
+    return handle;
+  }
+
+  close(devnull);
+
+  // Store both saved FDs in the handle (we'll need both on restore)
+  // Use original_fd for stdout, devnull_fd for stderr
+  handle.original_fd = saved_stdout;
+  handle.devnull_fd = saved_stderr;
+
+  return handle;
+}
+
+/**
+ * @brief Restore stdout and stderr after platform_stdout_stderr_redirect_to_null()
+ * @param handle Handle returned by platform_stdout_stderr_redirect_to_null()
+ */
+void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle) {
+  // Restore stdout
+  if (handle.original_fd >= 0) {
+    dup2(handle.original_fd, STDOUT_FILENO);
+    close(handle.original_fd);
+  }
+
+  // Restore stderr
+  if (handle.devnull_fd >= 0) {
+    dup2(handle.devnull_fd, STDERR_FILENO);
+    close(handle.devnull_fd);
+  }
+}
+
+/**
+ * @brief Forcefully terminate the process immediately without cleanup (POSIX)
+ * @param exit_code Exit code to return
+ * @note Does not return - process is terminated
+ */
+void platform_force_exit(int exit_code) {
+  _exit(exit_code);
+}
+
+/**
+ * @brief Register multiple signal handlers at once (POSIX)
+ * @param handlers Array of signal handler descriptors
+ * @param count Number of handlers
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * POSIX implementation registers each signal using platform_signal().
+ * Windows implementation handles this differently via console control handlers.
+ */
+asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count) {
+  if (!handlers || count <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid handlers or count");
+  }
+
+  for (int i = 0; i < count; i++) {
+    signal_handler_t old_handler = platform_signal(handlers[i].sig, handlers[i].handler);
+    if (old_handler == SIG_ERR) {
+      log_warn("Failed to register signal handler for signal %d", handlers[i].sig);
+      // Continue registering others instead of failing completely
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Request coarse timer precision (POSIX no-op)
+ */
+asciichat_error_t platform_request_timer_precision(int precision) {
+  (void)precision; // Unused on POSIX
+  // POSIX systems don't have a timer precision API like Windows
+  return ASCIICHAT_OK;
+}
+
+/**
+ * Restore default timer precision (POSIX no-op)
+ */
+asciichat_error_t platform_restore_timer_resolution(void) {
+  // POSIX systems don't have a timer precision API like Windows
+  return ASCIICHAT_OK;
 }
 
 // Include cross-platform system utilities (binary PATH detection)

@@ -16,7 +16,6 @@
 #include "tests/logging.h"
 #include "network/compression.h"
 #include "network/packet.h"
-#include "options/options.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(compression);
@@ -24,8 +23,8 @@ TEST_SUITE_WITH_QUIET_LOGGING(compression);
 // Forward declare mock function
 static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size);
 
-// Stub implementations for test helper functions that don't exist yet
-asciichat_error_t send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size) {
+// Test stub implementations with unique names to avoid linker conflicts
+static asciichat_error_t test_send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size) {
   // Validate parameters
   if (!frame_data || frame_size == 0 || sockfd < 0) {
     return ERROR_INVALID_PARAM;
@@ -41,8 +40,8 @@ asciichat_error_t send_ascii_frame_packet(socket_t sockfd, const char *frame_dat
   return (result == 0) ? ASCIICHAT_OK : ERROR_NETWORK;
 }
 
-asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
-                                          uint8_t format) {
+static asciichat_error_t test_send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width,
+                                                      uint16_t height, uint8_t format) {
   (void)format;
   if (!image_data || width == 0 || height == 0 || sockfd < 0) {
     return ERROR_INVALID_PARAM;
@@ -54,7 +53,11 @@ asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_dat
   return (result == 0) ? ASCIICHAT_OK : ERROR_NETWORK;
 }
 
-int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size) {
+// Redirect test calls to test stubs
+#define send_ascii_frame_packet test_send_ascii_frame_packet
+#define send_image_frame_packet test_send_image_frame_packet
+
+static int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size) {
   if (!frame_data || frame_size == 0 || sockfd < 0) {
     return -1;
   }
@@ -66,7 +69,7 @@ int send_compressed_frame(int sockfd, const char *frame_data, size_t frame_size)
 static int mock_send_packet_calls = 0;
 static int mock_send_packet_result = 1; // Default to success
 
-__attribute__((unused)) static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size) {
+static int mock_send_packet(int sockfd, packet_type_t type, const void *data, size_t size) {
   (void)sockfd; // Suppress unused parameter warning
   (void)type;
   (void)data;
@@ -729,7 +732,7 @@ Test(compression, negative_dimensions) {
   asciichat_error_t result = send_ascii_frame_packet(sockfd, frame_data, 100);
   cr_assert_neq(result, ASCIICHAT_OK);
 
-  result = send_image_frame_packet(sockfd, frame_data, 0, 0, 0);  // Invalid dimensions
+  result = send_image_frame_packet(sockfd, frame_data, 0, 0, 0); // Invalid dimensions
   cr_assert_neq(result, ASCIICHAT_OK);
 
   SAFE_FREE(frame_data);

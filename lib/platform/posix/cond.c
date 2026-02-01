@@ -7,6 +7,7 @@
 #ifndef _WIN32
 
 #include "../abstraction.h"
+#include "../../util/time.h"
 #include <pthread.h>
 #include <time.h>
 
@@ -49,16 +50,10 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
   struct timespec ts;
-  if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-    // If clock_gettime fails, return error immediately
-    return -1;
-  }
-  ts.tv_sec += timeout_ms / 1000;
-  ts.tv_nsec += (timeout_ms % 1000) * 1000000;
-  if (ts.tv_nsec >= 1000000000) {
-    ts.tv_sec++;
-    ts.tv_nsec -= 1000000000;
-  }
+  uint64_t now_ns = time_get_realtime_ns();
+  uint64_t timeout_ns = time_ms_to_ns((uint64_t)timeout_ms);
+  uint64_t deadline_ns = now_ns + timeout_ns;
+  time_ns_to_timespec(deadline_ns, &ts);
   return pthread_cond_timedwait(cond, mutex, &ts);
 }
 

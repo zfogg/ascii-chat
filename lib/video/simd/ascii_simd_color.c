@@ -349,17 +349,6 @@ inline char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8
   return dst;
 }
 
-// Legacy wrapper functions for backward compatibility
-static inline int __attribute__((unused)) generate_ansi_fg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
-  char *result = append_sgr_truecolor_fg(dst, r, g, b);
-  return (int)(result - dst);
-}
-
-static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g, uint8_t b, char *dst) {
-  char *result = append_sgr_truecolor_bg(dst, r, g, b);
-  return (int)(result - dst);
-}
-
 /* ============================================================================
  * All platform-specific implementations moved to lib/video/simd/
  * ============================================================================

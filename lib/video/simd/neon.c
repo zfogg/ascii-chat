@@ -25,6 +25,7 @@
 #include "video/output_buffer.h"
 #include "video/ansi_fast.h"
 #include "util/overflow.h"
+#include "platform/init.h"
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance
@@ -103,14 +104,6 @@ static inline void build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, ui
 void neon_caches_destroy(void) {
   // No-op: NEON table cache removed for performance
   // Tables are now built inline (30ns) which is faster than cache lookup (50ns)
-}
-
-// NEON helper: Horizontal sum of 16 uint8_t values
-static inline uint16_t neon_horizontal_sum_u8(uint8x16_t vec) {
-  uint16x8_t sum16_lo = vpaddlq_u8(vec);
-  uint32x4_t sum32 = vpaddlq_u16(sum16_lo);
-  uint64x2_t sum64 = vpaddlq_u32(sum32);
-  return (uint16_t)(vgetq_lane_u64(sum64, 0) + vgetq_lane_u64(sum64, 1));
 }
 
 // NEON-optimized RLE detection: find run length for char+color pairs
@@ -211,13 +204,21 @@ static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length)
 // Format: each entry has length byte + up to 3 decimal chars (4 bytes per entry)
 static uint8_t neon_decimal_table_data[256 * 4]; // 1024 bytes: [len][d1][d2][d3] per entry
 static bool neon_decimal_table_initialized = false;
+// Mutex to protect NEON decimal table initialization (TOCTOU race prevention)
+static static_mutex_t g_neon_table_init_mutex = STATIC_MUTEX_INIT;
 
 // Initialize NEON TBL decimal lookup table (called once at startup)
+// Thread-safe with proper mutex protection
 void init_neon_decimal_table(void) {
-  if (neon_decimal_table_initialized)
-    return;
+  static_mutex_lock(&g_neon_table_init_mutex);
 
-  // Initialize g_dec3_cache first
+  // Double-check under lock: another thread may have initialized while we waited
+  if (neon_decimal_table_initialized) {
+    static_mutex_unlock(&g_neon_table_init_mutex);
+    return;
+  }
+
+  // Initialize g_dec3_cache first (also mutex-protected if needed)
   if (!g_dec3_cache.dec3_initialized) {
     init_dec3();
   }
@@ -233,6 +234,7 @@ void init_neon_decimal_table(void) {
   }
 
   neon_decimal_table_initialized = true;
+  static_mutex_unlock(&g_neon_table_init_mutex);
 }
 
 // TODO: Implement true NEON vectorized ANSI sequence generation using TBL + compaction
@@ -264,7 +266,7 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
   const size_t prefix_len = 7;
 
   // Optimized scalar loop with NEON TBL acceleration for RGB->decimal conversion
-  // This eliminates the expensive snprintf() calls which were the real bottleneck
+  // This eliminates the expensive safe_snprintf() calls which were the real bottleneck
   for (int i = 0; i < 16; i++) {
     // Use NEON TBL lookups for RGB decimal conversion (major speedup!)
     const uint8_t *r_entry = &neon_decimal_table_data[r_buf[i] * 4];
@@ -313,51 +315,8 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
 
 // Continue to actual NEON functions (helper functions already defined above)
 
-// NEON helper: True vectorized UTF-8 compaction - eliminate NUL bytes completely
-static inline void __attribute__((unused)) compact_utf8_vectorized(uint8_t *padded_data, uint8x16_t lengths,
-                                                                   char **pos) {
-  // Calculate total valid bytes using NEON horizontal sum
-  uint8_t total_bytes = (uint8_t)neon_horizontal_sum_u8(lengths);
-
-  // The fundamental insight: For mixed UTF-8, we need to compact interleaved data
-  // vst4q_u8 created: [char0_b0, char0_b1, char0_b2, char0_b3, char1_b0, char1_b1, ...]
-  // We need: consecutive valid UTF-8 bytes only, no NULs
-
-  // Use NEON horizontal compaction: process entire 64 bytes vectorially
-  uint8x16_t chunk1 = vld1q_u8(&padded_data[0]);
-  uint8x16_t chunk2 = vld1q_u8(&padded_data[16]);
-  uint8x16_t chunk3 = vld1q_u8(&padded_data[32]);
-  uint8x16_t chunk4 = vld1q_u8(&padded_data[48]);
-
-  // Write the exact number of valid bytes calculated
-  // For UTF-8 correctness, we must preserve byte sequence integrity
-  if (total_bytes <= 16) {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-  } else if (total_bytes <= 32) {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-    vst1q_u8((uint8_t *)*pos + 16, chunk2);
-  } else if (total_bytes <= 48) {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-    vst1q_u8((uint8_t *)*pos + 16, chunk2);
-    vst1q_u8((uint8_t *)*pos + 32, chunk3);
-  } else {
-    vst1q_u8((uint8_t *)*pos, chunk1);
-    vst1q_u8((uint8_t *)*pos + 16, chunk2);
-    vst1q_u8((uint8_t *)*pos + 32, chunk3);
-    vst1q_u8((uint8_t *)*pos + 48, chunk4);
-  }
-
-  *pos += total_bytes;
-}
-
 // Definitions are in ascii_simd.h - just use them
 // REMOVED: #define luminance_palette g_ascii_cache.luminance_palette (causes macro expansion issues)
-
-// ------------------------------------------------------------
-// Map luminance [0..255] → 4-bit index [0..15] using top nibble
-static inline uint8x16_t __attribute__((unused)) luma_to_idx_nibble_neon(uint8x16_t y) {
-  return vshrq_n_u8(y, 4);
-}
 
 // SIMD luma and helpers:
 
@@ -390,34 +349,6 @@ static inline uint8x16_t simd_luma_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b
 }
 
 // ===== SIMD helpers for 256-color quantization =====
-
-// NEON: cr=(r*5+127)/255  (nearest of 0..5)
-static inline uint8x16_t __attribute__((unused)) quant6_neon(uint8x16_t x) {
-  uint16x8_t xl = vmovl_u8(vget_low_u8(x));
-  uint16x8_t xh = vmovl_u8(vget_high_u8(x));
-  uint16x8_t tl = vaddq_u16(vmulq_n_u16(xl, 5), vdupq_n_u16(127));
-  uint16x8_t th = vaddq_u16(vmulq_n_u16(xh, 5), vdupq_n_u16(127));
-  uint32x4_t tl0 = vmull_n_u16(vget_low_u16(tl), 257);
-  uint32x4_t tl1 = vmull_n_u16(vget_high_u16(tl), 257);
-  uint32x4_t th0 = vmull_n_u16(vget_low_u16(th), 257);
-  uint32x4_t th1 = vmull_n_u16(vget_high_u16(th), 257);
-  uint16x8_t ql = vcombine_u16(vshrn_n_u32(tl0, 16), vshrn_n_u32(tl1, 16));
-  uint16x8_t qh = vcombine_u16(vshrn_n_u32(th0, 16), vshrn_n_u32(th1, 16));
-  return vcombine_u8(vqmovn_u16(ql), vqmovn_u16(qh)); // 0..5
-}
-
-// Build 6x6x6 index: cr*36 + cg*6 + cb  (0..215)
-static inline uint8x16_t __attribute__((unused)) cube216_index_neon(uint8x16_t r6, uint8x16_t g6, uint8x16_t b6) {
-  uint16x8_t rl = vmovl_u8(vget_low_u8(r6));
-  uint16x8_t rh = vmovl_u8(vget_high_u8(r6));
-  uint16x8_t gl = vmovl_u8(vget_low_u8(g6));
-  uint16x8_t gh = vmovl_u8(vget_high_u8(g6));
-  uint16x8_t bl = vmovl_u8(vget_low_u8(b6));
-  uint16x8_t bh = vmovl_u8(vget_high_u8(b6));
-  uint16x8_t il = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rl, 36), gl, 6), bl, 1);
-  uint16x8_t ih = vmlaq_n_u16(vmlaq_n_u16(vmulq_n_u16(rh, 36), gh, 6), bh, 1);
-  return vcombine_u8(vqmovn_u16(il), vqmovn_u16(ih)); // 0..215
-}
 
 // Approximate quantize 0..255 -> 0..5 : q ≈ round(x*5/255) = (x*5 + 128)>>8
 static inline uint8x16_t q6_from_u8(uint8x16_t x) {
@@ -729,10 +660,7 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
       }
     }
 
-    // Add clear-to-end-of-line and newline (except last row)
-    *pos++ = '\033';
-    *pos++ = '[';
-    *pos++ = 'K';
+    // Add newline (except last row)
     if (y < h - 1) {
       *pos++ = '\n';
     }
@@ -989,10 +917,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
       }
     }
 
-    // End row: clear to EOL, reset SGR, add newline (except for last row)
-    ob_putc(&ob, '\033');
-    ob_putc(&ob, '[');
-    ob_putc(&ob, 'K');
+    // End row: reset SGR, add newline (except for last row)
     emit_reset(&ob);
     if (y < height - 1) { // Only add newline if not the last row
       ob_putc(&ob, '\n');
@@ -1198,10 +1123,7 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
       x = j;
     }
 
-    // End emitted line: clear to EOL, reset and newline (only for non-final lines)
-    ob_putc(&ob, '\033');
-    ob_putc(&ob, '[');
-    ob_putc(&ob, 'K');
+    // End emitted line: reset and newline (only for non-final lines)
     emit_reset(&ob);
     // Check if this is the last output line (since we process 2 pixel rows per output line)
     if (y + 2 < height) { // Only add newline if not the last output line

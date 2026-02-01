@@ -56,7 +56,7 @@ function(configure_llvm_pre_project)
     set(LLVM_CONFIG_EXECUTABLE "${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
 
     if(LLVM_CONFIG_EXECUTABLE)
-        # Get LLVM root directory from llvm-config (Unix/macOS)
+        # Get LLVM root directory from llvm-config (Unix/macOS/Windows)
         execute_process(
             COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix
             OUTPUT_VARIABLE LLVM_ROOT_PREFIX
@@ -64,11 +64,19 @@ function(configure_llvm_pre_project)
             ERROR_QUIET
         )
 
-        if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${LLVM_ROOT_PREFIX}/bin/clang")
-            message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${LLVM_ROOT_PREFIX}/bin/clang\n"
+        # Check for clang executable (with .exe on Windows)
+        if(WIN32)
+            set(_clang_check_path "${LLVM_ROOT_PREFIX}/bin/clang.exe")
+        else()
+            set(_clang_check_path "${LLVM_ROOT_PREFIX}/bin/clang")
+        endif()
+
+        if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${_clang_check_path}")
+            message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${_clang_check_path}\n"
                             "Verify llvm-config is working correctly:\n"
                             "  ${LLVM_CONFIG_EXECUTABLE} --prefix")
         endif()
+        unset(_clang_check_path)
     elseif(WIN32 AND ASCIICHAT_CLANG_EXECUTABLE)
         # Windows: derive LLVM root from clang executable location
         # Official pre-built LLVM on Windows doesn't include llvm-config
@@ -129,6 +137,29 @@ function(configure_llvm_pre_project)
 
     # Export LLVM_ROOT_PREFIX to parent scope for use throughout cmake config
     set(LLVM_ROOT_PREFIX "${LLVM_ROOT_PREFIX}" PARENT_SCOPE)
+
+    # =============================================================================
+    # Static libc++ libraries for portable macOS Release builds
+    # =============================================================================
+    # Homebrew's LLVM doesn't include static libraries. For CI builds, set
+    # ASCIICHAT_LIBCXX_STATIC_ROOT to point to official LLVM release binaries.
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        if(ASCIICHAT_LIBCXX_STATIC_ROOT)
+            set(_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
+        else()
+            set(_libcxx_root "${LLVM_ROOT_PREFIX}")
+        endif()
+        set(ASCIICHAT_STATIC_LIBCXX "${_libcxx_root}/lib/libc++.a" PARENT_SCOPE)
+        set(ASCIICHAT_STATIC_LIBCXXABI "${_libcxx_root}/lib/libc++abi.a" PARENT_SCOPE)
+        set(ASCIICHAT_STATIC_LIBUNWIND "${_libcxx_root}/lib/libunwind.a" PARENT_SCOPE)
+        set(ASCIICHAT_STATIC_LIBCXX_LIBS
+            "${_libcxx_root}/lib/libc++.a"
+            "${_libcxx_root}/lib/libc++abi.a"
+            "${_libcxx_root}/lib/libunwind.a"
+            PARENT_SCOPE
+        )
+        message(STATUS "${BoldGreen}Static libc++${ColorReset} from: ${BoldCyan}${_libcxx_root}/lib${ColorReset}")
+    endif()
 
     # =============================================================================
     # Set LLVM Tools (ar, ranlib) before project()
@@ -330,8 +361,27 @@ function(configure_llvm_post_project)
 
     # Add library paths and linking for the detected LLVM installation
     # (determined via LLVM_ROOT_PREFIX from llvm-config)
-    # NOTE: Skip for Release builds - we want to use system libc++/libunwind for portability
+    # NOTE: For Release builds, we use LLVM's libc++ to ensure ABI compatibility
+    # with C++ libraries (libdatachannel, WebRTC) that are built with LLVM.
+    # On macOS, we always need LLVM libs because C++ deps are built with LLVM.
+    # On Linux with musl, this is handled separately in Musl.cmake.
+    set(_need_llvm_libs FALSE)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(_need_llvm_libs TRUE)
+    elseif(APPLE AND ASCIICHAT_SHARED_DEPS)
+        # macOS Release with SHARED_DEPS: need LLVM library paths for dynamic linking
+        set(_need_llvm_libs TRUE)
+        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for macOS Release+SHARED_DEPS build (LLVM libc++ for ABI compatibility)")
+    elseif(APPLE)
+        # macOS Release without SHARED_DEPS: using static libc++, skip dynamic linker flags
+        set(_need_llvm_libs FALSE)
+        message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for macOS Release build (using static libc++)")
+    elseif(ASCIICHAT_SHARED_DEPS)
+        set(_need_llvm_libs TRUE)
+        message(STATUS "${BoldGreen}Including${ColorReset} LLVM library paths for Release+SHARED_DEPS build (Homebrew libc++ for ABI compatibility)")
+    endif()
+
+    if(_need_llvm_libs)
         set(DETECTED_LLVM_LINK_FLAGS "")
 
         # Check library layout: Homebrew uses subdirectories, git-built and others use flat lib/
@@ -365,8 +415,8 @@ function(configure_llvm_post_project)
         message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for Release build (using system libc++/libunwind)")
     endif()
 
-    # Add LLVM library paths to rpath for Debug/Dev builds (for dynamic linking)
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Add LLVM library paths to rpath for Debug/Dev builds or SHARED_DEPS builds (for dynamic linking)
+    if(_need_llvm_libs)
         set(LLVM_RPATH_UNWIND "")
         set(LLVM_RPATH_CXX "")
 

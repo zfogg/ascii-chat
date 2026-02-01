@@ -8,7 +8,7 @@
 
   <description>
     <p>
-      ASCII Chat is a terminal-based video chat application that converts webcam video
+      ascii-chat is a terminal-based video chat application that converts webcam video
       to ASCII art in real-time. It supports multiple clients connecting to a single
       server, with video mixing and audio streaming capabilities.
     </p>
@@ -60,7 +60,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>ASCII Chat client showing video converted to ASCII art</caption>
+      <caption>ascii-chat client showing video converted to ASCII art</caption>
       <image type="source">https://raw.githubusercontent.com/zfogg/ascii-chat/master/images/screenshot.png</image>
     </screenshot>
   </screenshots>

@@ -38,7 +38,7 @@ typedef struct nat_upnp_context {
  * On success, fills in external_ip and mapped_port.
  *
  * @param internal_port Local TCP port to map (e.g., 27224 for ACDS)
- * @param description Description for port mapping (e.g., "ASCII-Chat Server")
+ * @param description Description for port mapping (e.g., "ascii-chat Server")
  * @param[out] ctx Context handle (must be freed with nat_upnp_close())
  *
  * @return ASCIICHAT_OK if port was successfully mapped
@@ -47,7 +47,7 @@ typedef struct nat_upnp_context {
  * **Example:**
  * ```c
  * nat_upnp_context_t *ctx = NULL;
- * asciichat_error_t result = nat_upnp_open(27224, "ASCII-Chat Server", &ctx);
+ * asciichat_error_t result = nat_upnp_open(27224, "ascii-chat Server", &ctx);
  * if (result == ASCIICHAT_OK && ctx) {
  *     printf("Public IP: %s\n", ctx->external_ip);
  *     // Advertise ctx->external_ip:ctx->mapped_port to ACDS

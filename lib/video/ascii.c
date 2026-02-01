@@ -22,6 +22,7 @@
 #include "image.h"
 #include "util/aspect_ratio.h"
 #include "util/overflow.h"
+#include "util/time.h"
 #include "video/webcam/webcam.h"
 #include "options/options.h"
 #include "simd/ascii_simd.h"
@@ -44,9 +45,10 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     return ERROR_INVALID_PARAM;
   }
 
-  // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
-  const char *testing_env = SAFE_GETENV("TESTING");
-  if (!GET_OPTION(snapshot_mode) && reset_terminal && testing_env == NULL) {
+  // Only apply terminal control sequences if:
+  // 1. reset_terminal is true (caller wants terminal reset)
+  // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+  if (reset_terminal && terminal_should_use_control_sequences(fd)) {
     console_clear(fd);
     cursor_reset(fd);
 
@@ -187,8 +189,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 // Capability-aware ASCII conversion using terminal capabilities
 char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
-                                      const bool stretch, const char *palette_chars,
-                                      const char luminance_palette[256]) {
+                                      const bool stretch, const char *palette_chars) {
 
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
@@ -233,8 +234,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   }
 
   // PROFILING: Time image allocation and resize
-  struct timespec prof_alloc_start, prof_alloc_end, prof_resize_start, prof_resize_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_start);
+  uint64_t prof_alloc_start_ns = time_get_ns();
 
   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
   if (!resized) {
@@ -244,16 +244,15 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 
   image_clear(resized);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_end);
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_resize_start);
+  uint64_t prof_alloc_end_ns = time_get_ns();
+  uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   image_resize(original, resized);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_resize_end);
+  uint64_t prof_resize_end_ns = time_get_ns();
 
   // PROFILING: Time ASCII print
-  struct timespec prof_print_start, prof_print_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_start);
+  uint64_t prof_print_start_ns = prof_resize_end_ns;
 
   // DEBUG: Log dimensions going to renderer
   log_debug_every(LOG_RATE_SLOW,
@@ -261,20 +260,16 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                   original->h, width, height, resized->w, resized->h, pad_width, pad_height, caps->render_mode);
 
   // Use the capability-aware image printing function with client's palette
-  char *ascii = image_print_with_capabilities(resized, caps, palette_chars, luminance_palette);
+  char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_end);
+  uint64_t prof_print_end_ns = time_get_ns();
 
-  uint64_t alloc_time_us = ((uint64_t)prof_alloc_end.tv_sec * 1000000 + (uint64_t)prof_alloc_end.tv_nsec / 1000) -
-                           ((uint64_t)prof_alloc_start.tv_sec * 1000000 + (uint64_t)prof_alloc_start.tv_nsec / 1000);
-  uint64_t resize_time_us = ((uint64_t)prof_resize_end.tv_sec * 1000000 + (uint64_t)prof_resize_end.tv_nsec / 1000) -
-                            ((uint64_t)prof_resize_start.tv_sec * 1000000 + (uint64_t)prof_resize_start.tv_nsec / 1000);
-  uint64_t print_time_us = ((uint64_t)prof_print_end.tv_sec * 1000000 + (uint64_t)prof_print_end.tv_nsec / 1000) -
-                           ((uint64_t)prof_print_start.tv_sec * 1000000 + (uint64_t)prof_print_start.tv_nsec / 1000);
+  uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
+  uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
+  uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
 
   // PROFILING: Time padding
-  struct timespec prof_pad_start, prof_pad_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_pad_start);
+  uint64_t prof_pad_start_ns = time_get_ns();
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII using terminal capabilities");
@@ -297,10 +292,9 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
   SAFE_FREE(ascii_width_padded);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_pad_end);
+  uint64_t prof_pad_end_ns = time_get_ns();
 
-  uint64_t pad_time_us = ((uint64_t)prof_pad_end.tv_sec * 1000000 + (uint64_t)prof_pad_end.tv_nsec / 1000) -
-                         ((uint64_t)prof_pad_start.tv_sec * 1000000 + (uint64_t)prof_pad_start.tv_nsec / 1000);
+  uint64_t pad_time_us = time_ns_to_us(time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns));
   (void)alloc_time_us;
   (void)resize_time_us;
   (void)print_time_us;
@@ -320,9 +314,8 @@ asciichat_error_t ascii_write(const char *frame) {
     return ERROR_INVALID_PARAM;
   }
 
-  // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  const char *testing_env = SAFE_GETENV("TESTING");
-  if (!GET_OPTION(snapshot_mode) && testing_env == NULL) {
+  // Only reset cursor if output is connected to a TTY (not piped/redirected)
+  if (terminal_should_use_control_sequences(STDOUT_FILENO)) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -342,8 +335,10 @@ void ascii_write_destroy(int fd, bool reset_terminal) {
 #endif
   // console_clear(fd);
   // cursor_reset(fd);
-  // Skip cursor show in snapshot mode - leave terminal as-is
-  if (!GET_OPTION(snapshot_mode) && reset_terminal) {
+  // Only restore terminal state if:
+  // 1. reset_terminal is true (caller wants terminal restore)
+  // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+  if (reset_terminal && terminal_should_use_control_sequences(fd)) {
     // Show cursor using platform abstraction
     if (terminal_hide_cursor(fd, false) != 0) {
       log_warn("Failed to show cursor");
@@ -816,6 +811,10 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
  * Returns:
  *   A newly allocated, null-terminated string with vertical padding,
  *   or NULL if frame is NULL.
+ *
+ * NOTE: Uses plain newlines instead of ANSI escape sequences to support
+ * both TTY and piped/redirected output. TTY flicker prevention is handled
+ * by the display layer (e.g., display.c) when appropriate.
  */
 char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   if (!frame) {
@@ -832,9 +831,9 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   }
 
   // Calculate buffer size needed
-  // Each padding row needs: ESC[K (3 bytes) + newline (1 byte) = 4 bytes
+  // Each padding row needs: 1 newline character per padding row
   size_t frame_len = strlen(frame);
-  size_t top_padding_len = pad_top * 4; // ESC[K + newline per padding row
+  size_t top_padding_len = pad_top; // 1 newline per padding row
   size_t total_len = top_padding_len + frame_len;
 
   char *buffer;
@@ -842,12 +841,10 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
 
   char *position = buffer;
 
-  // Add top padding with ESC[K to clear any leftover terminal content
-  // Without ESC[K, old frame content would remain visible causing flickering
+  // Add top padding with plain newlines
+  // Use plain newlines instead of ANSI escape sequences so the output works
+  // when redirected to pipes or files, not just TTY
   for (size_t i = 0; i < pad_top; i++) {
-    *position++ = '\033';
-    *position++ = '[';
-    *position++ = 'K';
     *position++ = '\n';
   }
 

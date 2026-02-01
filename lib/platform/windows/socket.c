@@ -103,14 +103,6 @@ int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen
   return connect(sock, addr, addrlen);
 }
 
-ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags) {
-  return send(sock, (const char *)buf, (int)len, flags);
-}
-
-ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags) {
-  return recv(sock, (char *)buf, (int)len, flags);
-}
-
 ssize_t socket_sendto(socket_t sock, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
                       socklen_t addrlen) {
   return sendto(sock, (const char *)buf, (int)len, flags, dest_addr, addrlen);
@@ -364,6 +356,82 @@ void socket_fd_set(socket_t sock, fd_set *set) {
 
 int socket_fd_isset(socket_t sock, fd_set *set) {
   return FD_ISSET(sock, set);
+}
+
+/**
+ * @brief Check if error indicates "would block" (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAEWOULDBLOCK
+ */
+bool socket_is_would_block_error(int error_code) {
+  return error_code == WSAEWOULDBLOCK;
+}
+
+/**
+ * @brief Check if error indicates connection reset (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAECONNRESET
+ */
+bool socket_is_connection_reset_error(int error_code) {
+  return error_code == WSAECONNRESET;
+}
+
+/**
+ * @brief Check if error indicates invalid/closed socket (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAENOTSOCK or WSAEBADF
+ */
+bool socket_is_invalid_socket_error(int error_code) {
+  return error_code == WSAENOTSOCK || error_code == WSAEBADF;
+}
+
+/**
+ * @brief Check if error indicates operation in progress (Windows)
+ * @param error_code Platform-specific error code
+ * @return true if error is WSAEINPROGRESS
+ */
+bool socket_is_in_progress_error(int error_code) {
+  return error_code == WSAEINPROGRESS;
+}
+
+ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags) {
+  (void)flags; /* Windows doesn't support flags for send */
+
+  /* Windows send() expects int for length and const char* for buffer */
+  if (len > INT_MAX) {
+    len = INT_MAX;
+  }
+  int raw_sent = send(sock, (const char *)buf, (int)len, 0);
+
+  /* Check for SOCKET_ERROR before casting to avoid corruption */
+  ssize_t sent;
+  if (raw_sent == SOCKET_ERROR) {
+    sent = -1;
+    /* On Windows, use WSAGetLastError() and save to WSA error field */
+  } else {
+    sent = (ssize_t)raw_sent;
+    /* CORRUPTION DETECTION: Check Windows send() return value */
+    if (raw_sent > (int)len) {
+      SET_ERRNO(ERROR_INVALID_STATE, "CRITICAL: Windows send() returned more than requested: raw_sent=%d > len=%zu",
+                raw_sent, len);
+    }
+  }
+  return sent;
+}
+
+ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags) {
+  (void)flags; /* Windows doesn't support flags for recv */
+
+  /* Windows recv() expects int for length */
+  if (len > INT_MAX) {
+    len = INT_MAX;
+  }
+  int raw_received = recv(sock, (char *)buf, (int)len, 0);
+
+  if (raw_received == SOCKET_ERROR) {
+    return -1;
+  }
+  return (ssize_t)raw_received;
 }
 
 #endif // _WIN32

@@ -101,6 +101,22 @@ project(${PROJECT_NAME_FULL}
 # =============================================================================
 # Post-project() Config (code that must be run after project())
 # =============================================================================
+
+# Interprocedural optimization (LTO) support detection
+# MUST be after project() when languages are enabled
+include(CheckIPOSupported)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
+    if(IPO_SUPPORTED)
+        set(ASCIICHAT_ENABLE_IPO TRUE CACHE INTERNAL "Enable IPO for release builds" FORCE)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+        message(STATUS "Interprocedural optimization ${BoldGreen}enabled${ColorReset} for ${CMAKE_BUILD_TYPE} builds")
+    else()
+        message(STATUS "Interprocedural optimization ${BoldYellow}disabled${ColorReset}: ${IPO_ERROR}")
+    endif()
+endif()
+
 include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
 version_setup_targets()
 
@@ -201,6 +217,52 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
+
+# =============================================================================
+# Embedded Resource Generation (Man Pages, etc.)
+# =============================================================================
+# Generate embedded resource files at build time for production binaries
+# These are embedded at compile time for Release/RelWithDebInfo builds
+# Development builds (Debug/Dev) read resources from filesystem for fast iteration
+
+# Create output directory for embedded resources
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/generated/embedded")
+
+# Use absolute paths to ensure they're found regardless of working directory
+set(MANPAGE_TEMPLATE_SOURCE "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in")
+set(MANPAGE_TEMPLATE_EMBEDDED "${CMAKE_BINARY_DIR}/generated/embedded/manpage_template.c")
+
+# Embed man page template
+add_custom_command(
+    OUTPUT "${MANPAGE_TEMPLATE_EMBEDDED}"
+    COMMAND ${CMAKE_COMMAND}
+        -D "INPUT_FILE=${MANPAGE_TEMPLATE_SOURCE}"
+        -D "OUTPUT_FILE=${MANPAGE_TEMPLATE_EMBEDDED}"
+        -D "VARIABLE_NAME=embedded_manpage_template"
+        -P "${CMAKE_SOURCE_DIR}/cmake/utils/EmbedTextFile.cmake"
+    DEPENDS "${MANPAGE_TEMPLATE_SOURCE}"
+    COMMENT "Embedding man page template"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+    VERBATIM
+)
+
+# Add generated sources to CORE_SRCS for compilation
+list(APPEND CORE_SRCS
+    "${MANPAGE_TEMPLATE_EMBEDDED}"
+)
+
+# Mark generated files as generated (CMake housekeeping)
+set_source_files_properties(
+    "${MANPAGE_TEMPLATE_EMBEDDED}"
+    PROPERTIES GENERATED TRUE
+)
+
+# Define resource paths for development builds
+# These are used by embedded_resources.c to locate resources when running from the build directory
+add_compile_definitions(
+    ASCIICHAT_RESOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
@@ -225,7 +287,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/targets/ACDSExecutable.cmake)
+# include(${CMAKE_SOURCE_DIR}/cmake/targets/ACDSExecutable.cmake)
 ascii_panic_finalize()
 ascii_defer_finalize()
 ascii_query_finalize()

@@ -74,6 +74,115 @@ asciichat_error_t platform_popen(const char *command, const char *mode, FILE **o
  */
 asciichat_error_t platform_pclose(FILE **stream_ptr);
 
+/**
+ * @name Platform-Specific popen/pclose Macros
+ * @{
+ *
+ * Cross-platform macros for popen/pclose that wrap platform-specific functions.
+ * Use these instead of calling popen/pclose directly for consistent behavior.
+ *
+ * @ingroup platform
+ */
+
+/** @} */
+
+// ============================================================================
+// Process Spawning
+// ============================================================================
+
+/**
+ * @brief Opaque process handle
+ *
+ * Platform-specific process representation:
+ *   - Windows: PROCESS_INFORMATION-based handle
+ *   - POSIX: PID and status tracking
+ *
+ * @ingroup platform
+ */
+typedef struct platform_process platform_process_t;
+
+/**
+ * @brief Spawn a child process
+ *
+ * Creates and starts a new process with the specified command and arguments.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses CreateProcessA with PROCESS_INFORMATION
+ *   - POSIX: Uses fork() and exec()
+ *
+ * @param process_out Output parameter: process handle (caller must free with platform_process_free)
+ * @param path Path to executable (can be relative or absolute)
+ * @param argv Argument array, NULL-terminated (argv[0] should be program name)
+ * @param stdin_fd File descriptor for stdin, or -1 to use parent's stdin
+ * @param stdout_fd File descriptor for stdout, or -1 to use parent's stdout
+ * @param stderr_fd File descriptor for stderr, or -1 to use parent's stderr
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note argv must be NULL-terminated
+ * @note File descriptors are duplicated, not closed
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_process_spawn(platform_process_t **process_out, const char *path, const char *const *argv,
+                                         int stdin_fd, int stdout_fd, int stderr_fd);
+
+/**
+ * @brief Wait for process to terminate with timeout
+ *
+ * Waits for a spawned process to complete execution.
+ *
+ * @param process Process handle from platform_process_spawn
+ * @param timeout_ms Timeout in milliseconds, or -1 for infinite wait
+ * @param exit_code_out Optional output: process exit code
+ * @return ASCIICHAT_OK if process exited, ERROR_TIMEOUT if timeout
+ *
+ * @note On Windows, exit code is from GetExitCodeProcess
+ * @note On POSIX, exit code is from waitpid
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_process_wait(platform_process_t *process, int timeout_ms, int *exit_code_out);
+
+/**
+ * @brief Check if process is still running
+ *
+ * @param process Process handle
+ * @return true if process is still running, false if terminated
+ *
+ * @note Non-blocking check
+ *
+ * @ingroup platform
+ */
+bool platform_process_is_alive(platform_process_t *process);
+
+/**
+ * @brief Terminate a process
+ *
+ * Forcefully terminates a running process.
+ *
+ * @param process Process handle
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Does not wait for termination; use platform_process_wait to wait
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_process_kill(platform_process_t *process);
+
+/**
+ * @brief Free process handle
+ *
+ * Releases resources associated with a process handle.
+ * Must be called for every process created with platform_process_spawn.
+ *
+ * @param process Process handle to free
+ *
+ * @note Safe to call with NULL
+ *
+ * @ingroup platform
+ */
+void platform_process_free(platform_process_t *process);
+
 #ifdef __cplusplus
 }
 #endif

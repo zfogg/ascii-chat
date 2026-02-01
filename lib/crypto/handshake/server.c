@@ -74,14 +74,14 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
       return SET_ERRNO(ERROR_CRYPTO, "Failed to sign ephemeral key with identity key");
     }
 
-    log_info("Sending authenticated KEY_EXCHANGE_INIT (%zu bytes: ephemeral + "
-             "identity + signature)",
-             expected_packet_size);
+    log_debug("Sending authenticated KEY_EXCHANGE_INIT (%zu bytes: ephemeral + "
+              "identity + signature)",
+              expected_packet_size);
     result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, extended_packet, expected_packet_size);
     SAFE_FREE(extended_packet);
   } else {
     // No identity key - send just the ephemeral key
-    log_info("Sending simple KEY_EXCHANGE_INIT (%zu bytes: ephemeral key only)", ctx->crypto_ctx.public_key_size);
+    log_debug("Sending simple KEY_EXCHANGE_INIT (%zu bytes: ephemeral key only)", ctx->crypto_ctx.public_key_size);
     result = send_packet(client_socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT, ctx->crypto_ctx.public_key,
                          ctx->crypto_ctx.public_key_size);
   }
@@ -306,7 +306,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
         // Store the client's Ed25519 key for signature verification
         memcpy(&ctx->client_ed25519_key, &ctx->client_whitelist[i], sizeof(public_key_t));
 
-        log_info("Client Ed25519 key authorized (whitelist entry %zu)", i);
+        log_debug("Client Ed25519 key authorized (whitelist entry %zu)", i);
         if (strlen(ctx->client_whitelist[i].comment) > 0) {
           log_info("Client identity: %s", ctx->client_whitelist[i].comment);
         }
@@ -390,7 +390,7 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
 
     ctx->state = CRYPTO_HANDSHAKE_READY;
     ctx->crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
-    log_info("Crypto handshake completed successfully (no authentication)");
+    log_debug("Crypto handshake completed successfully (no authentication)");
   }
 
   return ASCIICHAT_OK;
@@ -542,8 +542,8 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
           send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
           return ERROR_CRYPTO_AUTH;
         }
-        log_info("%s signature on challenge nonce verified successfully",
-                 ctx->client_ed25519_key.type == KEY_TYPE_GPG ? "GPG" : "Ed25519");
+        log_debug("%s signature on challenge nonce verified successfully",
+                  ctx->client_ed25519_key.type == KEY_TYPE_GPG ? "GPG" : "Ed25519");
       }
 
       memcpy(ctx->client_challenge_nonce, client_nonce, ctx->crypto_ctx.auth_challenge_size);
@@ -622,7 +622,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
   }
 
   ctx->state = CRYPTO_HANDSHAKE_READY;
-  log_info("Crypto handshake completed successfully (mutual authentication)");
+  log_debug("Crypto handshake completed successfully (mutual authentication)");
 
   return ASCIICHAT_OK;
 }

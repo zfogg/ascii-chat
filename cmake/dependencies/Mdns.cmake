@@ -18,7 +18,7 @@
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 
 function(configure_mdns)
-    set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/mdns")
+    set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/mdns")
     set(PATCHES_DIR "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches")
 
     # Apply patch #0: Exclude main() function

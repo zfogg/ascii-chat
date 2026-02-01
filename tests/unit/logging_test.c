@@ -1184,3 +1184,26 @@ Test(logging, log_level_env_before_init) {
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
 }
+
+/* ============================================================================
+ * Log Once Tests
+ * ============================================================================ */
+
+Test(logging, log_once_compiles_and_runs) {
+  // Test that log_once macros compile and execute without crashing
+  // Note: Due to static variable persistence in tests, we can't directly test
+  // "exactly once" behavior, but we can verify the macros compile and run.
+
+  // Call log_once with all levels
+  log_info_once("Info message");
+  log_debug_once("Debug message");
+  log_warn_once("Warn message");
+  log_error_once("Error message");
+  log_fatal_once("Fatal message");
+
+  // Multiple calls to verify the macro structure is sound
+  log_info_once("Should compile");
+  log_warn_once("Should compile");
+
+  cr_assert(true, "log_once macros should compile and run without crash");
+}

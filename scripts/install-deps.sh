@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen sqlite3 userspace-rcu openssl miniupnpc libnatpmp ffmpeg
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus criterion doxygen sqlite3 openssl miniupnpc libnatpmp ffmpeg abseil yt-dlp
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -130,6 +130,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libminiupnpc-dev \
       libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
+      libabsl-dev \
       doxygen \
       dpkg-dev rpm
 
@@ -267,6 +268,18 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     which cmake
     cmake --version | head -1
 
+    # Install yt-dlp for YouTube support
+    echo ""
+    echo "Installing yt-dlp for YouTube URL support..."
+    if command -v pip3 &>/dev/null; then
+      pip3 install --user --quiet --upgrade yt-dlp 2>/dev/null || true
+    elif command -v pip &>/dev/null; then
+      pip install --user --quiet --upgrade yt-dlp 2>/dev/null || true
+    else
+      echo "WARNING: pip not found, skipping yt-dlp installation"
+      echo "Install it manually with: pip3 install yt-dlp"
+    fi
+
   elif command -v yum &>/dev/null; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
@@ -278,13 +291,25 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-devel musl-gcc musl-libc-static \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
       criterion-devel libffi-devel sqlite-devel \
-      userspace-rcu-devel \
       openssl-devel \
       miniupnpc-devel \
       protobuf-c-devel \
       ffmpeg-devel \
+      abseil-cpp-devel \
       doxygen \
       rpm-build
+
+    # Install yt-dlp for YouTube support
+    echo ""
+    echo "Installing yt-dlp for YouTube URL support..."
+    if command -v pip3 &>/dev/null; then
+      pip3 install --user --quiet --upgrade yt-dlp 2>/dev/null || true
+    elif command -v pip &>/dev/null; then
+      pip install --user --quiet --upgrade yt-dlp 2>/dev/null || true
+    else
+      echo "WARNING: pip not found, skipping yt-dlp installation"
+      echo "Install it manually with: pip3 install yt-dlp"
+    fi
 
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
@@ -292,15 +317,28 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo pacman -S --needed \
       pkg-config autoconf automake libtool \
       ccache \
-      clang llvm lldb lld \
+      clang clang-tools llvm lldb lld \
       libc++ libc++abi \
       cmake ninja make \
       musl mimalloc \
       zstd zlib libsodium portaudio opus sqlite libdatachannel miniupnpc ffmpeg \
       openssl \
+      abseil-cpp \
       criterion \
       doxygen \
       dpkg rpm-tools
+
+    # Install yt-dlp for YouTube support
+    echo ""
+    echo "Installing yt-dlp for YouTube URL support..."
+    if command -v pip3 &>/dev/null; then
+      pip3 install --user --quiet --upgrade yt-dlp 2>/dev/null || true
+    elif command -v pip &>/dev/null; then
+      pip install --user --quiet --upgrade yt-dlp 2>/dev/null || true
+    else
+      echo "WARNING: pip not found, skipping yt-dlp installation"
+      echo "Install it manually with: pip3 install yt-dlp"
+    fi
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"
@@ -319,6 +357,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - ffmpeg (library and development headers, for media file streaming)"
     echo >&2 "  - criterion (testing framework, library and development headers)"
     echo >&2 "  - libffi (foreign function interface, required by criterion)"
+    echo >&2 "  - yt-dlp (for YouTube URL support)"
     exit 1
   fi
 

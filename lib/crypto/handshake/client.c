@@ -96,7 +96,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
   if (ctx->crypto_ctx.auth_public_key_size > 0 && payload_len == expected_auth_size) {
     // Authenticated format:
     // [ephemeral:public_key_size][identity:auth_public_key_size][signature:signature_size]
-    log_info("Received authenticated KEY_EXCHANGE_INIT (%zu bytes)", expected_auth_size);
+    log_debug("Received authenticated KEY_EXCHANGE_INIT (%zu bytes)", expected_auth_size);
     memcpy(server_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
     memcpy(server_identity_key, payload + ctx->crypto_ctx.public_key_size, ctx->crypto_ctx.auth_public_key_size);
     memcpy(server_signature, payload + ctx->crypto_ctx.public_key_size + ctx->crypto_ctx.auth_public_key_size,
@@ -162,7 +162,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                                        "match its ephemeral key, Potential man-in-the-middle attack, "
                                        "Corrupted or malicious server");
       }
-      log_info("Server signature verified successfully");
+      log_debug("Server signature verified successfully");
     }
 
     // Verify server identity against expected key if --server-key is specified
@@ -191,7 +191,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       for (size_t i = 0; i < num_expected_keys; i++) {
         if (sodium_memcmp(server_identity_key, expected_keys[i].key, ED25519_PUBLIC_KEY_SIZE) == 0) {
           key_matched = true;
-          log_info("Server identity key matched expected key %zu/%zu", i + 1, num_expected_keys);
+          log_debug("Server identity key matched expected key %zu/%zu", i + 1, num_expected_keys);
           break;
         }
       }
@@ -304,7 +304,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                            "permissions and ensure the program can write to: %s",
                            get_known_hosts_path());
         }
-        log_info("Server host added to known_hosts successfully");
+        log_debug("Server host added to known_hosts successfully");
       } else if (known_host_result == 1) {
         // Key matches - connection is secure!
         log_info("Server host key verified from known_hosts - connection secure");
@@ -322,9 +322,9 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
   } else if (payload_len == ctx->crypto_ctx.public_key_size) {
     // Simple format: just ephemeral key (no identity key)
-    log_info("Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no "
-             "identity key",
-             payload_len);
+    log_debug("Received simple KEY_EXCHANGE_INIT (%zu bytes) - server has no "
+              "identity key",
+              payload_len);
     memcpy(server_ephemeral_key, payload, ctx->crypto_ctx.public_key_size);
 
     // Clear identity key and signature for simple format
@@ -405,7 +405,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
                          "permissions and ensure the program can write to: %s",
                          get_known_hosts_path());
       }
-      log_info("Server host added to known_hosts successfully");
+      log_debug("Server host added to known_hosts successfully");
     } else if (known_host_result == ERROR_CRYPTO_VERIFICATION) {
       // Server previously had identity key but now has none - potential security issue
       log_warn("SECURITY: Server previously had identity key but now has none - potential security issue");
@@ -693,7 +693,7 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
     }
     ctx->state = CRYPTO_HANDSHAKE_READY;
     ctx->crypto_ctx.handshake_complete = true; // Mark crypto context as ready for rekeying
-    log_info("Crypto handshake completed successfully (no authentication required)");
+    log_debug("Crypto handshake completed successfully (no authentication required)");
     return ASCIICHAT_OK;
   }
 

@@ -1395,7 +1395,7 @@ Test(ascii_simd_integration, terminal_capabilities_integration) {
   const int num_caps = sizeof(caps) / sizeof(caps[0]);
 
   for (int c = 0; c < num_caps; c++) {
-    char *result = image_print_with_capabilities(test_image, &caps[c], ascii_palette, luminance_palette);
+    char *result = image_print_with_capabilities(test_image, &caps[c], ascii_palette);
     cr_assert_not_null(result, "Capability %d should produce output", c);
 
     size_t len = strlen(result);

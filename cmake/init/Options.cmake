@@ -111,6 +111,18 @@ else()
     endif()
 endif()
 
+# =============================================================================
+# Shared/Dynamic Library Linking
+# =============================================================================
+# For package manager builds (Homebrew), use shared libraries from the system
+# instead of static linking. This ensures the binary links against Homebrew's
+# dynamic libraries rather than bundling static copies.
+#
+# Default: OFF (GitHub releases use static linking for portability)
+# Homebrew: ON (link against Homebrew's shared libraries)
+#
+option(ASCIICHAT_SHARED_DEPS "Link against shared libraries instead of static (for Homebrew builds)" OFF)
+
 # Release tuning controls
 set(ASCIICHAT_RELEASE_CPU_TUNE "portable" CACHE STRING "CPU tuning profile for Release builds (portable, native, x86-64-v2, x86-64-v3, custom)")
 set_property(CACHE ASCIICHAT_RELEASE_CPU_TUNE PROPERTY STRINGS "portable;x86-64-v2;x86-64-v3;native;custom")

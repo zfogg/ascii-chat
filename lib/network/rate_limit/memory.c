@@ -8,8 +8,9 @@
 #include "network/rate_limit/memory.h"
 #include "common.h"
 #include "log/logging.h"
+#include "util/time.h"
 #include "platform/abstraction.h"
-#include "uthash.h"
+#include "uthash/uthash.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -37,7 +38,7 @@ typedef struct {
  * @brief Create hash key from IP and event type
  */
 static void make_key(const char *ip_address, rate_event_type_t event_type, char *key, size_t key_size) {
-  snprintf(key, key_size, "%s:%d", ip_address, event_type);
+  safe_snprintf(key, key_size, "%s:%d", ip_address, event_type);
 }
 
 /**
@@ -95,7 +96,7 @@ static asciichat_error_t memory_check(void *backend_data, const char *ip_address
 
   // Get current time
   uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * 1000);
+  uint64_t window_start_ms = now_ms - ((uint64_t)limit->window_secs * NS_PER_US_INT);
 
   // Create hash key
   char key[256];
@@ -185,12 +186,12 @@ static asciichat_error_t memory_cleanup(void *backend_data, uint32_t max_age_sec
 
   // Calculate cutoff time
   uint64_t now_ms = rate_limiter_get_time_ms();
-  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * 1000);
+  uint64_t cutoff_ms = now_ms - ((uint64_t)max_age_secs * NS_PER_US_INT);
 
   mutex_lock(&backend->lock);
 
   size_t total_removed = 0;
-  rate_event_t *event, *tmp;
+  rate_event_t *event = NULL, *tmp = NULL;
 
   HASH_ITER(hh, backend->events, event, tmp) {
     size_t before_count = event->count;

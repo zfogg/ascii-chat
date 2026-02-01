@@ -93,6 +93,10 @@ int wav_writer_write(wav_writer_t *writer, const float *samples, int num_samples
   }
 
   writer->samples_written += num_samples;
+
+  // Flush immediately to ensure data is written to disk (critical for real-time analysis)
+  fflush(writer->file);
+
   return 0;
 }
 
@@ -114,6 +118,8 @@ void wav_writer_close(wav_writer_t *writer) {
     fseek(writer->file, 40, SEEK_SET);
     fwrite(&data_size, sizeof(uint32_t), 1, writer->file);
 
+    // Flush all buffered data to ensure headers are written before closing
+    fflush(writer->file);
     fclose(writer->file);
   }
 

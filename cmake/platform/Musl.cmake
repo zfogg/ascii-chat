@@ -38,9 +38,21 @@ function(configure_musl_pre_project)
     #
     # Detect Homebrew environment - use system libraries instead of musl
     # Homebrew provides its own glibc and libraries, so we should use those
+    # However, respect explicit preset override (e.g., release-musl preset)
     if(DEFINED ENV{HOMEBREW_PREFIX} OR DEFINED ENV{HOMEBREW_CELLAR})
-        set(USE_MUSL OFF CACHE BOOL "Homebrew build - using system libraries" FORCE)
-        message(STATUS "Homebrew build detected - disabling musl (using Homebrew's system libraries)")
+        # Check if USE_MUSL is already set in cache (from preset cacheVariables)
+        get_property(_use_musl_cached CACHE USE_MUSL PROPERTY VALUE SET)
+        if(_use_musl_cached)
+            if(USE_MUSL)
+                message(STATUS "Homebrew build detected, but USE_MUSL explicitly enabled via preset/option")
+            else()
+                message(STATUS "Homebrew build detected - disabling musl (using Homebrew's system libraries)")
+            endif()
+        else()
+            # USE_MUSL not in cache yet - set default to OFF for Homebrew
+            set(USE_MUSL OFF CACHE BOOL "Homebrew build - using system libraries")
+            message(STATUS "Homebrew build detected - disabling musl (using Homebrew's system libraries)")
+        endif()
     # Detect Linux early (before project()) using CMAKE_HOST_SYSTEM_NAME
     # CMAKE_SYSTEM_NAME is only set after project() is called
     elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")

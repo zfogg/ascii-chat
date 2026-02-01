@@ -5,6 +5,7 @@
  */
 
 #include "platform/question.h"
+#include "util/utf8.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
 
@@ -146,19 +147,34 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         continue;
       }
 
-      // Printable characters
-      if (ch >= 32 && ch <= 126) {
-        // Insert character at cursor position
+      // Printable characters (ASCII or multi-byte UTF-8)
+      if (ch >= 32) {
+        // Determine how many continuation bytes are needed for this character
+        int continuation_bytes = utf8_continuation_bytes_needed((unsigned char)ch);
+        if (continuation_bytes < 0) {
+          // Invalid UTF-8 start byte, skip it
+          continue;
+        }
+
+        // Insert first byte (or ASCII character) at cursor position
         if (len < max_len - 1) {
-          // Shift characters right to make room
+          // Shift characters right to make room for this byte
           memmove(&buffer[cursor + 1], &buffer[cursor], len - cursor);
           buffer[cursor] = (char)ch;
           len++;
           cursor++;
 
-          // Display: print from cursor-1 to end, then reposition
+          // Read continuation bytes for multi-byte UTF-8 if needed
+          if (continuation_bytes > 0) {
+            if (utf8_read_and_insert_continuation_bytes(buffer, &cursor, &len, max_len, continuation_bytes,
+                                                        (int (*)(void))_getch) < 0) {
+              result = -1;
+            }
+          }
+
+          // Display: print from cursor-continuation_bytes-1 to end, then reposition
           if (opts.mask_char) {
-            for (size_t i = cursor - 1; i < len; i++) {
+            for (size_t i = cursor - continuation_bytes - 1; i < len; i++) {
               (void)fprintf(stderr, "%c", opts.mask_char);
             }
             // Move cursor back to correct position
@@ -188,24 +204,31 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   }
 
   bool is_interactive = platform_is_interactive();
-  bool previous_terminal_state = false;
 
-  // Only lock terminal and show prompt if interactive
+  // Display prompt with default indicator (only if interactive TTY)
+  // Allow piped input to work by showing prompt only in interactive mode
   if (is_interactive) {
-    // Lock terminal so only this thread can output to terminal
-    previous_terminal_state = log_lock_terminal();
-
-    // Display prompt with default indicator
-    if (default_yes) {
-      log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+    bool logging_enabled = log_get_terminal_output();
+    if (logging_enabled) {
+      if (default_yes) {
+        log_plain_stderr_nonewline("%s (Y/n)? ", prompt);
+      } else {
+        log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+      }
     } else {
-      log_plain_stderr_nonewline("%s (y/N)? ", prompt);
+      if (default_yes) {
+        (void)fprintf(stderr, "%s (Y/n)? ", prompt);
+      } else {
+        (void)fprintf(stderr, "%s (y/N)? ", prompt);
+      }
+      (void)fflush(stderr); // Flush immediately so prompt appears
     }
   }
 
-  char response[16];
   bool result = default_yes;
 
+  // Try to read response from stdin (works with both interactive TTY and piped input)
+  char response[16];
   if (fgets(response, sizeof(response), stdin) != NULL) {
     // Remove trailing newline
     size_t len = strlen(response);
@@ -233,11 +256,6 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   } else {
     // fgets failed (EOF or error) - return default
     result = default_yes;
-  }
-
-  // Unlock terminal if we locked it
-  if (is_interactive) {
-    log_unlock_terminal(previous_terminal_state);
   }
 
   return result;

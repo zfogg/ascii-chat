@@ -119,7 +119,8 @@ macro(find_dependency_library)
     # =================================================================
     if(NOT ${_DEP_NAME}_FOUND AND NOT USE_MUSL)
         # For Release builds on macOS, prefer static libraries from Homebrew
-        if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND _DEP_STATIC_LIB_NAME AND _DEP_HOMEBREW_PKG)
+        # Skip if ASCIICHAT_SHARED_DEPS is set (e.g., Homebrew formula builds)
+        if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND _DEP_STATIC_LIB_NAME AND _DEP_HOMEBREW_PKG AND NOT ASCIICHAT_SHARED_DEPS)
             # Find static library directly from Homebrew
             find_library(${_DEP_NAME}_STATIC_LIBRARY
                 NAMES ${_DEP_STATIC_LIB_NAME}

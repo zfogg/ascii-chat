@@ -1,23 +1,26 @@
-[submodule "deps/bearssl"]
-	path = deps/bearssl
+[submodule "deps/ascii-chat-deps/bearssl"]
+	path = deps/ascii-chat-deps/bearssl
 	url = https://www.bearssl.org/git/BearSSL
-[submodule "deps/tomlc17"]
-	path = deps/tomlc17
+[submodule "deps/ascii-chat-deps/tomlc17"]
+	path = deps/ascii-chat-deps/tomlc17
 	url = https://github.com/cktan/tomlc17
 	# NOTE: deps/tomlc17-fix-align8-overflow.patch is automatically applied during CMake configuration
 	# to fix integer overflow and sanitizer warnings in the align8() function
-[submodule "deps/libsodium-bcrypt-pbkdf"]
-	path = deps/libsodium-bcrypt-pbkdf
+[submodule "deps/ascii-chat-deps/libsodium-bcrypt-pbkdf"]
+	path = deps/ascii-chat-deps/libsodium-bcrypt-pbkdf
 	url = https://github.com/zfogg/libsodium-bcrypt-pbkdf.git
-[submodule "deps/uthash"]
-	path = deps/uthash
-	url = https://github.com/troydhanson/uthash.git
-[submodule "deps/sokol"]
-	path = deps/sokol
+[submodule "deps/ascii-chat-deps/sokol"]
+	path = deps/ascii-chat-deps/sokol
 	url = https://github.com/floooh/sokol
 [submodule "deps/doxygen-awesome-css"]
 	path = deps/doxygen-awesome-css
 	url = https://github.com/jothepro/doxygen-awesome-css.git
-[submodule "deps/mdns"]
-	path = deps/mdns
+[submodule "deps/ascii-chat-deps/mdns"]
+	path = deps/ascii-chat-deps/mdns
 	url = https://github.com/mjansson/mdns.git
+[submodule "deps/ascii-chat-deps/uthash"]
+	path = deps/ascii-chat-deps/uthash
+	url = https://github.com/troydhanson/uthash.git
+[submodule "deps/ascii-chat-deps/utf8proc"]
+	path = deps/ascii-chat-deps/utf8proc
+	url = https://github.com/JuliaStrings/utf8proc.git

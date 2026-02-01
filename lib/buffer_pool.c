@@ -10,6 +10,8 @@
 #include "platform/system.h"
 #include "platform/init.h"
 #include "util/format.h"
+#include "util/time.h"
+#include "util/magic.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,14 +19,6 @@
  * Internal Helpers
  * ============================================================================
  */
-
-static inline uint64_t get_time_ms(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-    return 0;
-  }
-  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
 
 /** @brief Get node header from user data pointer */
 static inline buffer_node_t *node_from_data(void *data) {
@@ -34,22 +28,6 @@ static inline buffer_node_t *node_from_data(void *data) {
 /** @brief Get user data pointer from node header */
 static inline void *data_from_node(buffer_node_t *node) {
   return (void *)((char *)node + sizeof(buffer_node_t));
-}
-
-/** @brief Check if a buffer is from a pool (has valid pool magic, not fallback) */
-static inline bool is_pooled_buffer(void *data) {
-  if (!data)
-    return false;
-  buffer_node_t *node = node_from_data(data);
-  return node->magic == BUFFER_POOL_MAGIC;
-}
-
-/** @brief Check if a buffer has any valid magic (pool or fallback) */
-static inline bool has_buffer_header(void *data) {
-  if (!data)
-    return false;
-  buffer_node_t *node = node_from_data(data);
-  return node->magic == BUFFER_POOL_MAGIC || node->magic == BUFFER_POOL_MAGIC_FALLBACK;
 }
 
 /** @brief Atomically update peak if new value is higher */
@@ -96,8 +74,8 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms) {
 
   char pretty_max[64];
   format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
-  log_info("Created buffer pool (max: %s, shrink: %llu ms, lock-free)", pretty_max,
-           (unsigned long long)pool->shrink_delay_ms);
+  log_debug("Created buffer pool (max: %s, shrink: %llu ms, lock-free)", pretty_max,
+            (unsigned long long)pool->shrink_delay_ms);
 
   return pool;
 }
@@ -128,7 +106,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   if (!pool || size < BUFFER_POOL_MIN_SIZE || size > BUFFER_POOL_MAX_SINGLE_SIZE) {
     size_t total_size = sizeof(buffer_node_t) + size;
     buffer_node_t *node = SAFE_MALLOC(total_size, buffer_node_t *);
-    node->magic = BUFFER_POOL_MAGIC_FALLBACK; // Different magic for fallbacks
+    node->magic = MAGIC_BUFFER_POOL_FALLBACK; // Different magic for fallbacks
     node->_pad = 0;
     node->size = size;
     atomic_init(&node->next, NULL);
@@ -189,7 +167,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
         return SAFE_MALLOC(size, void *);
       }
 
-      node->magic = BUFFER_POOL_MAGIC;
+      node->magic = MAGIC_BUFFER_POOL_VALID;
       node->_pad = 0;
       node->size = size;
       atomic_init(&node->next, NULL);
@@ -221,13 +199,13 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
   buffer_node_t *node = node_from_data(data);
 
   // If it's a malloc fallback (has fallback magic), free the node directly
-  if (node->magic == BUFFER_POOL_MAGIC_FALLBACK) {
+  if (IS_MAGIC_VALID(node->magic, MAGIC_BUFFER_POOL_FALLBACK)) {
     SAFE_FREE(node); // Free the node (includes header + data)
     return;
   }
 
   // If it's not a pooled buffer (no valid magic), it's external - use platform free
-  if (node->magic != BUFFER_POOL_MAGIC) {
+  if (!IS_MAGIC_VALID(node->magic, MAGIC_BUFFER_POOL_VALID)) {
     free(data); // Unknown allocation, just free the data pointer
     return;
   }
@@ -249,7 +227,7 @@ void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
   atomic_fetch_add_explicit(&pool->returns, 1, memory_order_relaxed);
 
   // Set return timestamp
-  atomic_store_explicit(&node->returned_at_ms, get_time_ms(), memory_order_relaxed);
+  atomic_store_explicit(&node->returned_at_ms, time_ns_to_ms(time_get_ns()), memory_order_relaxed);
 
   // Push to lock-free stack
   buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
@@ -274,7 +252,7 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
     return; // Another thread is shrinking
   }
 
-  uint64_t now = get_time_ms();
+  uint64_t now = time_ns_to_ms(time_get_ns());
   uint64_t cutoff = (now > pool->shrink_delay_ms) ? (now - pool->shrink_delay_ms) : 0;
 
   // Atomically swap out the entire free list
@@ -378,12 +356,12 @@ void buffer_pool_log_stats(buffer_pool_t *pool, const char *name) {
   uint64_t total_requests = hits + allocs + fallbacks;
   double hit_rate = total_requests > 0 ? (double)hits * 100.0 / (double)total_requests : 0;
 
-  log_info("=== Buffer Pool: %s ===", name ? name : "unnamed");
-  log_info("  Pool: %s / %s (peak: %s)", pretty_current, pretty_max, pretty_peak_pool);
-  log_info("  Used: %s, Free: %s (peak used: %s)", pretty_used, pretty_free, pretty_peak);
-  log_info("  Hits: %llu (%.1f%%), Allocs: %llu, Fallbacks: %llu", (unsigned long long)hits, hit_rate,
-           (unsigned long long)allocs, (unsigned long long)fallbacks);
-  log_info("  Returns: %llu, Shrink freed: %llu", (unsigned long long)returns, (unsigned long long)shrink_freed);
+  log_debug("=== Buffer Pool: %s ===", name ? name : "unnamed");
+  log_debug("  Current: %s / %s capacity (peak used: %s)", pretty_current, pretty_max, pretty_peak_pool);
+  log_debug("  Buffers: %s used, %s free (peak: %s)", pretty_used, pretty_free, pretty_peak);
+  log_debug("  Hits: %llu (%.1f%%), Allocs: %llu, Fallbacks: %llu", (unsigned long long)hits, hit_rate,
+            (unsigned long long)allocs, (unsigned long long)fallbacks);
+  log_debug("  Returns: %llu, Shrink freed: %llu", (unsigned long long)returns, (unsigned long long)shrink_freed);
 }
 
 /* ============================================================================
@@ -399,7 +377,7 @@ void buffer_pool_init_global(void) {
   if (!g_global_pool) {
     g_global_pool = buffer_pool_create(0, 0);
     if (g_global_pool) {
-      log_info("Initialized global buffer pool");
+      log_debug("Initialized global buffer pool");
     }
   }
   static_mutex_unlock(&g_global_pool_mutex);

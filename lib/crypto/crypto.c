@@ -14,9 +14,12 @@
 #include <time.h>
 #include <inttypes.h>
 #include <stdatomic.h>
+#include "platform/init.h"
 
 // Static initialization flag for libsodium (atomic for thread-safe check)
 static _Atomic bool g_libsodium_initialized = false;
+// Mutex to protect libsodium initialization from concurrent calls
+static static_mutex_t g_libsodium_init_mutex = STATIC_MUTEX_INIT;
 
 // Internal packet type constants (for test helper functions only)
 // These are NOT part of the main network protocol - they're used for simple
@@ -32,20 +35,30 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 
 // Initialize libsodium (thread-safe, idempotent)
 static crypto_result_t init_libsodium(void) {
-  // Fast path: if already initialized, return immediately
+  // Fast path (no lock): if already initialized, return immediately
   if (atomic_load(&g_libsodium_initialized)) {
     return CRYPTO_OK;
   }
 
-  // Slow path: attempt initialization
-  // Note: sodium_init() is itself idempotent and thread-safe, but we use
-  // atomic flag to prevent redundant calls from multiple threads
+  // Slow path: use mutex to serialize initialization and prevent concurrent sodium_init() calls
+  // This ensures exactly ONE thread calls sodium_init(), others wait and see initialized=true
+  static_mutex_lock(&g_libsodium_init_mutex);
+
+  // Double-check under lock: another thread may have initialized while we waited
+  if (atomic_load(&g_libsodium_initialized)) {
+    static_mutex_unlock(&g_libsodium_init_mutex);
+    return CRYPTO_OK;
+  }
+
+  // Attempt initialization (only ONE thread will reach here)
   if (sodium_init() < 0) {
+    static_mutex_unlock(&g_libsodium_init_mutex);
     SET_ERRNO(ERROR_CRYPTO, "Failed to initialize libsodium");
     return CRYPTO_ERROR_LIBSODIUM;
   }
 
   atomic_store(&g_libsodium_initialized, true);
+  static_mutex_unlock(&g_libsodium_init_mutex);
   return CRYPTO_OK;
 }
 
@@ -137,15 +150,15 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     char duration_str[32];
     format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
-    log_info("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
-             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_debug("Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
+              (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
     char duration_str[32];
     format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
-    log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
-             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
+    log_debug("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
+              (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
   return CRYPTO_OK;
 }
@@ -176,7 +189,7 @@ crypto_result_t crypto_init_with_password(crypto_context_t *ctx, const char *pas
 
   ctx->has_password = true;
 
-  log_info("Crypto context initialized with password-based encryption");
+  log_debug("Crypto context initialized with password-based encryption");
   return CRYPTO_OK;
 }
 
@@ -1211,8 +1224,8 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   ctx->rekey_in_progress = true;
   ctx->has_temp_key = true;
 
-  log_info("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
-           (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
+  log_debug("Rekey initiated (packets: %llu, time elapsed: %ld sec, attempt %d)",
+            (unsigned long long)ctx->rekey_packet_count, (long)since_last_rekey, ctx->rekey_failure_count + 1);
 
   return CRYPTO_OK;
 }
@@ -1306,8 +1319,8 @@ crypto_result_t crypto_rekey_commit(crypto_context_t *ctx) {
   // Reset failure counter on successful rekey
   ctx->rekey_failure_count = 0;
 
-  log_info("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)",
-           (unsigned long long)ctx->rekey_count);
+  log_debug("Rekey committed successfully (rekey #%llu, nonce reset to 1, new session_id generated)",
+            (unsigned long long)ctx->rekey_count);
 
   return CRYPTO_OK;
 }
@@ -1346,13 +1359,13 @@ void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, s
                                    ? (ctx->rekey_packet_threshold - ctx->rekey_packet_count)
                                    : 0;
 
-  snprintf(status_buffer, buffer_size,
-           "Rekey status: %s | "
-           "Packets: %llu/%llu (%llu remaining) | "
-           "Time: %ld/%ld sec (%ld sec remaining) | "
-           "Rekeys: %llu | Failures: %d",
-           ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count,
-           (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
-           (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count,
-           ctx->rekey_failure_count);
+  safe_snprintf(status_buffer, buffer_size,
+                "Rekey status: %s | "
+                "Packets: %llu/%llu (%llu remaining) | "
+                "Time: %ld/%ld sec (%ld sec remaining) | "
+                "Rekeys: %llu | Failures: %d",
+                ctx->rekey_in_progress ? "IN_PROGRESS" : "IDLE", (unsigned long long)ctx->rekey_packet_count,
+                (unsigned long long)ctx->rekey_packet_threshold, (unsigned long long)remaining_packets, (long)elapsed,
+                (long)ctx->rekey_time_threshold, (long)remaining_time, (unsigned long long)ctx->rekey_count,
+                ctx->rekey_failure_count);
 }

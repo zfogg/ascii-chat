@@ -2,49 +2,33 @@
 
 /**
  * @file platform/memory.h
- * @brief Cross-platform memory management utilities
+ * @brief Cross-platform memory allocation utilities
  * @ingroup platform
  * @addtogroup platform
  * @{
  *
- * Provides platform-independent memory functions including querying allocated
- * block sizes for memory debugging and leak tracking.
+ * Provides unified memory allocation abstractions across Windows and POSIX platforms.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date December 2025
+ * @date January 2026
  */
 
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+#ifdef _WIN32
+#include <malloc.h>
 /**
- * @brief Get the size of an allocated memory block
+ * @brief Platform-specific stack allocation (Windows)
  *
- * Returns the size in bytes of the memory block pointed to by ptr.
- * The block must have been allocated with malloc(), calloc(), or realloc().
- *
- * Platform-specific implementations:
- *   - Windows: _msize()
- *   - macOS: malloc_size()
- *   - Linux: malloc_usable_size()
- *
- * @param ptr Pointer to allocated memory block
- * @return Size of the block in bytes, or 0 if ptr is NULL
- *
- * @note This function requires the block to be allocated with the standard
- *       memory allocation functions. Behavior is undefined for invalid pointers.
- * @note The returned size may be larger than the requested allocation due to
- *       allocator padding and alignment requirements.
- *
- * @ingroup platform
+ * On Windows, use _alloca for stack allocation
  */
-size_t platform_malloc_size(const void *ptr);
-
-#ifdef __cplusplus
-}
+#define platform_alloca(size) _alloca(size)
+#else
+#include <alloca.h>
+/**
+ * @brief Platform-specific stack allocation (POSIX)
+ *
+ * On POSIX, use standard alloca
+ */
+#define platform_alloca(size) alloca(size)
 #endif
 
 /** @} */

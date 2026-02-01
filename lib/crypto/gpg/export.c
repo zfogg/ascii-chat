@@ -12,20 +12,16 @@
 #include "util/validation.h"
 #include "log/logging.h"
 #include "platform/system.h"
+#include "platform/filesystem.h"
+#include "platform/process.h"
 
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
-
-#ifdef _WIN32
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
-#else
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
 #endif
 
 /**
@@ -52,24 +48,26 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   }
 
   // Create temp file for exported key
-  char temp_path[256];
-  safe_snprintf(temp_path, sizeof(temp_path), "/tmp/asciichat_gpg_export_%d_XXXXXX", getpid());
-  int temp_fd = mkstemp(temp_path);
-  if (temp_fd < 0) {
-    log_error("Failed to create temp file for GPG export: %s", SAFE_STRERROR(errno));
+  char temp_path[PLATFORM_MAX_PATH_LENGTH];
+  int temp_fd = -1;
+  if (platform_create_temp_file(temp_path, sizeof(temp_path), "asciichat_gpg_export", &temp_fd) != 0) {
+    log_error("Failed to create temp file for GPG export");
     return -1;
   }
-  close(temp_fd);
+  if (temp_fd >= 0) {
+    close(temp_fd);
+  }
 
   // Use gpg --export to export the public key in binary format
   char cmd[BUFFER_SIZE_LARGE];
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" 2>/dev/null", escaped_key_id, temp_path);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" " PLATFORM_SHELL_NULL_REDIRECT, escaped_key_id,
+                temp_path);
 
   log_debug("Running GPG export command: gpg --export 0x%s", key_id);
   int result = system(cmd);
   if (result != 0) {
     log_error("Failed to export GPG public key for key ID: %s (exit code: %d)", key_id, result);
-    unlink(temp_path);
+    platform_delete_temp_file(temp_path);
     return -1;
   }
   log_debug("GPG export completed successfully");
@@ -78,7 +76,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   FILE *fp = fopen(temp_path, "rb");
   if (!fp) {
     log_error("Failed to open exported GPG key file");
-    unlink(temp_path);
+    platform_delete_temp_file(temp_path);
     return -1;
   }
 
@@ -86,7 +84,7 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   uint8_t packet_data[8192];
   size_t bytes_read = fread(packet_data, 1, sizeof(packet_data), fp);
   fclose(fp);
-  unlink(temp_path);
+  platform_delete_temp_file(temp_path);
 
   if (bytes_read == 0) {
     log_error("GPG export produced empty output - key may not exist");
@@ -232,12 +230,12 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
     if (mpi_bytes == 33 && packet_data[offset] == 0x40) {
       // Found it! Extract the 32-byte public key (skip 0x40 prefix)
       memcpy(public_key_out, &packet_data[offset + 1], 32);
-      log_info("Extracted Ed25519 public key from gpg --export (fallback method)");
+      log_debug("Extracted Ed25519 public key from gpg --export (fallback method)");
       return 0;
     } else if (mpi_bytes == 32) {
       // Key without prefix (less common but valid)
       memcpy(public_key_out, &packet_data[offset], 32);
-      log_info("Extracted Ed25519 public key from gpg --export (fallback method)");
+      log_debug("Extracted Ed25519 public key from gpg --export (fallback method)");
       return 0;
     }
 
@@ -278,13 +276,11 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
 
   // Use gpg to list the key and get the keygrip
   char cmd[BUFFER_SIZE_LARGE];
-#ifdef _WIN32
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", escaped_key_id);
-#else
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", escaped_key_id);
-#endif
-  FILE *fp = SAFE_POPEN(cmd, "r");
-  if (!fp) {
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s " PLATFORM_SHELL_NULL_REDIRECT,
+                escaped_key_id);
+
+  FILE *fp = NULL;
+  if (platform_popen(cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to run gpg command - GPG may not be installed");
 #ifdef _WIN32
     log_error("To install GPG on Windows, download Gpg4win from:");
@@ -343,7 +339,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     }
   }
 
-  SAFE_PCLOSE(fp);
+  platform_pclose(&fp);
 
   if (!found_key || strlen(found_keygrip) == 0) {
     log_error("Could not find GPG key with ID: %s", key_id);
@@ -355,11 +351,11 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Try to use GPG agent API to read the public key directly via READKEY command
   int agent_sock = gpg_agent_connect();
   if (agent_sock < 0) {
-    log_info("GPG agent not available, falling back to gpg --export for public key extraction");
+    log_debug("GPG agent not available, falling back to gpg --export for public key extraction");
     // Fallback: Use gpg --export to get the public key
     int export_result = gpg_export_public_key(key_id, public_key_out);
     if (export_result == 0) {
-      log_info("Successfully extracted public key using fallback method");
+      log_debug("Successfully extracted public key using fallback method");
     } else {
       log_error("Fallback public key extraction failed for key ID: %s", key_id);
     }
@@ -367,10 +363,12 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   }
 
   // Send READKEY command with keygrip to get the public key S-expression
-  char readkey_cmd[256];
+  char readkey_cmd[BUFFER_SIZE_SMALL];
   safe_snprintf(readkey_cmd, sizeof(readkey_cmd), "READKEY %s\n", found_keygrip);
 
-  ssize_t bytes_written = platform_pipe_write(agent_sock, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
+  // Cast agent_sock back to pipe_t (gpg_agent_connect returns pipe_t cast to int for portability)
+  pipe_t agent_pipe = (pipe_t)(intptr_t)agent_sock;
+  ssize_t bytes_written = platform_pipe_write(agent_pipe, (const unsigned char *)readkey_cmd, strlen(readkey_cmd));
   if (bytes_written != (ssize_t)strlen(readkey_cmd)) {
     log_error("Failed to send READKEY command to GPG agent");
     gpg_agent_disconnect(agent_sock);
@@ -380,7 +378,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Read the response (public key S-expression)
   char response[BUFFER_SIZE_XXXLARGE];
   memset(response, 0, sizeof(response));
-  ssize_t bytes_read = platform_pipe_read(agent_sock, (unsigned char *)response, sizeof(response) - 1);
+  ssize_t bytes_read = platform_pipe_read(agent_pipe, (unsigned char *)response, sizeof(response) - 1);
 
   gpg_agent_disconnect(agent_sock);
 
@@ -401,7 +399,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     // Fallback: Use gpg --export for public-only keys
     int export_result = gpg_export_public_key(key_id, public_key_out);
     if (export_result == 0) {
-      log_info("Successfully extracted public key using gpg --export fallback");
+      log_debug("Successfully extracted public key using gpg --export fallback");
     } else {
       log_error("Fallback public key extraction failed for key ID: %s", key_id);
     }
@@ -436,6 +434,6 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   // Copy the 32-byte public key (skip the 0x40 prefix)
   memcpy(public_key_out, binary_start + 1, 32);
 
-  log_info("Extracted Ed25519 public key from GPG agent via READKEY command");
+  log_debug("Extracted Ed25519 public key from GPG agent via READKEY command");
   return 0;
 }

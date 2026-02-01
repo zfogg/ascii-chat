@@ -67,6 +67,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include "common.h"
+#include "discovery/strings.h"          // For is_session_string()
 #include "network/mdns/discovery_tui.h" // For discovery_tui_server_t
 
 #ifdef __cplusplus
@@ -114,7 +115,7 @@ typedef struct {
   bool insecure_mode;             ///< Allow no verification (--acds-insecure flag)
 
   // Connection details
-  char acds_server[256]; ///< ACDS server address (e.g., "localhost" or "acds.ascii-chat.com")
+  char acds_server[256]; ///< ACDS server address (e.g., "localhost" or "discovery.ascii-chat.com")
   uint16_t acds_port;    ///< ACDS server port (default: 27225)
 
   // Timeouts
@@ -131,7 +132,7 @@ typedef struct {
  * @brief Initialize discovery config with defaults
  *
  * Sets sensible defaults:
- * - ACDS server: localhost:27225 (debug), acds.ascii-chat.com (release)
+ * - ACDS server: localhost:27225 (debug), discovery.ascii-chat.com (release)
  * - Timeouts: mdns=2000ms, acds=5000ms
  * - Verification: None (expected_pubkey=NULL)
  * - Insecure mode: false
@@ -184,32 +185,12 @@ void discovery_config_init_defaults(discovery_config_t *config);
 asciichat_error_t discover_session_parallel(const char *session_string, const discovery_config_t *config,
                                             discovery_result_t *result);
 
-/**
- * @brief Check if a string matches session string pattern
- *
- * Validates that input matches three-word pattern: `word-word-word`
- * Each word is 3-64 characters of alphanumerics and hyphens (RFC 952).
- *
- * Examples:
- * - ✅ `swift-river-mountain` - valid
- * - ✅ `cat-dog-bird` - valid
- * - ❌ `swift` - invalid (only one word)
- * - ❌ `swift-river-` - invalid (trailing hyphen)
- * - ❌ `swift_river_mountain` - invalid (underscores not allowed)
- *
- * @param str String to validate
- * @return true if matches session string pattern, false otherwise
- *
- * @note Used by src/main.c to detect binary-level session string argument
- */
-bool is_session_string(const char *str);
-
 // ============================================================================
 // mDNS Query API (Core Module)
 // ============================================================================
 
 /**
- * @brief Discover ASCII-Chat servers on local network via mDNS
+ * @brief Discover ascii-chat servers on local network via mDNS
  *
  * Queries for mDNS _ascii-chat._tcp services and returns discovered servers.
  * This is the core discovery function used by both:

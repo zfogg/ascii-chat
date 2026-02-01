@@ -172,6 +172,55 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #endif
 
 /* ============================================================================
+ * Burst and Throttle Macro
+ * ============================================================================
+ *
+ * @brief Rate-limit code execution with a burst window followed by throttle
+ *
+ * Allows code to execute frequently for an initial burst period, then refuses
+ * to execute again until a throttle period has elapsed since first invocation.
+ * The timer resets when called after the throttle period expires.
+ *
+ * Uses time_get_ns() from util/time.h for high-resolution monotonic timing.
+ *
+ * Example (backtrace every 500ms, then silence for 10 seconds):
+ *   RUN_BURST_AND_THROTTLE(500 * NS_PER_MS_INT, 10 * NS_PER_SEC_INT, {
+ *     platform_print_backtrace(1);
+ *   });
+ *
+ * Time values in nanoseconds (use NS_PER_MS_INT, NS_PER_SEC_INT from util/time.h):
+ *   - 500 milliseconds = 500 * NS_PER_MS_INT
+ *   - 10 seconds = 10 * NS_PER_SEC_INT
+ *
+ * @param burst_ns    Allow execution for this many nanoseconds
+ * @param throttle_ns Refuse execution until this many nanoseconds pass
+ * @param code_block  Code to execute when throttle conditions permit (use braces: { ... })
+ */
+#define RUN_BURST_AND_THROTTLE(burst_ns, throttle_ns, code_block)                                                      \
+  do {                                                                                                                 \
+    static uint64_t burst_start = 0;                                                                                   \
+    uint64_t now = time_get_ns();                                                                                      \
+                                                                                                                       \
+    /* First call or timer reset */                                                                                    \
+    if (burst_start == 0) {                                                                                            \
+      burst_start = now;                                                                                               \
+      code_block;                                                                                                      \
+    } else {                                                                                                           \
+      uint64_t elapsed_ns = now - burst_start;                                                                         \
+                                                                                                                       \
+      if (elapsed_ns < (uint64_t)(burst_ns)) {                                                                         \
+        /* Within burst window */                                                                                      \
+        code_block;                                                                                                    \
+      } else if (elapsed_ns >= (uint64_t)(throttle_ns)) {                                                              \
+        /* Throttle period complete, reset and execute */                                                              \
+        burst_start = now;                                                                                             \
+        code_block;                                                                                                    \
+      }                                                                                                                \
+      /* else: in throttle period, do nothing */                                                                       \
+    }                                                                                                                  \
+  } while (0)
+
+/* ============================================================================
  * Memory Allocation with mimalloc Support
  * ============================================================================
  * When USE_MIMALLOC is enabled:
@@ -499,7 +548,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @param is_client true for client mode (routes all logs to stderr), false for server mode
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client);
+asciichat_error_t asciichat_shared_init(bool is_client);
 
 /* ============================================================================
  * Error Handling Macros
@@ -533,5 +582,33 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
       return (expr);                                                                                                   \
     }                                                                                                                  \
   } while (0)
+
+/* ============================================================================
+ * Global Variables for Early Argv Inspection and Color Flag Detection
+ * ============================================================================ */
+
+/**
+ * @brief Global argc for early argument inspection (e.g., --color flag detection)
+ * Set by main() for access from lib/platform/terminal.c during early execution
+ */
+extern int g_argc;
+
+/**
+ * @brief Global argv for early argument inspection (e.g., --color flag detection)
+ * Set by main() for access from lib/platform/terminal.c during early execution
+ */
+extern char **g_argv;
+
+/**
+ * @brief Was --color explicitly passed in command-line arguments?
+ * Set by options_init() before RCU is initialized, used by terminal_should_color_output()
+ */
+extern bool g_color_flag_passed;
+
+/**
+ * @brief Value of --color flag (true if --color was in argv)
+ * Set by options_init() before RCU is initialized, used by terminal_should_color_output()
+ */
+extern bool g_color_flag_value;
 
 /** @} */

@@ -32,7 +32,7 @@
 
 #ifdef _WIN32
 #include <winsock2.h>
-#include <ws2tcpip.h>
+#include <ws2tcpip.h> // Includes TCP_NODELAY and other TCP options
 /** @brief Socket handle type (Windows: SOCKET) */
 typedef SOCKET socket_t;
 /** @brief Invalid socket value (Windows: INVALID_SOCKET) */
@@ -44,6 +44,7 @@ typedef unsigned long nfds_t;
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h> // For TCP_NODELAY and other TCP options
 #include <arpa/inet.h>
 #include <poll.h>
 /** @brief Socket handle type (POSIX: int) */
@@ -484,6 +485,71 @@ int socket_get_fd(socket_t sock);
  */
 bool socket_is_valid(socket_t sock);
 
+/**
+ * @brief Check if error code indicates "would block" (non-blocking socket would wait)
+ * @param error_code Platform-specific error code (from socket_get_last_error())
+ * @return true if error is EAGAIN/EWOULDBLOCK (POSIX) or WSAEWOULDBLOCK (Windows)
+ *
+ * Used to detect non-blocking socket operations that need retry.
+ * Abstracts platform differences between POSIX (EAGAIN/EWOULDBLOCK) and Windows (WSAEWOULDBLOCK).
+ *
+ * @par Example:
+ * @code{.c}
+ * ssize_t result = socket_recv(sock, buf, len, 0);
+ * if (result < 0 && socket_is_would_block_error(socket_get_last_error())) {
+ *   // Retry later
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+bool socket_is_would_block_error(int error_code);
+
+/**
+ * @brief Check if error code indicates connection reset
+ * @param error_code Platform-specific error code (from socket_get_last_error())
+ * @return true if error is ECONNRESET (POSIX) or WSAECONNRESET (Windows)
+ *
+ * Used to detect when the remote peer forcibly closed the connection.
+ * Abstracts platform differences between POSIX and Windows.
+ *
+ * @ingroup platform
+ */
+bool socket_is_connection_reset_error(int error_code);
+
+/**
+ * @brief Check if error code indicates a closed/invalid socket
+ * @param error_code Platform-specific error code (from socket_get_last_error())
+ * @return true if error indicates socket is closed or invalid
+ *
+ * Detects errors like EBADF (bad file descriptor) on POSIX or
+ * WSAENOTSOCK (socket operation on non-socket) on Windows.
+ *
+ * @ingroup platform
+ */
+bool socket_is_invalid_socket_error(int error_code);
+
+/**
+ * @brief Check if error indicates operation in progress (non-blocking connect)
+ * @param error_code Platform-specific error code (from socket_get_last_error())
+ * @return true if error is EINPROGRESS (POSIX) or WSAEINPROGRESS (Windows)
+ *
+ * Used for non-blocking connect() operations. When connect() is called on a
+ * non-blocking socket, it returns immediately with EINPROGRESS/WSAEINPROGRESS
+ * if the connection is still being established.
+ *
+ * @par Example:
+ * @code{.c}
+ * int result = connect(sock, addr, addrlen);
+ * if (result < 0 && socket_is_in_progress_error(socket_get_last_error())) {
+ *   // Connection in progress - use select/poll to wait
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+bool socket_is_in_progress_error(int error_code);
+
 // Platform-specific error codes
 #ifdef _WIN32
 #define SOCKET_ERROR_WOULDBLOCK WSAEWOULDBLOCK
@@ -521,3 +587,49 @@ typedef unsigned long nfds_t;
 #endif
 
 /** @} */
+
+// ============================================================================
+// Socket Timeout Operations
+// ============================================================================
+
+/**
+ * @brief Set send/receive timeout for a socket
+ *
+ * Configures the timeout for socket send and receive operations.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses ioctlsocket() with SO_RCVTIMEO/SO_SNDTIMEO options
+ *   - POSIX: Uses setsockopt() with SO_RCVTIMEO/SO_SNDTIMEO options
+ *
+ * @param sock Socket to configure
+ * @param timeout_ms Timeout in milliseconds (0 = blocking, -1 = infinite)
+ * @return 0 on success, -1 on error
+ *
+ * @note Timeout applies to both send and receive operations
+ * @note Some platforms may require SO_SNDTIMEO and SO_RCVTIMEO separately
+ *
+ * @ingroup platform
+ */
+int platform_socket_set_timeout(socket_t sock, int timeout_ms);
+
+/**
+ * @brief Connect to remote address with timeout
+ *
+ * Attempts to connect to a remote address with an optional timeout.
+ *
+ * Platform-specific behavior:
+ *   - Windows: Uses ioctlsocket() to set non-blocking, connect(), then select()
+ *   - POSIX: Uses fcntl() to set non-blocking, connect(), then poll()
+ *
+ * @param sock Socket to connect
+ * @param addr Address structure to connect to
+ * @param addr_len Length of address structure
+ * @param timeout_ms Timeout in milliseconds (0 = infinite wait)
+ * @return 0 on success, -1 on timeout or error
+ *
+ * @note Socket must be created but not yet connected
+ * @note After call, socket is set back to blocking mode on success
+ *
+ * @ingroup platform
+ */
+int platform_socket_connect_timeout(socket_t sock, const struct sockaddr *addr, socklen_t addr_len, int timeout_ms);

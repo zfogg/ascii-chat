@@ -53,7 +53,7 @@ if(IS_COVERAGE_BUILD)
 else()
     set(CRITERION_TIMEOUT 25)      # Default timeout
     set(CTEST_TEST_TIMEOUT 45)     # Default ctest timeout
-    set(CRITERION_JOBS 0)          # Auto-detect (0 = use all cores)
+    set(CRITERION_JOBS ${CPU_CORES})  # Use all available CPU cores for parallel test execution
 endif()
 
 # XML output directory for Criterion test results
@@ -106,8 +106,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             list(APPEND TEST_LDFLAGS ${NANOPB_LIBRARIES})
         elseif(NANOPB_LIBRARIES)
             list(APPEND TEST_LDFLAGS ${NANOPB_LIBRARIES})
-        elseif(EXISTS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
-            list(APPEND TEST_LDFLAGS /usr/lib/x86_64-linux-gnu/libprotobuf-nanopb.a)
+        elseif(CMAKE_LIBRARY_ARCHITECTURE AND EXISTS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libprotobuf-nanopb.a)
+            list(APPEND TEST_LDFLAGS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libprotobuf-nanopb.a)
         endif()
 
         # Boxfort (subprocess isolation) - skip for musl builds (requires glibc)
@@ -148,8 +148,13 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
                 # On Linux, provide search hints for standard locations
                 if(PLATFORM_LINUX)
-                    find_library(SSH2_LIB ssh2 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
-                    find_library(PCRE2_LIB pcre2-8 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
+                    if(CMAKE_LIBRARY_ARCHITECTURE)
+                        find_library(SSH2_LIB ssh2 HINTS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib /lib)
+                        find_library(PCRE2_LIB pcre2-8 HINTS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib /lib)
+                    else()
+                        find_library(SSH2_LIB ssh2 HINTS /usr/lib /lib)
+                        find_library(PCRE2_LIB pcre2-8 HINTS /usr/lib /lib)
+                    endif()
                 else()
                     find_library(SSH2_LIB ssh2)
                     find_library(PCRE2_LIB pcre2-8)
@@ -171,7 +176,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 endif()
 
                 # libgit2 also requires zlib for compression
-                find_library(ZLIB_LIB z HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
+                if(CMAKE_LIBRARY_ARCHITECTURE)
+                    find_library(ZLIB_LIB z HINTS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib /lib)
+                else()
+                    find_library(ZLIB_LIB z HINTS /usr/lib /lib)
+                endif()
                 if(ZLIB_LIB)
                     list(APPEND TEST_LDFLAGS z)
                     message(STATUS "Added zlib for tests (libgit2 dependency)")
@@ -301,58 +310,55 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             target_compile_definitions(${test_exe_name} PRIVATE CRITERION_NO_EARLY_EXIT=1)
         endif()
 
-        # Link test dependencies (order matters for linking)
-        # Handle circular dependencies between libraries
-        # This is needed because core→network→core and core→crypto have circular refs
-        if(NOT WIN32 AND NOT APPLE)
-            # Linux: Use --start-group/--end-group to resolve circular dependencies
-            # IMPORTANT: All internal libraries must be inside the group, otherwise
-            # the linker will process libraries outside the group first and fail
-            # to resolve circular references
-            set(_linux_test_libs
-                ascii-chat-simd
-                ascii-chat-video
-                ascii-chat-audio
-                ascii-chat-core
-                ascii-chat-panic
-                ascii-chat-network
-                ascii-chat-crypto
-                ascii-chat-platform
-                ascii-chat-data-structures
-                ascii-chat-util
-            )
-            # Add query runtime if available (must be in group for symbol resolution)
-            if(TARGET ascii-query-runtime)
-                list(APPEND _linux_test_libs ascii-query-runtime)
-            endif()
+        # Link test dependencies via shared library + external dependencies
+        # Ensure shared library is built first
+        add_dependencies(${test_exe_name} ascii-chat-shared)
+
+        # Link against shared library which contains all code
+        target_link_libraries(${test_exe_name}
+            ascii-chat-shared
+            ${TEST_LDFLAGS}
+        )
+
+        # External dependencies needed because shared library has them as undefined symbols
+        # (normal for dylibs - symbols resolved at runtime)
+        target_link_libraries(${test_exe_name}
+            ${LIBSODIUM_LIBRARIES}
+            ${ZSTD_LIBRARIES}
+            ${OPUS_LIBRARIES}
+            ${SQLITE3_LIBRARIES}
+            libdatachannel
+            OpenSSL::Crypto
+            -lc++  # C++ stdlib needed for libdatachannel
+        )
+        if(APPLE)
             target_link_libraries(${test_exe_name}
-                -Wl,--start-group
-                ${_linux_test_libs}
-                -Wl,--end-group
-                ${TEST_LDFLAGS}
+                ${PORTAUDIO_LIBRARIES}
+                ${COREAUDIO_FRAMEWORK}
+                ${AUDIOUNIT_FRAMEWORK}
+                ${AUDIOTOOLBOX_FRAMEWORK}
+                ${CORESERVICES_FRAMEWORK}
             )
-        elseif(APPLE)
-            # macOS: List libraries multiple times (ld64 doesn't have --start-group)
+        elseif(PLATFORM_LINUX AND JACK_LIB)
             target_link_libraries(${test_exe_name}
-                ascii-chat-lib
-                ${TEST_LDFLAGS}
-                ascii-chat-core
-                ascii-chat-panic
-                ascii-chat-util
-                ascii-chat-network
-                ascii-chat-crypto
+                ${PORTAUDIO_LIBRARIES}
+                ${JACK_LIB}
             )
         else()
-            # Windows
-            target_link_libraries(${test_exe_name}
-                ascii-chat-lib
-                ascii-chat-panic
-                ${TEST_LDFLAGS}
-            )
+            target_link_libraries(${test_exe_name} ${PORTAUDIO_LIBRARIES})
+        endif()
+        if(MINIUPNPC_FOUND)
+            target_link_libraries(${test_exe_name} ${MINIUPNPC_LIBRARIES})
+            if(NATPMP_LIBRARY)
+                target_link_libraries(${test_exe_name} ${NATPMP_LIBRARY})
+            endif()
+        endif()
+        if(BEARSSL_FOUND)
+            target_link_libraries(${test_exe_name} ${BEARSSL_LIBRARIES})
         endif()
 
-        # Add query runtime library for macOS and Windows (Linux handled in --start-group above)
-        if(TARGET ascii-query-runtime AND (APPLE OR WIN32))
+        # Add query runtime library if available
+        if(TARGET ascii-query-runtime)
             target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
@@ -477,23 +483,24 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     endif()
 
     # Custom targets for different test modes (matches Makefile)
+    # Use CPU_CORES from Init.cmake for automatic parallel job count
     add_custom_target(test_debug
         DEPENDS tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-        COMMENT "Running tests in debug mode"
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CPU_CORES}
+        COMMENT "Running tests in debug mode (${CPU_CORES} parallel jobs)"
     )
 
     add_custom_target(test_release
         DEPENDS tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release
-        COMMENT "Running tests in release mode"
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C Release --parallel ${CPU_CORES}
+        COMMENT "Running tests in release mode (${CPU_CORES} parallel jobs)"
     )
 
     # Overall test target
     add_custom_target(test_all
         DEPENDS tests
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-        COMMENT "Running all tests"
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CPU_CORES}
+        COMMENT "Running all tests (${CPU_CORES} parallel jobs)"
     )
 
     # Add library test targets to test_all so they're built when running ctest
@@ -568,10 +575,11 @@ else()
         endif()
 
         # Test mode targets
+        # Use CPU_CORES from Init.cmake for automatic parallel job count
         add_custom_target(test_all
             DEPENDS tests
-            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-            COMMENT "Running all tests"
+            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --parallel ${CPU_CORES}
+            COMMENT "Running all tests (${CPU_CORES} parallel jobs)"
         )
     endif()
 endif()

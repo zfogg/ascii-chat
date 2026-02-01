@@ -43,7 +43,7 @@ void socket_optimize_for_streaming(socket_t sock) {
 
   // 2. Increase send buffer for video streaming (2MB with fallbacks)
   // Large buffers reduce packet drops during bursty frame transmission
-  int send_buffer = 2 * 1024 * 1024; // 2MB
+  int send_buffer = MAX_FRAME_BUFFER_SIZE; // 2MB
   if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
     send_buffer = 512 * 1024; // 512KB fallback
     if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
@@ -54,7 +54,7 @@ void socket_optimize_for_streaming(socket_t sock) {
 
   // 3. Increase receive buffer (2MB with fallbacks)
   // Allows buffering of multiple incoming frames before processing
-  int recv_buffer = 2 * 1024 * 1024; // 2MB
+  int recv_buffer = MAX_FRAME_BUFFER_SIZE; // 2MB
   if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer)) != 0) {
     recv_buffer = 512 * 1024; // 512KB fallback
     if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer)) != 0) {

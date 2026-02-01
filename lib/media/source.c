@@ -5,9 +5,14 @@
 
 #include "source.h"
 #include "ffmpeg_decoder.h"
+#include "youtube.h"
 #include "video/webcam/webcam.h"
+#include "audio/audio.h"
 #include "log/logging.h"
 #include "asciichat_errno.h"
+#include "platform/abstraction.h"
+#include "common/buffer_sizes.h"
+#include "util/time.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,16 +23,41 @@
 struct media_source_t {
   media_source_type_t type;
   bool loop_enabled;
+  bool is_paused;
 
   // Webcam context (for WEBCAM and TEST types)
   webcam_context_t *webcam_ctx;
   unsigned short int webcam_index;
 
-  // FFmpeg decoder (for FILE and STDIN types)
-  ffmpeg_decoder_t *decoder;
+  // FFmpeg decoders (for FILE and STDIN types)
+  // STRATEGY:
+  // - Local files: Use SEPARATE decoders for video and audio (allows concurrent reads at different rates)
+  // - YouTube URLs: Use SHARED decoder for both (YouTube rejects concurrent connections to same URL)
+  // - is_shared_decoder: true if both streams use same decoder object
+  ffmpeg_decoder_t *video_decoder;
+  ffmpeg_decoder_t *audio_decoder;
+  bool is_shared_decoder;
 
-  // Cached path (for FILE type)
+  // Mutex to protect shared decoder access from concurrent video/audio threads
+  // Only used when is_shared_decoder is true (YouTube URLs)
+  mutex_t decoder_mutex;
+
+  // Mutex to protect decoder access during seeks (prevents audio callback from reading during seek)
+  // CRITICAL: Must be held when:
+  // - Calling ffmpeg_decoder_read_audio() or ffmpeg_decoder_read_video() (audio/video threads)
+  // - Calling ffmpeg_decoder_seek_to_timestamp() (main/keyboard thread)
+  // This prevents race conditions where audio callback reads stale data while seeking
+  mutex_t seek_access_mutex;
+
+  // Mutex to protect pause state accessed from keyboard input thread and video read thread
+  mutex_t pause_mutex;
+
+  // Cached path (for FILE type) and original YouTube URL for potential re-extraction
   char *file_path;
+  char *original_youtube_url;
+
+  // Audio context for clearing playback buffers on seek (opaque pointer)
+  void *audio_ctx;
 };
 
 /* ============================================================================
@@ -44,6 +74,31 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   memset(source, 0, sizeof(*source));
   source->type = type;
   source->loop_enabled = false;
+  source->is_paused = false;
+
+  // Initialize mutex for protecting shared decoder access (for YouTube URLs)
+  if (mutex_init(&source->decoder_mutex) != 0) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to initialize mutex");
+    SAFE_FREE(source);
+    return NULL;
+  }
+
+  // Initialize mutex for protecting pause state (accessed from keyboard and video threads)
+  if (mutex_init(&source->pause_mutex) != 0) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to initialize pause mutex");
+    mutex_destroy(&source->decoder_mutex);
+    SAFE_FREE(source);
+    return NULL;
+  }
+
+  // Initialize mutex for protecting decoder access during seeks (prevents race conditions)
+  if (mutex_init(&source->seek_access_mutex) != 0) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to initialize seek access mutex");
+    mutex_destroy(&source->decoder_mutex);
+    mutex_destroy(&source->pause_mutex);
+    SAFE_FREE(source);
+    return NULL;
+  }
 
   switch (type) {
   case MEDIA_SOURCE_WEBCAM: {
@@ -73,7 +128,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
-    log_info("Media source: Webcam device %u", index);
+    log_debug("Media source: Webcam device %u", index);
     break;
   }
 
@@ -84,35 +139,107 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
       return NULL;
     }
 
+    // Check if this is a YouTube URL and extract direct stream URL
+    const char *effective_path = path;
+    char extracted_url[BUFFER_SIZE_XLARGE] = {0};
+    bool is_youtube = youtube_is_youtube_url(path);
+
+    if (is_youtube) {
+      log_info("Detected YouTube URL, extracting stream URL");
+      asciichat_error_t extract_err = youtube_extract_stream_url(path, extracted_url, sizeof(extracted_url));
+      if (extract_err != ASCIICHAT_OK) {
+        // Note: youtube_extract_stream_url already logs the error via SET_ERRNO on first attempt
+        // On cached failures, it returns silently. Only log here if it's not a cached failure.
+        // We detect this by checking if there's already an error context (from youtube_extract_stream_url's SET_ERRNO)
+        log_debug("Failed to extract YouTube stream URL (error: %d) - error logged by extraction function",
+                  extract_err);
+        SAFE_FREE(source);
+        return NULL;
+      }
+      effective_path = extracted_url;
+      log_debug("Using extracted YouTube stream URL");
+
+      // Store original YouTube URL for potential re-extraction if stream expires
+      source->original_youtube_url = strdup(path);
+      if (!source->original_youtube_url) {
+        log_warn("Failed to cache original YouTube URL");
+      }
+    }
+
     // Cache file path for potential reopen on loop
-    source->file_path = strdup(path);
+    source->file_path = strdup(effective_path);
     if (!source->file_path) {
       SET_ERRNO(ERROR_MEMORY, "Failed to duplicate file path");
+      SAFE_FREE(source->original_youtube_url);
       SAFE_FREE(source);
       return NULL;
     }
 
-    source->decoder = ffmpeg_decoder_create(path);
-    if (!source->decoder) {
-      log_error("Failed to open media file: %s", path);
+    // Always use separate decoders for video and audio
+    // This allows independent read rates and avoids lock contention
+    source->video_decoder = ffmpeg_decoder_create(effective_path);
+    if (!source->video_decoder) {
+      log_error("Failed to open media file for video: %s", effective_path);
       SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
       SAFE_FREE(source);
       return NULL;
     }
 
-    log_info("Media source: File '%s'", path);
+    // Start prefetch thread for video frames (critical for YouTube HTTP performance)
+    // This thread continuously reads frames into a buffer so the render loop never blocks
+    asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    if (prefetch_err != ASCIICHAT_OK) {
+      log_error("Failed to start video prefetch thread: %s", asciichat_error_string(prefetch_err));
+      // Don't fail on prefetch error - continue with frame skipping as fallback
+    }
+
+    source->audio_decoder = ffmpeg_decoder_create(effective_path);
+    if (!source->audio_decoder) {
+      log_error("Failed to open media file for audio: %s", effective_path);
+      ffmpeg_decoder_destroy(source->video_decoder);
+      source->video_decoder = NULL;
+      SAFE_FREE(source->file_path);
+      SAFE_FREE(source->original_youtube_url);
+      SAFE_FREE(source);
+      return NULL;
+    }
+    source->is_shared_decoder = false;
+
+    if (is_youtube) {
+      log_debug("Media source: YouTube (separate video/audio decoders)");
+    } else {
+      log_debug("Media source: File '%s' (separate video/audio decoders)", effective_path);
+    }
     break;
   }
 
   case MEDIA_SOURCE_STDIN: {
-    source->decoder = ffmpeg_decoder_create_stdin();
-    if (!source->decoder) {
-      log_error("Failed to open stdin for media input");
+    // Create separate decoders for video and audio from stdin
+    source->video_decoder = ffmpeg_decoder_create_stdin();
+    if (!source->video_decoder) {
+      log_error("Failed to open stdin for video input");
       SAFE_FREE(source);
       return NULL;
     }
 
-    log_info("Media source: stdin");
+    // Start prefetch thread for stdin video frames
+    asciichat_error_t prefetch_err = ffmpeg_decoder_start_prefetch(source->video_decoder);
+    if (prefetch_err != ASCIICHAT_OK) {
+      log_error("Failed to start stdin video prefetch thread: %s", asciichat_error_string(prefetch_err));
+      // Don't fail on prefetch error - continue with frame skipping as fallback
+    }
+
+    source->audio_decoder = ffmpeg_decoder_create_stdin();
+    if (!source->audio_decoder) {
+      log_error("Failed to open stdin for audio input");
+      ffmpeg_decoder_destroy(source->video_decoder);
+      source->video_decoder = NULL;
+      SAFE_FREE(source);
+      return NULL;
+    }
+
+    log_debug("Media source: stdin (separate video/audio decoders)");
     break;
   }
 
@@ -122,7 +249,7 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     source->webcam_index = 0;
     source->webcam_ctx = NULL; // No context needed for test pattern
 
-    log_info("Media source: Test pattern");
+    log_debug("Media source: Test pattern");
     break;
   }
 
@@ -146,15 +273,35 @@ void media_source_destroy(media_source_t *source) {
     source->webcam_ctx = NULL;
   }
 
-  if (source->decoder) {
-    ffmpeg_decoder_destroy(source->decoder);
-    source->decoder = NULL;
+  // For YouTube (shared decoder), only destroy once
+  // For local files (separate decoders), destroy both
+  if (source->video_decoder) {
+    ffmpeg_decoder_destroy(source->video_decoder);
+    source->video_decoder = NULL;
+  }
+
+  if (source->audio_decoder) {
+    // Don't double-free if audio and video share the same decoder
+    if (!source->is_shared_decoder) {
+      ffmpeg_decoder_destroy(source->audio_decoder);
+    }
+    source->audio_decoder = NULL;
   }
 
   if (source->file_path) {
     free(source->file_path);
     source->file_path = NULL;
   }
+
+  if (source->original_youtube_url) {
+    free(source->original_youtube_url);
+    source->original_youtube_url = NULL;
+  }
+
+  // Destroy mutexes
+  mutex_destroy(&source->decoder_mutex);
+  mutex_destroy(&source->pause_mutex);
+  mutex_destroy(&source->seek_access_mutex);
 
   SAFE_FREE(source);
 }
@@ -168,32 +315,86 @@ image_t *media_source_read_video(media_source_t *source) {
     return NULL;
   }
 
+  // Check pause state (thread-safe)
+  mutex_lock(&source->pause_mutex);
+  bool is_paused = source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+
+  // Return NULL immediately if paused (maintaining position)
+  if (is_paused) {
+    return NULL;
+  }
+
   switch (source->type) {
   case MEDIA_SOURCE_WEBCAM:
-  case MEDIA_SOURCE_TEST:
     // Read from webcam
     if (source->webcam_ctx) {
       return webcam_read_context(source->webcam_ctx);
     }
     return NULL;
 
+  case MEDIA_SOURCE_TEST:
+    // Test pattern uses global webcam_read() which checks GET_OPTION(test_pattern)
+    return webcam_read();
+
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return NULL;
     }
 
-    image_t *frame = ffmpeg_decoder_read_video_frame(source->decoder);
+    // Lock shared decoder if YouTube URL (protect against concurrent audio thread access)
+    if (source->is_shared_decoder) {
+      mutex_lock(&source->decoder_mutex);
+    }
+
+    uint64_t frame_read_start_ns = time_get_ns();
+    image_t *frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
+    uint64_t frame_read_ns = time_elapsed_ns(frame_read_start_ns, time_get_ns());
+
+    // Track frame reading statistics for FPS diagnosis
+    static uint64_t total_attempts = 0;
+    static uint64_t successful_frames = 0;
+    static uint64_t null_frame_count = 0;
+    static uint64_t total_read_time_ns = 0;
+    static uint64_t max_read_time_ns = 0;
+
+    total_attempts++;
+    if (frame) {
+      successful_frames++;
+      total_read_time_ns += frame_read_ns;
+      if (frame_read_ns > max_read_time_ns) {
+        max_read_time_ns = frame_read_ns;
+      }
+
+      // Log statistics every 30 successful frames
+      if (successful_frames % 30 == 0) {
+        double avg_read_ms = (double)total_read_time_ns / (double)successful_frames / 1000000.0;
+        double max_read_ms = (double)max_read_time_ns / 1000000.0;
+        double null_rate = (double)null_frame_count * 100.0 / (double)total_attempts;
+        log_info_every(3000000,
+                       "FRAME_STATS[%lu]: avg_read=%.2f ms, max_read=%.2f ms, null_rate=%.1f%% "
+                       "(%lu null/%lu attempts)",
+                       successful_frames, avg_read_ms, max_read_ms, null_rate, null_frame_count, total_attempts);
+      }
+    } else {
+      null_frame_count++;
+    }
 
     // Handle EOF with loop
-    if (!frame && ffmpeg_decoder_at_end(source->decoder)) {
+    if (!frame && ffmpeg_decoder_at_end(source->video_decoder)) {
       if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
         log_debug("End of file reached, rewinding for loop");
         if (media_source_rewind(source) == ASCIICHAT_OK) {
           // Try reading again after rewind
-          frame = ffmpeg_decoder_read_video_frame(source->decoder);
+          frame = ffmpeg_decoder_read_video_frame(source->video_decoder);
         }
       }
+    }
+
+    // Unlock shared decoder
+    if (source->is_shared_decoder) {
+      mutex_unlock(&source->decoder_mutex);
     }
 
     return frame;
@@ -216,7 +417,7 @@ bool media_source_has_video(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    return source->decoder && ffmpeg_decoder_has_video(source->decoder);
+    return source->video_decoder && ffmpeg_decoder_has_video(source->video_decoder);
 
   default:
     return false;
@@ -232,6 +433,23 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
     return 0;
   }
 
+  static uint64_t call_count = 0;
+  call_count++;
+  if (call_count <= 5 || call_count % 1000 == 0) {
+    log_info("media_source_read_audio #%lu: source_type=%d num_samples=%zu", call_count, source->type, num_samples);
+  }
+
+  // Check pause state (thread-safe)
+  mutex_lock(&source->pause_mutex);
+  bool is_paused = source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+
+  // Return silence immediately if paused (maintaining position)
+  if (is_paused) {
+    memset(buffer, 0, num_samples * sizeof(float));
+    return num_samples;
+  }
+
   switch (source->type) {
   case MEDIA_SOURCE_WEBCAM:
   case MEDIA_SOURCE_TEST:
@@ -240,22 +458,52 @@ size_t media_source_read_audio(media_source_t *source, float *buffer, size_t num
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {
-    if (!source->decoder) {
+    if (!source->audio_decoder) {
+      log_warn("media_source_read_audio: audio_decoder is NULL!");
       return 0;
     }
 
-    size_t samples_read = ffmpeg_decoder_read_audio_samples(source->decoder, buffer, num_samples);
+    // Lock seek_access_mutex to prevent audio callback from reading during seek
+    mutex_lock(&source->seek_access_mutex);
+
+    // Lock shared decoder if YouTube URL (protect against concurrent video thread access)
+    if (source->is_shared_decoder) {
+      mutex_lock(&source->decoder_mutex);
+    }
+
+    double audio_pos_before_read = ffmpeg_decoder_get_position(source->audio_decoder);
+    size_t samples_read = ffmpeg_decoder_read_audio_samples(source->audio_decoder, buffer, num_samples);
+    double audio_pos_after_read = ffmpeg_decoder_get_position(source->audio_decoder);
+
+    static double last_audio_pos = 0;
+    if (audio_pos_after_read >= 0 && last_audio_pos >= 0 && audio_pos_after_read < last_audio_pos) {
+      log_warn("AUDIO POSITION WENT BACKWARD: %.2f → %.2f (LOOPING!)", last_audio_pos, audio_pos_after_read);
+    }
+    if (audio_pos_after_read >= 0) {
+      last_audio_pos = audio_pos_after_read;
+    }
+
+    log_info_every(100000, "Audio: read %zu samples, pos %.2f → %.2f", samples_read, audio_pos_before_read,
+                   audio_pos_after_read);
 
     // Handle EOF with loop
-    if (samples_read == 0 && ffmpeg_decoder_at_end(source->decoder)) {
+    if (samples_read == 0 && ffmpeg_decoder_at_end(source->audio_decoder)) {
       if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
         log_debug("End of file reached (audio), rewinding for loop");
         if (media_source_rewind(source) == ASCIICHAT_OK) {
           // Try reading again after rewind
-          samples_read = ffmpeg_decoder_read_audio_samples(source->decoder, buffer, num_samples);
+          samples_read = ffmpeg_decoder_read_audio_samples(source->audio_decoder, buffer, num_samples);
         }
       }
     }
+
+    // Unlock shared decoder
+    if (source->is_shared_decoder) {
+      mutex_unlock(&source->decoder_mutex);
+    }
+
+    // Release seek_access_mutex
+    mutex_unlock(&source->seek_access_mutex);
 
     return samples_read;
   }
@@ -277,7 +525,7 @@ bool media_source_has_audio(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    return source->decoder && ffmpeg_decoder_has_audio(source->decoder);
+    return source->audio_decoder && ffmpeg_decoder_has_audio(source->audio_decoder);
 
   default:
     return false;
@@ -312,14 +560,14 @@ bool media_source_at_end(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return true;
     }
     // If loop is enabled, we never truly reach end
     if (source->loop_enabled && source->type == MEDIA_SOURCE_FILE) {
       return false;
     }
-    return ffmpeg_decoder_at_end(source->decoder);
+    return ffmpeg_decoder_at_end(source->video_decoder);
 
   default:
     return true;
@@ -337,10 +585,37 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
     return ASCIICHAT_OK; // No-op for webcam
 
   case MEDIA_SOURCE_FILE:
-    if (!source->decoder) {
+    if (!source->video_decoder || !source->audio_decoder) {
       return ERROR_INVALID_PARAM;
     }
-    return ffmpeg_decoder_rewind(source->decoder);
+
+    // Lock shared decoder if YouTube URL (protect against concurrent thread access)
+    if (source->is_shared_decoder) {
+      mutex_lock(&source->decoder_mutex);
+    }
+
+    // Rewind video decoder
+    asciichat_error_t video_result = ffmpeg_decoder_rewind(source->video_decoder);
+    if (video_result != ASCIICHAT_OK) {
+      if (source->is_shared_decoder) {
+        mutex_unlock(&source->decoder_mutex);
+      }
+      return video_result;
+    }
+
+    // For YouTube (shared decoder), don't rewind audio separately
+    // For local files (separate decoders), rewind audio too
+    asciichat_error_t result = ASCIICHAT_OK;
+    if (!source->is_shared_decoder) {
+      result = ffmpeg_decoder_rewind(source->audio_decoder);
+    }
+
+    // Unlock shared decoder
+    if (source->is_shared_decoder) {
+      mutex_unlock(&source->decoder_mutex);
+    }
+
+    return result;
 
   case MEDIA_SOURCE_STDIN:
     return ERROR_NOT_SUPPORTED; // Cannot seek stdin
@@ -348,6 +623,117 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
   default:
     return ERROR_INVALID_PARAM;
   }
+}
+
+asciichat_error_t media_source_sync_audio_to_video(media_source_t *source) {
+  // DEPRECATED: This function is deprecated and causes audio playback issues.
+  // Seeking the audio decoder to match video position every ~1 second causes
+  // audio skips and loops. Audio and video naturally stay synchronized when
+  // decoding independently from the same source.
+
+  log_warn("DEPRECATED: media_source_sync_audio_to_video() called - this function causes audio playback issues. "
+           "Use natural decode rates instead.");
+
+  if (!source) {
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Only applicable to FILE and STDIN types
+  if (source->type != MEDIA_SOURCE_FILE && source->type != MEDIA_SOURCE_STDIN) {
+    return ASCIICHAT_OK; // No-op for WEBCAM/TEST
+  }
+
+  // For shared decoders (YouTube URLs), no sync needed (same decoder for both)
+  if (source->is_shared_decoder) {
+    return ASCIICHAT_OK;
+  }
+
+  // NOTE: The actual sync code is disabled because it causes problems.
+  // Get video decoder's current PTS
+  // double video_pts = ffmpeg_decoder_get_position(source->video_decoder);
+  // If we have a valid PTS, seek audio decoder to that position
+  // if (video_pts >= 0.0) {
+  //   return ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, video_pts);
+  // }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec) {
+  if (!source) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Media source is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (timestamp_sec < 0.0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Timestamp must be >= 0.0");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // WEBCAM and TEST sources: no-op (always return OK)
+  if (source->type == MEDIA_SOURCE_WEBCAM || source->type == MEDIA_SOURCE_TEST) {
+    return ASCIICHAT_OK;
+  }
+
+  // STDIN: not supported
+  if (source->type == MEDIA_SOURCE_STDIN) {
+    SET_ERRNO(ERROR_NOT_SUPPORTED, "Cannot seek stdin");
+    return ERROR_NOT_SUPPORTED;
+  }
+
+  asciichat_error_t result = ASCIICHAT_OK;
+
+  // Clear audio playback buffer BEFORE seeking to prevent old audio from being queued
+  // This ensures fresh audio starts playing immediately after seek completes
+  if (source->audio_ctx) {
+    audio_context_t *audio_ctx = (audio_context_t *)source->audio_ctx;
+    if (audio_ctx->playback_buffer) {
+      audio_ring_buffer_clear(audio_ctx->playback_buffer);
+    }
+  }
+
+  // The seeking_in_progress flag in decoders blocks prefetch thread
+  // seeking_in_progress coordinates with audio callback via condition variable
+
+  uint64_t seek_start_ns = time_get_ns();
+  if (source->video_decoder) {
+    double video_pos_before = ffmpeg_decoder_get_position(source->video_decoder);
+    asciichat_error_t video_err = ffmpeg_decoder_seek_to_timestamp(source->video_decoder, timestamp_sec);
+    double video_pos_after = ffmpeg_decoder_get_position(source->video_decoder);
+    uint64_t video_seek_ns = time_elapsed_ns(seek_start_ns, time_get_ns());
+    if (video_err != ASCIICHAT_OK) {
+      log_warn("Video seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, video_err,
+               (double)video_seek_ns / 1000000.0);
+      result = video_err;
+    } else {
+      log_info("Video SEEK: %.2f → %.2f sec (target %.2f, took %.1fms)", video_pos_before, video_pos_after,
+               timestamp_sec, (double)video_seek_ns / 1000000.0);
+    }
+  }
+
+  // Seek audio decoder (if separate from video)
+  if (source->audio_decoder && !source->is_shared_decoder) {
+    log_info("=== Starting audio seek to %.2f sec ===", timestamp_sec);
+    uint64_t audio_seek_start_ns = time_get_ns();
+    double audio_pos_before = ffmpeg_decoder_get_position(source->audio_decoder);
+    log_info("Audio position before seek: %.2f", audio_pos_before);
+    asciichat_error_t audio_err = ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, timestamp_sec);
+    double audio_pos_after = ffmpeg_decoder_get_position(source->audio_decoder);
+    uint64_t audio_seek_ns = time_elapsed_ns(audio_seek_start_ns, time_get_ns());
+    log_info("Audio position after seek: %.2f", audio_pos_after);
+    if (audio_err != ASCIICHAT_OK) {
+      log_warn("Audio seek to %.2f failed: error code %d (took %.1fms)", timestamp_sec, audio_err,
+               (double)audio_seek_ns / 1000000.0);
+      result = audio_err;
+    } else {
+      log_info("Audio SEEK COMPLETE: %.2f → %.2f sec (target %.2f, took %.1fms)", audio_pos_before, audio_pos_after,
+               timestamp_sec, (double)audio_seek_ns / 1000000.0);
+    }
+  }
+
+  // Prefetch thread automatically resumes when seeking_in_progress is cleared and signaled
+
+  return result;
 }
 
 media_source_type_t media_source_get_type(media_source_t *source) {
@@ -366,10 +752,10 @@ double media_source_get_duration(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return -1.0;
     }
-    return ffmpeg_decoder_get_duration(source->decoder);
+    return ffmpeg_decoder_get_duration(source->video_decoder);
 
   default:
     return -1.0;
@@ -388,12 +774,81 @@ double media_source_get_position(media_source_t *source) {
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN:
-    if (!source->decoder) {
+    if (!source->video_decoder) {
       return -1.0;
     }
-    return ffmpeg_decoder_get_position(source->decoder);
+    return ffmpeg_decoder_get_position(source->video_decoder);
 
   default:
     return -1.0;
+  }
+}
+
+double media_source_get_video_fps(media_source_t *source) {
+  if (!source) {
+    return 0.0;
+  }
+
+  switch (source->type) {
+  case MEDIA_SOURCE_WEBCAM:
+  case MEDIA_SOURCE_TEST:
+    return 0.0; // Variable rate, no fixed FPS
+
+  case MEDIA_SOURCE_FILE:
+  case MEDIA_SOURCE_STDIN:
+    if (!source->video_decoder) {
+      return 0.0;
+    }
+    return ffmpeg_decoder_get_video_fps(source->video_decoder);
+
+  default:
+    return 0.0;
+  }
+}
+
+/* ============================================================================
+ * Pause/Resume Control
+ * ============================================================================ */
+
+void media_source_pause(media_source_t *source) {
+  if (!source) {
+    return;
+  }
+  mutex_lock(&source->pause_mutex);
+  source->is_paused = true;
+  mutex_unlock(&source->pause_mutex);
+}
+
+void media_source_resume(media_source_t *source) {
+  if (!source) {
+    return;
+  }
+  mutex_lock(&source->pause_mutex);
+  source->is_paused = false;
+  mutex_unlock(&source->pause_mutex);
+}
+
+bool media_source_is_paused(media_source_t *source) {
+  if (!source) {
+    return false;
+  }
+  mutex_lock(&source->pause_mutex);
+  bool paused = source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+  return paused;
+}
+
+void media_source_toggle_pause(media_source_t *source) {
+  if (!source) {
+    return;
+  }
+  mutex_lock(&source->pause_mutex);
+  source->is_paused = !source->is_paused;
+  mutex_unlock(&source->pause_mutex);
+}
+
+void media_source_set_audio_context(media_source_t *source, void *audio_ctx) {
+  if (source) {
+    source->audio_ctx = audio_ctx;
   }
 }

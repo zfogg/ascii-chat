@@ -1,33 +1,30 @@
 /**
  * @file platform/posix/memory.c
- * @ingroup platform
- * @brief POSIX memory management utilities
+ * @brief POSIX memory utilities implementation (macOS, Linux, BSD)
  */
 
-#ifndef _WIN32
+#include <stdlib.h>
+#include "../../common.h"
 
-#include "../memory.h"
-
-// POSIX-specific memory sizing functions
 #ifdef __APPLE__
 #include <malloc/malloc.h>
-#else
-#include <malloc.h>
-#endif
 
-/**
- * @brief Get the size of an allocated memory block (POSIX implementation)
- */
-size_t platform_malloc_size(const void *ptr) {
-  if (ptr == NULL) {
+size_t platform_malloc_size(void *ptr) {
+  if (!ptr) {
     return 0;
   }
-
-#ifdef __APPLE__
   return malloc_size(ptr);
+}
+
 #else
-  return malloc_usable_size((void *)ptr);
-#endif
+/* Linux and other POSIX systems */
+#include <malloc.h>
+
+size_t platform_malloc_size(void *ptr) {
+  if (!ptr) {
+    return 0;
+  }
+  return malloc_usable_size(ptr);
 }
 
 #endif

@@ -36,9 +36,9 @@ asciichat_error_t crypto_handshake_init(crypto_handshake_context_t *ctx, bool is
 
   // Load server keys if this is a server
   if (is_server) {
-    log_info("Server crypto handshake initialized (ephemeral keys)");
+    log_debug("Server crypto handshake initialized (ephemeral keys)");
   } else {
-    log_info("Client crypto handshake initialized");
+    log_debug("Client crypto handshake initialized");
   }
 
   return ASCIICHAT_OK;
@@ -376,7 +376,7 @@ asciichat_error_t crypto_handshake_rekey_request(crypto_handshake_context_t *ctx
   }
 
   // Send REKEY_REQUEST with new ephemeral public key (32 bytes)
-  log_info("Sending REKEY_REQUEST with new ephemeral X25519 public key (32 bytes)");
+  log_debug("Sending REKEY_REQUEST with new ephemeral X25519 public key (32 bytes)");
   int send_result =
       send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_REQUEST, ctx->crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE);
   if (send_result != 0) {
@@ -403,7 +403,7 @@ asciichat_error_t crypto_handshake_rekey_response(crypto_handshake_context_t *ct
   }
 
   // Send REKEY_RESPONSE with new ephemeral public key (32 bytes)
-  log_info("Sending REKEY_RESPONSE with new ephemeral X25519 public key (32 bytes)");
+  log_debug("Sending REKEY_RESPONSE with new ephemeral X25519 public key (32 bytes)");
   int send_result =
       send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_RESPONSE, ctx->crypto_ctx.temp_public_key, CRYPTO_PUBLIC_KEY_SIZE);
   if (send_result != 0) {
@@ -454,7 +454,7 @@ asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ct
   }
 
   // Send encrypted REKEY_COMPLETE
-  log_info("Sending REKEY_COMPLETE (encrypted with NEW key, %zu bytes)", ciphertext_len);
+  log_debug("Sending REKEY_COMPLETE (encrypted with NEW key, %zu bytes)", ciphertext_len);
   int send_result = send_packet(socket, PACKET_TYPE_CRYPTO_REKEY_COMPLETE, ciphertext, ciphertext_len);
   if (send_result != 0) {
     crypto_rekey_abort(&ctx->crypto_ctx);
@@ -467,7 +467,7 @@ asciichat_error_t crypto_handshake_rekey_complete(crypto_handshake_context_t *ct
     return SET_ERRNO(ERROR_CRYPTO, "Failed to commit rekey: %s", crypto_result_to_string(result));
   }
 
-  log_info("Session rekeying completed successfully (initiator side)");
+  log_debug("Session rekeying completed successfully (initiator side)");
   return ASCIICHAT_OK;
 }
 
@@ -502,7 +502,7 @@ asciichat_error_t crypto_handshake_process_rekey_request(crypto_handshake_contex
                      CRYPTO_PUBLIC_KEY_SIZE);
   }
 
-  log_info("Received REKEY_REQUEST with peer's new ephemeral public key (32 bytes)");
+  log_debug("Received REKEY_REQUEST with peer's new ephemeral public key (32 bytes)");
 
   // Initialize our rekey process (generates our new ephemeral keypair)
   crypto_result_t result = crypto_rekey_init(&ctx->crypto_ctx);
@@ -542,7 +542,7 @@ asciichat_error_t crypto_handshake_process_rekey_response(crypto_handshake_conte
     return SET_ERRNO(ERROR_INVALID_STATE, "No rekey in progress or temp key missing");
   }
 
-  log_info("Received REKEY_RESPONSE with peer's new ephemeral public key (32 bytes)");
+  log_debug("Received REKEY_RESPONSE with peer's new ephemeral public key (32 bytes)");
 
   // Process peer's public key and compute new shared secret
   crypto_result_t result = crypto_rekey_process_response(&ctx->crypto_ctx, packet);
@@ -571,7 +571,7 @@ asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_conte
     return SET_ERRNO(ERROR_INVALID_STATE, "No rekey in progress or temp key missing");
   }
 
-  log_info("Received REKEY_COMPLETE packet (%zu bytes), verifying with NEW key", packet_len);
+  log_debug("Received REKEY_COMPLETE packet (%zu bytes), verifying with NEW key", packet_len);
 
   // Temporarily swap keys to decrypt with NEW key
   uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
@@ -594,7 +594,7 @@ asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_conte
                      crypto_result_to_string(result));
   }
 
-  log_info("REKEY_COMPLETE verified successfully, committing to new key");
+  log_debug("REKEY_COMPLETE verified successfully, committing to new key");
 
   // Commit to new key (atomic switch)
   result = crypto_rekey_commit(&ctx->crypto_ctx);
@@ -602,7 +602,7 @@ asciichat_error_t crypto_handshake_process_rekey_complete(crypto_handshake_conte
     return SET_ERRNO(ERROR_CRYPTO, "Failed to commit rekey: %s", crypto_result_to_string(result));
   }
 
-  log_info("Session rekeying completed successfully (responder side)");
+  log_debug("Session rekeying completed successfully (responder side)");
   return ASCIICHAT_OK;
 }
 

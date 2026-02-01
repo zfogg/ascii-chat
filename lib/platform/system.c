@@ -8,22 +8,11 @@
 // All necessary headers are already included by the parent files
 
 #include <stdatomic.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include "common.h"
-#include "util/fnv1a.h"
-
-// UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
-// Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
-#undef HASH_FUNCTION
-#define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
-  do {                                                                                                                 \
-    if (!(keyptr) || (keylen) == 0) {                                                                                  \
-      (hashv) = 1; /* Non-zero constant for safety */                                                                  \
-    } else {                                                                                                           \
-      (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
-    }                                                                                                                  \
-  } while (0)
-
-#include "util/uthash.h"
+#include "uthash/uthash.h" // UBSan-safe uthash wrapper
 #include "log/logging.h"
 
 // Platform-specific binary suffix
@@ -397,4 +386,81 @@ bool platform_get_executable_path(char *exe_path, size_t path_size) {
   SET_ERRNO(ERROR_GENERAL, "Unsupported platform - cannot get executable path");
   return false;
 #endif
+}
+
+/**
+ * @brief Safe formatted string printing to buffer
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param format Printf-style format string
+ * @return Number of characters written, or -1 on error
+ *
+ * Safely formats a string into a buffer with bounds checking.
+ * Uses platform_snprintf for cross-platform implementation.
+ * Returns the number of characters written (not including null terminator).
+ * Returns -1 if buffer is too small.
+ */
+int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
+  if (!buffer || !format || buffer_size == 0) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+
+  /* Delegate to platform_snprintf for actual formatting */
+  int ret = platform_vsnprintf(buffer, buffer_size, format, args);
+
+  va_end(args);
+  return ret;
+}
+
+/**
+ * @brief Safe formatted output to file stream
+ * @param stream Output file stream
+ * @param format Printf-style format string
+ * @return Number of characters written, or -1 on error
+ *
+ * Safely formats and prints output to a file stream.
+ * Returns the number of characters written, or -1 on error.
+ */
+int safe_fprintf(FILE *stream, const char *format, ...) {
+  if (!stream || !format) {
+    return -1;
+  }
+
+  va_list args;
+  va_start(args, format);
+  int ret = vfprintf(stream, format, args);
+  va_end(args);
+
+  return ret;
+}
+
+/**
+ * @brief Safe formatted string printing with va_list
+ * @param buffer Output buffer (can be NULL if buffer_size is 0 for size calculation)
+ * @param buffer_size Size of output buffer
+ * @param format Printf-style format string
+ * @param ap Variable argument list
+ * @return Number of characters written, or -1 on error
+ *
+ * Safely formats a string into a buffer with bounds checking using va_list.
+ * Uses platform_vsnprintf for cross-platform implementation.
+ * Returns the number of characters written (not including null terminator).
+ * Special case: NULL buffer with size 0 returns required buffer size for size calculation.
+ * Returns -1 if buffer is too small, format is invalid, or buffer is NULL with size > 0.
+ */
+int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list ap) {
+  if (!format) {
+    return -1;
+  }
+
+  // Allow NULL buffer with size 0 for size calculation (standard vsnprintf behavior)
+  if (!buffer && buffer_size > 0) {
+    return -1; // Non-NULL buffer required when buffer_size > 0
+  }
+
+  /* Delegate to platform_vsnprintf for actual formatting */
+  return platform_vsnprintf(buffer, buffer_size, format, ap);
 }

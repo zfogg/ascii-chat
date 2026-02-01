@@ -1,14 +1,16 @@
 /**
  * @file mirror/main.c
  * @ingroup mirror
- * @brief Local webcam mirror mode: view webcam as ASCII art without network
+ * @brief Local media mirror mode: view webcam or media files as ASCII art without network
  *
- * Mirror mode provides a simple way to view your own webcam feed converted
+ * Mirror mode provides a simple way to view webcam feed or media files converted
  * to ASCII art directly in the terminal. No server connection is required.
  *
  * ## Features
  *
  * - Local webcam capture and ASCII conversion
+ * - Media file playback (video/audio files, animated GIFs)
+ * - Loop playback for media files
  * - Terminal capability detection for optimal color output
  * - Frame rate limiting for smooth display
  * - Clean shutdown on Ctrl+C
@@ -17,7 +19,9 @@
  *
  * Run as a standalone mode:
  * @code
- * ascii-chat mirror
+ * ascii-chat mirror                        # Use webcam
+ * ascii-chat mirror --file video.mp4       # Play video file
+ * ascii-chat mirror --file video.mp4 --loop # Loop video file
  * @endcode
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -25,20 +29,17 @@
  */
 
 #include "main.h"
-#include "video/webcam/webcam.h"
-#include "video/ascii.h"
-#include "video/image.h"
-#include "video/ansi_fast.h"
-#include "video/ansi.h"
-#include "video/rle.h"
+#include "session/capture.h"
+#include "session/display.h"
+#include "session/render.h"
+#include "session/keyboard_handler.h"
 
-#include "platform/abstraction.h"
-#include "platform/terminal.h"
+#include "media/source.h"
+#include "media/youtube.h"
+#include "audio/audio.h"
+#include "video/webcam/webcam.h"
 #include "common.h"
 #include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "video/palette.h"
-#include "util/time.h"
 
 #include <signal.h>
 #include <stdlib.h>
@@ -46,10 +47,7 @@
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
+#include "platform/abstraction.h"
 
 /* ============================================================================
  * Global State Variables
@@ -75,6 +73,16 @@ static void mirror_signal_exit(void) {
 }
 
 /**
+ * Unix signal handler for graceful shutdown on SIGTERM
+ *
+ * @param sig The signal number (unused, but required by signal handler signature)
+ */
+static void mirror_handle_sigterm(int sig) {
+  (void)sig; // Unused
+  mirror_signal_exit();
+}
+
+/**
  * Console control handler for Ctrl+C and related events
  *
  * @param event The control event that occurred
@@ -90,110 +98,65 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
   int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
   if (count > 1) {
-#ifdef _WIN32
-    TerminateProcess(GetCurrentProcess(), 1);
-#else
-    _exit(1);
-#endif
+    platform_force_exit(1);
   }
 
   mirror_signal_exit();
   return true;
 }
 
+/**
+ * Exit condition callback for render loop
+ *
+ * @param user_data Unused (NULL)
+ * @return true if render loop should exit
+ */
+static bool mirror_render_should_exit(void *user_data) {
+  (void)user_data; // Unused parameter
+  return mirror_should_exit();
+}
+
+/**
+ * Mirror mode keyboard handler callback
+ *
+ * @param capture Capture context for media source control
+ * @param key Keyboard key code
+ * @param user_data Unused (NULL)
+ */
+static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, void *user_data) {
+  (void)user_data; // Unused parameter
+  session_handle_keyboard_input(capture, key);
+}
+
+/**
+ * Adapter function for session capture exit callback
+ * Converts from void*->bool signature to match session_capture_should_exit_fn
+ *
+ * @param user_data Unused (NULL)
+ * @return true if capture should exit
+ */
+static bool mirror_capture_should_exit_adapter(void *user_data) {
+  (void)user_data; // Unused parameter
+  return mirror_should_exit();
+}
+
+/**
+ * Adapter function for session display exit callback
+ * Converts from void*->bool signature to match session_display_should_exit_fn
+ *
+ * @param user_data Unused (NULL)
+ * @return true if display should exit
+ */
+static bool mirror_display_should_exit_adapter(void *user_data) {
+  (void)user_data; // Unused parameter
+  return mirror_should_exit();
+}
+
 /* ============================================================================
- * Mirror Mode TTY Management
+ * Mirror Mode Display (using session library)
  * ============================================================================ */
 
-/** TTY info for mirror mode */
-static tty_info_t g_mirror_tty_info = {-1, NULL, false};
-
-/** Flag indicating if we have a valid TTY */
-static bool g_mirror_has_tty = false;
-
-/**
- * Initialize mirror mode display
- *
- * @return 0 on success, negative on error
- */
-static int mirror_display_init(void) {
-  g_mirror_tty_info = get_current_tty();
-
-  // Only use TTY output if stdout is also a TTY (respects shell redirection)
-  // This ensures `cmd > file` works by detecting stdout redirection
-  bool stdout_is_tty = platform_isatty(STDOUT_FILENO) != 0;
-  if (g_mirror_tty_info.fd >= 0 && stdout_is_tty) {
-    g_mirror_has_tty = platform_isatty(g_mirror_tty_info.fd) != 0;
-  } else {
-    g_mirror_has_tty = false;
-  }
-
-  // Initialize ASCII output
-  ascii_write_init(g_mirror_tty_info.fd, !(GET_OPTION(snapshot_mode)));
-
-  return 0;
-}
-
-/**
- * Cleanup mirror mode display
- */
-static void mirror_display_cleanup(void) {
-  ascii_write_destroy(g_mirror_tty_info.fd, true);
-
-  if (g_mirror_tty_info.owns_fd && g_mirror_tty_info.fd >= 0) {
-    platform_close(g_mirror_tty_info.fd);
-    g_mirror_tty_info.fd = -1;
-    g_mirror_tty_info.owns_fd = false;
-  }
-
-  g_mirror_has_tty = false;
-}
-
-/**
- * Write frame to terminal output
- *
- * @param frame_data ASCII frame data to display
- */
-static void mirror_write_frame(const char *frame_data) {
-  if (!frame_data) {
-    return;
-  }
-
-  size_t frame_len = strnlen(frame_data, 1024 * 1024);
-  if (frame_len == 0) {
-    return;
-  }
-
-  if (g_mirror_has_tty && g_mirror_tty_info.fd >= 0) {
-    cursor_reset(g_mirror_tty_info.fd);
-    platform_write(g_mirror_tty_info.fd, frame_data, frame_len);
-    terminal_flush(g_mirror_tty_info.fd);
-  } else {
-    // Expand RLE for pipe/file output where terminals can't interpret REP sequences
-    char *expanded = ansi_expand_rle(frame_data, frame_len);
-    const char *output_data = expanded ? expanded : frame_data;
-    size_t output_len = expanded ? strlen(expanded) : frame_len;
-
-    // Strip all ANSI escape sequences if --strip-ansi is set
-    char *stripped = NULL;
-    if (GET_OPTION(strip_ansi)) {
-      stripped = ansi_strip_escapes(output_data, output_len);
-      if (stripped) {
-        output_data = stripped;
-        output_len = strlen(stripped);
-      }
-    }
-
-    if (!GET_OPTION(snapshot_mode)) {
-      cursor_reset(STDOUT_FILENO);
-    }
-    platform_write(STDOUT_FILENO, output_data, output_len);
-    platform_write(STDOUT_FILENO, "\n", 1); // Trailing newline after frame
-    (void)fflush(stdout);
-    SAFE_FREE(stripped);
-    SAFE_FREE(expanded);
-  }
-}
+/* Display is now managed via session_display_ctx_t from lib/session/display.h */
 
 /* ============================================================================
  * Mirror Mode Main Loop
@@ -205,163 +168,310 @@ static void mirror_write_frame(const char *frame_data) {
  * Initializes webcam and terminal, then continuously captures frames,
  * converts them to ASCII art, and displays them locally.
  *
+ * Uses the session library for unified capture and display management.
+ *
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
   log_info("Starting mirror mode");
 
+  // CRITICAL FIX: When stdout is piped, disable ALL terminal output to prevent buffered output
+  // from corrupting the ASCII frame stream. Any log messages that would normally write to terminal
+  // must be suppressed to keep stdout clean for piped output.
+  if (!platform_isatty(STDOUT_FILENO)) {
+    log_set_terminal_output(false);
+  }
+
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Mirror default: keepawake ENABLED (use --no-keepawake to disable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (!GET_OPTION(disable_keepawake)) {
+    (void)platform_enable_keepawake();
+  }
+
   // Install console control-c handler
   platform_set_console_ctrl_handler(mirror_console_ctrl_handler);
 
-#ifndef _WIN32
-  platform_signal(SIGPIPE, SIG_IGN);
-#endif
+  // Register signal handlers for graceful shutdown and error handling
+  platform_signal_handler_t signal_handlers[] = {
+      {SIGPIPE, SIG_IGN},               // Ignore broken pipe errors
+      {SIGTERM, mirror_handle_sigterm}, // Handle SIGTERM for timeout(1) support
+  };
+  platform_register_signal_handlers(signal_handlers, 2);
 
-  // Initialize webcam
-  int webcam_result = webcam_init(GET_OPTION(webcam_index));
-  if (webcam_result != 0) {
-    log_fatal("Failed to initialize webcam: %s", asciichat_error_string(webcam_result));
-    webcam_print_init_error_help(webcam_result);
-    return webcam_result;
+  // Configure media source based on options
+  const char *media_url = GET_OPTION(media_url);
+  const char *media_file = GET_OPTION(media_file);
+  log_info("Media configuration: url='%s', file='%s'", media_url ? media_url : "(null)",
+           media_file ? media_file : "(null)");
+
+  // Audio source determination based on --audio-source setting
+  // By default (--audio-source auto), microphone is disabled when playing files with --file or --url
+  // Users can override with --audio-source microphone, --audio-source both, or --audio-source media
+  bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
+  if (has_media && GET_OPTION(audio_source) == AUDIO_SOURCE_AUTO) {
+    log_debug("Audio source: auto (microphone disabled when playing files with --file or --url)");
   }
 
-  // Initialize display
-  if (mirror_display_init() != 0) {
+  session_capture_config_t capture_config = {0};
+  capture_config.target_fps = 60; // Default for webcam
+  capture_config.resize_for_network = false;
+  capture_config.should_exit_callback = mirror_capture_should_exit_adapter;
+  capture_config.callback_data = NULL;
+
+  // Temporary media source for probing (FPS detection, audio detection)
+  // Reuse same source to avoid multiple YouTube yt-dlp extractions
+  media_source_t *probe_source = NULL;
+
+  if (media_url && strlen(media_url) > 0) {
+    // User specified a network URL (takes priority over --file)
+    // Don't open webcam when streaming from URL
+    log_info("Using network URL: %s (webcam disabled)", media_url);
+    capture_config.type = MEDIA_SOURCE_FILE;
+    capture_config.path = media_url;
+
+    // Detect FPS for HTTP URLs using probe source (safe now with lazy initialization)
+    probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url);
+    if (probe_source) {
+      double url_fps = media_source_get_video_fps(probe_source);
+      log_info("Detected HTTP stream video FPS: %.1f", url_fps);
+      if (url_fps > 0.0) {
+        capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+        log_info("Using target FPS: %u", capture_config.target_fps);
+      } else {
+        log_warn("FPS detection failed for HTTP stream, using default 30 FPS");
+        capture_config.target_fps = 30;
+      }
+    } else {
+      log_warn("Failed to create probe source for HTTP stream, using default 30 FPS");
+      capture_config.target_fps = 30;
+    }
+
+    capture_config.loop = false; // Network URLs cannot be looped
+  } else if (media_file && strlen(media_file) > 0) {
+    // User specified a media file or stdin - don't open webcam
+    if (strcmp(media_file, "-") == 0) {
+      log_info("Using stdin for media streaming (webcam disabled)");
+      capture_config.type = MEDIA_SOURCE_STDIN;
+      capture_config.path = NULL;
+    } else {
+      log_info("Using media file: %s (webcam disabled)", media_file);
+      capture_config.type = MEDIA_SOURCE_FILE;
+      capture_config.path = media_file;
+
+      // Create probe source once and reuse for FPS and audio detection
+      probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file);
+      if (probe_source) {
+        double file_fps = media_source_get_video_fps(probe_source);
+        log_info("Detected file video FPS: %.1f", file_fps);
+        if (file_fps > 0.0) {
+          capture_config.target_fps = (uint32_t)(file_fps + 0.5);
+          log_info("Using target FPS: %u", capture_config.target_fps);
+        } else {
+          log_warn("FPS detection failed, using default 60 FPS");
+          capture_config.target_fps = 60;
+        }
+      } else {
+        log_warn("Failed to create probe source for FPS detection");
+      }
+    }
+    capture_config.loop = GET_OPTION(media_loop);
+  } else if (GET_OPTION(test_pattern)) {
+    // Test pattern mode
+    log_info("Using test pattern");
+    capture_config.type = MEDIA_SOURCE_TEST;
+    capture_config.path = NULL;
+    capture_config.loop = false;
+  } else {
+    // Default to webcam (no --file, --url, or --test-pattern specified)
+    log_info("Using local webcam");
+    capture_config.type = MEDIA_SOURCE_WEBCAM;
+    capture_config.path = NULL;
+    capture_config.loop = false;
+  }
+
+  // Add seek timestamp if specified
+  capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+
+  // Don't reuse probe_source - FPS detection corrupts decoder state
+  // Let session_capture create its own fresh source for reliable playback
+  if (probe_source) {
+    media_source_destroy(probe_source);
+    probe_source = NULL;
+  }
+
+  session_capture_ctx_t *capture = session_capture_create(&capture_config);
+  if (!capture) {
+    log_fatal("Failed to initialize capture source");
+    if (probe_source) {
+      media_source_destroy(probe_source);
+      probe_source = NULL;
+    }
+    // Clean up webcam resources and cached images on failure
+    webcam_cleanup();
+    return ERROR_MEDIA_INIT;
+  }
+
+  // Initialize audio for playback if media file has audio
+  audio_context_t *audio_ctx = NULL;
+  bool audio_available = false;
+
+  // Check if file/URL has audio stream
+  // Use capture's media source to check for audio
+  media_source_t *audio_probe_source = capture ? session_capture_get_media_source(capture) : NULL;
+  if (capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
+    if (media_source_has_audio(audio_probe_source)) {
+      audio_available = true;
+      audio_ctx = SAFE_MALLOC(sizeof(audio_context_t), audio_context_t *);
+      if (audio_ctx) {
+        *audio_ctx = (audio_context_t){0};
+        if (audio_init(audio_ctx) == ASCIICHAT_OK) {
+          // Store the media source in audio context for direct callback reading
+          media_source_t *media_source = session_capture_get_media_source(capture);
+          audio_ctx->media_source = media_source;
+
+          // Store audio context in media source for seek buffer flushing
+          if (media_source) {
+            media_source_set_audio_context(media_source, audio_ctx);
+          }
+
+          // Determine if microphone should be enabled based on --audio-source setting
+          bool should_enable_mic = audio_should_enable_microphone(GET_OPTION(audio_source), audio_available);
+          audio_ctx->playback_only = !should_enable_mic;
+
+          // Disable jitter buffering for local file playback
+          if (audio_ctx->playback_buffer) {
+            audio_ctx->playback_buffer->jitter_buffer_enabled = false;
+            atomic_store(&audio_ctx->playback_buffer->jitter_buffer_filled, true);
+          }
+
+          if (audio_start_duplex(audio_ctx) == ASCIICHAT_OK) {
+            // Store audio context in capture for keyboard handler access (for seek buffer flushing)
+            session_capture_set_audio_context(capture, audio_ctx);
+            log_info("Audio playback initialized for media file");
+          } else {
+            log_warn("Failed to start audio duplex");
+            audio_destroy(audio_ctx);
+            SAFE_FREE(audio_ctx);
+            audio_ctx = NULL;
+            audio_available = false;
+          }
+        } else {
+          log_warn("Failed to initialize audio context (audio_init returned error)");
+          // CRITICAL: audio_init() may have called Pa_Initialize() and incremented refcount
+          // Must call audio_destroy() to properly decrement refcount
+          audio_destroy(audio_ctx);
+          SAFE_FREE(audio_ctx);
+          audio_ctx = NULL;
+          audio_available = false;
+        }
+      }
+    }
+  }
+  // Note: probe_source is now managed by session_capture (not owned by us)
+
+  session_display_config_t display_config = {0};
+  display_config.snapshot_mode = GET_OPTION(snapshot_mode);
+  display_config.palette_type = GET_OPTION(palette_type);
+  display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+  display_config.color_mode = TERM_COLOR_AUTO;
+  display_config.enable_audio_playback = audio_available;
+  display_config.audio_ctx = audio_ctx;
+  display_config.should_exit_callback = mirror_display_should_exit_adapter;
+  display_config.callback_data = NULL;
+
+  session_display_ctx_t *display = session_display_create(&display_config);
+  if (!display) {
     log_fatal("Failed to initialize display");
+    if (audio_ctx) {
+      audio_stop_duplex(audio_ctx);
+      audio_destroy(audio_ctx);
+      SAFE_FREE(audio_ctx);
+    }
+    session_capture_destroy(capture);
+    if (probe_source) {
+      media_source_destroy(probe_source);
+      probe_source = NULL;
+    }
+    // Clean up webcam resources and cached images on failure
     webcam_cleanup();
     return ERROR_DISPLAY;
   }
 
-  // Detect terminal capabilities
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  caps = apply_color_mode_override(caps);
-
-  // Initialize ANSI color lookup tables based on terminal capabilities
-  if (caps.color_level == TERM_COLOR_TRUECOLOR) {
-    ansi_fast_init();
-  } else if (caps.color_level == TERM_COLOR_256) {
-    ansi_fast_init_256color();
-  } else if (caps.color_level == TERM_COLOR_16) {
-    ansi_fast_init_16color();
-  }
-
-  // Initialize palette
-  char palette_chars[256] = {0};
-  size_t palette_len = 0;
-  char luminance_palette[256] = {0};
-
-  const char *custom_chars = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
-  palette_type_t palette_type = GET_OPTION(palette_type);
-  if (initialize_client_palette(palette_type, custom_chars, palette_chars, &palette_len, luminance_palette) != 0) {
-    log_fatal("Failed to initialize palette");
-    mirror_display_cleanup();
-    webcam_cleanup();
-    return ERROR_INVALID_STATE;
-  }
-
-  // Adaptive sleep for frame rate limiting at 60 FPS
-  adaptive_sleep_state_t sleep_state = {0};
-  adaptive_sleep_config_t config = {
-      .baseline_sleep_ns = 16666667, // 60 FPS (16.67ms)
-      .min_speed_multiplier = 1.0,   // Constant rate (no slowdown)
-      .max_speed_multiplier = 1.0,   // Constant rate (no speedup)
-      .speedup_rate = 0.0,           // No adaptive behavior (constant FPS)
-      .slowdown_rate = 0.0           // No adaptive behavior (constant FPS)
-  };
-  adaptive_sleep_init(&sleep_state, &config);
-
-  // Snapshot mode timing
-  struct timespec snapshot_start_time = {0, 0};
-  bool snapshot_done = false;
-  if (GET_OPTION(snapshot_mode)) {
-    (void)clock_gettime(CLOCK_MONOTONIC, &snapshot_start_time);
-  }
-
-  // FPS tracking
-  uint64_t frame_count = 0;
-  struct timespec fps_report_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &fps_report_time);
-
-  log_info("Mirror mode running - press Ctrl+C to exit");
+  // Disable terminal logging during rendering to prevent logs from mixing with ASCII art
+  bool terminal_logging_was_enabled = log_get_terminal_output();
   log_set_terminal_output(false);
 
-  while (!mirror_should_exit()) {
-    // Frame rate limiting using adaptive sleep system
-    // Use queue_depth=0 and target_depth=0 for constant 60 FPS display
-    adaptive_sleep_do(&sleep_state, 0, 0);
+  // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
+  // Synchronous mode: pass capture context, NULL for callbacks
+  // Keyboard support: pass handler and capture context for interactive controls
+  asciichat_error_t result = session_render_loop(capture, display, mirror_render_should_exit,
+                                                 NULL,                    // No custom capture callback
+                                                 NULL,                    // No custom sleep callback
+                                                 mirror_keyboard_handler, // Keyboard handler for interactive controls
+                                                 capture); // user_data (capture context for keyboard handler)
 
-    // Capture timestamp for snapshot mode timing
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+  // Re-enable terminal logging after rendering
+  log_set_terminal_output(terminal_logging_was_enabled);
 
-    // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
-    if (GET_OPTION(snapshot_mode) && !snapshot_done) {
-      double elapsed_sec = (double)(current_time.tv_sec - snapshot_start_time.tv_sec) +
-                           (double)(current_time.tv_nsec - snapshot_start_time.tv_nsec) / 1e9;
-
-      float snapshot_delay = GET_OPTION(snapshot_delay);
-      if (elapsed_sec >= snapshot_delay) {
-        snapshot_done = true;
-      }
-    }
-
-    // Read frame from webcam
-    image_t *image = webcam_read();
-    if (!image) {
-      platform_sleep_usec(10000); // 10ms delay before retry
-      continue;
-    }
-
-    // Convert image to ASCII
-    // When stretch is 0 (disabled), we preserve aspect ratio (true)
-    // When stretch is 1 (enabled), we allow stretching without aspect ratio preservation (false)
-    bool stretch = GET_OPTION(stretch);
-    unsigned short int width = GET_OPTION(width);
-    unsigned short int height = GET_OPTION(height);
-    bool preserve_aspect_ratio = !stretch;
-    char *ascii_frame = ascii_convert_with_capabilities(image, width, height, &caps, preserve_aspect_ratio, stretch,
-                                                        palette_chars, luminance_palette);
-
-    if (ascii_frame) {
-      // When piping/redirecting in snapshot mode, only output the final frame
-      // When outputting to TTY, show live preview frames
-      bool snapshot_mode = GET_OPTION(snapshot_mode);
-      bool should_write = !snapshot_mode || g_mirror_has_tty || snapshot_done;
-      if (should_write) {
-        mirror_write_frame(ascii_frame);
-      }
-
-      // Snapshot mode: exit after capturing the final frame
-      if (snapshot_mode && snapshot_done) {
-        SAFE_FREE(ascii_frame);
-        image_destroy(image);
-        break;
-      }
-
-      SAFE_FREE(ascii_frame);
-      frame_count++;
-    }
-
-    image_destroy(image);
-
-    // FPS reporting every 5 seconds
-    uint64_t fps_elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                              ((uint64_t)fps_report_time.tv_sec * 1000000 + (uint64_t)fps_report_time.tv_nsec / 1000);
-
-    if (fps_elapsed_us >= 5000000) {
-      double fps = (double)frame_count / ((double)fps_elapsed_us / 1000000.0);
-      log_debug("Mirror FPS: %.1f", fps);
-      frame_count = 0;
-      fps_report_time = current_time;
-    }
+  log_debug("mirror_main: session_render_loop returned with result=%d", result);
+  if (result != ASCIICHAT_OK) {
+    log_error("Render loop failed with error code: %d", result);
   }
 
-  // Cleanup
-  log_set_terminal_output(true);
-  log_info("Mirror mode shutting down");
+  log_debug("mirror_main: render loop complete, starting shutdown sequence");
 
-  mirror_display_cleanup();
+  // Terminate PortAudio FIRST, BEFORE closing streams and destroying audio context
+  // This ensures device resources are freed in the correct order
+  log_debug("mirror_main: terminating PortAudio device resources");
+  audio_terminate_portaudio_final();
+
+  // Cleanup - must happen AFTER PortAudio is terminated
+  // Stop audio FIRST to prevent callback from accessing media_source
+  log_debug("mirror_main: starting cleanup, audio_ctx=%p", (void *)audio_ctx);
+  if (audio_ctx) {
+    log_debug("mirror_main: stopping audio duplex");
+    audio_stop_duplex(audio_ctx);
+    log_debug("mirror_main: destroying audio");
+    audio_destroy(audio_ctx);
+    log_debug("mirror_main: freeing audio_ctx");
+    SAFE_FREE(audio_ctx);
+    log_debug("mirror_main: audio cleanup complete");
+  }
+
+  session_display_destroy(display);
+  session_capture_destroy(capture);
+
+  // Free probe_source (we created it, so we must free it)
+  // This is separate from capture's media source because capture doesn't own it
+  if (probe_source) {
+    media_source_destroy(probe_source);
+    probe_source = NULL;
+  }
+
+  // Clean up webcam resources and cached images (test pattern, etc.)
   webcam_cleanup();
+
+  log_set_terminal_output(false);
+
+  // Disable keepawake mode (re-allow OS to sleep)
+  log_debug("mirror_main: disabling keepawake");
+  platform_disable_keepawake();
+
+  // In snapshot mode, suppress shutdown logs to preserve the rendered ASCII art
+  // Re-enable terminal output for shutdown message only if not in snapshot mode and not --quiet
+  if (!GET_OPTION(snapshot_mode) && !GET_OPTION(quiet)) {
+    log_set_terminal_output(true);
+    log_info("Mirror mode shutting down");
+  }
+
+  // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
+  if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
+    const char newline = '\n';
+    platform_write(STDOUT_FILENO, &newline, 1);
+  }
 
   return 0;
 }

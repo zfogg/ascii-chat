@@ -368,6 +368,261 @@ if(NOT TARGET OpenSSL::SSL)
 endif()
 
 # =============================================================================
+# FFmpeg - Media encoding/decoding libraries
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source...")
+
+set(FFMPEG_PREFIX "${MUSL_DEPS_DIR_STATIC}/ffmpeg")
+set(FFMPEG_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/ffmpeg-build")
+set(FFMPEG_SOURCE_DIR "${FFMPEG_BUILD_DIR}/src/ffmpeg")
+
+# Build FFmpeg synchronously at configure time if not cached
+if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libavutil.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libswscale.a" OR
+   NOT EXISTS "${FFMPEG_PREFIX}/lib/libswresample.a")
+    message(STATUS "  FFmpeg libraries not found in cache, will build from source")
+    message(STATUS "  This may take several minutes on first build...")
+
+    file(MAKE_DIRECTORY "${FFMPEG_BUILD_DIR}")
+    file(MAKE_DIRECTORY "${FFMPEG_SOURCE_DIR}")
+
+    # Download FFmpeg source
+    set(FFMPEG_TARBALL "${FFMPEG_BUILD_DIR}/ffmpeg-7.1.tar.xz")
+    if(NOT EXISTS "${FFMPEG_TARBALL}")
+        message(STATUS "  Downloading FFmpeg 7.1...")
+        file(DOWNLOAD
+            "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz"
+            "${FFMPEG_TARBALL}"
+            EXPECTED_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+            STATUS DOWNLOAD_STATUS
+            SHOW_PROGRESS
+        )
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+            message(FATAL_ERROR "Failed to download FFmpeg: ${ERROR_MSG}")
+        endif()
+    endif()
+
+    # Extract tarball
+    if(NOT EXISTS "${FFMPEG_SOURCE_DIR}/configure")
+        message(STATUS "  Extracting FFmpeg...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xJf "${FFMPEG_TARBALL}"
+            WORKING_DIRECTORY "${FFMPEG_BUILD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract FFmpeg tarball")
+        endif()
+        # Move from ffmpeg-7.1/ to src/ffmpeg/
+        file(RENAME "${FFMPEG_BUILD_DIR}/ffmpeg-7.1" "${FFMPEG_SOURCE_DIR}")
+    endif()
+
+    # Configure FFmpeg with minimal build (only codecs we need)
+    message(STATUS "  Configuring FFmpeg...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env
+            CC=${MUSL_GCC}
+            REALGCC=${REAL_GCC}
+            CFLAGS=${MUSL_KERNEL_CFLAGS}
+            "${FFMPEG_SOURCE_DIR}/configure"
+            --prefix=${FFMPEG_PREFIX}
+            --cc=${MUSL_GCC}
+            --enable-static
+            --disable-shared
+            --enable-pic
+            --extra-cflags=-fPIC
+            --disable-programs
+            --disable-doc
+            --disable-htmlpages
+            --disable-manpages
+            --disable-podpages
+            --disable-txtpages
+            --disable-debug
+            --disable-runtime-cpudetect
+            --disable-autodetect
+            --disable-x86asm
+            --disable-inline-asm
+            --enable-protocol=file
+            --enable-demuxer=mov,matroska,avi,gif,image2
+            --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg
+            --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video
+            --enable-swscale
+            --enable-swresample
+        WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+        RESULT_VARIABLE CONFIG_RESULT
+        OUTPUT_VARIABLE CONFIG_OUTPUT
+        ERROR_VARIABLE CONFIG_ERROR
+    )
+    if(NOT CONFIG_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to configure FFmpeg:\n${CONFIG_ERROR}")
+    endif()
+
+    # Build FFmpeg
+    message(STATUS "  Building FFmpeg (this takes several minutes)...")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS} make -j${CMAKE_BUILD_PARALLEL_LEVEL}
+        WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+        RESULT_VARIABLE BUILD_RESULT
+        OUTPUT_VARIABLE BUILD_OUTPUT
+        ERROR_VARIABLE BUILD_ERROR
+    )
+    if(NOT BUILD_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to build FFmpeg:\n${BUILD_ERROR}")
+    endif()
+
+    # Install FFmpeg
+    message(STATUS "  Installing FFmpeg...")
+    execute_process(
+        COMMAND make install
+        WORKING_DIRECTORY "${FFMPEG_SOURCE_DIR}"
+        RESULT_VARIABLE INSTALL_RESULT
+        OUTPUT_VARIABLE INSTALL_OUTPUT
+        ERROR_VARIABLE INSTALL_ERROR
+    )
+    if(NOT INSTALL_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to install FFmpeg:\n${INSTALL_ERROR}")
+    endif()
+
+    message(STATUS "  ${BoldGreen}FFmpeg${ColorReset} built and cached successfully")
+else()
+    message(STATUS "  ${BoldBlue}FFmpeg${ColorReset} libraries found in cache: ${BoldMagenta}${FFMPEG_PREFIX}/lib/libavformat.a${ColorReset}")
+endif()
+
+# Create dummy target for dependency tracking
+add_custom_target(ffmpeg-musl DEPENDS openssl-musl)
+
+# Set FFmpeg variables for use in the build
+set(FFMPEG_FOUND TRUE)
+set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include" CACHE PATH "FFmpeg include directory" FORCE)
+set(FFMPEG_LIBRARY_DIR "${FFMPEG_PREFIX}/lib" CACHE PATH "FFmpeg library directory" FORCE)
+
+# Set individual library paths
+set(FFMPEG_avformat_LIBRARY "${FFMPEG_PREFIX}/lib/libavformat.a" CACHE FILEPATH "FFmpeg avformat library" FORCE)
+set(FFMPEG_avcodec_LIBRARY "${FFMPEG_PREFIX}/lib/libavcodec.a" CACHE FILEPATH "FFmpeg avcodec library" FORCE)
+set(FFMPEG_avutil_LIBRARY "${FFMPEG_PREFIX}/lib/libavutil.a" CACHE FILEPATH "FFmpeg avutil library" FORCE)
+set(FFMPEG_swscale_LIBRARY "${FFMPEG_PREFIX}/lib/libswscale.a" CACHE FILEPATH "FFmpeg swscale library" FORCE)
+set(FFMPEG_swresample_LIBRARY "${FFMPEG_PREFIX}/lib/libswresample.a" CACHE FILEPATH "FFmpeg swresample library" FORCE)
+
+# Set FFMPEG_LINK_LIBRARIES for use in target_link_libraries
+set(FFMPEG_LINK_LIBRARIES
+    "${FFMPEG_PREFIX}/lib/libavformat.a"
+    "${FFMPEG_PREFIX}/lib/libavcodec.a"
+    "${FFMPEG_PREFIX}/lib/libavutil.a"
+    "${FFMPEG_PREFIX}/lib/libswscale.a"
+    "${FFMPEG_PREFIX}/lib/libswresample.a"
+    CACHE STRING "FFmpeg link libraries" FORCE
+)
+
+# =============================================================================
+# SQLite3 - Embedded SQL database
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}SQLite3${ColorReset} from source...")
+
+set(SQLITE3_PREFIX "${MUSL_DEPS_DIR_STATIC}/sqlite3")
+set(SQLITE3_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/sqlite3-build")
+set(SQLITE3_SOURCE_DIR "${SQLITE3_BUILD_DIR}/src/sqlite3")
+
+# Build SQLite3 synchronously at configure time if not cached
+if(NOT EXISTS "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+    message(STATUS "  SQLite3 library not found in cache, will build from source")
+    message(STATUS "  This should be quick (SQLite is a single file)...")
+
+    file(MAKE_DIRECTORY "${SQLITE3_BUILD_DIR}")
+    file(MAKE_DIRECTORY "${SQLITE3_SOURCE_DIR}")
+
+    # Download SQLite3 amalgamation (single-file distribution)
+    set(SQLITE3_TARBALL "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000.zip")
+    if(NOT EXISTS "${SQLITE3_TARBALL}")
+        message(STATUS "  Downloading SQLite3 3.48.0...")
+        file(DOWNLOAD
+            "https://www.sqlite.org/2025/sqlite-amalgamation-3480000.zip"
+            "${SQLITE3_TARBALL}"
+            EXPECTED_HASH SHA256=d9a15a42db7c78f88fe3d3c5945acce2f4bfe9e4da9f685cd19f6ea1d40aa884
+            STATUS DOWNLOAD_STATUS
+            SHOW_PROGRESS
+        )
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+            message(FATAL_ERROR "Failed to download SQLite3: ${ERROR_MSG}")
+        endif()
+    endif()
+
+    # Extract archive
+    if(NOT EXISTS "${SQLITE3_SOURCE_DIR}/sqlite3.c")
+        message(STATUS "  Extracting SQLite3...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xf "${SQLITE3_TARBALL}"
+            WORKING_DIRECTORY "${SQLITE3_BUILD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract SQLite3 archive")
+        endif()
+        # Move from sqlite-amalgamation-3480000/ to src/sqlite3/
+        file(RENAME "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000" "${SQLITE3_SOURCE_DIR}")
+    endif()
+
+    # Compile SQLite3 to static library
+    message(STATUS "  Building SQLite3...")
+    file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/lib")
+    file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/include")
+
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E env
+            CC=${MUSL_GCC}
+            REALGCC=${REAL_GCC}
+            CFLAGS=${MUSL_KERNEL_CFLAGS}
+            ${MUSL_GCC} -c
+            -DSQLITE_THREADSAFE=1
+            -DSQLITE_ENABLE_FTS5
+            -DSQLITE_ENABLE_RTREE
+            -DSQLITE_ENABLE_JSON1
+            -O3
+            -fPIC
+            "${SQLITE3_SOURCE_DIR}/sqlite3.c"
+            -o "${SQLITE3_BUILD_DIR}/sqlite3.o"
+        RESULT_VARIABLE COMPILE_RESULT
+        OUTPUT_VARIABLE COMPILE_OUTPUT
+        ERROR_VARIABLE COMPILE_ERROR
+    )
+    if(NOT COMPILE_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to compile SQLite3:\n${COMPILE_ERROR}")
+    endif()
+
+    # Create static library
+    execute_process(
+        COMMAND ${CMAKE_AR} rcs "${SQLITE3_PREFIX}/lib/libsqlite3.a" "${SQLITE3_BUILD_DIR}/sqlite3.o"
+        RESULT_VARIABLE AR_RESULT
+        OUTPUT_VARIABLE AR_OUTPUT
+        ERROR_VARIABLE AR_ERROR
+    )
+    if(NOT AR_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to create SQLite3 static library:\n${AR_ERROR}")
+    endif()
+
+    # Copy headers
+    file(COPY "${SQLITE3_SOURCE_DIR}/sqlite3.h" DESTINATION "${SQLITE3_PREFIX}/include")
+    file(COPY "${SQLITE3_SOURCE_DIR}/sqlite3ext.h" DESTINATION "${SQLITE3_PREFIX}/include")
+
+    message(STATUS "  ${BoldGreen}SQLite3${ColorReset} built and cached successfully")
+else()
+    message(STATUS "  ${BoldBlue}SQLite3${ColorReset} library found in cache: ${BoldMagenta}${SQLITE3_PREFIX}/lib/libsqlite3.a${ColorReset}")
+endif()
+
+# Create dummy target for dependency tracking
+add_custom_target(sqlite3-musl DEPENDS zstd-musl)
+
+# Set SQLite3 variables for use in the build
+set(SQLITE3_FOUND TRUE)
+set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include" CACHE PATH "SQLite3 include directory" FORCE)
+set(SQLITE3_LIBRARIES "${SQLITE3_PREFIX}/lib/libsqlite3.a" CACHE FILEPATH "SQLite3 library" FORCE)
+
+# =============================================================================
 # ALSA - Advanced Linux Sound Architecture
 # =============================================================================
 message(STATUS "Configuring ${BoldBlue}ALSA${ColorReset} from source...")
@@ -533,7 +788,7 @@ set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
 message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source...")
 
 # BearSSL doesn't use CMake, so we build it manually
-set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
+set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
 set(BEARSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/bearssl-build")
 set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 

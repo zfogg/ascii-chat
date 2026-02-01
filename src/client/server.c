@@ -82,13 +82,8 @@
 #include <time.h>
 #include <sys/types.h>
 #include <stdatomic.h>
-#ifndef _WIN32
-#include <netinet/tcp.h>
-#include <netdb.h>     // For getaddrinfo(), gai_strerror()
-#include <arpa/inet.h> // For inet_ntop()
-#else
-#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
-#endif
+
+#include "platform/network.h" // Consolidates platform-specific network headers (includes TCP options)
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -376,7 +371,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
       // Try IPv6 loopback connection
       g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv6 loopback connection to [::1]:%s...", port_str);
+        log_debug("Trying IPv6 loopback connection to [::1]:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv6 loopback");
           SAFE_STRNCPY(g_server_ip, "::1", sizeof(g_server_ip));
@@ -410,7 +405,7 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     if (ipv4_result == 0 && res != NULL) {
       g_sockfd = socket_create(res->ai_family, res->ai_socktype, res->ai_protocol);
       if (g_sockfd != INVALID_SOCKET_VALUE) {
-        log_info("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
+        log_debug("Trying IPv4 loopback connection to 127.0.0.1:%s...", port_str);
         if (connect_with_timeout(g_sockfd, res->ai_addr, res->ai_addrlen, CONNECT_TIMEOUT)) {
           log_debug("Connection successful using IPv4 loopback");
           SAFE_STRNCPY(g_server_ip, "127.0.0.1", sizeof(g_server_ip));
@@ -605,9 +600,9 @@ connection_success:
 
   // Send client join packet for multi-user support
   uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
-  log_info("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
+  log_debug("GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)", GET_OPTION(audio_enabled));
   if (GET_OPTION(audio_enabled)) {
-    log_info("Adding CLIENT_CAP_AUDIO to capabilities");
+    log_debug("Adding CLIENT_CAP_AUDIO to capabilities");
     my_capabilities |= CLIENT_CAP_AUDIO;
   }
   if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
@@ -644,7 +639,9 @@ connection_success:
  * @ingroup client_connection
  */
 bool server_connection_is_active() {
-  return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE);
+  // For TCP: check socket validity
+  // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
+  return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
 }
 
 /**
@@ -784,8 +781,10 @@ void server_connection_close() {
     g_encryption_enabled = false;
   }
 
-  // Turn ON terminal logging when connection is closed
-  log_set_terminal_output(true);
+  // Turn ON terminal logging when connection is closed (unless it was disabled with --quiet)
+  if (!GET_OPTION(quiet)) {
+    log_set_terminal_output(true);
+  }
 }
 
 /**
@@ -831,8 +830,10 @@ void server_connection_lost() {
   atomic_store(&g_connection_lost, true);
   atomic_store(&g_connection_active, false);
 
-  // Turn ON terminal logging when connection is lost
-  log_set_terminal_output(true);
+  // Turn ON terminal logging when connection is lost (unless it was disabled with --quiet)
+  if (!GET_OPTION(quiet)) {
+    log_set_terminal_output(true);
+  }
   display_full_reset();
 }
 
@@ -856,7 +857,9 @@ bool server_connection_is_lost() {
  * @ingroup client_connection
  */
 void server_connection_cleanup() {
-  log_set_terminal_output(true);
+  if (!GET_OPTION(quiet)) {
+    log_set_terminal_output(true);
+  }
   server_connection_close();
   mutex_destroy(&g_send_mutex);
 }
@@ -923,29 +926,29 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
  * @ingroup client_connection
  */
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
-  // Get socket and crypto context while holding mutex (brief lock)
+  // Get transport reference while holding mutex (brief lock)
   mutex_lock(&g_send_mutex);
 
-  // Check connection status and get socket reference
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+  // Check connection status and get transport reference
+  if (!atomic_load(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return -1;
   }
 
-  // Get crypto context if encryption is enabled
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+  // Get transport reference - transport has its own internal synchronization
+  acip_transport_t *transport = g_client_transport;
   mutex_unlock(&g_send_mutex);
 
   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
-  int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
+  asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
 
   // If send failed due to network error, signal connection loss
-  if (result < 0) {
+  if (result != ASCIICHAT_OK) {
     server_connection_lost();
+    return -1;
   }
 
-  return result;
+  return 0;
 }
 
 /**
@@ -1086,11 +1089,8 @@ int threaded_send_pong_packet(void) {
  *
  * @ingroup client_connection
  */
-int threaded_send_stream_start_packet(uint32_t stream_type) {
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
+asciichat_error_t threaded_send_stream_start_packet(uint32_t stream_type) {
+  // Connection and transport availability is checked by threaded_send_packet()
 
   // Build STREAM_START packet locally
   uint32_t type_data = HOST_TO_NET_U32(stream_type);
@@ -1112,15 +1112,12 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
  *
  * @ingroup client_connection
  */
-int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
+asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
-  log_info("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
-           GET_OPTION(auto_width), GET_OPTION(auto_height));
+  log_debug("Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)", width, height,
+            GET_OPTION(auto_width), GET_OPTION(auto_height));
 
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
+  // Connection and transport availability is checked by threaded_send_packet()
 
   // Build terminal capabilities packet locally
   // Detect terminal capabilities automatically
@@ -1162,8 +1159,9 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   }
 
   // Set desired FPS
-  if (g_max_fps > 0) {
-    net_packet.desired_fps = (uint8_t)(g_max_fps > 144 ? 144 : g_max_fps);
+  int fps = GET_OPTION(fps);
+  if (fps > 0) {
+    net_packet.desired_fps = (uint8_t)(fps > 144 ? 144 : fps);
   } else {
     net_packet.desired_fps = caps.desired_fps;
   }
@@ -1179,7 +1177,8 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
 
   net_packet.detection_reliable = caps.detection_reliable;
-  net_packet.utf8_support = GET_OPTION(force_utf8) ? 1 : 0;
+  // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
+  net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
 
   SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
 
@@ -1199,10 +1198,7 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
  * @ingroup client_connection
  */
 int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    return -1;
-  }
+  // Connection and transport availability is checked by threaded_send_packet()
 
   // Build CLIENT_JOIN packet locally
   client_info_packet_t join_packet;

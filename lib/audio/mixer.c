@@ -44,10 +44,10 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->envelope = 0.0f;
   comp->gain_lin = 1.0f;
 
-  // Set default parameters with +6dB makeup gain
-  // The client playback path now has proper soft clipping to handle any peaks
-  // Server ducking (-6dB) + crowd scaling (-3dB) needs compensation
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 6.0f);
+  // Set default parameters with 0dB makeup gain (unity)
+  // Soft clip at 0.7 provides 3dB headroom to prevent hard clipping
+  // Ducking and crowd scaling naturally reduce volume, no compensation needed
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 0.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
@@ -288,8 +288,9 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
   mixer->active_sources_mask = 0ULL; // No sources active initially
-  SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
-              sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
+  for (int i = 0; i < 256; i++) {
+    mixer->source_id_to_index[i] = MIXER_HASH_INVALID;
+  }
 
   // Allocate mix buffer BEFORE rwlock_init so cleanup path is correct
   size_t mix_buffer_size = 0;
@@ -338,7 +339,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
   compressor_init(&mixer->compressor, (float)sample_rate);
 
-  log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
+  log_debug("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
   return mixer;
 }
@@ -357,7 +358,7 @@ void mixer_destroy(mixer_t *mixer) {
   SAFE_FREE(mixer->source_active);
   SAFE_FREE(mixer->mix_buffer);
   SAFE_FREE(mixer);
-  log_info("Audio mixer destroyed");
+  log_debug("Audio mixer destroyed");
 }
 
 int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *buffer) {
@@ -388,8 +389,8 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
-  mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
+  mixer->active_sources_mask |= (1ULL << slot);         // Set bit for this slot
+  mixer_hash_set_slot(mixer, client_id, (uint8_t)slot); // Hash table: client_id → slot
 
   rwlock_wrunlock(&mixer->source_lock);
 
@@ -412,8 +413,8 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
-      mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
+      mixer->active_sources_mask &= ~(1ULL << i); // Clear bit for this slot
+      mixer_hash_mark_invalid(mixer, client_id);  // Mark as invalid in hash table
 
       // Reset ducking state for this source
       mixer->ducking.envelope[i] = 0.0f;
@@ -590,10 +591,10 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     for (int s = 0; s < frame_size; s++) {
       float mix = mixer->mix_buffer[s] * comp_gain;
 
-      // Compressor provides +6dB makeup gain for better audibility
-      // Soft clip threshold 1.0f allows full range without premature clipping
-      // Steepness 3.0 for smoother clipping behavior
-      output[frame_start + s] = soft_clip(mix, 1.0f, 3.0f);
+      // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
+      // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
+      // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
+      output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
     }
   }
 
@@ -618,38 +619,27 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
+  uint8_t exclude_index = mixer_hash_get_slot(mixer, exclude_client_id);
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Validate exclude_index before using in bitshift
-  // - exclude_index == 0xFF means "not found" (sentinel value from initialization)
+  // - exclude_index == MIXER_HASH_INVALID means "not found" (sentinel value from initialization)
   // - exclude_index >= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
   // - Also verify hash table lookup actually matched the client_id (collision detection)
-  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF &&
+  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != MIXER_HASH_INVALID &&
                         mixer->source_ids[exclude_index] == exclude_client_id);
 
   if (valid_exclude) {
-    // Check if this is the ONLY active source - if so, include it (solo mode for testing/fallback)
-    // With N>1 clients, other threads drain this buffer. With N=1, allow client to receive their own audio
+    // Apply exclusion to prevent echo feedback
     uint64_t mask_without_excluded = active_mask & ~(1ULL << exclude_index);
-    if (mask_without_excluded == 0) {
-      // Solo client: instead of discarding audio, allow them to receive it back
-      // This provides a fallback for single-client scenarios or testing
-      log_debug_every(LOG_RATE_DEFAULT, "Mixer: Solo mode for client %u - allowing them to receive their own audio",
-                      exclude_client_id);
-      // IMPORTANT: Don't set active_mask to 0 - keep the client's audio in the mix
-      // This allows solo clients to hear something instead of silence
-    } else {
-      // Multiple clients: apply normal exclusion to prevent echo feedback
-      active_mask = mask_without_excluded;
+    active_mask = mask_without_excluded;
 
-      // DIAGNOSTIC: Log which client was excluded and which remain active
-      log_info_every(
-          1000000,
-          "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
-          exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL << exclude_index)),
-          (unsigned long long)active_mask);
-    }
+    // DIAGNOSTIC: Log which client was excluded and which remain active
+    log_info_every(
+        1000000,
+        "MIXER EXCLUSION: exclude_client=%u, exclude_index=%u, active_mask_before=0x%llx, active_mask_after=0x%llx",
+        exclude_client_id, exclude_index, (unsigned long long)(active_mask | (1ULL << exclude_index)),
+        (unsigned long long)active_mask);
   } else {
     // DIAGNOSTIC: Failed to exclude - log why
     log_warn_every(1000000, "MIXER EXCLUSION FAILED: exclude_client=%u, exclude_index=%u (valid=%d), lookup_id=%u",
@@ -670,8 +660,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   for (int frame_start = 0; frame_start < num_samples; frame_start += MIXER_FRAME_SIZE) {
     int frame_size = (frame_start + MIXER_FRAME_SIZE > num_samples) ? (num_samples - frame_start) : MIXER_FRAME_SIZE;
 
-    struct timespec read_start, read_end;
-    (void)clock_gettime(CLOCK_MONOTONIC, &read_start);
+    uint64_t read_start_ns = time_get_ns();
 
     // Clear mix buffer
     SAFE_MEMSET(mixer->mix_buffer, frame_size * sizeof(float), 0, frame_size * sizeof(float));
@@ -721,11 +710,11 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       }
     }
 
-    (void)clock_gettime(CLOCK_MONOTONIC, &read_end);
-    uint64_t read_time_us = ((uint64_t)read_end.tv_sec * 1000000 + (uint64_t)read_end.tv_nsec / 1000) -
-                            ((uint64_t)read_start.tv_sec * 1000000 + (uint64_t)read_start.tv_nsec / 1000);
+    uint64_t read_end_ns = time_get_ns();
+    uint64_t read_time_ns = time_elapsed_ns(read_start_ns, read_end_ns);
+    uint64_t read_time_us = time_ns_to_us(read_time_ns);
 
-    if (read_time_us > 10000) { // Log if reading sources takes > 10ms
+    if (read_time_ns > 10 * NS_PER_MS_INT) {
       log_warn_every(LOG_RATE_DEFAULT, "Mixer: Slow source reading took %lluus (%.2fms) for %d sources", read_time_us,
                      (float)read_time_us / 1000.0f, source_count);
     }
@@ -802,10 +791,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     for (int s = 0; s < frame_size; s++) {
       float mix = mixer->mix_buffer[s] * comp_gain;
 
-      // Compressor provides +6dB makeup gain for better audibility
-      // Soft clip threshold 1.0f allows full range without premature clipping
-      // Steepness 3.0 for smoother clipping behavior
-      output[frame_start + s] = soft_clip(mix, 1.0f, 3.0f);
+      // Soft clip at 0.7 to provide 3dB headroom and prevent hard clipping
+      // With +6dB makeup gain, peaks can exceed 1.0, so we need headroom
+      // threshold=0.7 maps asymptotically toward 1.0, preventing harsh distortion
+      output[frame_start + s] = soft_clip(mix, 0.7f, 3.0f);
     }
   }
 

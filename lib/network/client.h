@@ -30,7 +30,7 @@ using std::atomic_uint;
 #include "video/video_frame.h"
 #include "platform/terminal.h"
 #include "video/palette.h"
-#include "util/uthash.h"
+#include "uthash/uthash.h" // For UT_hash_handle
 
 /**
  * @brief Per-client state structure for server-side client management
@@ -148,10 +148,6 @@ typedef struct client_info {
   asciichat_thread_t audio_render_thread;
   atomic_bool video_render_thread_running;
   atomic_bool audio_render_thread_running;
-
-  // Per-client processing state
-  struct timespec last_video_render_time;
-  struct timespec last_audio_render_time;
 
   // Per-client synchronization
   mutex_t client_state_mutex;

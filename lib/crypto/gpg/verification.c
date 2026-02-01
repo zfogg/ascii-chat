@@ -12,24 +12,21 @@
 #include "util/validation.h"
 #include "log/logging.h"
 #include "platform/system.h"
+#include "platform/filesystem.h"
+#include "platform/util.h"
+#include "platform/process.h"
 
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #ifdef HAVE_LIBGCRYPT
 #include <gcrypt.h>
-#endif
-
-#ifdef _WIN32
-#define SAFE_POPEN _popen
-#define SAFE_PCLOSE _pclose
-#else
-#define SAFE_POPEN popen
-#define SAFE_PCLOSE pclose
 #endif
 
 int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size_t message_len,
@@ -38,7 +35,7 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   // Instead, we regenerate the OpenPGP signature using GPG (Ed25519 is deterministic).
   (void)signature;
 
-  log_info("gpg_verify_detached_ed25519: Verifying signature with key ID %s using gpg --verify", key_id);
+  log_debug("gpg_verify_detached_ed25519: Verifying signature with key ID %s using gpg --verify", key_id);
 
   // To verify with GPG, we need to:
   // 1. Reconstruct the OpenPGP signature packet from the raw R||S signature
@@ -57,19 +54,18 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   }
 
   // Now verify using gpg --verify
-  char msg_path[] = "/tmp/gpg_verify_msg_XXXXXX";
-  char sig_path[] = "/tmp/gpg_verify_sig_XXXXXX";
+  char msg_path[PLATFORM_MAX_PATH_LENGTH];
+  char sig_path[PLATFORM_MAX_PATH_LENGTH];
+  int msg_fd = -1;
+  int sig_fd = -1;
 
-  int msg_fd = mkstemp(msg_path);
-  if (msg_fd < 0) {
+  if (platform_create_temp_file(msg_path, sizeof(msg_path), "gpg_verify_msg", &msg_fd) != 0) {
     log_error("Failed to create temporary message file");
     return -1;
   }
 
-  int sig_fd = mkstemp(sig_path);
-  if (sig_fd < 0) {
-    close(msg_fd);
-    unlink(msg_path);
+  if (platform_create_temp_file(sig_path, sizeof(sig_path), "gpg_verify_sig", &sig_fd) != 0) {
+    platform_delete_temp_file(msg_path);
     log_error("Failed to create temporary signature file");
     return -1;
   }
@@ -79,8 +75,8 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
     log_error("Failed to write message to temp file");
     close(msg_fd);
     close(sig_fd);
-    unlink(msg_path);
-    unlink(sig_path);
+    platform_delete_temp_file(msg_path);
+    platform_delete_temp_file(sig_path);
     return -1;
   }
   close(msg_fd);
@@ -89,35 +85,36 @@ int gpg_verify_detached_ed25519(const char *key_id, const uint8_t *message, size
   if (write(sig_fd, openpgp_signature, openpgp_len) != (ssize_t)openpgp_len) {
     log_error("Failed to write signature to temp file");
     close(sig_fd);
-    unlink(msg_path);
-    unlink(sig_path);
+    platform_delete_temp_file(msg_path);
+    platform_delete_temp_file(sig_path);
     return -1;
   }
   close(sig_fd);
 
   // Call gpg --verify
   char cmd[1024];
-  snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
-
+  safe_snprintf(cmd, sizeof(cmd), "gpg --verify '%s' '%s' 2>&1", sig_path, msg_path);
   log_debug("Running: %s", cmd);
-  FILE *fp = popen(cmd, "r");
+
+  FILE *fp;
+  platform_popen(cmd, "r", &fp);
   if (!fp) {
     log_error("Failed to run gpg --verify");
-    unlink(msg_path);
-    unlink(sig_path);
+    platform_unlink(msg_path);
+    platform_unlink(sig_path);
     return -1;
   }
 
   char output[4096] = {0};
   size_t output_len = fread(output, 1, sizeof(output) - 1, fp);
-  int exit_code = pclose(fp);
+  int exit_code = platform_pclose(&fp);
 
   // Cleanup temp files
-  unlink(msg_path);
-  unlink(sig_path);
+  platform_delete_temp_file(msg_path);
+  platform_delete_temp_file(sig_path);
 
   if (exit_code == 0) {
-    log_info("GPG signature verification PASSED");
+    log_debug("GPG signature verification PASSED");
     return 0;
   } else {
     log_error("GPG signature verification FAILED (exit code %d)", exit_code);
@@ -181,12 +178,12 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   char msg_hex[128];
 
   for (int i = 0; i < 32; i++) {
-    snprintf(pubkey_hex + i * 2, 3, "%02x", public_key[i]);
-    snprintf(r_hex + i * 2, 3, "%02x", signature[i]);
-    snprintf(s_hex + i * 2, 3, "%02x", signature[32 + i]);
+    safe_snprintf(pubkey_hex + i * 2, 3, "%02x", public_key[i]);
+    safe_snprintf(r_hex + i * 2, 3, "%02x", signature[i]);
+    safe_snprintf(s_hex + i * 2, 3, "%02x", signature[32 + i]);
   }
   for (size_t i = 0; i < (message_len < 32 ? message_len : 32); i++) {
-    snprintf(msg_hex + i * 2, 3, "%02x", message[i]);
+    safe_snprintf(msg_hex + i * 2, 3, "%02x", message[i]);
   }
 
   log_debug("gpg_verify_signature: pubkey=%s", pubkey_hex);
@@ -239,40 +236,25 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
   int msg_fd = -1;
   int result = -1;
 
+  // Create temp files using platform abstraction
+  if (platform_create_temp_file(sig_path, sizeof(sig_path), "asciichat_sig", &sig_fd) != 0) {
+    log_error("Failed to create signature temp file");
+    return -1;
+  }
+
+  if (platform_create_temp_file(msg_path, sizeof(msg_path), "asciichat_msg", &msg_fd) != 0) {
+    log_error("Failed to create message temp file");
+    platform_delete_temp_file(sig_path);
+    return -1;
+  }
+
 #ifdef _WIN32
-  // Windows temp file creation with process ID for concurrent process safety
-  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
-  DWORD temp_dir_len = GetTempPathA(sizeof(temp_dir), temp_dir);
-  if (temp_dir_len == 0 || temp_dir_len >= sizeof(temp_dir)) {
-    log_error("Failed to get Windows temp directory");
-    return -1;
-  }
-
-  // Create process-specific temp file prefixes (e.g., "asc_sig_12345_")
-  char sig_prefix[32];
-  char msg_prefix[32];
-  safe_snprintf(sig_prefix, sizeof(sig_prefix), "asc_sig_%lu_", GetCurrentProcessId());
-  safe_snprintf(msg_prefix, sizeof(msg_prefix), "asc_msg_%lu_", GetCurrentProcessId());
-
-  // Create signature temp file
-  if (GetTempFileNameA(temp_dir, sig_prefix, 0, sig_path) == 0) {
-    log_error("Failed to create signature temp file: %lu", GetLastError());
-    return -1;
-  }
-
-  // Create message temp file
-  if (GetTempFileNameA(temp_dir, msg_prefix, 0, msg_path) == 0) {
-    log_error("Failed to create message temp file: %lu", GetLastError());
-    DeleteFileA(sig_path);
-    return -1;
-  }
-
-  // Open files for writing (Windows CreateFile for binary mode)
+  // Windows: Write to already-created files using CreateFileA
   HANDLE sig_handle = CreateFileA(sig_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
   if (sig_handle == INVALID_HANDLE_VALUE) {
     log_error("Failed to open signature temp file: %lu", GetLastError());
-    DeleteFileA(sig_path);
-    DeleteFileA(msg_path);
+    platform_delete_temp_file(sig_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
 
@@ -280,8 +262,8 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
   if (!WriteFile(sig_handle, signature, (DWORD)signature_len, &bytes_written, NULL) || bytes_written != signature_len) {
     log_error("Failed to write signature to temp file: %lu", GetLastError());
     CloseHandle(sig_handle);
-    DeleteFileA(sig_path);
-    DeleteFileA(msg_path);
+    platform_delete_temp_file(sig_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
   CloseHandle(sig_handle);
@@ -289,58 +271,39 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
   HANDLE msg_handle = CreateFileA(msg_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
   if (msg_handle == INVALID_HANDLE_VALUE) {
     log_error("Failed to open message temp file: %lu", GetLastError());
-    DeleteFileA(sig_path);
-    DeleteFileA(msg_path);
+    platform_delete_temp_file(sig_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
 
   if (!WriteFile(msg_handle, message, (DWORD)message_len, &bytes_written, NULL) || bytes_written != message_len) {
     log_error("Failed to write message to temp file: %lu", GetLastError());
     CloseHandle(msg_handle);
-    DeleteFileA(sig_path);
-    DeleteFileA(msg_path);
+    platform_delete_temp_file(sig_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
   CloseHandle(msg_handle);
 
 #else
-  // Unix temp file creation with mkstemp() - include PID for concurrent process safety
-  safe_snprintf(sig_path, sizeof(sig_path), "/tmp/asciichat_sig_%d_XXXXXX", getpid());
-  safe_snprintf(msg_path, sizeof(msg_path), "/tmp/asciichat_msg_%d_XXXXXX", getpid());
-
-  sig_fd = mkstemp(sig_path);
-  if (sig_fd < 0) {
-    log_error("Failed to create signature temp file: %s", SAFE_STRERROR(errno));
-    return -1;
-  }
-
-  msg_fd = mkstemp(msg_path);
-  if (msg_fd < 0) {
-    log_error("Failed to create message temp file: %s", SAFE_STRERROR(errno));
-    close(sig_fd);
-    unlink(sig_path);
-    return -1;
-  }
-
-  // Write signature to temp file
+  // Unix: Write to open file descriptors returned by platform_create_temp_file
   ssize_t sig_written = write(sig_fd, signature, signature_len);
   if (sig_written != (ssize_t)signature_len) {
     log_error("Failed to write signature to temp file: %s", SAFE_STRERROR(errno));
     close(sig_fd);
     close(msg_fd);
-    unlink(sig_path);
-    unlink(msg_path);
+    platform_delete_temp_file(sig_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
   close(sig_fd);
 
-  // Write message to temp file
   ssize_t msg_written = write(msg_fd, message, message_len);
   if (msg_written != (ssize_t)message_len) {
     log_error("Failed to write message to temp file: %s", SAFE_STRERROR(errno));
     close(msg_fd);
-    unlink(sig_path);
-    unlink(msg_path);
+    platform_delete_temp_file(sig_path);
+    platform_delete_temp_file(msg_path);
     return -1;
   }
   close(msg_fd);
@@ -357,7 +320,8 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
   log_debug("Running GPG verify command: %s", cmd);
 
   // Execute gpg --verify command
-  FILE *fp = SAFE_POPEN(cmd, "r");
+  FILE *fp;
+  platform_popen(cmd, "r", &fp);
   if (!fp) {
     log_error("Failed to execute gpg --verify command");
     goto cleanup;
@@ -387,14 +351,14 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
     // Check for signature errors
     if (strstr(line, "BAD signature")) {
       log_error("GPG reports BAD signature");
-      SAFE_PCLOSE(fp);
+      platform_pclose(&fp);
       fp = NULL;
       goto cleanup;
     }
   }
 
   // Check exit code
-  int status = SAFE_PCLOSE(fp);
+  int status = platform_pclose(&fp);
   fp = NULL;
 
 #ifdef _WIN32
@@ -421,21 +385,16 @@ int gpg_verify_signature_with_binary(const uint8_t *signature, size_t signature_
     }
   }
 
-  log_info("GPG signature verified successfully via gpg --verify binary");
+  log_debug("GPG signature verified successfully via gpg --verify binary");
   result = 0;
 
 cleanup:
   // Clean up temp files
-#ifdef _WIN32
-  DeleteFileA(sig_path);
-  DeleteFileA(msg_path);
-#else
-  unlink(sig_path);
-  unlink(msg_path);
-#endif
+  platform_delete_temp_file(sig_path);
+  platform_delete_temp_file(msg_path);
 
   if (fp) {
-    SAFE_PCLOSE(fp);
+    platform_pclose(&fp);
   }
 
   return result;

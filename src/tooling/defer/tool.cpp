@@ -69,6 +69,9 @@ static cl::opt<std::string>
 static cl::opt<std::string> BuildPath("p", cl::desc("Build path (directory containing compile_commands.json)"),
                                       cl::Optional, cl::cat(ToolCategory));
 
+static cl::opt<bool> QuietMode("quiet", cl::desc("Suppress verbose diagnostic output"), cl::init(false),
+                               cl::cat(ToolCategory));
+
 static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [... <sourceN>]"), cl::cat(ToolCategory));
 
 namespace {
@@ -542,24 +545,24 @@ private:
         i++;
         while (i < fileData.size() && fileData[i] != '"') {
           if (fileData[i] == '\\' && i + 1 < fileData.size()) {
-            i++;  // Skip escaped character
+            i++; // Skip escaped character
           }
           i++;
         }
         if (i < fileData.size()) {
-          i++;  // Skip closing quote
+          i++; // Skip closing quote
         }
       } else if (c == '\'') {
         // Skip character literals
         i++;
         while (i < fileData.size() && fileData[i] != '\'') {
           if (fileData[i] == '\\' && i + 1 < fileData.size()) {
-            i++;  // Skip escaped character
+            i++; // Skip escaped character
           }
           i++;
         }
         if (i < fileData.size()) {
-          i++;  // Skip closing quote
+          i++; // Skip closing quote
         }
       } else {
         i++;
@@ -871,9 +874,11 @@ int main(int argc, const char **argv) {
 #ifdef CLANG_RESOURCE_DIR
   if (llvm::sys::fs::exists(CLANG_RESOURCE_DIR)) {
     resourceDir = CLANG_RESOURCE_DIR;
-    llvm::errs() << "Using embedded clang resource directory: " << resourceDir << "\n";
+    // llvm::errs() << "Using embedded clang resource directory: " << resourceDir << "\n";
   } else {
-    llvm::errs() << "Embedded clang resource directory not found: " << CLANG_RESOURCE_DIR << "\n";
+    if (!QuietMode) {
+      llvm::errs() << "Embedded clang resource directory not found: " << CLANG_RESOURCE_DIR << "\n";
+    }
   }
 #endif
 
@@ -888,7 +893,8 @@ int main(int argc, const char **argv) {
     // Homebrew LLVM on Intel Mac
     searchPaths.push_back("/usr/local/opt/llvm/lib/clang");
     // Xcode's clang
-    searchPaths.push_back("/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang");
+    searchPaths.push_back(
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang");
     // CommandLineTools clang
     searchPaths.push_back("/Library/Developer/CommandLineTools/usr/lib/clang");
 #endif
@@ -903,7 +909,7 @@ int main(int argc, const char **argv) {
     // Universal fallback
     searchPaths.push_back("/usr/local/lib/clang");
 
-    for (const auto& basePath : searchPaths) {
+    for (const auto &basePath : searchPaths) {
       if (!llvm::sys::fs::exists(basePath)) {
         continue;
       }
@@ -913,8 +919,7 @@ int main(int argc, const char **argv) {
       std::string bestVersion;
       int bestMajor = 0;
 
-      for (llvm::sys::fs::directory_iterator dir(basePath, ec), dirEnd;
-           !ec && dir != dirEnd; dir.increment(ec)) {
+      for (llvm::sys::fs::directory_iterator dir(basePath, ec), dirEnd; !ec && dir != dirEnd; dir.increment(ec)) {
         std::string name = llvm::sys::path::filename(dir->path()).str();
         // Parse version number (e.g., "22", "21.1.0", "21")
         int major = 0;
@@ -926,12 +931,14 @@ int main(int argc, const char **argv) {
 
       if (!bestVersion.empty()) {
         resourceDir = bestVersion;
-        llvm::errs() << "Found clang resource directory at runtime: " << resourceDir << "\n";
+        if (!QuietMode) {
+          llvm::errs() << "Found clang resource directory at runtime: " << resourceDir << "\n";
+        }
         break;
       }
     }
 
-    if (resourceDir.empty()) {
+    if (resourceDir.empty() && !QuietMode) {
       llvm::errs() << "Warning: Could not find clang resource directory\n";
     }
   }
@@ -943,25 +950,25 @@ int main(int argc, const char **argv) {
   // Add target triple - LibTooling needs this to validate architecture-specific flags
   // Without a target, flags like -mavx2 cause "unsupported option for target ''" errors
 #ifdef __APPLE__
-  #ifdef __arm64__
-    prependArgs.push_back("-target");
-    prependArgs.push_back("arm64-apple-darwin");
-    llvm::errs() << "Using target: arm64-apple-darwin\n";
-  #else
-    prependArgs.push_back("-target");
-    prependArgs.push_back("x86_64-apple-darwin");
-    llvm::errs() << "Using target: x86_64-apple-darwin\n";
-  #endif
+#ifdef __arm64__
+  prependArgs.push_back("-target");
+  prependArgs.push_back("arm64-apple-darwin");
+  // llvm::errs() << "Using target: arm64-apple-darwin\n";
+#else
+  prependArgs.push_back("-target");
+  prependArgs.push_back("x86_64-apple-darwin");
+  // llvm::errs() << "Using target: x86_64-apple-darwin\n";
+#endif
 #elif defined(__linux__)
-  #ifdef __aarch64__
-    prependArgs.push_back("-target");
-    prependArgs.push_back("aarch64-linux-gnu");
-    llvm::errs() << "Using target: aarch64-linux-gnu\n";
-  #else
-    prependArgs.push_back("-target");
-    prependArgs.push_back("x86_64-linux-gnu");
-    llvm::errs() << "Using target: x86_64-linux-gnu\n";
-  #endif
+#ifdef __aarch64__
+  prependArgs.push_back("-target");
+  prependArgs.push_back("aarch64-linux-gnu");
+  // llvm::errs() << "Using target: aarch64-linux-gnu\n";
+#else
+  prependArgs.push_back("-target");
+  prependArgs.push_back("x86_64-linux-gnu");
+  // llvm::errs() << "Using target: x86_64-linux-gnu\n";
+#endif
 #endif
 
   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
@@ -970,7 +977,7 @@ int main(int argc, const char **argv) {
   std::string selectedSDK;
 #ifdef __APPLE__
   {
-    const char* sdkPaths[] = {
+    const char *sdkPaths[] = {
         // Xcode SDK (preferred - most complete headers and frameworks)
         "/Applications/Xcode.app/Contents/Developer/Platforms/"
         "MacOSX.platform/Developer/SDKs/MacOSX.sdk",
@@ -978,7 +985,7 @@ int main(int argc, const char **argv) {
         "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
     };
 
-    for (const char* sdk : sdkPaths) {
+    for (const char *sdk : sdkPaths) {
       if (llvm::sys::fs::exists(sdk)) {
         selectedSDK = sdk;
         break;
@@ -988,7 +995,7 @@ int main(int argc, const char **argv) {
     if (!selectedSDK.empty()) {
       prependArgs.push_back("-isysroot");
       prependArgs.push_back(selectedSDK);
-      llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
+      // llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
     } else {
       llvm::errs() << "Warning: No macOS SDK found, system headers may not be available\n";
     }
@@ -1006,7 +1013,7 @@ int main(int argc, const char **argv) {
     if (llvm::sys::fs::exists(builtinInclude)) {
       appendArgs.push_back("-isystem");
       appendArgs.push_back(builtinInclude);
-      llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
+      // llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
     }
   }
   // NOTE: We intentionally do NOT add SDK's usr/include to the -isystem path.
@@ -1029,23 +1036,29 @@ int main(int argc, const char **argv) {
   // 4. Adds system include paths as -isystem at the end (after project -I paths)
   // 5. Adds defer tool parsing define BEFORE the "--" separator
   std::string inputRootStr = inputRoot.string();
-  auto consolidatedAdjuster = [prependArgs, appendArgs, inputRootStr](const tooling::CommandLineArguments &args, StringRef) {
+  auto consolidatedAdjuster = [prependArgs, appendArgs, inputRootStr](const tooling::CommandLineArguments &args,
+                                                                      StringRef) {
     // Helper to check if a path is under the project root
     auto isProjectPath = [&inputRootStr](const std::string &path) -> bool {
-      if (inputRootStr.empty()) return false;
+      if (inputRootStr.empty())
+        return false;
       // Normalize both paths for comparison
       std::error_code ec;
       auto normalizedPath = fs::canonical(path, ec);
-      if (ec) return false; // Path doesn't exist or can't be resolved
+      if (ec)
+        return false; // Path doesn't exist or can't be resolved
       auto normalizedRoot = fs::canonical(inputRootStr, ec);
-      if (ec) return false;
+      if (ec)
+        return false;
       // Check if the path starts with the root
       std::string pathStr = normalizedPath.string();
       std::string rootStr = normalizedRoot.string();
-      if (pathStr.find(rootStr) != 0) return false;
+      if (pathStr.find(rootStr) != 0)
+        return false;
       // Exclude .deps-cache directory - these are cached dependencies that use
       // angled includes (<header.h>) and need -isystem, not -iquote
-      if (pathStr.find("/.deps-cache/") != std::string::npos) return false;
+      if (pathStr.find("/.deps-cache/") != std::string::npos)
+        return false;
       return true;
     };
     tooling::CommandLineArguments result;
@@ -1184,15 +1197,6 @@ int main(int argc, const char **argv) {
     return result;
   };
   tool.appendArgumentsAdjuster(consolidatedAdjuster);
-
-  // Debug: Print the final command line arguments
-  tool.appendArgumentsAdjuster([](const tooling::CommandLineArguments &args, StringRef filename) {
-    llvm::errs() << "Final command for " << filename << ":\n";
-    for (const auto &arg : args) {
-      llvm::errs() << "  " << arg << "\n";
-    }
-    return args;
-  });
 
   DeferActionFactory actionFactory(outputDir, inputRoot);
   const int executionResult = tool.run(&actionFactory);

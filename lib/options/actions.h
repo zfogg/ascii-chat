@@ -71,3 +71,58 @@ void action_help_client(void);
  * Exits with code 0.
  */
 void action_help_mirror(void);
+
+/**
+ * @brief Show discovery-service mode help and exit
+ *
+ * Displays discovery-service mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_acds(void);
+
+/**
+ * @brief Show discovery mode help and exit
+ *
+ * Displays discovery mode usage and options.
+ * Exits with code 0.
+ */
+void action_help_discovery(void);
+
+/**
+ * @brief Generate man page template from options builder
+ *
+ * Generates a merged man page template preserving manual content.
+ * Outputs to stdout by default, or to specified file path if provided.
+ * Prompts for overwrite confirmation if file already exists.
+ * Exits with code 0 on success, 1 on error.
+ *
+ * @param output_path Optional file path to write man page to. NULL or empty string = stdout.
+ */
+void action_create_manpage(const char *output_path);
+
+/**
+ * @brief Create default configuration file and exit
+ *
+ * Creates a default configuration file. Outputs to stdout by default,
+ * or to specified file path if provided.
+ * Prompts for overwrite confirmation if file already exists.
+ * Exits with code 0 on success, 1 on error.
+ *
+ * @param output_path Optional file path to write config to. NULL or empty string = stdout.
+ */
+void action_create_config(const char *output_path);
+
+/**
+ * @brief Generate shell completions and output to stdout or file
+ *
+ * Generates shell completion script for the specified shell (bash, fish, zsh, powershell).
+ * Output is dynamically generated from the options registry, ensuring completions are
+ * always in sync with current options.
+ * Outputs to stdout by default, or to specified file path if provided.
+ * Prompts for overwrite confirmation if file already exists.
+ * Exits with code 0 on success, 1 on error.
+ *
+ * @param shell_name Shell name: "bash", "fish", "zsh", or "powershell"
+ * @param output_path Optional file path to write completions to. NULL or empty string = stdout.
+ */
+void action_completions(const char *shell_name, const char *output_path);

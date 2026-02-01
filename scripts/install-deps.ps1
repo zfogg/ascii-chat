@@ -166,10 +166,10 @@ $RequiredPackages = @(
     "portaudio",       # Audio I/O library for capture/playback
     "opus",            # Audio codec library for real-time compression
     "sqlite3",         # Database library for discovery service
-    "liburcu",         # Userspace RCU for lock-free concurrent data structures
     "openssl",         # SSL/TLS library (required by libdatachannel for TURN credentials)
     "libdatachannel",  # WebRTC DataChannels for P2P connections
-    "miniupnpc"        # UPnP client library for automatic router port forwarding
+    "miniupnpc",       # UPnP client library for automatic router port forwarding
+    "abseil"           # C++ utility library (used by WebRTC AEC3)
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan
@@ -215,6 +215,33 @@ foreach ($Package in $RequiredPackages) {
         Write-Host "  ✗ $PackageSpec (NOT INSTALLED)" -ForegroundColor Red
         $AllInstalled = $false
     }
+}
+
+Write-Host ""
+
+# Install yt-dlp for YouTube support
+Write-Host "`nInstalling yt-dlp for YouTube URL support..." -ForegroundColor Cyan
+$PipCmd = if (Get-Command pip3 -ErrorAction SilentlyContinue) {
+    "pip3"
+} elseif (Get-Command pip -ErrorAction SilentlyContinue) {
+    "pip"
+} else {
+    $null
+}
+
+if ($PipCmd) {
+    Write-Host "  Running: $PipCmd install --user --upgrade yt-dlp" -ForegroundColor Gray
+    try {
+        & $PipCmd install --user --quiet --upgrade yt-dlp 2>$null
+        Write-Host "  ✓ yt-dlp installed successfully" -ForegroundColor Green
+    } catch {
+        Write-Host "  ! WARNING: Failed to install yt-dlp via pip" -ForegroundColor Yellow
+        Write-Host "  You can install it manually with: $PipCmd install yt-dlp" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  ! WARNING: Python/pip not found" -ForegroundColor Yellow
+    Write-Host "  Install Python from https://www.python.org/downloads/ and then run:" -ForegroundColor Yellow
+    Write-Host "  pip install yt-dlp" -ForegroundColor Yellow
 }
 
 Write-Host ""

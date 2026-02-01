@@ -2,7 +2,7 @@
  * @file network/acip/acds_handlers.c
  * @brief ACIP Discovery Server (ACDS) packet handlers with O(1) dispatch
  *
- * Implements O(1) array-based packet dispatching for ASCII Chat Discovery Server.
+ * Implements O(1) array-based packet dispatching for ascii-chat Discovery Server.
  * Handles ACIP packets 100-150: session management, WebRTC signaling, discovery.
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -15,6 +15,7 @@
 #include "log/logging.h"
 #include "asciichat_errno.h"
 #include "common.h"
+#include "util/endian.h"
 #include <string.h>
 
 // =============================================================================
@@ -47,6 +48,10 @@ static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_le
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, int client_socket,
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len, int client_socket,
+                                                       const char *client_ip, const acip_acds_callbacks_t *callbacks);
+static asciichat_error_t handle_acds_host_lost(const void *payload, size_t payload_len, int client_socket,
+                                               const char *client_ip, const acip_acds_callbacks_t *callbacks);
 
 // =============================================================================
 // ACDS Packet Dispatch Table (O(1) lookup)
@@ -62,6 +67,8 @@ static const acip_acds_handler_func_t g_acds_packet_handlers[200] = {
     [PACKET_TYPE_ACIP_WEBRTC_SDP] = handle_acds_webrtc_sdp,
     [PACKET_TYPE_ACIP_WEBRTC_ICE] = handle_acds_webrtc_ice,
     [PACKET_TYPE_ACIP_DISCOVERY_PING] = handle_acds_discovery_ping,
+    [PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT] = handle_acds_host_announcement,
+    [PACKET_TYPE_ACIP_HOST_LOST] = handle_acds_host_lost,
 };
 
 // =============================================================================
@@ -188,7 +195,16 @@ static asciichat_error_t handle_acds_webrtc_sdp(const void *payload, size_t payl
   }
 
   const acip_webrtc_sdp_t *sdp = (const acip_webrtc_sdp_t *)payload;
-  callbacks->on_webrtc_sdp(sdp, client_socket, client_ip, callbacks->app_ctx);
+
+  // Validate sdp_len against actual payload size (convert from network byte order)
+  uint16_t sdp_len_host = NET_TO_HOST_U16(sdp->sdp_len);
+  size_t expected_size = sizeof(acip_webrtc_sdp_t) + sdp_len_host;
+  if (expected_size > payload_len) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WEBRTC_SDP size mismatch from %s: claims %u bytes but payload is %zu",
+                     client_ip, sdp_len_host, payload_len);
+  }
+
+  callbacks->on_webrtc_sdp(sdp, payload_len, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
@@ -203,7 +219,16 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
   }
 
   const acip_webrtc_ice_t *ice = (const acip_webrtc_ice_t *)payload;
-  callbacks->on_webrtc_ice(ice, client_socket, client_ip, callbacks->app_ctx);
+
+  // Validate candidate_len against actual payload size (convert from network byte order)
+  uint16_t candidate_len_host = NET_TO_HOST_U16(ice->candidate_len);
+  size_t expected_size = sizeof(acip_webrtc_ice_t) + candidate_len_host;
+  if (expected_size > payload_len) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "WEBRTC_ICE size mismatch from %s: claims %u bytes but payload is %zu",
+                     client_ip, candidate_len_host, payload_len);
+  }
+
+  callbacks->on_webrtc_ice(ice, payload_len, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }
 
@@ -245,5 +270,35 @@ static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_le
   (void)callbacks;
 
   log_debug("ACDS keepalive: Received PONG from %s", client_ip);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len, int client_socket,
+                                                       const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+  if (!callbacks->on_host_announcement) {
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(acip_host_announcement_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HOST_ANNOUNCEMENT payload too small from %s", client_ip);
+  }
+
+  const acip_host_announcement_t *announcement = (const acip_host_announcement_t *)payload;
+  callbacks->on_host_announcement(announcement, client_socket, client_ip, callbacks->app_ctx);
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_acds_host_lost(const void *payload, size_t payload_len, int client_socket,
+                                               const char *client_ip, const acip_acds_callbacks_t *callbacks) {
+  if (!callbacks->on_host_lost) {
+    return ASCIICHAT_OK;
+  }
+
+  if (payload_len < sizeof(acip_host_lost_t)) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "HOST_LOST payload too small from %s", client_ip);
+  }
+
+  const acip_host_lost_t *host_lost = (const acip_host_lost_t *)payload;
+  callbacks->on_host_lost(host_lost, client_socket, client_ip, callbacks->app_ctx);
   return ASCIICHAT_OK;
 }

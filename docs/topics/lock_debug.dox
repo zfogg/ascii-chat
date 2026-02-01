@@ -372,7 +372,7 @@
  * - Header: lib/debug/lock.h
  * - Platform abstraction: lib/platform/abstraction.h
  * - Backtrace support: lib/platform/system.h (platform_backtrace, platform_backtrace_symbols)
- * - Hash tables: deps/uthash/uthash.h (included via lib/util/uthash.h)
+ * - Hash tables: deps/ascii-chat-deps/uthash/src/uthash.h (included via platform/abstraction.h)
  *
  * **Key Functions**:
  * - Lock tracking: lib/debug/lock.c:1043 (debug_mutex_lock)

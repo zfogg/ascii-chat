@@ -6,9 +6,11 @@
 
 #include "common.h"
 #include "video/simd/common.h"
-#include "uthash.h"
+#include "uthash/uthash.h"
 #include "video/palette.h"
 #include "util/fnv1a.h"
+#include "util/time.h"
+#include "platform/init.h"
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
@@ -78,20 +80,14 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars) {
 }
 
 // Cache eviction helper functions
-uint64_t get_current_time_ns(void) {
-  struct timespec now;
-  (void)clock_gettime(CLOCK_MONOTONIC, &now);
-  return now.tv_sec * 1000000000ULL + now.tv_nsec;
-}
-
 double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
                                       uint64_t current_time) {
   // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
   uint64_t age_ns = (current_time >= last_access_time) ? (current_time - last_access_time) : 0;
   uint64_t total_age_ns = (current_time >= creation_time) ? (current_time - creation_time) : 0;
 
-  uint64_t age_seconds = age_ns / 1000000000ULL;
-  uint64_t total_age_seconds = total_age_ns / 1000000000ULL;
+  uint64_t age_seconds = age_ns / NS_PER_SEC_INT;
+  uint64_t total_age_seconds = total_age_ns / NS_PER_SEC_INT;
 
   // Frequency factor: high-use palettes get protection (logarithmic scaling)
   double frequency_factor = 1.0 + log10(1.0 + access_count);
@@ -137,18 +133,12 @@ static void init_utf8_cache_system(void) {
   }
 
   // Slow path: need to initialize
-  static mutex_t init_mutex = {0};
-  static bool init_mutex_initialized = false;
+  // Use static_mutex_t to avoid bootstrap problem (can't protect init mutex with itself)
+  static static_mutex_t init_bootstrap_mutex = STATIC_MUTEX_INIT;
 
-  // Initialize the init mutex itself (safe because it's the first thing that runs)
-  if (!init_mutex_initialized) {
-    mutex_init(&init_mutex);
-    init_mutex_initialized = true;
-  }
+  static_mutex_lock(&init_bootstrap_mutex);
 
-  mutex_lock(&init_mutex);
-
-  // Double-check after acquiring lock
+  // Double-check after acquiring lock (another thread may have initialized while we waited)
   if (!atomic_load(&g_utf8_cache_initialized)) {
     // Initialize the cache rwlock
     rwlock_init(&g_utf8_cache_rwlock);
@@ -162,7 +152,7 @@ static void init_utf8_cache_system(void) {
     atomic_store(&g_utf8_cache_initialized, true);
   }
 
-  mutex_unlock(&init_mutex);
+  static_mutex_unlock(&init_bootstrap_mutex);
 }
 
 // Min-heap management functions for UTF-8 cache
@@ -252,9 +242,7 @@ static void utf8_heap_update_score(utf8_palette_cache_t *cache, double new_score
 // Min-heap functions now replace LRU list management
 
 // Thread-safe cache eviction implementations
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf8(uint32_t hash,
-                                                                                  utf8_palette_cache_t *new_cache) {
+static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache) {
   // Already holding write lock
   // Note: key should already be set by caller, but ensure it's set
   new_cache->key = hash;
@@ -269,13 +257,12 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
 
       // Log clean eviction
       uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
-      uint64_t current_time = get_current_time_ns();
-      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
+      uint64_t current_time = time_get_ns();
+      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / NS_PER_SEC_INT;
 
       log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
                 victim_age, victim_access_count);
 
-      // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
       HASH_DEL(g_utf8_cache_table, victim_cache);
       SAFE_FREE(victim_cache);
     }
@@ -286,7 +273,7 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
   HASH_ADD_INT(g_utf8_cache_table, key, new_cache);
 
   // Success: add to min-heap
-  uint64_t current_time = get_current_time_ns();
+  uint64_t current_time = time_get_ns();
   double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
   utf8_heap_insert(new_cache, initial_score);
   return true;
@@ -295,8 +282,7 @@ __attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf
 // char_ramp_cache functions removed - data already available in utf8_palette_cache_t
 
 // Get or create UTF-8 palette cache for a given palette
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
+utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   if (!ascii_chars)
     return NULL;
 
@@ -315,11 +301,10 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
 
   // Check if cache exists
   utf8_palette_cache_t *cache = NULL;
-  // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
   HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
-    uint64_t current_time = get_current_time_ns();
+    uint64_t current_time = time_get_ns();
     atomic_store(&cache->last_access_time, current_time);
     uint32_t new_access_count = atomic_fetch_add(&cache->access_count, 1) + 1;
 
@@ -361,11 +346,10 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
 
   // Double-check: another thread might have created it while we upgraded locks
   cache = NULL;
-  // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
   HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Found it! Just update access tracking and return
-    uint64_t current_time = get_current_time_ns();
+    uint64_t current_time = time_get_ns();
     atomic_store(&cache->last_access_time, current_time);
     atomic_fetch_add(&cache->access_count, 1);
     rwlock_wrunlock(&g_utf8_cache_rwlock);
@@ -392,7 +376,7 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
   cache->is_valid = true;
 
   // Initialize eviction tracking
-  uint64_t current_time = get_current_time_ns();
+  uint64_t current_time = time_get_ns();
   atomic_store(&cache->last_access_time, current_time);
   atomic_store(&cache->access_count, 1); // First access
   cache->creation_time = current_time;
@@ -524,32 +508,33 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 // No callback needed - uthash iteration handles cleanup directly
 
 // Central cleanup function for all SIMD caches
-// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) void simd_caches_destroy_all(void) {
+void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
-  // Destroy shared UTF-8 palette cache (write lock for cleanup)
-  rwlock_wrlock(&g_utf8_cache_rwlock);
-  if (g_utf8_cache_table) {
-    // Free all UTF-8 cache entries using HASH_ITER
-    utf8_palette_cache_t *cache, *tmp;
-    HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
-      // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
-      HASH_DEL(g_utf8_cache_table, cache);
-      SAFE_FREE(cache);
+  // Only destroy caches if they were ever initialized
+  if (atomic_load(&g_utf8_cache_initialized)) {
+    // Destroy shared UTF-8 palette cache (write lock for cleanup)
+    rwlock_wrlock(&g_utf8_cache_rwlock);
+    if (g_utf8_cache_table) {
+      // Free all UTF-8 cache entries using HASH_ITER
+      utf8_palette_cache_t *cache, *tmp;
+      HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
+        HASH_DEL(g_utf8_cache_table, cache);
+        SAFE_FREE(cache);
+      }
+      g_utf8_cache_table = NULL;
+      log_debug("UTF8_CACHE: Destroyed shared UTF-8 palette cache");
     }
-    g_utf8_cache_table = NULL;
-    log_debug("UTF8_CACHE: Destroyed shared UTF-8 palette cache");
+    // Clean up heap arrays
+    if (g_utf8_heap) {
+      SAFE_FREE(g_utf8_heap);
+      g_utf8_heap = NULL;
+      g_utf8_heap_size = 0;
+    }
+    // Reset initialization flag so system can be reinitialized
+    atomic_store(&g_utf8_cache_initialized, false);
+    rwlock_wrunlock(&g_utf8_cache_rwlock);
   }
-  // Clean up heap arrays
-  if (g_utf8_heap) {
-    SAFE_FREE(g_utf8_heap);
-    g_utf8_heap = NULL;
-    g_utf8_heap_size = 0;
-  }
-  // Reset initialization flag so system can be reinitialized
-  atomic_store(&g_utf8_cache_initialized, false);
-  rwlock_wrunlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
   // Note: Only ONE SIMD implementation is compiled based on highest available instruction set

@@ -4,10 +4,12 @@
  */
 
 #include "options/rcu.h"
+#include "options/schema.h"
 #include "asciichat_errno.h"
 #include "common.h"
 #include "log/logging.h"
 #include "platform/abstraction.h"
+#include "platform/init.h"
 
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -44,6 +46,61 @@ static mutex_t g_options_write_mutex;
  * @brief Initialization flag
  */
 static bool g_options_initialized = false;
+// Mutex to protect initialization check (TOCTOU race prevention)
+static static_mutex_t g_options_init_mutex = STATIC_MUTEX_INIT;
+
+/**
+ * @brief Static default options used when options_get() is called before initialization
+ * or during cleanup. This ensures atexit handlers can safely call GET_OPTION().
+ *
+ * Critical note: This must match the defaults in options_t_new(). Any field with a
+ * non-zero default should be explicitly set here to avoid division-by-zero or other
+ * issues when options haven't been initialized yet (e.g., during early startup or
+ * atexit handlers).
+ */
+static const options_t g_default_options = (options_t){
+    // Binary-Level Options (must match options_t_new() defaults)
+    .help = OPT_HELP_DEFAULT,
+    .version = OPT_VERSION_DEFAULT,
+
+    // Logging
+    .log_level = LOG_INFO,
+    .quiet = false,
+    .verbose_level = OPT_VERBOSE_LEVEL_DEFAULT,
+
+    // Terminal Dimensions
+    .width = OPT_WIDTH_DEFAULT,
+    .height = OPT_HEIGHT_DEFAULT,
+    .auto_width = OPT_AUTO_WIDTH_DEFAULT,
+    .auto_height = OPT_AUTO_HEIGHT_DEFAULT,
+
+    // Display
+    .color_mode = COLOR_MODE_AUTO,
+    .palette_type = PALETTE_STANDARD,
+    .render_mode = RENDER_MODE_FOREGROUND,
+    .fps = OPT_FPS_DEFAULT,
+
+    // Performance
+    .compression_level = OPT_COMPRESSION_LEVEL_DEFAULT,
+
+    // Webcam
+    .test_pattern = false,
+    .webcam_index = OPT_WEBCAM_INDEX_DEFAULT,
+
+    // Network
+    .max_clients = OPT_MAX_CLIENTS_DEFAULT,
+    .discovery_port = OPT_ACDS_PORT_INT_DEFAULT,
+    .port = OPT_PORT_DEFAULT,
+
+    // Audio
+    .audio_enabled = OPT_AUDIO_ENABLED_DEFAULT,
+    .microphone_index = OPT_MICROPHONE_INDEX_DEFAULT,
+    .speakers_index = OPT_SPEAKERS_INDEX_DEFAULT,
+    .microphone_sensitivity = OPT_MICROPHONE_SENSITIVITY_DEFAULT,
+    .speakers_volume = OPT_SPEAKERS_VOLUME_DEFAULT,
+
+    // All other fields are zero-initialized (empty strings, NULL, 0, false, etc.)
+};
 
 // ============================================================================
 // Memory Reclamation Strategy
@@ -115,19 +172,25 @@ static void deferred_free_all(void) {
 // ============================================================================
 
 asciichat_error_t options_state_init(void) {
+  static_mutex_lock(&g_options_init_mutex);
+
+  // Double-check under lock: another thread may have initialized while we waited
   if (g_options_initialized) {
+    static_mutex_unlock(&g_options_init_mutex);
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
   }
 
   // Initialize write mutex
   if (mutex_init(&g_options_write_mutex) != 0) {
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize options write mutex");
   }
 
   // Initialize deferred free mutex
   if (mutex_init(&g_deferred_free_mutex) != 0) {
     mutex_destroy(&g_options_write_mutex);
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize deferred free mutex");
   }
 
@@ -136,38 +199,18 @@ asciichat_error_t options_state_init(void) {
   if (!initial_opts) {
     mutex_destroy(&g_options_write_mutex);
     mutex_destroy(&g_deferred_free_mutex);
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate initial options struct");
   }
 
-  // Zero-initialize (all fields start at 0/false/NULL)
-  memset(initial_opts, 0, sizeof(*initial_opts));
-
-  // Set non-zero defaults using defines from options.h
-  // These match the documented defaults in --help output
-
-  // Network defaults
-  SAFE_STRNCPY(initial_opts->port, OPT_PORT_DEFAULT, sizeof(initial_opts->port));
-  SAFE_STRNCPY(initial_opts->address, OPT_ADDRESS_DEFAULT, sizeof(initial_opts->address));
-  SAFE_STRNCPY(initial_opts->address6, OPT_ADDRESS6_DEFAULT, sizeof(initial_opts->address6));
-
-  // Server defaults
-  initial_opts->max_clients = OPT_MAX_CLIENTS_DEFAULT;
-  initial_opts->compression_level = OPT_COMPRESSION_LEVEL_DEFAULT;
-
-  // Client defaults
-  initial_opts->webcam_index = OPT_WEBCAM_INDEX_DEFAULT;
-  initial_opts->microphone_index = OPT_MICROPHONE_INDEX_DEFAULT;
-  initial_opts->speakers_index = OPT_SPEAKERS_INDEX_DEFAULT;
-  initial_opts->snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
-  initial_opts->reconnect_attempts = OPT_RECONNECT_ATTEMPTS_DEFAULT;
-
-  // Color and rendering defaults (using zero values which are the correct defaults)
-  initial_opts->color_mode = COLOR_MODE_AUTO; // -1
+  // Initialize all defaults using options_t_new()
+  *initial_opts = options_t_new();
 
   // Publish initial struct (release semantics - make all fields visible to readers)
   atomic_store_explicit(&g_options, initial_opts, memory_order_release);
 
   g_options_initialized = true;
+  static_mutex_unlock(&g_options_init_mutex);
   log_debug("Options state initialized with RCU pattern");
 
   return ASCIICHAT_OK;
@@ -178,9 +221,13 @@ asciichat_error_t options_state_set(const options_t *opts) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "opts is NULL");
   }
 
+  // Check initialization flag under lock to prevent TOCTOU race
+  static_mutex_lock(&g_options_init_mutex);
   if (!g_options_initialized) {
+    static_mutex_unlock(&g_options_init_mutex);
     return SET_ERRNO(ERROR_INVALID_STATE, "Options state not initialized (call options_state_init first)");
   }
+  static_mutex_unlock(&g_options_init_mutex);
 
   // Get current struct (should be the initial zero-initialized one during startup)
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -195,9 +242,14 @@ asciichat_error_t options_state_set(const options_t *opts) {
 }
 
 void options_state_shutdown(void) {
+  // Check and clear initialization flag under lock
+  static_mutex_lock(&g_options_init_mutex);
   if (!g_options_initialized) {
+    static_mutex_unlock(&g_options_init_mutex);
     return;
   }
+  g_options_initialized = false; // Clear flag first to prevent new operations
+  static_mutex_unlock(&g_options_init_mutex);
 
   // Get current options pointer
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
@@ -211,12 +263,18 @@ void options_state_shutdown(void) {
   // Free all deferred structs
   deferred_free_all();
 
+  // Cleanup schema (frees all dynamically allocated config strings)
+  config_schema_cleanup();
+
   // Destroy mutexes
   mutex_destroy(&g_options_write_mutex);
   mutex_destroy(&g_deferred_free_mutex);
 
-  g_options_initialized = false;
   log_debug("Options state shutdown complete");
+}
+
+void options_cleanup_schema(void) {
+  config_schema_cleanup();
 }
 
 const options_t *options_get(void) {
@@ -224,17 +282,17 @@ const options_t *options_get(void) {
   // Guarantees we see all writes made before the pointer was published
   options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
 
-  // Should never be NULL after initialization
+  // If options not yet published, return safe static default instead of crashing
+  // This allows atexit handlers to safely call GET_OPTION() during cleanup
   if (!current) {
-    log_fatal("Options not initialized! Call options_state_init() first");
-    log_warn("options_get() called before options initialization - this will cause a crash");
-    abort();
+    // Return static default - safe for atexit handlers to read
+    return (const options_t *)&g_default_options;
   }
 
   return current;
 }
 
-asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context) {
+static asciichat_error_t options_update(void (*updater)(options_t *, void *), void *context) {
   if (!updater) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "updater function is NULL");
   }
@@ -276,49 +334,290 @@ asciichat_error_t options_update(void (*updater)(options_t *, void *), void *con
 }
 
 // ============================================================================
-// Convenience Setters
+// Generic Option Setters
 // ============================================================================
 
-// Helper struct for passing multiple params to updater
-struct dimensions_update_ctx {
-  int width;
-  int height;
+struct int_field_ctx {
+  const char *field_name;
+  int value;
 };
 
-static void dimensions_updater(options_t *opts, void *context) {
-  struct dimensions_update_ctx *ctx = (struct dimensions_update_ctx *)context;
-  opts->width = ctx->width;
-  opts->height = ctx->height;
+static void int_field_updater(options_t *opts, void *context) {
+  struct int_field_ctx *ctx = (struct int_field_ctx *)context;
+  if (strcmp(ctx->field_name, "width") == 0)
+    opts->width = ctx->value;
+  else if (strcmp(ctx->field_name, "height") == 0)
+    opts->height = ctx->value;
+  else if (strcmp(ctx->field_name, "max_clients") == 0)
+    opts->max_clients = ctx->value;
+  else if (strcmp(ctx->field_name, "compression_level") == 0)
+    opts->compression_level = ctx->value;
+  else if (strcmp(ctx->field_name, "reconnect_attempts") == 0)
+    opts->reconnect_attempts = ctx->value;
+  else if (strcmp(ctx->field_name, "microphone_index") == 0)
+    opts->microphone_index = ctx->value;
+  else if (strcmp(ctx->field_name, "speakers_index") == 0)
+    opts->speakers_index = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery_port") == 0)
+    opts->discovery_port = ctx->value;
+  else if (strcmp(ctx->field_name, "fps") == 0)
+    opts->fps = ctx->value;
+  else if (strcmp(ctx->field_name, "color_mode") == 0)
+    opts->color_mode = (terminal_color_mode_t)ctx->value;
+  else if (strcmp(ctx->field_name, "render_mode") == 0)
+    opts->render_mode = (render_mode_t)ctx->value;
+  else if (strcmp(ctx->field_name, "log_level") == 0)
+    opts->log_level = (log_level_t)ctx->value;
 }
 
-asciichat_error_t options_set_dimensions(int width, int height) {
-  struct dimensions_update_ctx ctx = {.width = width, .height = height};
-  return options_update(dimensions_updater, &ctx);
+asciichat_error_t options_set_int(const char *field_name, int value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (strcmp(field_name, "width") != 0 && strcmp(field_name, "height") != 0 && strcmp(field_name, "max_clients") != 0 &&
+      strcmp(field_name, "compression_level") != 0 && strcmp(field_name, "reconnect_attempts") != 0 &&
+      strcmp(field_name, "microphone_index") != 0 && strcmp(field_name, "speakers_index") != 0 &&
+      strcmp(field_name, "discovery_port") != 0 && strcmp(field_name, "fps") != 0 &&
+      strcmp(field_name, "color_mode") != 0 && strcmp(field_name, "render_mode") != 0 &&
+      strcmp(field_name, "log_level") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct int_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(int_field_updater, &ctx);
 }
 
-static void color_mode_updater(options_t *opts, void *context) {
-  terminal_color_mode_t *mode = (terminal_color_mode_t *)context;
-  opts->color_mode = *mode;
+struct bool_field_ctx {
+  const char *field_name;
+  bool value;
+};
+
+static void bool_field_updater(options_t *opts, void *context) {
+  struct bool_field_ctx *ctx = (struct bool_field_ctx *)context;
+  if (strcmp(ctx->field_name, "no_compress") == 0)
+    opts->no_compress = ctx->value;
+  else if (strcmp(ctx->field_name, "encode_audio") == 0)
+    opts->encode_audio = ctx->value;
+  else if (strcmp(ctx->field_name, "webcam_flip") == 0)
+    opts->webcam_flip = ctx->value;
+  else if (strcmp(ctx->field_name, "test_pattern") == 0)
+    opts->test_pattern = ctx->value;
+  else if (strcmp(ctx->field_name, "no_audio_mixer") == 0)
+    opts->no_audio_mixer = ctx->value;
+  else if (strcmp(ctx->field_name, "show_capabilities") == 0)
+    opts->show_capabilities = ctx->value;
+  else if (strcmp(ctx->field_name, "force_utf8") == 0)
+    opts->force_utf8 = ctx->value;
+  else if (strcmp(ctx->field_name, "audio_enabled") == 0)
+    opts->audio_enabled = ctx->value;
+  else if (strcmp(ctx->field_name, "audio_analysis_enabled") == 0)
+    opts->audio_analysis_enabled = ctx->value;
+  else if (strcmp(ctx->field_name, "audio_no_playback") == 0)
+    opts->audio_no_playback = ctx->value;
+  else if (strcmp(ctx->field_name, "stretch") == 0)
+    opts->stretch = ctx->value;
+  else if (strcmp(ctx->field_name, "snapshot_mode") == 0)
+    opts->snapshot_mode = ctx->value;
+  else if (strcmp(ctx->field_name, "strip_ansi") == 0)
+    opts->strip_ansi = ctx->value;
+  else if (strcmp(ctx->field_name, "quiet") == 0)
+    opts->quiet = ctx->value;
+  else if (strcmp(ctx->field_name, "encrypt_enabled") == 0)
+    opts->encrypt_enabled = ctx->value;
+  else if (strcmp(ctx->field_name, "no_encrypt") == 0)
+    opts->no_encrypt = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery") == 0)
+    opts->discovery = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery_expose_ip") == 0)
+    opts->discovery_expose_ip = ctx->value;
+  else if (strcmp(ctx->field_name, "discovery_insecure") == 0)
+    opts->discovery_insecure = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc") == 0)
+    opts->webrtc = ctx->value;
+  else if (strcmp(ctx->field_name, "lan_discovery") == 0)
+    opts->lan_discovery = ctx->value;
+  else if (strcmp(ctx->field_name, "no_mdns_advertise") == 0)
+    opts->no_mdns_advertise = ctx->value;
+  else if (strcmp(ctx->field_name, "prefer_webrtc") == 0)
+    opts->prefer_webrtc = ctx->value;
+  else if (strcmp(ctx->field_name, "no_webrtc") == 0)
+    opts->no_webrtc = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc_skip_stun") == 0)
+    opts->webrtc_skip_stun = ctx->value;
+  else if (strcmp(ctx->field_name, "webrtc_disable_turn") == 0)
+    opts->webrtc_disable_turn = ctx->value;
+  else if (strcmp(ctx->field_name, "enable_upnp") == 0)
+    opts->enable_upnp = ctx->value;
+  else if (strcmp(ctx->field_name, "require_server_identity") == 0)
+    opts->require_server_identity = ctx->value;
+  else if (strcmp(ctx->field_name, "require_client_identity") == 0)
+    opts->require_client_identity = ctx->value;
+  else if (strcmp(ctx->field_name, "require_server_verify") == 0)
+    opts->require_server_verify = ctx->value;
+  else if (strcmp(ctx->field_name, "require_client_verify") == 0)
+    opts->require_client_verify = ctx->value;
+  else if (strcmp(ctx->field_name, "palette_custom_set") == 0)
+    opts->palette_custom_set = ctx->value;
+  else if (strcmp(ctx->field_name, "media_loop") == 0)
+    opts->media_loop = ctx->value;
+  else if (strcmp(ctx->field_name, "media_from_stdin") == 0)
+    opts->media_from_stdin = ctx->value;
+  else if (strcmp(ctx->field_name, "auto_width") == 0)
+    opts->auto_width = ctx->value;
+  else if (strcmp(ctx->field_name, "auto_height") == 0)
+    opts->auto_height = ctx->value;
 }
 
-asciichat_error_t options_set_color_mode(terminal_color_mode_t mode) {
-  return options_update(color_mode_updater, &mode);
+asciichat_error_t options_set_bool(const char *field_name, bool value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Validate field exists
+  if (strcmp(field_name, "no_compress") != 0 && strcmp(field_name, "encode_audio") != 0 &&
+      strcmp(field_name, "webcam_flip") != 0 && strcmp(field_name, "test_pattern") != 0 &&
+      strcmp(field_name, "no_audio_mixer") != 0 && strcmp(field_name, "show_capabilities") != 0 &&
+      strcmp(field_name, "force_utf8") != 0 && strcmp(field_name, "audio_enabled") != 0 &&
+      strcmp(field_name, "audio_analysis_enabled") != 0 && strcmp(field_name, "audio_no_playback") != 0 &&
+      strcmp(field_name, "stretch") != 0 && strcmp(field_name, "snapshot_mode") != 0 &&
+      strcmp(field_name, "strip_ansi") != 0 && strcmp(field_name, "quiet") != 0 &&
+      strcmp(field_name, "encrypt_enabled") != 0 && strcmp(field_name, "no_encrypt") != 0 &&
+      strcmp(field_name, "discovery") != 0 && strcmp(field_name, "discovery_expose_ip") != 0 &&
+      strcmp(field_name, "discovery_insecure") != 0 && strcmp(field_name, "webrtc") != 0 &&
+      strcmp(field_name, "lan_discovery") != 0 && strcmp(field_name, "no_mdns_advertise") != 0 &&
+      strcmp(field_name, "prefer_webrtc") != 0 && strcmp(field_name, "no_webrtc") != 0 &&
+      strcmp(field_name, "webrtc_skip_stun") != 0 && strcmp(field_name, "webrtc_disable_turn") != 0 &&
+      strcmp(field_name, "enable_upnp") != 0 && strcmp(field_name, "require_server_identity") != 0 &&
+      strcmp(field_name, "require_client_identity") != 0 && strcmp(field_name, "require_server_verify") != 0 &&
+      strcmp(field_name, "require_client_verify") != 0 && strcmp(field_name, "palette_custom_set") != 0 &&
+      strcmp(field_name, "media_loop") != 0 && strcmp(field_name, "media_from_stdin") != 0 &&
+      strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct bool_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(bool_field_updater, &ctx);
 }
 
-static void render_mode_updater(options_t *opts, void *context) {
-  render_mode_t *mode = (render_mode_t *)context;
-  opts->render_mode = *mode;
+struct string_field_ctx {
+  const char *field_name;
+  const char *value;
+};
+
+static void string_field_updater(options_t *opts, void *context) {
+  struct string_field_ctx *ctx = (struct string_field_ctx *)context;
+  if (strcmp(ctx->field_name, "address") == 0)
+    SAFE_STRNCPY(opts->address, ctx->value, sizeof(opts->address));
+  else if (strcmp(ctx->field_name, "address6") == 0)
+    SAFE_STRNCPY(opts->address6, ctx->value, sizeof(opts->address6));
+  else if (strcmp(ctx->field_name, "port") == 0)
+    SAFE_STRNCPY(opts->port, ctx->value, sizeof(opts->port));
+  else if (strcmp(ctx->field_name, "encrypt_key") == 0)
+    SAFE_STRNCPY(opts->encrypt_key, ctx->value, sizeof(opts->encrypt_key));
+  else if (strcmp(ctx->field_name, "password") == 0)
+    SAFE_STRNCPY(opts->password, ctx->value, sizeof(opts->password));
+  else if (strcmp(ctx->field_name, "encrypt_keyfile") == 0)
+    SAFE_STRNCPY(opts->encrypt_keyfile, ctx->value, sizeof(opts->encrypt_keyfile));
+  else if (strcmp(ctx->field_name, "server_key") == 0)
+    SAFE_STRNCPY(opts->server_key, ctx->value, sizeof(opts->server_key));
+  else if (strcmp(ctx->field_name, "client_keys") == 0)
+    SAFE_STRNCPY(opts->client_keys, ctx->value, sizeof(opts->client_keys));
+  else if (strcmp(ctx->field_name, "discovery_server") == 0)
+    SAFE_STRNCPY(opts->discovery_server, ctx->value, sizeof(opts->discovery_server));
+  else if (strcmp(ctx->field_name, "discovery_service_key") == 0)
+    SAFE_STRNCPY(opts->discovery_service_key, ctx->value, sizeof(opts->discovery_service_key));
+  else if (strcmp(ctx->field_name, "discovery_database_path") == 0)
+    SAFE_STRNCPY(opts->discovery_database_path, ctx->value, sizeof(opts->discovery_database_path));
+  else if (strcmp(ctx->field_name, "log_file") == 0)
+    SAFE_STRNCPY(opts->log_file, ctx->value, sizeof(opts->log_file));
+  else if (strcmp(ctx->field_name, "media_file") == 0)
+    SAFE_STRNCPY(opts->media_file, ctx->value, sizeof(opts->media_file));
+  else if (strcmp(ctx->field_name, "palette_custom") == 0)
+    SAFE_STRNCPY(opts->palette_custom, ctx->value, sizeof(opts->palette_custom));
+  else if (strcmp(ctx->field_name, "stun_servers") == 0)
+    SAFE_STRNCPY(opts->stun_servers, ctx->value, sizeof(opts->stun_servers));
+  else if (strcmp(ctx->field_name, "turn_servers") == 0)
+    SAFE_STRNCPY(opts->turn_servers, ctx->value, sizeof(opts->turn_servers));
+  else if (strcmp(ctx->field_name, "turn_username") == 0)
+    SAFE_STRNCPY(opts->turn_username, ctx->value, sizeof(opts->turn_username));
+  else if (strcmp(ctx->field_name, "turn_credential") == 0)
+    SAFE_STRNCPY(opts->turn_credential, ctx->value, sizeof(opts->turn_credential));
+  else if (strcmp(ctx->field_name, "turn_secret") == 0)
+    SAFE_STRNCPY(opts->turn_secret, ctx->value, sizeof(opts->turn_secret));
+  else if (strcmp(ctx->field_name, "session_string") == 0)
+    SAFE_STRNCPY(opts->session_string, ctx->value, sizeof(opts->session_string));
 }
 
-asciichat_error_t options_set_render_mode(render_mode_t mode) {
-  return options_update(render_mode_updater, &mode);
+asciichat_error_t options_set_string(const char *field_name, const char *value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  if (!value) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "value is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Validate field exists
+  if (strcmp(field_name, "address") != 0 && strcmp(field_name, "address6") != 0 && strcmp(field_name, "port") != 0 &&
+      strcmp(field_name, "encrypt_key") != 0 && strcmp(field_name, "password") != 0 &&
+      strcmp(field_name, "encrypt_keyfile") != 0 && strcmp(field_name, "server_key") != 0 &&
+      strcmp(field_name, "client_keys") != 0 && strcmp(field_name, "discovery_server") != 0 &&
+      strcmp(field_name, "discovery_service_key") != 0 && strcmp(field_name, "discovery_database_path") != 0 &&
+      strcmp(field_name, "log_file") != 0 && strcmp(field_name, "media_file") != 0 &&
+      strcmp(field_name, "palette_custom") != 0 && strcmp(field_name, "stun_servers") != 0 &&
+      strcmp(field_name, "turn_servers") != 0 && strcmp(field_name, "turn_username") != 0 &&
+      strcmp(field_name, "turn_credential") != 0 && strcmp(field_name, "turn_secret") != 0 &&
+      strcmp(field_name, "session_string") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown string field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct string_field_ctx ctx = {.field_name = field_name, .value = value};
+  return options_update(string_field_updater, &ctx);
 }
 
-static void log_level_updater(options_t *opts, void *context) {
-  log_level_t *level = (log_level_t *)context;
-  opts->log_level = *level;
+struct double_field_ctx {
+  const char *field_name;
+  double value;
+};
+
+static void double_field_updater(options_t *opts, void *context) {
+  struct double_field_ctx *ctx = (struct double_field_ctx *)context;
+  if (strcmp(ctx->field_name, "snapshot_delay") == 0)
+    opts->snapshot_delay = ctx->value;
+  else if (strcmp(ctx->field_name, "microphone_sensitivity") == 0)
+    opts->microphone_sensitivity = ctx->value;
+  else if (strcmp(ctx->field_name, "speakers_volume") == 0)
+    opts->speakers_volume = ctx->value;
 }
 
-asciichat_error_t options_set_log_level(log_level_t level) {
-  return options_update(log_level_updater, &level);
+asciichat_error_t options_set_double(const char *field_name, double value) {
+  if (!field_name) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "field_name is NULL");
+    return ERROR_INVALID_PARAM;
+  }
+
+  // Normalize option names to internal field names
+  const char *internal_name = field_name;
+  if (strcmp(field_name, "microphone-volume") == 0 || strcmp(field_name, "ivolume") == 0) {
+    internal_name = "microphone_sensitivity";
+  } else if (strcmp(field_name, "speakers-volume") == 0 || strcmp(field_name, "volume") == 0) {
+    internal_name = "speakers_volume";
+  }
+
+  if (strcmp(internal_name, "snapshot_delay") != 0 && strcmp(internal_name, "microphone_sensitivity") != 0 &&
+      strcmp(internal_name, "speakers_volume") != 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Unknown double field: %s", field_name);
+    return ERROR_INVALID_PARAM;
+  }
+
+  struct double_field_ctx ctx = {.field_name = internal_name, .value = value};
+  return options_update(double_field_updater, &ctx);
 }

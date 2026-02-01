@@ -38,20 +38,30 @@ typedef struct {
 static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t len) {
   const uint8_t *ptr = (const uint8_t *)data;
   size_t remaining = len;
+  size_t total_sent = 0;
+
+  log_debug("★ TCP_SEND_ALL: sockfd=%d, len=%zu", sockfd, len);
 
   while (remaining > 0) {
     ssize_t sent = socket_send(sockfd, ptr, remaining, 0);
     if (sent < 0) {
-      return SET_ERRNO_SYS(ERROR_NETWORK, "Socket send failed (tried to send %zu bytes, %zu remaining)", len,
-                           remaining);
+      log_error("★ TCP_SEND_ALL: socket_send failed at offset %zu/%zu", total_sent, len);
+      return SET_ERRNO_SYS(ERROR_NETWORK,
+                           "Socket send failed (tried to send %zu bytes, %zu remaining, already sent %zu)", len,
+                           remaining, total_sent);
     }
     if (sent == 0) {
-      return SET_ERRNO(ERROR_NETWORK, "Socket closed (tried to send %zu bytes, %zu remaining)", len, remaining);
+      log_error("★ TCP_SEND_ALL: socket closed at offset %zu/%zu", total_sent, len);
+      return SET_ERRNO(ERROR_NETWORK, "Socket closed (tried to send %zu bytes, %zu remaining, already sent %zu)", len,
+                       remaining, total_sent);
     }
     ptr += sent;
     remaining -= (size_t)sent;
+    total_sent += (size_t)sent;
+    log_debug("★ TCP_SEND_ALL: sent %zd bytes, total=%zu/%zu, remaining=%zu", sent, total_sent, len, remaining);
   }
 
+  log_debug("★ TCP_SEND_ALL: SUCCESS - sent all %zu bytes", len);
   return ASCIICHAT_OK;
 }
 
@@ -229,6 +239,14 @@ acip_transport_t *acip_tcp_transport_create(socket_t sockfd, crypto_context_t *c
   // Initialize TCP data
   tcp_data->sockfd = sockfd;
   tcp_data->is_connected = true;
+
+  // Enable TCP_NODELAY to disable Nagle's algorithm
+  // This ensures small packets are sent immediately instead of being buffered
+  int nodelay = 1;
+  if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&nodelay, sizeof(nodelay)) < 0) {
+    log_warn("Failed to set TCP_NODELAY on socket %d: %s", sockfd, SAFE_STRERROR(errno));
+    // Continue anyway - this is not fatal
+  }
 
   // Initialize transport
   transport->methods = &tcp_methods;

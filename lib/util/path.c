@@ -6,12 +6,14 @@
 
 #include "path.h"
 #include "common.h"
+#include "common/error_codes.h"
 #include "platform/system.h"
-#include "platform/fs.h"
+#include "platform/filesystem.h"
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -19,6 +21,7 @@
  */
 static const char *normalize_path(const char *path) {
   if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "path is null");
     return "unknown";
   }
 
@@ -32,19 +35,20 @@ static const char *normalize_path(const char *path) {
   }
 
   const char *pos = path;
-  bool absolute = false;
+  bool absolute = path_is_absolute(path);
 
-  /* Check if path is absolute (Windows drive or Unix root) */
+  /* Skip past the absolute path prefix if present */
+  if (absolute) {
 #ifdef _WIN32
-  if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
-    absolute = true;
-    pos += 3; /* Skip the drive letter and colon and separator (e.g., "C:\") */
-  }
+    if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
+      pos += 3; /* Skip the drive letter and colon and separator (e.g., "C:\") */
+    }
 #else
-  if (path_len >= 1 && path[0] == PATH_DELIM) {
-    absolute = true;
-  }
+    if (path_len >= 1 && path[0] == PATH_DELIM) {
+      pos += 1; /* Skip the root separator */
+    }
 #endif
+  }
 
   /* Parse path into components */
   while (*pos) {
@@ -125,8 +129,10 @@ static const char *normalize_path(const char *path) {
 }
 
 const char *extract_project_relative_path(const char *file) {
-  if (!file)
+  if (!file) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "file is null");
     return "unknown";
+  }
 
   /* First normalize the path to resolve .. and . components */
   const char *normalized = normalize_path(file);
@@ -182,21 +188,10 @@ const char *extract_project_relative_path(const char *file) {
 
 char *expand_path(const char *path) {
   if (path[0] == PATH_TILDE) {
-    const char *home = NULL;
-#ifdef _WIN32
-    // On Windows, try USERPROFILE first, then HOME as fallback
-    if (!(home = platform_getenv("USERPROFILE"))) {
-      if (!(home = platform_getenv("HOME"))) {
-        return NULL; // Both USERPROFILE and HOME failed
-      }
-      // HOME found, continue to expansion below
-    }
-    // USERPROFILE found, continue to expansion below
-#else
-    if (!(home = platform_getenv("HOME"))) {
+    const char *home = platform_get_home_dir();
+    if (!home) {
       return NULL;
     }
-#endif
 
     char *expanded;
     size_t total_len = strlen(home) + strlen(path) + 1; // path includes the tilde
@@ -206,14 +201,7 @@ char *expand_path(const char *path) {
     }
     safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
 
-#ifdef _WIN32
-    // Convert Unix forward slashes to Windows backslashes
-    for (char *p = expanded; *p; p++) {
-      if (*p == '/') {
-        *p = '\\';
-      }
-    }
-#endif
+    platform_normalize_path_separators(expanded);
 
     return expanded;
   }
@@ -221,64 +209,15 @@ char *expand_path(const char *path) {
 }
 
 char *get_config_dir(void) {
-#ifdef _WIN32
-  // Windows: Use %APPDATA%/ascii-chat/
-  const char *appdata = platform_getenv("APPDATA");
-  if (appdata && appdata[0] != '\0') {
-    size_t len = strlen(appdata) + strlen("\\ascii-chat\\") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s\\ascii-chat\\", appdata);
-    return dir;
-  }
-  // Fallback to %USERPROFILE%/.ascii-chat/
-  const char *userprofile = platform_getenv("USERPROFILE");
-  if (userprofile && userprofile[0] != '\0') {
-    size_t len = strlen(userprofile) + strlen("\\.ascii-chat\\") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s\\.ascii-chat\\", userprofile);
-    return dir;
-  }
-  return NULL;
-#else
-  // Unix: Use $XDG_CONFIG_HOME/ascii-chat/ if set
-  const char *xdg_config_home = platform_getenv("XDG_CONFIG_HOME");
-  if (xdg_config_home && xdg_config_home[0] != '\0') {
-    size_t len = strlen(xdg_config_home) + strlen("/ascii-chat/") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s/ascii-chat/", xdg_config_home);
-    return dir;
-  }
-
-  // Fallback: ~/.ascii-chat/
-  const char *home = platform_getenv("HOME");
-  if (home && home[0] != '\0') {
-    size_t len = strlen(home) + strlen("/.ascii-chat/") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s/.ascii-chat/", home);
-    return dir;
-  }
-
-  return NULL;
-#endif
+  /* Delegate to platform abstraction layer */
+  return platform_get_config_dir();
 }
 
 char *get_log_dir(void) {
 #ifdef NDEBUG
   // Release builds: Use $TMPDIR/ascii-chat/
   // Get system temp directory
-  char temp_dir[256];
+  char temp_dir[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
     // Fallback: Use current working directory if temp dir unavailable
     char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
@@ -335,9 +274,7 @@ char *get_log_dir(void) {
   }
 
   char *result = SAFE_MALLOC(strlen(cwd_buf) + 1, char *);
-  if (!result) {
-    return NULL;
-  }
+
   safe_snprintf(result, strlen(cwd_buf) + 1, "%s", cwd_buf);
   return result;
 #endif
@@ -345,6 +282,7 @@ char *get_log_dir(void) {
 
 bool path_normalize_copy(const char *path, char *out, size_t out_len) {
   if (!path || !out || out_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "null path or out or out_len is 0");
     return false;
   }
 
@@ -404,11 +342,7 @@ bool path_is_within_base(const char *path, const char *base) {
     return false;
   }
 
-#ifdef _WIN32
-  if (_strnicmp(normalized_path, normalized_base, base_len) != 0) {
-#else
-  if (strncmp(normalized_path, normalized_base, base_len) != 0) {
-#endif
+  if (platform_path_strcasecmp(normalized_path, normalized_base, base_len) != 0) {
     return false;
   }
   char next = normalized_path[base_len];
@@ -495,6 +429,155 @@ static void build_ascii_chat_path(const char *base, const char *suffix, char *ou
   safe_snprintf(out, out_len, "%s%s%s", base, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
 }
 
+/**
+ * Check if a path points to a sensitive system file that should not be overwritten.
+ * This prevents accidental or malicious overwriting of critical OS files.
+ *
+ * @param path The normalized absolute path to check
+ * @return true if the path is a sensitive system file
+ */
+static bool is_sensitive_system_path(const char *path) {
+  if (!path) {
+    return false;
+  }
+
+#ifdef _WIN32
+  // Windows system directories
+  const char *sensitive_paths[] = {"C:\\Windows",                   // System directory
+                                   "C:\\Program Files",             // Program files
+                                   "C:\\Program Files (x86)",       // 32-bit programs
+                                   "C:\\ProgramData",               // All users data
+                                   "C:\\System Volume Information", // System recovery
+                                   "C:\\PerfLogs",                  // Performance logs
+                                   NULL};
+#else
+  // Unix/Linux/macOS system directories
+  const char *sensitive_paths[] = {"/etc",       // System configuration
+                                   "/bin",       // Essential binaries
+                                   "/sbin",      // System binaries
+                                   "/usr/bin",   // User binaries
+                                   "/usr/sbin",  // User system binaries
+                                   "/usr/lib",   // System libraries
+                                   "/lib",       // Libraries
+                                   "/lib64",     // 64-bit libraries
+                                   "/boot",      // Boot files
+                                   "/sys",       // System interface
+                                   "/proc",      // Process interface
+                                   "/dev",       // Devices
+                                   "/root",      // Root home (should not write to)
+                                   "/var/lib",   // Variable library data
+                                   "/var/cache", // Cache data
+                                   "/var/spool", // Spool data
+                                   NULL};
+
+#ifdef __APPLE__
+  // macOS-specific system paths
+  const char *macos_paths[] = {"/System",       // Core system
+                               "/Library",      // System library
+                               "/Applications", // Bundled apps
+                               "/Developer",    // Developer tools
+                               "/Volumes",      // Mounted volumes
+                               NULL};
+#endif
+#endif
+
+  // Check each sensitive path
+  for (int i = 0; sensitive_paths[i] != NULL; i++) {
+    const char *base = sensitive_paths[i];
+    size_t base_len = strlen(base);
+
+    // Match if path equals base or starts with base + separator
+    if (strcmp(path, base) == 0) {
+      return true; // Exact match is sensitive
+    }
+    if (strncmp(path, base, base_len) == 0) {
+      // Make sure it's followed by a path separator, not a partial match
+      if (path[base_len] == PATH_DELIM || path[base_len] == '/' || path[base_len] == '\\') {
+        return true;
+      }
+    }
+  }
+
+#ifdef __APPLE__
+  // Check macOS paths
+  for (int i = 0; macos_paths[i] != NULL; i++) {
+    const char *base = macos_paths[i];
+    size_t base_len = strlen(base);
+
+    if (strcmp(path, base) == 0) {
+      return true;
+    }
+    if (strncmp(path, base, base_len) == 0) {
+      if (path[base_len] == PATH_DELIM || path[base_len] == '/' || path[base_len] == '\\') {
+        return true;
+      }
+    }
+  }
+#endif
+
+  return false;
+}
+
+/**
+ * Check if an existing file is an ascii-chat log file by reading its header.
+ * ascii-chat logs have a distinctive format with timestamps and log levels.
+ *
+ * @param path The path to the file to check
+ * @return true if the file appears to be an ascii-chat log file (false for directories or non-files)
+ */
+static bool is_file_empty(const char *path) {
+  if (!path) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "is_file_empty: invalid parameter");
+    return false;
+  }
+
+  if (!platform_is_regular_file(path)) {
+    return false;
+  }
+
+  FILE *f = fopen(path, "r");
+  if (!f) {
+    return false;
+  }
+
+  int c = fgetc(f);
+  fclose(f);
+  return c == EOF;
+}
+
+static bool is_existing_ascii_chat_log(const char *path) {
+  if (!path) {
+    return false;
+  }
+
+  // Check if path is a regular file (not a directory) using platform abstraction
+  if (!platform_is_regular_file(path)) {
+    return false; // Not a regular file (could be directory, doesn't exist, symlink, etc.)
+  }
+
+  // Try to open and read the first line
+  FILE *f = fopen(path, "r");
+  if (!f) {
+    return false; // Can't read file
+  }
+
+  char buffer[256];
+  bool is_ascii_chat_log = false;
+
+  // Read first line and check for ascii-chat log signature
+  if (fgets(buffer, sizeof(buffer), f) != NULL) {
+    // ascii-chat logs start with timestamps like: [HH:MM:SS.microseconds] [LEVEL]
+    // Pattern: [digit][digit]:[digit][digit]:[digit][digit].[digits]
+    if (buffer[0] == '[' && isdigit((unsigned char)buffer[1]) && isdigit((unsigned char)buffer[2]) &&
+        buffer[3] == ':') {
+      is_ascii_chat_log = true;
+    }
+  }
+
+  fclose(f);
+  return is_ascii_chat_log;
+}
+
 asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out) {
   if (!normalized_out) {
     return SET_ERRNO(map_role_to_error(role), "path_validate_user_path requires output pointer");
@@ -522,16 +605,17 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
 
     // If it's a simple filename, resolve it to a safe base directory
     if (is_simple_filename) {
-      // Use config dir if available, otherwise current directory
-      char *config_dir = get_config_dir();
+      // Always prefer current working directory for simple log filenames
+      // This ensures logs go to where the user is running the command from
       char safe_base[PLATFORM_MAX_PATH_LENGTH];
 
-      if (config_dir) {
-        SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
-        SAFE_FREE(config_dir);
-      } else {
-        // Fallback to current working directory
-        if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+      if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+        // If cwd fails, try config dir as fallback
+        char *config_dir = get_config_dir();
+        if (config_dir) {
+          SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
+          SAFE_FREE(config_dir);
+        } else {
           return SET_ERRNO(ERROR_LOGGING_INIT, "Failed to determine safe directory for log file");
         }
       }
@@ -615,6 +699,8 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   const char *bases[MAX_PATH_BASES] = {0};
   size_t base_count = 0;
 
+  // Always add current working directory as an allowed base
+  // This is critical for log files and other paths relative to where the user runs the command
   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
   if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
     append_base_if_valid(cwd_base, bases, &base_count);
@@ -630,12 +716,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(config_dir, bases, &base_count);
   }
 
-  const char *home_env = platform_getenv("HOME");
-#ifdef _WIN32
-  if (!home_env) {
-    home_env = platform_getenv("USERPROFILE");
-  }
-#endif
+  const char *home_env = platform_get_home_dir();
   if (home_env) {
     append_base_if_valid(home_env, bases, &base_count);
   }
@@ -671,18 +752,67 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   append_base_if_valid("/usr/local/etc/ascii-chat", bases, &base_count);
   append_base_if_valid("/var/log", bases, &base_count);
   append_base_if_valid("/var/tmp", bases, &base_count);
+  append_base_if_valid("/tmp", bases, &base_count);
+#ifdef __APPLE__
+  // On macOS, /tmp is a symlink to /private/tmp
+  append_base_if_valid("/private/tmp", bases, &base_count);
+  // On macOS, all user home directories are under /Users
+  append_base_if_valid("/Users", bases, &base_count);
+#endif
 #endif
 
-  // Validate that the path is within allowed directories
-  // Note: Simple log filenames without separators are already resolved to safe dirs above
-  bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-
-  if (!allowed) {
+  // Security check: Reject paths that point to sensitive system files
+  // This applies to all path roles, not just logs
+  if (is_sensitive_system_path(normalized_buf)) {
     SAFE_FREE(expanded);
     if (config_dir) {
       SAFE_FREE(config_dir);
     }
-    return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
+    return SET_ERRNO(map_role_to_error(role), "Cannot write to protected system path: %s", normalized_buf);
+  }
+
+  // For log files, apply special validation rules
+  if (role == PATH_ROLE_LOG_FILE) {
+    // Check if path is a regular file (not a directory, not non-existent)
+    // On macOS, fopen() can succeed on directories, so we must use platform_is_regular_file()
+    bool is_regular_file = platform_is_regular_file(normalized_buf);
+
+    // If a regular file exists, it MUST be an ascii-chat log or empty file to be overwritten
+    if (is_regular_file && !is_existing_ascii_chat_log(normalized_buf) && !is_file_empty(normalized_buf)) {
+      SAFE_FREE(expanded);
+      if (config_dir) {
+        SAFE_FREE(config_dir);
+      }
+      return SET_ERRNO(ERROR_LOGGING_INIT,
+                       "Cannot overwrite existing non-ascii-chat file: %s\n"
+                       "For safety, ascii-chat will only overwrite its own log files or empty files",
+                       normalized_buf);
+    }
+
+    // If file doesn't exist (or is a directory), check that path is in safe locations
+    if (!is_regular_file) {
+      bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+      if (!allowed) {
+        SAFE_FREE(expanded);
+        if (config_dir) {
+          SAFE_FREE(config_dir);
+        }
+        return SET_ERRNO(ERROR_LOGGING_INIT,
+                         "Log path %s is outside allowed directories (use -L /tmp/file.log, ~/file.log, or "
+                         "relative/absolute paths in safe locations)",
+                         normalized_buf);
+      }
+    }
+  } else {
+    // For non-log-file paths, apply standard whitelist validation
+    bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+    if (!allowed) {
+      SAFE_FREE(expanded);
+      if (config_dir) {
+        SAFE_FREE(config_dir);
+      }
+      return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
+    }
   }
 
   char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);

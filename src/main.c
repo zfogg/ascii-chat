@@ -21,19 +21,30 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Mode-specific entry point
+// Mode-specific entry points
 #include "server/main.h"
 #include "client/main.h"
 #include "mirror/main.h"
+#include "discovery-service/main.h"
+#include "discovery/main.h"
+
+// Utilities
+#include "util/utf8.h"
+#include "util/time.h"
+#include "util/string.h"
 
 // Common headers for version info and initialization
 #include "common.h"
 #include "version.h"
 #include "options/options.h"
+#include "options/common.h"
 #include "options/rcu.h"
+#include "options/builder.h"
+#include "options/colors.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/path.h"
+#include "ui/colors.h"
 
 #ifndef NDEBUG
 #include "asciichat_errno.h"
@@ -75,6 +86,11 @@ static const mode_descriptor_t g_mode_table[] = {
         .description = "View local webcam as ASCII art (no server)",
         .entry_point = mirror_main,
     },
+    {
+        .name = "discovery-service",
+        .description = "Secure P2P session signalling",
+        .entry_point = acds_main,
+    },
     {.name = NULL, .description = NULL, .entry_point = NULL},
 };
 
@@ -82,136 +98,97 @@ static const mode_descriptor_t g_mode_table[] = {
  * Help and Usage Functions
  * ============================================================================ */
 
-static void print_usage(void) {
-#ifdef _WIN32
-  const char *binary_name = "ascii-chat.exe";
-#else
-  const char *binary_name = "ascii-chat";
-#endif
-
-  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
-         ASCII_CHAT_DESCRIPTION_EMOJI_R);
-  printf("\n");
-  printf("USAGE:\n");
-  printf("  %s [options] <mode> [mode-options...]\n", binary_name);
-  printf("\n");
-  printf("EXAMPLES:\n");
-  printf("  %s server                    Start server on default port 27224\n", binary_name);
-  printf("  %s client                    Connect to localhost:27224\n", binary_name);
-  printf("  %s client example.com        Connect to example.com:27224\n", binary_name);
-  printf("\n");
-  printf("OPTIONS:\n");
-  printf("  --help                       Show this help\n");
-  printf("  --version                    Show version information\n");
-  printf("  --config FILE                Load configuration from FILE\n");
-  printf("  --config-create [FILE]       Create default config and exit\n");
-  printf("  -L --log-file FILE           Redirect logs to FILE\n");
-  printf("  --log-level LEVEL            Set log level: dev, debug, info, warn, error, fatal\n");
-  printf("  -V --verbose                 Increase log verbosity (stackable: -VV, -VVV)\n");
-  printf("  -q --quiet                   Disable console logging (log to file only)\n");
-  printf("\n");
-  printf("MODES:\n");
-  for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    printf("  %-6s  %s\n", mode->name, mode->description);
-  }
-  printf("\n");
-  printf("MODE-OPTIONS:\n");
-  printf("  %s <mode> --help             Show options for a mode\n", binary_name);
-  printf("\n");
-  printf("🔗 https://github.com/zfogg/ascii-chat\n");
+static void print_usage(asciichat_mode_t mode) {
+  // Use the new usage() function from common.c which handles mode-specific help properly
+  usage(stdout, mode);
 }
 
 static void print_version(void) {
   printf("%s %s (%s, %s)\n", APP_NAME, VERSION, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
-  printf("\n");
-
-  printf("Built with:\n");
-
-#ifdef __clang__
-  printf("  Compiler: Clang %s\n", __clang_version__);
-#elif defined(__GNUC__)
-  printf("  Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#elif defined(_MSC_VER)
-  printf("  Compiler: MSVC %d\n", _MSC_VER);
-#else
-  printf("  Compiler: Unknown\n");
-#endif
-
-#ifdef USE_MUSL
-  printf("  C Library: musl\n");
-#elif defined(__GLIBC__)
-  printf("  C Library: glibc %d.%d\n", __GLIBC__, __GLIBC_MINOR__);
-#elif defined(_WIN32)
-  printf("  C Library: MSVCRT\n");
-#elif defined(__APPLE__)
-  printf("  C Library: libSystem\n");
-#else
-  printf("  C Library: Unknown\n");
-#endif
-
-  printf("\n");
-  printf("For more information: https://github.com/zfogg/ascii-chat\n");
 }
 
+// Discovery mode is implicit (no keyword) so it has a separate descriptor
+static const mode_descriptor_t g_discovery_mode = {
+    .name = "discovery",
+    .description = "P2P session with automatic host negotiation",
+    .entry_point = discovery_main,
+};
+
+/**
+ * @brief Mode lookup table for O(1) mode dispatch (direct indexing)
+ *
+ * Maps asciichat_mode_t enum values directly to mode descriptors for fast lookup.
+ * This eliminates the O(n) loop+switch pattern in the previous implementation.
+ *
+ * Must match the order of asciichat_mode_t enum in options.h:
+ * - MODE_SERVER = 0
+ * - MODE_CLIENT = 1
+ * - MODE_MIRROR = 2
+ * - MODE_DISCOVERY_SERVICE = 3
+ * - MODE_DISCOVERY = 4
+ * - MODE_INVALID = 5
+ *
+ * @note MODE_INVALID is reserved and has no descriptor
+ */
+static const mode_descriptor_t *g_mode_lookup[] = {
+    [MODE_SERVER] = &g_mode_table[0],            // server_main
+    [MODE_CLIENT] = &g_mode_table[1],            // client_main
+    [MODE_MIRROR] = &g_mode_table[2],            // mirror_main
+    [MODE_DISCOVERY_SERVICE] = &g_mode_table[3], // acds_main
+    [MODE_DISCOVERY] = &g_discovery_mode,        // discovery_main (implicit mode)
+    [MODE_INVALID] = NULL,                       // Invalid: no descriptor
+};
+
+/**
+ * @brief Find mode descriptor by asciichat_mode_t enum (O(1) direct lookup)
+ *
+ * Returns the mode descriptor for the given mode by direct indexing into
+ * the lookup table. This is much faster than the previous loop+switch approach.
+ *
+ * @param mode The mode enum value
+ * @return Pointer to mode descriptor, or NULL if mode is invalid
+ */
 static const mode_descriptor_t *find_mode(asciichat_mode_t mode) {
-  // Special case: ACDS is a separate binary, not in this dispatcher
-  if (mode == MODE_ACDS) {
-    fprintf(stderr, "Error: ACDS mode is not available in the unified ascii-chat binary.\n");
-    fprintf(stderr, "The discovery service is provided as a separate 'acds' executable.\n");
-    fprintf(stderr, "Build and run the 'acds' binary for discovery service functionality.\n");
+  // Bounds check: ensure mode is within valid range (0 to MODE_INVALID)
+  if (mode < MODE_SERVER || mode > MODE_INVALID) {
     return NULL;
   }
-
-  for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
-    switch (mode) {
-    case MODE_SERVER:
-      if (strcmp(m->name, "server") == 0)
-        return m;
-      break;
-    case MODE_CLIENT:
-      if (strcmp(m->name, "client") == 0)
-        return m;
-      break;
-    case MODE_MIRROR:
-      if (strcmp(m->name, "mirror") == 0)
-        return m;
-      break;
-    default:
-      break;
-    }
-  }
-  return NULL;
+  return g_mode_lookup[mode];
 }
 
 /* ============================================================================
  * Helper Functions for Post-Options Processing
  * ============================================================================ */
 
-static void update_log_file_updater(options_t *opts, void *context) {
-  const char *validated_path = (const char *)context;
-  SAFE_STRNCPY(opts->log_file, validated_path, sizeof(opts->log_file));
-}
-
-static void clear_log_file_updater(options_t *opts, void *context) {
-  (void)context;
-  opts->log_file[0] = '\0';
-}
-
-static void update_color_mode_to_none_updater(options_t *opts, void *context) {
-  (void)context;
-  opts->color_mode = COLOR_MODE_NONE;
-}
-
 /* ============================================================================
  * Main Entry Point
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+  // Set global argc/argv for early argv inspection (e.g., in terminal.c)
+  g_argc = argc;
+  g_argv = argv;
   // Validate basic argument structure
   if (argc < 1 || argv == NULL || argv[0] == NULL) {
     fprintf(stderr, "Error: Invalid argument vector\n");
     return 1;
   }
+
+  // Detect terminal capabilities early so colored help output works
+  log_redetect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  caps = apply_color_mode_override(caps);
+
+  // Detect early if stdout is piped so we can route logs to stderr from the start
+  // This prevents log output from corrupting piped frame data during initialization
+  bool stdout_is_piped = !platform_isatty(STDOUT_FILENO);
+
+  // Initialize logging early so options parsing can log errors
+  // Use generic filename for now; will be replaced with mode-specific filename once mode is detected
+  // This will be reconfigured first in options_init() with mode-specific name,
+  // then again in asciichat_shared_init() with final settings from parsed options
+  // Pass stdout_is_piped so logs go to stderr during initialization if needed
+  log_init("ascii-chat.log", LOG_INFO, stdout_is_piped, false);
 
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
@@ -223,27 +200,46 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
-  // Case: No arguments - show usage
-  if (argc == 1) {
-    print_usage();
-    return 0;
+  // Handle --color-scheme-create early (before options_init) to avoid options parsing issues
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--color-scheme-create") == 0) {
+      // Initialize colors system
+      if (colors_init() != ASCIICHAT_OK) {
+        fprintf(stderr, "Error: Failed to initialize color system\n");
+        return ERROR_INIT;
+      }
+
+      // Parse scheme name and output file (both optional)
+      const char *scheme_name = "pastel"; // default
+      const char *output_file = NULL;
+
+      // Check if next argument is a scheme name (no '-' prefix)
+      if (i + 1 < argc && argv[i + 1][0] != '-') {
+        scheme_name = argv[i + 1];
+        i++;
+
+        // Check if argument after that is an output file
+        if (i + 1 < argc && argv[i + 1][0] != '-') {
+          output_file = argv[i + 1];
+          i++;
+        }
+      }
+
+      // Export the scheme
+      asciichat_error_t export_result = colors_export_scheme(scheme_name, output_file);
+      colors_shutdown();
+
+      if (export_result != ASCIICHAT_OK) {
+        return export_result;
+      }
+      return ASCIICHAT_OK;
+    }
   }
 
-  // UNIFIED OPTION INITIALIZATION
-  // This single call handles:
-  // - Mode detection from command-line arguments (including session string auto-detection)
-  // - Binary-level option parsing (--help, --version, --log-file, etc.)
-  // - Mode-specific option parsing
-  // - Configuration file loading
-  // - Post-processing and validation
-  //
-  // Session String Detection (Phase 1 ACDS):
-  // When a positional argument matches word-word-word pattern (e.g., "swift-river-mountain"),
-  // it's automatically detected as a session string by options_init(), which:
-  // 1. Sets detected_mode to MODE_CLIENT
-  // 2. Stores the session string in options.session_string
-  // 3. Triggers automatic discovery on LAN (mDNS) and/or internet (ACDS)
-  // This enables: `ascii-chat swift-river-mountain` (no explicit "client" mode needed)
+  // Load color scheme early (from config files and CLI) before logging initialization
+  // This allows logging to use the correct colors from the start
+  options_colors_init_early(argc, argv);
+
   asciichat_error_t options_result = options_init(argc, argv);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
@@ -252,7 +248,13 @@ int main(int argc, char *argv[]) {
     } else {
       fprintf(stderr, "Error: Failed to initialize options\n");
     }
-    return options_result;
+    (void)fflush(stderr);
+
+    // Clean up options state before exiting
+    options_state_shutdown();
+    options_cleanup_schema();
+
+    exit(options_result);
   }
 
   // Get parsed options including detected mode
@@ -262,82 +264,57 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  // Determine if this mode uses client-like initialization (client and mirror modes)
+  // Discovery mode is client-like (uses terminal display, webcam, etc.)
+  bool is_client_like_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR ||
+                              opts->detected_mode == MODE_DISCOVERY);
+
   // Handle --help and --version (these are detected and flagged by options_init)
+  // Terminal capabilities already initialized before options_init() at startup
   if (opts->help) {
-    print_usage();
+    print_usage(opts->detected_mode);
     return 0;
   }
 
   if (opts->version) {
     print_version();
-    return 0;
+    exit(0);
   }
 
-  // Determine default log filename based on detected mode
-  const char *default_log_filename;
-  switch (opts->detected_mode) {
-  case MODE_SERVER:
-    default_log_filename = "server.log";
-    break;
-  case MODE_CLIENT:
-    default_log_filename = "client.log";
-    break;
-  case MODE_MIRROR:
-    default_log_filename = "mirror.log";
-    break;
-  default:
-    default_log_filename = "ascii-chat.log";
-    break;
+  // Initialize timer system BEFORE any subsystem that might use timing functions
+  // This must be done before asciichat_shared_init which initializes palette, buffer pool, etc.
+  if (!timer_system_init()) {
+    fprintf(stderr, "FATAL: Failed to initialize timer system\n");
+    return ERROR_PLATFORM_INIT;
   }
-
-  // Validate log file path if specified (security: prevent path traversal)
-  const char *log_file_from_opts = (opts->log_file[0] != '\0') ? opts->log_file : NULL;
-  if (log_file_from_opts && strlen(log_file_from_opts) > 0) {
-    char *validated_log_file = NULL;
-    asciichat_error_t log_path_result =
-        path_validate_user_path(log_file_from_opts, PATH_ROLE_LOG_FILE, &validated_log_file);
-    if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
-      // Invalid log file path - warn and fall back to default
-      fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", log_file_from_opts,
-              default_log_filename);
-      options_update(clear_log_file_updater, NULL);
-      opts = options_get(); // Refresh pointer after update
-      SAFE_FREE(validated_log_file);
-    } else {
-      // Replace log_file with validated path
-      options_update(update_log_file_updater, validated_log_file);
-      opts = options_get(); // Refresh pointer after update
-      SAFE_FREE(validated_log_file);
-    }
-  }
-
-  // Determine if this mode uses client-like initialization (client and mirror modes)
-  bool is_client_or_mirror_mode = (opts->detected_mode == MODE_CLIENT || opts->detected_mode == MODE_MIRROR);
-
-  // Handle client-specific --show-capabilities flag (exit after showing capabilities)
-  if (is_client_or_mirror_mode && opts->show_capabilities) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
-    caps = apply_color_mode_override(caps);
-    print_terminal_capabilities(&caps);
-    return 0;
-  }
+  // Note: timer_system_cleanup will be registered by asciichat_shared_init
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   // For client/mirror modes, this also sets log_force_stderr(true) to route all logs to stderr
-  asciichat_error_t init_result = asciichat_shared_init(default_log_filename, is_client_or_mirror_mode);
+  asciichat_error_t init_result = asciichat_shared_init(is_client_like_mode);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
-  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : default_log_filename;
+  const char *final_log_file = (opts->log_file[0] != '\0') ? opts->log_file : "ascii-chat.log";
   log_warn("Logging initialized to %s", final_log_file);
 
-  // Client-specific: auto-detect piping and default to no color mode
+  // Client-specific: auto-detect piping and route logs to stderr
   // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
+  // Logs go to stderr when piped, regardless of color settings
+  // Color settings are decided separately below
   terminal_color_mode_t color_mode = opts->color_mode;
-  if (is_client_or_mirror_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO) {
-    options_update(update_color_mode_to_none_updater, NULL);
+  if (is_client_like_mode && !platform_isatty(STDOUT_FILENO)) {
+    log_set_force_stderr(true); // Always route logs to stderr when stdout is piped
+  }
+
+  // Separately: auto-disable colors when piped (unless explicitly enabled with --color=true)
+  // This respects user's explicit --color=true request while auto-disabling in other cases
+  if (is_client_like_mode && !platform_isatty(STDOUT_FILENO) && color_mode == COLOR_MODE_AUTO &&
+      opts->color != COLOR_SETTING_TRUE) {
+    options_set_int("color_mode", COLOR_MODE_NONE);
     opts = options_get(); // Refresh pointer after update
-    log_info("stdout is piped/redirected - defaulting to none (override with --color-mode)");
+    // Log to file only, not terminal - avoid polluting piped stdout when stderr is redirected to stdout (2>&1)
+    log_debug("stdout is piped/redirected - defaulting to none (override with --color-mode)");
   }
 
 #ifndef NDEBUG
@@ -351,14 +328,11 @@ int main(int argc, char *argv[]) {
   log_debug("Lock debug system initialized successfully");
 #endif
 
-  // Set global FPS from command-line option if provided
-  extern int g_max_fps;
   if (opts->fps > 0) {
     if (opts->fps < 1 || opts->fps > 144) {
       log_warn("FPS value %d out of range (1-144), using default", opts->fps);
     } else {
-      g_max_fps = opts->fps;
-      log_debug("Set FPS from command line: %d", g_max_fps);
+      log_debug("FPS set from command line: %d", opts->fps);
     }
   }
 
@@ -374,7 +348,7 @@ int main(int argc, char *argv[]) {
   int exit_code = mode->entry_point();
 
   if (exit_code == ERROR_USAGE) {
-    _exit(ERROR_USAGE);
+    exit(ERROR_USAGE);
   }
 
   return exit_code;

@@ -77,6 +77,7 @@
 #include "server.h"
 #include "util/fps.h"
 #include "util/thread.h"
+#include "util/time.h" // For timing instrumentation
 
 #include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
@@ -91,6 +92,7 @@
 #include <math.h>
 
 #include "platform/abstraction.h"
+#include "platform/init.h"
 #include "thread_pool.h"
 
 /* ============================================================================
@@ -195,9 +197,9 @@ static int g_audio_send_queue_tail = 0; // Read position
 static mutex_t g_audio_send_queue_mutex;
 static cond_t g_audio_send_queue_cond;
 static bool g_audio_send_queue_initialized = false;
+static static_mutex_t g_audio_send_queue_init_mutex = STATIC_MUTEX_INIT;
 
 /** Audio sender thread */
-__attribute__((unused)) static asciichat_thread_t g_audio_sender_thread;
 static bool g_audio_sender_thread_created = false;
 static atomic_bool g_audio_sender_should_exit = false;
 
@@ -255,7 +257,14 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
  */
 static void *audio_sender_thread_func(void *arg) {
   (void)arg;
-  log_info("Audio sender thread started");
+  log_debug("Audio sender thread started");
+
+  // Initialize timing system for performance profiling
+  if (!timer_is_initialized()) {
+    timer_system_init();
+  }
+
+  static int send_count = 0;
 
   while (!atomic_load(&g_audio_sender_should_exit)) {
     mutex_lock(&g_audio_send_queue_mutex);
@@ -277,12 +286,23 @@ static void *audio_sender_thread_func(void *arg) {
     mutex_unlock(&g_audio_send_queue_mutex);
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
-    if (threaded_send_audio_opus_batch(packet.data, packet.size, packet.frame_sizes, packet.frame_count) < 0) {
+    START_TIMER("network_send_audio");
+    asciichat_error_t send_result =
+        threaded_send_audio_opus_batch(packet.data, packet.size, packet.frame_sizes, packet.frame_count);
+    double send_time_ns = STOP_TIMER("network_send_audio");
+
+    send_count++;
+    if (send_result < 0) {
       log_debug_every(LOG_RATE_VERY_FAST, "Failed to send audio packet");
+    } else if (send_count % 50 == 0) {
+      char duration_str[32];
+      format_duration_ns(send_time_ns, duration_str, sizeof(duration_str));
+      log_debug("Audio network send #%d: %zu bytes (%d frames) in %s", send_count, packet.size, packet.frame_count,
+                duration_str);
     }
   }
 
-  log_info("Audio sender thread exiting");
+  log_debug("Audio sender thread exiting");
 
   // Clean up thread-local error context before exit
   asciichat_errno_cleanup();
@@ -292,12 +312,20 @@ static void *audio_sender_thread_func(void *arg) {
 
 /**
  * @brief Initialize async audio sender queue and thread
+ *
+ * Uses mutex protection to prevent TOCTOU race conditions where multiple
+ * threads might attempt initialization simultaneously.
  */
 static void audio_sender_init(void) {
+  static_mutex_lock(&g_audio_send_queue_init_mutex);
+
+  // Check again under lock to prevent race condition
   if (g_audio_send_queue_initialized) {
+    static_mutex_unlock(&g_audio_send_queue_init_mutex);
     return;
   }
 
+  // Initialize queue structures under lock
   mutex_init(&g_audio_send_queue_mutex);
   cond_init(&g_audio_send_queue_cond);
   g_audio_send_queue_head = 0;
@@ -305,10 +333,12 @@ static void audio_sender_init(void) {
   g_audio_send_queue_initialized = true;
   atomic_store(&g_audio_sender_should_exit, false);
 
-  // Start sender thread
+  static_mutex_unlock(&g_audio_send_queue_init_mutex);
+
+  // Start sender thread (after lock release to avoid blocking other threads)
   if (thread_pool_spawn(g_client_worker_pool, audio_sender_thread_func, NULL, 5, "audio_sender") == ASCIICHAT_OK) {
     g_audio_sender_thread_created = true;
-    log_info("Audio sender thread created");
+    log_debug("Audio sender thread created");
   } else {
     log_error("Failed to spawn audio sender thread in worker pool");
     LOG_ERRNO_IF_SET("Audio sender thread creation failed");
@@ -332,7 +362,7 @@ static void audio_sender_cleanup(void) {
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
     g_audio_sender_thread_created = false;
-    log_info("Audio sender thread will be joined by thread pool");
+    log_debug("Audio sender thread will be joined by thread pool");
   }
 
   mutex_destroy(&g_audio_send_queue_mutex);
@@ -416,9 +446,9 @@ void audio_process_received_samples(const float *samples, int num_samples) {
       if (abs_val > peak)
         peak = abs_val;
     }
-    log_info("CLIENT AUDIO RECV #%d: %d samples, RMS=%.6f, Peak=%.6f, first4=[%.4f,%.4f,%.4f,%.4f]", recv_count,
-             num_samples, received_rms, peak, num_samples > 0 ? samples[0] : 0.0f, num_samples > 1 ? samples[1] : 0.0f,
-             num_samples > 2 ? samples[2] : 0.0f, num_samples > 3 ? samples[3] : 0.0f);
+    log_debug("CLIENT AUDIO RECV #%d: %d samples, RMS=%.6f, Peak=%.6f, first4=[%.4f,%.4f,%.4f,%.4f]", recv_count,
+              num_samples, received_rms, peak, num_samples > 0 ? samples[0] : 0.0f, num_samples > 1 ? samples[1] : 0.0f,
+              num_samples > 2 ? samples[2] : 0.0f, num_samples > 3 ? samples[3] : 0.0f);
   }
 
   // Submit to playback system (goes to jitter buffer and speakers)
@@ -468,7 +498,12 @@ void audio_process_received_samples(const float *samples, int num_samples) {
 static void *audio_capture_thread_func(void *arg) {
   (void)arg;
 
-  log_info("Audio capture thread started");
+  log_debug("Audio capture thread started");
+
+  // Initialize timing system for performance profiling
+  if (!timer_is_initialized()) {
+    timer_system_init();
+  }
 
   // FPS tracking for audio capture thread (tracking Opus frames, ~50 FPS at 20ms per frame)
   static fps_t fps_tracker = {0};
@@ -477,6 +512,17 @@ static void *audio_capture_thread_func(void *arg) {
     fps_init(&fps_tracker, 50, "AUDIO_TX");
     fps_tracker_initialized = true;
   }
+
+  // Detailed timing stats
+  static double total_loop_ns = 0;
+  static double total_read_ns = 0;
+  static double total_encode_ns = 0;
+  static double total_queue_ns = 0;
+  static double max_loop_ns = 0;
+  static double max_read_ns = 0;
+  static double max_encode_ns = 0;
+  static double max_queue_ns = 0;
+  static uint64_t timing_loop_count = 0;
 
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_FRAME_SAMPLES 960
@@ -494,7 +540,7 @@ static void *audio_capture_thread_func(void *arg) {
   if (!wav_dumpers_initialized && wav_dump_enabled()) {
     g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
     g_wav_capture_processed = wav_writer_open("/tmp/audio_capture_processed.wav", AUDIO_SAMPLE_RATE, 1);
-    log_info("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
+    log_debug("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
     wav_dumpers_initialized = true;
   }
 
@@ -502,14 +548,29 @@ static void *audio_capture_thread_func(void *arg) {
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_samples_collected = 0;
 
+  // Batch buffer for multiple Opus frames - send all at once to reduce blocking
+#define MAX_BATCH_FRAMES 8
+#define BATCH_TIMEOUT_MS 40 // Flush batch after 40ms even if not full (2 Opus frames @ 20ms each)
+  static uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
+  static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
+  static int batch_frame_count = 0;
+  static size_t batch_total_size = 0;
+  static uint64_t batch_start_time_ns = 0;
+  static bool batch_has_data = false;
+
   while (!should_exit() && !server_connection_is_lost()) {
+    START_TIMER("audio_capture_loop_iteration");
+    timing_loop_count++;
+
     if (!server_connection_is_active()) {
-      platform_sleep_usec(100 * 1000); // Wait for connection
+      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
+      platform_sleep_usec(100 * 1000);            // Wait for connection
       continue;
     }
 
     // Check if pipeline is ready
     if (!g_audio_pipeline) {
+      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
       platform_sleep_usec(100 * 1000);
       continue;
     }
@@ -517,21 +578,46 @@ static void *audio_capture_thread_func(void *arg) {
     // Check how many samples are available in the ring buffer
     int available = audio_ring_buffer_available_read(g_audio_context.capture_buffer);
     if (available <= 0) {
-      // Sleep longer to reduce CPU usage when idle (was 5ms → 50ms)
-      // At 50ms polling, we wake 20 times/sec vs 200 times/sec
-      // This reduces CPU from ~90% to <5% when no audio is being captured
-      platform_sleep_usec(200); // 50ms
+      // Flush partial batch before sleeping (prevent starvation during idle periods)
+      if (batch_has_data && batch_frame_count > 0) {
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
+        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
+
+        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+          log_debug_every(LOG_RATE_FAST, "Idle timeout flush: %d frames (%zu bytes) after %ld ms", batch_frame_count,
+                          batch_total_size, elapsed_ms);
+          (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          batch_frame_count = 0;
+          batch_total_size = 0;
+          batch_has_data = false;
+        }
+      }
+
+      // Sleep briefly to reduce CPU usage when idle
+      // 5ms polling = 200 times/sec, fast enough to catch audio promptly
+      // CRITICAL: 50ms was causing 872ms gaps in audio transmission!
+      STOP_TIMER("audio_capture_loop_iteration"); // Must stop before loop repeats
+      platform_sleep_usec(5 * 1000);              // 5ms (was 50ms - caused huge gaps!)
       continue;
     }
 
     // Read as many samples as possible (up to CAPTURE_READ_SIZE) to drain faster
     // This prevents buffer overflow when processing is slower than capture
     int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;
+
+    START_TIMER("audio_read_samples");
     asciichat_error_t read_result = audio_read_samples(&g_audio_context, audio_buffer, to_read);
+    double read_time_ns = STOP_TIMER("audio_read_samples");
+
+    total_read_ns += read_time_ns;
+    if (read_time_ns > max_read_ns)
+      max_read_ns = read_time_ns;
 
     if (read_result != ASCIICHAT_OK) {
       log_error("Failed to read audio samples from ring buffer");
-      platform_sleep_usec(200); // 50ms (error path, less critical but consistent with above)
+      STOP_TIMER("audio_capture_loop_iteration"); // Don't count sleep time
+      platform_sleep_usec(5 * 1000);              // 5ms (error path - was 50ms, caused gaps!)
       continue;
     }
 
@@ -541,7 +627,8 @@ static void *audio_capture_thread_func(void *arg) {
     static int total_reads = 0;
     total_reads++;
     if (total_reads % 10 == 0) {
-      log_info("Audio capture loop iteration #%d: available=%d, samples_read=%d", total_reads, available, samples_read);
+      log_debug("Audio capture loop iteration #%d: available=%d, samples_read=%d", total_reads, available,
+                samples_read);
     }
 
     if (samples_read > 0) {
@@ -564,7 +651,7 @@ static void *audio_capture_thread_func(void *arg) {
         static int norm_count = 0;
         norm_count++;
         if (norm_count <= 5 || norm_count % 100 == 0) {
-          log_info("Input normalization #%d: peak=%.4f, gain=%.4f", norm_count, peak, gain);
+          log_debug("Input normalization #%d: peak=%.4f, gain=%.4f", norm_count, peak, gain);
         }
       }
 
@@ -582,9 +669,9 @@ static void *audio_capture_thread_func(void *arg) {
       }
       float rms = sqrtf(sum_squares / (samples_read > 10 ? 10 : samples_read));
       if (read_count <= 5 || read_count % 20 == 0) {
-        log_info("Audio capture read #%d: available=%d, samples_read=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f", read_count,
-                 available, samples_read, samples_read > 0 ? audio_buffer[0] : 0.0f,
-                 samples_read > 1 ? audio_buffer[1] : 0.0f, samples_read > 2 ? audio_buffer[2] : 0.0f, rms);
+        log_debug("Audio capture read #%d: available=%d, samples_read=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f", read_count,
+                  available, samples_read, samples_read > 0 ? audio_buffer[0] : 0.0f,
+                  samples_read > 1 ? audio_buffer[1] : 0.0f, samples_read > 2 ? audio_buffer[2] : 0.0f, rms);
       }
 
       // Track sent samples for analysis
@@ -597,13 +684,6 @@ static void *audio_capture_thread_func(void *arg) {
       // Accumulate samples into Opus frame buffer
       int samples_to_process = samples_read;
       int sample_offset = 0;
-
-// Batch buffer for multiple Opus frames - send all at once to reduce blocking
-#define MAX_BATCH_FRAMES 8
-      static uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
-      static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
-      static int batch_frame_count = 0;
-      static size_t batch_total_size = 0;
 
       while (samples_to_process > 0) {
         // How many samples can we add to current frame?
@@ -623,16 +703,37 @@ static void *audio_capture_thread_func(void *arg) {
           // Process through pipeline: AEC, filters, AGC, noise gate, Opus encode
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
 
+          START_TIMER("opus_encode");
           int opus_len = client_audio_pipeline_capture(g_audio_pipeline, opus_frame_buffer, OPUS_FRAME_SAMPLES,
                                                        opus_packet, OPUS_MAX_PACKET_SIZE);
+          double encode_time_ns = STOP_TIMER("opus_encode");
+
+          total_encode_ns += encode_time_ns;
+          if (encode_time_ns > max_encode_ns)
+            max_encode_ns = encode_time_ns;
 
           if (opus_len > 0) {
+            static int encode_count = 0;
+            encode_count++;
+            if (encode_count % 50 == 0) {
+              char duration_str[32];
+              format_duration_ns(encode_time_ns, duration_str, sizeof(duration_str));
+              log_debug("Opus encode #%d: %d samples -> %d bytes in %s", encode_count, OPUS_FRAME_SAMPLES, opus_len,
+                        duration_str);
+            }
+
             log_debug_every(LOG_RATE_VERY_FAST, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)",
                             OPUS_FRAME_SAMPLES, opus_len,
                             (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
 
             // Add to batch buffer
             if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
+              // Mark batch start time on first frame
+              if (batch_frame_count == 0) {
+                batch_start_time_ns = time_get_ns();
+                batch_has_data = true;
+              }
+
               memcpy(batch_buffer + batch_total_size, opus_packet, (size_t)opus_len);
               batch_frame_sizes[batch_frame_count] = (uint16_t)opus_len;
               batch_total_size += (size_t)opus_len;
@@ -657,22 +758,87 @@ static void *audio_capture_thread_func(void *arg) {
         static int batch_send_count = 0;
         batch_send_count++;
 
-        if (audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count) < 0) {
+        START_TIMER("audio_queue_packet");
+        int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+        double queue_time_ns = STOP_TIMER("audio_queue_packet");
+
+        total_queue_ns += queue_time_ns;
+        if (queue_time_ns > max_queue_ns)
+          max_queue_ns = queue_time_ns;
+
+        if (queue_result < 0) {
           log_debug_every(LOG_RATE_VERY_FAST, "Failed to queue audio batch (queue full)");
         } else {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
-            log_info("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes)", batch_send_count, batch_frame_count,
-                     batch_total_size);
+            char queue_duration_str[32];
+            format_duration_ns(queue_time_ns, queue_duration_str, sizeof(queue_duration_str));
+            log_debug("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes) in %s", batch_send_count, batch_frame_count,
+                      batch_total_size, queue_duration_str);
           }
           // Track audio frame for FPS reporting
-          struct timespec current_time;
-          (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-          fps_frame(&fps_tracker, &current_time, "audio batch queued");
+          fps_frame_ns(&fps_tracker, time_get_ns(), "audio batch queued");
         }
 
         // Reset batch
         batch_frame_count = 0;
         batch_total_size = 0;
+        batch_has_data = false;
+      }
+
+      // Log overall loop iteration time periodically
+      double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
+      total_loop_ns += loop_time_ns;
+      if (loop_time_ns > max_loop_ns)
+        max_loop_ns = loop_time_ns;
+
+      // Comprehensive timing report every 100 iterations (~2 seconds)
+      if (timing_loop_count % 100 == 0) {
+        char avg_loop_str[32], max_loop_str[32];
+        char avg_read_str[32], max_read_str[32];
+        char avg_encode_str[32], max_encode_str[32];
+        char avg_queue_str[32], max_queue_str[32];
+
+        format_duration_ns(total_loop_ns / timing_loop_count, avg_loop_str, sizeof(avg_loop_str));
+        format_duration_ns(max_loop_ns, max_loop_str, sizeof(max_loop_str));
+        format_duration_ns(total_read_ns / timing_loop_count, avg_read_str, sizeof(avg_read_str));
+        format_duration_ns(max_read_ns, max_read_str, sizeof(max_read_str));
+        format_duration_ns(total_encode_ns / timing_loop_count, avg_encode_str, sizeof(avg_encode_str));
+        format_duration_ns(max_encode_ns, max_encode_str, sizeof(max_encode_str));
+        format_duration_ns(total_queue_ns / timing_loop_count, avg_queue_str, sizeof(avg_queue_str));
+        format_duration_ns(max_queue_ns, max_queue_str, sizeof(max_queue_str));
+
+        log_debug("CAPTURE TIMING #%lu: loop avg=%s max=%s, read avg=%s max=%s", timing_loop_count, avg_loop_str,
+                  max_loop_str, avg_read_str, max_read_str);
+        log_info("  encode avg=%s max=%s, queue avg=%s max=%s", avg_encode_str, max_encode_str, avg_queue_str,
+                 max_queue_str);
+      }
+
+      // Check if we have a partial batch that's been waiting too long (time-based flush)
+      // This prevents batches from sitting indefinitely when audio capture is irregular
+      if (batch_has_data && batch_frame_count > 0) {
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
+        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
+
+        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+          static int timeout_flush_count = 0;
+          timeout_flush_count++;
+
+          log_debug_every(LOG_RATE_FAST, "Timeout flush #%d: %d frames (%zu bytes) after %ld ms", timeout_flush_count,
+                          batch_frame_count, batch_total_size, elapsed_ms);
+
+          // Queue partial batch
+          int queue_result = audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          if (queue_result == 0) {
+            // Track audio frame for FPS reporting
+            fps_frame_ns(&fps_tracker, time_get_ns(), "audio batch timeout flush");
+          }
+
+          // Reset batch
+          batch_frame_count = 0;
+          batch_total_size = 0;
+          batch_has_data = false;
+        }
       }
 
       // Yield to reduce CPU usage - audio arrives at ~20ms per Opus frame (960 samples @ 48kHz)
@@ -680,11 +846,33 @@ static void *audio_capture_thread_func(void *arg) {
       // Even 1ms sleep reduces CPU usage from 90% to <10% with minimal latency impact
       platform_sleep_usec(1000); // 1ms
     } else {
-      platform_sleep_usec(200); // 50ms (error path - no samples read)
+      // Track loop time even when no samples processed
+      double loop_time_ns = STOP_TIMER("audio_capture_loop_iteration");
+      total_loop_ns += loop_time_ns;
+      if (loop_time_ns > max_loop_ns)
+        max_loop_ns = loop_time_ns;
+
+      // Flush partial batch before sleeping on error path (prevent starvation)
+      if (batch_has_data && batch_frame_count > 0) {
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = time_elapsed_ns(batch_start_time_ns, now_ns);
+        long elapsed_ms = (long)time_ns_to_ms(elapsed_ns);
+
+        if (elapsed_ms >= BATCH_TIMEOUT_MS) {
+          log_debug_every(LOG_RATE_FAST, "Error path timeout flush: %d frames (%zu bytes) after %ld ms",
+                          batch_frame_count, batch_total_size, elapsed_ms);
+          (void)audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count);
+          batch_frame_count = 0;
+          batch_total_size = 0;
+          batch_has_data = false;
+        }
+      }
+
+      platform_sleep_usec(5 * 1000); // 5ms (error path - was 50ms, caused gaps!)
     }
   }
 
-  log_info("Audio capture thread stopped");
+  log_debug("Audio capture thread stopped");
   atomic_store(&g_audio_capture_thread_exited, true);
 
   // Clean up thread-local error context before exit
@@ -716,12 +904,12 @@ int audio_client_init() {
   if (wav_dump_enabled()) {
     g_wav_playback_received = wav_writer_open("/tmp/audio_playback_received.wav", AUDIO_SAMPLE_RATE, 1);
     if (g_wav_playback_received) {
-      log_info("Audio debugging enabled: dumping received audio to /tmp/audio_playback_received.wav");
+      log_debug("Audio debugging enabled: dumping received audio to /tmp/audio_playback_received.wav");
     }
   }
 
   // Initialize PortAudio context using library function
-  log_info("DEBUG: About to call audio_init()...");
+  log_debug("DEBUG: About to call audio_init()...");
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     // Clean up WAV writer if it was opened
@@ -731,34 +919,32 @@ int audio_client_init() {
     }
     return -1;
   }
-  log_info("DEBUG: audio_init() completed successfully");
+  log_debug("DEBUG: audio_init() completed successfully");
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
   pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
 
-  // Use FLAGS_MINIMAL but enable echo cancellation and jitter buffer
-  // Noise suppression, AGC, VAD destroy music/non-voice audio, so keep them disabled
-  // But AEC removes echo without destroying audio quality
-  // Jitter buffer helps synchronize the AEC echo reference
+  // Enable echo cancellation, AGC, and essential processing for clear audio
+  // Noise suppression and VAD can destroy music quality, so keep them disabled
   pipeline_config.flags.echo_cancel = true;     // ENABLE: removes echo
   pipeline_config.flags.jitter_buffer = true;   // ENABLE: needed for AEC sync
-  pipeline_config.flags.noise_suppress = false; // DISABLED: destroys audio
-  pipeline_config.flags.agc = false;            // DISABLED: destroys audio
-  pipeline_config.flags.vad = false;            // DISABLED: destroys audio
-  pipeline_config.flags.compressor = false;     // DISABLED: minimal processing
-  pipeline_config.flags.noise_gate = false;     // DISABLED: minimal processing
-  pipeline_config.flags.highpass = false;       // DISABLED: minimal processing
-  pipeline_config.flags.lowpass = false;        // DISABLED: minimal processing
+  pipeline_config.flags.noise_suppress = false; // DISABLED: destroys music quality
+  pipeline_config.flags.agc = true;             // ENABLE: boost quiet microphones (35 dB gain)
+  pipeline_config.flags.vad = false;            // DISABLED: destroys music quality
+  pipeline_config.flags.compressor = true;      // ENABLE: prevent clipping from AGC boost
+  pipeline_config.flags.noise_gate = false;     // DISABLED: would cut quiet music passages
+  pipeline_config.flags.highpass = true;        // ENABLE: remove rumble and low-frequency feedback
+  pipeline_config.flags.lowpass = false;        // DISABLED: preserve high-frequency content
 
   // Set jitter buffer margin for smooth playback without excessive delay
   // 100ms is conservative - AEC3 will adapt to actual network delay automatically
   // We don't tune this; let the system adapt to its actual conditions
   pipeline_config.jitter_margin_ms = 100;
 
-  log_info("DEBUG: About to create audio pipeline...");
+  log_debug("DEBUG: About to create audio pipeline...");
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
-  log_info("DEBUG: client_audio_pipeline_create() returned");
+  log_debug("DEBUG: client_audio_pipeline_create() returned");
   if (!g_audio_pipeline) {
     log_error("Failed to create audio pipeline");
     audio_destroy(&g_audio_context);
@@ -770,8 +956,8 @@ int audio_client_init() {
     return -1;
   }
 
-  log_info("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
-           pipeline_config.opus_bitrate);
+  log_debug("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
+            pipeline_config.opus_bitrate);
 
   // Associate pipeline with audio context for echo cancellation
   // The audio output callback will feed playback samples directly to AEC3 from the speaker output,
@@ -809,10 +995,10 @@ int audio_client_init() {
  * @ingroup client_audio
  */
 int audio_start_thread() {
-  log_info("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
+  log_debug("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
 
   if (!GET_OPTION(audio_enabled)) {
-    log_info("Audio is disabled, skipping audio capture thread creation");
+    log_debug("Audio is disabled, skipping audio capture thread creation");
     return 0; // Audio disabled - not an error
   }
 
@@ -824,7 +1010,7 @@ int audio_start_thread() {
 
   // If thread exited, allow recreation
   if (g_audio_capture_thread_created && atomic_load(&g_audio_capture_thread_exited)) {
-    log_info("Previous audio capture thread exited, recreating");
+    log_debug("Previous audio capture thread exited, recreating");
     // Use timeout to prevent indefinite blocking
     int join_result = asciichat_thread_join_timeout(&g_audio_capture_thread, NULL, 5000);
     if (join_result != 0) {
@@ -898,7 +1084,7 @@ void audio_stop_thread() {
   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
   g_audio_capture_thread_created = false;
 
-  log_info("Audio capture thread stopped");
+  log_debug("Audio capture thread stopped");
 }
 
 /**
@@ -931,6 +1117,10 @@ void audio_cleanup() {
   // Stop async sender thread (drains queue and exits)
   audio_sender_cleanup();
 
+  // Terminate PortAudio FIRST to properly free device resources before cleanup
+  // This must happen before audio_stop_duplex() and audio_destroy()
+  audio_terminate_portaudio_final();
+
   // CRITICAL: Stop audio stream BEFORE destroying pipeline to prevent race condition
   // PortAudio may invoke the callback one more time after we request stop.
   // We need to clear the pipeline pointer first so the callback can't access freed memory.
@@ -954,24 +1144,24 @@ void audio_cleanup() {
   if (g_audio_pipeline) {
     client_audio_pipeline_destroy(g_audio_pipeline);
     g_audio_pipeline = NULL;
-    log_info("Audio pipeline destroyed");
+    log_debug("Audio pipeline destroyed");
   }
 
   // Close WAV dumpers
   if (g_wav_capture_raw) {
     wav_writer_close(g_wav_capture_raw);
     g_wav_capture_raw = NULL;
-    log_info("Closed audio capture raw dump");
+    log_debug("Closed audio capture raw dump");
   }
   if (g_wav_capture_processed) {
     wav_writer_close(g_wav_capture_processed);
     g_wav_capture_processed = NULL;
-    log_info("Closed audio capture processed dump");
+    log_debug("Closed audio capture processed dump");
   }
   if (g_wav_playback_received) {
     wav_writer_close(g_wav_playback_received);
     g_wav_playback_received = NULL;
-    log_info("Closed audio playback received dump");
+    log_debug("Closed audio playback received dump");
   }
 
   // Finally destroy the audio context
@@ -1006,4 +1196,14 @@ int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, 
   }
 
   return client_audio_pipeline_playback(g_audio_pipeline, opus_data, (int)opus_len, output, max_samples);
+}
+
+/**
+ * @brief Get the global audio context for use by other subsystems
+ * @return Pointer to the audio context, or NULL if not initialized
+ *
+ * @ingroup client_audio
+ */
+audio_context_t *audio_get_context(void) {
+  return &g_audio_context;
 }

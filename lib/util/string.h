@@ -214,3 +214,47 @@ bool string_needs_shell_quoting(const char *str);
 bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer_size);
 
 /** @} */
+
+/* ============================================================================
+ * String Formatting and Display
+ * @{
+ */
+
+#include "log/logging.h"
+
+/**
+ * @brief Build a colored string for terminal output
+ *
+ * Wraps text with ANSI color codes based on terminal capabilities.
+ * Uses a rotating buffer to handle multiple colored strings in the same scope.
+ * Checks if stdout is a TTY and CLAUDECODE environment variable.
+ *
+ * BEHAVIOR:
+ * - If stdout is a TTY and CLAUDECODE is not set: Returns colored text with ANSI codes
+ * - If stdout is not a TTY or CLAUDECODE is set: Returns plain text without colors
+ * - Detects terminal color capabilities (respects NO_COLOR and terminal restrictions)
+ *
+ * USAGE:
+ * @code
+ * // Single colored string
+ * fprintf(stderr, "%s\n", colored_string(LOG_COLOR_FATAL, "Error"));
+ *
+ * // Multiple colored strings in same scope (uses rotating buffers)
+ * fprintf(stderr, "%s %s\n",
+ *         colored_string(LOG_COLOR_FATAL, "Error:"),
+ *         colored_string(LOG_COLOR_WARN, "warning message"));
+ * @endcode
+ *
+ * @param color The log color to apply (LOG_COLOR_DEBUG, LOG_COLOR_FATAL, LOG_COLOR_WARN, etc.)
+ * @param text The text to color
+ * @return Colored string with ANSI codes, or plain text if colors disabled
+ *
+ * @note The returned pointer points to a static rotating buffer.
+ *       Use or copy the result before calling colored_string() again in tight loops.
+ * @note Color codes are applied based on log_level_color() from logging subsystem.
+ *
+ * @ingroup util
+ */
+const char *colored_string(log_color_t color, const char *text);
+
+/** @} */

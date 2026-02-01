@@ -15,19 +15,21 @@
 #include "network/acip/transport.h"
 #include "log/logging.h"
 #include "platform/mutex.h"
-#include "uthash.h"
+#include "util/endian.h"
+#include "uthash/uthash.h"
 #include <string.h>
 
 /**
  * @brief Per-peer connection state
  */
 typedef struct {
-  uint8_t participant_id[16];   ///< Remote participant UUID (hash key)
-  uint8_t session_id[16];       ///< Session UUID
-  webrtc_peer_connection_t *pc; ///< WebRTC peer connection
-  webrtc_data_channel_t *dc;    ///< WebRTC data channel
-  bool is_connected;            ///< DataChannel opened
-  UT_hash_handle hh;            ///< uthash handle
+  uint8_t participant_id[16];          ///< Remote participant UUID (hash key)
+  uint8_t session_id[16];              ///< Session UUID
+  webrtc_peer_connection_t *pc;        ///< WebRTC peer connection
+  webrtc_data_channel_t *dc;           ///< WebRTC data channel
+  bool is_connected;                   ///< DataChannel opened
+  struct webrtc_peer_manager *manager; ///< Back-reference to manager
+  UT_hash_handle hh;                   ///< uthash handle
 } peer_entry_t;
 
 /**
@@ -92,16 +94,22 @@ static void remove_peer_locked(webrtc_peer_manager_t *manager, peer_entry_t *pee
  * @brief DataChannel open callback - wrap in ACIP transport
  */
 static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
-  (void)dc; // Unused - peer already has reference
   peer_entry_t *peer = (peer_entry_t *)user_data;
 
   log_info("WebRTC DataChannel opened for participant");
 
   // Get manager to access crypto context
-  webrtc_peer_manager_t *manager = (webrtc_peer_manager_t *)webrtc_get_user_data(peer->pc);
+  webrtc_peer_manager_t *manager = peer->manager;
   if (!manager) {
-    log_error("No manager found for peer connection");
+    log_error("No manager found for peer");
     return;
+  }
+
+  // For CREATOR role (server), peer->dc is NULL because the DataChannel is received, not created
+  // Update peer->dc from the dc parameter passed to this callback
+  if (!peer->dc) {
+    peer->dc = dc;
+    log_debug("Updated peer->dc from DataChannel callback (dc=%p)", (void *)peer->dc);
   }
 
   // Create ACIP transport wrapper
@@ -111,11 +119,17 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
     return;
   }
 
+  log_debug("Transport created, checking callback: on_transport_ready=%p, user_data=%p",
+            (void *)manager->config.on_transport_ready, manager->config.user_data);
+
   // Notify application
   if (manager->config.on_transport_ready) {
+    log_debug("Calling on_transport_ready callback");
     manager->config.on_transport_ready(transport, peer->participant_id, manager->config.user_data);
+    log_debug("Callback completed");
   } else {
     // No callback - clean up transport
+    log_warn("No on_transport_ready callback registered, cleaning up transport");
     acip_transport_destroy(transport);
   }
 
@@ -126,13 +140,18 @@ static void on_datachannel_open(webrtc_data_channel_t *dc, void *user_data) {
  * @brief Local SDP callback - send to remote peer via ACDS
  */
 static void on_local_description(webrtc_peer_connection_t *pc, const char *sdp, const char *type, void *user_data) {
+  (void)pc; // Unused
   peer_entry_t *peer = (peer_entry_t *)user_data;
-  webrtc_peer_manager_t *manager = (webrtc_peer_manager_t *)webrtc_get_user_data(pc);
+  webrtc_peer_manager_t *manager = peer->manager;
 
   if (!manager || !manager->signaling.send_sdp) {
     log_error("No signaling callback registered for SDP");
     return;
   }
+
+  log_debug("on_local_description: peer->session_id=%02x%02x%02x%02x..., peer->participant_id=%02x%02x%02x%02x...",
+            peer->session_id[0], peer->session_id[1], peer->session_id[2], peer->session_id[3], peer->participant_id[0],
+            peer->participant_id[1], peer->participant_id[2], peer->participant_id[3]);
 
   log_debug("Sending SDP %s to remote peer via ACDS", type);
 
@@ -148,8 +167,9 @@ static void on_local_description(webrtc_peer_connection_t *pc, const char *sdp, 
  * @brief Local ICE candidate callback - send to remote peer via ACDS
  */
 static void on_local_candidate(webrtc_peer_connection_t *pc, const char *candidate, const char *mid, void *user_data) {
+  (void)pc; // Unused
   peer_entry_t *peer = (peer_entry_t *)user_data;
-  webrtc_peer_manager_t *manager = (webrtc_peer_manager_t *)webrtc_get_user_data(pc);
+  webrtc_peer_manager_t *manager = peer->manager;
 
   if (!manager || !manager->signaling.send_ice) {
     log_error("No signaling callback registered for ICE");
@@ -226,6 +246,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
   peer->pc = NULL;
   peer->dc = NULL;
   peer->is_connected = false;
+  peer->manager = manager;
 
   // Create WebRTC configuration
   webrtc_config_t webrtc_config = {
@@ -239,7 +260,7 @@ static asciichat_error_t create_peer_connection_locked(webrtc_peer_manager_t *ma
       .on_datachannel_open = on_datachannel_open,
       .on_datachannel_message = NULL, // Handled by transport layer
       .on_datachannel_error = NULL,   // Handled by transport layer
-      .user_data = manager,           // Pass manager for callbacks
+      .user_data = peer,              // Pass peer for callbacks
   };
 
   // Create peer connection
@@ -331,7 +352,7 @@ void webrtc_peer_manager_destroy(webrtc_peer_manager_t *manager) {
   mutex_lock(&manager->peers_mutex);
 
   // Close all peer connections
-  peer_entry_t *peer, *tmp;
+  peer_entry_t *peer = NULL, *tmp = NULL;
   HASH_ITER(hh, manager->peers, peer, tmp) {
     remove_peer_locked(manager, peer);
   }
@@ -350,18 +371,42 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
   }
 
   // Extract SDP string and type
-  const char *sdp_str = (const char *)(sdp + 1); // After header
+  const uint8_t *sdp_data = (const uint8_t *)(sdp + 1); // After header
   const char *sdp_type = (sdp->sdp_type == 0) ? "offer" : "answer";
+  uint16_t sdp_len = NET_TO_HOST_U16(sdp->sdp_len);
 
-  log_debug("Handling incoming SDP %s from remote peer", sdp_type);
+  // Allocate null-terminated buffer for SDP string (libdatachannel requires C string)
+  char *sdp_str = SAFE_MALLOC(sdp_len + 1, char *);
+  memcpy(sdp_str, sdp_data, sdp_len);
+  sdp_str[sdp_len] = '\0'; // Null-terminate
+
+  log_debug("Handling incoming SDP %s from remote peer (len=%u)", sdp_type, sdp_len);
 
   mutex_lock(&manager->peers_mutex);
 
   // Find or create peer connection
   peer_entry_t *peer;
+
+  // Special case: If receiving an answer and we're a joiner, we may have created
+  // a peer with broadcast ID (00000000...) and need to update it to the real sender_id
+  if (sdp->sdp_type == 1 && manager->role == WEBRTC_ROLE_JOINER) {
+    static const uint8_t broadcast_id[16] = {0};
+    peer = find_peer_locked(manager, broadcast_id);
+    if (peer) {
+      log_debug("Updating broadcast peer with real participant_id from answer");
+      // Remove from hash with old ID
+      HASH_DEL(manager->peers, peer);
+      // Update to real participant_id
+      memcpy(peer->participant_id, sdp->sender_id, 16);
+      // Re-add with new ID
+      HASH_ADD(hh, manager->peers, participant_id, 16, peer);
+    }
+  }
+
   asciichat_error_t result = create_peer_connection_locked(manager, sdp->session_id, sdp->sender_id, &peer);
   if (result != ASCIICHAT_OK) {
     mutex_unlock(&manager->peers_mutex);
+    SAFE_FREE(sdp_str);
     return SET_ERRNO(result, "Failed to create peer connection for SDP");
   }
 
@@ -369,6 +414,8 @@ asciichat_error_t webrtc_peer_manager_handle_sdp(webrtc_peer_manager_t *manager,
 
   // Set remote SDP
   result = webrtc_set_remote_description(peer->pc, sdp_str, sdp_type);
+  SAFE_FREE(sdp_str); // Free after use
+
   if (result != ASCIICHAT_OK) {
     return SET_ERRNO(result, "Failed to set remote SDP");
   }
@@ -387,11 +434,12 @@ asciichat_error_t webrtc_peer_manager_handle_ice(webrtc_peer_manager_t *manager,
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Extract ICE candidate and mid
+  // Extract ICE candidate and mid (both are null-terminated in the packet)
   const char *candidate = (const char *)(ice + 1); // After header
-  const char *mid = candidate + ice->candidate_len;
+  size_t candidate_str_len = strlen(candidate);
+  const char *mid = candidate + candidate_str_len + 1; // After candidate + null terminator
 
-  log_debug("Handling incoming ICE candidate from remote peer");
+  log_debug("Handling incoming ICE candidate from remote peer (mid=%s)", mid);
 
   mutex_lock(&manager->peers_mutex);
 
@@ -424,6 +472,10 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
     return SET_ERRNO(ERROR_INVALID_PARAM, "Only joiners can initiate connections");
   }
 
+  log_debug("webrtc_peer_manager_connect: session_id=%02x%02x%02x%02x..., participant_id=%02x%02x%02x%02x...",
+            session_id[0], session_id[1], session_id[2], session_id[3], participant_id[0], participant_id[1],
+            participant_id[2], participant_id[3]);
+
   mutex_lock(&manager->peers_mutex);
 
   // Create peer connection
@@ -436,13 +488,11 @@ asciichat_error_t webrtc_peer_manager_connect(webrtc_peer_manager_t *manager, co
 
   mutex_unlock(&manager->peers_mutex);
 
-  // Create SDP offer (triggers on_local_description callback)
-  result = webrtc_create_offer(peer->pc);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(result, "Failed to create SDP offer");
-  }
+  // Note: SDP offer is automatically created by libdatachannel when rtcCreateDataChannel() is called
+  // The on_local_description callback will be triggered automatically with the offer
+  // No need to manually call webrtc_create_offer() - doing so causes "Unexpected local description" error
 
-  log_info("Initiated WebRTC connection to participant");
+  log_info("Initiated WebRTC connection to participant (offer auto-created by DataChannel)");
 
   return ASCIICHAT_OK;
 }

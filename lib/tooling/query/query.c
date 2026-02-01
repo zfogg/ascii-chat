@@ -183,12 +183,12 @@ static bool find_query_server_path(char *buffer, size_t buffer_size) {
   for (int i = 0; search_paths[i] != NULL; i++) {
 #ifdef _WIN32
     // On Windows, append .exe
-    snprintf(buffer, buffer_size, "%s.exe", search_paths[i]);
+    safe_snprintf(buffer, buffer_size, "%s.exe", search_paths[i]);
     if (GetFileAttributesA(buffer) != INVALID_FILE_ATTRIBUTES) {
       return true;
     }
 #else
-    snprintf(buffer, buffer_size, "%s", search_paths[i]);
+    safe_snprintf(buffer, buffer_size, "%s", search_paths[i]);
     if (access(buffer, X_OK) == 0) {
       return true;
     }
@@ -198,7 +198,7 @@ static bool find_query_server_path(char *buffer, size_t buffer_size) {
   // Try to find via environment variable
   const char *query_server_path = getenv("ASCIICHAT_QUERY_SERVER");
   if (query_server_path != NULL) {
-    snprintf(buffer, buffer_size, "%s", query_server_path);
+    safe_snprintf(buffer, buffer_size, "%s", query_server_path);
 #ifdef _WIN32
     if (GetFileAttributesA(buffer) != INVALID_FILE_ATTRIBUTES) {
       return true;
@@ -220,7 +220,7 @@ int query_init(int preferred_port) {
   }
 
   // Find the query server executable
-  char server_path[1024];
+  char server_path[PLATFORM_MAX_PATH_LENGTH];
   if (!find_query_server_path(server_path, sizeof(server_path))) {
     fprintf(stderr, "[query] Could not find ascii-query-server executable\n");
     fprintf(stderr, "[query] Set ASCIICHAT_QUERY_SERVER environment variable or ensure "
@@ -237,8 +237,8 @@ int query_init(int preferred_port) {
   }
 
   char cmdline[2048];
-  snprintf(cmdline, sizeof(cmdline), "\"%s\" --attach %lu --port %d", server_path, (unsigned long)GetCurrentProcessId(),
-           preferred_port);
+  safe_snprintf(cmdline, sizeof(cmdline), "\"%s\" --attach %lu --port %d", server_path,
+                (unsigned long)GetCurrentProcessId(), preferred_port);
 
   STARTUPINFOA si;
   PROCESS_INFORMATION pi;
@@ -273,8 +273,8 @@ int query_init(int preferred_port) {
 
   char port_str[16];
   char pid_str[16];
-  snprintf(port_str, sizeof(port_str), "%d", preferred_port);
-  snprintf(pid_str, sizeof(pid_str), "%d", self_pid);
+  safe_snprintf(port_str, sizeof(port_str), "%d", preferred_port);
+  safe_snprintf(pid_str, sizeof(pid_str), "%d", self_pid);
 
   pid_t child = fork();
   if (child < 0) {
@@ -291,7 +291,7 @@ int query_init(int preferred_port) {
 
     // If exec fails
     fprintf(stderr, "[query] exec(%s) failed: %s\n", server_path, strerror(errno));
-    _exit(1);
+    exit(1);
   }
 
   // Parent process

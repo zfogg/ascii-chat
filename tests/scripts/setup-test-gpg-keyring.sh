@@ -21,7 +21,7 @@ Key-Usage: sign
 Subkey-Type: ECDH
 Subkey-Curve: Curve25519
 Subkey-Usage: encrypt
-Name-Real: ASCII Chat Test
+Name-Real: ascii-chat Test
 Name-Email: test@ascii-chat.local
 Expire-Date: 0
 %no-protection

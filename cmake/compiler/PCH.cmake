@@ -29,7 +29,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             lib/platform/abstraction.h
             lib/platform/system.h
             lib/platform/init.h
-            lib/platform/file.h
+            lib/platform/filesystem.h
             lib/platform/thread.h
             lib/platform/string.h
             lib/platform/socket.h

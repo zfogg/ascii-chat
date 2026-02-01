@@ -157,6 +157,20 @@ ASCIICHAT_API int validate_opt_ip_address(const char *value_str, char *parsed_ad
 ASCIICHAT_API float validate_opt_float_non_negative(const char *value_str, char *error_msg, size_t error_msg_size);
 
 /**
+ * @brief Validate volume value (0.0-1.0)
+ * @param value_str Volume value as string
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed volume value on success, -1.0f on error
+ *
+ * Validates that the string is a valid volume in the range 0.0 to 1.0.
+ * Used for --volume, --microphone-volume, and similar audio options.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API float validate_opt_volume(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
  * @brief Validate FPS value (1-144)
  * @param value_str FPS value as string
  * @param error_msg Buffer for error message (can be NULL)
@@ -237,6 +251,28 @@ ASCIICHAT_API int validate_opt_device_index(const char *value_str, char *error_m
  * @ingroup options
  */
 ASCIICHAT_API int validate_opt_password(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
+ * @brief Collect multiple --key flags into identity_keys array
+ * @param opts Options structure to populate
+ * @param argc Argument count from main()
+ * @param argv Argument vector from main()
+ * @return Number of keys collected on success, -1 on error
+ *
+ * Scans command-line arguments for all --key/-K flags and populates both
+ * opts->encrypt_key (first key, for compatibility) and opts->identity_keys[]
+ * array with all keys. Also sets opts->num_identity_keys.
+ *
+ * This enables multi-key support: servers can load multiple identity keys
+ * (e.g., both SSH and GPG) and select the appropriate one during handshake
+ * based on what the client expects.
+ *
+ * @note Must be called after options_parse() but before key loading
+ * @note Supports up to MAX_IDENTITY_KEYS (32) keys
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API int options_collect_identity_keys(options_t *opts, int argc, char *argv[]);
 
 /** @} */
 

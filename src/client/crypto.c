@@ -146,6 +146,7 @@
  * @see crypto/known_hosts.h For server identity verification
  */
 
+#include "main.h"
 #include "crypto.h"
 #include "server.h"
 #include "options/options.h"
@@ -156,9 +157,11 @@
 #include "crypto/handshake/client.h"
 #include "crypto/crypto.h"
 #include "crypto/keys.h"
+#include "crypto/discovery_keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
 #include "network/acip/acds_client.h"
+#include "network/mdns/discovery.h" // For pubkey_to_hex
 #include "util/time.h"
 #include "util/endian.h"
 #include "capture.h"
@@ -169,10 +172,7 @@
 #include <sodium.h>
 
 #include "platform/question.h"
-
-// Global crypto handshake context for this client connection
-// NOTE: We use the crypto context from server.c to match the handshake
-extern crypto_handshake_context_t g_crypto_ctx;
+#include "platform/init.h"
 
 /**
  * @brief Flag indicating if crypto subsystem has been initialized
@@ -183,6 +183,7 @@ extern crypto_handshake_context_t g_crypto_ctx;
  * @ingroup client_crypto
  */
 static bool g_crypto_initialized = false;
+static static_mutex_t g_crypto_init_mutex = STATIC_MUTEX_INIT;
 
 /**
  * Initialize client crypto handshake
@@ -193,15 +194,21 @@ static bool g_crypto_initialized = false;
  */
 int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
-  if (g_crypto_initialized) {
+
+  // Check and reset initialization state with thread safety
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool was_initialized = g_crypto_initialized;
+  g_crypto_initialized = false;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (was_initialized) {
     log_debug("CLIENT_CRYPTO_INIT: Already initialized, cleaning up and reinitializing");
     crypto_handshake_cleanup(&g_crypto_ctx);
-    g_crypto_initialized = false;
   }
 
   // Check if encryption is disabled
   if (GET_OPTION(no_encrypt)) {
-    log_info("Encryption disabled via --no-encrypt");
+    log_info("Encryption disabled");
     log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
     return 0;
   }
@@ -218,7 +225,7 @@ int client_crypto_init(void) {
   const char *encrypt_key = opts && opts->encrypt_key[0] != '\0' ? opts->encrypt_key : "";
   const char *password = opts && opts->password[0] != '\0' ? opts->password : "";
   const char *address = opts && opts->address[0] != '\0' ? opts->address : "localhost";
-  const char *port = opts && opts->port[0] != '\0' ? opts->port : "27224";
+  const char *port = opts && opts->port[0] != '\0' ? opts->port : OPT_PORT_DEFAULT;
   const char *server_key = opts && opts->server_key[0] != '\0' ? opts->server_key : "";
 
   // Load client private key if provided via --key
@@ -235,7 +242,7 @@ int client_crypto_init(void) {
     // Parse key (handles SSH files and gpg:keyid format)
     log_debug("CLIENT_CRYPTO_INIT: Loading private key for authentication: %s", encrypt_key);
     if (parse_private_key(encrypt_key, &private_key) == ASCIICHAT_OK) {
-      log_info("Successfully parsed SSH private key");
+      log_debug("Successfully parsed SSH private key");
       log_debug("CLIENT_CRYPTO_INIT: Parsed key type=%d, KEY_TYPE_ED25519=%d", private_key.type, KEY_TYPE_ED25519);
       is_ssh_key = true;
     } else {
@@ -303,7 +310,7 @@ int client_crypto_init(void) {
         return -1;
       }
       g_crypto_ctx.crypto_ctx.has_password = true;
-      log_info("Password authentication enabled alongside SSH key");
+      log_debug("Password authentication enabled alongside SSH key");
     }
 
   } else if (strlen(GET_OPTION(password)) > 0) {
@@ -336,19 +343,37 @@ int client_crypto_init(void) {
   if (strlen(server_key) > 0) {
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key, sizeof(g_crypto_ctx.expected_server_key) - 1);
-    log_info("Server key verification enabled: %s", server_key);
+    log_debug("Server key verification enabled: %s", server_key);
   }
 
   // If --require-client-verify is set, perform ACDS session lookup for server identity
   if (GET_OPTION(require_client_verify) && strlen(GET_OPTION(session_string)) > 0) {
-    log_info("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
+    log_debug("--require-client-verify enabled: performing ACDS session lookup for '%s'", GET_OPTION(session_string));
 
     // Connect to ACDS server (configurable via --acds-server and --acds-port options)
     acds_client_config_t acds_config;
     acds_client_config_init_defaults(&acds_config);
-    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(acds_server), sizeof(acds_config.server_address));
-    acds_config.server_port = GET_OPTION(acds_port);
+    SAFE_STRNCPY(acds_config.server_address, GET_OPTION(discovery_server), sizeof(acds_config.server_address));
+    acds_config.server_port = GET_OPTION(discovery_port);
     acds_config.timeout_ms = 5000;
+
+    // ACDS key verification (optional in debug builds, only if --discovery-service-key is provided)
+    if (strlen(GET_OPTION(discovery_service_key)) > 0) {
+      log_debug("Verifying ACDS server key for %s...", acds_config.server_address);
+      uint8_t acds_pubkey[32];
+      asciichat_error_t verify_result =
+          discovery_keys_verify(acds_config.server_address, GET_OPTION(discovery_service_key), acds_pubkey);
+      if (verify_result != ASCIICHAT_OK) {
+        log_error("ACDS key verification failed for %s", acds_config.server_address);
+        return -1;
+      }
+      log_debug("ACDS server key verified successfully");
+    }
+#ifndef NDEBUG
+    else {
+      log_debug("Skipping ACDS key verification (debug build, no --acds-key provided)");
+    }
+#endif
 
     acds_client_t acds_client;
     asciichat_error_t acds_result = acds_client_connect(&acds_client, &acds_config);
@@ -378,12 +403,16 @@ int client_crypto_init(void) {
     // Set expected server key for verification during handshake
     g_crypto_ctx.verify_server_key = true;
     SAFE_STRNCPY(g_crypto_ctx.expected_server_key, server_key_hex, sizeof(g_crypto_ctx.expected_server_key) - 1);
-    log_info("ACDS session lookup succeeded - server identity will be verified");
+    log_debug("ACDS session lookup succeeded - server identity will be verified");
     log_debug("Expected server key (from ACDS): %s", server_key_hex);
   }
 
+  // Mark initialization as complete with thread safety
+  static_mutex_lock(&g_crypto_init_mutex);
   g_crypto_initialized = true;
-  log_info("Client crypto handshake initialized");
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  log_debug("Client crypto handshake initialized");
   log_debug("CLIENT_CRYPTO_INIT: Initialization complete, g_crypto_initialized=true");
   return 0;
 }
@@ -404,14 +433,18 @@ int client_crypto_handshake(socket_t socket) {
   }
 
   // If we reach here, crypto must be initialized for encryption
-  if (!g_crypto_initialized) {
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool is_initialized = g_crypto_initialized;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (!is_initialized) {
     log_error("Crypto not initialized but server requires encryption");
     log_error("Server requires encrypted connection but client has no encryption configured");
     log_error("Use --key to specify a client key or --password for password authentication");
     return CONNECTION_ERROR_AUTH_FAILED; // No retry - configuration error
   }
 
-  log_info("Starting crypto handshake with server...");
+  log_debug("Starting crypto handshake with server...");
 
   START_TIMER("client_crypto_handshake");
 
@@ -529,10 +562,10 @@ int client_crypto_handshake(socket_t socket) {
   uint16_t signature_size = NET_TO_HOST_U16(server_params.signature_size);
   uint16_t shared_secret_size = NET_TO_HOST_U16(server_params.shared_secret_size);
 
-  log_info("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
-           "secret_size=%u, verification=%u)",
-           server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
-           auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
+  log_debug("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
+            "secret_size=%u, verification=%u)",
+            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
+            auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
   log_debug("Raw server_params.kex_public_key_size = %u (network byte order)", server_params.kex_public_key_size);
 
   // Set the crypto parameters in the handshake context
@@ -563,6 +596,36 @@ int client_crypto_handshake(socket_t socket) {
   }
 
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol negotiation completed successfully");
+
+  // Step 0.5: Send CRYPTO_CLIENT_HELLO with expected server key (multi-key support)
+  // This allows the server to select the correct identity key from g_server_identity_keys[]
+  if (g_crypto_ctx.verify_server_key && strlen(g_crypto_ctx.expected_server_key) > 0) {
+    log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending expected server key to support multi-key selection");
+
+    // Parse expected server key to get the Ed25519 public key
+    public_key_t expected_keys[MAX_CLIENTS];
+    size_t num_expected_keys = 0;
+
+    if (parse_public_keys(g_crypto_ctx.expected_server_key, expected_keys, &num_expected_keys, MAX_CLIENTS) == 0 &&
+        num_expected_keys > 0) {
+      // Send the first expected key (client should only have one expected server key)
+      // Format: 32-byte Ed25519 public key
+      log_debug("Sending CRYPTO_CLIENT_HELLO with expected server key for multi-key selection");
+      result = send_packet(socket, PACKET_TYPE_CRYPTO_CLIENT_HELLO, expected_keys[0].key, ED25519_PUBLIC_KEY_SIZE);
+
+      if (result != ASCIICHAT_OK) {
+        FATAL(result, "Failed to send CRYPTO_CLIENT_HELLO packet");
+      }
+
+      // Log the key fingerprint for debugging
+      char hex_key[65];
+      pubkey_to_hex(expected_keys[0].key, hex_key);
+      log_debug("Sent expected server key: %s", hex_key);
+    } else {
+      log_warn("Failed to parse expected server key '%s' - server will use default key",
+               g_crypto_ctx.expected_server_key);
+    }
+  }
 
   // Step 1: Receive server's public key and send our public key
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
@@ -637,7 +700,7 @@ int client_crypto_handshake(socket_t socket) {
 
   // Check if handshake completed during auth response (no authentication needed)
   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
-    STOP_TIMER_AND_LOG("client_crypto_handshake", log_info,
+    STOP_TIMER_AND_LOG("client_crypto_handshake", log_debug,
                        "Crypto handshake completed successfully (no authentication)");
     return 0;
   }
@@ -649,7 +712,7 @@ int client_crypto_handshake(socket_t socket) {
     FATAL(result, "Crypto handshake completion failed");
   }
 
-  STOP_TIMER_AND_LOG("client_crypto_handshake", log_info, "Crypto handshake completed successfully");
+  STOP_TIMER_AND_LOG("client_crypto_handshake", log_debug, "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);
   return 0;
 }
@@ -726,9 +789,14 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  * @ingroup client_crypto
  */
 void crypto_client_cleanup(void) {
-  if (g_crypto_initialized) {
+  // Check and reset initialization state with thread safety
+  static_mutex_lock(&g_crypto_init_mutex);
+  bool was_initialized = g_crypto_initialized;
+  g_crypto_initialized = false;
+  static_mutex_unlock(&g_crypto_init_mutex);
+
+  if (was_initialized) {
     crypto_handshake_cleanup(&g_crypto_ctx);
-    g_crypto_initialized = false;
     log_debug("Client crypto handshake cleaned up");
   }
 }

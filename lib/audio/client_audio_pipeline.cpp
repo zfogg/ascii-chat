@@ -106,8 +106,8 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .echo_filter_ms = 250,
 
       .noise_suppress_db = -25,
-      .agc_level = 8000,
-      .agc_max_gain = 30,
+      .agc_level = 16000,      // Increased from 8000 for louder output
+      .agc_max_gain = 35,      // Increased from 30 dB to handle very quiet mics (35 dB = ~56x gain)
 
       // Jitter margin: wait this long before starting playback
       // Lower = less latency but more risk of underruns
@@ -118,13 +118,13 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .highpass_hz = 150.0f, // Was 80Hz, increased to break rumble feedback loop
       .lowpass_hz = 8000.0f,
 
-      // Compressor: only compress loud peaks, minimal makeup to avoid clipping
+      // Compressor: only compress loud peaks, moderate makeup for volume
       // User reported clipping with +6dB makeup gain
-      .comp_threshold_db = -6.0f, // Only compress peaks above -6dB
-      .comp_ratio = 3.0f,         // Gentler 3:1 ratio
-      .comp_attack_ms = 5.0f,     // Fast attack for peaks
-      .comp_release_ms = 150.0f,  // Slower release
-      .comp_makeup_db = 2.0f,     // Reduced from 6dB to prevent clipping
+      .comp_threshold_db = -12.0f, // Compress above -12dB (was -6dB)
+      .comp_ratio = 3.0f,          // Gentler 3:1 ratio
+      .comp_attack_ms = 5.0f,      // Fast attack for peaks
+      .comp_release_ms = 150.0f,   // Slower release
+      .comp_makeup_db = 6.0f,      // Increased from 2dB for more output volume
 
       // Noise gate: VERY aggressive to cut quiet background audio completely
       // User feedback: "don't amplify or play quiet background audio at all"
@@ -636,6 +636,26 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, con
   // Debug WAV recording (after AEC3)
   if (pipeline->debug_wav_aec3_out) {
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_out, processed_output, capture_count);
+  }
+
+  // Apply manual AGC (simple pre-gain to boost quiet microphones)
+  // TODO: Replace with proper WebRTC AGC module for adaptive gain control
+  static int agc_call_count = 0;
+  agc_call_count++;
+  if (agc_call_count <= 3 || agc_call_count % 100 == 0) {
+    log_info("AGC check #%d: flags.agc=%d, agc_max_gain=%.1f", agc_call_count, pipeline->flags.agc,
+             pipeline->config.agc_max_gain);
+  }
+
+  if (pipeline->flags.agc) {
+    // Convert dB to linear gain: linear = 10^(dB/20)
+    const float agc_pregain = powf(10.0f, pipeline->config.agc_max_gain / 20.0f);
+    for (int i = 0; i < capture_count; i++) {
+      processed_output[i] *= agc_pregain;
+    }
+    if (agc_call_count <= 3 || agc_call_count % 100 == 0) {
+      log_info("AGC: Applied %.1f dB pre-gain (%.2fx multiplier)", pipeline->config.agc_max_gain, agc_pregain);
+    }
   }
 
   // Apply capture processing chain: filters, noise gate, compressor

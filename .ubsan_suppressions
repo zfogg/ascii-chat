@@ -1,0 +1,6 @@
+# UBSAN Suppressions for third-party dependencies
+# Format: module:function_name:line_number (optional)
+
+# tomlc17: implicit conversion in line 128
+# This is a third-party TOML parser, not critical path code
+implicit-conversion:tomlc17.c:128:*

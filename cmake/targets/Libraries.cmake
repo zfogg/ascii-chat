@@ -22,26 +22,38 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # -Wno-unterminated-string-initialization was added in Clang 20
 check_c_compiler_flag("-Wno-unterminated-string-initialization" HAVE_WNO_UNTERMINATED_STRING_INIT)
 
-# Check if we're building OBJECT libraries (Windows dev builds)
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
-    set(BUILDING_OBJECT_LIBS TRUE)
-else()
+# Check if we're building OBJECT libraries (debug builds)
+# OBJECT libraries eliminate duplicate compilation: modules compile once,
+# shared library and tests both link to the same object files
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     set(BUILDING_OBJECT_LIBS FALSE)
+else()
+    # Debug/Dev builds use OBJECT libraries to avoid duplication
+    set(BUILDING_OBJECT_LIBS TRUE)
+endif()
+
+# In CMakeLists.txt - for macOS
+if(APPLE)
+    # Use standard install paths, let Homebrew handle relocation
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
 # Helper macro to create a module with common settings
 macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
-    # For Windows Debug/Dev builds: use OBJECT libraries so we can build a proper DLL
-    # For other platforms/builds: use STATIC libraries
+    # Use OBJECT libraries in debug builds to eliminate duplication
+    # (shared library and tests both link to the same object files, compiled once)
+    # Use STATIC libraries in release builds
     if(BUILDING_OBJECT_LIBS)
         add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
+        # OBJECT libraries need PIC for linking into shared libraries
+        set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
         # Mark all symbols for export when building DLL from OBJECT libraries
         target_compile_definitions(${MODULE_NAME} PRIVATE
             _WIN32_WINNT=0x0A00  # Windows 10
             BUILDING_ASCIICHAT_DLL=1
         )
     else()
-        # Module libraries are intermediate build artifacts
+        # Release builds: use STATIC libraries (intermediate build artifacts)
         # They should not be in the 'all' target by default
         add_library(${MODULE_NAME} STATIC EXCLUDE_FROM_ALL ${MODULE_SRCS})
         # For static library builds on Windows, define BUILDING_STATIC_LIB
@@ -102,6 +114,10 @@ endmacro()
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
 
+# utf8proc: Define UTF8PROC_STATIC to avoid dllexport/dllimport issues on Windows
+# We build utf8proc as part of our library, not as a separate DLL
+target_compile_definitions(ascii-chat-util PRIVATE UTF8PROC_STATIC)
+
 # -----------------------------------------------------------------------------
 # Module 2: Data Structures (depends on: util)
 # -----------------------------------------------------------------------------
@@ -154,6 +170,19 @@ else()
         )
     elseif(PLATFORM_LINUX)
         target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
+        # Optional: Link libsystemd on Linux for keepawake functionality
+        find_package(PkgConfig QUIET)
+        if(PkgConfig_FOUND)
+            pkg_check_modules(LIBSYSTEMD QUIET libsystemd)
+            if(LIBSYSTEMD_FOUND)
+                target_include_directories(ascii-chat-platform PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
+                target_link_libraries(ascii-chat-platform ${LIBSYSTEMD_LIBRARIES})
+                target_compile_definitions(ascii-chat-platform PRIVATE HAVE_LIBSYSTEMD=1)
+                message(STATUS "libsystemd found: keepawake support enabled")
+            else()
+                message(STATUS "libsystemd not found: keepawake disabled on Linux (non-critical)")
+            endif()
+        endif()
     endif()
 endif()
 
@@ -187,26 +216,29 @@ endif()
 # Add BearSSL if available
 if(BEARSSL_FOUND)
     target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
-    target_include_directories(ascii-chat-crypto PRIVATE ${BEARSSL_INCLUDE_DIRS})
 endif()
 
-# Add libsodium-bcrypt-pbkdf include directory
-target_include_directories(ascii-chat-crypto PRIVATE
-    ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
-    ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
-)
-
-# Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
+# Configure libsodium-bcrypt-pbkdf source files
+# These files need src/ directory in include path to find their own internal headers
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    # Disable false-positive warnings for bcrypt_pbkdf.c (third-party code)
     set(BCRYPT_PBKDF_WARNINGS "-Wno-sizeof-array-div")
     if(HAVE_WNO_UNTERMINATED_STRING_INIT)
         list(APPEND BCRYPT_PBKDF_WARNINGS "-Wno-unterminated-string-initialization")
     endif()
     set_source_files_properties(
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
         PROPERTIES COMPILE_OPTIONS "${BCRYPT_PBKDF_WARNINGS}"
     )
 endif()
+
+# Add src/ directory for all libsodium-bcrypt-pbkdf source files to find internal headers
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    PROPERTIES COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src"
+)
 
 # -----------------------------------------------------------------------------
 # Module 4: SIMD (depends on: util, core, video)
@@ -227,8 +259,9 @@ endif()
 # Module 5: Video Processing (depends on: util, platform, core, simd)
 # -----------------------------------------------------------------------------
 # Add FFmpeg include directories BEFORE creating the module (for media file streaming)
+# Use SYSTEM to suppress warnings from third-party headers (e.g., FFmpeg's undefined bit shift behavior)
 if(FFMPEG_FOUND)
-    include_directories(${FFMPEG_INCLUDE_DIRS})
+    include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
 endif()
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
@@ -368,6 +401,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         ${ZSTD_LIBRARIES}
         ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
+        OpenSSL::Crypto  # Required for TURN credential generation
     )
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
@@ -380,7 +414,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     endif()
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel)
+    target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
         target_link_libraries(ascii-chat-network ${MINIUPNPC_LIBRARIES})
@@ -393,6 +427,20 @@ endif()
 
 # Core module was moved earlier in the dependency chain (Module 7)
 
+# -----------------------------------------------------------------------------
+# Module 11: Session Library (depends on: util, platform, core, video, audio)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-session "${SESSION_SRCS}")
+if(NOT BUILDING_OBJECT_LIBS)
+    target_link_libraries(ascii-chat-session
+        ascii-chat-util
+        ascii-chat-platform
+        ascii-chat-core
+        ascii-chat-video
+        ascii-chat-audio
+    )
+endif()
+
 # =============================================================================
 # Unified Library Targets (OPTIONAL - not built by default)
 # =============================================================================
@@ -402,10 +450,12 @@ endif()
 # =============================================================================
 
 # Shared unified library (libasciichat.so / libasciichat.dylib / asciichat.dll)
-# For Windows Debug/Dev: Build from OBJECT libraries to enable proper symbol export
-# For other platforms/builds: Link static libraries together
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
-    # Windows dev builds: Create DLL from OBJECT libraries (modules compiled as OBJECT)
+# Debug builds: Create from OBJECT libraries (eliminates duplication, tests link to same objects)
+# Release builds: Create from sources (no duplication risk)
+if(BUILDING_OBJECT_LIBS)
+    # Debug builds: Create shared library from OBJECT libraries (modules compiled as OBJECT)
+    # This eliminates duplication: both the shared library and test executables
+    # link to the same compiled object files.
     # Note: ascii-chat-panic is always included as it provides runtime logging functions
     # that may be called by panic-instrumented code
     add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
@@ -418,6 +468,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         $<TARGET_OBJECTS:ascii-chat-audio>
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
+        $<TARGET_OBJECTS:ascii-chat-session>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
@@ -438,8 +489,10 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
 
-    # Explicitly set import library location for Windows
-    target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+    # Windows: Explicitly set import library location for Windows
+    if(WIN32)
+        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+    endif()
 
     # Auto-generate .def file from OBJECT libraries
     # Use a wrapper script to collect object files and generate .def
@@ -454,61 +507,116 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         ascii-chat-audio
         ascii-chat-network
         ascii-chat-core
+        ascii-chat-session
         ascii-chat-panic
     )
 
     # Generate the .def file using a custom command
-    # Convert list to string for passing to script
-    string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
+    # Windows: Auto-generate .def file for symbol export
+    if(WIN32)
+        # Convert list to string for passing to script
+        string(REPLACE ";" "," MODULE_TARGETS_STR "${MODULE_TARGETS}")
 
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
-        COMMAND ${CMAKE_COMMAND}
-            -DNM_TOOL=${CMAKE_NM}
-            -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
-            -DMODULE_TARGETS=${MODULE_TARGETS_STR}
-            -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
-            -DLIBRARY_NAME=asciichat
-            -P ${CMAKE_SOURCE_DIR}/cmake/targets/GenerateDefFile.cmake
-        DEPENDS ${MODULE_TARGETS}
-        COMMENT "Generating Windows .def file from object files"
-        VERBATIM
-    )
+        add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
+            COMMAND ${CMAKE_COMMAND}
+                -DNM_TOOL=${CMAKE_NM}
+                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                -DMODULE_TARGETS=${MODULE_TARGETS_STR}
+                -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
+                -DLIBRARY_NAME=asciichat
+                -P ${CMAKE_SOURCE_DIR}/cmake/targets/GenerateDefFile.cmake
+            DEPENDS ${MODULE_TARGETS}
+            COMMENT "Generating Windows .def file from object files"
+            VERBATIM
+        )
 
-    # Create a target for the .def file generation
-    add_custom_target(generate-def-file DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def)
+        # Create a target for the .def file generation
+        add_custom_target(generate-def-file DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def)
 
-    # Make the DLL depend on the .def file generation
-    add_dependencies(ascii-chat-shared generate-def-file)
+        # Make the DLL depend on the .def file generation
+        add_dependencies(ascii-chat-shared generate-def-file)
 
-    # Use the generated .def file for linking
-    target_link_options(ascii-chat-shared PRIVATE
-        "LINKER:/DEF:${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
-    )
+        # Use the generated .def file for linking
+        target_link_options(ascii-chat-shared PRIVATE
+            "LINKER:/DEF:${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def"
+        )
+    endif()
 
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
     )
-
-    if(LIBSODIUM_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-    endif()
-
-    if(BEARSSL_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
-    endif()
 
     if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
         target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
+    endif()
+
+    # Unix: Set proper visibility and TLS model for shared library
+    if(NOT WIN32)
+        target_compile_options(ascii-chat-shared PRIVATE
+            -fvisibility=default
+            -ftls-model=global-dynamic
+            -fno-pie
+        )
     endif()
 
     # Add dependencies from modules
     add_dependencies(ascii-chat-shared generate_version)
     if(DEFINED LIBSODIUM_BUILD_TARGET)
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
+    endif()
+
+    # Link external dependencies (libsodium, zstd, opus, etc.)
+    # These are needed because shared library is created from OBJECT files,
+    # which don't automatically bring in their module dependencies
+    target_link_libraries(ascii-chat-shared PRIVATE
+        ${LIBSODIUM_LIBRARIES}
+        ${ZSTD_LIBRARIES}
+        ${OPUS_LIBRARIES}
+        ${SQLITE3_LIBRARIES}
+    )
+
+    # Link PortAudio with platform-specific dependencies
+    if(APPLE)
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_LIBRARIES}
+            ${COREAUDIO_FRAMEWORK}
+            ${AUDIOUNIT_FRAMEWORK}
+            ${AUDIOTOOLBOX_FRAMEWORK}
+            ${CORESERVICES_FRAMEWORK}
+        )
+        # Link IOKit framework for keepawake functionality
+        target_link_options(ascii-chat-shared PRIVATE "SHELL:-framework IOKit")
+    elseif(PLATFORM_LINUX AND JACK_LIB)
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_LIBRARIES}
+            ${JACK_LIB}
+        )
+    else()
+        target_link_libraries(ascii-chat-shared PRIVATE ${PORTAUDIO_LIBRARIES})
+    endif()
+
+    # Link WebRTC and other network libraries
+    target_link_libraries(ascii-chat-shared PRIVATE
+        libdatachannel
+        OpenSSL::Crypto
+    )
+    if(MINIUPNPC_FOUND)
+        target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
+        target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
+        if(NATPMP_LIBRARY)
+            target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
+        endif()
+    endif()
+    if(BEARSSL_FOUND)
+        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    endif()
+
+    # Suppress linker warnings about duplicate debug symbols in libdatachannel
+    # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+    if(APPLE)
+        target_link_options(ascii-chat-shared PRIVATE "-Wl,-w")
     endif()
 
     # Note: System library dependencies will be added below
@@ -528,6 +636,7 @@ else()
         ${AUDIO_SRCS}
         ${NETWORK_SRCS}
         ${CORE_SRCS}
+        ${SESSION_SRCS}
         ${TOOLING_PANIC_SRCS}
     )
 
@@ -580,6 +689,17 @@ else()
         )
     endif()
 
+    # Set rpath for shared library (needed for ASCIICHAT_SHARED_DEPS builds)
+    # The library links against @rpath/libunwind.1.dylib so needs LLVM paths
+    if(ASCIICHAT_SHARED_DEPS AND (APPLE OR UNIX))
+        set_target_properties(ascii-chat-shared PROPERTIES
+            BUILD_RPATH "${CMAKE_BUILD_RPATH}"
+            INSTALL_RPATH "${CMAKE_BUILD_RPATH}"
+            INSTALL_RPATH_USE_LINK_PATH TRUE
+        )
+        message(STATUS "libasciichat using rpath for SHARED_DEPS build: ${CMAKE_BUILD_RPATH}")
+    endif()
+
     # Add version dependency
     add_dependencies(ascii-chat-shared generate_version)
 
@@ -612,18 +732,6 @@ else()
     # Musl flag
     if(USE_MUSL)
         target_compile_definitions(ascii-chat-shared PRIVATE USE_MUSL=1)
-    endif()
-
-    # Crypto module dependencies (libsodium-bcrypt-pbkdf, libsodium, BearSSL)
-    target_include_directories(ascii-chat-shared PRIVATE
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
-        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
-    )
-    if(LIBSODIUM_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
-    endif()
-    if(BEARSSL_FOUND)
-        target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
     endif()
 
     # Add dependency on libsodium build target if building from source
@@ -830,7 +938,11 @@ else()
     endif()
 endif()
 
-# Link WebRTC audio processing library (AEC3) to shared library
+# Link external module dependencies to shared library
+# These are needed for:
+# - Debug builds: linking OBJECT libraries
+# - Release builds: compilation and linking of source files that #include their headers
+# The linker automatically deduplicates any multiple references
 if(TARGET webrtc_audio_processing)
     target_link_libraries(ascii-chat-shared PRIVATE webrtc_audio_processing)
 endif()
@@ -844,6 +956,19 @@ endif()
 if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
 endif()
+
+# Suppress linker warnings about duplicate debug symbols in libdatachannel
+# (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
+if(APPLE)
+    target_link_options(ascii-chat-shared PRIVATE "-Wl,-w")
+endif()
+
+    # Ensure C++ standard library is linked for C++ dependencies
+    # Set LINKER_LANGUAGE to CXX so CMake uses the C++ compiler for linking
+    # This automatically includes the C++ standard library
+    if(NOT WIN32)
+        set_property(TARGET ascii-chat-shared PROPERTY LINKER_LANGUAGE CXX)
+    endif()
 
 # Add build timing for ascii-chat-shared library
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
@@ -866,7 +991,7 @@ if(APPLE AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     find_program(DSYMUTIL_EXECUTABLE dsymutil)
     if(DSYMUTIL_EXECUTABLE)
         add_custom_command(TARGET ascii-chat-shared POST_BUILD
-            COMMAND ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat-shared> -o $<TARGET_FILE:ascii-chat-shared>.dSYM
+            COMMAND timeout 3 ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat-shared> -o $<TARGET_FILE:ascii-chat-shared>.dSYM
             COMMENT "Generating dSYM for ascii-chat-shared (enables atos backtraces with line numbers)"
             VERBATIM
         )
@@ -962,11 +1087,12 @@ if(NOT BUILDING_OBJECT_LIBS)
         "ADDLIB $<TARGET_FILE:ascii-chat-audio>"
         "ADDLIB $<TARGET_FILE:ascii-chat-network>"
         "ADDLIB $<TARGET_FILE:ascii-chat-core>"
+        "ADDLIB $<TARGET_FILE:ascii-chat-session>"
     )
     list(APPEND _STATIC_LIB_DEPS
         ascii-chat-util ascii-chat-data-structures ascii-chat-platform
         ascii-chat-crypto ascii-chat-simd ascii-chat-video
-        ascii-chat-audio ascii-chat-network ascii-chat-core
+        ascii-chat-audio ascii-chat-network ascii-chat-core ascii-chat-session
     )
 
     # =============================================================================
@@ -1008,32 +1134,53 @@ if(NOT BUILDING_OBJECT_LIBS)
 
     # Generate the MRI script content with generator expressions
     # file(GENERATE) evaluates generator expressions at generate time
-    set(_MRI_CONTENT "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a\n")
+    # For multi-config generators (Xcode, Visual Studio), use $<CONFIG> for unique paths
+    get_property(_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(_is_multi_config)
+        set(_config_subdir "$<CONFIG>/")
+    else()
+        set(_config_subdir "")
+    endif()
+
+    set(_MRI_CONTENT "CREATE ${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}lib/libasciichat.a\n")
     foreach(_cmd IN LISTS _STATIC_LIB_MRI_COMMANDS)
         string(APPEND _MRI_CONTENT "${_cmd}\n")
     endforeach()
     string(APPEND _MRI_CONTENT "SAVE\nEND\n")
 
     # file(GENERATE) evaluates generator expressions like $<TARGET_FILE:...>
+    # Using $<CONFIG> in OUTPUT path makes each config write to a unique file
     file(GENERATE
-        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/combine.mri"
+        OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}combine.mri"
         CONTENT "${_MRI_CONTENT}"
     )
 
-    # Use ar MRI script to combine archives across platforms
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-        COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMENT "Combining static libraries into libasciichat.a"
-        COMMAND_EXPAND_LISTS
-    )
-
-# Create a custom target that depends on the static library file
-add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
+    if(_is_multi_config)
+        # For multi-config generators, use a single target with generator expressions
+        # The $<CONFIG> genex resolves at build time to the active configuration
+        add_custom_target(ascii-chat-static-lib-combined
+            COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/lib"
+            COMMAND ${CMAKE_AR} -M < "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/combine.mri"
+            COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            DEPENDS ${_STATIC_LIB_DEPS}
+            COMMENT "Combining static libraries into libasciichat.a"
+        )
+    else()
+        # Use ar MRI script to combine archives across platforms
+        add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+            COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+            COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+            COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            DEPENDS ${_STATIC_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+            COMMENT "Combining static libraries into libasciichat.a"
+            COMMAND_EXPAND_LISTS
+        )
+        # Create a custom target that depends on the static library file
+        add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
+    endif()
 
 # Create interface library target that wraps the combined static library
 # Includes: our code + BearSSL + WebRTC AEC3 (not available via package managers)
@@ -1041,7 +1188,7 @@ add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_
 add_library(ascii-chat-static-lib INTERFACE)
 add_dependencies(ascii-chat-static-lib ascii-chat-static-lib-combined)
 target_link_libraries(ascii-chat-static-lib INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/${_config_subdir}lib/libasciichat.a>
     $<INSTALL_INTERFACE:lib/libasciichat.a>
 )
 
@@ -1052,8 +1199,14 @@ target_link_libraries(ascii-chat-static-lib INTERFACE
     ${ZSTD_LIBRARIES}
     ${PORTAUDIO_LIBRARIES}
     ${OPUS_LIBRARIES}
+    ${SQLITE3_LIBRARIES}
 )
-if(TARGET mimalloc-static)
+# Link mimalloc - use shared library when MIMALLOC_IS_SHARED_LIB is TRUE
+# (this happens when ASCIICHAT_SHARED_DEPS=ON for Homebrew builds)
+if(MIMALLOC_IS_SHARED_LIB AND MIMALLOC_LIBRARIES)
+    # Use the shared library path directly (not the target, which may point to static)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
+elseif(TARGET mimalloc-static)
     target_link_libraries(ascii-chat-static-lib INTERFACE mimalloc-static)
 elseif(MIMALLOC_LIBRARIES)
     target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
@@ -1088,7 +1241,7 @@ elseif(APPLE)
         ${AUDIOUNIT_FRAMEWORK}
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
-        c++
+        ${ASCIICHAT_STATIC_LIBCXX_LIBS}
     )
 else()
     # Linux
@@ -1096,14 +1249,37 @@ else()
         ${CMAKE_THREAD_LIBS_INIT}
         m
         dl
-        stdc++
     )
+
+    # Link C++ standard library
+    if(USE_MUSL)
+        # Musl builds use Alpine's musl-compatible libc++
+        if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
+            target_link_libraries(ascii-chat-static-lib INTERFACE
+                ${ALPINE_LIBCXX_STATIC}
+                ${ALPINE_LIBCXXABI_STATIC}
+            )
+            if(ALPINE_LIBUNWIND_STATIC)
+                target_link_libraries(ascii-chat-static-lib INTERFACE ${ALPINE_LIBUNWIND_STATIC})
+            endif()
+        endif()
+    else()
+        # Non-musl builds: link the C++ standard library
+        target_link_libraries(ascii-chat-static-lib INTERFACE c++)
+    endif()
 endif()
 
 # Link libdatachannel for WebRTC P2P connections (static library)
 # The libdatachannel INTERFACE target's dependencies propagate to ascii-chat-static-lib
 if(TARGET libdatachannel)
     target_link_libraries(ascii-chat-static-lib INTERFACE libdatachannel)
+endif()
+
+# Link OpenSSL for TURN credentials (required by network module)
+# This is linked to ascii-chat-network module, but must also be exposed via the
+# INTERFACE library for final executables since libasciichat.a includes turn_credentials.c
+if(TARGET OpenSSL::Crypto)
+    target_link_libraries(ascii-chat-static-lib INTERFACE OpenSSL::Crypto)
 endif()
 
 # Link miniupnpc for UPnP/NAT-PMP port mapping (optional)
@@ -1206,6 +1382,7 @@ endif()
 # Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)
 target_link_libraries(ascii-chat-lib INTERFACE
+    ascii-chat-session
     ascii-chat-simd
     ascii-chat-video
     ascii-chat-audio

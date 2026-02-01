@@ -36,6 +36,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include "common.h"
+#include "options/options.h" // For option_mode_bitmask_t
 
 /**
  * @brief Option value types
@@ -52,6 +53,58 @@ typedef enum {
 } option_type_t;
 
 /**
+ * @brief Completion input type for smart shell completions
+ *
+ * Specifies the kind of input an option expects, used to generate
+ * better completions with value suggestions, ranges, and examples.
+ */
+typedef enum {
+  OPTION_INPUT_NONE,     ///< No input (boolean flag)
+  OPTION_INPUT_ENUM,     ///< Choose from fixed set of enum values
+  OPTION_INPUT_NUMERIC,  ///< Numeric value with optional min/max/step
+  OPTION_INPUT_STRING,   ///< Free-form text input
+  OPTION_INPUT_FILEPATH, ///< File path completion
+  OPTION_INPUT_CHOICE    ///< Dynamic choice (e.g., from system)
+} option_input_type_t;
+
+/**
+ * @brief Metadata for shell completion generation
+ *
+ * Stores additional information about options to enable smart shell
+ * completions with value suggestions, numeric ranges, examples, etc.
+ * This data is used by all shell completion generators (bash, fish, zsh, powershell).
+ */
+typedef struct {
+  // Enum values with descriptions
+  const char **enum_values;       ///< Enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
+  size_t enum_count;              ///< Number of enum values
+  const char **enum_descriptions; ///< Descriptions parallel to enum_values (e.g., "Auto-detect from terminal")
+  const int *enum_integer_values; ///< Actual enum integer values (e.g., {-1, 0, 1, 2, 3} for non-sequential enums)
+
+  // Numeric range
+  struct {
+    int min;  ///< Minimum value (or 0 if no limit)
+    int max;  ///< Maximum value (or 0 if no limit)
+    int step; ///< Step size (0 = no step, continuous)
+  } numeric_range;
+
+  // Examples (must be null-terminated)
+  const char **examples; ///< Example values or command invocations (null-terminated array)
+
+  // Default value (informational, may be duplicated from descriptor)
+  const char *default_value; ///< Default value as string for display
+
+  // Input type for completions
+  option_input_type_t input_type; ///< What kind of input this option expects
+
+  // Flags
+  bool is_list; ///< If true, option accepts multiple comma-separated or space-separated values
+
+  // Validation pattern (optional)
+  const char *validation_pattern; ///< Optional regex pattern for validation hints
+} option_metadata_t;
+
+/**
  * @brief Option dependency types
  *
  * Defines relationships between options.
@@ -66,6 +119,8 @@ typedef enum {
  * @brief Option descriptor
  *
  * Describes a single command-line option with all its metadata.
+ * Includes both parsing information and completion metadata for
+ * generating smart shell completions.
  */
 typedef struct {
   // Identification
@@ -77,9 +132,11 @@ typedef struct {
   size_t offset;      ///< offsetof(struct, field) - where to store value
 
   // Documentation
-  const char *help_text;    ///< Description for --help
-  const char *group;        ///< Group name for help sections (e.g., "NETWORK OPTIONS")
-  bool hide_from_mode_help; ///< If true, don't show in mode-specific help (binary-level only)
+  const char *help_text;       ///< Description for --help
+  const char *group;           ///< Group name for help sections (e.g., "NETWORK OPTIONS")
+  const char *arg_placeholder; ///< Custom argument placeholder (e.g., "SHELL [FILE]" instead of "STR")
+  bool hide_from_mode_help;    ///< If true, don't show in mode-specific help (binary-level only)
+  bool hide_from_binary_help;  ///< If true, don't show in binary-level help (e.g., in release builds)
 
   // Default and validation
   const void *default_value; ///< Pointer to default value (or NULL if required)
@@ -100,7 +157,51 @@ typedef struct {
 
   // Optional argument support (for OPTION_TYPE_CALLBACK)
   bool optional_arg; ///< If true, argument is optional (for callbacks like --verbose)
+
+  // Mode applicability
+  option_mode_bitmask_t mode_bitmask; ///< Which modes this option applies to
+
+  // Completion metadata (NEW - for smart shell completions)
+  option_metadata_t metadata; ///< Metadata for shell completions (enums, ranges, examples, etc.)
 } option_descriptor_t;
+
+/**
+ * @brief Usage line descriptor for programmatic USAGE generation
+ *
+ * Stores components separately so colors can be applied semantically:
+ * - mode: magenta
+ * - positional args: green
+ * - options: yellow
+ */
+typedef struct {
+  const char *mode;        ///< NULL or mode name (e.g., "server") or "<mode>" placeholder
+  const char *positional;  ///< NULL or positional args (e.g., "[bind-addr]", "<session-string>")
+  bool show_options;       ///< true = show "[options...]" suffix
+  const char *description; ///< Help text for this usage pattern
+} usage_descriptor_t;
+
+/**
+ * @brief Example descriptor for programmatic EXAMPLES generation
+ *
+ * Stores command components separately for semantic coloring:
+ * - mode_bitmask: which modes this example applies to
+ * - args: green
+ */
+typedef struct {
+  uint32_t mode_bitmask; ///< Bitmask of modes (OPTION_MODE_SERVER, OPTION_MODE_CLIENT, etc.)
+  const char *args;      ///< Command-line arguments part of the example
+  const char *description;
+  bool owns_args_memory;   ///< True if args memory should be freed by options_config_destroy
+  bool is_utility_command; ///< True if this is a utility command (don't prepend program name)
+} example_descriptor_t;
+
+/**
+ * @brief Mode descriptor for programmatic MODES generation (for help output)
+ */
+typedef struct {
+  const char *name;        ///< Mode name (e.g., "server", "client")
+  const char *description; ///< Mode description (e.g., "Run as multi-client video chat server")
+} help_mode_descriptor_t;
 
 /**
  * @brief Option dependency
@@ -154,6 +255,9 @@ typedef struct {
    * @return Number of args consumed (usually 1), or -1 on error
    */
   int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
+
+  // Mode applicability
+  option_mode_bitmask_t mode_bitmask; ///< Which modes this positional arg applies to
 } positional_arg_descriptor_t;
 
 /**
@@ -175,6 +279,16 @@ typedef struct {
   size_t struct_size;       ///< sizeof(options_t) for bounds checking
   const char *program_name; ///< For usage header
   const char *description;  ///< For usage header
+
+  // Programmatic help generation metadata
+  usage_descriptor_t *usage_lines; ///< Array of usage line descriptors
+  size_t num_usage_lines;          ///< Number of usage lines
+
+  example_descriptor_t *examples; ///< Array of example descriptors
+  size_t num_examples;            ///< Number of examples
+
+  help_mode_descriptor_t *modes; ///< Array of mode descriptors
+  size_t num_modes;              ///< Number of modes
 
   // Memory management (internal use)
   char **owned_strings;          ///< Strdup'd strings to free on cleanup
@@ -202,9 +316,26 @@ typedef struct {
   size_t num_positional_args;                   ///< Current count
   size_t positional_arg_capacity;               ///< Allocated capacity
 
-  size_t struct_size;       ///< Target struct size
-  const char *program_name; ///< Program name for usage
-  const char *description;  ///< Program description for usage
+  usage_descriptor_t *usage_lines; ///< Dynamic array of usage lines
+  size_t num_usage_lines;          ///< Current count
+  size_t usage_line_capacity;      ///< Allocated capacity
+
+  example_descriptor_t *examples; ///< Dynamic array of examples
+  size_t num_examples;            ///< Current count
+  size_t example_capacity;        ///< Allocated capacity
+
+  help_mode_descriptor_t *modes; ///< Dynamic array of modes
+  size_t num_modes;              ///< Current count
+  size_t mode_capacity;          ///< Allocated capacity
+
+  size_t struct_size;
+  const char *program_name;
+  const char *description;
+
+  // Track dynamically allocated strings owned by the builder, to be transferred to config
+  char **owned_strings_builder;
+  size_t num_owned_strings_builder;
+  size_t owned_strings_builder_capacity;
 } options_builder_t;
 
 // ============================================================================
@@ -381,6 +512,33 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
                                            const char *env_var_name, bool optional_arg);
 
 /**
+ * @brief Add callback option with full metadata (for enums, ranges, examples, etc.)
+ *
+ * Adds a callback-based option with complete metadata information for help
+ * and shell completions.
+ *
+ * @param builder Builder to add to
+ * @param long_name Long option name
+ * @param short_name Short option char (or '\0')
+ * @param offset offsetof(struct, field)
+ * @param default_value Pointer to default value
+ * @param value_size sizeof(field_type)
+ * @param parse_fn Custom parser function
+ * @param help_text Help description
+ * @param group Group name for help
+ * @param required If true, option must be provided
+ * @param env_var_name Environment variable fallback (or NULL)
+ * @param optional_arg If true, argument is optional for this callback
+ * @param metadata Completion metadata (enums, ranges, examples, etc.)
+ */
+void options_builder_add_callback_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                                size_t offset, const void *default_value, size_t value_size,
+                                                bool (*parse_fn)(const char *arg, void *dest, char **error_msg),
+                                                const char *help_text, const char *group, bool required,
+                                                const char *env_var_name, bool optional_arg,
+                                                const option_metadata_t *metadata);
+
+/**
  * @brief Add action option (executes action and may exit)
  *
  * Action options execute a callback function when encountered during parsing.
@@ -395,6 +553,144 @@ void options_builder_add_callback_optional(options_builder_t *builder, const cha
  */
 void options_builder_add_action(options_builder_t *builder, const char *long_name, char short_name,
                                 void (*action_fn)(void), const char *help_text, const char *group);
+
+/**
+ * @brief Set mode bitmask on the last added option descriptor
+ *
+ * Sets the mode_bitmask field on the most recently added option descriptor.
+ * This allows setting mode applicability after adding an option.
+ *
+ * @param builder Options builder
+ * @param mode_bitmask Bitmask indicating which modes this option applies to
+ */
+void options_builder_set_mode_bitmask(options_builder_t *builder, option_mode_bitmask_t mode_bitmask);
+
+/**
+ * @brief Set custom argument placeholder on the last added option descriptor
+ *
+ * Sets the arg_placeholder field on the most recently added option descriptor.
+ * This allows customizing the placeholder text shown in help (e.g., "SHELL [FILE]" instead of "STR").
+ *
+ * @param builder Options builder
+ * @param arg_placeholder Custom placeholder text (e.g., "SHELL [FILE]"), or NULL to use type-based placeholder
+ */
+void options_builder_set_arg_placeholder(options_builder_t *builder, const char *arg_placeholder);
+
+// ============================================================================
+// Completion Metadata (NEW - Phase 2)
+// ============================================================================
+
+/**
+ * @brief Set enum values with descriptions for an option
+ *
+ * Populates the metadata with enum values and descriptions for shell completion.
+ * Both arrays must have the same length.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param values Array of enum value strings (e.g., {"auto", "none", "16", "256", "truecolor"})
+ * @param descriptions Array of descriptions parallel to values
+ * @param count Number of values/descriptions
+ *
+ * Example:
+ * ```c
+ * const char *color_values[] = {"auto", "none", "16", "256", "truecolor"};
+ * const char *color_descs[] = {
+ *     "Auto-detect from terminal",
+ *     "Monochrome only",
+ *     "16 colors (ANSI)",
+ *     "256 colors (xterm)",
+ *     "24-bit truecolor (modern terminals)"
+ * };
+ * options_builder_set_enum_values(builder, "color-mode", color_values, color_descs, 5);
+ * options_builder_set_input_type(builder, "color-mode", OPTION_INPUT_ENUM);
+ * ```
+ */
+void options_builder_set_enum_values(options_builder_t *builder, const char *option_name, const char **values,
+                                     const char **descriptions, size_t count);
+
+/**
+ * @brief Set numeric range for an option
+ *
+ * Specifies minimum, maximum, and optional step for numeric input completions.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param min Minimum value (0 = no limit)
+ * @param max Maximum value (0 = no limit)
+ * @param step Step size (0 = continuous, no step)
+ *
+ * Example:
+ * ```c
+ * options_builder_set_numeric_range(builder, "compression-level", 1, 9, 1);
+ * options_builder_set_input_type(builder, "compression-level", OPTION_INPUT_NUMERIC);
+ * ```
+ */
+void options_builder_set_numeric_range(options_builder_t *builder, const char *option_name, int min, int max, int step);
+
+/**
+ * @brief Set example values for an option
+ *
+ * Provides example values or command invocations for help display and completion suggestions.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param examples Array of example strings (must be null-terminated, may be values or full commands)
+ *
+ * Example:
+ * ```c
+ * const char *fps_examples[] = {"30", "60", "144", NULL};
+ * options_builder_set_examples(builder, "fps", fps_examples);
+ * ```
+ */
+void options_builder_set_examples(options_builder_t *builder, const char *option_name, const char **examples);
+
+/**
+ * @brief Set input type for an option
+ *
+ * Specifies what kind of input the option expects (enum, numeric, filepath, etc.)
+ * for generating appropriate shell completions.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param input_type The input type (OPTION_INPUT_ENUM, OPTION_INPUT_NUMERIC, etc.)
+ *
+ * Example:
+ * ```c
+ * options_builder_set_input_type(builder, "color-mode", OPTION_INPUT_ENUM);
+ * options_builder_set_input_type(builder, "log-file", OPTION_INPUT_FILEPATH);
+ * ```
+ */
+void options_builder_set_input_type(options_builder_t *builder, const char *option_name,
+                                    option_input_type_t input_type);
+
+/**
+ * @brief Mark option as accepting multiple values
+ *
+ * Indicates the option accepts comma-separated or space-separated values.
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to mark
+ *
+ * Example:
+ * ```c
+ * options_builder_mark_as_list(builder, "stun-servers");  // Accepts comma-separated URLs
+ * ```
+ */
+void options_builder_mark_as_list(options_builder_t *builder, const char *option_name);
+
+/**
+ * @brief Set default value string in metadata
+ *
+ * Sets the default value string for display in completions (informational,
+ * separate from the descriptor's default_value which is used for parsing).
+ *
+ * @param builder Options builder
+ * @param option_name Long name of option to set metadata for
+ * @param default_value Default value as string for display
+ */
+void options_builder_set_default_value_display(options_builder_t *builder, const char *option_name,
+                                               const char *default_value);
 
 /**
  * @brief Add full option descriptor (advanced)
@@ -507,11 +803,13 @@ void options_builder_mark_binary_only(options_builder_t *builder, const char *op
  * @param section_heading Optional section heading for examples (e.g., "ADDRESS FORMATS")
  * @param examples Optional array of example strings with descriptions
  * @param num_examples Number of examples in array
+ * @param mode_bitmask Which modes this positional arg applies to
  * @param parse_fn Custom parser (receives arg, config, remaining args, error_msg)
  *                 Returns number of args consumed (usually 1), or -1 on error
  */
 void options_builder_add_positional(options_builder_t *builder, const char *name, const char *help_text, bool required,
                                     const char *section_heading, const char **examples, size_t num_examples,
+                                    option_mode_bitmask_t mode_bitmask,
                                     int (*parse_fn)(const char *arg, void *config, char **remaining, int num_remaining,
                                                     char **error_msg));
 
@@ -534,6 +832,112 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
                                                   char **remaining_argv, void *options_struct);
 
 // ============================================================================
+// Programmatic Help Generation
+// ============================================================================
+
+/**
+ * @brief Add usage line descriptor
+ *
+ * Adds a usage line to be printed in the USAGE section. Components are colored
+ * separately during printing:
+ * - mode: magenta
+ * - positional: green
+ * - "[options...]": yellow
+ *
+ * @param builder Builder instance
+ * @param mode Mode name (NULL for binary-level, or "server", "<mode>", etc.)
+ * @param positional Positional args (NULL or "[bind-addr]", "<session-string>", etc.)
+ * @param show_options True to append "[options...]" or "[mode-options...]"
+ * @param description Help text for this usage pattern
+ *
+ * Example:
+ * ```c
+ * options_builder_add_usage(b, NULL, NULL, true,
+ *                           "Start a new session");
+ *
+ * options_builder_add_usage(b, NULL, "<session-string>", true,
+ *                           "Join an existing session");
+ *
+ * options_builder_add_usage(b, "<mode>", NULL, true,
+ *                           "Run in a specific mode");
+ * ```
+ */
+void options_builder_add_usage(options_builder_t *builder, const char *mode, const char *positional, bool show_options,
+                               const char *description);
+
+/**
+ * @brief Add example descriptor
+ *
+ * Adds an example command to be printed in the EXAMPLES section. Components
+ * are colored separately during printing:
+ * - mode: magenta
+ * - args: green
+ *
+ * @param builder Builder instance
+ * @param mode Mode name (NULL or "server", "client", "mirror", etc.)
+ * @param args Arguments (NULL or "example.com", "swift-river-mountain", etc.)
+ * @param description Help text for this example
+ *
+ * Example:
+ * ```c
+ * options_builder_add_example(b, NULL, NULL,
+ *                             "Start new session");
+ *
+ * options_builder_add_example(b, "server", NULL,
+ *                             "Run as dedicated server");
+ *
+ * options_builder_add_example(b, "client", "example.com",
+ *                             "Connect to specific server");
+ * ```
+ */
+/**
+ * @brief Add an example to the help output
+ *
+ * @param builder Builder instance
+ * @param mode_bitmask Bitmask of modes (OPTION_MODE_SERVER | OPTION_MODE_CLIENT, etc.)
+ *                     Use OPTION_MODE_BINARY for binary-level examples
+ * @param args Arguments (NULL or "example.com", etc.)
+ * @param description Help text for this example
+ * @param owns_args If true, duplicate and track the args string
+ */
+void options_builder_add_example(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
+                                 const char *description, bool owns_args);
+
+/**
+ * @brief Add an example with utility command support
+ *
+ * Utility commands (like pbpaste, cat, etc.) that shouldn't be prepended
+ * with program name or mode in help output.
+ *
+ * @param builder Builder instance
+ * @param mode_bitmask Bitmask of modes (OPTION_MODE_MIRROR, etc.)
+ * @param args Arguments (e.g., "pbpaste | cat -", "cat video.avi | ascii-chat mirror -f '-'")
+ * @param description Help text for this example
+ * @param is_utility_command Must be true for utility commands
+ */
+void options_builder_add_example_utility(options_builder_t *builder, uint32_t mode_bitmask, const char *args,
+                                         const char *description, bool is_utility_command);
+
+/**
+ * @brief Add mode descriptor
+ *
+ * Adds a mode to be printed in the MODES section. The mode name
+ * is colored magenta during printing.
+ *
+ * @param builder Builder instance
+ * @param name Mode name (e.g., "server", "client", "mirror")
+ * @param description Mode description
+ *
+ * Example:
+ * ```c
+ * options_builder_add_mode(b, "server", "Run as multi-client video chat server");
+ * options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
+ * options_builder_add_mode(b, "mirror", "View local webcam as ASCII art (no server)");
+ * ```
+ */
+void options_builder_add_mode(options_builder_t *builder, const char *name, const char *description);
+
+// ============================================================================
 // Preset Configurations
 // ============================================================================
 
@@ -547,43 +951,7 @@ asciichat_error_t options_config_parse_positional(const options_config_t *config
  * @param description Optional program description
  * @return Preset config (caller must free after use)
  */
-const options_config_t *options_preset_binary(const char *program_name, const char *description);
-
-/**
- * @brief Get server mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat server")
- * @param description Optional program description (defaults to "Start ascii-chat server")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_server(const char *program_name, const char *description);
-
-/**
- * @brief Get client mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat client")
- * @param description Optional program description (defaults to "Connect to ascii-chat server")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_client(const char *program_name, const char *description);
-
-/**
- * @brief Get mirror mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat mirror")
- * @param description Optional program description (defaults to "Local webcam viewing (no network)")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_mirror(const char *program_name, const char *description);
-
-/**
- * @brief Get acds mode options preset
- *
- * @param program_name Optional program name (defaults to "ascii-chat acds")
- * @param description Optional program description (defaults to "ASCII Chat Discovery Service")
- * @return Preset config (caller must free after use)
- */
-const options_config_t *options_preset_acds(const char *program_name, const char *description);
+const options_config_t *options_preset_unified(const char *program_name, const char *description);
 
 // ============================================================================
 // Parsing and Validation
@@ -616,7 +984,8 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
  * @return ASCIICHAT_OK on success, ERROR_USAGE on parse errors
  */
 asciichat_error_t options_config_parse(const options_config_t *config, int argc, char **argv, void *options_struct,
-                                       int *remaining_argc, char ***remaining_argv);
+                                       option_mode_bitmask_t detected_mode, int *remaining_argc,
+                                       char ***remaining_argv);
 
 /**
  * @brief Validate options struct
@@ -635,6 +1004,17 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
                                           char **error_message);
 
 /**
+ * @brief Calculate global max column width for help output alignment
+ *
+ * Calculates the maximum width needed for proper alignment across
+ * all help sections (USAGE, EXAMPLES, OPTIONS, MODES).
+ *
+ * @param config Options configuration
+ * @return Maximum column width needed for alignment
+ */
+int options_config_calculate_max_col_width(const options_config_t *config);
+
+/**
  * @brief Print usage/help text
  *
  * Generates formatted help with grouped options.
@@ -643,6 +1023,58 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
  * @param stream Output stream (stdout or stderr)
  */
 void options_config_print_usage(const options_config_t *config, FILE *stream);
+
+/**
+ * @brief Print only the USAGE section
+ *
+ * Prints just the USAGE section. Useful for inserting other content (like positional
+ * argument examples) between USAGE and other sections.
+ *
+ * @param config Options configuration
+ * @param stream Output stream (stdout or stderr)
+ */
+void options_config_print_usage_section(const options_config_t *config, FILE *stream);
+
+/**
+ * @brief Print everything except the USAGE section
+ *
+ * Prints MODES, MODE-OPTIONS, EXAMPLES, and OPTIONS sections. Used with
+ * options_config_print_usage_section to allow custom content in between.
+ *
+ * @param config Options configuration (should be unified preset with all options)
+ * @param stream Output stream (stdout or stderr)
+ * @param max_col_width Optional pre-calculated column width (0 = auto-calculate)
+ * @param mode Optional mode to filter by (if MODE_SERVER, MODE_CLIENT, etc., filters by mode_bitmask)
+ *             If NULL or invalid, shows all options (for binary-level help)
+ */
+void options_config_print_options_sections_with_width(const options_config_t *config, FILE *stream, int max_col_width,
+                                                      asciichat_mode_t mode);
+
+/**
+ * @brief Print everything except the USAGE section (backward compatibility)
+ *
+ * Wrapper for options_config_print_options_sections_with_width with auto-calculation.
+ *
+ * @param config Options configuration
+ * @param stream Output stream (stdout or stderr)
+ * @param mode Optional mode to filter by (if provided, filters by mode_bitmask)
+ */
+void options_config_print_options_sections(const options_config_t *config, FILE *stream, asciichat_mode_t mode);
+
+/**
+ * @brief Print help for a specific mode or binary level (unified function)
+ *
+ * This is the single unified function for all help output (binary level and all modes).
+ * It handles all layout logic, terminal detection, and section printing.
+ *
+ * @param config Options config with all options
+ * @param mode Mode to show help for (-1 for binary-level help)
+ * @param program_name Full program name (e.g., "ascii-chat server")
+ * @param description Brief description
+ * @param desc Output file stream
+ */
+void options_print_help_for_mode(const options_config_t *config, asciichat_mode_t mode, const char *program_name,
+                                 const char *description, FILE *desc);
 
 /**
  * @brief Clean up memory owned by options struct
@@ -654,3 +1086,65 @@ void options_config_print_usage(const options_config_t *config, FILE *stream);
  * @param options_struct Options struct to clean up
  */
 void options_config_cleanup(const options_config_t *config, void *options_struct);
+
+// ============================================================================
+// Option Formatting Utilities
+// ============================================================================
+
+/**
+ * @brief Get placeholder string for option type
+ *
+ * Returns standardized placeholder strings for use in help text and man pages:
+ * - INT/DOUBLE → "NUM"
+ * - STRING → "STR"
+ * - CALLBACK → "VAL"
+ * - BOOL/ACTION → "" (empty string)
+ *
+ * @param type Option type enum value
+ * @return Pointer to string literal (never NULL, may be empty)
+ */
+const char *options_get_type_placeholder(option_type_t type);
+
+/**
+ * @brief Format option default value to string
+ *
+ * Formats default value according to option type:
+ * - BOOL: "true" or "false"
+ * - INT: "%d" format
+ * - STRING: raw string (caller applies escaping if needed)
+ * - DOUBLE: "%.2f" format
+ *
+ * @param type Option type enum value
+ * @param default_value Pointer to default value (type-specific)
+ * @param buf Output buffer
+ * @param bufsize Size of output buffer
+ * @return Number of characters written, or 0 on error
+ */
+int options_format_default_value(option_type_t type, const void *default_value, char *buf, size_t bufsize);
+
+// ============================================================================
+// Typo Suggestions for Unknown Options
+// ============================================================================
+
+/**
+ * @brief Find similar option across all modes and suggest with mode information
+ *
+ * Searches for options matching the unknown option using Levenshtein distance.
+ * If found and available in a different mode, suggests it with mode information.
+ * For discovery mode, displays it as "the default mode (ascii-chat)".
+ *
+ * @param unknown_opt Unknown option name (with -- prefix)
+ * @param config Options configuration (has all descriptors across modes)
+ * @param current_mode_bitmask Current mode bitmask for filtering
+ * @return Formatted suggestion with mode info, or NULL if no good match
+ *
+ * Example:
+ * @code
+ * const char *suggestion = find_similar_option_with_mode("--prot", config, current_mode);
+ * if (suggestion) {
+ *     log_error("%s", suggestion);  // "Did you mean '--port' (available in server mode)?"
+ * }
+ * @endcode
+ */
+const char *find_similar_option_with_mode(const char *unknown_opt, const options_config_t *config,
+                                          option_mode_bitmask_t current_mode_bitmask);

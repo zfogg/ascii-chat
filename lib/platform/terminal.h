@@ -28,6 +28,25 @@
 #include "../common.h"
 
 // ============================================================================
+// Cross-platform CLI Utilities
+// ============================================================================
+
+/**
+ * @brief Platform-specific getopt include
+ *
+ * Provides unified getopt functionality across platforms:
+ * - Windows: Uses platform/windows/getopt.h
+ * - POSIX: Uses system <getopt.h>
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#include "windows/getopt.h"
+#else
+#include <getopt.h>
+#endif
+
+// ============================================================================
 // Platform-Specific Signal Definitions
 // ============================================================================
 
@@ -689,6 +708,37 @@ void test_terminal_output_modes(void);
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
 
+/**
+ * @brief Determine if color output should be used
+ *
+ * Priority order:
+ * 1. If --color flag is set → ALWAYS use colors (force override)
+ * 2. If CLAUDECODE env var is set → NEVER use colors (LLM automation)
+ * 3. If output is not a TTY (piping) → NO colors
+ * 4. If --color-mode=none → NO colors (user choice)
+ * 5. Otherwise → Use colors
+ *
+ * @param fd File descriptor to check (STDOUT_FILENO or STDERR_FILENO)
+ * @return true if colors should be used, false otherwise
+ *
+ * @ingroup platform
+ */
+bool terminal_should_color_output(int fd);
+
+/**
+ * @brief Get current color mode considering all overrides
+ *
+ * Determines effective color mode by checking:
+ * 1. --color flag (force enable)
+ * 2. --color-mode option (none/16/256/truecolor)
+ * 3. Terminal capability detection
+ *
+ * @return Effective terminal_color_mode_t to use
+ *
+ * @ingroup platform
+ */
+terminal_color_mode_t terminal_get_effective_color_mode(void);
+
 /** @} */
 
 /* ============================================================================
@@ -699,6 +749,30 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
  * Unix systems use SIGWINCH signal, but Windows requires polling or event
  * monitoring, so a background thread is used.
  */
+
+/**
+ * @brief Check if terminal control sequences should be used for the given fd
+ * @param fd File descriptor to check (must be valid or -1)
+ * @return true if terminal control sequences should be used, false otherwise
+ *
+ * Determines whether terminal control sequences (cursor home, clear screen, etc.)
+ * should be sent to the given file descriptor. Checks:
+ * 1. File descriptor is valid (>= 0)
+ * 2. Not in snapshot mode
+ * 3. Not in TESTING environment
+ * 4. File descriptor is connected to a TTY (not piped/redirected)
+ *
+ * This is useful for deciding whether to send ANSI escape sequences to
+ * output. When piped or redirected, escape sequences should not be sent.
+ *
+ * @note Returns false if fd is invalid (-1) to be safe.
+ * @note Returns false in snapshot mode to provide clean output.
+ * @note Checks TESTING environment variable for test/CI environments.
+ * @note Primary use case: determining if output is going to a TTY.
+ *
+ * @ingroup platform
+ */
+bool terminal_should_use_control_sequences(int fd);
 
 #ifdef _WIN32
 /**
