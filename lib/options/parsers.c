@@ -201,8 +201,7 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   }
 
   // Half-block mode
-  if (strcmp(lower, "half-block") == 0 || strcmp(lower, "half") == 0 || strcmp(lower, "hb") == 0 ||
-      strcmp(lower, "2") == 0) {
+  if (strcmp(lower, "half-block") == 0 || strcmp(lower, "hb") == 0 || strcmp(lower, "2") == 0) {
     *render_mode = RENDER_MODE_HALF_BLOCK;
     return true;
   }
@@ -658,10 +657,18 @@ bool parse_palette_chars(const char *arg, void *dest, char **error_msg) {
 
   char *palette_custom = (char *)dest;
 
-  if (strlen(arg) >= 256) {
+  size_t len = strlen(arg);
+  if (len == 0) {
+    if (error_msg) {
+      *error_msg = strdup("Invalid palette-chars: value cannot be empty");
+    }
+    return false;
+  }
+
+  if (len >= 256) {
     if (error_msg) {
       char msg[256];
-      safe_snprintf(msg, sizeof(msg), "Invalid palette-chars: too long (%zu chars, max 255)", strlen(arg));
+      safe_snprintf(msg, sizeof(msg), "Invalid palette-chars: too long (%zu chars, max 255)", len);
       *error_msg = strdup(msg);
     }
     return false;

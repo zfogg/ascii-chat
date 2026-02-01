@@ -328,8 +328,14 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
     // The descriptor should have mode_bitmask set from the registry
     meta->mode_bitmask = desc->mode_bitmask;
 
-    // Initialize constraints
+    // Copy constraints from descriptor's metadata
+    // For integer types, copy numeric_range to int_range (always copy, even if min is 0)
     memset(&meta->constraints, 0, sizeof(meta->constraints));
+    // Always copy numeric_range if descriptor has it (check max or min)
+    if (desc && desc->metadata.numeric_range.max > 0) {
+      meta->constraints.int_range.min = desc->metadata.numeric_range.min;
+      meta->constraints.int_range.max = desc->metadata.numeric_range.max;
+    }
   }
 
   g_schema_built = true;

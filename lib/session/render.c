@@ -13,6 +13,7 @@
 #include "render.h"
 #include "capture.h"
 #include "display.h"
+#include "help_screen.h"
 #include "common.h"
 #include "log/logging.h"
 #include "options/options.h"
@@ -86,9 +87,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
-  // Disable keyboard in snapshot mode or when stdin is piped (not a TTY)
+  // Allow keyboard in snapshot mode too (for help screen toggle debugging)
   bool keyboard_enabled = false;
-  if (keyboard_handler && !snapshot_mode && platform_isatty(STDIN_FILENO)) {
+  if (keyboard_handler && platform_isatty(STDIN_FILENO)) {
     // Try to initialize keyboard if stdin is a TTY in interactive mode
     asciichat_error_t kb_result = keyboard_init();
     if (kb_result == ASCIICHAT_OK) {
@@ -277,7 +278,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Profile: render frame
         log_debug_every(3000000, "RENDER[%lu]: Starting frame render", frame_count);
         render_start_ns = time_get_ns();
-        session_display_render_frame(display, ascii_frame);
+
+        // Check if help screen is active - if so, render help instead of frame
+        if (display && session_display_is_help_active(display)) {
+          session_display_render_help(display);
+        } else {
+          session_display_render_frame(display, ascii_frame);
+        }
+
         uint64_t render_elapsed_ns = time_elapsed_ns(render_start_ns, time_get_ns());
         log_debug_every(3000000, "RENDER[%lu]: Frame render done (%.2f ms)", frame_count,
                         (double)render_elapsed_ns / 1000000.0);
@@ -300,6 +308,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
+      // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
+      if (keyboard_enabled && keyboard_handler) {
+        log_debug_every(3000000, "RENDER[%lu]: Starting keyboard read", frame_count);
+        keyboard_key_t key = keyboard_read_nonblocking();
+        log_debug_every(3000000, "RENDER[%lu]: Keyboard read done (key=%d)", frame_count, key);
+        if (key != KEY_NONE) {
+          keyboard_handler(capture, key, user_data);
+        }
+      }
+
       // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
@@ -308,16 +326,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       SAFE_FREE(ascii_frame);
     } else {
-    }
-
-    // Keyboard input polling (if enabled)
-    if (keyboard_enabled && keyboard_handler) {
-      log_debug_every(3000000, "RENDER[%lu]: Starting keyboard read", frame_count);
-      keyboard_key_t key = keyboard_read_nonblocking();
-      log_debug_every(3000000, "RENDER[%lu]: Keyboard read done (key=%d)", frame_count, key);
-      if (key != KEY_NONE) {
-        keyboard_handler(capture, key, user_data);
-      }
     }
 
     // Audio-Video Synchronization: Keep audio and video in sync by periodically adjusting audio to match video time

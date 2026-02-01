@@ -275,13 +275,21 @@ static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, cons
 }
 
 static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)desc;
   char *endptr;
   long value = strtol(opt_value, &endptr, 10);
   if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
     return ERROR_USAGE;
   }
   int int_value = (int)value;
+
+  // Check numeric range constraints if defined in descriptor's metadata
+  if (desc && desc->metadata.numeric_range.max != 0) {
+    if (int_value < desc->metadata.numeric_range.min || int_value > desc->metadata.numeric_range.max) {
+      return SET_ERRNO(ERROR_USAGE, "Value %d out of range [%d-%d]", int_value, desc->metadata.numeric_range.min,
+                       desc->metadata.numeric_range.max);
+    }
+  }
+
   memcpy(field, &int_value, sizeof(int));
   return ASCIICHAT_OK;
 }
@@ -298,7 +306,8 @@ static asciichat_error_t apply_cli_double(void *field, const char *opt_value, co
   (void)desc;
   char *endptr;
   double value = strtod(opt_value, &endptr);
-  if (*endptr != '\0') {
+  // Check: endptr must have advanced past the input, and must be at the string end
+  if (endptr == opt_value || *endptr != '\0') {
     return ERROR_USAGE;
   }
   memcpy(field, &value, sizeof(double));
@@ -946,6 +955,42 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
                               .parse_fn = NULL,
                               .owns_memory = false,
                               .mode_bitmask = OPTION_MODE_NONE};
+
+  builder->descriptors[builder->num_descriptors++] = desc;
+}
+
+void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                           size_t offset, int default_value, const char *help_text, const char *group,
+                                           bool required, const char *env_var_name,
+                                           bool (*validate)(const void *options_struct, char **error_msg),
+                                           const option_metadata_t *metadata) {
+  ensure_descriptor_capacity(builder);
+
+  // Store default value statically
+  static int defaults[256]; // Assume we won't have more than 256 int options
+  static size_t num_defaults = 0;
+
+  if (num_defaults >= 256) {
+    log_error("Too many int options (max 256)");
+    return;
+  }
+
+  defaults[num_defaults] = default_value;
+
+  option_descriptor_t desc = {.long_name = long_name,
+                              .short_name = short_name,
+                              .type = OPTION_TYPE_INT,
+                              .offset = offset,
+                              .help_text = help_text,
+                              .group = group,
+                              .default_value = &defaults[num_defaults++],
+                              .required = required,
+                              .env_var_name = env_var_name,
+                              .validate = validate,
+                              .parse_fn = NULL,
+                              .owns_memory = false,
+                              .mode_bitmask = OPTION_MODE_NONE,
+                              .metadata = metadata ? *metadata : (option_metadata_t){0}};
 
   builder->descriptors[builder->num_descriptors++] = desc;
 }

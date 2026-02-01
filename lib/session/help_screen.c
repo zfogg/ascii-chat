@@ -11,6 +11,7 @@
 #include "platform/terminal.h"
 #include "log/logging.h"
 #include "util/string.h"
+#include "util/utf8.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>
@@ -30,7 +31,7 @@
  * @param bar_output_size Size of output buffer
  */
 static void format_volume_bar(double volume, char *bar_output, size_t bar_output_size) {
-  if (!bar_output || bar_output_size < 20) {
+  if (!bar_output || bar_output_size < 25) {
     return;
   }
 
@@ -46,8 +47,9 @@ static void format_volume_bar(double volume, char *bar_output, size_t bar_output
   int filled = (int)(volume * 10.0);
   int empty = 10 - filled;
 
-  // Build bar: "████░░ 80%"
-  snprintf(bar_output, bar_output_size, "%.*s%.*s %d%%", filled, "██████████", empty, "░░░░░░░░░░",
+  // Build bar: "[======    ] 80%"
+  // Use simple ASCII characters to avoid UTF-8 encoding issues
+  snprintf(bar_output, bar_output_size, "[%.*s%.*s] %d%%", filled, "==========", empty, "          ",
            (int)(volume * 100.0));
 }
 
@@ -86,10 +88,80 @@ static const char *render_mode_to_string(int mode) {
 }
 
 /**
+ * @brief Build a settings line with UTF-8 width-aware padding
+ *
+ * Constructs a line like: "║  Label:      Value<padding>║"
+ * The padding is calculated based on actual UTF-8 display width,
+ * not byte count, ensuring the right border pipes align vertically.
+ *
+ * @param output Output buffer for the line
+ * @param output_size Size of output buffer (must be at least 256 bytes)
+ * @param label Label string (e.g., "Volume")
+ * @param value Value string to display (may contain UTF-8)
+ */
+static void build_settings_line(char *output, size_t output_size, const char *label, const char *value) {
+  if (!output || output_size < 256 || !label || !value) {
+    return;
+  }
+
+  // Line structure: "║  " (3) + label + ": " (2) + padding + value + padding + "║" (3)
+  // Total display width: 48 columns
+  // Fixed prefix: "║  " (3 bytes = 3 display cols) + label (N bytes = N display cols)
+  // Plus ": " (2 bytes = 2 display cols)
+
+  int label_width = utf8_display_width(label);
+  int value_width = utf8_display_width(value);
+
+  // Fixed part: "║  " (3 cols) + label (variable) + ":    " (5 chars, but we need to count them)
+  // "║  " = 3, label = label_width, ":" = 1, "    " = 4
+  // Total fixed: 3 + label_width + 1 + 4 = label_width + 8
+  int fixed_width = 3 + label_width + 1 + 4; // "║  " + label + ":" + "    "
+  int right_border = 1;                      // "║"
+
+  // Available space for value + padding: 48 - fixed_width - right_border
+  int available = 48 - fixed_width - right_border; // Should be 33 columns for standard labels
+  int padding = available - value_width;
+
+  // Ensure non-negative padding
+  if (padding < 0) {
+    padding = 0;
+  }
+
+  // Build the line: "║  <label>:    <value><padding>║"
+  char *pos = output;
+  int remaining = output_size;
+
+  // Left border and spacing
+  int n = snprintf(pos, remaining, "║  %s:    ", label);
+  if (n > 0) {
+    pos += n;
+    remaining -= n;
+  }
+
+  // Value
+  n = snprintf(pos, remaining, "%s", value);
+  if (n > 0) {
+    pos += n;
+    remaining -= n;
+  }
+
+  // Padding spaces
+  for (int i = 0; i < padding && remaining > 1; i++) {
+    *pos++ = ' ';
+    remaining--;
+  }
+
+  // Right border
+  if (remaining > 3) {
+    snprintf(pos, remaining, "║");
+  }
+}
+
+/**
  * @brief Render help screen centered on terminal
  */
 void session_display_render_help(session_display_ctx_t *ctx) {
-  if (!ctx || !session_display_has_tty(ctx)) {
+  if (!ctx) {
     return;
   }
 
@@ -105,27 +177,27 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     return;
   }
 
-  // Help screen box dimensions
-  const int box_width = 46;  // Width of help content
-  const int box_height = 23; // Height of help content
+  // Help screen box dimensions (must fit in small terminals - 24 line minimum)
+  const int box_width = 46; // Width of help content (22 rows total: border + title + nav + settings + footer)
 
   // Calculate centering position
+  // Horizontal centering
   int start_col = (term_width - box_width) / 2;
   if (start_col < 0) {
     start_col = 0;
   }
-  int start_row = (term_height - box_height) / 2;
-  if (start_row < 0) {
-    start_row = 0;
-  }
+  // Vertical positioning: always start near top to ensure entire box fits on screen
+  // Standard terminal is 24 rows, box is 22 rows, so start at row 1-2 to fit
+  int start_row = 1;
 
   // Build help screen content
-  char *buffer = SAFE_MALLOC(4096, char *);
+  const size_t BUFFER_SIZE = 8192; // Increased from 4096 to ensure all content fits
+  char *buffer = SAFE_MALLOC(BUFFER_SIZE, char *);
   size_t buf_pos = 0;
 
 #define APPEND(fmt, ...)                                                                                               \
   do {                                                                                                                 \
-    int written = snprintf(buffer + buf_pos, 4096 - buf_pos, fmt, ##__VA_ARGS__);                                      \
+    int written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, fmt, ##__VA_ARGS__);                               \
     if (written > 0) {                                                                                                 \
       buf_pos += written;                                                                                              \
     }                                                                                                                  \
@@ -138,56 +210,50 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   // Build help screen with proper spacing
   // Top border
   APPEND("\033[%d;%dH", start_row + 1, start_col + 1);
-  APPEND("╔════════════════════════════════════════════╗");
+  APPEND("╔════════════════════════════════════════════════╗");
 
   // Title
   APPEND("\033[%d;%dH", start_row + 2, start_col + 1);
-  APPEND("║     ascii-chat Keyboard Shortcuts        ║");
+  APPEND("║   ascii-chat Keyboard Shortcuts            ║");
 
   // Separator after title
   APPEND("\033[%d;%dH", start_row + 3, start_col + 1);
-  APPEND("╠════════════════════════════════════════════╣");
+  APPEND("╠════════════════════════════════════════════════╣");
 
   // Navigation section
   APPEND("\033[%d;%dH", start_row + 4, start_col + 1);
-  APPEND("║                                            ║");
+  APPEND("║  Navigation & Control:                     ║");
 
   APPEND("\033[%d;%dH", start_row + 5, start_col + 1);
-  APPEND("║  Navigation & Control:                    ║");
+  APPEND("║  ─────────────────────                     ║");
 
   APPEND("\033[%d;%dH", start_row + 6, start_col + 1);
-  APPEND("║  ───────────────────                      ║");
+  APPEND("║  ?       Toggle this help screen           ║");
 
   APPEND("\033[%d;%dH", start_row + 7, start_col + 1);
-  APPEND("║  ?       Toggle this help screen          ║");
+  APPEND("║  ↑ / ↓   Volume up/down (10%%)              ║");
 
   APPEND("\033[%d;%dH", start_row + 8, start_col + 1);
-  APPEND("║  ↑ / ↓   Volume up/down (10%%)             ║");
+  APPEND("║  Space   Play/Pause (files only)           ║");
 
   APPEND("\033[%d;%dH", start_row + 9, start_col + 1);
-  APPEND("║  ← / →   Seek ±30s (files only)          ║");
+  APPEND("║  c       Cycle color mode                  ║");
 
   APPEND("\033[%d;%dH", start_row + 10, start_col + 1);
-  APPEND("║  Space   Play/Pause (files only)          ║");
+  APPEND("║  m       Mute/Unmute audio                 ║");
 
   APPEND("\033[%d;%dH", start_row + 11, start_col + 1);
-  APPEND("║  c       Cycle color mode                 ║");
-
-  APPEND("\033[%d;%dH", start_row + 12, start_col + 1);
-  APPEND("║  m       Mute/Unmute audio                ║");
-
-  APPEND("\033[%d;%dH", start_row + 13, start_col + 1);
-  APPEND("║  f       Flip webcam horizontally         ║");
+  APPEND("║  f       Flip webcam horizontally          ║");
 
   // Current settings section
+  APPEND("\033[%d;%dH", start_row + 12, start_col + 1);
+  APPEND("║  Current Settings:                         ║");
+
+  APPEND("\033[%d;%dH", start_row + 13, start_col + 1);
+  APPEND("║  ───────────────                           ║");
+
   APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
-  APPEND("║                                            ║");
-
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
-  APPEND("║  Current Settings:                        ║");
-
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
-  APPEND("║  ───────────────                          ║");
+  APPEND("║                                             ║");
 
   // Get current option values
   double current_volume = GET_OPTION(speakers_volume);
@@ -196,44 +262,49 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   bool current_flip = (bool)GET_OPTION(webcam_flip);
   bool current_audio = (bool)GET_OPTION(audio_enabled);
 
-  // Format volume bar
-  char volume_bar[20];
+  // Format volume bar as "[========  ] 80%"
+  char volume_bar[32];
   format_volume_bar(current_volume, volume_bar, sizeof(volume_bar));
 
-  // Volume line
-  APPEND("\033[%d;%dH║  Volume:    %s%-22s║", start_row + 17, start_col + 1, volume_bar, "");
-
-  // Color mode line
+  // Get string values
   const char *color_str = color_mode_to_string(current_color_mode);
-  APPEND("\033[%d;%dH║  Color:     %-26s║", start_row + 18, start_col + 1, color_str);
-
-  // Render mode line
   const char *render_str = render_mode_to_string(current_render_mode);
-  APPEND("\033[%d;%dH║  Render:    %-25s║", start_row + 19, start_col + 1, render_str);
-
-  // Webcam flip line - with color coding
   const char *flip_text = current_flip ? "Flipped" : "Normal";
-  const char *flip_colored = colored_string(current_flip ? LOG_COLOR_INFO : LOG_COLOR_ERROR, flip_text);
-  APPEND("\033[%d;%dH║  Webcam:    %s                ║", start_row + 20, start_col + 1, flip_colored);
-
-  // Audio line - with color coding
   const char *audio_text = current_audio ? "Enabled" : "Disabled";
-  const char *audio_colored = colored_string(current_audio ? LOG_COLOR_INFO : LOG_COLOR_ERROR, audio_text);
-  APPEND("\033[%d;%dH║  Audio:     %s                 ║", start_row + 21, start_col + 1, audio_colored);
+
+  // Build settings lines with UTF-8 width-aware padding
+  char line_buf[256];
+
+  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Color", color_str);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Render", render_str);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Webcam", flip_text);
+  APPEND("%s", line_buf);
+
+  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
+  build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
+  APPEND("%s", line_buf);
 
   // Footer
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
-  APPEND("║                                            ║");
-
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
-  APPEND("║  Press ? to close                         ║");
+  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
+  APPEND("║  Press ? to close                          ║");
 
   // Bottom border
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
-  APPEND("╚════════════════════════════════════════════╝");
+  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+  APPEND("╚════════════════════════════════════════════════╝");
 
   // Cursor positioning after rendering
-  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
 
 #undef APPEND
 

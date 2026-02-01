@@ -1349,15 +1349,11 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
+    // Convert ERROR_CONFIG to ERROR_USAGE for command-line parsing errors
+    if (result == ERROR_CONFIG) {
+      return ERROR_USAGE;
+    }
     return result;
-  }
-
-  // Handle the case where height is parsed as 0 (invalid) - restore to default
-  if (opts.height == 0) {
-    opts.height = OPT_HEIGHT_DEFAULT;
-  }
-  if (opts.width == 0) {
-    opts.width = OPT_WIDTH_DEFAULT;
   }
 
   // ========================================================================

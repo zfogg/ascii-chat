@@ -327,7 +327,20 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
       SAFE_SNPRINTF(error_msg, error_size, "Integer out of range: %s", value_str);
       return ERROR_CONFIG;
     }
-    parsed->int_value = (int)parsed_val;
+
+    int int_val = (int)parsed_val;
+
+    // Check numeric range constraints if defined
+    // Constraints are present if max != 0 (max will always be non-zero for bounded integer ranges)
+    if (meta && meta->constraints.int_range.max != 0) {
+      if (int_val < meta->constraints.int_range.min || int_val > meta->constraints.int_range.max) {
+        SAFE_SNPRINTF(error_msg, error_size, "Integer %d out of range [%d-%d]: %s", int_val,
+                      meta->constraints.int_range.min, meta->constraints.int_range.max, value_str);
+        return ERROR_CONFIG;
+      }
+    }
+
+    parsed->int_value = int_val;
   }
   return ASCIICHAT_OK;
 }

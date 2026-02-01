@@ -423,12 +423,26 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
     return;
   }
 
+  int fd = -1;
   if (ctx->has_tty && ctx->tty_info.fd >= 0) {
-    (void)platform_write(ctx->tty_info.fd, data, len);
-    (void)terminal_flush(ctx->tty_info.fd);
+    fd = ctx->tty_info.fd;
   } else {
-    (void)platform_write(STDOUT_FILENO, data, len);
-    (void)fflush(stdout);
+    fd = STDOUT_FILENO;
+  }
+
+  // Write all data with retry on partial writes and immediate flush
+  size_t written_total = 0;
+  while (written_total < len) {
+    ssize_t written = platform_write(fd, data + written_total, len - written_total);
+
+    if (written > 0) {
+      written_total += written;
+      // Flush immediately after each write to TTY to ensure data is sent
+      (void)terminal_flush(fd);
+    } else {
+      // Error or EOF
+      break;
+    }
   }
 }
 

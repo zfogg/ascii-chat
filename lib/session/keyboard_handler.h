@@ -38,7 +38,7 @@ typedef struct session_display_ctx session_display_ctx_t;
  * mirror mode (local capture) and client mode (network rendering).
  *
  * **Keyboard Controls:**
- * - **'~' key**: Toggle help screen on/off (all modes)
+ * - **'?' key**: Toggle help screen on/off (all modes)
  * - **Left Arrow**: Seek -30 seconds (file/URL sources only)
  * - **Right Arrow**: Seek +30 seconds (file/URL sources only)
  * - **Up Arrow**: Increase volume +10% (all modes with audio)

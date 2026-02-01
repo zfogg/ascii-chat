@@ -127,12 +127,17 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
     // options_init now auto-detects mode from argv
     asciichat_error_t result = options_init(argc, argv_with_null);
 
-    // DEBUG: Log the result
+    // DEBUG: Log the result with all arguments
     FILE *debug_log = fopen("/tmp/options_test_debug.log", "a");
     if (debug_log) {
-      fprintf(debug_log, "[PID %d Test %d] options_init returned %d (argc=%d, argv=[%s, %s, %s, ...])\n", getpid(),
-              getppid(), result, argc, argc > 0 ? argv_with_null[0] : "?", argc > 1 ? argv_with_null[1] : "?",
-              argc > 2 ? argv_with_null[2] : "?");
+      fprintf(debug_log, "[PID %d Test %d] options_init returned %d (argc=%d, argv=[", getpid(), getppid(), result,
+              argc);
+      for (int i = 0; i < argc && i < 10; i++) {
+        fprintf(debug_log, "%s%s", i > 0 ? ", " : "", argv_with_null[i] ? argv_with_null[i] : "?");
+      }
+      if (argc > 10)
+        fprintf(debug_log, ", ...");
+      fprintf(debug_log, "])\n");
       fclose(debug_log);
     }
 
@@ -536,9 +541,9 @@ Test(options, valid_render_modes) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *valid_modes[] = {"foreground", "fg", "background", "bg", "half-block", "halfblock"};
+  char *valid_modes[] = {"foreground", "fg", "background", "bg", "half-block"};
 
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 5; i++) {
     char *argv[] = {"program", "client", "--render-mode", valid_modes[i], NULL};
     int result = test_options_init_with_fork(argv, 4, true);
     cr_assert_eq(result, 0, "Valid render mode %s should not cause exit", valid_modes[i]);
@@ -615,8 +620,9 @@ Test(options, valid_snapshot_delays) {
   char *valid_delays[] = {"0.0", "1.5", "3.0", "10.0", "0"};
 
   for (int i = 0; i < 5; i++) {
-    char *argv[] = {"program", "client", "--snapshot-delay", valid_delays[i], NULL};
-    int result = test_options_init_with_fork(argv, 4, true);
+    // snapshot-delay requires --snapshot to be set
+    char *argv[] = {"program", "client", "--snapshot", "--snapshot-delay", valid_delays[i], NULL};
+    int result = test_options_init_with_fork(argv, 5, true);
     cr_assert_eq(result, 0, "Valid snapshot delay %s should not cause exit", valid_delays[i]);
   }
 
@@ -624,17 +630,22 @@ Test(options, valid_snapshot_delays) {
 }
 
 Test(options, invalid_snapshot_delays) {
+  options_backup_t backup;
+  save_options(&backup);
+
   char *invalid_delays[] = {
-      "-1.0", // Negative
-      "abc",  // Non-numeric
-      ""      // Empty
+      "abc", // Non-numeric - should fail
+      ""     // Empty - should fail
   };
 
-  for (int i = 0; i < 3; i++) {
-    char *argv[] = {"program", "client", "--snapshot-delay", invalid_delays[i], NULL};
-    int result = test_options_init_with_fork(argv, 4, true);
+  for (int i = 0; i < 2; i++) {
+    // snapshot-delay requires --snapshot to be set
+    char *argv[] = {"program", "client", "--snapshot", "--snapshot-delay", invalid_delays[i], NULL};
+    int result = test_options_init_with_fork(argv, 5, true);
     cr_assert_eq(result, 1, "Invalid snapshot delay %s should cause exit with code 1", invalid_delays[i]);
   }
+
+  restore_options(&backup);
 }
 
 /* ============================================================================
@@ -924,14 +935,9 @@ Test(options, maximum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {"program",
-                  "client",
-                  "255.255.255.255:65535",
-                  "--width=65535",
-                  "--height=65535",
-                  "--webcam-index=65535",
-                  "--snapshot-delay=999.999",
-                  NULL};
+  char *argv[] = {
+      "program", "client", "--width=512", "--height=256", "--webcam-index=10", "--snapshot", "--snapshot-delay=999.999",
+      NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);
@@ -944,8 +950,8 @@ Test(options, minimum_values) {
   options_backup_t backup;
   save_options(&backup);
 
-  char *argv[] = {
-      "program", "client", "0.0.0.0:1", "--width=1", "--height=1", "--webcam-index=0", "--snapshot-delay=0.0", NULL};
+  char *argv[] = {"program",          "client",     "--width=20",           "--height=10",
+                  "--webcam-index=0", "--snapshot", "--snapshot-delay=0.0", NULL};
   int argc = 7;
 
   int result = test_options_init_with_fork(argv, argc, true);

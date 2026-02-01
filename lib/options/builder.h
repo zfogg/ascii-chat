@@ -428,6 +428,19 @@ void options_builder_add_int(options_builder_t *builder, const char *long_name, 
                              const char *env_var_name, bool (*validate)(const void *options_struct, char **error_msg));
 
 /**
+ * @brief Add integer option with metadata (for numeric ranges and examples)
+ *
+ * Like options_builder_add_int() but also includes metadata for numeric ranges, examples, and completions.
+ *
+ * @param metadata Pointer to option_metadata_t with numeric_range, examples, etc. (can be NULL)
+ */
+void options_builder_add_int_with_metadata(options_builder_t *builder, const char *long_name, char short_name,
+                                           size_t offset, int default_value, const char *help_text, const char *group,
+                                           bool required, const char *env_var_name,
+                                           bool (*validate)(const void *options_struct, char **error_msg),
+                                           const option_metadata_t *metadata);
+
+/**
  * @brief Add string option
  *
  * Strings are automatically strdup'd during parsing and freed during cleanup.

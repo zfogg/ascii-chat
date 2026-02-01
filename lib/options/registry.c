@@ -1893,9 +1893,17 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
                                  entry->group, entry->required, entry->env_var_name, entry->validate_fn);
       break;
     case OPTION_TYPE_INT:
-      options_builder_add_int(builder, entry->long_name, entry->short_name, entry->offset,
-                              entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text,
-                              entry->group, entry->required, entry->env_var_name, entry->validate_fn);
+      // Use metadata-aware function if metadata is present
+      if (entry->metadata.numeric_range.max != 0 || entry->metadata.enum_count > 0) {
+        options_builder_add_int_with_metadata(builder, entry->long_name, entry->short_name, entry->offset,
+                                              entry->default_value ? *(const int *)entry->default_value : 0,
+                                              entry->help_text, entry->group, entry->required, entry->env_var_name,
+                                              entry->validate_fn, &entry->metadata);
+      } else {
+        options_builder_add_int(builder, entry->long_name, entry->short_name, entry->offset,
+                                entry->default_value ? *(const int *)entry->default_value : 0, entry->help_text,
+                                entry->group, entry->required, entry->env_var_name, entry->validate_fn);
+      }
       break;
     case OPTION_TYPE_BOOL:
       options_builder_add_bool(builder, entry->long_name, entry->short_name, entry->offset,
