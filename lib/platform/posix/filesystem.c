@@ -388,6 +388,8 @@ static asciichat_error_t get_xdg_config_dirs(char ***dirs_out, size_t *count_out
  * 2. Each directory in XDG_CONFIG_DIRS/ascii-chat (default: /etc/xdg/ascii-chat)
  * 3. Backward compatibility paths:
  *    - /opt/homebrew/etc/ascii-chat (macOS Homebrew ARM)
+ *    - /home/linuxbrew/.linuxbrew/etc/ascii-chat (Linux Homebrew system-wide)
+ *    - ~/.linuxbrew/etc/ascii-chat (Linux Homebrew user)
  *    - /usr/local/etc/ascii-chat (Unix/Linux local)
  *    - /etc/ascii-chat (system-wide)
  */
@@ -416,8 +418,8 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   }
 
   // Calculate total number of search directories
-  // 1 (XDG_CONFIG_HOME) + xdg_config_dirs_count + 3 (legacy paths)
-  const size_t total_dirs = 1 + xdg_config_dirs_count + 3;
+  // 1 (XDG_CONFIG_HOME) + xdg_config_dirs_count + 3 (legacy) + 1 (user Linuxbrew on Linux)
+  const size_t total_dirs = 1 + xdg_config_dirs_count + 4;
 
   // Pre-allocate capacity for all possible results
   list_out->capacity = total_dirs;
@@ -468,9 +470,13 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
 
   // Backward compatibility: Legacy paths
   const char *legacy_dirs[] = {
-      "/opt/homebrew/etc/ascii-chat", // macOS Homebrew ARM
-      "/usr/local/etc/ascii-chat",    // Unix/Linux local
-      "/etc/ascii-chat",              // System-wide
+#ifdef __APPLE__
+      "/opt/homebrew/etc/ascii-chat",            // macOS Homebrew ARM
+#else
+      "/home/linuxbrew/.linuxbrew/etc/ascii-chat", // Linux Homebrew (system-wide)
+#endif
+      "/usr/local/etc/ascii-chat", // Unix/macOS local
+      "/etc/ascii-chat",           // System-wide
   };
   const size_t num_legacy = sizeof(legacy_dirs) / sizeof(legacy_dirs[0]);
 
@@ -489,6 +495,26 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
       }
     }
   }
+
+#ifndef __APPLE__
+  // Linux: Check user Linuxbrew path (~/.linuxbrew/etc/ascii-chat)
+  const char *home = getenv("HOME");
+  if (home && home[0] != '\0') {
+    ret = safe_snprintf(full_path, sizeof(full_path), "%s/.linuxbrew/etc/ascii-chat/%s", home, filename);
+    if (ret >= 0 && (size_t)ret < sizeof(full_path)) {
+      if (platform_is_regular_file(full_path)) {
+        config_file_result_t *result = &list_out->files[list_out->count];
+        result->path = platform_strdup(full_path);
+        if (result->path) {
+          result->priority = priority++;
+          result->exists = true;
+          result->is_system_config = false; // User-local Homebrew install
+          list_out->count++;
+        }
+      }
+    }
+  }
+#endif
 
   // Cleanup
   SAFE_FREE(xdg_config_home);
