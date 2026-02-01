@@ -617,6 +617,9 @@ typedef enum {
 // for non-string default values. Defined alongside OPT_*_DEFAULT for clarity.
 
 static const int default_log_level_value = DEFAULT_LOG_LEVEL;
+static const bool default_quiet_value = false;
+static const bool default_enable_keepawake_value = false;
+static const bool default_disable_keepawake_value = false;
 static const int default_width_value = OPT_WIDTH_DEFAULT;
 static const int default_height_value = OPT_HEIGHT_DEFAULT;
 static const int default_webcam_index_value = OPT_WEBCAM_INDEX_DEFAULT;
