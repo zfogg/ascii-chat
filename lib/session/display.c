@@ -74,6 +74,9 @@ struct session_display_ctx {
 
   /** @brief Audio context for playback (borrowed, not owned) */
   void *audio_ctx;
+
+  /** @brief Help screen active flag (toggled with '?') - atomic for thread-safe access */
+  atomic_bool help_screen_active;
 };
 
 /* ============================================================================
@@ -130,6 +133,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_playback_enabled = config->enable_audio_playback;
   ctx->audio_ctx = config->audio_ctx;
   atomic_init(&ctx->first_frame, true);
+  atomic_init(&ctx->help_screen_active, false);
 
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
@@ -330,6 +334,12 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   if (!frame_data) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is NULL");
+    return;
+  }
+
+  // Suppress frame rendering when help screen is active
+  // Network reception continues in background, frames are just not displayed
+  if (atomic_load(&ctx->help_screen_active)) {
     return;
   }
 
@@ -534,4 +544,31 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
   }
 
   return ASCIICHAT_OK;
+}
+
+/* ============================================================================
+ * Help Screen Functions (from help_screen module)
+ * ============================================================================ */
+
+/**
+ * @brief Toggle help screen on/off (implemented in display.c for struct access)
+ */
+void session_display_toggle_help(session_display_ctx_t *ctx) {
+  if (!ctx) {
+    return;
+  }
+
+  bool current = atomic_load(&ctx->help_screen_active);
+  atomic_store(&ctx->help_screen_active, !current);
+}
+
+/**
+ * @brief Check if help screen is currently active (implemented in display.c for struct access)
+ */
+bool session_display_is_help_active(session_display_ctx_t *ctx) {
+  if (!ctx) {
+    return false;
+  }
+
+  return atomic_load(&ctx->help_screen_active);
 }

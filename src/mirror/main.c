@@ -125,7 +125,9 @@ static bool mirror_render_should_exit(void *user_data) {
  */
 static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, void *user_data) {
   (void)user_data; // Unused parameter
-  session_handle_keyboard_input(capture, key);
+  // Mirror mode keyboard handler - pass NULL for display context
+  // Help screen will be silently ignored (no-op)
+  session_handle_keyboard_input(capture, NULL, (keyboard_key_t)key);
 }
 
 /**

@@ -243,7 +243,9 @@ static bool discovery_display_should_exit_adapter(void *user_data) {
  */
 static void discovery_keyboard_handler(session_capture_ctx_t *capture, int key, void *user_data) {
   (void)user_data; // Unused parameter
-  session_handle_keyboard_input(capture, key);
+  // Discovery mode doesn't have a display context yet, pass NULL for display
+  // Help screen will be silently ignored (no-op)
+  session_handle_keyboard_input(capture, NULL, (keyboard_key_t)key);
 }
 
 /* ============================================================================

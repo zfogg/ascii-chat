@@ -416,6 +416,7 @@ set(DATA_STRUCTURES_SRCS
 set(SESSION_SRCS
     lib/session/capture.c
     lib/session/display.c
+    lib/session/help_screen.c
     lib/session/render.c
     lib/session/settings.c
     lib/session/audio.c

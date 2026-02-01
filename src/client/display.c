@@ -75,6 +75,7 @@
 #include "session/display.h"
 #include "session/capture.h"
 #include "session/keyboard_handler.h"
+#include "session/help_screen.h"
 #include "platform/abstraction.h"
 #include "platform/keyboard.h"
 #include "platform/util.h"
@@ -293,6 +294,20 @@ void display_render_frame(const char *frame_data) {
     return;
   }
 
+  // Render help screen if active (suppresses frame rendering)
+  if (session_display_is_help_active(g_display_ctx)) {
+    session_display_render_help(g_display_ctx);
+
+    // Still poll keyboard for interactive controls while help is visible
+    if (g_keyboard_enabled) {
+      keyboard_key_t key = keyboard_read_nonblocking();
+      if (key != KEY_NONE) {
+        session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
+      }
+    }
+    return; // Skip normal frame rendering
+  }
+
   // Use session display library for frame rendering
   session_display_render_frame(g_display_ctx, frame_data);
 
@@ -303,7 +318,7 @@ void display_render_frame(const char *frame_data) {
   if (g_keyboard_enabled) {
     keyboard_key_t key = keyboard_read_nonblocking();
     if (key != KEY_NONE) {
-      session_handle_keyboard_input(g_display_capture_ctx, key);
+      session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
     }
   }
 }

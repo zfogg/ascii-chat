@@ -6,6 +6,8 @@
 
 #include "keyboard_handler.h"
 #include "capture.h"
+#include "display.h"
+#include "help_screen.h"
 #include "media/source.h"
 #include "options/options.h"
 #include "log/logging.h"
@@ -61,8 +63,18 @@ static int next_color_mode(int current) {
  * Keyboard Handler
  * ============================================================================ */
 
-void session_handle_keyboard_input(session_capture_ctx_t *capture, keyboard_key_t key) {
+void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
   switch (key) {
+  // ===== HELP SCREEN TOGGLE =====
+  case '?': {
+    if (display) {
+      session_display_toggle_help(display);
+      // Render help screen immediately so user sees it
+      session_display_render_help(display);
+    }
+    break;
+  }
+
   // ===== SEEK CONTROLS (file sources only) =====
   case KEY_LEFT: { // Seek backward 30 seconds
     if (capture) {
