@@ -1,6 +1,9 @@
 /**
  * @file turn_credentials.c
  * @brief TURN server credential generation implementation
+ *
+ * Uses OpenBSD's public domain SHA1 implementation for HMAC-SHA1
+ * credential generation (RFC 5766 TURN).
  */
 
 #include <ascii-chat/network/webrtc/turn_credentials.h>
@@ -8,8 +11,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
+#include "sha1.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -79,12 +81,15 @@ static size_t base64_encode(const uint8_t *input, size_t input_len, char *output
 /**
  * @brief Compute HMAC-SHA1 of data using a secret key
  *
+ * Implements HMAC-SHA1 according to RFC 2104:
+ * HMAC(K, M) = H((K XOR opad) || H((K XOR ipad) || M))
+ *
  * @param data Data to authenticate
  * @param data_len Length of data
  * @param secret Secret key
  * @param secret_len Length of secret
- * @param output Output buffer (must be at least 20 bytes for SHA1)
- * @param output_len Pointer to store output length
+ * @param output Output buffer (must be at least SHA1_DIGEST_LENGTH bytes)
+ * @param output_len Pointer to store output length (set to SHA1_DIGEST_LENGTH)
  * @return ASCIICHAT_OK on success, error code on failure
  */
 static asciichat_error_t hmac_sha1(const uint8_t *data, size_t data_len, const uint8_t *secret, size_t secret_len,
@@ -93,52 +98,44 @@ static asciichat_error_t hmac_sha1(const uint8_t *data, size_t data_len, const u
     return SET_ERRNO(ERROR_INVALID_PARAM, "HMAC-SHA1: NULL parameter");
   }
 
-  // OpenSSL 3.0+ uses EVP interface, older versions use HMAC_* functions
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-  EVP_MAC *mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
-  if (!mac) {
-    return SET_ERRNO(ERROR_CRYPTO, "HMAC-SHA1: Failed to fetch HMAC algorithm");
+  SHA1_CTX ctx;
+  uint8_t ipad[SHA1_BLOCK_LENGTH];
+  uint8_t opad[SHA1_BLOCK_LENGTH];
+  uint8_t inner_hash[SHA1_DIGEST_LENGTH];
+
+  // Prepare key: pad or truncate to block length
+  uint8_t key[SHA1_BLOCK_LENGTH];
+  memset(key, 0, sizeof(key));
+
+  if (secret_len > SHA1_BLOCK_LENGTH) {
+    // If key is longer than block size, hash it first
+    SHA1_CTX key_ctx;
+    SHA1Init(&key_ctx);
+    SHA1Update(&key_ctx, secret, secret_len);
+    SHA1Final(key, &key_ctx);
+  } else {
+    memcpy(key, secret, secret_len);
   }
 
-  EVP_MAC_CTX *ctx = EVP_MAC_CTX_new(mac);
-  if (!ctx) {
-    EVP_MAC_free(mac);
-    return SET_ERRNO(ERROR_CRYPTO, "HMAC-SHA1: Failed to create context");
+  // Prepare ipad and opad (HMAC construction per RFC 2104)
+  for (int i = 0; i < SHA1_BLOCK_LENGTH; i++) {
+    ipad[i] = key[i] ^ 0x36;
+    opad[i] = key[i] ^ 0x5c;
   }
 
-  // Set digest algorithm to SHA1
-  OSSL_PARAM params[] = {OSSL_PARAM_construct_utf8_string("digest", "SHA1", 0), OSSL_PARAM_construct_end()};
+  // Compute inner hash: H(ipad || message)
+  SHA1Init(&ctx);
+  SHA1Update(&ctx, ipad, SHA1_BLOCK_LENGTH);
+  SHA1Update(&ctx, data, data_len);
+  SHA1Final(inner_hash, &ctx);
 
-  if (EVP_MAC_init(ctx, secret, secret_len, params) != 1) {
-    EVP_MAC_CTX_free(ctx);
-    EVP_MAC_free(mac);
-    return SET_ERRNO(ERROR_CRYPTO, "HMAC-SHA1: Failed to initialize");
-  }
+  // Compute outer hash: H(opad || inner_hash)
+  SHA1Init(&ctx);
+  SHA1Update(&ctx, opad, SHA1_BLOCK_LENGTH);
+  SHA1Update(&ctx, inner_hash, SHA1_DIGEST_LENGTH);
+  SHA1Final(output, &ctx);
 
-  if (EVP_MAC_update(ctx, data, data_len) != 1) {
-    EVP_MAC_CTX_free(ctx);
-    EVP_MAC_free(mac);
-    return SET_ERRNO(ERROR_CRYPTO, "HMAC-SHA1: Failed to update");
-  }
-
-  size_t out_len = 0;
-  if (EVP_MAC_final(ctx, output, &out_len, 20) != 1) {
-    EVP_MAC_CTX_free(ctx);
-    EVP_MAC_free(mac);
-    return SET_ERRNO(ERROR_CRYPTO, "HMAC-SHA1: Failed to finalize");
-  }
-
-  *output_len = (unsigned int)out_len;
-
-  EVP_MAC_CTX_free(ctx);
-  EVP_MAC_free(mac);
-#else
-  // OpenSSL 1.x compatibility
-  unsigned char *result = HMAC(EVP_sha1(), secret, (int)secret_len, data, data_len, output, output_len);
-  if (!result) {
-    return SET_ERRNO(ERROR_CRYPTO, "HMAC-SHA1: Failed to compute HMAC");
-  }
-#endif
+  *output_len = SHA1_DIGEST_LENGTH;
 
   return ASCIICHAT_OK;
 }
@@ -165,7 +162,7 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
   }
 
   // Compute HMAC-SHA1(secret, username)
-  uint8_t hmac_result[20]; // SHA1 produces 20 bytes
+  uint8_t hmac_result[SHA1_DIGEST_LENGTH];
   unsigned int hmac_len = 0;
 
   asciichat_error_t result = hmac_sha1((const uint8_t *)out_credentials->username, (size_t)username_len,
@@ -174,8 +171,9 @@ asciichat_error_t turn_generate_credentials(const char *session_id, const char *
     return result;
   }
 
-  if (hmac_len != 20) {
-    return SET_ERRNO(ERROR_CRYPTO, "TURN credentials: unexpected HMAC length %u (expected 20)", hmac_len);
+  if (hmac_len != SHA1_DIGEST_LENGTH) {
+    return SET_ERRNO(ERROR_CRYPTO, "TURN credentials: unexpected HMAC length %u (expected %u)", hmac_len,
+                     SHA1_DIGEST_LENGTH);
   }
 
   // Base64-encode the HMAC to get the password

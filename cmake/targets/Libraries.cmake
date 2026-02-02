@@ -404,7 +404,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         ${ZSTD_LIBRARIES}
         ${SQLITE3_LIBRARIES}  # Rate limiting SQLite backend
         libdatachannel  # WebRTC DataChannels for P2P transport
-        OpenSSL::Crypto  # Required for TURN credential generation
+        OpenSSL::Crypto  # Required by libdatachannel for TLS/DTLS
     )
     # Link miniupnpc if available (optional UPnP/NAT-PMP support)
     if(MINIUPNPC_FOUND)
@@ -416,7 +416,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         endif()
     endif()
 else()
-    # For OBJECT libs, link external deps only
+    # For OBJECT libs, link external deps only (OpenSSL needed by libdatachannel for TLS/DTLS)
     target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES} ${SQLITE3_LIBRARIES} libdatachannel OpenSSL::Crypto)
     if(MINIUPNPC_FOUND)
         target_include_directories(ascii-chat-network PRIVATE ${MINIUPNPC_INCLUDE_DIRS})

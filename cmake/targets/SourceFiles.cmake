@@ -56,6 +56,7 @@ set(CRYPTO_SRCS
     lib/crypto/handshake/server.c
     lib/crypto/handshake/client.c
     lib/crypto/pem_utils.c
+    lib/crypto/sha1.c             # OpenBSD SHA1 for TURN credentials HMAC
     # GPG module (refactored into gpg/ subdirectory)
     lib/crypto/gpg/agent.c
     lib/crypto/gpg/export.c
@@ -87,8 +88,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     )
 endif()
 
-# Disable static analyzers for third-party libsodium-bcrypt-pbkdf code
+# Disable static analyzers for third-party OpenBSD code (libsodium-bcrypt-pbkdf and SHA1)
 set_source_files_properties(
+    lib/crypto/sha1.c  # OpenBSD SHA1 - third-party public domain code
     deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
     deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
     deps/ascii-chat-deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
