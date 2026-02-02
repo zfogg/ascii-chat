@@ -418,7 +418,6 @@ int mirror_main(void) {
   }
 
   // Disable terminal logging during rendering to prevent logs from mixing with ASCII art
-  bool terminal_logging_was_enabled = log_get_terminal_output();
   log_set_terminal_output(false);
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
@@ -432,7 +431,8 @@ int mirror_main(void) {
                           display);                // user_data (display context for help screen and frame rendering)
 
   // Re-enable terminal logging after rendering
-  log_set_terminal_output(terminal_logging_was_enabled);
+  // Always re-enable terminal output for shutdown logs
+  log_set_terminal_output(true);
 
   log_debug("mirror_main: session_render_loop returned with result=%d", result);
   if (result != ASCIICHAT_OK) {
@@ -478,9 +478,9 @@ int mirror_main(void) {
   log_debug("mirror_main: disabling keepawake");
   platform_disable_keepawake();
 
-  // In snapshot mode, suppress shutdown logs to preserve the rendered ASCII art
-  // In continuous mode, show shutdown message on stderr
-  if (!GET_OPTION(snapshot_mode) && !GET_OPTION(quiet)) {
+  // Always show shutdown message unless --quiet is set
+  // In snapshot mode, we suppress logs DURING rendering, but show them AFTER rendering completes
+  if (!GET_OPTION(quiet)) {
     // Write directly to stderr to ensure immediate visibility (bypass logging system buffering)
     const char *msg = "Mirror mode shutting down\n";
     (void)platform_write_all(STDERR_FILENO, msg, strlen(msg));
