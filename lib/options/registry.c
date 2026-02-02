@@ -193,6 +193,41 @@ static const char *g_audio_source_descs[] = {"Smart selection (media-only when p
 // LOGGING CATEGORY - Binary-level logging options
 // ============================================================================
 static const registry_entry_t g_logging_entries[] = {
+    // GENERAL GROUP (binary-level + all modes)
+    {"help",
+     'h',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "Show this help message and exit",
+     "GENERAL",
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY | OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY_SVC,
+     {0}},
+    {"version",
+     'v',
+     OPTION_TYPE_ACTION,
+     0,
+     NULL,
+     0,
+     "Show version information and exit",
+     "GENERAL",
+     NULL,
+     false,
+     NULL,
+     NULL,
+     NULL,
+     false,
+     false,
+     OPTION_MODE_BINARY,
+     {0}},
     // LOGGING GROUP (binary-level)
     {"log-file",
      'L',
@@ -1975,6 +2010,11 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
       } else if (strcmp(entry->long_name, "show-capabilities") == 0) {
         options_builder_add_action(builder, entry->long_name, entry->short_name, action_show_capabilities,
                                    entry->help_text, entry->group);
+      } else if (strcmp(entry->long_name, "help") == 0 || strcmp(entry->long_name, "version") == 0) {
+        // Help and version are handled specially in options.c, just add them for help display
+        // They don't have actual action functions - pass a dummy one
+        options_builder_add_action(builder, entry->long_name, entry->short_name, NULL, entry->help_text,
+                                   entry->group);
       }
       break;
     }

@@ -3081,14 +3081,23 @@ void options_config_print_options_sections_with_width(const options_config_t *co
   // For binary-level help, we now use a two-pass system to order groups,
   // ensuring binary-level option groups appear before discovery-mode groups.
   if (for_binary_help) {
-    // Pass 1: Collect groups with binary options (ensure LOGGING is first if present)
+    // Pass 1: Add GENERAL first, then LOGGING if present
+    bool general_added = false;
     bool logging_added = false;
     for (size_t i = 0; i < config->num_descriptors; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
-      if (desc->group && strcmp(desc->group, "LOGGING") == 0) {
-        unique_groups[num_unique_groups++] = "LOGGING";
-        logging_added = true;
-        break;
+      if (desc->group) {
+        if (!general_added && strcmp(desc->group, "GENERAL") == 0) {
+          unique_groups[num_unique_groups++] = "GENERAL";
+          general_added = true;
+        }
+        if (!logging_added && strcmp(desc->group, "LOGGING") == 0) {
+          unique_groups[num_unique_groups++] = "LOGGING";
+          logging_added = true;
+        }
+        if (general_added && logging_added) {
+          break;
+        }
       }
     }
 
@@ -3097,8 +3106,8 @@ void options_config_print_options_sections_with_width(const options_config_t *co
       const option_descriptor_t *desc = &config->descriptors[i];
       // An option applies if option_applies_to_mode says so for binary help (which checks OPTION_MODE_ALL)
       if (option_applies_to_mode(desc, mode, for_binary_help) && desc->group) {
-        // Skip LOGGING group if we already added it (for binary help)
-        if (logging_added && strcmp(desc->group, "LOGGING") == 0) {
+        // Skip GENERAL and LOGGING groups if we already added them (for binary help)
+        if (strcmp(desc->group, "GENERAL") == 0 || strcmp(desc->group, "LOGGING") == 0) {
           continue;
         }
 
