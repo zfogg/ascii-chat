@@ -126,8 +126,9 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                  parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
-  static const char *server_examples[] = {"localhost", "ascii-chat.com", "0.0.0.0",
-                                          "::",        "0.0.0.0 ::",     ":: 192.168.1.100"};
+  static const char *server_examples[] = {
+      "localhost",       "ascii-chat.com", "0.0.0.0", "::", "0.0.0.0 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598",
+      ":: 192.168.1.100"};
   options_builder_add_positional(b, "bind-address",
                                  "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
                                  false, "POSITIONAL ARGUMENTS:", server_examples, 6,
