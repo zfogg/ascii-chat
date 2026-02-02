@@ -61,9 +61,10 @@ static const int g_rainbow_colors[] = {
  * @brief Animation state for intro splash
  */
 static struct {
-  _Atomic(bool) is_running;  // true while animation should continue
-  _Atomic(bool) should_stop; // set to true when first frame ready
-  int frame;                 // current animation frame
+  _Atomic(bool) is_running;       // true while animation should continue
+  _Atomic(bool) should_stop;      // set to true when first frame ready
+  int frame;                      // current animation frame
+  asciichat_thread_t anim_thread; // animation thread handle
 } g_splash_state = {.is_running = false, .should_stop = false, .frame = 0};
 
 // ============================================================================
@@ -166,34 +167,18 @@ bool splash_should_display(bool is_intro) {
   }
 }
 
-int splash_intro_start(session_display_ctx_t *ctx) {
-  (void)ctx; // Parameter not used currently
-
-  // Pre-checks
-  if (!splash_should_display(true)) {
-    return 0; // ASCIICHAT_OK equivalent
-  }
-
-  // Check terminal size
-  int width = GET_OPTION(width);
-  int height = GET_OPTION(height);
-  if (width < 50 || height < 20) {
+/**
+ * @brief Build splash screen buffer with centered content
+ * @param buffer Output buffer
+ * @param buf_size Buffer size
+ * @param width Terminal width
+ * @param height Terminal height
+ * @return Number of bytes written
+ */
+static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int height) {
+  if (!buffer || buf_size < 100) {
     return 0;
   }
-
-  // Clear screen and display splash
-  terminal_clear_screen();
-  fflush(stdout);
-
-  // Set running flag for splash_intro_done() to check
-  atomic_store(&g_splash_state.is_running, true);
-  atomic_store(&g_splash_state.should_stop, false);
-  g_splash_state.frame = 0;
-
-  // Display splash frame immediately and return (non-blocking)
-  // The splash stays on screen while render loop initializes
-  // Use ASCII-only logo from help (52 chars wide, 4 lines)
-  char buffer[2048];
 
   // Calculate vertical padding for center
   int logo_height = 4;
@@ -205,7 +190,7 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Build the splash with centered content
   char *p = buffer;
-  size_t remaining = sizeof(buffer);
+  size_t remaining = buf_size;
 
   // Add vertical padding
   for (int i = 0; i < vert_pad && remaining > 1; i++) {
@@ -226,8 +211,11 @@ int splash_intro_start(session_display_ctx_t *ctx) {
       for (int j = 0; j < horiz_pad; j++) {
         *p++ = ' ';
       }
-      p += snprintf(p, remaining, "%s\n", ascii_logo[i]);
-      remaining = sizeof(buffer) - (p - buffer);
+      int n = snprintf(p, remaining, "%s\n", ascii_logo[i]);
+      if (n > 0) {
+        p += n;
+        remaining -= n;
+      }
     }
   }
 
@@ -245,26 +233,108 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     for (int j = 0; j < tagline_pad; j++) {
       *p++ = ' ';
     }
-    p += snprintf(p, remaining, "%s\n", tagline);
+    int n = snprintf(p, remaining, "%s\n", tagline);
+    if (n > 0) {
+      p += n;
+      remaining -= n;
+    }
   }
 
   // Ensure null termination
-  if (p - buffer < (int)sizeof(buffer)) {
+  if (remaining > 0) {
     *p = '\0';
   } else {
-    buffer[sizeof(buffer) - 1] = '\0';
+    buffer[buf_size - 1] = '\0';
   }
 
-  // Print splash to stdout with explicit flushing
-  fputs(buffer, stdout);
+  return p - buffer;
+}
+
+/**
+ * @brief Animation thread that displays splash with cycling rainbow colors
+ */
+static void *splash_animation_thread(void *arg) {
+  (void)arg;
+
+  int width = GET_OPTION(width);
+  int height = GET_OPTION(height);
+  char buffer[2048];
+
+  // Build splash buffer once
+  build_splash_buffer(buffer, sizeof(buffer), width, height);
+
+  // Animate with color cycling
+  int frame = 0;
+  const int anim_speed = 200; // milliseconds per frame
+
+  while (!atomic_load(&g_splash_state.should_stop)) {
+    // Get current color from rainbow cycle
+    int color_idx = frame % RAINBOW_COLOR_COUNT;
+    int color = g_rainbow_colors[color_idx];
+
+    // Clear and redraw splash with current color
+    terminal_clear_screen();
+
+    // Print colored splash
+    printf("\x1b[38;5;%dm", color); // ANSI 256-color code
+    fputs(buffer, stdout);
+    printf("\x1b[0m"); // Reset color
+
+    fflush(stdout);
+
+    // Move to next frame
+    frame++;
+
+    // Sleep to control animation speed
+    platform_sleep_ms(anim_speed);
+  }
+
+  atomic_store(&g_splash_state.is_running, false);
+  return NULL;
+}
+
+int splash_intro_start(session_display_ctx_t *ctx) {
+  (void)ctx; // Parameter not used currently
+
+  // Pre-checks
+  if (!splash_should_display(true)) {
+    return 0; // ASCIICHAT_OK equivalent
+  }
+
+  // Check terminal size
+  int width = GET_OPTION(width);
+  int height = GET_OPTION(height);
+  if (width < 50 || height < 20) {
+    return 0;
+  }
+
+  // Clear screen
+  terminal_clear_screen();
   fflush(stdout);
+
+  // Set running flag
+  atomic_store(&g_splash_state.is_running, true);
+  atomic_store(&g_splash_state.should_stop, false);
+  g_splash_state.frame = 0;
+
+  // Start animation thread
+  if (asciichat_thread_create(&g_splash_state.anim_thread, splash_animation_thread, NULL) != ASCIICHAT_OK) {
+    log_warn("Failed to create splash animation thread");
+    return 0;
+  }
 
   return 0; // ASCIICHAT_OK
 }
 
 int splash_intro_done(void) {
-  // Signal animation to stop
+  // Signal animation thread to stop
   atomic_store(&g_splash_state.should_stop, true);
+
+  // Wait for animation thread to finish
+  if (atomic_load(&g_splash_state.is_running)) {
+    asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+  }
+
   atomic_store(&g_splash_state.is_running, false);
 
   // Clear screen for next render
