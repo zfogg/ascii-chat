@@ -1049,7 +1049,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_flag_values,
     // NOTE: --quiet is now a global option, removed from this test
-    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-f"), true,
+    ARGV_LIST("client", "--audio", "--stretch", "--snapshot", "--encrypt", "--utf8", "--show-capabilities", "-g"), true,
     {
       // Test all flags were set
       cr_assert_eq(opts->audio_enabled, 1);
@@ -1077,7 +1077,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "snapshot delay should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_webcam_values, ARGV_LIST("client", "-c", "3", "-f"), true,
+    test_webcam_values, ARGV_LIST("client", "-c", "3", "-g"), true,
     {
       cr_assert_eq(opts->webcam_index, 3);
       cr_assert_eq(opts->webcam_flip, false);
@@ -1229,7 +1229,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "webcam index should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_webcam_flip_only, ARGV_LIST("client", "-f"), true,
+    test_webcam_flip_only, ARGV_LIST("client", "-g"), true,
     {
       cr_assert_eq(opts->webcam_index, 0); // Should remain default
       cr_assert_eq(opts->webcam_flip, false);
