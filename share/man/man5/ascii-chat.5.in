@@ -67,13 +67,37 @@ below for details. Used for GPG-based key authentication.
 .
 .SH CONFIG.TOML FORMAT
 The main configuration file uses TOML (Tom's Obvious, Minimal Language) syntax.
-Default locations are searched in order:
+Configuration files are searched in order and merged together (cascade semantics).
+This means multiple config files can be used, with user config taking precedence over system defaults.
+.
+.SS Search Order
+On Unix/Linux and macOS, the following locations are searched in order:
+.TP
+1.
 .B $XDG_CONFIG_HOME/ascii-chat/config.toml
-(usually ~/.config/ascii-chat/config.toml), then
+(usually ~/.config/ascii-chat/config.toml) - user config directory
+.TP
+2.
+.B /opt/homebrew/etc/ascii-chat/config.toml
+macOS Homebrew installation directory
+.TP
+3.
+.B /usr/local/etc/ascii-chat/config.toml
+Unix local installation directory
+.TP
+4.
 .B /etc/ascii-chat/config.toml
-for system-wide defaults on Unix systems, or
-%APPDATA%\[rs]ascii-chat\[rs]config.toml
-on Windows.
+system-wide defaults
+.
+On Windows, the following locations are searched in order:
+.TP
+1.
+.B %APPDATA%\[rs]ascii-chat\[rs]config.toml
+user configuration directory
+.TP
+2.
+.B %PROGRAMDATA%\[rs]ascii-chat\[rs]config.toml
+system-wide defaults
 .
 .SS Structure
 The file is organized into sections:
@@ -142,8 +166,15 @@ encrypt = true                        # Enable end-to-end encryption
 .fi
 .
 .SH COLORS.TOML FORMAT
-Color scheme configuration file using TOML syntax. Specifies RGB colors for
-different log levels in both dark and light mode variants.
+Custom color scheme configuration file using TOML syntax. Specifies RGB colors for
+different message log levels in both dark and light mode variants. The colors.toml file
+uses override semantics, meaning only the first matching color scheme file in the search
+path is loaded (user schemes take precedence over system-wide defaults).
+This file is optional; ascii-chat includes several built-in color schemes that can be
+selected with the
+.B --color-scheme
+command-line option.
+Custom color schemes are stored alongside config.toml using the same search path.
 .
 .SS Structure
 .TP
