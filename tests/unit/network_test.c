@@ -45,8 +45,10 @@ asciichat_error_t parse_size_message(const char *message, unsigned short *width,
   unsigned int w, h;
   asciichat_error_t result = safe_parse_size_message(message, &w, &h);
   if (result == ASCIICHAT_OK) {
-    *width = (unsigned short)w;
-    *height = (unsigned short)h;
+    if (width)
+      *width = (unsigned short)w;
+    if (height)
+      *height = (unsigned short)h;
   }
   return result;
 }
