@@ -3494,6 +3494,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
           *dst = '\0';
           // Use layout_print_wrapped_description to handle proper width calculation with ANSI codes
           layout_print_wrapped_description(desc, colored_output, 0, 70);
+          fprintf(desc, "\n");
         } else {
           fprintf(desc, "%s\n", section->content);
         }
