@@ -472,7 +472,8 @@ int mirror_main(void) {
   // Clean up webcam resources and cached images (test pattern, etc.)
   webcam_cleanup();
 
-  log_set_terminal_output(false);
+  // Re-enable terminal output for shutdown logging
+  log_set_terminal_output(true);
 
   // Disable keepawake mode (re-allow OS to sleep)
   log_debug("mirror_main: disabling keepawake");
@@ -481,10 +482,11 @@ int mirror_main(void) {
   // Always show shutdown message unless --quiet is set
   // In snapshot mode, we suppress logs DURING rendering, but show them AFTER rendering completes
   if (!GET_OPTION(quiet)) {
-    // Write directly to stderr to ensure immediate visibility (bypass logging system buffering)
-    const char *msg = "Mirror mode shutting down\n";
-    (void)platform_write_all(STDERR_FILENO, msg, strlen(msg));
+    log_info("Mirror mode shutting down");
   }
+
+  // Disable logging before final cleanup
+  log_set_terminal_output(false);
 
   // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
   if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
