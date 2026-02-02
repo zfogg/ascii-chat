@@ -1182,15 +1182,8 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to file: %s", config_path_expanded);
     }
   } else {
-    // No filepath provided - write buffer to stdout with proper buffering handling
-    size_t written = 0;
-    while (written < builder.size) {
-      ssize_t result = platform_write(STDOUT_FILENO, (const char *)builder.buffer + written, builder.size - written);
-      if (result <= 0) {
-        return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to write config to stdout");
-      }
-      written += (size_t)result;
-    }
+    // No filepath provided - write buffer to stdout with automatic retry on transient errors
+    (void)platform_write_all(STDOUT_FILENO, builder.buffer, builder.size);
     // Flush C stdio buffer and terminal to ensure piped output is written immediately
     (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);

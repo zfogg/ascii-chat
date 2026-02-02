@@ -325,15 +325,9 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   size_t frame_len = strlen(frame);
-  size_t written = 0;
-  while (written < frame_len) {
-    ssize_t result = platform_write(STDOUT_FILENO, frame + written, frame_len - written);
-    if (result <= 0) {
-      SET_ERRNO(ERROR_TERMINAL, "Failed to write ASCII frame");
-      return ERROR_TERMINAL;
-    }
-    written += (size_t)result;
-  }
+  // Write all frame data with automatic retry on transient errors
+  (void)platform_write_all(STDOUT_FILENO, frame, frame_len);
+
   // Flush C stdio buffer and terminal to ensure piped output is written immediately
   (void)fflush(stdout);
   (void)terminal_flush(STDOUT_FILENO);

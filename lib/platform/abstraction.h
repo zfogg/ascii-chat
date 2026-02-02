@@ -701,6 +701,25 @@ void platform_sleep_usec(unsigned int usec);
  */
 ssize_t platform_write(int fd, const void *buf, size_t count);
 
+/**
+ * @brief Write all data to file descriptor with automatic retry on transient errors
+ *
+ * Handles incomplete writes and transient errors (EAGAIN, EWOULDBLOCK) by retrying
+ * until all data is written or a maximum number of attempts is reached. This is the
+ * preferred way to write data that must complete, such as frame data or critical output.
+ *
+ * @param fd File descriptor to write to
+ * @param buf Buffer containing data to write
+ * @param count Number of bytes to write
+ * @return Number of bytes written on success (should equal count if all data written),
+ *         or -1 if write failed completely after retries
+ *
+ * @note This function retries up to 1000 times on transient errors, suitable for
+ *       high-load scenarios including piped output to tools like tee
+ * @ingroup platform
+ */
+size_t platform_write_all(int fd, const void *buf, size_t count);
+
 /** @} */
 
 // ============================================================================

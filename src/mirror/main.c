@@ -174,14 +174,14 @@ static bool mirror_display_should_exit_adapter(void *user_data) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
-  log_info("Starting mirror mode");
-
-  // CRITICAL FIX: When stdout is piped, disable ALL terminal output to prevent buffered output
-  // from corrupting the ASCII frame stream. Any log messages that would normally write to terminal
-  // must be suppressed to keep stdout clean for piped output.
+  // CRITICAL FIX: Disable terminal logging BEFORE any logging happens when stdout is piped
+  // This prevents buffered log output from corrupting the ASCII frame stream
   if (!platform_isatty(STDOUT_FILENO)) {
-    log_set_terminal_output(false);
+    log_set_force_stderr(true);     // Force ALL logs to stderr, not stdout
+    log_set_terminal_output(false); // Then disable terminal output entirely
   }
+
+  log_info("Starting mirror mode");
 
   // Handle keepawake: check for mutual exclusivity and apply mode default
   // Mirror default: keepawake ENABLED (use --no-keepawake to disable)
@@ -488,15 +488,7 @@ int mirror_main(void) {
   // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
   if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
     const char newline = '\n';
-    size_t written = 0;
-    while (written < 1) {
-      ssize_t result = platform_write(STDOUT_FILENO, &newline + written, 1 - written);
-      if (result <= 0) {
-        SET_ERRNO(ERROR_TERMINAL, "Failed to write newline to terminal");
-        break;
-      }
-      written += (size_t)result;
-    }
+    (void)platform_write_all(STDOUT_FILENO, &newline, 1);
   }
 
   return 0;

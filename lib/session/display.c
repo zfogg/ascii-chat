@@ -380,61 +380,23 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // TTY mode: send clear codes then frame data
     // CRITICAL: Ensure clear codes write completely before frame data to avoid cursor misalignment
     const char *clear = "\033[2J\033[H";
-    size_t clear_written = 0;
-    int clear_attempts = 0;
-    while (clear_written < 7 && clear_attempts < 100) {
-      ssize_t result = platform_write(STDOUT_FILENO, clear + clear_written, 7 - clear_written);
-      if (result > 0) {
-        clear_written += (size_t)result;
-        clear_attempts = 0;
-      } else {
-        clear_attempts++;
-      }
-    }
+    (void)platform_write_all(STDOUT_FILENO, clear, 7);
 
-    size_t written = 0;
-    int attempts = 0;
-    while (written < frame_len && attempts < 1000) {
-      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
-      if (result > 0) {
-        written += (size_t)result;
-        attempts = 0;
-      } else {
-        attempts++;
-      }
-    }
+    (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
     (void)fflush(stdout); // Flush after TTY frame write
   } else {
     // Piped mode (both snapshot and continuous): render every frame WITHOUT cursor control
     // Snapshot mode: renders all frames during the snapshot window at live speed
     // Continuous mode: renders frames indefinitely
     // Both use line buffering to flush at newlines for live streaming
-    size_t written = 0;
-    int attempts = 0;
-    while (written < frame_len && attempts < 1000) {
-      ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
-      if (result > 0) {
-        written += (size_t)result;
-        attempts = 0;
-      } else {
-        attempts++;
-      }
-    }
-    // Add newline using thread-safe console lock with proper write loop
+    (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
+
+    // Add newline using thread-safe console lock for proper synchronization
     bool prev_lock_state = log_lock_terminal();
     const char newline = '\n';
-    size_t newline_written = 0;
-    int newline_attempts = 0;
-    while (newline_written < 1 && newline_attempts < 100) {
-      ssize_t result = platform_write(STDOUT_FILENO, &newline + newline_written, 1 - newline_written);
-      if (result > 0) {
-        newline_written += (size_t)result;
-        newline_attempts = 0;
-      } else {
-        newline_attempts++;
-      }
-    }
+    (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     log_unlock_terminal(prev_lock_state);
+
     // Flush C stdio buffer and terminal to ensure piped output is written immediately
     (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
@@ -457,23 +419,11 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
     fd = STDOUT_FILENO;
   }
 
-  // Write all data with retry on transient errors (EAGAIN, EWOULDBLOCK)
-  // Retry logic ensures complete writes even under high load or when piping
-  size_t written_total = 0;
-  int attempts = 0;
-  while (written_total < len && attempts < 1000) {
-    ssize_t written = platform_write(fd, data + written_total, len - written_total);
+  // Write all data with automatic retry on transient errors
+  (void)platform_write_all(fd, data, len);
 
-    if (written > 0) {
-      written_total += written;
-      attempts = 0;
-      // Flush immediately after each write to TTY to ensure data is sent
-      (void)terminal_flush(fd);
-    } else {
-      // Retry on transient errors instead of breaking immediately
-      attempts++;
-    }
-  }
+  // Flush immediately after write to TTY to ensure data is sent
+  (void)terminal_flush(fd);
 }
 
 void session_display_reset(session_display_ctx_t *ctx) {
