@@ -26,7 +26,9 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol docs](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**.
 
-🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work, audio isn't crisp)
+🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work)
+
+🆕 Media files and URLS are now supported via ffmpeg, with special YouTube support via yt-dlp. You can turn any format ffmpeg supports into ascii art, including animated gifs. You can use ascii-chat to watch any youtube video or other files or internet video streams by simply passing the file or url to ascii-chat, and you can livestream the result with audio into an ascii-chat call. This means you could stream a video from YouTube into a call and discuss it live with your friends, all as ascii art.
 
 📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
 
@@ -154,7 +156,7 @@ Common development targets (run with `cmake --build build --target <name>`):
 | `package`                                                                 | Create platform-specific installer packages                                                                                                                   |
 | `package-tar`, `package-deb`, `package-rpm`, `package-dmg`, `package-zip` | Create specific package formats (`.tar.gz` on Unix/Linux, `.deb` on Debian/Ubuntu, `.rpm` on RedHat/Fedora, `.dmg` on macOS, `.zip` on Windows/all platforms) |
 
-## Usage
+## Usage and --flags
 
 ascii-chat uses a unified binary with four modes: `server`, `client`, `mirror`, and `discovery-service`.
 
@@ -225,11 +227,14 @@ See **[ascii-chat.com/crypto](https://ascii-chat.com/crypto)** for complete cryp
 
 ## Environment Variables
 
-See **[ascii-chat.com/env](https://ascii-chat.com/env)** for complete environment variable documentation.
+See **[ascii-chat.com/man1/#ENVIRONMENT](https://www.ascii-chat.com/man1#ENVIRONMENT)** for complete environment variable documentation.
 
 ## ascii-chat Internet Protocol (ACIP)
 
-> 📡 **Protocol Reference: [Network Protocol Documentation](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**
+- 📡 **User Network Documentation: [ascii-chat.com/docs/network](https://www.ascii-chat.com/docs/network)**
+- 📡 **Developer Protocol API Reference: [Doxygen network protocol documentation](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**
+
+Regular users see the first link. Developers see the second link also.
 
 ### Philosophy
 
@@ -249,35 +254,7 @@ Single packets contain complete ASCII/image frames (no app-layer fragmentation).
 
 ### Why ACIP
 
-The protocol is efficient (20-byte headers, binary), reliable (TCP handles packet loss/ordering), encrypted by default, and extensible (new packet types don't break old clients). It understands terminal capabilities like color depth and dimensions. The server mixes video/audio from multiple clients. Implementation is ~3000 lines of C in `lib/network/`.
-
-### Technical Details
-
-**Packet Structure:**
-
-```c
-typedef struct {
-    uint32_t magic;     // 0xDEADBEEF - packet validation
-    uint16_t type;      // packet_type_t enum
-    uint32_t length;    // payload size in bytes
-    uint32_t crc32;     // CRC32C checksum (hardware accelerated)
-    uint32_t client_id; // source client (0 = server)
-} __attribute__((packed)) packet_header_t;
-```
-
-**Packet Types:**
-
-- `PACKET_TYPE_ASCII_FRAME` - Server→Client complete ASCII frame
-- `PACKET_TYPE_IMAGE_FRAME` - Client→Server complete RGB image
-- `PACKET_TYPE_AUDIO` / `PACKET_TYPE_AUDIO_BATCH` - Audio samples
-- `PACKET_TYPE_CLIENT_CAPABILITIES` - Terminal info
-- `PACKET_TYPE_CLIENT_JOIN` / `PACKET_TYPE_CLIENT_LEAVE` - Session management
-- `PACKET_TYPE_STREAM_START` / `PACKET_TYPE_STREAM_STOP` - Media control
-- `PACKET_TYPE_SERVER_STATE` - Session state updates
-- `PACKET_TYPE_PING` / `PACKET_TYPE_PONG` - Keepalive
-- `PACKET_TYPE_CLEAR_CONSOLE` - Terminal reset
-
-The protocol is **fully documented** in the [Network Protocol Reference](https://zfogg.github.io/ascii-chat/group__network.html#topic_network) with packet formats, state machines, and implementation notes.
+The protocol is efficient (20-byte headers, binary), reliable (TCP handles packet loss/ordering), encrypted by default, and extensible (new packet types don't break old clients). It understands terminal capabilities like color depth and dimensions. The server mixes video/audio from multiple clients. Implementation is ~4-5k lines of C in `lib/network/`.
 
 ## ascii-chat Discovery Service (ACDS)
 
