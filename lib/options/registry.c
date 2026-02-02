@@ -2013,8 +2013,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
       } else if (strcmp(entry->long_name, "help") == 0 || strcmp(entry->long_name, "version") == 0) {
         // Help and version are handled specially in options.c, just add them for help display
         // They don't have actual action functions - pass a dummy one
-        options_builder_add_action(builder, entry->long_name, entry->short_name, NULL, entry->help_text,
-                                   entry->group);
+        options_builder_add_action(builder, entry->long_name, entry->short_name, NULL, entry->help_text, entry->group);
       }
       break;
     }
