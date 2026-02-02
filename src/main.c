@@ -174,21 +174,24 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Detect terminal capabilities early so colored help output works
-  log_redetect_terminal_capabilities();
-  terminal_capabilities_t caps = detect_terminal_capabilities();
-  caps = apply_color_mode_override(caps);
-
   // Detect early if stdout is piped so we can route logs to stderr from the start
+  // This must be done BEFORE any logging, including terminal detection
   // This prevents log output from corrupting piped frame data during initialization
   bool stdout_is_piped = !platform_isatty(STDOUT_FILENO);
 
-  // Initialize logging early so options parsing can log errors
+  // Initialize logging early so options parsing and terminal detection can log errors to stderr
   // Use generic filename for now; will be replaced with mode-specific filename once mode is detected
   // This will be reconfigured first in options_init() with mode-specific name,
   // then again in asciichat_shared_init() with final settings from parsed options
-  // Pass stdout_is_piped so logs go to stderr during initialization if needed
-  log_init("ascii-chat.log", LOG_INFO, stdout_is_piped, false);
+  // When piped, suppress DEBUG logs entirely to avoid corrupting frame data with debug output
+  log_level_t init_log_level = stdout_is_piped ? LOG_INFO : LOG_DEBUG;
+  log_init("ascii-chat.log", init_log_level, stdout_is_piped, false);
+
+  // Detect terminal capabilities early so colored help output works
+  // With force_stderr already set, these logs go to stderr, not stdout
+  log_redetect_terminal_capabilities();
+  terminal_capabilities_t caps = detect_terminal_capabilities();
+  caps = apply_color_mode_override(caps);
 
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY

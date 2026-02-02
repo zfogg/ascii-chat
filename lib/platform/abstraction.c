@@ -5,6 +5,7 @@
  * @brief 🏗️ Common platform abstraction stubs (OS-specific code in posix/ and windows/ subdirectories)
  */
 
+#include <errno.h>
 #include "terminal.h"
 #include "abstraction.h"
 #include "../options/options.h"
@@ -50,9 +51,19 @@ size_t platform_write_all(int fd, const void *buf, size_t count) {
     if (result > 0) {
       written_total += (size_t)result;
       attempts = 0; // Reset attempt counter on successful write
+    } else if (result < 0) {
+      // Write error - log it but keep retrying
+      log_warn("platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)", fd, written_total, count,
+               errno);
+      attempts++;
     } else {
+      // result == 0: no bytes written, retry
       attempts++;
     }
+  }
+
+  if (attempts >= MAX_ATTEMPTS && written_total < count) {
+    log_warn("platform_write_all: Hit retry limit on fd=%d: wrote %zu of %zu bytes", fd, written_total, count);
   }
 
   return written_total;

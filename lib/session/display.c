@@ -378,17 +378,14 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   if (use_tty_control) {
     // TTY mode: send clear codes then frame data
-    // CRITICAL: Ensure clear codes write completely before frame data to avoid cursor misalignment
+    // Ensure clear codes write completely before frame data to avoid cursor misalignment
     const char *clear = "\033[2J\033[H";
     (void)platform_write_all(STDOUT_FILENO, clear, 7);
-
     (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
-    (void)fflush(stdout); // Flush after TTY frame write
+    (void)terminal_flush(STDOUT_FILENO);
   } else {
-    // Piped mode (both snapshot and continuous): render every frame WITHOUT cursor control
-    // Snapshot mode: renders all frames during the snapshot window at live speed
-    // Continuous mode: renders frames indefinitely
-    // Both use line buffering to flush at newlines for live streaming
+    // Piped mode: render every frame WITHOUT cursor control
+    // Use direct fd writes only - no stdio buffering to avoid out-of-order writes
     (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
 
     // Add newline using thread-safe console lock for proper synchronization
@@ -397,12 +394,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     log_unlock_terminal(prev_lock_state);
 
-    // Flush C stdio buffer and terminal to ensure piped output is written immediately
-    (void)fflush(stdout);
+    // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
-    // Force filesystem sync to ensure tee's buffer is written to disk
-    // This prevents race conditions where tail reads file before tee has flushed
-    (void)fsync(STDOUT_FILENO);
   }
 }
 

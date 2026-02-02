@@ -118,6 +118,10 @@ asciichat_error_t asciichat_shared_init(bool is_client) {
     // Register colors shutdown to free all ANSI code strings (before memory report)
     (void)atexit(colorscheme_shutdown);
 
+    // Register keyboard cleanup to restore terminal settings on exit
+    extern void keyboard_cleanup(void);
+    (void)atexit(keyboard_cleanup);
+
     // Initialize platform-specific functionality (Winsock, etc)
     if (platform_init() != ASCIICHAT_OK) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");

@@ -95,12 +95,15 @@ void keyboard_cleanup(void) {
     return;
   }
 
-  g_keyboard_init_refcount--;
-  static_mutex_unlock(&g_keyboard_init_mutex);
+  g_keyboard_init_refcount = 0;
 
-  // Note: Do NOT restore terminal settings here - tcsetattr() causes terminal
-  // to clear or reset display even with TCSADRAIN/TCSAFLUSH, corrupting snapshot output.
-  // The shell will restore terminal settings when the process exits.
+  // Restore original terminal settings to prevent corrupting subsequent shell commands
+  // This is safe to call at process exit time after all output is complete
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_original_termios) < 0) {
+    // Silently ignore errors during cleanup
+  }
+
+  static_mutex_unlock(&g_keyboard_init_mutex);
 }
 
 keyboard_key_t keyboard_read_nonblocking(void) {
