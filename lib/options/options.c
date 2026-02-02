@@ -1391,6 +1391,20 @@ asciichat_error_t options_init(int argc, char **argv) {
     log_debug("Auto-disabled encryption because --no-encrypt was provided");
   }
 
+  // Color filter validation and auto-enable
+  if (opts.color_filter != COLOR_FILTER_NONE) {
+    // Color filter requires color to be enabled
+    if (opts.color == COLOR_SETTING_FALSE) {
+      log_error("Error: --color-filter cannot be used with --color=false");
+      options_config_destroy(config);
+      SAFE_FREE(allocated_mode_argv);
+      return option_error_invalid();
+    }
+    // Auto-enable color when color filter is specified
+    opts.color = COLOR_SETTING_TRUE;
+    log_debug("Auto-enabled color because --color-filter was provided");
+  }
+
   // Validate options
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {
