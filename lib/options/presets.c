@@ -174,6 +174,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                               true);
 
   // Add examples for server mode
+  // Mode name is auto-generated from OPTION_MODE_SERVER bitmask
+  options_builder_add_example(b, OPTION_MODE_SERVER, NULL, "Run as dedicated server", false);
   options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0", "Start on all IPv4 interfaces", false);
   options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)",
                               false);
@@ -182,8 +184,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                               "Start with identity key and discovery registration", false);
 
   // Add examples for client mode
+  // Mode name is auto-generated from OPTION_MODE_CLIENT bitmask
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to specific server", false);
-  options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com", "Connect to remote server", false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "example.com:8080", "Connect to remote server on custom port",
                               false);
   options_builder_add_example(b, OPTION_MODE_CLIENT, "--url 'https://youtu.be/7ynHVGCehoM'",
@@ -196,6 +198,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_example(b, OPTION_MODE_CLIENT, "--snapshot", "Capture single frame and exit", false);
 
   // Add examples for mirror mode
+  // Mode name is auto-generated from OPTION_MODE_MIRROR bitmask
   options_builder_add_example(
       b, OPTION_MODE_MIRROR, NULL,
       "View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.",
@@ -221,6 +224,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                       "View ASCII frame from clipboard (macOS)", true);
 
   // Add examples for discovery-service mode
+  // Mode name is auto-generated from OPTION_MODE_DISCOVERY_SVC bitmask
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "0.0.0.0", "Start on all IPv4 interfaces", false);
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--port 5000", "Start on custom port", false);
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--require-server-identity --require-client-identity",

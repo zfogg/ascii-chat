@@ -2178,6 +2178,47 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
 // ============================================================================
 
 /**
+ * @brief Get mode name from mode bitmask
+ *
+ * Converts an OPTION_MODE_* bitmask to a mode name string.
+ * For example: OPTION_MODE_SERVER -> "server", OPTION_MODE_CLIENT -> "client"
+ *
+ * Special cases:
+ * - Binary-level examples (OPTION_MODE_BINARY) don't get a mode name
+ * - Discovery mode examples don't render mode name (treated like binary)
+ *
+ * @param mode_bitmask The mode bitmask (OPTION_MODE_SERVER, OPTION_MODE_CLIENT, etc.)
+ * @return Mode name string (e.g., "server", "client", "mirror"), or NULL for binary/discovery
+ */
+static const char *get_mode_name_from_bitmask(uint32_t mode_bitmask) {
+  // Skip binary-only examples (OPTION_MODE_BINARY = 0x100)
+  if (mode_bitmask & OPTION_MODE_BINARY && !(mode_bitmask & 0x1F)) {
+    return NULL; // Binary-level example, no mode name to prepend
+  }
+
+  // Skip discovery mode (renders like binary app with flags, no mode prefix)
+  if (mode_bitmask == OPTION_MODE_DISCOVERY) {
+    return NULL;
+  }
+
+  // Map individual mode bits to mode names (checked in priority order)
+  if (mode_bitmask & OPTION_MODE_SERVER) {
+    return "server";
+  }
+  if (mode_bitmask & OPTION_MODE_CLIENT) {
+    return "client";
+  }
+  if (mode_bitmask & OPTION_MODE_MIRROR) {
+    return "mirror";
+  }
+  if (mode_bitmask & OPTION_MODE_DISCOVERY_SVC) {
+    return "discovery-service";
+  }
+
+  return NULL; // Unknown or no specific mode
+}
+
+/**
  * @brief Calculate global max column width across all help sections
  *
  * Calculates the maximum width needed for proper alignment across
@@ -2232,6 +2273,12 @@ int options_config_calculate_max_col_width(const options_config_t *config) {
     // Only prepend program name if this is not a utility command
     if (!example->is_utility_command) {
       len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, "%s", binary_name);
+
+      // Programmatically add mode name based on mode_bitmask
+      const char *mode_name = get_mode_name_from_bitmask(example->mode_bitmask);
+      if (mode_name) {
+        len += safe_snprintf(temp_buf + len, sizeof(temp_buf) - len, " %s", mode_name);
+      }
     }
 
     if (example->args) {
@@ -2626,6 +2673,12 @@ static void print_examples_section(const options_config_t *config, FILE *stream,
     // Only add binary name if this is not a utility command
     if (!example->is_utility_command) {
       len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, "%s", binary_name);
+
+      // Programmatically add mode name based on mode_bitmask
+      const char *mode_name = get_mode_name_from_bitmask(example->mode_bitmask);
+      if (mode_name) {
+        len += safe_snprintf(cmd_buf + len, sizeof(cmd_buf) - len, " %s", colored_string(LOG_COLOR_FATAL, mode_name));
+      }
     }
 
     // Add args/flags if present (flags=yellow, arguments=green, utility programs=white)
