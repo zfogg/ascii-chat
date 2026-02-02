@@ -137,21 +137,21 @@ For detailed build instructions, configuration options, and troubleshooting, see
 
 Common development targets (run with `cmake --build build --target <name>`):
 
-| Target | Description |
-|--------|-------------|
-| `ascii-chat` | Build the main executable (default) |
-| `shared-lib` | Build shared library (`libasciichat.so`/`.dylib`/`.dll`) |
-| `static-lib` | Build static library (`libasciichat.a`) |
-| `tests` | Build and run all unit and integration tests |
-| `man1` | Generate man page for `ascii-chat(1)` |
-| `completions` | Generate shell completions (bash, fish, zsh, powershell) |
-| `docs` | Generate API documentation with Doxygen |
-| `docs-open` | Generate documentation and open in browser |
-| `format` | Format all C/C++ code with clang-format |
-| `format-check` | Check code formatting without modifying files |
-| `scan-build` | Run Clang static analyzer with detailed reports |
-| `scan-build-view` | Run Clang analyzer and open report in browser |
-| `package` | Create platform-specific installer packages |
+| Target                                                                    | Description                                                                                                                                                   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ascii-chat`                                                              | Build the main executable (default)                                                                                                                           |
+| `shared-lib`                                                              | Build shared library (`libasciichat.so`/`.dylib`/`.dll`)                                                                                                      |
+| `static-lib`                                                              | Build static library (`libasciichat.a`)                                                                                                                       |
+| `tests`                                                                   | Build and run all unit and integration tests                                                                                                                  |
+| `man1`                                                                    | Generate man page for `ascii-chat(1)`                                                                                                                         |
+| `completions`                                                             | Generate shell completions (bash, fish, zsh, powershell)                                                                                                      |
+| `docs`                                                                    | Generate API documentation with Doxygen                                                                                                                       |
+| `docs-open`                                                               | Generate documentation and open in browser                                                                                                                    |
+| `format`                                                                  | Format all C/C++ code with clang-format                                                                                                                       |
+| `format-check`                                                            | Check code formatting without modifying files                                                                                                                 |
+| `scan-build`                                                              | Run Clang static analyzer with detailed reports                                                                                                               |
+| `scan-build-view`                                                         | Run Clang analyzer and open report in browser                                                                                                                 |
+| `package`                                                                 | Create platform-specific installer packages                                                                                                                   |
 | `package-tar`, `package-deb`, `package-rpm`, `package-dmg`, `package-zip` | Create specific package formats (`.tar.gz` on Unix/Linux, `.deb` on Debian/Ubuntu, `.rpm` on RedHat/Fedora, `.dmg` on macOS, `.zip` on Windows/all platforms) |
 
 ## Usage
@@ -168,20 +168,25 @@ ascii-chat mirror --help               # Mirror-specific help
 ascii-chat discovery-service --help     # Discovery-service-specific help
 ```
 
-**Read the manual:**
+**Read the installed manual:**
 
 ```bash
-man ascii-chat                         # Full manual page
+man 1 ascii-chat       # Main manual page
+man 5 ascii-chat       # File formats
 ```
 
-Or create it from source:
+**Or create it from source:**
 
 ```bash
-cmake --build build --target man1
-man build/share/man/man1/ascii-chat.1
+cmake --build build --target man1 --target man5
+man build/share/man/man1/ascii-chat.1     # Main manual page
+man build/share/man/man5/ascii-chat.5     # File formats
 ```
 
-Or view online: **[ascii-chat.com/man](https://ascii-chat.com/man)**
+**Or view online:**
+
+- [ascii-chat.com/man1](https://ascii-chat.com/man1)
+- [ascii-chat.com/man5](https://ascii-chat.com/man5)
 
 **Shell Completions:**
 
