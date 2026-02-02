@@ -404,58 +404,52 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     return ASCIICHAT_OK;
   }
 
-  // If stdout is NOT a TTY (redirected to file/pipe), skip ALL TTY-based checks
-  // (stdin/stderr ioctl, /dev/tty, and environment variables that represent parent TTY)
-  if (!stdout_is_tty) {
-    log_debug("POSIX: stdout is redirected (not a TTY), using hardcoded defaults");
-    // Jump directly to hardcoded defaults - don't use env vars that represent parent TTY
-  } else {
-    // Stdout IS a TTY: try stdin, stderr, and /dev/tty as fallbacks
+  // Try fallback methods regardless of whether stdout is a TTY
+  // This ensures we get the parent terminal size even when piping
 
-    // Method 2b: Try ioctl on stdin
-    if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+  // Method 2b: Try ioctl on stdin
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+    *width = ws.ws_col;
+    *height = ws.ws_row;
+    log_debug("POSIX terminal size from stdin ioctl: %dx%d", *width, *height);
+    return ASCIICHAT_OK;
+  }
+
+  // Method 2c: Try ioctl on stderr
+  if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+    *width = ws.ws_col;
+    *height = ws.ws_row;
+    log_debug("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
+    return ASCIICHAT_OK;
+  }
+
+  // Method 2d: Try opening /dev/tty directly
+  tty_fd = open("/dev/tty", O_RDONLY);
+  if (tty_fd >= 0) {
+    if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
       *width = ws.ws_col;
       *height = ws.ws_row;
-      log_debug("POSIX terminal size from stdin ioctl: %dx%d", *width, *height);
-      return ASCIICHAT_OK;
-    }
-
-    // Method 2c: Try ioctl on stderr
-    if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
-      *width = ws.ws_col;
-      *height = ws.ws_row;
-      log_debug("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
-      return ASCIICHAT_OK;
-    }
-
-    // Method 2d: Try opening /dev/tty directly
-    tty_fd = open("/dev/tty", O_RDONLY);
-    if (tty_fd >= 0) {
-      if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
-        *width = ws.ws_col;
-        *height = ws.ws_row;
-        close(tty_fd);
-        log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
-        return ASCIICHAT_OK;
-      }
       close(tty_fd);
+      log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
+      return ASCIICHAT_OK;
     }
+    close(tty_fd);
+  }
 
-    // Method 3: Environment variables (COLUMNS and LINES) - only for interactive terminals
-    lines_env = SAFE_GETENV("LINES");
-    cols_env = SAFE_GETENV("COLUMNS");
-    if (lines_env && cols_env) {
-      uint32_t env_height = 0, env_width = 0;
-      // Parse height and width with safe range validation (1 to USHRT_MAX)
-      if (parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
-          parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
-        *width = (unsigned short int)env_width;
-        *height = (unsigned short int)env_height;
-        log_debug("POSIX terminal size from env: %dx%d", *width, *height);
-        return ASCIICHAT_OK;
-      }
-      log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
+  // Method 3: Environment variables (COLUMNS and LINES)
+  lines_env = SAFE_GETENV("LINES");
+  cols_env = SAFE_GETENV("COLUMNS");
+  if (lines_env && cols_env) {
+    uint32_t env_height = 0, env_width = 0;
+    // Parse height and width with safe range validation (1 to USHRT_MAX)
+    if (parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
+        parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
+      *width = (unsigned short int)env_width;
+      *height = (unsigned short int)env_height;
+      log_debug("POSIX terminal size from env: %dx%d", *width, *height);
+      return ASCIICHAT_OK;
     }
+    log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
   }
 
   // Method 4: Default fallback (match OPT_WIDTH_DEFAULT and OPT_HEIGHT_DEFAULT)
