@@ -4,6 +4,8 @@ Video chat in your terminal
 
 🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
 
+📚 **[Doxygen Documentation](https://zfogg.github.io/ascii-chat/)** - Developer API reference, architecture guides, and more
+
 Probably the first command line video chat program (let me know if this isn't
 true). Initial commits _November 20-24, 2013_, with
 [@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon.
@@ -26,11 +28,9 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol docs](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**.
 
-🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work)
+🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work). Update: works with --file and --url.
 
-🆕 Media files and URLS are now supported via ffmpeg, with special YouTube support via yt-dlp. You can turn any format ffmpeg supports into ascii art, including animated gifs. You can use ascii-chat to watch any youtube video or other files or internet video streams by simply passing the file or url to ascii-chat, and you can livestream the result with audio into an ascii-chat call. This means you could stream a video from YouTube into a call and discuss it live with your friends, all as ascii art.
-
-📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
+🆕 --file and --url and YouTube support! Turning media via files and URLS into ascii art is now supported via ffmpeg, with special YouTube support via yt-dlp. You can now turn media from any format ffmpeg supports into ascii art, including animated gifs. You can use ascii-chat to watch or stream any youtube video or other files or internet video streams as ascii art by simply passing the file or url to ascii-chat with --file or --url, and you can livestream the result with audio into an ascii-chat call. This means you could stream a video from YouTube into a call and discuss it live with your friends, all as ascii art.
 
 \(\*) Testing needed to verify a decent framerate.
 
