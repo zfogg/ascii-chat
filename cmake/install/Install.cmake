@@ -237,9 +237,11 @@ if(WIN32)
         PATTERN "*/internal/*" EXCLUDE
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/posix/*" EXCLUDE
+        PATTERN "*/linux/*" EXCLUDE
+        PATTERN "*/macos/*" EXCLUDE
     )
-else()
-    # Unix/macOS: Install all headers except Windows-specific ones
+elseif(APPLE)
+    # macOS: Install all headers except Windows and Linux-specific ones
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
         DESTINATION include/ascii-chat
         COMPONENT Development
@@ -248,6 +250,19 @@ else()
         PATTERN "*/internal/*" EXCLUDE
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/windows/*" EXCLUDE
+        PATTERN "*/linux/*" EXCLUDE
+    )
+else()
+    # Linux: Install all headers except Windows and macOS-specific ones
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
+        DESTINATION include/ascii-chat
+        COMPONENT Development
+        FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*/internal/*" EXCLUDE
+        PATTERN "*/private/*" EXCLUDE
+        PATTERN "*/windows/*" EXCLUDE
+        PATTERN "*/macos/*" EXCLUDE
     )
 endif()
 
