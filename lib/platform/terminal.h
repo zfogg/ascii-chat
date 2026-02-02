@@ -454,6 +454,43 @@ typedef enum {
 } terminal_color_mode_t;
 
 /**
+ * @brief Monochromatic color filter enumeration
+ *
+ * Defines color filters for applying single-color tints to grayscale video.
+ * Filters are applied server-side; clients see each user in their chosen color.
+ *
+ * @ingroup platform
+ */
+typedef enum {
+  /** @brief No filtering (default) */
+  COLOR_FILTER_NONE = 0,
+  /** @brief Dark content on white background */
+  COLOR_FILTER_BLACK = 1,
+  /** @brief White content on black background */
+  COLOR_FILTER_WHITE = 2,
+  /** @brief Green (#00FF41) */
+  COLOR_FILTER_GREEN = 3,
+  /** @brief Magenta (#FF00FF) */
+  COLOR_FILTER_MAGENTA = 4,
+  /** @brief Fuchsia (#FF00AA) */
+  COLOR_FILTER_FUCHSIA = 5,
+  /** @brief Orange (#FF8800) */
+  COLOR_FILTER_ORANGE = 6,
+  /** @brief Teal (#00DDDD) */
+  COLOR_FILTER_TEAL = 7,
+  /** @brief Cyan (#00FFFF) */
+  COLOR_FILTER_CYAN = 8,
+  /** @brief Pink (#FFB6C1) */
+  COLOR_FILTER_PINK = 9,
+  /** @brief Red (#FF3333) */
+  COLOR_FILTER_RED = 10,
+  /** @brief Yellow (#FFEB99) */
+  COLOR_FILTER_YELLOW = 11,
+  /** @brief Total count of filters (not a valid filter) */
+  COLOR_FILTER_COUNT
+} color_filter_t;
+
+/**
  * @brief Terminal capability flags (bitmask)
  *
  * Bitmask enumeration for terminal capabilities. Multiple flags can be

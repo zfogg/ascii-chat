@@ -432,6 +432,9 @@ typedef enum {
 /** @brief Default color mode (auto-detect terminal capabilities) */
 #define OPT_COLOR_MODE_DEFAULT COLOR_MODE_AUTO
 
+/** @brief Default color filter (none - no filtering) */
+#define OPT_COLOR_FILTER_DEFAULT COLOR_FILTER_NONE
+
 /** @brief Default color scheme name (pastel) */
 #define OPT_COLOR_SCHEME_NAME_DEFAULT "pastel"
 
@@ -627,6 +630,7 @@ static const bool default_webcam_flip_value = OPT_WEBCAM_FLIP_DEFAULT;
 static const bool default_test_pattern_value = OPT_TEST_PATTERN_DEFAULT;
 static const int default_color_value = OPT_COLOR_DEFAULT;
 static const int default_color_mode_value = OPT_COLOR_MODE_DEFAULT;
+static const int default_color_filter_value = OPT_COLOR_FILTER_DEFAULT;
 static const int default_render_mode_value = OPT_RENDER_MODE_DEFAULT;
 static const int default_palette_type_value = OPT_PALETTE_TYPE_DEFAULT;
 static const bool default_show_capabilities_value = OPT_SHOW_CAPABILITIES_DEFAULT;
@@ -839,6 +843,7 @@ typedef struct options_state {
   // ============================================================================
   int color;                            ///< Color setting (COLOR_SETTING_AUTO/TRUE/FALSE)
   terminal_color_mode_t color_mode;     ///< Color mode (auto/none/16/256/truecolor)
+  color_filter_t color_filter;          ///< Monochromatic color filter (none/black/white/green/etc)
   char color_scheme_name[64];           ///< Color scheme name (e.g., "pastel", "nord")
   render_mode_t render_mode;            ///< Render mode (foreground/background/half-block)
   unsigned short int show_capabilities; ///< Show terminal capabilities and exit
