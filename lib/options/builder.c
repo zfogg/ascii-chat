@@ -1824,6 +1824,10 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
                                                      int argc, void *options_struct, option_mode_bitmask_t mode_bitmask,
                                                      int *consumed_count) {
   *consumed_count = 1;
+  // Validate argv_index is within bounds to prevent SIGBUS
+  if (argv_index < 0 || argv_index >= argc) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "argv_index %d out of bounds [0, %d)", argv_index, argc);
+  }
 
   const char *arg = argv[argv_index];
   char *long_opt_value = NULL;
@@ -3193,12 +3197,28 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     return;
   }
 
-  // Print ASCII art logo
-  (void)fprintf(desc, "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ \n");
-  (void)fprintf(desc, " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __|\n");
-  (void)fprintf(desc, "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ \n");
-  (void)fprintf(desc, " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__|\n");
-  (void)fprintf(desc, "\n");
+  // Detect terminal width early so we can decide whether to show ASCII art
+  int term_width = 80;
+  terminal_size_t term_size;
+  if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
+    term_width = term_size.cols;
+  } else {
+    const char *cols_env = SAFE_GETENV("COLUMNS");
+    if (cols_env) {
+      int cols = atoi(cols_env);
+      if (cols > 40)
+        term_width = cols;
+    }
+  }
+
+  // Print ASCII art logo only if terminal is wide enough (ASCII art is ~52 chars wide)
+  if (term_width >= 60) {
+    (void)fprintf(desc, "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ \n");
+    (void)fprintf(desc, " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __|\n");
+    (void)fprintf(desc, "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ \n");
+    (void)fprintf(desc, " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__|\n");
+    (void)fprintf(desc, "\n");
+  }
 
   // Print program name and description (color mode name magenta if it's a mode-specific help)
   if (program_name) {
@@ -3217,20 +3237,6 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   // Print project links
   print_project_links(desc);
   (void)fprintf(desc, "\n");
-
-  // Detect terminal width
-  int term_width = 80;
-  terminal_size_t term_size;
-  if (terminal_get_size(&term_size) == ASCIICHAT_OK && term_size.cols > 40) {
-    term_width = term_size.cols;
-  } else {
-    const char *cols_env = SAFE_GETENV("COLUMNS");
-    if (cols_env) {
-      int cols = atoi(cols_env);
-      if (cols > 40)
-        term_width = cols;
-    }
-  }
 
   // Determine if this is binary-level help (called for 'ascii-chat --help')
   // Binary help uses MODE_DISCOVERY as the mode value
