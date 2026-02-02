@@ -1191,9 +1191,8 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
       }
       written += (size_t)result;
     }
-    // Flush C stdio buffer BEFORE fsync to ensure all data is written immediately
+    // Flush C stdio buffer and terminal to ensure piped output is written immediately
     (void)fflush(stdout);
-    // Flush to ensure piped output is written immediately
     (void)terminal_flush(STDOUT_FILENO);
   }
 

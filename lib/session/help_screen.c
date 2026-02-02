@@ -17,6 +17,10 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 
+/* Color codes for enabled/disabled settings */
+#define ENABLED_COLOR LOG_COLOR_INFO   /* Green */
+#define DISABLED_COLOR LOG_COLOR_ERROR /* Red */
+
 /* ============================================================================
  * Help Screen Rendering
  * ============================================================================ */
@@ -225,9 +229,9 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     return;
   }
 
-  // Help screen box dimensions (must fit in small terminals - 24 line minimum)
-  const int box_width =
-      48; // Width of help content in display columns (22 rows total: border + title + nav + settings + footer)
+  // Help screen box dimensions (23 rows total: border + title + nav + blank + settings + blank + footer + border)
+  const int box_width = 48;  // Display columns
+  const int box_height = 23; // Total rows including borders
 
   // Calculate centering position
   // Horizontal centering
@@ -235,9 +239,12 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   if (start_col < 0) {
     start_col = 0;
   }
-  // Vertical positioning: always start near top to ensure entire box fits on screen
-  // Standard terminal is 24 rows, box is 22 rows, so start at row 1-2 to fit
-  int start_row = 1;
+
+  // Vertical centering
+  int start_row = (term_height - box_height) / 2;
+  if (start_row < 1) {
+    start_row = 1; // Never put at top of screen (leave room for prompts)
+  }
 
   // Build help screen content
   const size_t BUFFER_SIZE = 8192; // Increased from 4096 to ensure all content fits
@@ -305,16 +312,21 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   build_help_line(line_buf, sizeof(line_buf), "f       Flip webcam horizontally");
   APPEND("%s", line_buf);
 
-  // Current settings section
+  // Blank line before settings section
   APPEND("\033[%d;%dH", start_row + 12, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "");
+  APPEND("%s", line_buf);
+
+  // Current settings section
+  APPEND("\033[%d;%dH", start_row + 13, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "Current Settings:");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 13, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "───────────────");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 14, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "");
   APPEND("%s", line_buf);
 
@@ -332,41 +344,53 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   // Get string values
   const char *color_str = color_mode_to_string(current_color_mode);
   const char *render_str = render_mode_to_string(current_render_mode);
-  const char *flip_text = current_flip ? "Flipped" : "Normal";
-  const char *audio_text = current_audio ? "Enabled" : "Disabled";
+
+  // Create colored strings for boolean values
+  // Webcam flip state (Flipped = enabled, Normal = disabled)
+  const char *flip_text =
+      current_flip ? colored_string(ENABLED_COLOR, "Flipped") : colored_string(DISABLED_COLOR, "Normal");
+
+  // Audio state (Enabled = green, Disabled = red)
+  const char *audio_text =
+      current_audio ? colored_string(ENABLED_COLOR, "Enabled") : colored_string(DISABLED_COLOR, "Disabled");
 
   // Build settings lines with UTF-8 width-aware padding
-  APPEND("\033[%d;%dH", start_row + 15, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 16, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Color", color_str);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Render", render_str);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Webcam", flip_text);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
   APPEND("%s", line_buf);
 
+  // Blank line before footer
+  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+  build_help_line(line_buf, sizeof(line_buf), "");
+  APPEND("%s", line_buf);
+
   // Footer
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "Press ? to close");
   APPEND("%s", line_buf);
 
   // Bottom border
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
   APPEND("╚══════════════════════════════════════════════╝");
 
   // Cursor positioning after rendering
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
 
 #undef APPEND
 
