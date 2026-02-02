@@ -195,6 +195,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
 void session_display_destroy(session_display_ctx_t *ctx) {
   if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
   }
 
@@ -221,6 +222,7 @@ void session_display_destroy(session_display_ctx_t *ctx) {
 
 bool session_display_has_tty(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return false;
   }
   return ctx->has_tty;
@@ -228,6 +230,7 @@ bool session_display_has_tty(session_display_ctx_t *ctx) {
 
 const terminal_capabilities_t *session_display_get_caps(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return NULL;
   }
   return &ctx->caps;
@@ -235,6 +238,7 @@ const terminal_capabilities_t *session_display_get_caps(session_display_ctx_t *c
 
 const char *session_display_get_palette_chars(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return NULL;
   }
   return ctx->palette_chars;
@@ -242,6 +246,7 @@ const char *session_display_get_palette_chars(session_display_ctx_t *ctx) {
 
 size_t session_display_get_palette_len(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return 0;
   }
   return ctx->palette_len;
@@ -249,6 +254,7 @@ size_t session_display_get_palette_len(session_display_ctx_t *ctx) {
 
 const char *session_display_get_luminance_palette(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return NULL;
   }
   return ctx->luminance_palette;
@@ -256,6 +262,7 @@ const char *session_display_get_luminance_palette(session_display_ctx_t *ctx) {
 
 int session_display_get_tty_fd(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p", ctx);
     return -1;
   }
   return ctx->tty_info.fd;
@@ -346,6 +353,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   // Calculate frame length
   size_t frame_len = strnlen(frame_data, 1024 * 1024); // Max 1MB frame
   if (frame_len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is empty");
     return;
   }
 
@@ -396,40 +404,49 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       }
     }
     (void)fflush(stdout); // Flush after TTY frame write
-  } else if (!ctx->has_tty) {
+  } else {
     // Piped mode (both snapshot and continuous): render every frame WITHOUT cursor control
     // Snapshot mode: renders all frames during the snapshot window at live speed
     // Continuous mode: renders frames indefinitely
     // Both use line buffering to flush at newlines for live streaming
     size_t written = 0;
-    while (written < frame_len) {
+    int attempts = 0;
+    while (written < frame_len && attempts < 1000) {
       ssize_t result = platform_write(STDOUT_FILENO, frame_data + written, frame_len - written);
-      if (result <= 0) {
-        break;
+      if (result > 0) {
+        written += (size_t)result;
+        attempts = 0;
+      } else {
+        attempts++;
       }
-      written += (size_t)result;
     }
     // Add newline using thread-safe console lock with proper write loop
     bool prev_lock_state = log_lock_terminal();
     const char newline = '\n';
     size_t newline_written = 0;
-    while (newline_written < 1) {
+    int newline_attempts = 0;
+    while (newline_written < 1 && newline_attempts < 100) {
       ssize_t result = platform_write(STDOUT_FILENO, &newline + newline_written, 1 - newline_written);
-      if (result <= 0) {
-        break;
+      if (result > 0) {
+        newline_written += (size_t)result;
+        newline_attempts = 0;
+      } else {
+        newline_attempts++;
       }
-      newline_written += (size_t)result;
     }
     log_unlock_terminal(prev_lock_state);
     // Flush C stdio buffer and terminal to ensure piped output is written immediately
     (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
-  } else {
+    // Force filesystem sync to ensure tee's buffer is written to disk
+    // This prevents race conditions where tail reads file before tee has flushed
+    (void)fsync(STDOUT_FILENO);
   }
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
   if (!ctx || !ctx->initialized || !data || len == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, data=%p, len=%zu", ctx, data, len);
     return;
   }
 
@@ -458,6 +475,7 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
 
 void session_display_reset(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
     return;
   }
 
@@ -476,6 +494,7 @@ void session_display_reset(session_display_ctx_t *ctx) {
 
 void session_display_clear(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
     return;
   }
 
@@ -493,6 +512,7 @@ void session_display_clear(session_display_ctx_t *ctx) {
 
 void session_display_cursor_home(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
     return;
   }
 
@@ -504,6 +524,7 @@ void session_display_cursor_home(session_display_ctx_t *ctx) {
 
 void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
     return;
   }
 
@@ -515,6 +536,7 @@ void session_display_set_cursor_visible(session_display_ctx_t *ctx, bool visible
 
 bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
   if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL or uninitialized");
     return false;
   }
   return ctx->audio_playback_enabled;
@@ -522,7 +544,8 @@ bool session_display_has_audio_playback(session_display_ctx_t *ctx) {
 
 asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const float *buffer, size_t num_samples) {
   if (!ctx || !ctx->initialized || !buffer || num_samples == 0) {
-    return ASCIICHAT_OK;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%zu", ctx, buffer,
+                     num_samples);
   }
 
   if (!ctx->audio_playback_enabled || !ctx->audio_ctx) {
@@ -579,6 +602,7 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
  */
 void session_display_toggle_help(session_display_ctx_t *ctx) {
   if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
   }
 
@@ -591,6 +615,7 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
  */
 bool session_display_is_help_active(session_display_ctx_t *ctx) {
   if (!ctx) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return false;
   }
 

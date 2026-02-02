@@ -465,6 +465,9 @@ ssize_t platform_read(int fd, void *buf, size_t count) {
  * @return Number of bytes written, or -1 on error
  */
 ssize_t platform_write(int fd, const void *buf, size_t count) {
+  if (!buf || count == 0) {
+    log_warn("Invalid parameters: fd=%d, buf=%p, count=%zu", fd, buf, count);
+  }
   return write(fd, buf, count);
 }
 

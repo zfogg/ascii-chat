@@ -3380,18 +3380,17 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       }
 
       if (section->content) {
-        // Special handling for KEYBINDINGS section: colorize individual keybindings
+        // Special handling for KEYBINDINGS section: colorize keybindings and wrap to 70 chars
         if (section->heading && strcmp(section->heading, "KEYBINDINGS") == 0) {
-          // Build colored version line by line to avoid buffer issues
+          // Build colored version with proper keybinding colorization
           char colored_output[2048] = "";
           const char *src = section->content;
           char *dst = colored_output;
           size_t remaining = sizeof(colored_output) - 1;
 
           while (*src && remaining > 0) {
-            // Check for keybindings that need colorization
-            if (strncmp(src, "?", 1) == 0 && (src == section->content || *(src - 1) == '(' || *(src - 1) == ' ')) {
-              // Colorize "?"
+            // Colorize ? that don't end sentences
+            if (*src == '?' && *(src + 1) != '\n' && *(src + 1) != '\0') {
               const char *colored = colored_string(LOG_COLOR_FATAL, "?");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -3402,7 +3401,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (strncmp(src, "Space", 5) == 0 && (*(src - 1) == ',' || *(src - 1) == ' ')) {
+            } else if (strncmp(src, "Space", 5) == 0 &&
+                       (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' '))) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "Space");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -3413,7 +3413,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (strncmp(src, "arrows", 6) == 0 && (*(src - 1) == ',' || *(src - 1) == ' ')) {
+            } else if (strncmp(src, "arrows", 6) == 0 &&
+                       (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' '))) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "arrows");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -3424,7 +3425,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'm' && (*(src - 1) == ',' || *(src - 1) == ' ') &&
+            } else if (*src == 'm' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
                        (*(src + 1) == ',' || *(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "m");
               size_t len = strlen(colored);
@@ -3436,7 +3437,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'c' && (*(src - 1) == ',' || *(src - 1) == ' ') &&
+            } else if (*src == 'c' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
                        (*(src + 1) == ',' || *(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "c");
               size_t len = strlen(colored);
@@ -3448,7 +3449,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'f' && (*(src - 1) == ',' || *(src - 1) == ' ') &&
+            } else if (*src == 'f' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
                        (*(src + 1) == ',' || *(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "f");
               size_t len = strlen(colored);
@@ -3460,7 +3461,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
               } else {
                 break;
               }
-            } else if (*src == 'r' && (*(src - 1) == ',' || *(src - 1) == ' ') && (*(src + 1) == ')')) {
+            } else if (*src == 'r' && (src > section->content && (*(src - 1) == ',' || *(src - 1) == ' ')) &&
+                       (*(src + 1) == ')')) {
               const char *colored = colored_string(LOG_COLOR_FATAL, "r");
               size_t len = strlen(colored);
               if (len <= remaining) {
@@ -3477,7 +3479,8 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
             }
           }
           *dst = '\0';
-          fprintf(desc, "%s\n", colored_output);
+          // Use layout_print_wrapped_description to handle proper width calculation with ANSI codes
+          layout_print_wrapped_description(desc, colored_output, 0, 70);
         } else {
           fprintf(desc, "%s\n", section->content);
         }

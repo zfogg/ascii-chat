@@ -147,7 +147,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // If paused and already rendered initial frame, skip frame capture and poll for resume
       if (is_paused && initial_paused_frame_rendered) {
         // Sleep briefly to avoid busy-waiting while paused
-        platform_sleep_usec(16666); // ~60 FPS idle rate
+        platform_sleep_usec(1 / GET_OPTION(fps) * 100 * 1000); // ~60 FPS idle rate
 
         // Keep polling keyboard to allow unpausing (even if keyboard wasn't formally initialized)
         // keyboard_read_nonblocking() is safe to call even if keyboard_init() wasn't called - it just returns KEY_NONE
@@ -228,7 +228,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
     } else {
-      // EVENT-DRIVEN MODE: Use custom callbacks
       // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
       sleep_cb(user_data);
       image = capture_cb(user_data);
@@ -302,7 +301,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
 
         // Log render time every 30 frames
-        if (frame_count % 30 == 0) {
+        if (frame_count % 150 == 0) {
           double conversion_ms = (double)conversion_elapsed_ns / 1000000.0;
           double render_ms = (double)render_elapsed_ns / 1000000.0;
           log_info_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
@@ -363,7 +362,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
     // The image pointers are managed by the source and will be cleaned up on source shutdown
-  }
+  } // while (!should_exit(user_data)) {
 
   // Keyboard input cleanup (if it was initialized)
   if (keyboard_enabled) {
