@@ -3380,7 +3380,107 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
       }
 
       if (section->content) {
-        fprintf(desc, "%s\n", section->content);
+        // Special handling for KEYBINDINGS section: colorize individual keybindings
+        if (section->heading && strcmp(section->heading, "KEYBINDINGS") == 0) {
+          // Build colored version line by line to avoid buffer issues
+          char colored_output[2048] = "";
+          const char *src = section->content;
+          char *dst = colored_output;
+          size_t remaining = sizeof(colored_output) - 1;
+
+          while (*src && remaining > 0) {
+            // Check for keybindings that need colorization
+            if (strncmp(src, "?", 1) == 0 && (src == section->content || *(src - 1) == '(' || *(src - 1) == ' ')) {
+              // Colorize "?"
+              const char *colored = colored_string(LOG_COLOR_FATAL, "?");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 1;
+              } else {
+                break;
+              }
+            } else if (strncmp(src, "Space", 5) == 0 && (*(src - 1) == ',' || *(src - 1) == ' ')) {
+              const char *colored = colored_string(LOG_COLOR_FATAL, "Space");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 5;
+              } else {
+                break;
+              }
+            } else if (strncmp(src, "arrows", 6) == 0 && (*(src - 1) == ',' || *(src - 1) == ' ')) {
+              const char *colored = colored_string(LOG_COLOR_FATAL, "arrows");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 6;
+              } else {
+                break;
+              }
+            } else if (*src == 'm' && (*(src - 1) == ',' || *(src - 1) == ' ') &&
+                       (*(src + 1) == ',' || *(src + 1) == ')')) {
+              const char *colored = colored_string(LOG_COLOR_FATAL, "m");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 1;
+              } else {
+                break;
+              }
+            } else if (*src == 'c' && (*(src - 1) == ',' || *(src - 1) == ' ') &&
+                       (*(src + 1) == ',' || *(src + 1) == ')')) {
+              const char *colored = colored_string(LOG_COLOR_FATAL, "c");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 1;
+              } else {
+                break;
+              }
+            } else if (*src == 'f' && (*(src - 1) == ',' || *(src - 1) == ' ') &&
+                       (*(src + 1) == ',' || *(src + 1) == ')')) {
+              const char *colored = colored_string(LOG_COLOR_FATAL, "f");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 1;
+              } else {
+                break;
+              }
+            } else if (*src == 'r' && (*(src - 1) == ',' || *(src - 1) == ' ') && (*(src + 1) == ')')) {
+              const char *colored = colored_string(LOG_COLOR_FATAL, "r");
+              size_t len = strlen(colored);
+              if (len <= remaining) {
+                memcpy(dst, colored, len);
+                dst += len;
+                remaining -= len;
+                src += 1;
+              } else {
+                break;
+              }
+            } else {
+              *dst++ = *src++;
+              remaining--;
+            }
+          }
+          *dst = '\0';
+          fprintf(desc, "%s\n", colored_output);
+        } else {
+          fprintf(desc, "%s\n", section->content);
+        }
       }
 
       fprintf(desc, "\n");
