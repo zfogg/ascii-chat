@@ -436,7 +436,8 @@ only works in interactive terminals.
 .\" MANUAL-END: NOTES
 .\" MANUAL-START: BUGS
 .SH BUGS
-Report bugs at: https://github.com/zfogg/ascii-chat/issues
+.PP
+.B Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .\" MANUAL-END: BUGS
 .\" MANUAL-START: AUTHOR
 .SH AUTHOR
