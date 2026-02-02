@@ -1371,6 +1371,14 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
   log_debug("Successfully published options to RCU");
 
+  // Auto-enable custom palette if palette-chars was set
+  if (opts.palette_custom[0] != '\0') {
+    // palette-chars was set - always use PALETTE_CUSTOM (overrides any explicit --palette setting)
+    opts.palette_type = PALETTE_CUSTOM;
+    opts.palette_custom_set = true;
+    log_debug("Set PALETTE_CUSTOM because --palette-chars was provided");
+  }
+
   // Validate options
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {

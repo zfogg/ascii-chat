@@ -485,7 +485,7 @@ void rgb_to_truecolor_ansi(uint8_t r, uint8_t g, uint8_t b, char *buf, size_t si
  * ============================================================================ */
 
 asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
-                                        terminal_background_t background, compiled_color_scheme_t *compiled) {
+                                             terminal_background_t background, compiled_color_scheme_t *compiled) {
   if (!scheme || !compiled) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL scheme or compiled pointer");
   }
@@ -629,6 +629,8 @@ asciichat_error_t colorscheme_export_scheme(const char *scheme_name, const char 
     if (fputs(toml_content, stdout) < 0) {
       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, "Failed to write to stdout");
     }
+    /* Flush to ensure piped output is written immediately */
+    (void)fflush(stdout);
   }
 
   return ASCIICHAT_OK;

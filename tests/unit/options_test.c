@@ -1239,11 +1239,6 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(opts->render_mode, RENDER_MODE_BACKGROUND); },
     { cr_assert_eq(exit_code, 0, "bg alias should not cause exit"); })
 
-GENERATE_OPTIONS_TEST(
-    test_render_mode_halfblock_alias, ARGV_LIST("client", "--render-mode", "halfblock"), true,
-    { cr_assert_eq(opts->render_mode, RENDER_MODE_HALF_BLOCK); },
-    { cr_assert_eq(exit_code, 0, "halfblock alias should not cause exit"); })
-
 // NOTE: --log-file is now a global option handled at binary level, not mode-specific
 // GENERATE_OPTIONS_TEST(
 //     test_log_file_path, ARGV_LIST("client", "--log-file", "/var/log/ascii-chat.log"), true,

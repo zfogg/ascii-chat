@@ -82,8 +82,10 @@
  * @ingroup palette
  */
 typedef enum {
+  /** @brief Unset palette type (will be resolved to default or custom) */
+  PALETTE_UNSET = 0,
   /** @brief Standard ASCII palette: "   ...',;:clodxkO0KXNWM" */
-  PALETTE_STANDARD = 0,
+  PALETTE_STANDARD,
   /** @brief Unicode block characters: "   ░░▒▒▓▓██" */
   PALETTE_BLOCKS,
   /** @brief Digital/glitch aesthetic: "   -=≡≣▰▱◼" */

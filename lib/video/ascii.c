@@ -325,11 +325,19 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   size_t frame_len = strlen(frame);
-  size_t written = fwrite(frame, 1, frame_len, stdout);
-  if (written != frame_len) {
-    log_error("Failed to write ASCII frame");
-    return ERROR_TERMINAL;
+  size_t written = 0;
+  while (written < frame_len) {
+    ssize_t result = platform_write(STDOUT_FILENO, frame + written, frame_len - written);
+    if (result <= 0) {
+      log_error("Failed to write ASCII frame");
+      return ERROR_TERMINAL;
+    }
+    written += (size_t)result;
   }
+  // Flush C stdio buffer BEFORE fsync to ensure all data is written immediately
+  (void)fflush(stdout);
+  // Flush to ensure piped output is written immediately
+  (void)terminal_flush(STDOUT_FILENO);
 
   return ASCIICHAT_OK;
 }

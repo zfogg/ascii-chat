@@ -45,7 +45,7 @@ static const palette_def_t builtin_palettes[PALETTE_COUNT] = {
 
 // Get a built-in palette definition
 const palette_def_t *get_builtin_palette(palette_type_t type) {
-  if (type >= PALETTE_COUNT || type == PALETTE_CUSTOM) {
+  if (type >= PALETTE_COUNT || type == PALETTE_CUSTOM || type == PALETTE_UNSET) {
     return NULL;
   }
   return &builtin_palettes[type];

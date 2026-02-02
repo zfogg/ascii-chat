@@ -133,7 +133,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_playback_enabled = config->enable_audio_playback;
   ctx->audio_ctx = config->audio_ctx;
   atomic_init(&ctx->first_frame, true);
-  atomic_init(&ctx->help_screen_active, false);
+  atomic_init(&ctx->help_screen_active, config->snapshot_mode);
 
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
@@ -409,11 +409,22 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       }
       written += (size_t)result;
     }
-    // Add newline using thread-safe console lock
+    // Add newline using thread-safe console lock with proper write loop
     bool prev_lock_state = log_lock_terminal();
     const char newline = '\n';
-    platform_write(STDOUT_FILENO, &newline, 1);
+    size_t newline_written = 0;
+    while (newline_written < 1) {
+      ssize_t result = platform_write(STDOUT_FILENO, &newline + newline_written, 1 - newline_written);
+      if (result <= 0) {
+        break;
+      }
+      newline_written += (size_t)result;
+    }
     log_unlock_terminal(prev_lock_state);
+    // Flush C stdio buffer BEFORE fsync to ensure all data is written immediately
+    (void)fflush(stdout);
+    // Flush to ensure piped output is written immediately
+    (void)terminal_flush(STDOUT_FILENO);
   } else {
   }
 }
