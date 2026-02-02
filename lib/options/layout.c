@@ -261,12 +261,15 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
     // Terminal too narrow, put description on next line with indent
     fprintf(stream, "  %s\n", first_column);
 
-    int description_indent = 4;
-    for (int i = 0; i < description_indent; i++)
-      fprintf(stream, " ");
+    // Only print description if it exists
+    if (second_column && second_column[0] != '\0') {
+      int description_indent = 4;
+      for (int i = 0; i < description_indent; i++)
+        fprintf(stream, " ");
 
-    layout_print_wrapped_description(stream, second_column, description_indent, term_width);
-    fprintf(stream, "\n");
+      layout_print_wrapped_description(stream, second_column, description_indent, term_width);
+      fprintf(stream, "\n");
+    }
   } else {
     // First column overflows its fixed width - bump description to next line
     // Print first column as-is (it will overflow)
