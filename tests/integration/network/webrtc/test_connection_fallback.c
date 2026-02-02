@@ -16,11 +16,11 @@
 #include <string.h>
 #include <time.h>
 
-// NOTE: This is a placeholder test file for Phase 3 WebRTC integration.
-// It cannot include src/client/ internal headers, so tests are disabled until
-// ascii-chat-client library is created to expose these interfaces publicly.
+// Connection state definitions
+#include "client/connection_state.h"
 
-#if 0 // DISABLED: Requires internal src/client/ headers
+// NOTE: This is a placeholder test file for Phase 3 WebRTC integration.
+// It tests the connection state machine and timeout definitions from src/client/.
 
 /* ============================================================================
  * Test Fixtures
@@ -174,5 +174,3 @@ Test(connection_fallback, stun_turn_config_struct, .init = setup_fallback_test, 
  * 7. Timeout Detection: Verify timeouts for each stage
  * 8. Context Cleanup: Verify resource cleanup
  */
-
-#endif // DISABLED: Requires internal src/client/ headers
