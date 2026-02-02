@@ -442,8 +442,7 @@ Specify GPG key with format: gpg:<key-id> or gpg:<fingerprint>
 .SH SEE ALSO
 .BR ascii-chat (1),
 .BR ssh-keygen (1),
-.BR gpg (1),
-.BR toml (1)
+.BR gpg (1)
 .
 .SH AUTHOR
 ascii-chat developers
