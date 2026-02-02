@@ -33,6 +33,7 @@
 #include "session/display.h"
 #include "session/render.h"
 #include "session/keyboard_handler.h"
+#include "session/splash.h"
 
 #include "media/source.h"
 #include "media/youtube.h"
@@ -181,17 +182,6 @@ int mirror_main(void) {
     log_set_terminal_output(false); // Then disable terminal output entirely
   }
 
-  log_info("Starting mirror mode");
-
-  // Handle keepawake: check for mutual exclusivity and apply mode default
-  // Mirror default: keepawake ENABLED (use --no-keepawake to disable)
-  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
-    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
-  }
-  if (!GET_OPTION(disable_keepawake)) {
-    (void)platform_enable_keepawake();
-  }
-
   // Install console control-c handler
   platform_set_console_ctrl_handler(mirror_console_ctrl_handler);
 
@@ -202,18 +192,36 @@ int mirror_main(void) {
   };
   platform_register_signal_handlers(signal_handlers, 2);
 
+  // Handle keepawake: check for mutual exclusivity and apply mode default
+  // Mirror default: keepawake ENABLED (use --no-keepawake to disable)
+  if (GET_OPTION(enable_keepawake) && GET_OPTION(disable_keepawake)) {
+    FATAL(ERROR_INVALID_PARAM, "--keepawake and --no-keepawake are mutually exclusive");
+  }
+  if (!GET_OPTION(disable_keepawake)) {
+    (void)platform_enable_keepawake();
+  }
+
+  // Disable terminal logging during initialization so splash can display cleanly
+  log_set_terminal_output(false);
+
   // Configure media source based on options
   const char *media_url = GET_OPTION(media_url);
   const char *media_file = GET_OPTION(media_file);
-  log_info("Media configuration: url='%s', file='%s'", media_url ? media_url : "(null)",
-           media_file ? media_file : "(null)");
 
-  // Audio source determination based on --audio-source setting
-  // By default (--audio-source auto), microphone is disabled when playing files with --file or --url
-  // Users can override with --audio-source microphone, --audio-source both, or --audio-source media
+  // Detect if we're using media (vs webcam) - needed to decide on splash sleep duration
   bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
-  if (has_media && GET_OPTION(audio_source) == AUDIO_SOURCE_AUTO) {
-    log_debug("Audio source: auto (microphone disabled when playing files with --file or --url)");
+
+  // Create a minimal display context just for the splash screen
+  // This needs to exist before splash_intro_start, but real initialization happens later
+  session_display_config_t temp_display_config = {0};
+  session_display_ctx_t *temp_display = session_display_create(&temp_display_config);
+  if (temp_display) {
+    // Display splash immediately so it shows DURING network activity (yt-dlp extraction, etc.)
+    splash_intro_start(temp_display);
+    // Only sleep for webcam mode - media initialization takes time anyway
+    if (!has_media) {
+      platform_sleep_ms(1000);
+    }
   }
 
   session_capture_config_t capture_config = {0};
@@ -417,8 +425,14 @@ int mirror_main(void) {
     return ERROR_DISPLAY;
   }
 
-  // Disable terminal logging during rendering to prevent logs from mixing with ASCII art
-  log_set_terminal_output(false);
+  // Signal splash to stop - content is ready to render
+  splash_intro_done();
+
+  // Clean up temporary display context used for splash
+  if (temp_display) {
+    session_display_destroy(temp_display);
+    temp_display = NULL;
+  }
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
   // Synchronous mode: pass capture context, NULL for callbacks

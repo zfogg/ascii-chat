@@ -530,6 +530,8 @@ options_t options_t_new(void) {
   opts.stretch = OPT_STRETCH_DEFAULT;
   opts.strip_ansi = OPT_STRIP_ANSI_DEFAULT;
   opts.fps = OPT_FPS_DEFAULT;
+  opts.splash = OPT_SPLASH_DEFAULT;
+  opts.status_screen = OPT_STATUS_SCREEN_DEFAULT;
 
   // ============================================================================
   // SNAPSHOT
