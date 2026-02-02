@@ -6,17 +6,17 @@
 
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/key_types.h>
-#include <ascii-chat/crypto/keys/ssh_keys.h>
-#include <ascii-chat/crypto/keys/gpg_keys.h>
-#include <ascii-chat/crypto/keys/gpg/openpgp.h>
+#include <ascii-chat/crypto/ssh/ssh_keys.h>
+#include <ascii-chat/crypto/gpg/gpg_keys.h>
+#include <ascii-chat/crypto/gpg/openpgp.h>
 #include <ascii-chat/crypto/https_keys.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/util/url.h>               // For parse_https_url()
-#include <ascii-chat/platform/util.h>          // For platform_strtok_r
-#include <ascii-chat/crypto/keys/gpg/export.h> // For gpg_get_public_key()
-#include <ascii-chat/network/http_client.h>    // For https_get()
+#include <ascii-chat/util/url.h>            // For parse_https_url()
+#include <ascii-chat/platform/util.h>       // For platform_strtok_r
+#include <ascii-chat/crypto/gpg/export.h>   // For gpg_get_public_key()
+#include <ascii-chat/network/http_client.h> // For https_get()
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
