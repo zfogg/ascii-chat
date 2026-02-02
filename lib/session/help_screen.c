@@ -156,22 +156,28 @@ static void build_settings_line(char *output, size_t output_size, const char *la
     return;
   }
 
-  // Line structure: "║  " (3) + label + ": " (2) + padding + value + padding + "║" (3)
-  // Total display width: 48 columns
-  // Fixed prefix: "║  " (3 bytes = 3 display cols) + label (N bytes = N display cols)
-  // Plus ": " (2 bytes = 2 display cols)
+  // Align all values to start at the same column by padding labels to fixed width
+  // Maximum label width is 6 ("Volume", "Render", "Webcam")
+  const int MAX_LABEL_WIDTH = 6;
 
   int label_width = utf8_display_width(label);
   int value_width = utf8_display_width(value);
 
-  // Fixed part display width: "║" (1 col) + "  " (2 cols) + label + ":" (1 col) + "    " (4 cols)
-  // "║  " = 1+2 = 3, label = label_width, ":" = 1, "    " = 4
-  // Total fixed: 1 + 2 + label_width + 1 + 4 = label_width + 8
-  int fixed_width = 1 + 2 + label_width + 1 + 4; // "║  " + label + ":" + "    " (in display cols)
-  int right_border = 1;                          // "║" = 1 display col
+  // Calculate label padding to align all values vertically
+  int label_padding = MAX_LABEL_WIDTH - label_width;
+  if (label_padding < 0) {
+    label_padding = 0;
+  }
 
-  // Available space for value + padding: 48 - fixed_width - right_border
-  int available = 48 - fixed_width - right_border; // Should be 33 columns for standard labels
+  // Line structure: "║  " (3) + label + padding + ": " (2) + value + spacing + "║" (1)
+  // Fixed part: 1 (║) + 2 (  ) + 6 (label max) + 2 (:_) = 11 columns to value start
+  // Total: 11 + value_width + final_padding + 1 = 48
+
+  int fixed_prefix = 1 + 2 + MAX_LABEL_WIDTH + 2; // "║  " + label (padded) + ": "
+  int right_border = 1;                           // "║" = 1 display col
+
+  // Available space for value + padding: 48 - fixed_prefix - right_border
+  int available = 48 - fixed_prefix - right_border; // 36 columns for value + padding
   int padding = available - value_width;
 
   // Ensure non-negative padding
@@ -179,12 +185,25 @@ static void build_settings_line(char *output, size_t output_size, const char *la
     padding = 0;
   }
 
-  // Build the line: "║  <label>:    <value><padding>║"
+  // Build the line: "║  <label><label_pad>: <value><padding>║"
   char *pos = output;
   int remaining = output_size;
 
-  // Left border and spacing
-  int n = snprintf(pos, remaining, "║  %s:    ", label);
+  // Left border, spacing, and label
+  int n = snprintf(pos, remaining, "║  %s", label);
+  if (n > 0) {
+    pos += n;
+    remaining -= n;
+  }
+
+  // Add label padding spaces to align values
+  for (int i = 0; i < label_padding && remaining > 1; i++) {
+    *pos++ = ' ';
+    remaining--;
+  }
+
+  // Colon and spacing before value
+  n = snprintf(pos, remaining, ": ");
   if (n > 0) {
     pos += n;
     remaining -= n;
@@ -197,7 +216,7 @@ static void build_settings_line(char *output, size_t output_size, const char *la
     remaining -= n;
   }
 
-  // Padding spaces
+  // Final padding spaces
   for (int i = 0; i < padding && remaining > 1; i++) {
     *pos++ = ' ';
     remaining--;
