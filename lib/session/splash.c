@@ -21,6 +21,7 @@
 #include "video/ansi_fast.h"
 #include "options/options.h"
 #include "log/logging.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -191,19 +192,68 @@ int splash_intro_start(session_display_ctx_t *ctx) {
 
   // Display splash frame immediately and return (non-blocking)
   // The splash stays on screen while render loop initializes
+  // Use ASCII-only logo from help (52 chars wide, 4 lines)
   char buffer[2048];
 
-  // Build simple visible splash - multiple newlines then logo
-  snprintf(buffer, sizeof(buffer),
-           "\n\n\n"
-           "   ▄▄▄  ███████  ██████    ██  ██\n"
-           "  ▐███▌ ██       ██   ██   ██  ██\n"
-           "   ██   █████    ██████    ██  ██\n"
-           "   ██   ██       ██  ██    ██  ██\n"
-           "   ██   ███████  ██   ██    ████ \n"
-           "\n"
-           "  Video chat in your terminal\n"
-           "\n\n");
+  // Calculate vertical padding for center
+  int logo_height = 4;
+  int tagline_height = 1;
+  int content_height = logo_height + tagline_height + 1; // +1 for blank line
+  int vert_pad = (height - content_height) / 2;
+  if (vert_pad < 0)
+    vert_pad = 0;
+
+  // Build the splash with centered content
+  char *p = buffer;
+  size_t remaining = sizeof(buffer);
+
+  // Add vertical padding
+  for (int i = 0; i < vert_pad && remaining > 1; i++) {
+    *p++ = '\n';
+    remaining--;
+  }
+
+  // ASCII logo from help (same as --help output)
+  const char *ascii_logo[4] = {
+      "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ ", " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __| ",
+      "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ ", " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__| "};
+
+  // Center each logo line
+  for (int i = 0; i < 4; i++) {
+    int logo_width = 52;
+    int horiz_pad = (width - logo_width) / 2;
+    if (horiz_pad > 0 && remaining > horiz_pad + logo_width + 1) {
+      for (int j = 0; j < horiz_pad; j++) {
+        *p++ = ' ';
+      }
+      p += snprintf(p, remaining, "%s\n", ascii_logo[i]);
+      remaining = sizeof(buffer) - (p - buffer);
+    }
+  }
+
+  // Blank line
+  if (remaining > 1) {
+    *p++ = '\n';
+    remaining--;
+  }
+
+  // Tagline centered
+  const char *tagline = "Video chat in your terminal";
+  int tagline_width = (int)strlen(tagline);
+  int tagline_pad = (width - tagline_width) / 2;
+  if (tagline_pad > 0 && remaining > tagline_pad + tagline_width + 1) {
+    for (int j = 0; j < tagline_pad; j++) {
+      *p++ = ' ';
+    }
+    p += snprintf(p, remaining, "%s\n", tagline);
+  }
+
+  // Ensure null termination
+  if (p - buffer < (int)sizeof(buffer)) {
+    *p = '\0';
+  } else {
+    buffer[sizeof(buffer) - 1] = '\0';
+  }
 
   // Print splash to stdout with explicit flushing
   fputs(buffer, stdout);
