@@ -383,6 +383,7 @@ flag to override.
 .PP
 .\" MANUAL-START: NOTES
 .SH NOTES
+.PP
 .IP \(bu 2
 \fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
 are NOT supported due to libsodium limitations. Generate Ed25519 keys with:
@@ -436,8 +437,7 @@ only works in interactive terminals.
 .\" MANUAL-END: NOTES
 .\" MANUAL-START: BUGS
 .SH BUGS
-.PP
-.B Report bugs at: https://github.com/zfogg/ascii-chat/issues
+Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .\" MANUAL-END: BUGS
 .\" MANUAL-START: AUTHOR
 .SH AUTHOR
