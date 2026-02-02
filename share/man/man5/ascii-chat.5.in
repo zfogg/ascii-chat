@@ -442,7 +442,11 @@ Private keys should have restrictive permissions (0600):
 chmod 600 ~/.ssh/id_ed25519
 .fi
 .
-ascii-chat will log a warning if permissions are too permissive.
+ascii-chat requires SSH key files to have restrictive permissions (0600 or 0400).
+If permissions are more permissive, ascii-chat will refuse to use the key and
+return an error. Run
+.B chmod 600 ~/.ssh/id_ed25519
+to fix the permissions.
 .
 .SS Usage
 .TP
