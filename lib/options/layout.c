@@ -223,110 +223,59 @@ void layout_print_two_column_row(FILE *stream, const char *first_column, const c
 
   SAFE_FREE(stripped);
 
-  // Determine the description column start position and wrapping threshold
-  // If first_col_len is provided (non-zero), use it as the maximum column width
-  // Otherwise, use the default LAYOUT_DESCRIPTION_START_COL
-  int description_start_col = LAYOUT_DESCRIPTION_START_COL;
-  int wrap_threshold = LAYOUT_COLUMN_WIDTH;
-  if (first_col_len > 0) {
-    description_start_col = 2 + first_col_len + 2; // 2 for leading spaces, first_col_len for content, 2 for spacing
-    wrap_threshold = first_col_len;                // Use provided width as wrap threshold
-  }
+  // Define first column as a relatively small, fixed width (around 35 chars)
+  // This is intentionally small to allow descriptions to be wide and wrap across multiple lines
+  // We ignore first_col_len parameter here because it's calculated as the max width of all items
+  int fixed_first_col_width = 35;
 
-  // At narrow terminal widths, force single-column layout (description on next line)
-  // At <= 90 columns, always use single-column for readability
+  // Second column starts after first column (with 2 spaces padding)
+  // This allows descriptions to be quite wide for wrapping
+  int second_col_start = 2 + fixed_first_col_width + 2;
+
+  // At narrow terminal widths, force single-column layout
   bool force_single_column = (term_width <= 90);
 
-  // If first column is short enough AND we have space for description, use same-line layout
-  if (display_width <= wrap_threshold && !force_single_column) {
+  // Position where first column ends (including leading spaces)
+  int first_col_end = 2 + display_width;
+
+  // Check if first column fits within the fixed width
+  bool fits_in_first_column_width = (display_width <= fixed_first_col_width);
+
+  // If first column fits within its width and we're not forcing single column, try same-line layout
+  if (fits_in_first_column_width && !force_single_column) {
     // Print first column
     fprintf(stream, "  %s", first_column);
 
-    // Pad to description start column
-    int current_col = 2 + display_width; // 2 for leading spaces
-    int padding = description_start_col - current_col;
+    // Pad to second column start position
+    int padding = second_col_start - first_col_end;
     if (padding > 0) {
       fprintf(stream, "%*s", padding, "");
     } else {
       fprintf(stream, " ");
     }
 
-    // Print description with wrapping
-    layout_print_wrapped_description(stream, second_column, description_start_col, term_width);
+    // Print description with wrapping at second column position
+    layout_print_wrapped_description(stream, second_column, second_col_start, term_width);
     fprintf(stream, "\n");
   } else if (force_single_column) {
-    // Terminal too narrow, put description on next line
+    // Terminal too narrow, put description on next line with indent
     fprintf(stream, "  %s\n", first_column);
 
-    // Use modest indent for readability
     int description_indent = 4;
-
-    // Print indent for description column
     for (int i = 0; i < description_indent; i++)
       fprintf(stream, " ");
 
-    // Print description with wrapping
     layout_print_wrapped_description(stream, second_column, description_indent, term_width);
     fprintf(stream, "\n");
   } else {
-    // First column too long - wrap it within the column width and align description to the right
-    const char *line_start = first_column;
-    const char *last_space = NULL;
-    const char *p = first_column;
+    // First column overflows its fixed width - bump description to next line
+    // Print first column as-is (it will overflow)
+    fprintf(stream, "  %s\n", first_column);
 
-    while (*p) {
-      // Check for explicit newline
-      if (*p == '\n') {
-        // Print line up to newline
-        int text_len = p - line_start;
-        if (text_len > 0) {
-          fprintf(stream, "  %.*s\n", text_len, line_start);
-        }
-        p++;
-        line_start = p;
-        last_space = NULL;
-        continue;
-      }
-
-      // Track spaces for word wrapping
-      if (*p == ' ')
-        last_space = p;
-
-      p++;
-
-      // Check if we've exceeded column width
-      int current_width = utf8_display_width_n(line_start, p - line_start);
-      if (current_width > wrap_threshold && last_space && last_space > line_start) {
-        // Print up to last space
-        int text_len = last_space - line_start;
-        fprintf(stream, "  %.*s\n", text_len, line_start);
-
-        // Skip spaces after the break
-        line_start = last_space + 1;
-        while (*line_start == ' ')
-          line_start++;
-        p = line_start;
-        last_space = NULL;
-      }
-    }
-
-    // Print remaining text
-    if (line_start < p) {
-      fprintf(stream, "  %s", line_start);
-
-      // For the last line of the first column, add description aligned to description_start_col
-      int last_line_width = utf8_display_width(line_start);
-      int current_col = 2 + last_line_width;
-      int padding = description_start_col - current_col;
-      if (padding > 0) {
-        fprintf(stream, "%*s", padding, "");
-      } else {
-        fprintf(stream, " ");
-      }
-
-      // Print description with wrapping
-      layout_print_wrapped_description(stream, second_column, description_start_col, term_width);
-    }
+    // Print description on next line at second column position, with wide wrapping
+    for (int i = 0; i < second_col_start; i++)
+      fprintf(stream, " ");
+    layout_print_wrapped_description(stream, second_column, second_col_start, term_width);
     fprintf(stream, "\n");
   }
 }

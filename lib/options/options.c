@@ -1379,6 +1379,12 @@ asciichat_error_t options_init(int argc, char **argv) {
     log_debug("Set PALETTE_CUSTOM because --palette-chars was provided");
   }
 
+  // Auto-enable encryption if key was provided
+  if (opts.encrypt_key[0] != '\0') {
+    opts.encrypt_enabled = 1;
+    log_debug("Auto-enabled encryption because --key was provided");
+  }
+
   // Validate options
   result = validate_options_and_report(config, &opts);
   if (result != ASCIICHAT_OK) {

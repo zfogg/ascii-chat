@@ -268,9 +268,15 @@ static void apply_env_action(void *field, const char *env_value, const option_de
 // --- apply_cli handlers ---
 static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
   (void)opt_value;
-  (void)desc;
-  unsigned char value_byte = 1; // true
-  memcpy(field, &value_byte, 1);
+  // For boolean flags, toggle the current value
+  // If default is true, flag toggles to false. If default is false, flag toggles to true.
+  unsigned char current_byte = 0;
+  memcpy(&current_byte, field, 1);
+  bool current_value = (current_byte != 0);
+
+  // Toggle the value
+  unsigned char new_value_byte = current_value ? 0 : 1;
+  memcpy(field, &new_value_byte, 1);
   return ASCIICHAT_OK;
 }
 
@@ -295,7 +301,13 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
 }
 
 static asciichat_error_t apply_cli_string(void *field, const char *opt_value, const option_descriptor_t *desc) {
-  (void)desc;
+  // Reject empty strings for certain important options like --key
+  if (opt_value && opt_value[0] == '\0' && desc && desc->long_name) {
+    if (strcmp(desc->long_name, "key") == 0) {
+      return SET_ERRNO(ERROR_USAGE, "Option --%s cannot be empty", desc->long_name);
+    }
+  }
+
   char *dest = (char *)field;
   safe_snprintf(dest, OPTIONS_BUFF_SIZE, "%s", opt_value);
   dest[OPTIONS_BUFF_SIZE - 1] = '\0';
@@ -618,6 +630,23 @@ static void ensure_mode_capacity(options_builder_t *builder) {
   }
 }
 
+static void ensure_custom_section_capacity(options_builder_t *builder) {
+  if (builder->num_custom_sections >= builder->custom_section_capacity) {
+    size_t new_capacity = builder->custom_section_capacity * 2;
+    if (new_capacity == 0)
+      new_capacity = INITIAL_DESCRIPTOR_CAPACITY;
+
+    custom_section_descriptor_t *new_sections = SAFE_REALLOC(
+        builder->custom_sections, new_capacity * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
+    if (!new_sections) {
+      log_fatal("Failed to reallocate custom sections array");
+      return;
+    }
+    builder->custom_sections = new_sections;
+    builder->custom_section_capacity = new_capacity;
+  }
+}
+
 /**
  * @brief Find option descriptor by long name
  */
@@ -693,6 +722,9 @@ options_builder_t *options_builder_create(size_t struct_size) {
   builder->modes = NULL;
   builder->num_modes = 0;
   builder->mode_capacity = 0;
+  builder->custom_sections = NULL;
+  builder->num_custom_sections = 0;
+  builder->custom_section_capacity = 0;
   builder->struct_size = struct_size;
   builder->program_name = NULL;
   builder->description = NULL;
@@ -861,6 +893,29 @@ options_config_t *options_builder_build(options_builder_t *builder) {
     config->num_modes = 0;
   }
 
+  // Allocate and copy custom sections
+  if (builder->num_custom_sections > 0) {
+    config->custom_sections =
+        SAFE_MALLOC(builder->num_custom_sections * sizeof(custom_section_descriptor_t), custom_section_descriptor_t *);
+    if (!config->custom_sections) {
+      SAFE_FREE(config->descriptors);
+      SAFE_FREE(config->dependencies);
+      SAFE_FREE(config->positional_args);
+      SAFE_FREE(config->usage_lines);
+      SAFE_FREE(config->examples);
+      SAFE_FREE(config->modes);
+      SAFE_FREE(config);
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate custom sections");
+      return NULL;
+    }
+    memcpy(config->custom_sections, builder->custom_sections,
+           builder->num_custom_sections * sizeof(custom_section_descriptor_t));
+    config->num_custom_sections = builder->num_custom_sections;
+  } else {
+    config->custom_sections = NULL;
+    config->num_custom_sections = 0;
+  }
+
   config->struct_size = builder->struct_size;
   config->program_name = builder->program_name;
   config->description = builder->description;
@@ -888,6 +943,7 @@ void options_config_destroy(options_config_t *config) {
   SAFE_FREE(config->usage_lines);
   SAFE_FREE(config->examples);
   SAFE_FREE(config->modes);
+  SAFE_FREE(config->custom_sections);
 
   // Free all owned strings before freeing the array
   for (size_t i = 0; i < config->num_owned_strings; i++) {
@@ -1532,6 +1588,18 @@ void options_builder_add_mode(options_builder_t *builder, const char *name, cons
   help_mode_descriptor_t mode = {.name = name, .description = description};
 
   builder->modes[builder->num_modes++] = mode;
+}
+
+void options_builder_add_custom_section(options_builder_t *builder, const char *heading, const char *content,
+                                        option_mode_bitmask_t mode_bitmask) {
+  if (!builder || !heading || !content)
+    return;
+
+  ensure_custom_section_capacity(builder);
+
+  custom_section_descriptor_t section = {.heading = heading, .content = content, .mode_bitmask = mode_bitmask};
+
+  builder->custom_sections[builder->num_custom_sections++] = section;
 }
 
 asciichat_error_t options_config_parse_positional(const options_config_t *config, int remaining_argc,
@@ -3294,6 +3362,29 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
   // Print EXAMPLES section (with section-specific column width)
   int examples_max_col_width = calculate_section_max_col_width(config, "examples", mode, for_binary_help);
   print_examples_section(config, desc, term_width, examples_max_col_width, mode, for_binary_help);
+
+  // Print custom sections (after EXAMPLES, before OPTIONS)
+  if (config->num_custom_sections > 0) {
+    option_mode_bitmask_t current_mode_bitmask = 1U << mode;
+    for (size_t i = 0; i < config->num_custom_sections; i++) {
+      const custom_section_descriptor_t *section = &config->custom_sections[i];
+
+      // Filter by mode_bitmask
+      if (section->mode_bitmask != 0 && !(section->mode_bitmask & current_mode_bitmask)) {
+        continue;
+      }
+
+      if (section->heading) {
+        fprintf(desc, "%s\n", colored_string(LOG_COLOR_DEBUG, section->heading));
+      }
+
+      if (section->content) {
+        fprintf(desc, "%s\n", section->content);
+      }
+
+      fprintf(desc, "\n");
+    }
+  }
 
   // Print options sections (with section-specific column width for options)
   int options_max_col_width = calculate_section_max_col_width(config, "options", mode, for_binary_help);

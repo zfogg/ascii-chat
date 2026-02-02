@@ -261,6 +261,18 @@ typedef struct {
 } positional_arg_descriptor_t;
 
 /**
+ * @brief Custom help section descriptor
+ *
+ * Describes a custom section to be printed in help output.
+ * Sections appear after EXAMPLES but before OPTIONS.
+ */
+typedef struct {
+  const char *heading;                ///< Section heading (e.g., "INTERACTIVE CONTROLS")
+  const char *content;                ///< Section content
+  option_mode_bitmask_t mode_bitmask; ///< Which modes show this section
+} custom_section_descriptor_t;
+
+/**
  * @brief Options configuration
  *
  * A complete, immutable configuration of options for a mode.
@@ -289,6 +301,9 @@ typedef struct {
 
   help_mode_descriptor_t *modes; ///< Array of mode descriptors
   size_t num_modes;              ///< Number of modes
+
+  custom_section_descriptor_t *custom_sections; ///< Array of custom help sections
+  size_t num_custom_sections;                   ///< Number of custom sections
 
   // Memory management (internal use)
   char **owned_strings;          ///< Strdup'd strings to free on cleanup
@@ -327,6 +342,10 @@ typedef struct {
   help_mode_descriptor_t *modes; ///< Dynamic array of modes
   size_t num_modes;              ///< Current count
   size_t mode_capacity;          ///< Allocated capacity
+
+  custom_section_descriptor_t *custom_sections; ///< Dynamic array of custom sections
+  size_t num_custom_sections;                   ///< Current count
+  size_t custom_section_capacity;               ///< Allocated capacity
 
   size_t struct_size;
   const char *program_name;
@@ -949,6 +968,21 @@ void options_builder_add_example_utility(options_builder_t *builder, uint32_t mo
  * ```
  */
 void options_builder_add_mode(options_builder_t *builder, const char *name, const char *description);
+
+/**
+ * @brief Add a custom help section
+ *
+ * Adds a custom section to help output that appears after EXAMPLES but before OPTIONS.
+ *
+ * @param[in] builder Options builder
+ * @param[in] heading Section heading (e.g., "INTERACTIVE CONTROLS")
+ * @param[in] content Section content
+ * @param[in] mode_bitmask Which modes show this section (use MODE_BITMASK_* constants)
+ *
+ * @ingroup options_builder
+ */
+void options_builder_add_custom_section(options_builder_t *builder, const char *heading, const char *content,
+                                        option_mode_bitmask_t mode_bitmask);
 
 // ============================================================================
 // Preset Configurations

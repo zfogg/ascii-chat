@@ -404,15 +404,11 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
     return ASCIICHAT_OK;
   }
 
-  // If stdout is NOT a TTY (redirected to file/pipe), skip ALL TTY-based checks
-  // (stdin/stderr ioctl, /dev/tty, and environment variables that represent parent TTY)
-  if (!stdout_is_tty) {
-    log_debug("POSIX: stdout is redirected (not a TTY), using hardcoded defaults");
-    // Jump directly to hardcoded defaults - don't use env vars that represent parent TTY
-  } else {
-    // Stdout IS a TTY: try stdin, stderr, and /dev/tty as fallbacks
-
-    // Method 2b: Try ioctl on stdin
+  // When stdout is NOT a TTY (piped/redirected), skip stdin/stderr checks
+  // because stdin might be a TTY connected to terminal, giving inconsistent results
+  // Only try stdin/stderr if stdout IS a TTY (interactive terminal)
+  if (stdout_is_tty) {
+    // Method 2b: Try ioctl on stdin (only if stdout is TTY)
     if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
       *width = ws.ws_col;
       *height = ws.ws_row;
@@ -420,25 +416,12 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
       return ASCIICHAT_OK;
     }
 
-    // Method 2c: Try ioctl on stderr
+    // Method 2c: Try ioctl on stderr (only if stdout is TTY)
     if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
       *width = ws.ws_col;
       *height = ws.ws_row;
       log_debug("POSIX terminal size from stderr ioctl: %dx%d", *width, *height);
       return ASCIICHAT_OK;
-    }
-
-    // Method 2d: Try opening /dev/tty directly
-    tty_fd = open("/dev/tty", O_RDONLY);
-    if (tty_fd >= 0) {
-      if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
-        *width = ws.ws_col;
-        *height = ws.ws_row;
-        close(tty_fd);
-        log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
-        return ASCIICHAT_OK;
-      }
-      close(tty_fd);
     }
 
     // Method 3: Environment variables (COLUMNS and LINES) - only for interactive terminals
@@ -456,6 +439,22 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
       }
       log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
     }
+  } else {
+    // stdout is piped/redirected - try /dev/tty directly for dimension detection
+    log_debug("POSIX: stdout is redirected (not a TTY), trying /dev/tty for dimensions");
+  }
+
+  // Method 2d: Try opening /dev/tty directly (works even when stdout is piped)
+  tty_fd = open("/dev/tty", O_RDONLY);
+  if (tty_fd >= 0) {
+    if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+      *width = ws.ws_col;
+      *height = ws.ws_row;
+      close(tty_fd);
+      log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
+      return ASCIICHAT_OK;
+    }
+    close(tty_fd);
   }
 
   // Method 4: Default fallback (match OPT_WIDTH_DEFAULT and OPT_HEIGHT_DEFAULT)

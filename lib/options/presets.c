@@ -236,6 +236,13 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   options_builder_add_mode(b, "mirror", "View local webcam as ASCII art (no server)");
   options_builder_add_mode(b, "discovery-service", "Secure P2P session signalling");
 
+  // Add custom help sections for interactive modes
+  options_builder_add_custom_section(b, "INTERACTIVE CONTROLS",
+                                     "While rendering, press '?' to display a keyboard shortcuts help menu showing:\n"
+                                     "  - Available keybindings (?, Space, arrows, m, c, f, r)\n"
+                                     "  - Current settings (volume, color mode, audio status, etc.)",
+                                     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY_SVC);
+
   // Add common dependencies (these will be validated after parsing)
   // Note: Dependencies are validated at runtime, so we add them here for documentation
   // URL conflicts: --url cannot be used with --file or --loop
