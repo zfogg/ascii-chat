@@ -114,16 +114,16 @@ const options_config_t *options_preset_unified(const char *program_name, const c
   }
 
   // Client mode: [address] - can be IP, hostname, or hostname:port
-  static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080"};
-  options_builder_add_positional(b, "address", "Server address (optional)", false, "Positional Arguments",
-                                 client_examples, 3, OPTION_MODE_CLIENT, parse_client_address);
+  static const char *client_examples[] = {"localhost", "ascii-chat.com", "192.168.1.1:8080", "[2001:db8::42]:27224"};
+  options_builder_add_positional(b, "address", "Server address (optional)", false,
+                                 "POSITIONAL ARGUMENTS:", client_examples, 4, OPTION_MODE_CLIENT, parse_client_address);
 
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
   static const char *discovery_examples[] = {"joyful-panda-lion  (join existing session)",
                                              "(empty)  (start new session)"};
   options_builder_add_positional(b, "session-string", "Session string (optional, or empty to start new session)", false,
-                                 "Positional Arguments", discovery_examples, 2, OPTION_MODE_DISCOVERY,
+                                 "POSITIONAL ARGUMENTS:", discovery_examples, 2, OPTION_MODE_DISCOVERY,
                                  parse_client_address);
 
   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
@@ -131,7 +131,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                           "::",        "0.0.0.0 ::",     ":: 192.168.1.100"};
   options_builder_add_positional(b, "bind-address",
                                  "Bind address (optional, can specify 0-2 addresses, one IPv4 and the other IPv6)",
-                                 false, "Positional Arguments", server_examples, 6,
+                                 false, "POSITIONAL ARGUMENTS:", server_examples, 6,
                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
 
   // Add usage lines for all modes
