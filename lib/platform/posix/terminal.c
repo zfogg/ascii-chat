@@ -241,7 +241,8 @@ asciichat_error_t terminal_flush(int fd) {
     }
   } else {
     // For regular files (e.g., when redirecting output), use fsync()
-    if (fsync(fd) < 0) {
+    // For pipes, fsync() fails with ENOTSUP which is expected and not an error
+    if (fsync(fd) < 0 && errno != ENOTSUP) {
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
     }
   }
