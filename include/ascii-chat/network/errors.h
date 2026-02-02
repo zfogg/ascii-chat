@@ -8,10 +8,10 @@
  * common error patterns in network protocols.
  */
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/network/rate_limit/rate_limit.h>
+#include "../common.h"
+#include "../platform/socket.h"
+#include "../network/acip/acds.h"
+#include "../network/rate_limit/rate_limit.h"
 #include <stddef.h>
 #include <stdbool.h>
 

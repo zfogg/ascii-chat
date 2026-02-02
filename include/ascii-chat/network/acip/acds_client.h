@@ -30,9 +30,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/network/acip/acds.h>
+#include "../../asciichat_errno.h"
+#include "../../platform/socket.h"
+#include "../../network/acip/acds.h"
 
 // ============================================================================
 // ACDS Client Configuration

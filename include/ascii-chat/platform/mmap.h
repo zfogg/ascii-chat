@@ -27,7 +27,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 #ifdef _WIN32
 #include <windows.h>

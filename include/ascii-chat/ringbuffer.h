@@ -82,8 +82,8 @@ using std::atomic_uint;
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/util/magic.h>
+#include "platform/mutex.h"
+#include "util/magic.h"
 
 /**
  * @brief Lock-free ring buffer structure

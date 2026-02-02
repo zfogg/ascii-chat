@@ -204,9 +204,9 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/discovery/strings.h>
+#include "../platform/terminal.h"
+#include "../video/palette.h"
+#include "../discovery/strings.h"
 
 /** @brief Backward compatibility aliases for color mode enum values */
 #define COLOR_MODE_AUTO TERM_COLOR_AUTO           ///< Auto-detect color support
@@ -943,8 +943,8 @@ typedef struct options_state {
   // ============================================================================
   // Splash Screen Options
   // ============================================================================
-  bool splash;           ///< Show splash screen (default: true = show, use --no-splash to hide)
-  bool status_screen;    ///< Show status screen (default: true = show, use --no-status-screen to hide)
+  bool splash;        ///< Show splash screen (default: true = show, use --no-splash to hide)
+  bool status_screen; ///< Show status screen (default: true = show, use --no-status-screen to hide)
 
   // Note: Luminance weights (weight_red, weight_green, weight_blue) and
   // lookup tables (RED[], GREEN[], BLUE[], GRAY[]) are kept as globals

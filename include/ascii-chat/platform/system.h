@@ -30,7 +30,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <time.h>
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 #ifdef __cplusplus
 extern "C" {

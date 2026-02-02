@@ -46,7 +46,7 @@ typedef pthread_t thread_id_t;
 typedef pthread_key_t tls_key_t;
 #endif
 
-#include <ascii-chat/common.h> // For asciichat_error_t (must come AFTER type definitions)
+#include "../common.h" // For asciichat_error_t (must come AFTER type definitions)
 
 // ============================================================================
 // Thread-Local Storage Macros

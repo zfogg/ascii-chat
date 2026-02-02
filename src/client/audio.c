@@ -71,7 +71,7 @@
  * @date 2025
  */
 
-#include "audio.h" // src/client/audio.h
+#include "audio.h"
 #include <ascii-chat/audio/analysis.h>
 #include "main.h"
 #include "server.h"

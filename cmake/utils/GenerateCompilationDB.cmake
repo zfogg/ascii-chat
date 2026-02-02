@@ -207,13 +207,16 @@ function(generate_compilation_database)
             -DAPPEND_TO_LOG=TRUE
             -DOPERATION_NAME=CMake_build_generate_version
             -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunCMakeBuildWithLog.cmake
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT_FILE=${_DB_TEMP_DIR}/compile_commands.json
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT_FILE=${_DB_TEMP_DIR}/compile_commands.json
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ConvertCompilationDBFormat.cmake
         COMMAND ${CMAKE_COMMAND} -E copy
             "${_DB_TEMP_DIR}/compile_commands.json"
             "${_DB_OUTPUT}"
-        COMMAND ${CMAKE_COMMAND}
-            -DINPUT_FILE=${_DB_OUTPUT}
-            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-            -P ${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake
         COMMAND ${CMAKE_COMMAND}
             -DINPUT_FILE=${_DB_OUTPUT}
             -P ${CMAKE_SOURCE_DIR}/cmake/utils/ConvertCompilationDBFormat.cmake

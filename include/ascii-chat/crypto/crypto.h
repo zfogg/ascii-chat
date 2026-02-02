@@ -67,7 +67,7 @@
 
 // Include required types
 #include "key_types.h" // For private_key_t
-#include <ascii-chat/common.h> // For asciichat_error_t
+#include "../common.h" // For asciichat_error_t
 
 /**
  * @name Password Requirements

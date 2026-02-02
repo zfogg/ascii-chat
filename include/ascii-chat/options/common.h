@@ -90,8 +90,8 @@
 #ifndef OPTIONS_COMMON_H
 #define OPTIONS_COMMON_H
 
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/terminal.h>
+#include "../options/options.h"
+#include "../platform/terminal.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

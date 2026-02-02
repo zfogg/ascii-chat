@@ -46,7 +46,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../asciichat_errno.h"
 
 /* ============================================================================
  * Session Settings Constants

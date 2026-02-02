@@ -56,11 +56,11 @@
 #include <stdio.h>
 #include <time.h>
 #include "simd/common.h"
-#include <ascii-chat/util/time.h>
+#include "../util/time.h"
 
 // Include platform abstraction for write function mapping and deprecation suppression
 #ifndef PLATFORM_ABSTRACTION_H
-#include <ascii-chat/platform/abstraction.h>
+#include "../platform/abstraction.h"
 #endif
 
 /* ============================================================================
@@ -179,7 +179,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  */
 
 // Capability-aware ASCII conversion using terminal detection
-#include <ascii-chat/platform/terminal.h>
+#include "../platform/terminal.h"
 
 /**
  * @brief Convert image to ASCII art with terminal capability awareness

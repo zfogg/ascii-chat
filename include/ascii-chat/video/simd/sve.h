@@ -15,7 +15,7 @@
  * @date August 2025
  */
 
-#include <ascii-chat/video/image.h> // For image_t type
+#include "../../video/image.h" // For image_t type
 
 #if SIMD_SUPPORT_SVE
 #if (defined(__aarch64__) && !defined(__ARM_FEATURE_SVE))

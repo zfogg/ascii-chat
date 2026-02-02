@@ -72,8 +72,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/platform/abstraction.h>
+#include "common.h"
+#include "platform/abstraction.h"
 
 // Forward declaration
 typedef struct thread_pool thread_pool_t;

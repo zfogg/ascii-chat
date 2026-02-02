@@ -52,9 +52,9 @@
 #pragma once
 
 #include <stdio.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/registry.h>
+#include "../../common.h"
+#include "../../options/options.h"
+#include "../../options/registry.h"
 
 #ifdef __cplusplus
 extern "C" {

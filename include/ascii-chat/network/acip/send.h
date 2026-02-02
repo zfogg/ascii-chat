@@ -20,10 +20,10 @@
 
 #pragma once
 
-#include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/acip/messages.h>
-#include <ascii-chat/network/packet.h> // For packet_type_t
-#include <ascii-chat/asciichat_errno.h>
+#include "../../network/acip/transport.h"
+#include "../../network/acip/messages.h"
+#include "../../network/packet.h" // For packet_type_t
+#include "../../asciichat_errno.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

@@ -11,10 +11,10 @@
 
 #pragma once
 
-#include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/acip/messages.h>
-#include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../../network/acip/transport.h"
+#include "../../network/acip/messages.h"
+#include "../../network/acip/acds.h"
+#include "../../asciichat_errno.h"
 #include <stddef.h>
 
 // =============================================================================

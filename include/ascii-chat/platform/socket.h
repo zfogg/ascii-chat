@@ -28,7 +28,7 @@
 #include <stdbool.h>
 #include <string.h> // For memcpy used in common.h
 #include <sys/types.h>
-#include <ascii-chat/platform/util.h> // For ssize_t definition on Windows
+#include "../platform/util.h" // For ssize_t definition on Windows
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -53,7 +53,7 @@ typedef int socket_t;
 #define INVALID_SOCKET_VALUE (-1)
 #endif
 
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 // ============================================================================
 // Socket Functions

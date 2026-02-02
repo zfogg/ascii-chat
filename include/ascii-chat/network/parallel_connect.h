@@ -11,8 +11,8 @@
 #ifndef PARALLEL_CONNECT_H
 #define PARALLEL_CONNECT_H
 
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/common.h>
+#include "../platform/socket.h"
+#include "../common.h"
 
 /**
  * @brief Callback type to check if connection should be abandoned

@@ -51,7 +51,7 @@
 #pragma once
 
 #include <string.h>
-#include <ascii-chat/platform/abstraction.h>
+#include "../platform/abstraction.h"
 
 /**
  * Check if a thread has been created.

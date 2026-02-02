@@ -15,9 +15,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/options/builder.h>
+#include "../common.h"
+#include "../options/options.h"
+#include "../options/builder.h"
 
 /**
  * @brief Context where an option can appear

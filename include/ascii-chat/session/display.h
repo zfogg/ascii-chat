@@ -46,9 +46,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/video/image.h>
+#include "../platform/terminal.h"
+#include "../video/palette.h"
+#include "../video/image.h"
 
 /* ============================================================================
  * Session Display Configuration

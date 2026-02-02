@@ -54,11 +54,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/audio/audio.h>
-#include <ascii-chat/crypto/handshake/common.h>
+#include "../../platform/abstraction.h"
+#include "../../platform/socket.h"
+#include "../../platform/terminal.h"
+#include "../../audio/audio.h"
+#include "../../crypto/handshake/common.h"
 
 /* Audio queue configuration */
 #define TCP_CLIENT_AUDIO_QUEUE_SIZE 256

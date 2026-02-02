@@ -72,11 +72,11 @@
 
 #pragma once
 
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/log/logging.h>
-#include <ascii-chat/util/magic.h>
+#include "../platform/socket.h"
+#include "../platform/abstraction.h"
+#include "../crypto/crypto.h"
+#include "../log/logging.h"
+#include "../util/magic.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

@@ -15,7 +15,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 // ============================================================================
 // Session String Size Constants (Calculated from wordlists)

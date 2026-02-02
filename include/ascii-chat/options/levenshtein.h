@@ -14,7 +14,7 @@
 #define LEVENSHTEIN_H
 
 #include <stddef.h>
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 #ifdef __cplusplus
 extern "C" {

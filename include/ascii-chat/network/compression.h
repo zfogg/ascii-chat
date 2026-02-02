@@ -47,7 +47,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../asciichat_errno.h"
 
 /**
  * @name Compression Settings

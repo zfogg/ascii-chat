@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/platform/terminal.h>
+#include "../common.h"
+#include "../platform/terminal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -152,7 +152,7 @@ asciichat_error_t colorscheme_load_from_file(const char *path, color_scheme_t *s
  * and background. Applies background-appropriate color variant (light/dark).
  */
 asciichat_error_t colorscheme_compile_scheme(const color_scheme_t *scheme, terminal_color_mode_t mode,
-                                        terminal_background_t background, compiled_color_scheme_t *compiled);
+                                             terminal_background_t background, compiled_color_scheme_t *compiled);
 
 /**
  * @brief Clean up allocated strings in a compiled color scheme

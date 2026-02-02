@@ -23,8 +23,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h> // For strtoint_safe()
+#include "../common.h"
+#include "../options/options.h" // For strtoint_safe()
 
 #ifdef __cplusplus
 extern "C" {

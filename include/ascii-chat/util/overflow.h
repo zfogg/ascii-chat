@@ -44,7 +44,7 @@
 #include <stdbool.h>
 #include <limits.h>
 
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 /* ============================================================================
  * Overflow Prediction Functions

@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 /**
  * @brief Generate new Ed25519 keypair

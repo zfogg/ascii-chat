@@ -8,10 +8,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/crypto/keys.h>
-#include <ascii-chat/network/packet.h>
+#include "../../platform/socket.h"
+#include "../../crypto/crypto.h"
+#include "../../crypto/keys.h"
+#include "../../network/packet.h"
 
 /**
  * @name Authentication Requirement Flags

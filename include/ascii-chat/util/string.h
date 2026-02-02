@@ -220,7 +220,7 @@ bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer
  * @{
  */
 
-#include <ascii-chat/log/logging.h>
+#include "../log/logging.h"
 
 /**
  * @brief Build a colored string for terminal output

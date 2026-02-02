@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <ascii-chat/common.h>
+#include "../../common.h"
 #include <stddef.h>
 
 /**

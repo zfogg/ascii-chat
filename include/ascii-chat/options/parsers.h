@@ -14,9 +14,9 @@
 #pragma once
 
 #include <stdbool.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/log/logging.h>
+#include "../platform/terminal.h"
+#include "../video/palette.h"
+#include "../log/logging.h"
 
 /**
  * @brief Parse color setting option (--color flag)

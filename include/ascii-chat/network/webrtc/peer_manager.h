@@ -31,10 +31,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/network/webrtc/webrtc.h>
-#include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/acip/messages.h>
+#include "../../common.h"
+#include "../../network/webrtc/webrtc.h"
+#include "../../network/acip/transport.h"
+#include "../../network/acip/messages.h"
 
 #ifdef __cplusplus
 extern "C" {

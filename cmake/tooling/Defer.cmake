@@ -2,10 +2,7 @@ include_guard(GLOBAL)
 
 # defer() is MANDATORY - the code requires it to function correctly
 # Build the defer tool as an external project to avoid inheriting musl/static flags
-
-# This option controls whether defer transformation runs. It's always ON for normal builds.
-# The temp cmake build for generating compile_commands.json sets this to OFF to prevent recursion.
-option(ASCIICHAT_ENABLE_DEFER_TRANSFORM "Enable defer() source transformation" ON)
+# Defer transformation is ALWAYS enabled - no option to disable it
 
 # Option to prefer static Clang libraries over shared libclang-cpp.so
 # When ON, produces a larger (~44MB) but self-contained binary
@@ -19,11 +16,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 function(ascii_defer_prepare)
-    # Skip if defer transformation is disabled (used by temp cmake build to prevent recursion)
-    if(NOT ASCIICHAT_ENABLE_DEFER_TRANSFORM)
-        # Defer transformation disabled - silent for quiet builds
-        return()
-    endif()
 
     # Build extra cmake args for the defer tool
     set(_defer_extra_args "")
@@ -131,7 +123,6 @@ function(ascii_defer_prepare)
         COMMENT "Generating compilation database for defer transformation tool"
         CLANG_RESOURCE_DIR "${_clang_resource_dir_db}"
         DISABLE_OPTIONS
-            ASCIICHAT_ENABLE_DEFER_TRANSFORM
             ASCIICHAT_USE_PCH
             ASCIICHAT_ENABLE_ANALYZERS
             ASCIICHAT_BUILD_WITH_PANIC
@@ -164,10 +155,11 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir} --quiet
+            COMMAND echo "DEBUG: Transforming ${_rel_path} with compilation db at ${_ascii_temp_build_dir}"
+            COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir}
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT ""
+            COMMENT "Defer: ${_rel_path}"
             VERBATIM
         )
         list(APPEND _all_generated_outputs "${_gen_path}")

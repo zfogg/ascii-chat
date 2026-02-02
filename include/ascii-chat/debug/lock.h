@@ -49,17 +49,17 @@ using std::atomic_uint_fast64_t;
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/rwlock.h>
+#include "../platform/thread.h"
+#include "../platform/mutex.h"
+#include "../platform/rwlock.h"
 
 // Forward declarations for functions used in inline functions below
 uint64_t asciichat_thread_current_id(void);
 
 #ifdef DEBUG_LOCKS
 // Lock debugging is enabled when DEBUG_LOCKS is defined
-#include <ascii-chat/uthash/uthash.h>
-#include <ascii-chat/util/fnv1a.h>
+#include "../uthash/uthash.h"
+#include "../util/fnv1a.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -434,8 +434,8 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data);
 
 #ifndef DEBUG_LOCKS
 // Declarations for stub implementations when lock debugging is disabled
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/rwlock.h>
+#include "../platform/mutex.h"
+#include "../platform/rwlock.h"
 
 #ifdef __cplusplus
 extern "C" {

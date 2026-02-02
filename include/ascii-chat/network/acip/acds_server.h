@@ -43,11 +43,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/network/acip/protocol.h>
-#include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/platform/socket.h>
+#include "../../asciichat_errno.h"
+#include "../../network/acip/protocol.h"
+#include "../../network/acip/acds.h"
+#include "../../network/packet.h"
+#include "../../platform/socket.h"
 
 #ifdef __cplusplus
 extern "C" {

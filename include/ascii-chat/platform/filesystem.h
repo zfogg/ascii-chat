@@ -22,7 +22,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../asciichat_errno.h"
 
 /* ============================================================================
  * Cross-platform I/O headers

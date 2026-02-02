@@ -100,8 +100,8 @@ using std::atomic_size_t;
 #else
 #include <stdatomic.h>
 #endif
-#include <ascii-chat/buffer_pool.h>
-#include <ascii-chat/network/packet.h>
+#include "../buffer_pool.h"
+#include "../network/packet.h"
 
 /**
  * @brief Single packet ready to send (header already in network byte order)

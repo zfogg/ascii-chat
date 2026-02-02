@@ -20,17 +20,17 @@ using std::atomic_uint;
 #include <stdint.h>
 #include <time.h>
 
-#include <ascii-chat/network/network.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/packet_queue.h>
-#include <ascii-chat/network/logging.h>
-#include <ascii-chat/network/acip/transport.h>  // For acip_transport_t
-#include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
-#include <ascii-chat/ringbuffer.h>
-#include <ascii-chat/video/video_frame.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/uthash/uthash.h> // For UT_hash_handle
+#include "../network/network.h"
+#include "../network/packet.h"
+#include "../network/packet_queue.h"
+#include "../network/logging.h"
+#include "../network/acip/transport.h"  // For acip_transport_t
+#include "../crypto/handshake/common.h" // For crypto_handshake_context_t (complete type needed for field)
+#include "../ringbuffer.h"
+#include "../video/video_frame.h"
+#include "../platform/terminal.h"
+#include "../video/palette.h"
+#include "../uthash/uthash.h" // For UT_hash_handle
 
 /**
  * @brief Per-client state structure for server-side client management

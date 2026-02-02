@@ -16,7 +16,7 @@
 #ifndef ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 #define ASCIICHAT_NETWORKING_WEBRTC_TURN_CREDENTIALS_H
 
-#include <ascii-chat/common/error_codes.h>
+#include "../../common/error_codes.h"
 
 #include <stdbool.h>
 #include <stdint.h>

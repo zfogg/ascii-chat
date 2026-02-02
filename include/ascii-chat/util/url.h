@@ -36,7 +36,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../asciichat_errno.h"
 
 /**
  * @brief Structure containing parsed HTTPS URL components

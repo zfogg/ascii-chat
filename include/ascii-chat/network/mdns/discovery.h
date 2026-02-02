@@ -66,9 +66,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/discovery/strings.h>          // For is_session_string()
-#include <ascii-chat/network/mdns/discovery_tui.h> // For discovery_tui_server_t
+#include "../../common.h"
+#include "../../discovery/strings.h"          // For is_session_string()
+#include "../../network/mdns/discovery_tui.h" // For discovery_tui_server_t
 
 #ifdef __cplusplus
 extern "C" {

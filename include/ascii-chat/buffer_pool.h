@@ -35,8 +35,8 @@ using std::atomic_size_t;
 #else
 #include <stdatomic.h>
 #endif
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/util/magic.h>
+#include "platform/mutex.h"
+#include "util/magic.h"
 
 /* ============================================================================
  * Configuration Constants

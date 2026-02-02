@@ -50,8 +50,8 @@
 
 #pragma once
 
-#include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/common.h>
+#include "../asciichat_errno.h"
+#include "../common.h"
 #include <stdbool.h>
 #include <stdint.h>
 

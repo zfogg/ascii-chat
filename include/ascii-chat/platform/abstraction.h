@@ -280,10 +280,10 @@
 // Platform Abstraction Modules
 // ============================================================================
 
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/rwlock.h>
-#include <ascii-chat/platform/cond.h>
+#include "../platform/thread.h"
+#include "../platform/mutex.h"
+#include "../platform/rwlock.h"
+#include "../platform/cond.h"
 // Windows socket shutdown constants - define before socket.h includes winsock2.h
 #ifdef _WIN32
 #ifndef SHUT_RDWR
@@ -296,18 +296,18 @@
 #endif
 #endif
 
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/memory.h>
-#include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/filesystem.h>
+#include "../platform/socket.h"
+#include "../platform/terminal.h"
+#include "../platform/system.h"
+#include "../platform/memory.h"
+#include "../platform/process.h"
+#include "../platform/filesystem.h"
 // NOTE: uthash/uthash.h is NOT included here to avoid circular dependencies
 // Files that need uthash should include it directly AFTER common.h
-#include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/pipe.h>
+#include "../platform/filesystem.h"
+#include "../platform/pipe.h"
 #ifndef __cplusplus
-#include <ascii-chat/debug/lock.h>
+#include "../debug/lock.h"
 #endif
 
 // ============================================================================

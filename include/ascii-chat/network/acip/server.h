@@ -17,10 +17,10 @@
 #ifndef NETWORK_ACIP_SERVER_H
 #define NETWORK_ACIP_SERVER_H
 
-#include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/acip/handlers.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../../network/acip/transport.h"
+#include "../../network/acip/handlers.h"
+#include "../../network/packet.h"
+#include "../../asciichat_errno.h"
 
 #ifdef __cplusplus
 extern "C" {

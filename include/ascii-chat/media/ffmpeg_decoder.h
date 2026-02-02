@@ -40,8 +40,8 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/video/image.h>
+#include "../common.h"
+#include "../video/image.h"
 
 /* ============================================================================
  * FFmpeg Decoder Handle

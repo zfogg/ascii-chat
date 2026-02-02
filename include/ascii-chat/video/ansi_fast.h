@@ -24,7 +24,7 @@
  * @date September 2025
  */
 
-#include <ascii-chat/video/simd/ascii_simd.h>
+#include "../video/simd/ascii_simd.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -267,7 +267,7 @@ void get_16color_rgb(uint8_t color_index, uint8_t *r, uint8_t *g, uint8_t *b);
 uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, int height, rgb_error_t *error_buffer);
 
 // Terminal capability-aware color functions
-#include <ascii-chat/options/options.h>
+#include "../options/options.h"
 
 /**
  * @brief Append color foreground sequence for specified mode

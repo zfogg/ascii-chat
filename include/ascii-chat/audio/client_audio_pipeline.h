@@ -60,8 +60,8 @@
 #include <stdatomic.h>
 #endif
 
-#include <ascii-chat/audio/mixer.h>
-#include <ascii-chat/platform/mutex.h>
+#include "../audio/mixer.h"
+#include "../platform/mutex.h"
 
 // Forward declarations for SpeexDSP types
 typedef struct SpeexPreprocessState_ SpeexPreprocessState;

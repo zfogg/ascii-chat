@@ -42,10 +42,10 @@
 
 #pragma once
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/crypto/crypto.h>
-#include <ascii-chat/platform/socket.h>
+#include "../../common.h"
+#include "../../asciichat_errno.h"
+#include "../../crypto/crypto.h"
+#include "../../platform/socket.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>

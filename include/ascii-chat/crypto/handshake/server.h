@@ -6,8 +6,8 @@
  * @ingroup handshake
  */
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/crypto/handshake/common.h>
+#include "../../common.h"
+#include "../../crypto/handshake/common.h"
 
 /**
  * @name Server Handshake Protocol

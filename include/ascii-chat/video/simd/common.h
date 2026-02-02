@@ -26,9 +26,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/util/number.h> // For write_decimal, write_u8
-#include <ascii-chat/video/image.h>
-#include <ascii-chat/uthash/uthash.h> // For UT_hash_handle
+#include "../../util/number.h" // For write_decimal, write_u8
+#include "../../video/image.h"
+#include "../../uthash/uthash.h" // For UT_hash_handle
 
 /** @brief Ramp64 cache size (64 entries) */
 #define RAMP64_SIZE 64

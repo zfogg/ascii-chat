@@ -35,8 +35,8 @@
 #else
 #include <stdatomic.h>
 #endif
-#include <ascii-chat/common.h>
-#include <ascii-chat/platform/mmap.h>
+#include "../common.h"
+#include "../platform/mmap.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -9,9 +9,9 @@
 #endif
 
 // Platform-specific includes - must be first
-#include <ascii-chat/common.h>
+#include "common.h"
 // Include logging.h for log_error macro used in SET_ERRNO
-#include <ascii-chat/log/logging.h>
+#include "log/logging.h"
 
 /**
  * @file asciichat_errno.h

@@ -28,8 +28,8 @@
  * @date October 2025
  */
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/crypto/key_types.h>
+#include "../../common.h"
+#include "../../crypto/key_types.h"
 #include <stdbool.h>
 
 /**

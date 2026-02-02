@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/common.h>
+#include "../../common.h"
 
 /** @brief Handle to UPnP context */
 typedef struct nat_upnp_context {

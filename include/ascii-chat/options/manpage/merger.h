@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include <ascii-chat/options/builder.h>
-#include <ascii-chat/options/manpage.h>
+#include "../../options/builder.h"
+#include "../../options/manpage.h"
 #include <stdio.h>
 
 /**

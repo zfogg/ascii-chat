@@ -48,16 +48,16 @@
  * @date October 2025
  */
 
-#include <ascii-chat/util/aspect_ratio.h>
-#include <ascii-chat/util/bytes.h>
-#include <ascii-chat/util/fnv1a.h>
-#include <ascii-chat/util/format.h>
-#include <ascii-chat/util/ip.h>
-#include <ascii-chat/util/math.h>
-#include <ascii-chat/util/parsing.h>
-#include <ascii-chat/util/path.h>
-#include <ascii-chat/util/string.h>
-#include <ascii-chat/util/utf8.h>
-#include <ascii-chat/util/thread.h>
-#include <ascii-chat/util/atomic.h>
-#include <ascii-chat/util/endian.h>
+#include "../util/aspect_ratio.h"
+#include "../util/bytes.h"
+#include "../util/fnv1a.h"
+#include "../util/format.h"
+#include "../util/ip.h"
+#include "../util/math.h"
+#include "../util/parsing.h"
+#include "../util/path.h"
+#include "../util/string.h"
+#include "../util/utf8.h"
+#include "../util/thread.h"
+#include "../util/atomic.h"
+#include "../util/endian.h"

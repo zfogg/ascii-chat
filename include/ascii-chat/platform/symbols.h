@@ -81,7 +81,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 /* ============================================================================
  * Symbol Cache Lifecycle

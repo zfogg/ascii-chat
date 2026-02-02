@@ -51,7 +51,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-#include <ascii-chat/platform/util.h> // for ssize_t
+#include "../platform/util.h" // for ssize_t
 
 /* ============================================================================
  * Aspect Ratio Calculation Functions

@@ -23,7 +23,7 @@ typedef enum remote_log_direction {
   REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER = 2
 } remote_log_direction_t;
 
-#include <ascii-chat/log/logging.h>
+#include "../log/logging.h"
 
 /* ============================================================================
  * Network Logging Macros

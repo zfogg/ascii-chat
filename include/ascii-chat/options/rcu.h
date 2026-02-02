@@ -83,8 +83,8 @@
 
 #pragma once
 
-#include <ascii-chat/options/options.h> // Provides options_t struct definition
-#include <ascii-chat/platform/abstraction.h>
+#include "../options/options.h" // Provides options_t struct definition
+#include "../platform/abstraction.h"
 #include <stdbool.h>
 #include <stdatomic.h>
 

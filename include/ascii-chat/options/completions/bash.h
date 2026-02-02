@@ -12,7 +12,7 @@
 #pragma once
 
 #include <stdio.h>
-#include <ascii-chat/common.h>
+#include "../../common.h"
 
 #ifdef __cplusplus
 extern "C" {

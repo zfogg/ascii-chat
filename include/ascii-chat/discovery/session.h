@@ -12,10 +12,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
-#include <ascii-chat/common.h>
-#include <ascii-chat/network/acip/acds.h>
+#include "../common.h"
+#include "../network/acip/acds.h"
 #include "discovery-service/main.h"
-#include <ascii-chat/discovery/strings.h>
+#include "../discovery/strings.h"
 
 /**
  * @brief Maximum participants per session

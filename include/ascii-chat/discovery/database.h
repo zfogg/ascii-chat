@@ -13,10 +13,10 @@
 #include <stdbool.h>
 #include <sqlite3.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
-#include <ascii-chat/common.h>
-#include <ascii-chat/discovery/session.h>
+#include "../common.h"
+#include "../discovery/session.h"
 #include "discovery-service/main.h"
-#include <ascii-chat/network/acip/acds.h>
+#include "../network/acip/acds.h"
 
 // ============================================================================
 // Database Lifecycle

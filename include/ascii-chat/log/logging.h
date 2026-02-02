@@ -46,8 +46,8 @@ using std::memory_order_relaxed;
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/system.h>
+#include "../platform/socket.h"
+#include "../platform/system.h"
 
 /* Forward declarations */
 struct crypto_context_t;
@@ -70,7 +70,7 @@ typedef enum {
   LOG_FATAL    /**< Fatal error messages (most severe) */
 } log_level_t;
 
-#include <ascii-chat/network/logging.h>
+#include "../network/logging.h"
 
 #ifdef NDEBUG
 /** @brief Default log level for release builds (INFO and above) */
@@ -404,7 +404,7 @@ char *format_message(const char *format, va_list args);
  */
 size_t get_current_time_formatted(char *time_buf);
 
-#include <ascii-chat/crypto/crypto.h>
+#include "../crypto/crypto.h"
 
 /**
  * @brief Send a formatted log message over the network.

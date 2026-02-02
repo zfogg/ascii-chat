@@ -55,8 +55,8 @@
  */
 
 #include <stdbool.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h> // For asciichat_mode_t
+#include "../common.h"
+#include "../options/options.h" // For asciichat_mode_t
 
 /**
  * @brief Load configuration from TOML file and apply to global options

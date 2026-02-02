@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include <ascii-chat/asciichat_errno.h>
+#include "../../asciichat_errno.h"
 #include <stddef.h>
 
 #ifdef __cplusplus

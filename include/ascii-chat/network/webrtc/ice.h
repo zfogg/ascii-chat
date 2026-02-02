@@ -57,8 +57,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../../common.h"
+#include "../../asciichat_errno.h"
 
 #ifdef __cplusplus
 extern "C" {

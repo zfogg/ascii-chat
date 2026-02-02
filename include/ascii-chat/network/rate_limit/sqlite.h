@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <ascii-chat/network/rate_limit/memory.h> // For backend_ops_t typedef
+#include "../../network/rate_limit/memory.h" // For backend_ops_t typedef
 #include <sqlite3.h>
 
 /**

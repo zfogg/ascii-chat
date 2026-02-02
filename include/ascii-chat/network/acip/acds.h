@@ -41,11 +41,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/options/options.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/acip/protocol.h>
-#include <ascii-chat/network/webrtc/stun.h>
-#include <ascii-chat/network/webrtc/turn.h>
+#include "../../options/options.h"
+#include "../../network/packet.h"
+#include "../../network/acip/protocol.h"
+#include "../../network/webrtc/stun.h"
+#include "../../network/webrtc/turn.h"
 
 #ifdef __cplusplus
 extern "C" {

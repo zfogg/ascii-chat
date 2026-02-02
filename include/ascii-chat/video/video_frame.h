@@ -81,8 +81,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/common/buffer_sizes.h>
+#include "../platform/abstraction.h"
+#include "../common/buffer_sizes.h"
 
 /* ============================================================================
  * Video Frame Constants

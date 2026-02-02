@@ -14,7 +14,7 @@
  * @date September 2025
  */
 
-#include <ascii-chat/platform/abstraction.h>
+#include "../platform/abstraction.h"
 
 // ============================================================================
 // Static Initialization Helpers

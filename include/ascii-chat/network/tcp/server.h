@@ -63,11 +63,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdatomic.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/thread_pool.h>
-#include <ascii-chat/uthash/uthash.h> // For UT_hash_handle
+#include "../../common.h"
+#include "../../platform/socket.h"
+#include "../../platform/abstraction.h"
+#include "../../thread_pool.h"
+#include "../../uthash/uthash.h" // For UT_hash_handle
 
 // Forward declarations
 typedef struct tcp_client_entry tcp_client_entry_t;

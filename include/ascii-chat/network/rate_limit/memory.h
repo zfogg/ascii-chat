@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <ascii-chat/network/rate_limit/rate_limit.h>
+#include "../../network/rate_limit/rate_limit.h"
 
 /**
  * @brief Memory backend operations vtable

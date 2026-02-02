@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/acip/acds.h>
+#include "../../network/packet.h"
+#include "../../network/acip/acds.h"
 #include <stdint.h>
 #include <stdbool.h>
 

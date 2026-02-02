@@ -331,6 +331,10 @@ configure_file(
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
             "${CMAKE_BINARY_DIR}/generated/version.h"
+        # Also copy to include/ascii-chat/ for defer tool access
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/generated/version.h"
+            "${CMAKE_SOURCE_DIR}/include/ascii-chat/version.h"
         # Clean up temp file
         COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
         DEPENDS ${VERSION_DEPENDENCIES}

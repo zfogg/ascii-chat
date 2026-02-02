@@ -23,8 +23,8 @@
  * @date October 2025
  */
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/crypto/key_types.h> // Include the key type definitions
+#include "../../common.h"
+#include "../../crypto/key_types.h" // Include the key type definitions
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

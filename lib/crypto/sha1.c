@@ -71,7 +71,7 @@ void SHA1Transform(uint32_t state[5], const unsigned char buffer[SHA1_BLOCK_LENG
   uint32_t a, b, c, d, e;
   typedef union {
     unsigned char c[64];
-    unsigned int l[16];
+    uint32_t l[16];
   } CHAR64LONG16;
   CHAR64LONG16 *block;
 #ifdef SHA1HANDSOFF

@@ -74,12 +74,12 @@
 #include <mach/kern_return.h>
 #endif
 
-#include <ascii-chat/common.h>
-#include <ascii-chat/platform/thread.h>
-#include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/platform/cond.h>
-#include <ascii-chat/ringbuffer.h>
-#include <ascii-chat/options/options.h>
+#include "../common.h"
+#include "../platform/thread.h"
+#include "../platform/mutex.h"
+#include "../platform/cond.h"
+#include "../ringbuffer.h"
+#include "../options/options.h"
 
 /* ============================================================================
  * Audio Configuration Constants

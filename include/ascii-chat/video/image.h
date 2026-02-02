@@ -57,8 +57,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/common.h>
+#include "../platform/abstraction.h"
+#include "../common.h"
 
 /* ============================================================================
  * Data Structures
@@ -348,7 +348,7 @@ char *image_print_color(const image_t *p, const char *palette);
  */
 
 // Capability-aware image printing functions
-#include <ascii-chat/platform/terminal.h>
+#include "../platform/terminal.h"
 
 /**
  * @brief Print image with terminal capability awareness

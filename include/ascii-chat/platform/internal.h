@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <ascii-chat/platform/util.h>
+#include "../platform/util.h"
 
 // ============================================================================
 // Platform-Internal Implementation Details

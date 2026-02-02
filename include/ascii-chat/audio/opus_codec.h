@@ -56,7 +56,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/common.h>
+#include "../common.h"
 
 /* ============================================================================
  * Forward Declarations

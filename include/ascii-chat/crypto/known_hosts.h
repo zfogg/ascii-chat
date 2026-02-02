@@ -38,7 +38,7 @@
  */
 
 #include <stdint.h>
-#include <ascii-chat/common.h>
+#include "../common.h"
 #include <stdbool.h>
 
 /**

@@ -49,7 +49,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <ascii-chat/common.h>
+#include "../../common.h"
 
 #ifdef __cplusplus
 extern "C" {

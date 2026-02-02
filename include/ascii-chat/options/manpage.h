@@ -17,7 +17,7 @@
 #pragma once
 
 #include "builder.h"
-#include <ascii-chat/common.h>
+#include "../common.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>

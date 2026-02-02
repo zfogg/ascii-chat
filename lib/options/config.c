@@ -850,18 +850,22 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
   struct stat st;
   if (stat(config_path_expanded, &st) != 0) {
     if (strict) {
+      SAFE_FREE(config_path_expanded);
       return SET_ERRNO(ERROR_CONFIG, "Config file does not exist: '%s'", display_path);
     }
     // File doesn't exist, that's OK - not required (non-strict mode)
+    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
 
   // Verify it's a regular file
   if (!S_ISREG(st.st_mode)) {
     if (strict) {
+      SAFE_FREE(config_path_expanded);
       return SET_ERRNO(ERROR_CONFIG, "Config file exists but is not a regular file: '%s'", display_path);
     }
     CONFIG_WARN("Config file exists but is not a regular file: '%s' (skipping)", display_path);
+    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
 
@@ -879,15 +883,18 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
       // So we need to format the error message ourselves here
       char error_buffer[BUFFER_SIZE_MEDIUM];
       safe_snprintf(error_buffer, sizeof(error_buffer), "Failed to parse config file '%s': %s", display_path, errmsg);
+      SAFE_FREE(config_path_expanded);
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
+    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK; // Non-fatal error
   }
 
   // Apply configuration using schema-driven parser with bitmask validation
   asciichat_error_t schema_result = config_apply_schema(result.toptab, detected_mode, opts, strict);
   if (schema_result != ASCIICHAT_OK && strict) {
+    SAFE_FREE(config_path_expanded);
     return schema_result;
   }
   // In non-strict mode, continue even if some options failed validation
@@ -909,6 +916,7 @@ asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const ch
     CONFIG_WARN("Failed to update RCU options state: %d (values may not be persisted)", rcu_result);
   }
 
+  SAFE_FREE(config_path_expanded);
   return ASCIICHAT_OK;
 }
 

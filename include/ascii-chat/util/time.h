@@ -47,7 +47,7 @@
 
 // Include uthash wrapper for UBSan-safe hash functions
 // Headers can include this even before common.h is fully processed
-#include <ascii-chat/uthash/uthash.h>
+#include "../uthash/uthash.h"
 
 // ============================================================================
 // Core Monotonic Timing API (Nanosecond Precision)

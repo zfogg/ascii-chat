@@ -14,7 +14,7 @@
  */
 
 #include <stddef.h>
-#include <ascii-chat/asciichat_errno.h>
+#include "../asciichat_errno.h"
 
 #ifdef __cplusplus
 extern "C" {

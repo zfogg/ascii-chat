@@ -109,12 +109,12 @@
 #include <netinet/tcp.h>
 #endif
 
-#include <ascii-chat/server/client.h>
-#include <ascii-chat/server/main.h>
-#include <ascii-chat/server/protocol.h>
-#include <ascii-chat/server/render.h>
-#include <ascii-chat/server/stream.h>
-#include <ascii-chat/server/crypto.h>
+#include "client.h"
+#include "main.h"
+#include "protocol.h"
+#include "render.h"
+#include "stream.h"
+#include "crypto.h"
 #include <ascii-chat/crypto/handshake/common.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/common.h>

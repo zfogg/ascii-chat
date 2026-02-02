@@ -56,7 +56,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/util/number.h> // For digits_u32()
+#include "../util/number.h" // For digits_u32()
 
 /* ============================================================================
  * Data Structures

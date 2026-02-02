@@ -371,7 +371,9 @@ private:
   }
 
   // Check if text contains a standalone "defer(" call (not part of another identifier)
-  bool containsDeferCall(StringRef text) const { return findDeferCall(text) != StringRef::npos; }
+  bool containsDeferCall(StringRef text) const {
+    return findDeferCall(text) != StringRef::npos;
+  }
 
   // Get defers for a specific scope in LIFO order (last registered first)
   std::vector<const DeferCall *> getDefersForScope(unsigned scopeId, const std::vector<DeferCall> &deferCalls) const {
@@ -1166,27 +1168,39 @@ int main(int argc, const char **argv) {
       // Convert -I to -isystem for dependency paths (so they come after our clang builtins)
       // This prevents <stdbool.h> from being searched in dependency directories
       // before our clang builtin path
+      // EXCEPTION: Keep -I for the public "include/" directory since it contains
+      // public API headers meant to be included with angle brackets like <ascii-chat/header.h>
       if (arg == "-I" && i + 1 < args.size()) {
         // -I /path/to/dir (separate argument)
         const std::string &includePath = args[++i];
-        if (isProjectPath(includePath)) {
+        if (isProjectPath(includePath) && includePath.find("/include") == std::string::npos) {
+          // Project path but NOT the public include directory - convert to -iquote
           result.push_back("-iquote");
           result.push_back(includePath);
-        } else {
+        } else if (!isProjectPath(includePath)) {
           // Collect dependency -I paths to add as -isystem after our builtins
           collectedIsystemPaths.push_back(includePath);
+        } else {
+          // Public include directory - keep as -I for angle-bracket includes
+          result.push_back("-I");
+          result.push_back(includePath);
         }
         continue;
       }
       if (arg.find("-I") == 0 && arg.length() > 2) {
         // -I/path/to/dir (combined form)
         std::string includePath = arg.substr(2);
-        if (isProjectPath(includePath)) {
+        if (isProjectPath(includePath) && includePath.find("/include") == std::string::npos) {
+          // Project path but NOT the public include directory - convert to -iquote
           result.push_back("-iquote");
           result.push_back(includePath);
-        } else {
+        } else if (!isProjectPath(includePath)) {
           // Collect dependency -I paths to add as -isystem after our builtins
           collectedIsystemPaths.push_back(includePath);
+        } else {
+          // Public include directory - keep as -I for angle-bracket includes
+          result.push_back("-I");
+          result.push_back(includePath);
         }
         continue;
       }

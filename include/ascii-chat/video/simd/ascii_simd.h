@@ -26,8 +26,8 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <ascii-chat/video/image.h>
-#include <ascii-chat/common.h>
+#include "../../video/image.h"
+#include "../../common.h"
 
 // Check for SIMD support and include architecture-specific headers
 // CMake explicitly controls which SIMD levels to enable via ENABLE_SIMD_* options
@@ -449,17 +449,17 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
 
 // Include architecture-specific implementations
 #if SIMD_SUPPORT_SSE2
-#include <ascii-chat/video/simd/sse2.h>
+#include "../../video/simd/sse2.h"
 #endif
 #if SIMD_SUPPORT_SSSE3
-#include <ascii-chat/video/simd/ssse3.h>
+#include "../../video/simd/ssse3.h"
 #endif
 #if SIMD_SUPPORT_AVX2
-#include <ascii-chat/video/simd/avx2.h>
+#include "../../video/simd/avx2.h"
 #endif
 #if SIMD_SUPPORT_SVE
-#include <ascii-chat/video/simd/sve.h>
+#include "../../video/simd/sve.h"
 #endif
 #if SIMD_SUPPORT_NEON
-#include <ascii-chat/video/simd/neon.h>
+#include "../../video/simd/neon.h"
 #endif

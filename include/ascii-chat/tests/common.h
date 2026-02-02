@@ -59,9 +59,9 @@
 #include <criterion/criterion.h>
 
 // Project headers - use relative paths from tests directory
-#include <ascii-chat/common.h>
-#include <ascii-chat/log/logging.h>
-#include <ascii-chat/tests/logging.h>
+#include "../common.h"
+#include "../log/logging.h"
+#include "../tests/logging.h"
 #include "test_env.h"
 
 // =============================================================================
@@ -169,7 +169,7 @@ const char *test_get_binary_path(void);
 // Test Options Helpers (for RCU pattern)
 // =============================================================================
 
-#include <ascii-chat/options/rcu.h>
+#include "../options/rcu.h"
 
 /**
  * @brief Helper to set test_pattern option in tests

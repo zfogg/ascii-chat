@@ -31,7 +31,7 @@
 #include <string.h> // For memcpy in unaligned access helpers
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
-#include <ascii-chat/platform/api.h> // IWYU pragma: keep
+#include "platform/api.h" // IWYU pragma: keep
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
@@ -95,13 +95,13 @@ typedef unsigned long long uint64_t;
  * Include organized sub-headers for specific domains
  * ============================================================================ */
 
-#include <ascii-chat/common/error_codes.h>        // Error codes and error_string function
-#include <ascii-chat/common/protocol_constants.h> // Protocol version, features, compression, frames
-#include <ascii-chat/common/limits.h>             // MAX_CLIENTS, FPS limits, display name length
-#include <ascii-chat/common/buffer_sizes.h>       // Standard buffer size constants
-#include <ascii-chat/common/log_rates.h>          // Logging rate limit constants
-#include <ascii-chat/common/shutdown.h>           // Shutdown detection system
-#include <ascii-chat/common/string_constants.h>   // String literal constants (STR_TRUE, STR_FALSE, etc.)
+#include "common/error_codes.h"        // Error codes and error_string function
+#include "common/protocol_constants.h" // Protocol version, features, compression, frames
+#include "common/limits.h"             // MAX_CLIENTS, FPS limits, display name length
+#include "common/buffer_sizes.h"       // Standard buffer size constants
+#include "common/log_rates.h"          // Logging rate limit constants
+#include "common/shutdown.h"           // Shutdown detection system
+#include "common/string_constants.h"   // String literal constants (STR_TRUE, STR_FALSE, etc.)
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,7 +126,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  */
 
 /* Include platform system header for platform_print_backtrace */
-#include <ascii-chat/platform/system.h> // IWYU pragma: keep
+#include "platform/system.h" // IWYU pragma: keep
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
@@ -235,7 +235,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
 #define ALLOC_FREE(ptr) mi_free(ptr)
 #elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
-#include <ascii-chat/debug/memory.h>
+#include "debug/memory.h"
 #define ALLOC_MALLOC(size) debug_malloc(size, __FILE__, __LINE__)
 #define ALLOC_CALLOC(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
@@ -406,7 +406,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 /* Safe string copy */
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
-#include <ascii-chat/asciichat_errno.h>
+#include "asciichat_errno.h"
 /* Safe string duplication with memory tracking */
 #define SAFE_STRDUP(dst, src)                                                                                          \
   do {                                                                                                                 \
@@ -430,7 +430,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
 
 /* Platform-safe strerror */
-#include <ascii-chat/platform/abstraction.h> // IWYU pragma: keep
+#include "platform/abstraction.h" // IWYU pragma: keep
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */
@@ -447,7 +447,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  *       macros for existing code using the old names.
  */
 
-#include <ascii-chat/util/bytes.h>
+#include "util/bytes.h"
 
 /* Backward compatibility aliases for existing code */
 #define read_u16_unaligned bytes_read_u16_unaligned
@@ -517,7 +517,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   } while (0)
 
 /* Include logging.h to provide logging macros to all files that include common.h */
-#include <ascii-chat/log/logging.h> // IWYU pragma: keep
+#include "log/logging.h" // IWYU pragma: keep
 
 /** @} */
 

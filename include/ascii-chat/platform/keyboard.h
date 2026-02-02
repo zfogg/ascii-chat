@@ -25,7 +25,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include <ascii-chat/common/error_codes.h>
+#include "../common/error_codes.h"
 
 /* ============================================================================
  * Keyboard Key Enumeration

@@ -67,7 +67,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/platform/terminal.h>
+#include "../platform/terminal.h"
 
 /**
  * @brief Color filter metadata structure

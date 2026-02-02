@@ -35,8 +35,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <ascii-chat/common.h>
-#include <ascii-chat/options/options.h> // For option_mode_bitmask_t
+#include "../common.h"
+#include "../options/options.h" // For option_mode_bitmask_t
 
 /**
  * @brief Option value types

@@ -52,9 +52,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/platform/socket.h>
-#include <ascii-chat/video/image.h>
+#include "../asciichat_errno.h"
+#include "../platform/socket.h"
+#include "../video/image.h"
 
 /* ============================================================================
  * Session Host Types
