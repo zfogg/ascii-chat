@@ -3193,6 +3193,13 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
     return;
   }
 
+  // Print ASCII art logo
+  (void)fprintf(desc, "  __ _ ___  ___(_|_)       ___| |__   __ _| |_ \n");
+  (void)fprintf(desc, " / _` / __|/ __| | |_____ / __| '_ \\ / _` | __|\n");
+  (void)fprintf(desc, "| (_| \\__ \\ (__| | |_____| (__| | | | (_| | |_ \n");
+  (void)fprintf(desc, " \\__,_|___/\\___|_|_|      \\___|_| |_|\\__,_|\\__|\n");
+  (void)fprintf(desc, "\n");
+
   // Print program name and description (color mode name magenta if it's a mode-specific help)
   if (program_name) {
     const char *space = strchr(program_name, ' ');
