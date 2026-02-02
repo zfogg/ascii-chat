@@ -383,7 +383,6 @@ flag to override.
 .PP
 .\" MANUAL-START: NOTES
 .SH NOTES
-.PP
 .IP \(bu 2
 \fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
 are NOT supported due to libsodium limitations. Generate Ed25519 keys with:
@@ -435,14 +434,17 @@ or RLE compression codes. Only the final frame is output. Use
 the $ASCII_CHAT_KEY_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
 .\" MANUAL-END: NOTES
+.PP
 .\" MANUAL-START: BUGS
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .\" MANUAL-END: BUGS
+.
 .\" MANUAL-START: AUTHOR
 .SH AUTHOR
 Zachary Fogg <me@zfo.gg>
 .\" MANUAL-END: AUTHOR
+.
 .\" MANUAL-START: SEE ALSO
 .SH SEE ALSO
 .BR ascii-chat (5),
