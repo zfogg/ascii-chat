@@ -248,10 +248,10 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     return;
   }
 
-  // Help screen box dimensions (25 rows total: border + title + nav (7 lines) + blank + settings + blank + footer +
+  // Help screen box dimensions (24 rows total: border + title + nav (7 lines) + separator + settings + blank + footer +
   // border)
   const int box_width = 48;  // Display columns
-  const int box_height = 25; // Total rows including borders
+  const int box_height = 24; // Total rows including borders
 
   // Calculate centering position
   // Horizontal centering
@@ -354,10 +354,6 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   build_help_line(line_buf, sizeof(line_buf), "───────────────");
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
-  build_help_line(line_buf, sizeof(line_buf), "");
-  APPEND("%s", line_buf);
-
   // Get current option values
   double current_volume = GET_OPTION(speakers_volume);
   int current_color_mode = (int)GET_OPTION(color_mode);
@@ -383,42 +379,42 @@ void session_display_render_help(session_display_ctx_t *ctx) {
       current_audio ? colored_string(ENABLED_COLOR, "Enabled") : colored_string(DISABLED_COLOR, "Disabled");
 
   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, r, f)
-  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 17, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Audio", audio_text);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 18, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Volume", volume_bar);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 19, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Color", color_str);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 20, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Render", render_str);
   APPEND("%s", line_buf);
 
-  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 21, start_col + 1);
   build_settings_line(line_buf, sizeof(line_buf), "Webcam", flip_text);
   APPEND("%s", line_buf);
 
   // Blank line before footer
-  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 22, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "");
   APPEND("%s", line_buf);
 
   // Footer
-  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 23, start_col + 1);
   build_help_line(line_buf, sizeof(line_buf), "Press ? to close");
   APPEND("%s", line_buf);
 
   // Bottom border
-  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 24, start_col + 1);
   APPEND("╚══════════════════════════════════════════════╝");
 
   // Cursor positioning after rendering
-  APPEND("\033[%d;%dH", start_row + 26, start_col + 1);
+  APPEND("\033[%d;%dH", start_row + 25, start_col + 1);
 
 #undef APPEND
 
