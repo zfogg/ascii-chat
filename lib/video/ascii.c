@@ -329,7 +329,7 @@ asciichat_error_t ascii_write(const char *frame) {
   while (written < frame_len) {
     ssize_t result = platform_write(STDOUT_FILENO, frame + written, frame_len - written);
     if (result <= 0) {
-      log_error("Failed to write ASCII frame");
+      SET_ERRNO(ERROR_TERMINAL, "Failed to write ASCII frame");
       return ERROR_TERMINAL;
     }
     written += (size_t)result;

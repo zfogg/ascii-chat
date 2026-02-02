@@ -488,7 +488,15 @@ int mirror_main(void) {
   // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
   if (mirror_should_exit() && platform_isatty(1)) { // 1 = stdout
     const char newline = '\n';
-    platform_write(STDOUT_FILENO, &newline, 1);
+    size_t written = 0;
+    while (written < 1) {
+      ssize_t result = platform_write(STDOUT_FILENO, &newline + written, 1 - written);
+      if (result <= 0) {
+        SET_ERRNO(ERROR_TERMINAL, "Failed to write newline to terminal");
+        break;
+      }
+      written += (size_t)result;
+    }
   }
 
   return 0;

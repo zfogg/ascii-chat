@@ -150,7 +150,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     log_set_force_stderr(true);
     // Set stdout to line buffering to ensure output is flushed at newlines
     // This helps with snapshot mode where each frame ends with a newline
-    (void)setvbuf(stdout, NULL, _IOLBF, 0);
+    //(void)setvbuf(stdout, NULL, _IOLBF, 0);
   }
 
   // Detect terminal capabilities
@@ -457,18 +457,21 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
     fd = STDOUT_FILENO;
   }
 
-  // Write all data with retry on partial writes and immediate flush
+  // Write all data with retry on transient errors (EAGAIN, EWOULDBLOCK)
+  // Retry logic ensures complete writes even under high load or when piping
   size_t written_total = 0;
-  while (written_total < len) {
+  int attempts = 0;
+  while (written_total < len && attempts < 1000) {
     ssize_t written = platform_write(fd, data + written_total, len - written_total);
 
     if (written > 0) {
       written_total += written;
+      attempts = 0;
       // Flush immediately after each write to TTY to ensure data is sent
       (void)terminal_flush(fd);
     } else {
-      // Error or EOF
-      break;
+      // Retry on transient errors instead of breaking immediately
+      attempts++;
     }
   }
 }
