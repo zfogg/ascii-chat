@@ -88,7 +88,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Keyboard input initialization (if keyboard handler is provided)
   // Allow keyboard in snapshot mode too (for help screen toggle debugging)
-  // CRITICAL: Only enable keyboard if BOTH stdin AND stdout are TTYs
+  // Only enable keyboard if BOTH stdin AND stdout are TTYs
   // If stdout is piped/redirected, don't enable keyboard to avoid buffering issues
   bool keyboard_enabled = false;
   if (keyboard_handler && platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO)) {

@@ -334,9 +334,8 @@ asciichat_error_t ascii_write(const char *frame) {
     }
     written += (size_t)result;
   }
-  // Flush C stdio buffer BEFORE fsync to ensure all data is written immediately
+  // Flush C stdio buffer and terminal to ensure piped output is written immediately
   (void)fflush(stdout);
-  // Flush to ensure piped output is written immediately
   (void)terminal_flush(STDOUT_FILENO);
 
   return ASCIICHAT_OK;

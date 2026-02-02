@@ -676,19 +676,6 @@ GENERATE_OPTIONS_TEST(
     { cr_fail("Should not reach this point - empty key should cause exit"); },
     { cr_assert_eq(exit_code, 1, "Empty key should exit with code 1"); })
 
-GENERATE_OPTIONS_TEST(
-    valid_keyfile, ARGV_LIST("client", "--keyfile", "/tmp/keyfile.txt"), true,
-    {
-      cr_assert_str_eq(opts->encrypt_keyfile, "/tmp/keyfile.txt");
-      cr_assert_eq(opts->encrypt_enabled, 1);
-    },
-    { cr_assert_eq(exit_code, 0, "Valid keyfile should not cause exit"); })
-
-GENERATE_OPTIONS_TEST(
-    invalid_keyfile, ARGV_LIST("client", "--keyfile", ""), true,
-    { cr_fail("Should not reach this point - empty keyfile should cause exit"); },
-    { cr_assert_eq(exit_code, 1, "Empty keyfile should exit with code 1"); })
-
 /* ============================================================================
  * Flag Options Tests
  * ============================================================================ */
@@ -797,10 +784,8 @@ Test(options, complex_server_combination) {
   save_options(&backup);
 
   // NOTE: --log-file is now a global option, removed from this test
-  char *argv[] = {
-      "program", "server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", "--keyfile=/etc/ascii-chat/key",
-      NULL};
-  int argc = 7;
+  char *argv[] = {"program", "server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", NULL};
+  int argc = 6;
 
   int result = test_options_init_with_fork(argv, argc, false);
   cr_assert_eq(result, 0);
@@ -1087,14 +1072,6 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "encryption key should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    encryption_keyfile_value, ARGV_LIST("client", "--keyfile", "/etc/secret.key"), true,
-    {
-      cr_assert_str_eq(opts->encrypt_keyfile, "/etc/secret.key");
-      cr_assert_eq(opts->encrypt_enabled, 1);
-    },
-    { cr_assert_eq(exit_code, 0, "keyfile should not cause exit"); })
-
-GENERATE_OPTIONS_TEST(
     test_snapshot_delay_values, ARGV_LIST("client", "--snapshot-delay", "2.5"), true,
     { cr_assert_float_eq(opts->snapshot_delay, 2.5f, 0.01); },
     { cr_assert_eq(exit_code, 0, "snapshot delay should not cause exit"); })
@@ -1142,8 +1119,7 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_server_values,
     // NOTE: --log-file is now a global option, removed from this test
-    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--palette=minimal", "--encrypt", "--keyfile=/etc/server.key"),
-    false,
+    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--palette=minimal", "--encrypt"), false,
     {
       // Verify server values
       cr_assert_str_eq(opts->address, "0.0.0.0");
@@ -1152,7 +1128,6 @@ GENERATE_OPTIONS_TEST(
       // Note: --audio is not supported for server mode
       // opts->log_file removed - now a global option
       cr_assert_eq(opts->encrypt_enabled, 1);
-      cr_assert_str_eq(opts->encrypt_keyfile, "/etc/server.key");
     },
     { cr_assert_eq(exit_code, 0, "server values should not cause exit"); })
 
@@ -1287,14 +1262,6 @@ GENERATE_OPTIONS_TEST(
     },
     { cr_assert_eq(exit_code, 0, "server palette options should not cause exit"); })
 
-GENERATE_OPTIONS_TEST(
-    test_server_encryption_options, ARGV_LIST("server", "--encrypt", "--keyfile", "/etc/server.key"), false,
-    {
-      cr_assert_eq(opts->encrypt_enabled, 1);
-      cr_assert_str_eq(opts->encrypt_keyfile, "/etc/server.key");
-    },
-    { cr_assert_eq(exit_code, 0, "server encryption options should not cause exit"); })
-
 /* ============================================================================
  * Edge Cases and Error Conditions
  * ============================================================================ */
@@ -1327,14 +1294,6 @@ GENERATE_OPTIONS_TEST(
       cr_assert_str_eq(opts->encrypt_key, "mypassword");
     },
     { cr_assert_eq(exit_code, 0, "encryption key should not cause exit"); })
-
-GENERATE_OPTIONS_TEST(
-    test_encryption_keyfile_auto_enable, ARGV_LIST("client", "--keyfile", "/path/to/key"), true,
-    {
-      cr_assert_eq(opts->encrypt_enabled, 1); // Should be auto-enabled
-      cr_assert_str_eq(opts->encrypt_keyfile, "/path/to/key");
-    },
-    { cr_assert_eq(exit_code, 0, "keyfile should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
     test_custom_palette_auto_set_type, ARGV_LIST("client", "--palette-chars", "ABCDEFGH"), true,
