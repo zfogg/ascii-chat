@@ -265,7 +265,7 @@ Default 60 FPS. Configurable from 1-144 FPS.
 .SH ENVIRONMENT
 .TP
 .B APPDATA
-Windows configuration directory for user-specific application data (%APPDATA%\\ascii-chat\). Primary location for config files on Windows.
+Windows configuration directory for user-specific application data (%APPDATA%\\ascii-chat). Primary location for config files on Windows.
 .TP
 .B GNUPGHOME
 GPG home directory for gpg-agent and key management. Defaults to ~/.gnupg if not set. Used when authenticating with GPG keys.
@@ -453,10 +453,10 @@ If detection fails, terminal size falls back to 110x70 characters.
 \fBWebcam Warmup\fR: Many webcams need 1-3 seconds to adjust exposure and focus.
 The \fB\-\-snapshot\-delay\fR option (default 3.0s) allows time for this.
 .IP \(bu 2
-\fBSSH/GPG Agent\fR: For password-free authentication with encrypted SSH or GPG 
-keys, use ssh-agent or gpg-agent. Make sure $SSH_AUTH_SOCK is set to the agent socket 
-path. Keys stay in the agent and never touch disk in plaintext. Tip: put 
-\fBeval $(ssh-agent) > /dev/null\fR in your shell profile and use \fCssh-add 
+\fBSSH/GPG Agent\fR: For password-free authentication with encrypted SSH or GPG
+keys, use ssh-agent or gpg-agent. Make sure $SSH_AUTH_SOCK is set to the agent socket
+path. Keys stay in the agent and never touch disk in plaintext. Tip: put
+\fBeval $(ssh-agent) > /dev/null\fR in your shell profile and use \fCssh-add
 -s\fR to add keys to the agent. Check \fBgpg-agent \-\-help\fR for help.
 .IP \(bu 2
 \fBGitHub/GitLab Keys\fR: Use \fBgithub:username\fR or \fBgitlab:username\fR
