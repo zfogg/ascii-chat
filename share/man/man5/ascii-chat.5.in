@@ -275,9 +275,18 @@ Dark retro groove colors
 Popular Monokai dark theme
 .
 .SH KNOWN_HOSTS FORMAT
-SSH-style host verification file stored at
-.B ~/.ascii-chat/known_hosts
-(created by ascii-chat automatically).
+SSH-style host verification file for storing server public keys used in TOFU (Trust On First Use)
+identity verification. The known_hosts file is searched across multiple standard locations
+using append semantics, meaning entries from all matching files are combined together.
+.
+The file uses the same search paths as config.toml (see
+.B CONFIG.TOML FORMAT
+above for details). On Unix/macOS, this includes ~/.config/ascii-chat/known_hosts,
+/opt/homebrew/etc/ascii-chat/known_hosts, /usr/local/etc/ascii-chat/known_hosts,
+and /etc/ascii-chat/known_hosts. On Windows, %APPDATA%\[rs]ascii-chat\[rs]known_hosts
+and %PROGRAMDATA%\[rs]ascii-chat\[rs]known_hosts are searched.
+The first file (user config directory) is created by ascii-chat automatically when
+servers are visited.
 .
 .SS Line Format
 Each line represents a single identity entry with the format:
