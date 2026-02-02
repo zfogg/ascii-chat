@@ -96,11 +96,12 @@ static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
   pid_t pid = fork();
   if (pid == 0) {
-    // Child process - redirect all output to /dev/null
-    platform_stdio_redirect_to_null_permanent();
+    // Child process - keep output visible for debugging failing tests
+    // platform_stdio_redirect_to_null_permanent();
 
-    // Also suppress logging
-    log_set_level(LOG_FATAL);
+    // Also keep logging enabled for debugging
+    // log_set_level(LOG_FATAL);
+    log_set_level(LOG_DEBUG);
 
     // Ensure argv is NULL-terminated for getopt_long and any library routines
     char **argv_with_null;

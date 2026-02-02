@@ -120,8 +120,7 @@ const options_config_t *options_preset_unified(const char *program_name, const c
 
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
-  static const char *discovery_examples[] = {"joyful-panda-lion  (join existing session)",
-                                             "(empty)  (start new session)"};
+  static const char *discovery_examples[] = {"(empty)  start new session", "joyful-panda-lion  join existing session"};
   options_builder_add_positional(b, "session-string", "Session string (optional, or empty to start new session)", false,
                                  "POSITIONAL ARGUMENTS:", discovery_examples, 2, OPTION_MODE_DISCOVERY,
                                  parse_client_address);
@@ -238,9 +237,8 @@ const options_config_t *options_preset_unified(const char *program_name, const c
 
   // Add custom help sections for interactive modes (client, mirror, and discovery)
   options_builder_add_custom_section(b, "KEYBINDINGS",
-                                     "Available in ascii-chat client, mirror, and discovery modes.\n"
-                                     "While rendering, press '?' to display a keyboard shortcuts\n"
-                                     "help menu showing:\n"
+                                     "Available in ascii-chat client, mirror, and discovery modes. "
+                                     "While rendering, press '?' to display a keyboard shortcuts help menu showing:\n"
                                      "  - Available keybindings (?, Space, arrows, m, c, f, r)\n"
                                      "  - Current settings (volume, color mode, audio status, etc.)",
                                      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY);
