@@ -427,7 +427,7 @@ Use \fB\-\-stretch\fR to fill the entire terminal (may distort the image).
 \fBPiping Output\fR: When piping or redirecting stdout in snapshot mode
 (\fBmirror \-\-snapshot > file\fR), ascii-chat automatically detects
 that stdout is not a terminal and outputs clean ASCII without cursor movement
-or RLE compression codes. Only the final frame is output. Use
+or RLE compression codes. If you want only a single frame use \fB\-\-snapshot\-delay 0\fR. Use
 \fB\-\-color\-mode mono\fR for completely plain ASCII with no escape codes at all.
 .IP \(bu 2
 \fBEncrypted Keys\fR: Encrypted private keys (SSH/GPG) work well with either ssh-agent/gpg-agent or
@@ -452,6 +452,9 @@ Zachary Fogg <me@zfo.gg>
 .BR ssh-keygen (1),
 .BR ssh-agent (1),
 .BR ssh-keyscan (1),
+.BR gpg (1),
+.BR gpg-agent (1),
+.BR gpgconf (1),
 .BR stty (1),
 .BR ffmpeg-formats (1),
 .BR ffmpeg-codecs (1),
