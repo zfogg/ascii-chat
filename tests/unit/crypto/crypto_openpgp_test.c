@@ -204,29 +204,29 @@ Test(openpgp, parse_new_format_pubkey_packet) {
 
 Test(openpgp, reject_non_eddsa_algorithm) {
   // Create packet with RSA algorithm (1) instead of EdDSA (22)
-  uint8_t packet_body[51];
-  memcpy(packet_body, OLD_FORMAT_PUBKEY_PACKET + 2, 51);
+  uint8_t packet_body[49]; // 51 byte packet - 2 byte header
+  memcpy(packet_body, OLD_FORMAT_PUBKEY_PACKET + 2, 49);
   packet_body[5] = 1; // Change algorithm from 22 to 1 (RSA)
 
   openpgp_public_key_t pubkey;
-  asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, 51, &pubkey);
+  asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, 49, &pubkey);
 
   cr_assert_neq(result, ASCIICHAT_OK, "Should reject non-EdDSA algorithm");
 }
 
 Test(openpgp, reject_missing_0x40_prefix) {
   // Create packet without 0x40 prefix
-  uint8_t packet_body[51];
-  memcpy(packet_body, OLD_FORMAT_PUBKEY_PACKET + 2, 51);
+  uint8_t packet_body[49]; // 51 byte packet - 2 byte header
+  memcpy(packet_body, OLD_FORMAT_PUBKEY_PACKET + 2, 49);
   // Overwrite 0x40 prefix with something else
-  for (size_t i = 6; i < 51; i++) {
+  for (size_t i = 6; i < 49; i++) {
     if (packet_body[i] == 0x40) {
       packet_body[i] = 0x00;
     }
   }
 
   openpgp_public_key_t pubkey;
-  asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, 51, &pubkey);
+  asciichat_error_t result = openpgp_parse_public_key_packet(packet_body, 49, &pubkey);
 
   cr_assert_neq(result, ASCIICHAT_OK, "Should reject packet without 0x40 prefix");
 }
