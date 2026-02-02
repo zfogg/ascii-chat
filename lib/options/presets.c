@@ -174,8 +174,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                               true);
 
   // Add examples for server mode
-  options_builder_add_example(b, OPTION_MODE_SERVER, NULL, "Run as dedicated server", false);
-  options_builder_add_example(b, OPTION_MODE_SERVER, NULL, "Start on localhost (127.0.0.1 and ::1)", false);
   options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0", "Start on all IPv4 interfaces", false);
   options_builder_add_example(b, OPTION_MODE_SERVER, "0.0.0.0 ::", "Start on all IPv4 and IPv6 interfaces (dual-stack)",
                               false);
@@ -223,7 +221,6 @@ const options_config_t *options_preset_unified(const char *program_name, const c
                                       "View ASCII frame from clipboard (macOS)", true);
 
   // Add examples for discovery-service mode
-  options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, NULL, "Start on localhost", false);
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "0.0.0.0", "Start on all IPv4 interfaces", false);
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--port 5000", "Start on custom port", false);
   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, "--require-server-identity --require-client-identity",
