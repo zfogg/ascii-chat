@@ -224,75 +224,6 @@ The grid size adjusts based on the number of connected clients.
 .B Frame Rate
 Default 60 FPS. Configurable from 1-144 FPS.
 .\" MANUAL-END: LIMITS
-.\" MERGE-START: ENVIRONMENT
-.\" MANUAL-START: ENVIRONMENT
-.SH ENVIRONMENT
-.TP
-.B APPDATA
-Windows configuration directory for user-specific application data (%APPDATA%\\ascii-chat). Primary location for config files on Windows.
-.TP
-.B GNUPGHOME
-GPG home directory for gpg-agent and key management. Defaults to ~/.gnupg if not set. Used when authenticating with GPG keys.
-.TP
-.B HOME
-User home directory on Unix/macOS and Windows. Used to locate config files (.ascii-chat/ on Unix, third fallback on Windows), SSH keys (.ssh/), and GPG keys. Required for path expansion.
-.TP
-.B LLVM_SYMBOLIZER_PATH
-Path to llvm-symbolizer executable (debug builds only). When set, enables line-by-line stack traces in crash reports and panic messages. Improves debugging information quality.
-.TP
-.B PROGRAMDATA
-Windows program data directory for shared application data. Used as fallback directory for global configuration on Windows.
-.TP
-.B USERPROFILE
-Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used for expanding ~ in paths. When APPDATA is not set, %USERPROFILE%\eAppData\eRoaming\eascii-chat\e is used for config files (first fallback in the chain).
-.TP
-.B USER
-Current user identifier on Unix/macOS. Used for TOFU host verification to associate server keys with specific users.
-.TP
-.B USERNAME
-Current user identifier on Windows. Used for TOFU host verification and user identification.
-.TP
-.B _NT_SYMBOL_PATH
-Windows NT symbol path for debugging symbols (debug builds only). Helps locate PDB files for better crash reports. Format: srv*C:\\\\symbols*https://msdl.microsoft.com/download/symbols
-.TP
-.B XDG_CONFIG_HOME
-XDG Base Directory specification config directory on Linux (default: ~/.config). When set, ascii-chat searches for config files in $XDG_CONFIG_HOME/ascii-chat/ instead of ~/.config/ascii-chat/. Follows the freedesktop.org XDG specification for application configuration.
-.TP
-.B XDG_CONFIG_DIRS
-Colon-separated list of additional system configuration directories (default: /etc/xdg). ascii-chat searches these directories (in order) for config files at $XDG_CONFIG_DIRS/ascii-chat/ after checking XDG_CONFIG_HOME. Multiple directories are searched in priority order: first match wins for override semantics, all matched files are cascaded for config.toml, or all matched files are searched for known_hosts. Example: \fC/etc/xdg:/opt/xdg\fR
-.TP
-.B XDG_DATA_HOME
-XDG Base Directory specification data directory on Linux (default: ~/.local/share). Can be used for application data storage following XDG conventions.
-.TP
-.B SSH_AUTH_SOCK
-Path to the SSH agent socket. Set automatically by ssh-agent. Use this for
-password-free authentication with encrypted SSH keys. Tip: add
-.B eval $(ssh-agent) > /dev/null
-to your shell profile.
-.TP
-.B ASCII_CHAT_KEY_PASSWORD
-Passphrase for encrypted SSH or GPG private keys. Only use this as a fallback;
-prefer ssh-agent or gpg-agent for better security (keys never touch disk in
-plaintext).
-.TP
-.B COLORTERM
-Terminal color capability indicator. Set by your terminal emulator to indicate
-truecolor support (e.g., "truecolor" or "24bit"). Automatically detected but can
-be overridden with
-.B \-\-color\-mode.
-.TP
-.B TERM
-Terminal type identifier. Used for terminal capability detection and color mode
-selection. Forwarded automatically in SSH sessions; check $TERM in remote
-sessions if colors don't work.
-.TP
-.B LOG_LEVEL
-Override log level via environment variable. Values: dev, debug, info, warn,
-error, fatal. Use
-.B \-\-log\-level
-flag to override.
-.\" MANUAL-END: ENVIRONMENT
-.\" MERGE-END: ENVIRONMENT
 .SH FILES
 For details on configuration files, authentication files, and file format specifications,
 see
@@ -379,6 +310,77 @@ The ascii-chat Discovery Service bootstraps trust using the existing HTTPS PKI. 
 .SS "Session Rekeying and Forward Secrecy"
 All session keys are rotated automatically after 1 hour or 1 million packets (whichever comes first) to limit exposure from key compromise. The rekey protocol is transparent: both sides generate new ephemeral keys, perform a new DH exchange, and atomically switch to new session keys without interruption. Old keys are securely wiped using \fCsodium_memzero()\fR. Nonces are constructed as \fCsession_id || counter\fR (16-byte random session ID + 8-byte monotonic packet counter), preventing both within-session and cross-session replay attacks. Nonce counter exhaustion (astronomically unlikely at 60 FPS for 9+ years) triggers automatic rekeying.
 .\" MANUAL-END: SECURITY
+.PP
+.\" MERGE-START: ENVIRONMENT
+.\" MANUAL-START: ENVIRONMENT
+.SH ENVIRONMENT
+.TP
+.B APPDATA
+Windows configuration directory for user-specific application data (%APPDATA%\\ascii-chat). Primary location for config files on Windows.
+.TP
+.B GNUPGHOME
+GPG home directory for gpg-agent and key management. Defaults to ~/.gnupg if not set. Used when authenticating with GPG keys.
+.TP
+.B HOME
+User home directory on Unix/macOS and Windows. Used to locate config files (.ascii-chat/ on Unix, third fallback on Windows), SSH keys (.ssh/), and GPG keys. Required for path expansion.
+.TP
+.B LLVM_SYMBOLIZER_PATH
+Path to llvm-symbolizer executable (debug builds only). When set, enables line-by-line stack traces in crash reports and panic messages. Improves debugging information quality.
+.TP
+.B PROGRAMDATA
+Windows program data directory for shared application data. Used as fallback directory for global configuration on Windows.
+.TP
+.B USERPROFILE
+Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used for expanding ~ in paths. When APPDATA is not set, %USERPROFILE%\eAppData\eRoaming\eascii-chat\e is used for config files (first fallback in the chain).
+.TP
+.B USER
+Current user identifier on Unix/macOS. Used for TOFU host verification to associate server keys with specific users.
+.TP
+.B USERNAME
+Current user identifier on Windows. Used for TOFU host verification and user identification.
+.TP
+.B _NT_SYMBOL_PATH
+Windows NT symbol path for debugging symbols (debug builds only). Helps locate PDB files for better crash reports. Format: srv*C:\\\\symbols*https://msdl.microsoft.com/download/symbols
+.TP
+.B XDG_CONFIG_HOME
+XDG Base Directory specification config directory on Linux (default: ~/.config). When set, ascii-chat searches for config files in $XDG_CONFIG_HOME/ascii-chat/ instead of ~/.config/ascii-chat/. Follows the freedesktop.org XDG specification for application configuration.
+.TP
+.B XDG_CONFIG_DIRS
+Colon-separated list of additional system configuration directories (default: /etc/xdg). ascii-chat searches these directories (in order) for config files at $XDG_CONFIG_DIRS/ascii-chat/ after checking XDG_CONFIG_HOME. Multiple directories are searched in priority order: first match wins for override semantics, all matched files are cascaded for config.toml, or all matched files are searched for known_hosts. Example: \fC/etc/xdg:/opt/xdg\fR
+.TP
+.B XDG_DATA_HOME
+XDG Base Directory specification data directory on Linux (default: ~/.local/share). Can be used for application data storage following XDG conventions.
+.TP
+.B SSH_AUTH_SOCK
+Path to the SSH agent socket. Set automatically by ssh-agent. Use this for
+password-free authentication with encrypted SSH keys. Tip: add
+.B eval $(ssh-agent) > /dev/null
+to your shell profile.
+.TP
+.B ASCII_CHAT_KEY_PASSWORD
+Passphrase for encrypted SSH or GPG private keys. Only use this as a fallback;
+prefer ssh-agent or gpg-agent for better security (keys never touch disk in
+plaintext).
+.TP
+.B COLORTERM
+Terminal color capability indicator. Set by your terminal emulator to indicate
+truecolor support (e.g., "truecolor" or "24bit"). Automatically detected but can
+be overridden with
+.B \-\-color\-mode.
+.TP
+.B TERM
+Terminal type identifier. Used for terminal capability detection and color mode
+selection. Forwarded automatically in SSH sessions; check $TERM in remote
+sessions if colors don't work.
+.TP
+.B LOG_LEVEL
+Override log level via environment variable. Values: dev, debug, info, warn,
+error, fatal. Use
+.B \-\-log\-level
+flag to override.
+.\" MANUAL-END: ENVIRONMENT
+.\" MERGE-END: ENVIRONMENT
+.PP
 .\" MANUAL-START: NOTES
 .SH NOTES
 .IP \(bu 2
