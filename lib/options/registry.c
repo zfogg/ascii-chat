@@ -113,6 +113,19 @@ static const int g_color_mode_integers[] = {TERM_COLOR_AUTO, TERM_COLOR_NONE, TE
 static const char *g_color_mode_descs[] = {"Auto-detect from terminal", "Monochrome only", "16 colors (ANSI)",
                                            "256 colors (xterm)", "24-bit truecolor (modern terminals)"};
 
+// Color filter metadata
+static const char *g_color_filter_values[] = {"none",   "black", "white", "green", "magenta", "fuchsia",
+                                              "orange", "teal",  "cyan",  "pink",  "red",     "yellow"};
+static const int g_color_filter_integers[] = {COLOR_FILTER_NONE,   COLOR_FILTER_BLACK,   COLOR_FILTER_WHITE,
+                                              COLOR_FILTER_GREEN,  COLOR_FILTER_MAGENTA, COLOR_FILTER_FUCHSIA,
+                                              COLOR_FILTER_ORANGE, COLOR_FILTER_TEAL,    COLOR_FILTER_CYAN,
+                                              COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW};
+static const char *g_color_filter_descs[] = {
+    "No filtering (default)",      "Dark content on white background", "White content on black background",
+    "Green color tint (#00FF41)",  "Magenta color tint (#FF00FF)",     "Fuchsia color tint (#FF00AA)",
+    "Orange color tint (#FF8800)", "Teal color tint (#00DDDD)",        "Cyan color tint (#00FFFF)",
+    "Pink color tint (#FFB6C1)",   "Red color tint (#FF3333)",         "Yellow color tint (#FFEB99)"};
+
 // Palette metadata
 static const char *g_palette_values[] = {"standard", "blocks", "digital", "minimal", "cool", "custom"};
 static const int g_palette_integers[] = {PALETTE_STANDARD, PALETTE_BLOCKS, PALETTE_DIGITAL,
@@ -608,6 +621,29 @@ static const registry_entry_t g_display_entries[] = {
       .enum_count = 5,
       .enum_descriptions = g_color_mode_descs,
       .enum_integer_values = g_color_mode_integers,
+      .input_type = OPTION_INPUT_ENUM}},
+    {"color-filter",
+     '\0',
+     OPTION_TYPE_CALLBACK,
+     offsetof(options_t, color_filter),
+     &default_color_filter_value,
+     sizeof(color_filter_t),
+     "Apply a monochromatic color tint to grayscale video. Values: none, black, white, green, magenta, fuchsia, "
+     "orange, "
+     "teal, cyan, pink, red, yellow. Using --color-filter automatically sets --color-mode to mono.",
+     "DISPLAY",
+     NULL,
+     false,
+     "ASCII_CHAT_COLOR_FILTER",
+     NULL,
+     parse_color_filter,
+     false,
+     false,
+     OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+     {.enum_values = g_color_filter_values,
+      .enum_count = 12,
+      .enum_descriptions = g_color_filter_descs,
+      .enum_integer_values = g_color_filter_integers,
       .input_type = OPTION_INPUT_ENUM}},
     {"render-mode",
      'M',

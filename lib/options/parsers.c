@@ -12,9 +12,10 @@
 #include "common.h"
 #include "options/builder.h"
 #include "options/options.h"
-#include "discovery/strings.h" // For is_session_string() validation
-#include "util/parsing.h"      // For parse_port() validation
-#include "util/path.h"         // For path_validate_user_path()
+#include "discovery/strings.h"  // For is_session_string() validation
+#include "util/parsing.h"       // For parse_port() validation
+#include "util/path.h"          // For path_validate_user_path()
+#include "video/color_filter.h" // For color_filter_from_cli_name()
 
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
@@ -171,6 +172,36 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   if (error_msg) {
     char msg[256];
     safe_snprintf(msg, sizeof(msg), "Invalid color mode '%s'. Valid values: auto, none, 16, 256, truecolor", arg);
+    *error_msg = strdup(msg);
+  }
+  return false;
+}
+
+bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
+  if (!arg || !dest) {
+    if (error_msg) {
+      *error_msg = strdup("Internal error: NULL argument or destination");
+    }
+    return false;
+  }
+
+  color_filter_t *color_filter = (color_filter_t *)dest;
+  char lower[32];
+  to_lower(arg, lower, sizeof(lower));
+
+  // Try to match against all known color filters
+  *color_filter = color_filter_from_cli_name(lower);
+  if (*color_filter != COLOR_FILTER_NONE || strcmp(lower, "none") == 0) {
+    return true;
+  }
+
+  // Invalid value
+  if (error_msg) {
+    char msg[256];
+    safe_snprintf(msg, sizeof(msg),
+                  "Invalid color filter '%s'. Valid values: none, black, white, green, magenta, fuchsia, "
+                  "orange, teal, cyan, pink, red, yellow",
+                  arg);
     *error_msg = strdup(msg);
   }
   return false;

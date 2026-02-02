@@ -70,6 +70,17 @@ bool parse_utf8_setting(const char *arg, void *dest, char **error_msg);
 bool parse_color_mode(const char *arg, void *dest, char **error_msg);
 
 /**
+ * @brief Parse color filter option
+ * @param arg String argument (e.g., "green", "cyan", "pink")
+ * @param dest Destination pointer (color_filter_t*)
+ * @param error_msg Optional error message output (set on failure)
+ * @return true on success, false on error
+ *
+ * Valid values: none, black, white, green, magenta, fuchsia, orange, teal, cyan, pink, red, yellow
+ */
+bool parse_color_filter(const char *arg, void *dest, char **error_msg);
+
+/**
  * @brief Parse render mode option
  * @param arg String argument (e.g., "foreground", "background", "half-block")
  * @param dest Destination pointer (render_mode_t*)
