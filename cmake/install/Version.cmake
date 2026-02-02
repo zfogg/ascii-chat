@@ -58,6 +58,9 @@ macro(version_detect)
         set(_VERSION_TYPE "fallback")
     endif()
 
+    # Get current date for man pages and documentation
+    string(TIMESTAMP PROJECT_VERSION_DATE "%Y-%m-%d" UTC)
+
     # Print version info (colors defined in Init.cmake)
     if(_VERSION_TYPE STREQUAL "development")
         message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${Yellow}(development)${ColorReset}")
@@ -66,6 +69,7 @@ macro(version_detect)
     else()
         message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION_FROM_GIT}${ColorReset})")
     endif()
+    message(STATUS "Release date: ${BoldBlue}${PROJECT_VERSION_DATE}${ColorReset}")
 endmacro()
 
 # =============================================================================

@@ -1,0 +1,449 @@
+.TH ascii-chat 5 "@PROJECT_VERSION_DATE@" "ascii-chat @PROJECT_VERSION@" "File Formats"
+.SH NAME
+ascii-chat \- file format specifications for ascii-chat configuration and authentication
+.SH DESCRIPTION
+.B ascii-chat
+uses several configuration and data files. This manual describes the format
+and location of each file type.
+.SH FILES
+.SS Configuration Files
+.TP
+.B ~/.config/ascii-chat/config.toml
+Main configuration file in TOML format. See
+.B CONFIG.TOML FORMAT
+below for details. Default location on Linux/macOS is
+.B $XDG_CONFIG_HOME/ascii-chat/config.toml
+(usually ~/.config/ascii-chat/config.toml). On Windows:
+.B %APPDATA%\ascii-chat\config.toml
+.
+.TP
+.B ~/.config/ascii-chat/colors.toml
+Color scheme configuration in TOML format. See
+.B COLORS.TOML FORMAT
+below for details. Built-in color schemes are available and can be selected
+with the
+.B --color-scheme
+option.
+.
+.SS Authentication Files
+.TP
+.B ~/.ascii-chat/known_hosts
+SSH-style host verification file. See
+.B KNOWN_HOSTS FORMAT
+below for details. Stores server public keys for TOFU (Trust On First Use)
+verification.
+.
+.TP
+.B /path/to/authorized_keys
+Client public key whitelist for server-side authentication. See
+.B AUTHORIZED_KEYS FORMAT
+below for details. Can be specified with the
+.B --client-keys
+option on the server.
+.
+.SS SSH Key Files
+.TP
+.B ~/.ssh/id_ed25519
+SSH Ed25519 private key. See
+.B SSH ED25519 PRIVATE KEY FORMAT
+below for details. Used with
+.B --key
+option for server identity.
+.
+.TP
+.B ~/.ssh/id_ed25519.pub
+SSH Ed25519 public key. See
+.B SSH ED25519 PUBLIC KEY FORMAT
+below for details. Used with
+.B --server-key
+option for client-side server verification.
+.
+.SS GPG Key Files
+.TP
+.B ~/.gnupg/pubring.gpg
+GPG public keyring. See
+.B GPG KEY FORMAT
+below for details. Used for GPG-based key authentication.
+.
+.SH CONFIG.TOML FORMAT
+The main configuration file uses TOML (Tom's Obvious, Minimal Language) syntax.
+Default locations are searched in order:
+.B $XDG_CONFIG_HOME/ascii-chat/config.toml
+(usually ~/.config/ascii-chat/config.toml), then
+.B /etc/ascii-chat/config.toml
+for system-wide defaults on Unix systems, or
+.B %APPDATA%\ascii-chat\config.toml
+on Windows.
+.
+.SS Structure
+The file is organized into sections:
+.TP
+.B [network]
+Network configuration (port, compression, etc.)
+.TP
+.B [server]
+Server-specific settings (bind addresses, SSL/TLS)
+.TP
+.B [client]
+Client-specific settings (terminal dimensions, media options)
+.TP
+.B [video]
+Video capture and rendering settings
+.TP
+.B [audio]
+Audio capture and playback settings
+.TP
+.B [palette]
+ASCII art rendering palette selection
+.TP
+.B [crypto]
+Encryption and key management settings
+.TP
+.B [logging]
+Log level and output settings
+.
+.SS Common Options
+Options in config.toml are case-sensitive and use underscores for word separation
+(e.g.,
+.B compression_level
+not
+.B compressionLevel
+).
+Boolean values are
+.B true
+or
+.B false
+(lowercase). Lists are TOML arrays:
+.B [item1, item2, item3]
+.
+.SS Example Section
+.nf
+[network]
+port = 27224                          # Listen port (1-65535)
+compression_level = 3                 # zstd level (1-9)
+no_compress = false                   # Disable compression
+
+[client]
+width = 0                             # 0 = auto-detect
+height = 0                            # 0 = auto-detect
+color_mode = "auto"                   # auto, mono, 16, 256, truecolor
+render_mode = "foreground"            # foreground, background, half-block
+.fi
+.
+.SH COLORS.TOML FORMAT
+Color scheme configuration file using TOML syntax. Specifies RGB colors for
+different log levels in both dark and light mode variants.
+.
+.SS Structure
+.TP
+.B [scheme]
+Metadata about the color scheme
+.TP
+.B [colors.dark]
+Colors for dark background terminals
+.TP
+.B [colors.light]
+Colors for light background terminals (optional)
+.
+.SS Color Levels
+Eight color slots are supported:
+.TP
+.B dev
+Development/trace level messages (lowest severity)
+.TP
+.B debug
+Debug level messages
+.TP
+.B warn
+Warning level messages
+.TP
+.B info
+Information level messages
+.TP
+.B error
+Error level messages
+.TP
+.B fatal
+Fatal error messages (highest severity)
+.TP
+.B grey
+Auxiliary and metadata text
+.TP
+.B reset
+Color reset/default (used between messages)
+.
+.SS Color Format
+Colors are specified as hexadecimal RGB values in format
+.B #RRGGBB
+where RR, GG, BB are two-digit hexadecimal values (00-FF) for red, green, and blue
+respectively.
+.
+.SS Example Structure
+.nf
+[scheme]
+name = "custom"
+description = "My custom color scheme"
+
+[colors.dark]
+dev    = "#6b7fff"
+debug  = "#65ace1"
+warn   = "#f0cc91"
+info   = "#90e070"
+error  = "#e85d6f"
+fatal  = "#c8a0d8"
+grey   = "#808080"
+reset  = "#ffffff"
+
+[colors.light]
+dev    = "#4b5fdf"
+debug  = "#3284b4"
+warn   = "#b48c00"
+info   = "#238322"
+error  = "#b21e2c"
+fatal  = "#6e4c65"
+grey   = "#4c4c4c"
+reset  = "#000000"
+.fi
+.
+.SS Built-in Schemes
+The following color schemes are built-in and available via the
+.B --color-scheme
+option without needing a colors.toml file:
+.
+.TP
+.B pastel
+Soft, pleasant pastel colors (default)
+.TP
+.B nord
+Arctic, muted Nordic theme
+.TP
+.B solarized-dark
+Popular Solarized dark theme
+.TP
+.B solarized-light
+Popular Solarized light theme
+.TP
+.B dracula
+Dark Dracula project theme
+.TP
+.B gruvbox-dark
+Dark retro groove colors
+.TP
+.B monokai
+Popular Monokai dark theme
+.
+.SH KNOWN_HOSTS FORMAT
+SSH-style host verification file stored at
+.B ~/.ascii-chat/known_hosts
+(created by ascii-chat automatically).
+.
+.SS Line Format
+Each line represents a single identity entry with the format:
+.
+.nf
+<address> <key-type> <public-key> [comment]
+.fi
+.
+Where:
+.TP
+.B <address>
+Server address with port in format
+.B host:port
+.
+For IPv6 addresses, use bracket notation:
+.B [2001:db8::1]:8080
+.TP
+.B <key-type>
+Always
+.B x25519
+for elliptic curve Diffie-Hellman keys
+.TP
+.B <public-key>
+64-character hexadecimal representation of the 32-byte public key
+.TP
+.B [comment]
+Optional comment (space-separated from key). Typically contains the server name
+or connection context.
+.
+.SS Special Entry
+A special entry indicates no identity was obtained:
+.
+.nf
+<address> no-identity [comment]
+.fi
+.
+This records that a connection was attempted but no server identity could be
+obtained (e.g., ephemeral DH without key authentication).
+.
+.SS Example File
+.nf
+192.0.2.1:27224 x25519 a1b2c3d4e5f6g7h8 ascii-chat-server
+example.com:27224 x25519 f8e7d6c5b4a39291 example-prod-server
+[2001:db8::1]:27224 x25519 1a2b3c4d5e6f7g8h ipv6-server
+10.0.0.5:8080 no-identity temp-test-server
+.fi
+.
+.SH AUTHORIZED_KEYS FORMAT
+Server-side client public key whitelist, one SSH Ed25519 public key per line.
+Can be specified with
+.B --client-keys /path/to/file
+on the server.
+.
+.SS Line Format
+Standard OpenSSH public key format, one key per line:
+.
+.nf
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIxxx... [comment]
+.fi
+.
+Where:
+.TP
+.B ssh-ed25519
+Key type identifier (always ssh-ed25519 for Ed25519 keys)
+.TP
+.B AAAAC3Nz...
+Base64-encoded public key data
+.TP
+.B [comment]
+Optional comment (e.g., user@hostname or description)
+.
+.SS Usage
+When a server is started with
+.B --client-keys /path/to/file
+, only clients whose public keys appear in the file are allowed to connect.
+.
+.SS Example File
+.nf
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIzTVYwABZIE2mOEZzzV3 alice@workstation
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIa0HxPmBfLjp3WkNXx bob@laptop
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIsK4L9NjTqZWF2bxVp charlie@device
+.fi
+.
+.SH SSH ED25519 PUBLIC KEY FORMAT
+Standard OpenSSH public key format, typically stored in
+.B ~/.ssh/id_ed25519.pub
+.
+.SS Format
+.nf
+ssh-ed25519 <base64-encoded-key> [<comment>]
+.fi
+.
+Where:
+.TP
+.B ssh-ed25519
+Key type identifier for Ed25519 elliptic curve
+.TP
+.B <base64-encoded-key>
+Base64 encoding of the 32-byte public key
+.TP
+.B [<comment>]
+Optional comment, typically user@hostname
+.
+.SS Usage
+.TP
+.B --server-key
+Verify server identity by providing the server's public key
+.TP
+.B --client-keys
+Whitelist of allowed client public keys for server-side authentication
+.TP
+.B github:<username>
+Fetch user's public keys directly from GitHub (keys are public)
+.
+.SS Example
+.nf
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIzTVYwABZIE2mOEZzzV3 user@example.com
+.fi
+.
+.SH SSH ED25519 PRIVATE KEY FORMAT
+OpenSSH private key format with Ed25519 algorithm, typically stored in
+.B ~/.ssh/id_ed25519
+.
+.SS File Structure
+.nf
+-----BEGIN OPENSSH PRIVATE KEY-----
+<base64-encoded-data>
+-----END OPENSSH PRIVATE KEY-----
+.fi
+.
+.SS Encryption
+Private keys can be optionally encrypted with a passphrase. ascii-chat will
+prompt for the passphrase if the key is encrypted. Use the passphrase
+parameter or environment variable
+.B ASCII_CHAT_KEY_PASSWORD
+(not recommended - use
+.B ssh-agent
+instead).
+.
+.SS File Permissions
+Private keys should have restrictive permissions (0600):
+.
+.nf
+chmod 600 ~/.ssh/id_ed25519
+.fi
+.
+ascii-chat will log a warning if permissions are too permissive.
+.
+.SS Usage
+.TP
+.B --key
+Server identity key (specifies private key path)
+.
+.SH GPG KEY FORMAT
+OpenPGP armored public key format, typically from the GPG public keyring.
+.
+.SS Format
+.nf
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v2.X
+
+<base64-encoded-key-data>
+-----END PGP PUBLIC KEY BLOCK-----
+.fi
+.
+.SS Supported Keys
+Only Ed25519 keys are supported. Legacy RSA and DSA keys will be rejected.
+Key IDs can be:
+.TP
+.B 8 characters
+Short key fingerprint
+.TP
+.B 16 characters
+Long key fingerprint
+.TP
+.B 40 characters
+Full key fingerprint
+.
+.SS Requirements
+.TP
+.B gpg
+Requires the
+.B gpg
+command-line tool to be installed and available in PATH
+.TP
+.B gpg-agent
+For encrypted keys, requires GPG Agent for passphrase management (recommended
+over prompting)
+.
+.SS Usage
+.TP
+.B --server-key
+Specify GPG key with format: gpg:<key-id> or gpg:<fingerprint>
+.
+.SS Example
+.nf
+--server-key gpg:ABCD1234
+--server-key gpg:ABCD1234567890EF
+.fi
+.
+.SH SEE ALSO
+.BR ascii-chat (1),
+.BR ssh-keygen (1),
+.BR gpg (1),
+.BR toml (1)
+.
+.SH AUTHOR
+ascii-chat developers
+.
+.SH BUGS
+Report bugs to https://github.com/zfogg/ascii-chat/issues

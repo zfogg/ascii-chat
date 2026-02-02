@@ -448,6 +448,27 @@ if(UNIX)
         endif()
     " COMPONENT Runtime)
     message(STATUS "${BoldGreen}Configured${ColorReset} manpage installation: ${BoldBlue}ascii-chat.1${ColorReset} → ${BoldYellow}share/man/man1/ascii-chat.1.gz${ColorReset}")
+
+    # Install file format documentation man pages to share/man/man5/ (section 5 = file formats)
+    # Process template with CMake variables, then compress at install time
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/share/man/man5/ascii-chat.5.in"
+        "${CMAKE_BINARY_DIR}/share/man/man5/ascii-chat.5"
+        @ONLY
+    )
+
+    install(CODE "
+        message(STATUS \"Compressing and installing man5 page...\")
+        execute_process(
+            COMMAND gzip -9 -c \"${CMAKE_BINARY_DIR}/share/man/man5/ascii-chat.5\"
+            OUTPUT_FILE \"${CMAKE_INSTALL_PREFIX}/share/man/man5/ascii-chat.5.gz\"
+            RESULT_VARIABLE gzip_result
+        )
+        if(NOT gzip_result EQUAL 0)
+            message(WARNING \"Failed to compress man5 page during installation\")
+        endif()
+    " COMPONENT Runtime)
+    message(STATUS "${BoldGreen}Configured${ColorReset} file format manpage installation: ${BoldBlue}ascii-chat.5${ColorReset} → ${BoldYellow}share/man/man5/ascii-chat.5.gz${ColorReset}")
 endif()
 
 # =============================================================================
@@ -691,6 +712,16 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/share/examples/config.toml")
         COMPONENT Documentation
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} example config: ${BoldBlue}config.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
+endif()
+
+# Install example colors.toml with documented color schemes
+# Users can copy this to their config directory to customize logging colors
+if(EXISTS "${CMAKE_SOURCE_DIR}/share/examples/colors.toml")
+    install(FILES "${CMAKE_SOURCE_DIR}/share/examples/colors.toml"
+        DESTINATION ${INSTALL_DOC_DIR}/examples
+        COMPONENT Documentation
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} example colors: ${BoldBlue}colors.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
 endif()
 
 # Install documentation to share/doc/ascii-chat/

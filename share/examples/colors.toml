@@ -1,0 +1,64 @@
+# ascii-chat color scheme configuration file
+#
+# Default location:
+#   Linux/macOS: ~/.config/ascii-chat/colors.toml (or $XDG_CONFIG_HOME/ascii-chat/colors.toml)
+#   Windows: %APPDATA%\ascii-chat\colors.toml
+#
+# Load with: ascii-chat --color-scheme /path/to/colors.toml
+#
+# Color values are specified as hexadecimal RGB values (#RRGGBB)
+# Eight colors are supported for different log levels:
+#   - dev:   Development/trace messages
+#   - debug: Debug messages
+#   - warn:  Warnings
+#   - info:  Information
+#   - error: Errors
+#   - fatal: Fatal errors
+#   - grey:  Auxiliary/metadata text
+#   - reset: Reset/default color
+
+# Scheme metadata
+[scheme]
+# Scheme name (used with --color-scheme NAME)
+name = "custom"
+
+# Human-readable description
+description = "Custom color scheme"
+
+# Log message colors
+[colors.dark]
+# Used for dark backgrounds (default)
+dev    = "#6b7fff"      # Blue
+debug  = "#65ace1"      # Cyan
+warn   = "#f0cc91"      # Yellow/Orange
+info   = "#90e070"      # Green
+error  = "#e85d6f"      # Red
+fatal  = "#c8a0d8"      # Magenta
+grey   = "#808080"      # Gray
+reset  = "#ffffff"      # White
+
+# Light mode colors (optional)
+# Uncomment to provide a light background variant
+[colors.light]
+dev    = "#4b5fdf"      # Darker blue
+debug  = "#3284b4"      # Darker cyan
+warn   = "#b48c00"      # Darker yellow
+info   = "#238322"      # Darker green
+error  = "#b21e2c"      # Darker red
+fatal  = "#6e4c65"      # Darker magenta
+grey   = "#4c4c4c"      # Darker gray
+reset  = "#000000"      # Black
+
+# ============================================================================
+# Built-in color schemes available:
+# ============================================================================
+#
+# pastel              - Soft, pleasant pastel colors (ascii-chat default)
+# nord                - Arctic, muted Nord theme colors
+# solarized-dark      - Popular Solarized dark theme
+# solarized-light     - Popular Solarized light theme
+# dracula             - Dark theme from Dracula project
+# gruvbox-dark        - Dark retro groove colors
+# monokai             - Popular Monokai dark theme
+#
+# Use built-in schemes with: ascii-chat --color-scheme nord

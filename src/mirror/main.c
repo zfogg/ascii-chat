@@ -479,10 +479,11 @@ int mirror_main(void) {
   platform_disable_keepawake();
 
   // In snapshot mode, suppress shutdown logs to preserve the rendered ASCII art
-  // Re-enable terminal output for shutdown message only if not in snapshot mode and not --quiet
+  // In continuous mode, show shutdown message on stderr
   if (!GET_OPTION(snapshot_mode) && !GET_OPTION(quiet)) {
-    log_set_terminal_output(true);
-    log_info("Mirror mode shutting down");
+    // Write directly to stderr to ensure immediate visibility (bypass logging system buffering)
+    const char *msg = "Mirror mode shutting down\n";
+    (void)platform_write_all(STDERR_FILENO, msg, strlen(msg));
   }
 
   // Print newline to terminal to separate final frame from shutdown message (only on user Ctrl-C)
