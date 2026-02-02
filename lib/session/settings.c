@@ -30,14 +30,22 @@ void session_settings_init(session_settings_t *settings) {
 
   memset(settings, 0, sizeof(session_settings_t));
 
+  // Read all defaults from the RCU options system
   settings->version = 0;
-  settings->width = 0;  // Auto-detect
-  settings->height = 0; // Auto-detect
-  settings->color_mode = (uint8_t)TERM_COLOR_AUTO;
-  settings->render_mode = (uint8_t)RENDER_MODE_FOREGROUND;
-  settings->palette_type = (uint8_t)PALETTE_STANDARD;
-  settings->audio_enabled = 0;
-  settings->encryption_required = 1; // Encryption on by default
+  settings->width = (int16_t)GET_OPTION(width);
+  settings->height = (int16_t)GET_OPTION(height);
+  settings->color_mode = (uint8_t)GET_OPTION(color_mode);
+  settings->render_mode = (uint8_t)GET_OPTION(render_mode);
+  settings->palette_type = (uint8_t)GET_OPTION(palette_type);
+
+  // Custom palette
+  const char *palette = GET_OPTION(palette_custom);
+  if (palette && palette[0] != '\0') {
+    SAFE_STRNCPY(settings->palette_custom, palette, sizeof(settings->palette_custom));
+  }
+
+  settings->audio_enabled = (uint8_t)GET_OPTION(audio_enabled);
+  settings->encryption_required = GET_OPTION(no_encrypt) ? 0 : 1;
 }
 
 asciichat_error_t session_settings_serialize(const session_settings_t *settings, uint8_t *buffer, size_t *len) {
