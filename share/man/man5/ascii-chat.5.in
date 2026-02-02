@@ -260,13 +260,19 @@ Soft, pleasant pastel colors (default)
 Arctic, muted Nordic theme
 .TP
 .B solarized-dark
-Popular Solarized dark theme
+Solarized dark theme - precision colors for dark backgrounds
+.TP
+.B solarized-light
+Solarized light theme - precision colors for light backgrounds
 .TP
 .B dracula
 Dark Dracula project theme
 .TP
 .B gruvbox-dark
-Dark retro groove colors
+Gruvbox dark theme - retro groove colors for dark backgrounds
+.TP
+.B gruvbox-light
+Gruvbox light theme - retro groove colors for light backgrounds
 .TP
 .B monokai
 Popular Monokai dark theme
