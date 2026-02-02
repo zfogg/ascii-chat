@@ -742,8 +742,9 @@ Test(options, complex_server_combination) {
   save_options(&backup);
 
   // NOTE: --log-file is now a global option, removed from this test
-  char *argv[] = {"program", "server", "0.0.0.0", "--port=27224", "--palette=digital", "--encrypt", NULL};
-  int argc = 6;
+  // NOTE: --palette is client-only, removed from this server test
+  char *argv[] = {"program", "server", "0.0.0.0", "--port=27224", "--encrypt", NULL};
+  int argc = 5;
 
   int result = test_options_init_with_fork(argv, argc, false);
   cr_assert_eq(result, 0);
@@ -1050,14 +1051,15 @@ GENERATE_OPTIONS_TEST(
 GENERATE_OPTIONS_TEST(
     test_server_values,
     // NOTE: --log-file is now a global option, removed from this test
-    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--palette=minimal", "--encrypt"), false,
+    // NOTE: --palette is client-only, removed from this server test
+    ARGV_LIST("server", "0.0.0.0", "--port=12345", "--encrypt"), false,
     {
       // Verify server values
       cr_assert_str_eq(opts->address, "0.0.0.0");
       cr_assert_str_eq(opts->port, "12345");
-      cr_assert_eq(opts->palette_type, PALETTE_MINIMAL);
       // Note: --audio is not supported for server mode
       // opts->log_file removed - now a global option
+      // opts->palette_type removed - palette is client-only
       cr_assert_eq(opts->encrypt_enabled, 1);
     },
     { cr_assert_eq(exit_code, 0, "server values should not cause exit"); })
