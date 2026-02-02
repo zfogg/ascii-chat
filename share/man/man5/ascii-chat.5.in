@@ -276,6 +276,12 @@ Gruvbox light theme - retro groove colors for light backgrounds
 .TP
 .B monokai
 Popular Monokai dark theme
+.TP
+.B base16-default-dark
+Base16 Default dark theme - machine colors for dark backgrounds
+.TP
+.B base16-default-light
+Base16 Default light theme - machine colors for light backgrounds
 .
 .SH KNOWN_HOSTS FORMAT
 SSH-style host verification file for storing server public keys used in TOFU (Trust On First Use)

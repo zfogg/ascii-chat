@@ -242,11 +242,69 @@ static const color_scheme_t MONOKAI_SCHEME = {.name = "monokai",
                                               .is_builtin = true};
 
 /**
+ * @brief Base16 Default dark color scheme
+ * Precision colors for machines and people (dark background)
+ */
+static const color_scheme_t BASE16_DEFAULT_DARK_SCHEME = {.name = "base16-default-dark",
+                                                          .description = "Base16 Default dark theme - machine colors",
+                                                          .log_colors_dark =
+                                                              {
+                                                                  {124, 175, 194}, /* DEV: blue (0x0D) */
+                                                                  {134, 193, 185}, /* DEBUG: cyan (0x0C) */
+                                                                  {247, 202, 136}, /* WARN: yellow (0x0A) */
+                                                                  {161, 181, 108}, /* INFO: green (0x0B) */
+                                                                  {171, 70, 66},   /* ERROR: red (0x08) */
+                                                                  {186, 139, 175}, /* FATAL: magenta (0x0E) */
+                                                                  {88, 88, 88},    /* GREY: base03 */
+                                                                  {255, 255, 255}  /* RESET */
+                                                              },
+                                                          .has_light_variant = true,
+                                                          .log_colors_light =
+                                                              {
+                                                                  {88, 88, 88},    /* DEV: darker gray */
+                                                                  {88, 88, 88},    /* DEBUG: darker gray */
+                                                                  {161, 105, 70},  /* WARN: brown (0x0F) */
+                                                                  {88, 88, 88},    /* INFO: darker gray */
+                                                                  {171, 70, 66},   /* ERROR: red (0x08) */
+                                                                  {88, 88, 88},    /* FATAL: darker gray */
+                                                                  {184, 184, 184}, /* GREY: lighter gray */
+                                                                  {0, 0, 0}        /* RESET */
+                                                              },
+                                                          .is_builtin = true};
+
+/**
+ * @brief Base16 Default light color scheme
+ * Precision colors for machines and people (light background)
+ */
+static const color_scheme_t BASE16_DEFAULT_LIGHT_SCHEME = {.name = "base16-default-light",
+                                                           .description = "Base16 Default light theme - machine colors",
+                                                           .log_colors_dark =
+                                                               {
+                                                                   {88, 88, 88},    /* DEV: darker gray */
+                                                                   {88, 88, 88},    /* DEBUG: darker gray */
+                                                                   {161, 105, 70},  /* WARN: brown (0x0F) */
+                                                                   {88, 88, 88},    /* INFO: darker gray */
+                                                                   {171, 70, 66},   /* ERROR: red (0x08) */
+                                                                   {88, 88, 88},    /* FATAL: darker gray */
+                                                                   {184, 184, 184}, /* GREY: lighter gray */
+                                                                   {0, 0, 0}        /* RESET */
+                                                               },
+                                                           .has_light_variant = false,
+                                                           .is_builtin = true};
+
+/**
  * @brief Array of all built-in color schemes
  */
-static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME,          &NORD_SCHEME,    &SOLARIZED_DARK_SCHEME,
-                                                  &SOLARIZED_LIGHT_SCHEME, &DRACULA_SCHEME, &GRUVBOX_DARK_SCHEME,
-                                                  &GRUVBOX_LIGHT_SCHEME,   &MONOKAI_SCHEME};
+static const color_scheme_t *BUILTIN_SCHEMES[] = {&PASTEL_SCHEME,
+                                                  &NORD_SCHEME,
+                                                  &SOLARIZED_DARK_SCHEME,
+                                                  &SOLARIZED_LIGHT_SCHEME,
+                                                  &DRACULA_SCHEME,
+                                                  &GRUVBOX_DARK_SCHEME,
+                                                  &GRUVBOX_LIGHT_SCHEME,
+                                                  &MONOKAI_SCHEME,
+                                                  &BASE16_DEFAULT_DARK_SCHEME,
+                                                  &BASE16_DEFAULT_LIGHT_SCHEME};
 
 #define NUM_BUILTIN_SCHEMES (sizeof(BUILTIN_SCHEMES) / sizeof(BUILTIN_SCHEMES[0]))
 
