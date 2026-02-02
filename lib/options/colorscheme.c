@@ -45,7 +45,7 @@ static const color_scheme_t PASTEL_SCHEME = {.name = "pastel",
                                              .description = "Soft pastel colors (ascii-chat default)",
                                              .log_colors_dark =
                                                  {
-                                                     {107, 127, 255}, /* DEV: Blue */
+                                                     {240, 150, 100}, /* DEV: Orange */
                                                      {101, 172, 225}, /* DEBUG: Cyan */
                                                      {240, 204, 145}, /* WARN: Yellow */
                                                      {144, 224, 112}, /* INFO: Green */
@@ -76,7 +76,7 @@ static const color_scheme_t NORD_SCHEME = {.name = "nord",
                                            .description = "Arctic, muted Nord theme colors",
                                            .log_colors_dark =
                                                {
-                                                   {136, 192, 208}, /* DEV: Nord blue */
+                                                   {191, 144, 97},  /* DEV: Nord orange */
                                                    {143, 188, 187}, /* DEBUG: Nord frost */
                                                    {235, 203, 139}, /* WARN: Nord sun */
                                                    {163, 190, 140}, /* INFO: Nord green */
@@ -107,7 +107,7 @@ static const color_scheme_t SOLARIZED_DARK_SCHEME = {.name = "solarized-dark",
                                                      .description = "Solarized dark theme - precision colors",
                                                      .log_colors_dark =
                                                          {
-                                                             {38, 139, 210},  /* DEV: Blue */
+                                                             {203, 75, 22},   /* DEV: Orange */
                                                              {42, 161, 152},  /* DEBUG: Cyan */
                                                              {181, 137, 0},   /* WARN: Yellow */
                                                              {133, 153, 0},   /* INFO: Green */
@@ -119,7 +119,7 @@ static const color_scheme_t SOLARIZED_DARK_SCHEME = {.name = "solarized-dark",
                                                      .has_light_variant = true,
                                                      .log_colors_light =
                                                          {
-                                                             {22, 82, 144},  /* DEV: Darker blue */
+                                                             {161, 105, 70}, /* DEV: Brown/Orange */
                                                              {20, 110, 101}, /* DEBUG: Darker cyan */
                                                              {101, 76, 0},   /* WARN: Darker yellow */
                                                              {89, 100, 0},   /* INFO: Darker green */
@@ -138,7 +138,7 @@ static const color_scheme_t SOLARIZED_LIGHT_SCHEME = {.name = "solarized-light",
                                                       .description = "Solarized light theme - precision colors",
                                                       .log_colors_dark =
                                                           {
-                                                              {22, 82, 144},  /* DEV: Darker blue */
+                                                              {161, 105, 70}, /* DEV: Brown/Orange */
                                                               {20, 110, 101}, /* DEBUG: Darker cyan */
                                                               {101, 76, 0},   /* WARN: Darker yellow */
                                                               {89, 100, 0},   /* INFO: Darker green */
@@ -158,7 +158,7 @@ static const color_scheme_t DRACULA_SCHEME = {.name = "dracula",
                                               .description = "Dracula dark theme - vampiric colors",
                                               .log_colors_dark =
                                                   {
-                                                      {189, 147, 249}, /* DEV: Purple */
+                                                      {255, 121, 84},  /* DEV: Orange */
                                                       {139, 233, 253}, /* DEBUG: Cyan */
                                                       {241, 250, 140}, /* WARN: Yellow */
                                                       {80, 250, 123},  /* INFO: Green */
@@ -178,24 +178,24 @@ static const color_scheme_t GRUVBOX_DARK_SCHEME = {.name = "gruvbox-dark",
                                                    .description = "Gruvbox dark theme - retro warm colors",
                                                    .log_colors_dark =
                                                        {
-                                                           {131, 165, 152}, /* DEV: bright_blue */
+                                                           {254, 128, 25},  /* DEV: bright_orange */
                                                            {142, 192, 124}, /* DEBUG: bright_green */
                                                            {250, 189, 47},  /* WARN: bright_yellow */
                                                            {142, 192, 124}, /* INFO: bright_green */
                                                            {251, 73, 52},   /* ERROR: bright_red */
-                                                           {254, 128, 25},  /* FATAL: bright_orange */
+                                                           {211, 134, 155}, /* FATAL: bright_purple */
                                                            {168, 153, 132}, /* GREY: gray */
                                                            {255, 255, 255}  /* RESET */
                                                        },
                                                    .has_light_variant = true,
                                                    .log_colors_light =
                                                        {
-                                                           {7, 102, 120},  /* DEV: faded_blue */
+                                                           {175, 58, 3},   /* DEV: faded_orange */
                                                            {121, 116, 14}, /* DEBUG: faded_green */
                                                            {181, 118, 20}, /* WARN: faded_yellow */
                                                            {121, 116, 14}, /* INFO: faded_green */
                                                            {157, 0, 6},    /* ERROR: faded_red */
-                                                           {175, 58, 3},   /* FATAL: faded_orange */
+                                                           {108, 52, 107}, /* FATAL: faded_purple */
                                                            {105, 104, 98}, /* GREY */
                                                            {0, 0, 0}       /* RESET */
                                                        },
@@ -209,12 +209,12 @@ static const color_scheme_t GRUVBOX_LIGHT_SCHEME = {.name = "gruvbox-light",
                                                     .description = "Gruvbox light theme - retro warm colors",
                                                     .log_colors_dark =
                                                         {
-                                                            {105, 104, 98}, /* DEV: faded_blue */
+                                                            {175, 58, 3},   /* DEV: faded_orange */
                                                             {121, 116, 14}, /* DEBUG: faded_green */
                                                             {181, 118, 20}, /* WARN: faded_yellow */
                                                             {121, 116, 14}, /* INFO: faded_green */
                                                             {157, 0, 6},    /* ERROR: faded_red */
-                                                            {175, 58, 3},   /* FATAL: faded_orange */
+                                                            {108, 52, 107}, /* FATAL: faded_purple */
                                                             {105, 104, 98}, /* GREY */
                                                             {0, 0, 0}       /* RESET */
                                                         },
@@ -229,9 +229,9 @@ static const color_scheme_t MONOKAI_SCHEME = {.name = "monokai",
                                               .description = "Monokai theme - vibrant coding colors",
                                               .log_colors_dark =
                                                   {
-                                                      {102, 217, 239}, /* DEV: Blue */
+                                                      {253, 151, 31},  /* DEV: Orange */
                                                       {166, 226, 46},  /* DEBUG: Green */
-                                                      {253, 151, 31},  /* WARN: Orange */
+                                                      {241, 250, 140}, /* WARN: Yellow */
                                                       {174, 213, 129}, /* INFO: Light green */
                                                       {249, 38, 114},  /* ERROR: Magenta */
                                                       {174, 129, 255}, /* FATAL: Purple */
@@ -249,7 +249,7 @@ static const color_scheme_t BASE16_DEFAULT_DARK_SCHEME = {.name = "base16-defaul
                                                           .description = "Base16 Default dark theme - machine colors",
                                                           .log_colors_dark =
                                                               {
-                                                                  {124, 175, 194}, /* DEV: blue (0x0D) */
+                                                                  {220, 150, 86},  /* DEV: orange (0x09) */
                                                                   {134, 193, 185}, /* DEBUG: cyan (0x0C) */
                                                                   {247, 202, 136}, /* WARN: yellow (0x0A) */
                                                                   {161, 181, 108}, /* INFO: green (0x0B) */
@@ -261,7 +261,7 @@ static const color_scheme_t BASE16_DEFAULT_DARK_SCHEME = {.name = "base16-defaul
                                                           .has_light_variant = true,
                                                           .log_colors_light =
                                                               {
-                                                                  {88, 88, 88},    /* DEV: darker gray */
+                                                                  {161, 105, 70},  /* DEV: brown (0x0F) */
                                                                   {88, 88, 88},    /* DEBUG: darker gray */
                                                                   {161, 105, 70},  /* WARN: brown (0x0F) */
                                                                   {88, 88, 88},    /* INFO: darker gray */
@@ -280,7 +280,7 @@ static const color_scheme_t BASE16_DEFAULT_LIGHT_SCHEME = {.name = "base16-defau
                                                            .description = "Base16 Default light theme - machine colors",
                                                            .log_colors_dark =
                                                                {
-                                                                   {88, 88, 88},    /* DEV: darker gray */
+                                                                   {161, 105, 70},  /* DEV: brown (0x0F) */
                                                                    {88, 88, 88},    /* DEBUG: darker gray */
                                                                    {161, 105, 70},  /* WARN: brown (0x0F) */
                                                                    {88, 88, 88},    /* INFO: darker gray */
