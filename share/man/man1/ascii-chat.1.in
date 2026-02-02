@@ -414,6 +414,7 @@ Zachary Fogg <me@zfo.gg>
 .\" MANUAL-END: AUTHOR
 .\" MANUAL-START: SEE ALSO
 .SH SEE ALSO
+.BR ascii-chat (5),
 .BR ssh (1),
 .BR ssh-keygen (1),
 .BR ssh-agent (1),
@@ -423,9 +424,6 @@ Zachary Fogg <me@zfo.gg>
 .BR ffmpeg-codecs (1),
 .BR yt-dlp (1),
 .BR v4l2-ctl (1)
-.PP
-For information about configuration and file formats, see
-.BR ascii-chat (5)
 .PP
 .B ascii-chat
 API documentation (section 3):
