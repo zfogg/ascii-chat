@@ -14,7 +14,7 @@ Main configuration file in TOML format. See
 below for details. Default location on Linux/macOS is
 .B $XDG_CONFIG_HOME/ascii-chat/config.toml
 (usually ~/.config/ascii-chat/config.toml). On Windows:
-.B %APPDATA%\ascii-chat\config.toml
+%APPDATA%\[rs]ascii-chat\[rs]config.toml
 .
 .TP
 .B ~/.config/ascii-chat/colors.toml
@@ -72,7 +72,7 @@ Default locations are searched in order:
 (usually ~/.config/ascii-chat/config.toml), then
 .B /etc/ascii-chat/config.toml
 for system-wide defaults on Unix systems, or
-.B %APPDATA%\ascii-chat\config.toml
+%APPDATA%\[rs]ascii-chat\[rs]config.toml
 on Windows.
 .
 .SS Structure
@@ -101,6 +101,9 @@ Encryption and key management settings
 .TP
 .B [logging]
 Log level and output settings
+.TP
+.B [database]
+Discovery service database and persistence settings
 .
 .SS Common Options
 Options in config.toml are case-sensitive and use underscores for word separation
