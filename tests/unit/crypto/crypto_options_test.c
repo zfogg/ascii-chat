@@ -121,7 +121,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "password",
      "",
      "",
-     0},
+     1},  // Expected to FAIL - --no-encrypt conflicts with --key
     {"GitHub key reference",
      4,
      {"program", "client", "--key", "github:username"},

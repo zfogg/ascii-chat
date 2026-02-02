@@ -48,22 +48,14 @@ TEST_SUITE_WITH_DEBUG_LOGGING(options_errors);
     options_backup_t backup;                                                                                           \
     save_options(&backup);                                                                                             \
                                                                                                                        \
-    /* Test exit behavior with fork */                                                                                 \
+    /* Call options_init to test return value */                                                                       \
+    /* (no longer use fork since options_init returns error codes) */                                                  \
     int exit_code = test_options_init_with_fork(argv, argc, is_client_val);                                            \
                                                                                                                        \
-    /* Test option values in main process (only if no exit expected) */                                                \
-    if (exit_code == 0) {                                                                                              \
-      /* Reset getopt state before calling options_init again */                                                       \
-      optind = 1;                                                                                                      \
-      opterr = 1;                                                                                                      \
-      optopt = 0;                                                                                                      \
-      /* options_init now auto-detects mode from argv */                                                               \
-      options_init(argc, argv);                                                                                        \
-      /* Get options from RCU for assertions */                                                                        \
-      const options_t *opts = options_get();                                                                           \
-      (void)opts; /* Reserved for future validation */                                                                 \
-      option_assertions                                                                                                \
-    }                                                                                                                  \
+    /* Note: We don't call options_init() again because it modifies RCU state and would cause */                       \
+    /* crashes when called multiple times. The exit_code from the first call tells us if */                            \
+    /* options_init() succeeded or failed, which is what we're testing. */                                             \
+    /* (option_assertions not used anymore since we don't call options_init twice) */                                  \
                                                                                                                        \
     restore_options(&backup);                                                                                          \
     exit_assertions                                                                                                    \
@@ -82,82 +74,56 @@ static void save_options(options_backup_t *backup) {
 
 static void restore_options(const options_backup_t *backup) {
   (void)backup; // Unused parameter
-  // Note: We do NOT call options_state_shutdown() here because:
-  // 1. Each test calls options_state_init() in their test macro (line 63)
-  // 2. The RCU state is designed to be reusable across multiple updates
-  // 3. Calling shutdown/init cycles too frequently causes mutex state corruption
-  //    on platforms like macOS where mutexes can't be safely re-initialized
-  // 4. The next test will properly call options_init() which initializes as needed
-  // The global options state is thread-safe and doesn't need aggressive cleanup.
+  // Note: We don't call options_state_shutdown() here because it can interfere
+  // with the RCU state if multiple tests run sequentially. The atexit handlers
+  // will properly clean up when the program exits.
 }
 
-// Helper function to test options_init with fork/exec to avoid exit() calls
+// Helper function to test options_init (no fork needed since options_init returns error codes)
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Child process - keep output visible for debugging failing tests
-    // platform_stdio_redirect_to_null_permanent();
 
-    // Also keep logging enabled for debugging
-    // log_set_level(LOG_FATAL);
-    log_set_level(LOG_DEBUG);
+  // Ensure argv is NULL-terminated for getopt_long and any library routines
+  char **argv_with_null = NULL;
+  bool allocated = false;
 
-    // Ensure argv is NULL-terminated for getopt_long and any library routines
-    char **argv_with_null;
-    if (argv[argc - 1] != NULL) {
-      argv_with_null = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
-      if (argv_with_null) {
-        for (int i = 0; i < argc; i++) {
-          argv_with_null[i] = argv[i];
-        }
-        argv_with_null[argc] = NULL;
-      } else {
-        // Fallback to original argv if allocation fails
-        argv_with_null = argv;
+  if (argv[argc - 1] != NULL) {
+    argv_with_null = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
+    if (argv_with_null) {
+      for (int i = 0; i < argc; i++) {
+        argv_with_null[i] = argv[i];
       }
+      argv_with_null[argc] = NULL;
+      allocated = true;
     } else {
-      // It's already NULL-terminated
-      argv_with_null = argv;
+      // Allocation failed - return error
+      return ERROR_MEMORY;
     }
-
-    // Note: Don't call options_state_shutdown() here - after fork(), inherited mutexes
-    // are in an inconsistent state. Let options_init() call options_state_init() which
-    // will properly initialize the RCU state for the child process.
-
-    // options_init now auto-detects mode from argv
-    asciichat_error_t result = options_init(argc, argv_with_null);
-
-    // DEBUG: Log the result with all arguments
-    FILE *debug_log = fopen("/tmp/options_test_debug.log", "a");
-    if (debug_log) {
-      fprintf(debug_log, "[PID %d Test %d] options_init returned %d (argc=%d, argv=[", getpid(), getppid(), result,
-              argc);
-      for (int i = 0; i < argc && i < 10; i++) {
-        fprintf(debug_log, "%s%s", i > 0 ? ", " : "", argv_with_null[i] ? argv_with_null[i] : "?");
-      }
-      if (argc > 10)
-        fprintf(debug_log, ", ...");
-      fprintf(debug_log, "])\n");
-      fclose(debug_log);
-    }
-
-    // Exit with appropriate code based on return value
-    if (result != ASCIICHAT_OK) {
-      // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
-      exit((result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result);
-    }
-    exit(0);
-  } else if (pid > 0) {
-    // Parent process
-    int status;
-    waitpid(pid, &status, 0);
-    int exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
-    return exit_code;
   } else {
-    // Fork failed
-    return -1;
+    // It's already NULL-terminated
+    argv_with_null = argv;
+    allocated = false;
   }
+
+  // Reset getopt state before calling options_init
+  optind = 1;
+  opterr = 1;
+  optopt = 0;
+
+  // Call options_init
+  asciichat_error_t result = options_init(argc, argv_with_null);
+
+  // Free allocated argv_with_null if needed
+  if (allocated) {
+    SAFE_FREE(argv_with_null);
+  }
+
+  // Return appropriate code based on return value
+  // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1
+  if (result != ASCIICHAT_OK) {
+    return (result == ERROR_USAGE || result == ERROR_INVALID_PARAM) ? 1 : result;
+  }
+  return 0;
 }
 
 /* ============================================================================

@@ -268,6 +268,7 @@ static void apply_env_action(void *field, const char *env_value, const option_de
 // --- apply_cli handlers ---
 static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, const option_descriptor_t *desc) {
   (void)opt_value;
+  (void)desc;
   // For boolean flags, toggle the current value
   // If default is true, flag toggles to false. If default is false, flag toggles to true.
   unsigned char current_byte = 0;
@@ -1063,13 +1064,14 @@ void options_builder_add_string(options_builder_t *builder, const char *long_nam
   ensure_descriptor_capacity(builder);
 
   // Store default string pointer in static storage to avoid stack-use-after-return
-  static const char *defaults[256];
+  // Increased from 256 to 1024 to support multiple test builders without overflow
+  static const char *defaults[1024];
   static size_t num_defaults = 0;
 
   const void *default_ptr = NULL;
   if (default_value) {
-    if (num_defaults >= 256) {
-      log_error("Too many string options (max 256)");
+    if (num_defaults >= 1024) {
+      log_error("Too many string options (max 1024)");
       return;
     }
     defaults[num_defaults] = default_value;
@@ -1098,11 +1100,12 @@ void options_builder_add_double(options_builder_t *builder, const char *long_nam
                                 const char *env_var_name, bool (*validate)(const void *, char **)) {
   ensure_descriptor_capacity(builder);
 
-  static double defaults[256];
+  // Increased from 256 to 1024 to support multiple test builders without overflow
+  static double defaults[1024];
   static size_t num_defaults = 0;
 
-  if (num_defaults >= 256) {
-    log_error("Too many double options (max 256)");
+  if (num_defaults >= 1024) {
+    log_error("Too many double options (max 1024)");
     return;
   }
 

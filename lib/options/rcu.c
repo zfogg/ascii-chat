@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #ifndef _WIN32
 #include <unistd.h>
+#include <pthread.h>
 #endif
 
 // ============================================================================
@@ -175,38 +176,71 @@ static void deferred_free_all(void) {
 }
 
 // ============================================================================
+// Fork Handler Registration
+// ============================================================================
+
+#ifndef _WIN32
+/**
+ * @brief Handler called in child process after fork()
+ *
+ * Resets the static mutex state so the child can safely use it.
+ * This is called automatically by pthread after fork() in the child process.
+ */
+static void options_rcu_atfork_child(void) {
+  // Reset the static mutex initialized flag to force reinitialization
+  g_options_init_mutex.initialized = 0;
+  // Reset the RCU state
+  g_options_initialized = false;
+  // Reset the atomic options pointer to avoid dangling references
+  // The parent's allocated memory is not accessible/valid in the child
+  atomic_store(&g_options, NULL);
+  // Don't reset g_init_pid - we'll detect the fork in options_state_init
+}
+
+/**
+ * @brief Constructor to initialize fork handlers at startup
+ *
+ * This is called before main() by the linker, ensuring fork handlers are
+ * registered early.
+ */
+__attribute__((constructor)) static void register_fork_handlers_constructor(void) {
+  // Register the child handler that will be called after fork() in the child process
+  pthread_atfork(NULL, NULL, options_rcu_atfork_child);
+}
+#endif
+
+// ============================================================================
 // Public API Implementation
 // ============================================================================
 
 asciichat_error_t options_state_init(void) {
+  // Detect fork: after fork(), child process must reinitialize mutexes BEFORE locking
+  // The inherited mutex is in an inconsistent state and can cause deadlocks/signals
+  // We must reset it before calling static_mutex_lock
+  pid_t current_pid = getpid();
+  if ((g_options_initialized || g_init_pid != -1) && g_init_pid != current_pid) {
+// We're in a forked child - reset the static mutex state before using it
+// On POSIX, set initialized=0 so static_mutex_lock will reinitialize it
+// On Windows, the InterlockedCompareExchange logic handles this automatically
+#ifndef _WIN32
+    g_options_init_mutex.initialized = 0; // Force reinitialization on next lock
+#else
+    g_options_init_mutex.initialized = 0; // Same approach for Windows
+#endif
+    log_debug("Detected fork in options_state_init (parent PID %d, child PID %d) - resetting mutex", g_init_pid,
+              current_pid);
+    g_options_initialized = false;
+    g_init_pid = current_pid; // Set to current PID so we know we're initialized in this process
+  }
+
   static_mutex_lock(&g_options_init_mutex);
 
-  // Detect fork: after fork(), child process must reinitialize mutexes
-  // Mutexes inherited from parent are in inconsistent state
-  pid_t current_pid = getpid();
+  // Check if already initialized in this process
   if (g_options_initialized && g_init_pid == current_pid) {
     // Already initialized in this process
     static_mutex_unlock(&g_options_init_mutex);
     log_warn("Options state already initialized");
     return ASCIICHAT_OK;
-  }
-
-  // If we forked (pid changed), we need to clean up old state
-  if (g_options_initialized && g_init_pid != current_pid) {
-    log_debug("Detected fork (parent PID %d, child PID %d) - reinitializing options state", g_init_pid, current_pid);
-    // Mutexes are in bad state after fork - they need to be destroyed and recreated
-    // But we can't safely call mutex_destroy on inherited mutexes
-    // Just reset the flags to force reinitialization
-    g_options_initialized = false;
-    g_init_pid = -1; // Reset so we initialize fresh
-  }
-
-  // Also check if this is the very first call in a forked child where parent was never initialized
-  // In this case, g_options_initialized will be false but we might still have inherited invalid state
-  if (!g_options_initialized && g_init_pid != -1 && g_init_pid != current_pid) {
-    log_debug("First init in forked child - resetting inherited state (parent PID %d, child PID %d)", g_init_pid,
-              current_pid);
-    g_init_pid = -1; // Clear inherited parent's PID
   }
 
   // Initialize write mutex

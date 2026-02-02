@@ -777,14 +777,14 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--log-level") == 0) {
         if (i + 1 >= argc || argv[i + 1][0] == '-') {
           log_plain_stderr("Error: --log-level requires a value (dev, debug, info, warn, error, fatal)");
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         i++; // Skip the argument in this loop
       }
       if (strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0) {
         if (i + 1 >= argc || argv[i + 1][0] == '-') {
           log_plain_stderr("Error: %s requires a file path", argv[i]);
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         i++; // Skip the argument in this loop
       }
@@ -867,7 +867,7 @@ asciichat_error_t options_init(int argc, char **argv) {
           // action_completions() calls exit(), so we don't reach here
         } else {
           log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         break; // Unreachable, but for clarity
       }
@@ -1039,11 +1039,11 @@ asciichat_error_t options_init(int argc, char **argv) {
       if (strcmp(argv[i], "--log-level") == 0) {
         if (i + 1 >= argc) {
           log_plain_stderr("Error: --log-level requires a value (dev, debug, info, warn, error, fatal)");
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         if (argv[i + 1][0] == '-') {
           log_plain_stderr("Error: --log-level requires a value (dev, debug, info, warn, error, fatal)");
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         char *error_msg = NULL;
         if (parse_log_level(argv[i + 1], &opts.log_level, &error_msg)) {
@@ -1055,18 +1055,18 @@ asciichat_error_t options_init(int argc, char **argv) {
           } else {
             log_plain_stderr("Error: invalid log level value: %s", argv[i + 1]);
           }
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
       }
       // Handle -L and --log-file FILE (set log file path)
       if ((strcmp(argv[i], "-L") == 0 || strcmp(argv[i], "--log-file") == 0)) {
         if (i + 1 >= argc) {
           log_plain_stderr("Error: %s requires a file path", argv[i]);
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         if (argv[i + 1][0] == '-') {
           log_plain_stderr("Error: %s requires a file path", argv[i]);
-          exit(ERROR_USAGE);
+          return ERROR_USAGE;
         }
         SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));
         i++; // Skip the file argument
@@ -1113,7 +1113,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
 
     log_plain("Created default config file at: %s", config_path);
-    exit(0); // Exit successfully after creating config
+    return ASCIICHAT_OK; // Return successfully after creating config
   }
 
   if (create_manpage) {
@@ -1144,7 +1144,7 @@ asciichat_error_t options_init(int argc, char **argv) {
     }
 
     log_plain("Generated man page: %s", existing_template_path);
-    exit(0); // Exit successfully after generating man page
+    return ASCIICHAT_OK; // Return successfully after generating man page
   }
 
   // ========================================================================
@@ -1383,6 +1383,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (opts.encrypt_key[0] != '\0') {
     opts.encrypt_enabled = 1;
     log_debug("Auto-enabled encryption because --key was provided");
+  }
+
+  // Auto-disable encryption if --no-encrypt was provided
+  if (opts.no_encrypt) {
+    opts.encrypt_enabled = 0;
+    log_debug("Auto-disabled encryption because --no-encrypt was provided");
   }
 
   // Validate options

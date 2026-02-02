@@ -83,6 +83,26 @@ static void print_mimalloc_stats(void);
 // But allow subsystem reinitialization for tests and other use cases
 static bool g_atexit_handlers_registered = false;
 
+#ifndef _WIN32
+/**
+ * @brief Fork handler for child process
+ *
+ * Reset the atexit handlers flag so the child process will reinitialize
+ * all subsystems that were already initialized in the parent.
+ */
+static void asciichat_common_atfork_child(void) {
+  // Reset the atexit handlers flag so asciichat_shared_init() will reinitialize subsystems
+  g_atexit_handlers_registered = false;
+}
+
+/**
+ * @brief Register fork handlers for common module
+ */
+__attribute__((constructor)) static void register_common_fork_handlers(void) {
+  pthread_atfork(NULL, NULL, asciichat_common_atfork_child);
+}
+#endif
+
 asciichat_error_t asciichat_shared_init(bool is_client) {
   // Reconfigure logging with final settings (log level and is_client routing)
   // Log file was already set in options_init after mode detection
