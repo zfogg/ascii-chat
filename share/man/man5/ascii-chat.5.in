@@ -500,6 +500,16 @@ Specify GPG key with format: gpg:<key-id> or gpg:<fingerprint>
 --server-key gpg:ABCD1234567890EF
 .fi
 .
+.SH BUGS
+Report bugs to https://github.com/zfogg/ascii-chat/issues
+.PP
+GitHub repository: https://github.com/zfogg/ascii-chat
+.PP
+Releases: https://github.com/zfogg/ascii-chat/releases
+.
+.SH AUTHOR
+Zachary Fogg <me@zfo.gg>
+.
 .SH SEE ALSO
 .BR ascii-chat (1),
 .BR ssh-keygen (1),
@@ -508,9 +518,3 @@ Specify GPG key with format: gpg:<key-id> or gpg:<fingerprint>
 .BR gpg (1),
 .BR gpgconf (1),
 .BR gpg-agent (1)
-.
-.SH AUTHOR
-ascii-chat developers
-.
-.SH BUGS
-Report bugs to https://github.com/zfogg/ascii-chat/issues
