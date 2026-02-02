@@ -563,6 +563,8 @@ typedef struct {
   char palette_custom[64];
   /** @brief Client's desired frame rate (1-144 FPS) */
   uint8_t desired_fps;
+  /** @brief Monochromatic color filter enum value (color_filter_t) */
+  color_filter_t color_filter;
 } terminal_capabilities_t;
 
 /**

@@ -146,6 +146,7 @@
 #include "video/video_frame.h"
 #include "video/image.h"
 #include "video/ascii.h"
+#include "video/color_filter.h"
 #include "util/aspect_ratio.h"
 #include "util/endian.h"
 #include "util/image.h"
@@ -853,6 +854,12 @@ static char *convert_composite_to_ascii(image_t *composite, uint32_t target_clie
   // CRITICAL CHECK: Verify composite width matches terminal width
   if (composite->w != width) {
     log_warn("DIMENSION MISMATCH: composite->w=%d != terminal_width=%d", composite->w, width);
+  }
+
+  // Apply color filter if specified
+  if (caps_snapshot.color_filter != COLOR_FILTER_NONE && composite->pixels) {
+    apply_color_filter((uint8_t *)composite->pixels, composite->w, composite->h, composite->w * 3,
+                       caps_snapshot.color_filter);
   }
 
   char *ascii_frame = ascii_convert_with_capabilities(composite, width, h, &caps_snapshot, true, false,

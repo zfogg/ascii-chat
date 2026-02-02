@@ -83,40 +83,31 @@ static void restore_options(const options_backup_t *backup) {
 static int test_options_init_with_fork(char **argv, int argc, bool is_client) {
   (void)is_client; // Unused parameter
 
-  // Ensure argv is NULL-terminated for getopt_long and any library routines
-  char **argv_with_null = NULL;
-  bool allocated = false;
-
-  if (argv[argc - 1] != NULL) {
-    argv_with_null = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
-    if (argv_with_null) {
-      for (int i = 0; i < argc; i++) {
-        argv_with_null[i] = argv[i];
-      }
-      argv_with_null[argc] = NULL;
-      allocated = true;
-    } else {
-      // Allocation failed - return error
-      return ERROR_MEMORY;
-    }
-  } else {
-    // It's already NULL-terminated
-    argv_with_null = argv;
-    allocated = false;
+  // ALWAYS make a copy of argv to prevent options_init() from modifying the original array.
+  // This is critical because options_init() might modify argv strings during parsing
+  // (e.g., temporarily replacing '=' with '\0' for equals-sign syntax parsing),
+  // and we need to prevent that from affecting the original test data.
+  char **argv_copy = SAFE_CALLOC((size_t)argc + 1, sizeof(char *), char **);
+  if (!argv_copy) {
+    return ERROR_MEMORY;
   }
+
+  // Copy all argv pointers and ensure NULL termination
+  for (int i = 0; i < argc; i++) {
+    argv_copy[i] = argv[i];
+  }
+  argv_copy[argc] = NULL;
 
   // Reset getopt state before calling options_init
   optind = 1;
   opterr = 1;
   optopt = 0;
 
-  // Call options_init
-  asciichat_error_t result = options_init(argc, argv_with_null);
+  // Call options_init with the copied argv
+  asciichat_error_t result = options_init(argc, argv_copy);
 
-  // Free allocated argv_with_null if needed
-  if (allocated) {
-    SAFE_FREE(argv_with_null);
-  }
+  // Free the copied argv
+  SAFE_FREE(argv_copy);
 
   // Return appropriate code based on return value
   // Map both ERROR_USAGE and ERROR_INVALID_PARAM to exit code 1

@@ -19,6 +19,7 @@
 #include "video/ansi_fast.h"
 #include "video/palette.h"
 #include "video/ascii.h"
+#include "video/color_filter.h"
 #include "video/image.h"
 #include "audio/audio.h"
 #include "asciichat_errno.h"
@@ -294,6 +295,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   bool stretch = GET_OPTION(stretch);
   bool preserve_aspect_ratio = !stretch;
   bool flip = GET_OPTION(webcam_flip);
+  color_filter_t color_filter = GET_OPTION(color_filter);
 
   // Make a mutable copy of terminal capabilities for ascii_convert_with_capabilities
   terminal_capabilities_t caps_copy = ctx->caps;
@@ -317,13 +319,41 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     }
   }
 
+  // Apply color filter if specified
+  if (color_filter != COLOR_FILTER_NONE && display_image->pixels) {
+    // If we have a flipped_image, we can modify it in-place since it's our copy
+    // If not, we need to create a copy for filtering
+    image_t *filter_image = NULL;
+    if (flipped_image) {
+      filter_image = flipped_image;
+    } else {
+      // Create a copy for filtering since the original is const
+      filter_image = image_new((size_t)display_image->w, (size_t)display_image->h);
+      if (filter_image && display_image->pixels) {
+        memcpy(filter_image->pixels, display_image->pixels,
+               (size_t)display_image->w * (size_t)display_image->h * sizeof(rgb_pixel_t));
+        display_image = filter_image;
+      }
+    }
+
+    // Apply the color filter in-place
+    if (filter_image && filter_image->pixels) {
+      apply_color_filter((uint8_t *)filter_image->pixels, filter_image->w, filter_image->h, filter_image->w * 3,
+                         color_filter);
+    }
+  }
+
   // Call the standard ASCII conversion using context's palette and capabilities
   char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
 
-  // Clean up flipped image if created
+  // Clean up flipped/filtered image if created
   if (flipped_image) {
     image_destroy(flipped_image);
+  }
+  // Note: if we created a separate filter_image (not flipped_image), it needs cleanup too
+  if (color_filter != COLOR_FILTER_NONE && !flipped_image && display_image != image) {
+    image_destroy((image_t *)display_image);
   }
 
   return result;
