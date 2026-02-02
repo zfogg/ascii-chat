@@ -11,10 +11,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "tests/common.h"
-#include "network/packet.h"
-#include "video/simd/common.h"
-#include "util/overflow.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/util/overflow.h>
 
 void setup_server_quiet_logging(void);
 void restore_server_logging(void);

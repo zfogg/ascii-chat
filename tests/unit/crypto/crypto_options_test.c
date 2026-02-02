@@ -12,10 +12,10 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "tests/common.h"
-#include "options/options.h"
-#include "options/rcu.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/tests/logging.h>
 
 // External getopt variable that needs resetting between tests
 extern int optind;

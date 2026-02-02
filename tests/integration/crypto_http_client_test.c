@@ -8,9 +8,9 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include "network/http_client.h"
-#include "crypto/https_keys.h"
-#include "common.h"
+#include <ascii-chat/network/http_client.h>
+#include <ascii-chat/crypto/https_keys.h>
+#include <ascii-chat/common.h>
 #include <string.h>
 
 TestSuite(crypto_http_client, .description = "HTTPS client and key fetching (requires network)");

@@ -16,14 +16,14 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "crypto/handshake/common.h"
-#include "crypto/handshake/client.h"
-#include "crypto/handshake/server.h"
-#include "crypto/keys.h"
-#include "platform/socket.h"
-#include "platform/thread.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/thread.h>
 
 // Use quiet logging for normal test runs
 TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake);

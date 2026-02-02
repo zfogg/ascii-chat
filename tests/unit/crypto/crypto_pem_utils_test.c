@@ -6,8 +6,8 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/redirect.h>
-#include "crypto/pem_utils.h"
-#include "common.h"
+#include <ascii-chat/crypto/pem_utils.h>
+#include <ascii-chat/common.h>
 #include <string.h>
 
 // Test CA certificate in PEM format (Let's Encrypt ISRG Root X1 - for testing only)

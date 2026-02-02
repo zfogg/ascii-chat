@@ -6,10 +6,10 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
-#include "crypto/keys_validation.h"
-#include "crypto/keys.h"
-#include "crypto/crypto.h"
-#include "common.h"
+#include <ascii-chat/crypto/keys_validation.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/common.h>
 #include <sodium.h>
 #include <string.h>
 

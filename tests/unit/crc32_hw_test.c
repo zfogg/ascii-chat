@@ -1,9 +1,9 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <string.h>
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "network/crc32.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/network/crc32.h>
 
 TEST_SUITE_WITH_DEBUG_LOGGING(crc32_hw);
 

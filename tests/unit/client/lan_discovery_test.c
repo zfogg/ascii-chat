@@ -14,8 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "network/mdns/discovery_tui.h"
-#include "common.h"
+#include <ascii-chat/network/mdns/discovery_tui.h>
+#include <ascii-chat/common.h>
 
 /**
  * @brief Test LAN discovery with default configuration

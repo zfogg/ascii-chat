@@ -1,11 +1,11 @@
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
 #include <criterion/parameterized.h>
-#include "tests/common.h"
-#include "video/simd/ascii_simd.h"
-#include "video/image.h"
-#include "video/simd/common.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(simd_scalar_comparison);

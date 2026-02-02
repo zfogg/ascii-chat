@@ -4,8 +4,8 @@
 #include <criterion/theories.h>
 #include <string.h>
 
-#include "tests/common.h"
-#include "crypto/crypto.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/crypto/crypto.h>
 
 // Test fixture setup and teardown
 static crypto_context_t ctx1, ctx2;

@@ -7,12 +7,12 @@
  * in the SESSION_JOINED response.
  */
 
-#include "discovery/database.h"
-#include "discovery/session.h"
+#include <ascii-chat/discovery/database.h>
+#include <ascii-chat/discovery/session.h>
 #include "discovery-service/main.h"
-#include "asciichat_errno.h"
-#include "network/acip/acds.h"
-#include "network/webrtc/turn_credentials.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/webrtc/turn_credentials.h>
 #include <criterion/criterion.h>
 #include <string.h>
 #include <time.h>

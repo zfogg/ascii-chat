@@ -23,12 +23,12 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "options/config.h"
-#include "options/options.h"
-#include "options/rcu.h"
-#include "common.h"
-#include "tests/common.h"
-#include "tests/logging.h"
+#include <ascii-chat/options/config.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Test suite setup with quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(config, LOG_FATAL, LOG_DEBUG, true, true);

@@ -3,8 +3,8 @@
  * @brief Unit tests for mmap-based lock-free logging
  */
 
-#include "tests/common.h"
-#include "log/mmap.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/log/mmap.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>

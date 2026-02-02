@@ -6,10 +6,10 @@
 #include <math.h>
 #include <time.h>
 
-#include "tests/common.h"
-#include "audio/audio.h"
-#include "buffer_pool.h" // For buffer_pool_init_global
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/buffer_pool.h> // For buffer_pool_init_global
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(audio, LOG_DEBUG, LOG_DEBUG, false, false);

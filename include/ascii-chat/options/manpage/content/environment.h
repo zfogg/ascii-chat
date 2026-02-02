@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include <ascii-chat/builder.h>
+#include <ascii-chat/options/builder.h>
 #include <stdio.h>
 #include <stddef.h>
 

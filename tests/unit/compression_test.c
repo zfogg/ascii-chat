@@ -12,10 +12,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "network/compression.h"
-#include "network/packet.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/network/compression.h>
+#include <ascii-chat/network/packet.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(compression);

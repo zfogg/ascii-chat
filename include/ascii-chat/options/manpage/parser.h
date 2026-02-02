@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <ascii-chat/manpage.h>
+#include <ascii-chat/options/manpage.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>

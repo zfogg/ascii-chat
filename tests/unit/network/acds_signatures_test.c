@@ -8,8 +8,8 @@
 #include <string.h>
 #include <sodium.h>
 
-#include "network/acip/acds_client.h"
-#include "network/acip/acds.h"
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/acip/acds.h>
 
 // Test suite setup - initialize libsodium
 static void acds_signatures_init(void) {

@@ -5,11 +5,11 @@
 #include <string.h>
 #include <math.h>
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "audio/mixer.h"
-#include "audio/audio.h"
-#include "../../lib/asciichat_errno.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/asciichat_errno.h>
 
 // Custom init function
 void mixer_test_init(void) {

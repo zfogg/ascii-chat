@@ -1,7 +1,7 @@
-#include "tests/common.h"
-#include "tooling/panic/instrument_log.h"
-#include "platform/system.h"
-#include "platform/thread.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tooling/panic/instrument_log.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/thread.h>
 
 #include <errno.h>
 #include <inttypes.h>

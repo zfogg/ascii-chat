@@ -4,9 +4,9 @@
 #include <criterion/theories.h>
 #include <string.h>
 #include <locale.h>
-#include "video/palette.h"
-#include "tests/common.h"
-#include "tests/logging.h"
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(palette_tests);

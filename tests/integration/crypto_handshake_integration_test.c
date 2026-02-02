@@ -16,15 +16,15 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
-#include "tests/common.h"
-#include "crypto/handshake/common.h"
-#include "crypto/handshake/client.h"
-#include "crypto/handshake/server.h"
-#include "crypto/keys.h"
-#include "crypto/known_hosts.h"
-#include "network/packet.h"
-#include "buffer_pool.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/known_hosts.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use verbose logging to debug test failures
 TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake_integration);

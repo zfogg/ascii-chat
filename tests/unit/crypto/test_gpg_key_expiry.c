@@ -11,8 +11,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "crypto/gpg/gpg_keys.h"
-#include "asciichat_errno.h"
+#include <ascii-chat/crypto/gpg/gpg_keys.h>
+#include <ascii-chat/asciichat_errno.h>
 
 // Test fixture data
 static char *test_gnupghome = NULL;

@@ -17,14 +17,14 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-#include "tests/common.h"
-#include "crypto/handshake/common.h"
-#include "crypto/handshake/client.h"
-#include "crypto/handshake/server.h"
-#include "crypto/keys.h"
-#include "network/packet.h"
-#include "buffer_pool.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use verbose logging for debugging
 TEST_SUITE_WITH_DEBUG_LOGGING(gpg_handshake);

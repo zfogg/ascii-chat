@@ -17,8 +17,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "network/mdns/mdns.h"
-#include "common.h"
+#include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/common.h>
 
 // Static callbacks for integration tests (must be at file scope, not inside Test())
 static void dummy_callback(const asciichat_mdns_discovery_t *discovery, void *user_data) {

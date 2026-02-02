@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "tests/common.h"
-#include "video/simd/ascii_simd.h"
-#include "video/simd/common.h"
-#include "video/image.h"
-#include "video/palette.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/palette.h>
 
 // Use quiet logging for normal test runs
 TEST_SUITE_WITH_QUIET_LOGGING(ascii_simd_integration);

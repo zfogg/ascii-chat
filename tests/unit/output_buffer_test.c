@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "video/output_buffer.h"
-#include "tests/common.h"
-#include "tests/logging.h"
+#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with default log levels
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVEL(output_buffer);

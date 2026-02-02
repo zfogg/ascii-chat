@@ -1,11 +1,11 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 #include <criterion/theories.h>
-#include "tests/common.h"
-#include "video/ascii.h"
-#include "video/image.h"
-#include "platform/terminal.h"
-#include "options/options.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/options/options.h>
 
 // Custom test suite setup function to initialize globals
 void ascii_custom_init(void) {

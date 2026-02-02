@@ -7,11 +7,11 @@
 #include <stdlib.h>
 #include <limits.h>
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "video/image.h"
-#include "video/ascii.h"
-#include "../../lib/asciichat_errno.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/asciichat_errno.h>
 
 // Custom init function
 void image_test_init(void) {

@@ -10,11 +10,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "network/network.h"
-#include "network/packet.h"
-#include "util/parsing.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/util/parsing.h>
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);

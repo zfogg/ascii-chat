@@ -11,9 +11,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "tests/common.h"
-#include "crypto/known_hosts.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/crypto/known_hosts.h>
+#include <ascii-chat/tests/logging.h>
 
 // Custom setup function that combines logging setup and known_hosts cleanup
 void setup_crypto_known_hosts_tests(void) {

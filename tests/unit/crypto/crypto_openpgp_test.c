@@ -10,8 +10,8 @@
 #include <criterion/redirect.h>
 #include <string.h>
 
-#include "../../../lib/crypto/gpg/openpgp.h"
-#include "../../../lib/common.h"
+#include <ascii-chat/crypto/gpg/openpgp.h>
+#include <ascii-chat/common.h>
 
 // =============================================================================
 // Test Fixtures

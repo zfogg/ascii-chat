@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "video/webcam/webcam.h"
-#include "tests/common.h"
-#include "options/options.h"
-#include "video/image.h"
-#include "tests/logging.h"
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/tests/logging.h>
 
 // Suite setup: enable test pattern mode for all tests
 void webcam_suite_setup(void) {

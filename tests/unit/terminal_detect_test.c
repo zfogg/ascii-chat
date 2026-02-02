@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "platform/terminal.h"
-#include "tests/common.h"
-#include "tests/logging.h"
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro with stdout/stderr enabled for debugging
 // Note: We don't disable stdout/stderr because terminal detection needs them

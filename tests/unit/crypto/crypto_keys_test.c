@@ -11,9 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tests/common.h"
-#include "crypto/keys.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suite with debug logging
 TEST_SUITE_WITH_DEBUG_LOGGING(crypto_keys);

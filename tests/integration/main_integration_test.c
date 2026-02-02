@@ -10,8 +10,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "tests/common.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/platform/abstraction.h>
 
 // Test configuration
 #define TEST_PORT_BASE 10000

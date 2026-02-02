@@ -1754,6 +1754,6 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 
 // Include cross-platform system utilities (binary PATH detection)
 // Note: Uses uthash for binary PATH cache (included via system.c)
-#include <ascii-chat/system.c>
+#include "../system.c"
 
 #endif // !!_WIN32

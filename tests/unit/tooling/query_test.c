@@ -16,7 +16,7 @@
 #include <criterion/logging.h>
 #include <stdlib.h>
 
-#include "tooling/query/query.h"
+#include <ascii-chat/tooling/query/query.h>
 
 // ============================================================================
 // Basic API Tests

@@ -11,11 +11,11 @@
  * the session string.
  */
 
-#include "discovery/database.h"
-#include "discovery/session.h"
+#include <ascii-chat/discovery/database.h>
+#include <ascii-chat/discovery/session.h>
 #include "discovery-service/main.h"
-#include "asciichat_errno.h"
-#include "network/acip/acds.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/acip/acds.h>
 #include <criterion/criterion.h>
 #include <string.h>
 #include <sodium.h>

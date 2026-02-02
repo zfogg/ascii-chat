@@ -7,9 +7,9 @@
 #include <criterion/logging.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../../lib/crypto/gpg/gpg.h"
-#include "../../lib/crypto/keys.h"
-#include "../../lib/crypto/gpg/gpg_keys.h"
+#include <ascii-chat/crypto/gpg/gpg.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/gpg/gpg_keys.h>
 
 // Test GPG key ID - obtained from environment variable set by setup script
 // If not set, tests will be skipped

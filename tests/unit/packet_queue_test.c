@@ -4,12 +4,12 @@
 #include <string.h>
 #include <arpa/inet.h> // For htonl/ntohl
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "network/packet_queue.h"
-#include "network/crc32.h" // For CRC calculation
-#include "buffer_pool.h"   // For buffer_pool_init_global/cleanup_global
-#include "util/endian.h"   // For HOST_TO_NET_U64
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/crc32.h> // For CRC calculation
+#include <ascii-chat/buffer_pool.h>   // For buffer_pool_init_global/cleanup_global
+#include <ascii-chat/util/endian.h>   // For HOST_TO_NET_U64
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);

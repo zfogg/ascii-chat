@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/common.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/options/layout.h>

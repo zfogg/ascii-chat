@@ -1,8 +1,8 @@
 #include <criterion/criterion.h>
 #include <string.h>
-#include "tests/common.h"
-#include "video/ascii.h"
-#include "video/image.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/image.h>
 
 static void ascii_perf_init(void) {
   log_set_level(LOG_WARN);

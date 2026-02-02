@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "util/ip.h"
-#include "tests/common.h"
-#include "tests/logging.h"
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use quiet logging for tests
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ip_utils, LOG_FATAL, LOG_DEBUG, false, false);

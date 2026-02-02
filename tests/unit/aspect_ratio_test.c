@@ -3,8 +3,8 @@
 #include <criterion/theories.h>
 #include <time.h>
 #include <math.h>
-#include "tests/common.h"
-#include "util/aspect_ratio.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/util/aspect_ratio.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(aspect_ratio);

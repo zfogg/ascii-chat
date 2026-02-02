@@ -10,11 +10,11 @@
 #include <unistd.h>
 #endif
 
-#include "tests/common.h"
-#include "video/webcam/webcam.h"
-#include "options/options.h"
-#include "video/image.h"
-#include "tests/logging.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/tests/logging.h>
 
 // Suite setup: enable test pattern mode
 void client_test_setup(void) {

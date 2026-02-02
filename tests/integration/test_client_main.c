@@ -17,7 +17,7 @@
 #endif
 
 #include <stdbool.h>
-#include "tests/common.h"
+#include <ascii-chat/tests/common.h>
 
 // Use shared binary path detection from tests/common.h
 #define get_binary_path test_get_binary_path

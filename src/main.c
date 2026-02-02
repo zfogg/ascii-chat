@@ -26,7 +26,7 @@
 #include "client/main.h"
 #include "mirror/main.h"
 #include "discovery-service/main.h"
-#include <ascii-chat/discovery/main.h>
+#include <ascii-chat/discovery/session.h>
 
 // Utilities
 #include <ascii-chat/util/utf8.h>
@@ -111,7 +111,7 @@ static void print_version(void) {
 static const mode_descriptor_t g_discovery_mode = {
     .name = "discovery",
     .description = "P2P session with automatic host negotiation",
-    .entry_point = discovery_main,
+    .entry_point = acds_main,
 };
 
 /**

@@ -28,7 +28,7 @@
  */
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/key_types.h> // Include the key type definitions
+#include <ascii-chat/crypto/key_types.h> // Include the key type definitions
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

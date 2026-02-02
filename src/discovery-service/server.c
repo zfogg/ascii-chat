@@ -15,7 +15,7 @@
 #include "discovery-service/server.h"
 #include <ascii-chat/discovery/database.h>
 #include <ascii-chat/discovery/session.h>
-#include <ascii-chat/discovery/nat.h>
+#include <ascii-chat/discovery/identity.h>
 #include "discovery-service/signaling.h"
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/acds_handlers.h>

@@ -3,8 +3,8 @@
  * @brief Unit tests for TURN credential generation
  */
 
-#include "network/webrtc/turn_credentials.h"
-#include "asciichat_errno.h"
+#include <ascii-chat/network/webrtc/turn_credentials.h>
+#include <ascii-chat/asciichat_errno.h>
 #include <criterion/criterion.h>
 #include <string.h>
 #include <time.h>

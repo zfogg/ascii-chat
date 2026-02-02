@@ -8,8 +8,8 @@
 #include <criterion/new/assert.h>
 #include <string.h>
 
-#include "tests/logging.h"
-#include "media/youtube.h"
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/media/youtube.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(youtube);

@@ -11,13 +11,13 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include "options/options.h"
-#include "options/rcu.h"     // For RCU-based options access
-#include "options/actions.h" // For deferred action tests
-#include "tests/common.h"
-#include "platform/terminal.h"
-#include "platform/system.h"
-#include "tests/logging.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>     // For RCU-based options access
+#include <ascii-chat/options/actions.h> // For deferred action tests
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/tests/logging.h>
 
 // Use the enhanced macro to create complete test suites with custom log levels
 // TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVEL(options, LOG_INFO, LOG_DEBUG);

@@ -12,8 +12,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "platform/filesystem.h"
-#include "common.h"
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/common.h>
 
 // ============================================================================
 // Data Structure Tests (safe - don't trigger error logging)

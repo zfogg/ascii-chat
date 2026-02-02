@@ -7,11 +7,11 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "tests/common.h"
-#include "tests/logging.h"
-#include "ringbuffer.h"
-#include "audio/audio.h"
-#include "buffer_pool.h"
+#include <ascii-chat/tests/common.h>
+#include <ascii-chat/tests/logging.h>
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/buffer_pool.h>
 
 // Use the enhanced macro to create complete test suites with custom log levels
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG, true, true);

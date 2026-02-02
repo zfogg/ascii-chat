@@ -14,9 +14,9 @@
 
 #include <criterion/criterion.h>
 #include <criterion/new/assert.h>
-#include "crypto/ssh/ssh_agent.h"
-#include "crypto/keys.h"
-#include "common.h"
+#include <ascii-chat/crypto/ssh/ssh_agent.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/common.h>
 #include <sodium.h>
 #include <string.h>
 

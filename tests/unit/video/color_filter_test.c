@@ -7,7 +7,7 @@
 #include <criterion/criterion.h>
 #include <stdint.h>
 #include <string.h>
-#include "video/color_filter.h"
+#include <ascii-chat/video/color_filter.h>
 
 /**
  * @brief Test grayscale conversion accuracy

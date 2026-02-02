@@ -2,8 +2,8 @@
 #include <criterion/new/assert.h>
 #include <string.h>
 
-#include "crypto/crypto.h"
-#include "tests/common.h"
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/tests/common.h>
 
 void setup_crypto_network_quiet_logging(void);
 void restore_crypto_network_logging(void);
