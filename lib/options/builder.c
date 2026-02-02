@@ -1835,30 +1835,40 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   const char *arg = argv[argv_index];
   char *long_opt_value = NULL;
   char *equals = NULL;
+  char *arg_copy = NULL;            // Copy of arg for safe parsing without modifying original
+  const char *arg_for_lookup = arg; // What to use for option lookup
 
   // Handle long options with `=` (e.g., --port=8080)
   if (strncmp(arg, "--", 2) == 0) {
     equals = strchr(arg, '=');
     if (equals) {
       long_opt_value = equals + 1;
-      // Temporarily null-terminate to get option name
-      *equals = '\0';
+      // Make a copy of the arg string and null-terminate it to get the option name
+      // This avoids modifying the original argv string, which is important for
+      // thread safety and to prevent issues with forked child processes
+      size_t arg_len = equals - arg;
+      arg_copy = SAFE_MALLOC(arg_len + 1, char *);
+      if (arg_copy) {
+        memcpy(arg_copy, arg, arg_len);
+        arg_copy[arg_len] = '\0';
+        arg_for_lookup = arg_copy;
+      } else {
+        return ERROR_MEMORY;
+      }
     }
   }
 
   // Find matching descriptor
-  const option_descriptor_t *desc = find_option_descriptor(config, arg);
+  const option_descriptor_t *desc = find_option_descriptor(config, arg_for_lookup);
   if (!desc) {
-    if (equals)
-      *equals = '='; // Restore
-
     // Try to suggest a similar option
-    const char *suggestion = find_similar_option_with_mode(arg, config, mode_bitmask);
+    const char *suggestion = find_similar_option_with_mode(arg_for_lookup, config, mode_bitmask);
     if (suggestion) {
-      log_plain_stderr("Unknown option: %s. %s", arg, suggestion);
+      log_plain_stderr("Unknown option: %s. %s", arg_for_lookup, suggestion);
     } else {
-      log_plain_stderr("Unknown option: %s", arg);
+      log_plain_stderr("Unknown option: %s", arg_for_lookup);
     }
+    SAFE_FREE(arg_copy);
     return ERROR_USAGE;
   }
 
@@ -1866,8 +1876,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   if (desc->mode_bitmask != 0 && !(desc->mode_bitmask & OPTION_MODE_BINARY)) {
     // Option has specific mode restrictions - use the passed mode_bitmask directly
     if (!(desc->mode_bitmask & mode_bitmask)) {
-      if (equals)
-        *equals = '='; // Restore
+      SAFE_FREE(arg_copy);
       return SET_ERRNO(ERROR_USAGE, "Option %s is not supported for this mode", arg);
     }
   }
@@ -1913,19 +1922,16 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // Other types need a value (INT, STRING, DOUBLE, CALLBACK)
       asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
       if (result != ASCIICHAT_OK) {
-        if (equals)
-          *equals = '='; // Restore
+        SAFE_FREE(arg_copy);
         return result;
       }
     }
   } else {
-    if (equals)
-      *equals = '='; // Restore
+    SAFE_FREE(arg_copy);
     return SET_ERRNO(ERROR_USAGE, "Invalid option type for %s", arg);
   }
 
-  if (equals)
-    *equals = '='; // Restore
+  SAFE_FREE(arg_copy);
   return ASCIICHAT_OK;
 }
 
