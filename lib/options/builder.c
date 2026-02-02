@@ -780,6 +780,7 @@ void options_builder_destroy(options_builder_t *builder) {
   SAFE_FREE(builder->usage_lines);
   SAFE_FREE(builder->examples);
   SAFE_FREE(builder->modes);
+  SAFE_FREE(builder->custom_sections);
   SAFE_FREE(builder->owned_strings_builder); // Free the builder's owned strings
   SAFE_FREE(builder);
 }
