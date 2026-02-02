@@ -4,16 +4,16 @@
  * @ingroup options
  */
 
-#include "options/schema.h"
-#include "options/validation.h"
-#include "options/options.h"
-#include "options/builder.h"
-#include "options/presets.h"
-#include "util/path.h"
-#include "video/palette.h"
-#include "platform/terminal.h"
-#include "platform/system.h"
-#include "common.h"
+#include <ascii-chat/options/schema.h>
+#include <ascii-chat/options/validation.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/presets.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/common.h>
 
 #include <string.h>
 #include <limits.h>

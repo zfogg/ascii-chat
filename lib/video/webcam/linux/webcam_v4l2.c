@@ -16,12 +16,12 @@
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
 
-#include "video/webcam/webcam.h"
-#include "common.h"
-#include "platform/filesystem.h"
-#include "platform/util.h"
-#include "util/overflow.h"
-#include "util/image.h"
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/image.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8

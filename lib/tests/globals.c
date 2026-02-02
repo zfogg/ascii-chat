@@ -7,9 +7,9 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "options/options.h"
-#include "options/rcu.h"
-#include "platform/system.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/platform/system.h>
 
 /**
  * @brief Test environment initialization (runs before main)

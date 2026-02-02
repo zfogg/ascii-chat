@@ -7,21 +7,21 @@
  */
 
 // Platform abstraction includes memory sizing functions
-#include "common.h"
-#include "platform/system.h"
-#include "platform/init.h"
-#include "platform/memory.h"
-#include "log/logging.h"
-#include "buffer_pool.h"
-#include "video/palette.h"
-#include "video/simd/common.h"   // For simd_caches_destroy_all()
-#include "video/webcam/webcam.h" // For webcam_cleanup()
-#include "options/colorscheme.h" // For colorscheme_shutdown()
-#include "util/time.h"           // For timer_system_cleanup()
-#include "asciichat_errno.h"
-#include "crypto/known_hosts.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/simd/common.h>   // For simd_caches_destroy_all()
+#include <ascii-chat/video/webcam/webcam.h> // For webcam_cleanup()
+#include <ascii-chat/options/colorscheme.h> // For colorscheme_shutdown()
+#include <ascii-chat/util/time.h>           // For timer_system_cleanup()
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/crypto/known_hosts.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <string.h>
 #include <stdatomic.h>
 #include <limits.h>
@@ -73,7 +73,7 @@ bool shutdown_is_requested(void) {
  */
 
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-#include "debug/memory.h"
+#include <ascii-chat/debug/memory.h>
 #elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
 static void print_mimalloc_stats(void);
 #endif

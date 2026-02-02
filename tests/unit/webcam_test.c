@@ -42,8 +42,7 @@ Test(webcam, init_success) {
   cr_assert_eq(frame->w, 1280, "Test pattern should have width 1280");
   cr_assert_eq(frame->h, 720, "Test pattern should have height 720");
 
-  // Clean up
-  image_destroy(frame);
+  // Clean up (don't destroy frame - it's owned by webcam module)
   webcam_cleanup();
 }
 
@@ -75,7 +74,7 @@ ParameterizedTest(webcam_index_test_case_t *tc, webcam, init_different_indices) 
   cr_assert_eq(frame->w, tc->expected_width, "%s: Width should be %d", tc->description, tc->expected_width);
   cr_assert_eq(frame->h, tc->expected_height, "%s: Height should be %d", tc->description, tc->expected_height);
 
-  image_destroy(frame);
+  // Don't destroy frame - it's owned by webcam module
   webcam_cleanup();
 }
 
@@ -122,7 +121,7 @@ Test(webcam, read_not_initialized) {
   cr_assert_eq(result->w, 1280, "Test pattern width should be 1280");
   cr_assert_eq(result->h, 720, "Test pattern height should be 720");
 
-  image_destroy(result);
+  // Don't destroy result - it's owned by webcam module
 }
 
 Test(webcam, read_with_horizontal_flip) {
@@ -149,9 +148,7 @@ Test(webcam, read_with_horizontal_flip) {
   cr_assert_eq(frame1->pixels[0].b, frame2->pixels[width - 1].b,
                "First pixel of flipped should match last of non-flipped (B)");
 
-  // Clean up
-  image_destroy(frame1);
-  image_destroy(frame2);
+  // Clean up (don't destroy frames - they're owned by webcam module)
   webcam_cleanup();
 }
 
@@ -190,7 +187,7 @@ Test(webcam, read_multiple_calls) {
     cr_assert_eq(result->w, 1280, "Frame %d width should be 1280", i);
     cr_assert_eq(result->h, 720, "Frame %d height should be 720", i);
 
-    image_destroy(result);
+    // Don't destroy result - it's owned by webcam module
   }
 
   webcam_cleanup();
@@ -250,8 +247,7 @@ Test(webcam, init_read_cleanup_cycle) {
     image_t *read_result = webcam_read();
     cr_assert_not_null(read_result, "Read should succeed for cycle %d", cycle);
 
-    // Cleanup
-    image_destroy(read_result);
+    // Cleanup (don't destroy read_result - it's owned by webcam module)
     webcam_cleanup();
   }
 
@@ -285,9 +281,7 @@ Test(webcam, read_with_odd_width_flip) {
   cr_assert_eq(frame_flipped->pixels[0].b, frame_normal->pixels[width - 1].b,
                "First B pixel of flipped should match last B pixel of normal");
 
-  // Clean up
-  image_destroy(frame_normal);
-  image_destroy(frame_flipped);
+  // Clean up (don't destroy frames - they're owned by webcam module)
   webcam_cleanup();
 }
 
@@ -308,8 +302,6 @@ Test(webcam, read_with_single_pixel_width) {
   cr_assert_eq(result1->w, result2->w, "Width should be same");
   cr_assert_eq(result1->h, result2->h, "Height should be same");
 
-  // Clean up
-  image_destroy(result1);
-  image_destroy(result2);
+  // Clean up (don't destroy results - they're owned by webcam module)
   webcam_cleanup();
 }

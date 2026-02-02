@@ -9,15 +9,15 @@
  * validation, ensuring session strings only contain real words.
  */
 
-#include "discovery/strings.h"
-#include "discovery/adjectives.h"
-#include "discovery/nouns.h"
-#include "log/logging.h"
-#include "util/utf8.h"
+#include <ascii-chat/discovery/strings.h>
+#include <ascii-chat/discovery/adjectives.h>
+#include <ascii-chat/discovery/nouns.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/utf8.h>
 // NOTE: Use explicit path to avoid Windows include resolution picking up options/common.h
-#include "../common.h"
-#include "platform/init.h"
-#include "uthash/uthash.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/uthash/uthash.h>
 #include <sodium.h>
 #include <string.h>
 #include <ctype.h>

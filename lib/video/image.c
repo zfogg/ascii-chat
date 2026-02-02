@@ -16,18 +16,18 @@
 #include <unistd.h>
 #endif
 
-#include "../common.h"
-#include "output_buffer.h"
-#include "image.h"
-#include "ascii.h"
-#include "simd/ascii_simd.h"
-#include "video/simd/common.h"
-#include "ansi_fast.h"
-#include "options/options.h"
-#include "buffer_pool.h" // For buffer pool allocation functions
-#include "util/overflow.h"
-#include "util/image.h"
-#include "util/math.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/buffer_pool.h> // For buffer pool allocation functions
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/image.h>
+#include <ascii-chat/util/math.h>
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 

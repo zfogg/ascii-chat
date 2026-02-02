@@ -4,10 +4,10 @@
  * @brief 💬 Windows interactive prompting with _getch() for secure input
  */
 
-#include "platform/question.h"
-#include "util/utf8.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
 
 #include <conio.h>
 #include <io.h>

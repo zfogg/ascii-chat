@@ -40,12 +40,12 @@
 
 #pragma once
 
-#include "network/rate_limit/rate_limit.h"
-#include "network/tcp/server.h"
-#include "audio/mixer.h"
-#include "crypto/key_types.h"
-#include "session/host.h"
-#include "options/options.h"
+#include <ascii-chat/network/rate_limit/rate_limit.h>
+#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/crypto/key_types.h>
+#include <ascii-chat/session/host.h>
+#include <ascii-chat/options/options.h>
 #include "stats.h"
 #include "client.h"
 

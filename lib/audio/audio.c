@@ -5,20 +5,20 @@
  * @brief 🔊 Audio capture and playback using PortAudio with buffer management
  */
 
-#include "audio/audio.h"
-#include "audio/client_audio_pipeline.h"
-#include "util/endian.h"
-#include "common.h"
-#include "util/endian.h"
-#include "util/time.h"       // For START_TIMER/STOP_TIMER macros
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "buffer_pool.h"
-#include "options/options.h"
-#include "platform/init.h"        // For static_mutex_t
-#include "platform/abstraction.h" // For platform_sleep_usec
-#include "network/packet.h"       // For audio_batch_packet_t
-#include "log/logging.h"          // For log_* macros
-#include "media/source.h"         // For media_source_read_audio()
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/client_audio_pipeline.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/time.h>       // For START_TIMER/STOP_TIMER macros
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/init.h>        // For static_mutex_t
+#include <ascii-chat/platform/abstraction.h> // For platform_sleep_usec
+#include <ascii-chat/network/packet.h>       // For audio_batch_packet_t
+#include <ascii-chat/log/logging.h>          // For log_* macros
+#include <ascii-chat/media/source.h>         // For media_source_read_audio()
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

@@ -4,14 +4,14 @@
  * @ingroup session
  */
 
-#include "keyboard_handler.h"
-#include "capture.h"
-#include "display.h"
-#include "help_screen.h"
-#include "media/source.h"
-#include "options/options.h"
-#include "log/logging.h"
-#include "audio/audio.h"
+#include <ascii-chat/session/keyboard_handler.h>
+#include <ascii-chat/session/capture.h>
+#include <ascii-chat/session/display.h>
+#include <ascii-chat/session/help_screen.h>
+#include <ascii-chat/media/source.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/audio/audio.h>
 #include <string.h>
 
 /* ============================================================================

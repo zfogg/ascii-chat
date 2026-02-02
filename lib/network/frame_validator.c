@@ -4,12 +4,12 @@
  * @ingroup network
  */
 
-#include "frame_validator.h"
-#include "network.h"
-#include "asciichat_errno.h"
-#include "util/format.h"
-#include "util/endian.h"
-#include "video/image.h"
+#include <ascii-chat/network/frame_validator.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/video/image.h>
 #include <string.h>
 
 asciichat_error_t frame_check_size_overflow(size_t header_size, size_t data_size) {

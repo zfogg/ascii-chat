@@ -6,8 +6,8 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
-#include "../../util/time.h"
+#include <ascii-chat/platform/api.h>
+#include <ascii-chat/util/time.h>
 #include <pthread.h>
 #include <time.h>
 

@@ -4,8 +4,8 @@
  * @ingroup util
  */
 
-#include "url.h"
-#include "common.h"
+#include <ascii-chat/util/url.h>
+#include <ascii-chat/common.h>
 #include <string.h>
 #include <stdlib.h>
 

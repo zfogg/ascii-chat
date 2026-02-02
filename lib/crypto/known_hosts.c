@@ -10,20 +10,20 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include "crypto/known_hosts.h"
-#include "crypto/crypto.h"   // Includes <sodium.h>, CRYPTO_* constants
-#include "common.h"          // For BUFFER_SIZE_* constants
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "crypto/keys.h"
-#include "util/ip.h"
-#include "platform/util.h"
-#include "platform/system.h"     // For platform_isatty() and FILE_PERM_* constants
-#include "platform/filesystem.h" // For platform_mkdir(), platform_stat()
-#include "platform/question.h"   // For platform_prompt_yes_no
-#include "options/options.h"     // For opt_snapshot_mode
-#include "util/path.h"
-#include "util/string.h"
-#include "tooling/defer/defer.h"
+#include <ascii-chat/crypto/known_hosts.h>
+#include <ascii-chat/crypto/crypto.h>   // Includes <sodium.h>, CRYPTO_* constants
+#include <ascii-chat/common.h>          // For BUFFER_SIZE_* constants
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/system.h>     // For platform_isatty() and FILE_PERM_* constants
+#include <ascii-chat/platform/filesystem.h> // For platform_mkdir(), platform_stat()
+#include <ascii-chat/platform/question.h>   // For platform_prompt_yes_no
+#include <ascii-chat/options/options.h>     // For opt_snapshot_mode
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/tooling/defer/defer.h>
 
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;

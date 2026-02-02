@@ -47,17 +47,17 @@
 #endif
 
 // Now include ascii-chat headers after WebRTC to avoid macro conflicts
-#include "audio/client_audio_pipeline.h"
-#include "audio/wav_writer.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/audio/client_audio_pipeline.h>
+#include <ascii-chat/audio/wav_writer.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
 
 // Include mixer.h for compressor, noise gate, and filter functions
-#include "audio/mixer.h"
+#include <ascii-chat/audio/mixer.h>
 
 // For AEC3 metrics reporting
-#include "audio/analysis.h"
+#include <ascii-chat/audio/analysis.h>
 
 #include <opus/opus.h>
 #include <string.h>
@@ -106,8 +106,8 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .echo_filter_ms = 250,
 
       .noise_suppress_db = -25,
-      .agc_level = 16000,      // Increased from 8000 for louder output
-      .agc_max_gain = 35,      // Increased from 30 dB to handle very quiet mics (35 dB = ~56x gain)
+      .agc_level = 16000, // Increased from 8000 for louder output
+      .agc_max_gain = 35, // Increased from 30 dB to handle very quiet mics (35 dB = ~56x gain)
 
       // Jitter margin: wait this long before starting playback
       // Lower = less latency but more risk of underruns

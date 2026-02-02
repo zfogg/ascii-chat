@@ -3,9 +3,9 @@
  * @brief Network error handling utilities implementation
  */
 
-#include "network/errors.h"
-#include "network/network.h"
-#include "log/logging.h"
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/log/logging.h>
 #include <string.h>
 
 asciichat_error_t send_error_packet(socket_t sockfd, asciichat_error_t error_code) {

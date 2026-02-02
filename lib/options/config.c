@@ -4,25 +4,25 @@
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
-#include "options/config.h"
-#include "common/error_codes.h"
-#include "options/options.h"
-#include "options/validation.h"
-#include "options/schema.h"
-#include "options/rcu.h"
-#include "util/path.h"
-#include "util/utf8.h"
-#include "common.h"
-#include "platform/terminal.h"
-#include "platform/system.h"
-#include "platform/question.h"
-#include "platform/stat.h"
-#include "platform/filesystem.h"
-#include "crypto/crypto.h"
-#include "log/logging.h"
-#include "video/palette.h"
-#include "version.h"
-#include "tooling/defer/defer.h"
+#include <ascii-chat/options/config.h>
+#include <ascii-chat/common/error_codes.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/validation.h>
+#include <ascii-chat/options/schema.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/tooling/defer/defer.h>
 
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>

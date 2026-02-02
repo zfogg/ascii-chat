@@ -2,7 +2,7 @@
 // Total words: 5000
 
 #include <stddef.h>
-#include "nouns.h"
+#include <ascii-chat/discovery/nouns.h>
 
 const char *nouns[] = {
     "abandon",      "abbey",        "abbot",        "abdomen",      "abel",         "ability",      "abort",

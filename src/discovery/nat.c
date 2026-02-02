@@ -6,14 +6,14 @@
 
 #include "nat.h"
 
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "log/logging.h"
-#include "network/nat/upnp.h"
-#include "network/webrtc/stun.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
-#include "util/time.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/network/nat/upnp.h>
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/util/time.h>
 
 #include <string.h>
 #ifndef _WIN32

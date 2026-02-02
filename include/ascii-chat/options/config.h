@@ -1,0 +1,152 @@
+#pragma once
+
+/**
+ * @defgroup config Config Module
+ * @ingroup module_core
+ * @brief The toml text file configuration file module.
+ *
+ * @file config.h
+ * @brief TOML configuration file support for ascii-chat
+ * @ingroup config
+ * @addtogroup config
+ * @{
+ *
+ * This module provides functionality for loading configuration from TOML files
+ * (typically located at ~/.ascii-chat/config.toml). Configuration values are
+ * applied to global options, but command-line arguments always take precedence
+ * over config file values.
+ *
+ * The interface provides:
+ * - TOML file parsing and validation
+ * - Automatic configuration loading from standard location
+ * - Non-fatal error handling (missing or malformed config files are ignored)
+ * - Support for network, client, palette, crypto, and logging configuration
+ *
+ * @note Configuration Priority: Command-line arguments override config file values.
+ *       Config file values override default values. The config file is loaded
+ *       before CLI argument parsing to ensure this precedence.
+ *
+ * @note Configuration File Location: The config file is loaded from the
+ *       ascii-chat configuration directory:
+ *       - Unix: `$XDG_CONFIG_HOME/ascii-chat/config.toml` if set, otherwise `~/.ascii-chat/config.toml`
+ *       - Windows: `%APPDATA%\ascii-chat\config.toml` if set, otherwise `~\.ascii-chat\config.toml`
+ *
+ * @note Error Handling: Config file parsing errors are non-fatal. If the file
+ *       is missing, malformed, or contains invalid values, warnings are printed
+ *       to stderr and the application continues with default values. Invalid
+ *       individual values are skipped with warnings, but valid values are still
+ *       applied.
+ *
+ * @note Validation: All configuration values are validated using the same
+ *       validation functions used by CLI argument parsing, ensuring consistency
+ *       between config file and CLI option handling.
+ *
+ * @warning Password Storage: While passwords can be stored in the config file
+ *          (via `crypto.password`), this is strongly discouraged for security
+ *          reasons. A warning is printed if a password is found in the config file.
+ *          Use CLI `--password` or environment variables instead.
+ *
+ * @warning File Permissions: Users should secure their config file to prevent
+ *          unauthorized access, especially if it contains sensitive information
+ *          like encryption keys or passwords.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date October 2025
+ */
+
+#include <stdbool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h> // For asciichat_mode_t
+
+/**
+ * @brief Load configuration from TOML file and apply to global options
+ * @param is_client `true` if loading client configuration, `false` for server configuration
+ * @param config_path Optional path to config file (NULL uses default location)
+ * @param strict If true, errors are fatal; if false, errors are non-fatal warnings
+ * @return ASCIICHAT_OK on success, error code on failure (if strict) or non-fatal (if !strict)
+ *
+ * Loads configuration from the specified path (or default location if config_path is NULL)
+ * and applies values to global options.
+ *
+ * Default config file location (when config_path is NULL):
+ * - Unix: $XDG_CONFIG_HOME/ascii-chat/config.toml if set, otherwise ~/.ascii-chat/config.toml
+ * - Windows: %APPDATA%\ascii-chat\config.toml if set, otherwise ~\.ascii-chat\config.toml
+ *
+ * Only applies configuration values that haven't already been set (though in practice,
+ * CLI arguments will override config values anyway since this is called before
+ * CLI parsing).
+ *
+ * Supported configuration sections:
+ * - `[network]`: `port`
+ * - `[server]`: `bind_ipv4`, `bind_ipv6`
+ * - `[client]`: `address`, `width`, `height`, `webcam_index`, `webcam_flip`,
+ *               `color_mode`, `render_mode`, `fps`, `stretch`, `quiet`,
+ *               `snapshot_mode`, `snapshot_delay`, `test_pattern`,
+ *               `show_capabilities`, `force_utf8`
+ * - `[audio]`: `enabled`, `device`
+ * - `[palette]`: `type`, `chars`
+ * - `[crypto]`: `encrypt_enabled`, `key`, `password`, `keyfile`, `no_encrypt`,
+ *               `server_key` (client only), `client_keys` (server only)
+ * - `[logging]` or root: `log_file`
+ *
+ * @note This function should be called before `options_init()` parses command-line
+ *       arguments, so that CLI arguments can override config file values.
+ *
+ * @note If strict is false and the config file doesn't exist, is not a regular file,
+ *       or fails to parse, the function returns ASCIICHAT_OK (non-fatal). Individual
+ *       invalid values are skipped with warnings, but valid values are still applied.
+ *
+ * @note If strict is true, any error (file not found, parse error, etc.) causes the
+ *       function to return an error code immediately.
+ *
+ * @warning Configuration warnings are printed directly to stderr because logging
+ *          may not be initialized yet when this function is called.
+ *
+ * @ingroup config
+ */
+asciichat_error_t config_load_and_apply(asciichat_mode_t detected_mode, const char *config_path, bool strict,
+                                        options_t *opts);
+
+/**
+ * @brief Load system config first, then user config (user config overrides system)
+ * @param detected_mode The detected mode (client or server)
+ * @param strict If true, user config errors are fatal; system config is always non-strict
+ * @param opts Options structure to write configuration to
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Loads configuration from two locations in order:
+ * 1. System config: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml (non-strict, optional)
+ * 2. User config: default location (strictness as specified)
+ *
+ * User config values override system config values. Both override defaults.
+ * This function should be called before options_init() parses command-line arguments.
+ *
+ * @note System config is always loaded non-strict (missing file is not an error)
+ * @note User config strictness follows the strict parameter
+ *
+ * @ingroup config
+ */
+asciichat_error_t config_load_system_and_user(asciichat_mode_t detected_mode, bool strict, options_t *opts);
+
+/**
+ * @brief Create default configuration file with all default values
+ * @param config_path Path to config file to create (NULL uses default location)
+ * @param opts Options structure with values to write (use defaults for a "default" config)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Creates a new configuration file at the specified path (or default location
+ * if config_path is NULL) with all configuration options set to values from opts.
+ *
+ * The created file includes:
+ * - Version comment at the top (current ascii-chat version)
+ * - All supported configuration sections with values from opts
+ * - Comments explaining each option
+ *
+ * @note The function will create the directory structure if needed.
+ * @note If the file already exists, it will not be overwritten (returns error).
+ *
+ * @ingroup config
+ */
+asciichat_error_t config_create_default(const char *config_path, const options_t *opts);
+
+/** @} */

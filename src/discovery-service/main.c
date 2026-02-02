@@ -18,19 +18,19 @@
 
 #include "discovery-service/main.h"
 #include "discovery-service/server.h"
-#include "discovery/identity.h"
-#include "discovery/strings.h"
-#include "common.h"
-#include "version.h"
-#include "log/logging.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "platform/abstraction.h"
-#include "platform/init.h"
-#include "platform/util.h"
-#include "util/path.h"
-#include "network/nat/upnp.h"
-#include "network/mdns/mdns.h"
+#include <ascii-chat/discovery/identity.h>
+#include <ascii-chat/discovery/strings.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/network/nat/upnp.h>
+#include <ascii-chat/network/mdns/mdns.h>
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;

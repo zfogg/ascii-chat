@@ -13,15 +13,15 @@
 #include <errno.h>
 #endif
 
-#include "asciichat_errno.h"
-#include "util/path.h"
-#include "util/time.h"
-#include "util/string.h"
-#include "platform/system.h"
-#include "platform/errno.h"
-#include "platform/init.h"
-#include "common.h"
-#include "log/logging.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/errno.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 
 /* ============================================================================
  * Thread-Local Storage

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Summarizer for ascii-chat instrumentation runtime logs
 
-#include "common.h"
-#include "log/logging.h"
-#include "platform/util.h"
-#include "tooling/panic/instrument_log.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/tooling/panic/instrument_log.h>
 
-#include "uthash/uthash.h"
-#include "util/parsing.h"
+#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/util/parsing.h>
 
 #include <errno.h>
 #include <inttypes.h>
@@ -20,7 +20,7 @@
 #if defined(_WIN32)
 #include <io.h>
 #include <windows.h>
-#include "platform/windows/getopt.h"
+#include <ascii-chat/platform/windows/getopt.h>
 #else
 #include <getopt.h>
 #include <dirent.h>

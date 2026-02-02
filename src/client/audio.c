@@ -72,28 +72,28 @@
  */
 
 #include "audio.h" // src/client/audio.h
-#include "audio/analysis.h"
+#include <ascii-chat/audio/analysis.h>
 #include "main.h"
 #include "server.h"
-#include "util/fps.h"
-#include "util/thread.h"
-#include "util/time.h" // For timing instrumentation
+#include <ascii-chat/util/fps.h>
+#include <ascii-chat/util/thread.h>
+#include <ascii-chat/util/time.h> // For timing instrumentation
 
-#include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
-#include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
-#include "audio/wav_writer.h"            // WAV file dumping for debugging
-#include "common.h"
-#include "options/options.h"
-#include "options/rcu.h"     // For RCU-based options access
-#include "platform/system.h" // For platform_memcpy
+#include <ascii-chat/audio/audio.h>                 // lib/audio/audio.h for PortAudio wrapper
+#include <ascii-chat/audio/client_audio_pipeline.h> // Unified audio processing pipeline
+#include <ascii-chat/audio/wav_writer.h>            // WAV file dumping for debugging
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>     // For RCU-based options access
+#include <ascii-chat/platform/system.h> // For platform_memcpy
 
 #include <stdatomic.h>
 #include <string.h>
 #include <math.h>
 
-#include "platform/abstraction.h"
-#include "platform/init.h"
-#include "thread_pool.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/thread_pool.h>
 
 /* ============================================================================
  * Audio System State

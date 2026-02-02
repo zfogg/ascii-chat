@@ -4,11 +4,11 @@
  * @brief 🌍 IPv4/IPv6 address parsing, validation, and formatting utilities
  */
 
-#include "ip.h"
-#include "parsing.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "platform/network.h"
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/parsing.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/platform/network.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

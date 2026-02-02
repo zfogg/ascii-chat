@@ -22,8 +22,9 @@ function(configure_include_directories)
     # instrumented include directories later during ascii_panic_finalize().
     # Note: All installable dependencies are in deps/ascii-chat-deps/
     include_directories(
-        ${CMAKE_SOURCE_DIR}/lib
-        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include  # Public API headers
+        ${CMAKE_SOURCE_DIR}/lib      # Private implementation headers (if any remain)
+        ${CMAKE_SOURCE_DIR}/src      # Application headers
     )
     # deps/ must use SYSTEM to ensure -isystem (not -iquote) for angle bracket includes
     # Code uses: #include <ascii-chat-deps/uthash/src/uthash.h>

@@ -4,15 +4,15 @@
  * @ingroup options
  */
 
-#include "builder.h"
-#include "common.h"
-#include "log/logging.h"
-#include "layout.h"
-#include "platform/abstraction.h"
-#include "platform/terminal.h"
-#include "asciichat_errno.h"
-#include "util/utf8.h"
-#include "util/string.h"
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/layout.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/string.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -20,8 +20,8 @@
 #include <ctype.h>
 
 // Use platform utilities
-#include "platform/util.h"
-#include "platform/terminal.h"
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/terminal.h>
 #define asprintf platform_asprintf
 
 // Initial capacities for dynamic arrays

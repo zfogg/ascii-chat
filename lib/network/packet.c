@@ -4,20 +4,20 @@
  * @brief 📦 Packet protocol handler with CRC validation, encryption, and compression
  */
 
-#include "packet.h"
-#include "network.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "platform/socket.h"
-#include "buffer_pool.h"
-#include "network/crc32.h"
-#include "crypto/crypto.h"
-#include "network/compression.h"
-#include "util/endian.h"
-#include "util/overflow.h"
-#include "audio/audio.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/crc32.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/network/compression.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

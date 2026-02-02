@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#include "network/client.h"
+#include <ascii-chat/network/client.h>
 
 // Forward declaration to avoid circular dependency with main.h
 // Files that need the full definition should include main.h themselves

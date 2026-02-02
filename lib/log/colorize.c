@@ -4,13 +4,13 @@
  * @brief Log message colorization for terminal output
  */
 
-#include "colorize.h"
-#include "logging.h"
-#include "../util/string.h"
-#include "../platform/system.h"
-#include "../platform/terminal.h"
-#include "../platform/util.h"
-#include "../video/ansi.h"
+#include <ascii-chat/log/colorize.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/video/ansi.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>

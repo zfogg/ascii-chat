@@ -4,14 +4,14 @@
  * @brief 💾 Lock-free memory pool with atomic operations
  */
 
-#include "buffer_pool.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "platform/system.h"
-#include "platform/init.h"
-#include "util/format.h"
-#include "util/time.h"
-#include "util/magic.h"
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/magic.h>
 #include <stdlib.h>
 #include <string.h>
 

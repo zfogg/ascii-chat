@@ -5,11 +5,11 @@
  */
 
 #define SOKOL_IMPL
-#include "time.h"
-#include "../common.h"
-#include "../asciichat_errno.h"
-#include "../platform/rwlock.h"
-#include "../platform/abstraction.h"
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/rwlock.h>
+#include <ascii-chat/platform/abstraction.h>
 // uthash wrapper is already included via time.h -> upstream uthash
 // The wrapper macros are applied when .c files include uthash/uthash.h
 #include <stdlib.h>

@@ -3,11 +3,11 @@
  * @brief Identity key management implementation
  */
 
-#include "discovery/identity.h"
-#include "crypto/crypto.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
-#include "platform/filesystem.h"
+#include <ascii-chat/discovery/identity.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <string.h>

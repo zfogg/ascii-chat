@@ -13,25 +13,25 @@
  */
 
 #include "discovery-service/server.h"
-#include "discovery/database.h"
-#include "discovery/session.h"
-#include "discovery/nat.h"
+#include <ascii-chat/discovery/database.h>
+#include <ascii-chat/discovery/session.h>
+#include <ascii-chat/discovery/nat.h>
 #include "discovery-service/signaling.h"
-#include "network/acip/acds.h"
-#include "network/acip/acds_handlers.h"
-#include "network/acip/acds_client.h"
-#include "network/acip/send.h"
-#include "network/acip/transport.h"
-#include "network/rate_limit/rate_limit.h"
-#include "network/rate_limit/sqlite.h"
-#include "network/errors.h"
-#include "log/logging.h"
-#include "platform/socket.h"
-#include "network/network.h"
-#include "buffer_pool.h"
-#include "network/tcp/server.h"
-#include "util/ip.h"
-#include "util/time.h"
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/acip/acds_handlers.h>
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/rate_limit/rate_limit.h>
+#include <ascii-chat/network/rate_limit/sqlite.h>
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/time.h>
 #include <string.h>
 
 /**

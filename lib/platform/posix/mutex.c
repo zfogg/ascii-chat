@@ -6,9 +6,9 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
+#include <ascii-chat/platform/api.h>
 #include <pthread.h>
-#include "asciichat_errno.h"
+#include <ascii-chat/asciichat_errno.h>
 
 /**
  * @brief Initialize a mutex

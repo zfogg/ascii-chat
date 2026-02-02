@@ -33,20 +33,20 @@
 
 #include "main.h"
 #include "session.h"
-#include "session/capture.h"
-#include "session/display.h"
-#include "session/render.h"
-#include "session/keyboard_handler.h"
+#include <ascii-chat/session/capture.h>
+#include <ascii-chat/session/display.h>
+#include <ascii-chat/session/render.h>
+#include <ascii-chat/session/keyboard_handler.h>
 
 #include <stdatomic.h>
 #include <stdio.h>
 #include <signal.h>
 
-#include "log/logging.h"
-#include "options/options.h"
-#include "options/common.h"
-#include "platform/abstraction.h"
-#include "platform/keyboard.h"
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/common.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/keyboard.h>
 
 /* ============================================================================
  * Global State

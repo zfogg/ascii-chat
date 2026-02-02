@@ -12,8 +12,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "common.h"
-#include "platform/socket.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/socket.h>
 
 #pragma comment(lib, "ws2_32.lib")
 

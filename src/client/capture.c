@@ -89,23 +89,23 @@
 #include "main.h"
 #include "server.h"
 #include "audio.h"
-#include "session/capture.h"
-#include "video/image.h"
-#include "media/source.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "util/fps.h"
-#include "util/time.h"
-#include "util/thread.h" // For THREAD_IS_CREATED macro
-#include "network/acip/send.h"
-#include "network/acip/client.h"
+#include <ascii-chat/session/capture.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/media/source.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/util/fps.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/thread.h> // For THREAD_IS_CREATED macro
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/client.h>
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
-#include "platform/abstraction.h"
-#include "thread_pool.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/thread_pool.h>
 
 /* ============================================================================
  * Session Capture Context

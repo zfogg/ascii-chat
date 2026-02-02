@@ -4,9 +4,9 @@
  * @brief ANSI escape sequence utilities
  */
 
-#include "ansi.h"
-#include "output_buffer.h"
-#include "common.h"
+#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/common.h>
 
 #include <string.h>
 

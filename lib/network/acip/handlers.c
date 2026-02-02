@@ -10,16 +10,16 @@
  * @date January 2026
  */
 
-#include "network/acip/handlers.h"
-#include "network/acip/messages.h"
-#include "network/acip/acds.h"
-#include "network/packet.h"
-#include "network/packet_parsing.h"
-#include "audio/audio.h"
-#include "util/endian.h"
-#include "log/logging.h"
-#include "asciichat_errno.h"
-#include "common.h"
+#include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/network/acip/messages.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
 #include <string.h>
 
 // =============================================================================
@@ -43,8 +43,8 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
 #define SERVER_HANDLER_COUNT 16
 
 typedef struct {
-  packet_type_t key;    // 0 = empty slot
-  uint8_t handler_idx;  // handler index (0-based)
+  packet_type_t key;   // 0 = empty slot
+  uint8_t handler_idx; // handler index (0-based)
 } handler_hash_entry_t;
 
 // Hash function: simple modulo
@@ -55,8 +55,10 @@ static inline int handler_hash_lookup(const handler_hash_entry_t *table, packet_
   uint32_t h = HANDLER_HASH(type);
   for (int i = 0; i < HANDLER_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % HANDLER_HASH_SIZE;
-    if (table[slot].key == 0) return -1;  // empty slot = not found
-    if (table[slot].key == type) return table[slot].handler_idx;
+    if (table[slot].key == 0)
+      return -1; // empty slot = not found
+    if (table[slot].key == type)
+      return table[slot].handler_idx;
   }
   return -1;
 }
@@ -140,20 +142,20 @@ static asciichat_error_t handle_client_session_joined(const void *payload, size_
 
 // Client handler dispatch table (indexed by client_handler_index())
 static const acip_client_handler_func_t g_client_handlers[CLIENT_HANDLER_COUNT] = {
-    handle_client_ascii_frame,          // 0
-    handle_client_audio_batch,          // 1
-    handle_client_audio_opus_batch,     // 2
-    handle_client_server_state,         // 3
-    handle_client_error_message,        // 4
-    handle_client_remote_log,           // 5
-    handle_client_ping,                 // 6
-    handle_client_pong,                 // 7
-    handle_client_clear_console,        // 8
-    handle_client_crypto_rekey_request, // 9
-    handle_client_crypto_rekey_response,// 10
-    handle_client_webrtc_sdp,           // 11
-    handle_client_webrtc_ice,           // 12
-    handle_client_session_joined,       // 13
+    handle_client_ascii_frame,           // 0
+    handle_client_audio_batch,           // 1
+    handle_client_audio_opus_batch,      // 2
+    handle_client_server_state,          // 3
+    handle_client_error_message,         // 4
+    handle_client_remote_log,            // 5
+    handle_client_ping,                  // 6
+    handle_client_pong,                  // 7
+    handle_client_clear_console,         // 8
+    handle_client_crypto_rekey_request,  // 9
+    handle_client_crypto_rekey_response, // 10
+    handle_client_webrtc_sdp,            // 11
+    handle_client_webrtc_ice,            // 12
+    handle_client_session_joined,        // 13
 };
 
 asciichat_error_t acip_handle_client_packet(acip_transport_t *transport, packet_type_t type, const void *payload,
@@ -511,22 +513,22 @@ static asciichat_error_t handle_server_crypto_rekey_complete(const void *payload
 
 // Server handler dispatch table (indexed by server_handler_index())
 static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] = {
-    handle_server_protocol_version,       // 0
-    handle_server_image_frame,            // 1
-    handle_server_audio_batch,            // 2
-    handle_server_audio_opus_batch,       // 3
-    handle_server_capabilities,           // 4
-    handle_server_ping,                   // 5
-    handle_server_pong,                   // 6
-    handle_server_client_join,            // 7
-    handle_server_client_leave,           // 8
-    handle_server_stream_start,           // 9
-    handle_server_stream_stop,            // 10
-    handle_server_remote_log,             // 11
-    handle_server_error_message,          // 12
-    handle_server_crypto_rekey_request,   // 13
-    handle_server_crypto_rekey_response,  // 14
-    handle_server_crypto_rekey_complete,  // 15
+    handle_server_protocol_version,      // 0
+    handle_server_image_frame,           // 1
+    handle_server_audio_batch,           // 2
+    handle_server_audio_opus_batch,      // 3
+    handle_server_capabilities,          // 4
+    handle_server_ping,                  // 5
+    handle_server_pong,                  // 6
+    handle_server_client_join,           // 7
+    handle_server_client_leave,          // 8
+    handle_server_stream_start,          // 9
+    handle_server_stream_stop,           // 10
+    handle_server_remote_log,            // 11
+    handle_server_error_message,         // 12
+    handle_server_crypto_rekey_request,  // 13
+    handle_server_crypto_rekey_response, // 14
+    handle_server_crypto_rekey_complete, // 15
 };
 
 asciichat_error_t acip_handle_server_packet(acip_transport_t *transport, packet_type_t type, const void *payload,

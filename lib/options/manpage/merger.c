@@ -7,10 +7,10 @@
  * merging of auto-generated content with manual sections.
  */
 
-#include "merger.h"
-#include "formatter.h"
-#include "../../log/logging.h"
-#include "../../common.h"
+#include <ascii-chat/options/manpage/merger.h>
+#include <ascii-chat/options/manpage/formatter.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -27,10 +27,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
-#include "common.h"
-#include "network/acip/transport.h"
-#include "network/webrtc/peer_manager.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/platform/abstraction.h>
 
 /* ============================================================================
  * Forward Declarations

@@ -236,7 +236,18 @@ function(ascii_defer_prepare)
 
     # Collect unique source directories that contain defer-transformed files
     # These need to be added as include paths so relative includes work
+    # Use hardcoded paths to support flexible header directory structure
     set(defer_source_dirs "")
+
+    # Add standard include directories (mirrors Include.cmake exactly)
+    list(APPEND defer_source_dirs
+        "${CMAKE_SOURCE_DIR}/include"  # Public API headers
+        "${CMAKE_SOURCE_DIR}/lib"      # Private implementation headers
+        "${CMAKE_SOURCE_DIR}/src"      # Application headers
+    )
+
+    # Also add directories where defer-transformed sources live
+    # (for local headers in the same directory as .c files)
     foreach(rel_path IN LISTS defer_rel_paths)
         get_filename_component(dir_path "${rel_path}" DIRECTORY)
         if(dir_path AND NOT "${CMAKE_SOURCE_DIR}/${dir_path}" IN_LIST defer_source_dirs)

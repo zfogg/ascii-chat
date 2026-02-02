@@ -4,18 +4,18 @@
  * @ingroup options
  */
 
-#include "parsers.h"
+#include <ascii-chat/options/parsers.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stddef.h>
-#include "common.h"
-#include "options/builder.h"
-#include "options/options.h"
-#include "discovery/strings.h"  // For is_session_string() validation
-#include "util/parsing.h"       // For parse_port() validation
-#include "util/path.h"          // For path_validate_user_path()
-#include "video/color_filter.h" // For color_filter_from_cli_name()
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/discovery/strings.h>  // For is_session_string() validation
+#include <ascii-chat/util/parsing.h>       // For parse_port() validation
+#include <ascii-chat/util/path.h>          // For path_validate_user_path()
+#include <ascii-chat/video/color_filter.h> // For color_filter_from_cli_name()
 
 // Helper function to convert string to lowercase in-place (non-destructive)
 static void to_lower(const char *src, char *dst, size_t max_len) {
@@ -398,7 +398,7 @@ bool parse_port_option(const char *arg, void *dest, char **error_msg) {
 // Positional Argument Parsers
 // ============================================================================
 
-#include "util/ip.h"
+#include <ascii-chat/util/ip.h>
 #include <string.h>
 
 /**

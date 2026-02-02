@@ -7,11 +7,11 @@
 
 #include <stdio.h>
 
-#include "webcam.h"
-#include "common.h"
-#include "options/options.h"
-#include "video/image.h"
-#include "platform/string.h"
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/platform/string.h>
 
 static webcam_context_t *global_webcam_ctx = NULL;
 static image_t *cached_webcam_frame = NULL;

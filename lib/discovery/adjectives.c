@@ -2,7 +2,7 @@
 // Total words: 2500
 
 #include <stddef.h>
-#include "adjectives.h"
+#include <ascii-chat/discovery/adjectives.h>
 
 const char *adjectives[] = {
     "abdominal",    "ablaze",       "able",         "abnormal",     "abominable",   "about",        "above",

@@ -6,9 +6,9 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
-#include "../../asciichat_errno.h"
-#include "../../util/time.h"
+#include <ascii-chat/platform/api.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/time.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>

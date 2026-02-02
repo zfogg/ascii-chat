@@ -3,9 +3,9 @@
  * @brief Parallel IPv4/IPv6 connection implementation
  */
 
-#include "parallel_connect.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/network/parallel_connect.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
 #include <string.h>
 #include <errno.h>
 

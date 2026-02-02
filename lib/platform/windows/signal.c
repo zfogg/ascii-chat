@@ -6,9 +6,9 @@
 
 #ifdef _WIN32
 
-#include "../signal.h"
-#include "../../log/logging.h"
-#include "../../common.h"
+#include <ascii-chat/signal.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>

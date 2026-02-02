@@ -58,24 +58,24 @@
 #include "server.h"
 #include "main.h"
 #include "crypto.h"
-#include "crypto/crypto.h"
-#include "crypto/handshake/common.h"
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/handshake/common.h>
 
-#include "platform/abstraction.h"
-#include "platform/terminal.h"
-#include "platform/system.h"
-#include "network/packet.h"
-#include "network/network.h"
-#include "network/acip/send.h"
-#include "network/acip/transport.h"
-#include "util/endian.h"
-#include "util/ip.h"
-#include "common.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/common.h>
 #include "display.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "video/palette.h"
-#include "buffer_pool.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/buffer_pool.h>
 
 #include <string.h>
 #include <stdarg.h>
@@ -83,7 +83,7 @@
 #include <sys/types.h>
 #include <stdatomic.h>
 
-#include "platform/network.h" // Consolidates platform-specific network headers (includes TCP options)
+#include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers (includes TCP options)
 
 // Debug flags
 #define DEBUG_NETWORK 1

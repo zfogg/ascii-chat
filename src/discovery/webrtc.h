@@ -31,9 +31,9 @@
 #pragma once
 
 #include <stdint.h>
-#include "asciichat_errno.h"
-#include "network/webrtc/peer_manager.h"
-#include "network/acip/transport.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/network/acip/transport.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -9,11 +9,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include "options/completions/bash.h"
-#include "options/completions/completions.h"
-#include "options/registry.h"
-#include "options/enums.h"
-#include "common.h"
+#include <ascii-chat/options/completions/bash.h>
+#include <ascii-chat/options/completions/completions.h>
+#include <ascii-chat/options/registry.h>
+#include <ascii-chat/options/enums.h>
+#include <ascii-chat/common.h>
 
 /**
  * Escape shell special characters in help text

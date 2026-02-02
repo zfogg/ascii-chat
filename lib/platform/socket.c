@@ -5,8 +5,8 @@
  * @brief 🌐 Common socket utility functions (cross-platform implementations)
  */
 
-#include "socket.h"
-#include "../common.h"
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/common.h>
 
 // Platform-specific TCP header (included by socket.h above)
 // Windows: ws2tcpip.h (included by winsock2.h)

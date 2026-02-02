@@ -27,9 +27,9 @@
  * SOFTWARE.
  */
 
-#include "../common.h"
-#include "pem_utils.h"
-#include "asciichat_errno.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/crypto/pem_utils.h>
+#include <ascii-chat/asciichat_errno.h>
 
 #include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #include <stdio.h>

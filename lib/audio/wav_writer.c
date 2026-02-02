@@ -3,9 +3,9 @@
  * @brief Simple WAV file writer implementation for audio debugging
  */
 
-#include "audio/wav_writer.h"
-#include "common.h"
-#include "platform/string.h"
+#include <ascii-chat/audio/wav_writer.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

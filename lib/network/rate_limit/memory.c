@@ -5,12 +5,12 @@
  * Thread-safe implementation for ascii-chat server where persistence is not needed.
  */
 
-#include "network/rate_limit/memory.h"
-#include "common.h"
-#include "log/logging.h"
-#include "util/time.h"
-#include "platform/abstraction.h"
-#include "uthash/uthash.h"
+#include <ascii-chat/network/rate_limit/memory.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/uthash/uthash.h>
 #include <stdlib.h>
 #include <string.h>
 

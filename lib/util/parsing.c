@@ -4,12 +4,12 @@
  * @brief 🔍 Safe string parsing utilities for integers, sizes, and protocol messages
  */
 
-#include "parsing.h"
+#include <ascii-chat/util/parsing.h>
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
-#include "../asciichat_errno.h"
+#include <ascii-chat/asciichat_errno.h>
 
 asciichat_error_t safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
   if (!message || !width || !height) {

@@ -8,10 +8,10 @@
  * @date January 2026
  */
 
-#include "ice.h"
-#include "webrtc.h"
-#include "log/logging.h"
-#include "platform/util.h"
+#include <ascii-chat/network/webrtc/ice.h>
+#include <ascii-chat/network/webrtc/webrtc.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/util.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

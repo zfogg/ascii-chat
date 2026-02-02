@@ -7,12 +7,12 @@
  * On crash, the log file is immediately readable with cat/tail.
  */
 
-#include "log/mmap.h"
-#include "log/logging.h"
-#include "platform/mmap.h"
-#include "platform/system.h"
-#include "video/ansi.h"
-#include "util/time.h"
+#include <ascii-chat/log/mmap.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/mmap.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/util/time.h>
 
 #include <stdarg.h>
 #include <stdio.h>

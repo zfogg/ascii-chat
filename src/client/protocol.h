@@ -13,7 +13,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include "network/acip/handlers.h"
+#include <ascii-chat/network/acip/handlers.h>
 
 /**
  * @brief Start protocol connection handling

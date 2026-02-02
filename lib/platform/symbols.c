@@ -26,14 +26,14 @@
 #include <windows.h>
 #endif
 
-#include "symbols.h"
-#include "system.h"
-#include "common.h"
-#include "uthash/uthash.h"
-#include "platform/rwlock.h"
-#include "platform/init.h"
-#include "util/path.h"
-#include "util/string.h"
+#include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/platform/rwlock.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
 
 // ============================================================================
 // Constants

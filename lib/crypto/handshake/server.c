@@ -4,13 +4,13 @@
  * @brief Server-side handshake protocol implementation
  */
 
-#include "server.h"
-#include "asciichat_errno.h"
-#include "buffer_pool.h"
-#include "common.h"
-#include "crypto/crypto.h"
-#include "crypto/gpg/gpg.h"
-#include "network/packet.h"
+#include <ascii-chat/crypto/handshake/server.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/gpg/gpg.h>
+#include <ascii-chat/network/packet.h>
 #include <stdio.h>
 #include <string.h>
 

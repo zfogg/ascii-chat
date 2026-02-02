@@ -7,13 +7,13 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include <stdbool.h>
-#include "log/logging.h"
+#include <ascii-chat/log/logging.h>
 
 #ifndef _WIN32
 // POSIX-only test utilities for redirecting stdout/stderr
 
-#include "platform/filesystem.h"
-#include "platform/util.h"
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>

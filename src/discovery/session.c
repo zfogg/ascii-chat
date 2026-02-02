@@ -6,22 +6,22 @@
 
 #include "session.h"
 
-#include "common.h"
-#include "options/options.h"
-#include "log/logging.h"
-#include "buffer_pool.h"
-#include "network/acip/acds.h"
-#include "network/acip/send.h"
-#include "network/packet.h"
-#include "network/webrtc/stun.h"
-#include "network/webrtc/peer_manager.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/network/webrtc/peer_manager.h>
 #include "negotiate.h"
 #include "nat.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
-#include "util/time.h"
-#include "util/endian.h"
-#include "crypto/keys.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/crypto/keys.h>
 
 #ifdef _WIN32
 #include <ws2tcpip.h> // For getaddrinfo on Windows

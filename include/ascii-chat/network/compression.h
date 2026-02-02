@@ -1,0 +1,147 @@
+#pragma once
+
+/**
+ * @file compression.h
+ * @brief 📦 Network Packet Compression Utilities
+ * @ingroup compression
+ * @addtogroup compression
+ * @{
+ *
+ * This header provides compression and decompression utilities for network
+ * packets in ascii-chat. The system uses zstd compression to reduce
+ * bandwidth usage for large packets like video frames.
+ *
+ * CORE FEATURES:
+ * ==============
+ * - zstd compression algorithm
+ * - Automatic compression ratio checking (only use if beneficial)
+ * - Minimum size threshold to avoid compressing small packets
+ * - Memory-efficient compression/decompression
+ * - Pure utility functions (no state management)
+ *
+ * COMPRESSION STRATEGY:
+ * =====================
+ * Compression is only applied when:
+ * - Packet size exceeds minimum threshold (1KB)
+ * - Compression achieves at least 20% size reduction (<80% of original)
+ *
+ * This prevents:
+ * - Overhead of compressing already-compressed data
+ * - CPU waste on small packets that don't benefit
+ * - Compression expansion (when compressed data is larger)
+ *
+ * ALGORITHM:
+ * ==========
+ * - Uses Facebook's zstd deflate for compression
+ * - Provides good compression ratio for text/ASCII data
+ * - Reasonable CPU overhead for real-time streaming
+ *
+ * @note Compression is optional and only used when beneficial.
+ * @note Frame sending functions have been moved to network.h/network.c.
+ * @note The compression ratio threshold ensures compression is only
+ *       used when it provides meaningful bandwidth savings.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date August 2025
+ */
+
+#include <stdlib.h>
+#include <stdbool.h>
+#include <ascii-chat/asciichat_errno.h>
+
+/**
+ * @name Compression Settings
+ * @{
+ */
+
+/** @brief Compression ratio threshold - only use if <80% original size */
+#define COMPRESSION_RATIO_THRESHOLD 0.8f
+
+/** @brief Minimum packet size to attempt compression (1KB) */
+#define COMPRESSION_MIN_SIZE 1024
+
+/** @} */
+
+/**
+ * @brief Compress data using zstd with configurable compression level
+ * @param input Input data to compress (must not be NULL)
+ * @param input_size Size of input data in bytes
+ * @param output Output buffer pointer (pointer-to-pointer; function allocates and stores address here)
+ * @param output_size Size of compressed data in bytes (output parameter, must not be NULL)
+ * @param compression_level zstd compression level (1-9)
+ *   - Level 1: Fastest compression, lowest ratio (best for real-time streaming)
+ *   - Level 3: Balanced speed/ratio
+ *   - Level 9: Slower compression, best ratio (for limited bandwidth)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Compresses input data using zstd's compression algorithm with the specified compression level.
+ * The output buffer is automatically allocated by the function and must be freed by the caller
+ * using SAFE_FREE() or the appropriate memory management function.
+ *
+ * @note The output buffer is allocated using SAFE_MALLOC(). Caller must free it
+ *       with SAFE_FREE() when done using the compressed data.
+ *
+ * @note Compression may fail if input data is already compressed or if
+ *       compression would expand the data significantly.
+ *
+ * @note For best performance, use should_compress() first to determine
+ *       if compression is beneficial before calling this function.
+ *
+ * @note Compression level must be between 1 and 9. Levels above 9 are not
+ *       recommended for real-time streaming due to CPU overhead.
+ *
+ * @warning Caller must SAFE_FREE() the output buffer to avoid memory leaks.
+ */
+asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size,
+                                int compression_level);
+
+/**
+ * @brief Decompress data using zstd
+ * @param input Compressed input data (must not be NULL)
+ * @param input_size Size of compressed data in bytes
+ * @param output Pre-allocated output buffer (must not be NULL)
+ * @param output_size Size of output buffer in bytes (must be >= decompressed size)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Decompresses zstd-compressed data into a pre-allocated output buffer.
+ * The output buffer must be large enough to hold the decompressed data.
+ *
+ * @note The output buffer size must be known in advance (typically from packet
+ *       header or protocol specification). This function does not dynamically
+ *       allocate the output buffer.
+ *
+ * @note This function uses zstd inflate algorithm, compatible with standard
+ *       zstd compression.
+ *
+ * @warning Output buffer must be large enough for decompressed data or buffer
+ *          overflow will occur. Ensure output_size is correct before calling.
+ */
+asciichat_error_t decompress_data(const void *input, size_t input_size, void *output, size_t output_size);
+
+/**
+ * @brief Determine if compression should be used for given data sizes
+ * @param original_size Original (uncompressed) data size in bytes
+ * @param compressed_size Compressed data size in bytes
+ * @return true if compression should be used, false otherwise
+ *
+ * Determines whether compression is beneficial based on size thresholds and
+ * compression ratio. Returns true if:
+ * - Original size >= COMPRESSION_MIN_SIZE (1KB minimum)
+ * - Compressed size < COMPRESSION_RATIO_THRESHOLD * original_size (<80% of original)
+ *
+ * This prevents:
+ * - Compressing small packets that don't benefit
+ * - Using compression when it doesn't reduce size meaningfully
+ * - Wasting CPU on compression that expands data
+ *
+ * @note Call this function before compress_data() to determine if compression
+ *       is worth the CPU overhead.
+ *
+ * @note The function compares sizes only. Actual compression must be performed
+ *       to get compressed_size for comparison.
+ */
+bool should_compress(size_t original_size, size_t compressed_size);
+
+// Note: Frame sending functions have been moved to network.h/network.c
+
+/** @} */

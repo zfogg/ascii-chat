@@ -4,9 +4,9 @@
  * @ingroup webrtc
  */
 
-#include "stun.h"
-#include "common.h"
-#include "log/logging.h"
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 #include <string.h>
 #include <ctype.h>
 

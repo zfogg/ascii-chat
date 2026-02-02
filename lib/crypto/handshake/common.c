@@ -4,12 +4,12 @@
  * @brief Common handshake functions: initialization, cleanup, encryption, rekeying
  */
 
-#include "common.h"
-#include "asciichat_errno.h"
-#include "buffer_pool.h"
-#include "common.h"
-#include "util/endian.h"
-#include "crypto/crypto.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/handshake/common.h>
 #include <stdio.h>
 #include <string.h>
 

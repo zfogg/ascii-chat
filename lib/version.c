@@ -4,7 +4,7 @@
  * @brief 🏷️ Binary-embedded version information in custom ELF/Mach-O sections for runtime inspection
  */
 
-#include "version.h"
+#include <ascii-chat/version.h>
 
 // GCC/Clang: Use __attribute__((section)) to place string in custom section
 // ELF (Linux): .section_name format

@@ -8,9 +8,9 @@
  * before logging starts.
  */
 
-#include "colorscheme.h"
-#include "../common.h"
-#include "../video/ansi_fast.h"
+#include <ascii-chat/options/colorscheme.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
 #include <stdlib.h>

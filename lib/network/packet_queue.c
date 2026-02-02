@@ -4,12 +4,12 @@
  * @brief 📬 Lock-free packet queue with per-client isolation and memory pooling
  */
 
-#include "packet_queue.h"
-#include "buffer_pool.h"
-#include "common.h"
-#include "util/endian.h"
-#include "asciichat_errno.h"
-#include "network/crc32.h"
+#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/crc32.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>

@@ -6,8 +6,8 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
-#include "../windows_compat.h"
+#include <ascii-chat/platform/api.h>
+#include <ascii-chat/windows_compat.h>
 #include <errno.h> // For ETIMEDOUT
 
 /**

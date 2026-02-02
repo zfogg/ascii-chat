@@ -6,19 +6,19 @@
  */
 
 // Header must be included even in release builds to get inline no-op stubs
-#include "debug/lock.h"
+#include <ascii-chat/debug/lock.h>
 
 #ifdef DEBUG_LOCKS
 // Only compile lock_debug implementation when DEBUG_LOCKS is defined
 // Without DEBUG_LOCKS, lock_debug.h provides inline no-op stubs
 
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "asciichat_errno.h"
-#include "platform/abstraction.h"
-#include "util/fnv1a.h"
-#include "util/time.h"
-#include "uthash/uthash.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/fnv1a.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/uthash/uthash.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdatomic.h>
@@ -1442,8 +1442,8 @@ void lock_debug_print_state(void) {
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "platform/mutex.h"
-#include "platform/rwlock.h"
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/rwlock.h>
 
 // Stub implementations - no-ops when DEBUG_LOCKS is not defined
 int lock_debug_init(void) {

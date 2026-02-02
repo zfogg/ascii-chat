@@ -11,20 +11,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "debug/memory.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "common/error_codes.h"
-#include "asciichat_errno.h"
-#include "platform/mutex.h"
-#include "platform/system.h"
-#include "platform/memory.h"
-#include "util/format.h"
-#include "util/path.h"
-#include "util/string.h"
-#include "util/time.h"
-#include "log/logging.h"
-#include "options/options.h"
+#include <ascii-chat/debug/memory.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/common/error_codes.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/memory.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/options.h>
 
 typedef struct mem_block {
   void *ptr;

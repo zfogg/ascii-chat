@@ -10,11 +10,11 @@
  * @date January 2026
  */
 
-#include "settings.h"
-#include "common.h"
-#include "options/options.h"
-#include "asciichat_errno.h"
-#include "platform/network.h"
+#include <ascii-chat/session/settings.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/network.h>
 
 #include <string.h>
 #include <time.h>

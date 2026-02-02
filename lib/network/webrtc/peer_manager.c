@@ -11,12 +11,12 @@
  * @date January 2026
  */
 
-#include "network/webrtc/peer_manager.h"
-#include "network/acip/transport.h"
-#include "log/logging.h"
-#include "platform/mutex.h"
-#include "util/endian.h"
-#include "uthash/uthash.h"
+#include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/uthash/uthash.h>
 #include <string.h>
 
 /**

@@ -4,14 +4,14 @@
  * @brief GPG agent connection and communication implementation
  */
 
-#include "agent.h"
-#include "../keys.h"
-#include "common.h"
-#include "util/string.h"
-#include "log/logging.h"
-#include "platform/system.h"
-#include "platform/agent.h"
-#include "platform/pipe.h"
+#include <ascii-chat/crypto/gpg/agent.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/agent.h>
+#include <ascii-chat/platform/pipe.h>
 
 #include <ctype.h>
 #include <errno.h>

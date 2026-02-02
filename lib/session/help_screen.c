@@ -4,14 +4,14 @@
  * @ingroup session
  */
 
-#include "help_screen.h"
-#include "display.h"
-#include "common.h"
-#include "options/options.h"
-#include "platform/terminal.h"
-#include "log/logging.h"
-#include "util/string.h"
-#include "util/utf8.h"
+#include <ascii-chat/session/help_screen.h>
+#include <ascii-chat/session/display.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>

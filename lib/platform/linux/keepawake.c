@@ -4,9 +4,9 @@
  * @ingroup platform
  */
 
-#include "../system.h"
-#include "../../log/logging.h"
-#include "../../asciichat_errno.h"
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/asciichat_errno.h>
 #include <unistd.h>
 
 #ifdef HAVE_LIBSYSTEMD

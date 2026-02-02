@@ -17,21 +17,21 @@
  * @version 1.0
  */
 
-#include "network/tcp/client.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
-#include "platform/system.h"
-#include "platform/terminal.h"
-#include "network/packet.h"
-#include "network/network.h"
-#include "util/endian.h"
-#include "util/ip.h"
-#include "asciichat_errno.h"
-#include "buffer_pool.h"
-#include "options/options.h"
-#include "crypto/handshake/common.h"
+#include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/crypto/handshake/common.h>
 
 #include <string.h>
 #include <time.h>

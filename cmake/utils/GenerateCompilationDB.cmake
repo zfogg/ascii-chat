@@ -214,6 +214,9 @@ function(generate_compilation_database)
             -DINPUT_FILE=${_DB_OUTPUT}
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
             -P ${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT_FILE=${_DB_OUTPUT}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ConvertCompilationDBFormat.cmake
         COMMENT "${_DB_COMMENT}"
         VERBATIM
     )

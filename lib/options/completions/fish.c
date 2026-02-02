@@ -6,10 +6,10 @@
 
 #include <string.h>
 #include <stdio.h>
-#include "options/completions/fish.h"
-#include "options/registry.h"
-#include "options/enums.h"
-#include "common.h"
+#include <ascii-chat/options/completions/fish.h>
+#include <ascii-chat/options/registry.h>
+#include <ascii-chat/options/enums.h>
+#include <ascii-chat/common.h>
 
 /**
  * Escape help text for fish shell completions

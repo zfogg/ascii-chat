@@ -3,7 +3,7 @@
  * @brief Windows error handling implementation
  */
 
-#include "../errno.h"
+#include <ascii-chat/platform/errno.h>
 #include <winsock2.h>
 #include <errno.h>
 

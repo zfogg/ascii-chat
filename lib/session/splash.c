@@ -14,14 +14,14 @@
  * @date February 2026
  */
 
-#include "session/splash.h"
-#include "session/display.h"
-#include "platform/terminal.h"
-#include "platform/system.h"
-#include "video/ansi_fast.h"
-#include "options/options.h"
-#include "log/logging.h"
-#include "common.h"
+#include <ascii-chat/session/splash.h>
+#include <ascii-chat/session/display.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,17 +45,22 @@ static const char *g_ascii_logo[] = {"  ▄▄▄  ███████  ██
 #define ASCII_LOGO_WIDTH 36
 
 /**
- * @brief Rainbow color cycle (6 colors for continuous animation)
+ * @brief Rainbow colors in RGB for smooth gradient transitions
  */
-static const int g_rainbow_colors[] = {
-    196, // Red
-    226, // Yellow
-    46,  // Green
-    51,  // Cyan
-    21,  // Blue
-    201  // Magenta
+typedef struct {
+  uint8_t r, g, b;
+} rgb_color_t;
+
+static const rgb_color_t g_rainbow_colors[] = {
+    {255, 0, 0},   // Red
+    {255, 165, 0}, // Orange
+    {255, 255, 0}, // Yellow
+    {0, 255, 0},   // Green
+    {0, 255, 255}, // Cyan
+    {0, 0, 255},   // Blue
+    {255, 0, 255}  // Magenta
 };
-#define RAINBOW_COLOR_COUNT 6
+#define RAINBOW_COLOR_COUNT 7
 
 /**
  * @brief Animation state for intro splash
@@ -71,87 +76,51 @@ static struct {
 // Helper Functions - TTY Detection
 // ============================================================================
 
-/**
- * @brief Check if both stdin and stdout are TTY
- */
-static bool check_is_tty(void) {
-  return platform_isatty(STDIN_FILENO) && platform_isatty(STDOUT_FILENO);
-}
-
 // ============================================================================
 // Helper Functions - Rainbow Rendering
 // ============================================================================
 
 /**
- * @brief Get ANSI code for a rainbow color at the given animation frame
+ * @brief Interpolate between two RGB colors
+ * @param color1 First color
+ * @param color2 Second color
+ * @param t Interpolation factor (0.0 = color1, 1.0 = color2)
+ * @return Interpolated RGB color
  */
-static int get_rainbow_color(int frame, int position) {
-  int color_idx = (frame + position) % RAINBOW_COLOR_COUNT;
-  return g_rainbow_colors[color_idx];
+static rgb_color_t interpolate_color(rgb_color_t color1, rgb_color_t color2, double t) {
+  rgb_color_t result;
+  result.r = (uint8_t)(color1.r * (1.0 - t) + color2.r * t);
+  result.g = (uint8_t)(color1.g * (1.0 - t) + color2.g * t);
+  result.b = (uint8_t)(color1.b * (1.0 - t) + color2.b * t);
+  return result;
 }
 
 /**
- * @brief Build a single frame of the splash screen
+ * @brief Get RGB color for a position in the rainbow
+ * @param position Position in the rainbow (0.0 to 1.0 or beyond for cycling)
+ * @return RGB color at that position
  */
-static void build_splash_frame(char *buffer, size_t buf_size, int width, int height, bool has_utf8) {
-  if (!buffer || buf_size == 0) {
-    return;
+static rgb_color_t get_rainbow_color_rgb(double position) {
+  // Normalize position to 0-1 range
+  double norm_pos = position - (long)position;
+  if (norm_pos < 0) {
+    norm_pos += 1.0;
   }
 
-  size_t pos = 0;
-  int center_row = (height - ASCII_LOGO_LINES) / 2;
+  // Scale position to color range
+  double color_pos = norm_pos * (RAINBOW_COLOR_COUNT - 1);
+  int color_idx = (int)color_pos;
+  double blend = color_pos - color_idx;
 
-  // Top padding
-  for (int i = 0; i < center_row; i++) {
-    if (pos < buf_size - 1) {
-      buffer[pos++] = '\n';
-    }
+  // Wrap around at the end
+  if (color_idx >= RAINBOW_COLOR_COUNT - 1) {
+    color_idx = RAINBOW_COLOR_COUNT - 1;
+    blend = 0;
   }
 
-  // Simplified version - just print the ASCII art with some spacing
-  int padding = (width - ASCII_LOGO_WIDTH) / 2;
-  if (padding < 0)
-    padding = 0;
+  int next_idx = (color_idx + 1) % RAINBOW_COLOR_COUNT;
 
-  // Top border line
-  for (int i = 0; i < padding; i++) {
-    if (pos < buf_size - 1)
-      buffer[pos++] = ' ';
-  }
-  for (int i = 0; i < ASCII_LOGO_WIDTH; i++) {
-    if (pos < buf_size - 1)
-      buffer[pos++] = '-';
-  }
-  if (pos < buf_size - 1)
-    buffer[pos++] = '\n';
-
-  // ASCII logo lines
-  for (int i = 0; i < ASCII_LOGO_LINES; i++) {
-    for (int j = 0; j < padding; j++) {
-      if (pos < buf_size - 1)
-        buffer[pos++] = ' ';
-    }
-    const char *line = g_ascii_logo[i];
-    for (int j = 0; line[j] && pos < buf_size - 1; j++) {
-      buffer[pos++] = line[j];
-    }
-    if (pos < buf_size - 1)
-      buffer[pos++] = '\n';
-  }
-
-  // Bottom border line
-  for (int i = 0; i < padding; i++) {
-    if (pos < buf_size - 1)
-      buffer[pos++] = ' ';
-  }
-  for (int i = 0; i < ASCII_LOGO_WIDTH; i++) {
-    if (pos < buf_size - 1)
-      buffer[pos++] = '-';
-  }
-  if (pos < buf_size - 1)
-    buffer[pos++] = '\n';
-
-  buffer[pos] = '\0';
+  return interpolate_color(g_rainbow_colors[color_idx], g_rainbow_colors[next_idx], blend);
 }
 
 // ============================================================================
@@ -251,34 +220,51 @@ static size_t build_splash_buffer(char *buffer, size_t buf_size, int width, int 
 }
 
 /**
- * @brief Animation thread that displays splash with cycling rainbow colors
+ * @brief Animation thread that displays splash with rainbow wave effect
  */
 static void *splash_animation_thread(void *arg) {
   (void)arg;
 
   int width = GET_OPTION(width);
   int height = GET_OPTION(height);
-  char buffer[2048];
+  char base_buffer[2048];
 
   // Build splash buffer once
-  build_splash_buffer(buffer, sizeof(buffer), width, height);
+  build_splash_buffer(base_buffer, sizeof(base_buffer), width, height);
 
-  // Animate with color cycling
+  // Animate with rainbow wave effect
   int frame = 0;
-  const int anim_speed = 200; // milliseconds per frame
+  const int anim_speed = 100;        // milliseconds per frame
+  const double rainbow_speed = 0.01; // Characters per frame of wave speed
 
   while (!atomic_load(&g_splash_state.should_stop)) {
-    // Get current color from rainbow cycle
-    int color_idx = frame % RAINBOW_COLOR_COUNT;
-    int color = g_rainbow_colors[color_idx];
-
-    // Clear and redraw splash with current color
+    // Clear screen
     terminal_clear_screen();
 
-    // Print colored splash
-    printf("\x1b[38;5;%dm", color); // ANSI 256-color code
-    fputs(buffer, stdout);
-    printf("\x1b[0m"); // Reset color
+    // Calculate rainbow offset for this frame (smooth continuous wave)
+    double offset = frame * rainbow_speed;
+
+    // Print splash with rainbow wave effect
+    // Color each character based on its position + offset
+    for (int i = 0; base_buffer[i] != '\0'; i++) {
+      char ch = base_buffer[i];
+
+      if (ch == '\n') {
+        // Print newlines as-is
+        printf("%c", ch);
+      } else if (ch == ' ') {
+        // Spaces don't need color, just print
+        printf("%c", ch);
+      } else {
+        // Calculate smooth rainbow color for this character
+        // Position is normalized by spreading over many characters for smooth fade
+        double char_pos = (i + offset) / 30.0; // Spread over 30 chars for smooth transition
+        rgb_color_t color = get_rainbow_color_rgb(char_pos);
+
+        // Print character with truecolor ANSI escape: \x1b[38;2;R;G;Bm
+        printf("\x1b[38;2;%u;%u;%um%c\x1b[0m", color.r, color.g, color.b, ch);
+      }
+    }
 
     fflush(stdout);
 

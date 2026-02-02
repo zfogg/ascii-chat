@@ -10,15 +10,15 @@
  * @date January 2026
  */
 
-#include "network/acip/client.h"
-#include "network/acip/send.h"
-#include "network/acip/handlers.h"
-#include "network/packet.h"
-#include "buffer_pool.h"
-#include "log/logging.h"
-#include "common.h"
-#include "util/endian.h"
-#include "util/overflow.h"
+#include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/overflow.h>
 #include <string.h>
 
 // =============================================================================

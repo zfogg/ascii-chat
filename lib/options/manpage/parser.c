@@ -7,10 +7,10 @@
  * (AUTO-generated, MANUAL, or MERGE sections).
  */
 
-#include "parser.h"
-#include "../../log/logging.h"
-#include "../../common.h"
-#include "../../platform/util.h"
+#include <ascii-chat/options/manpage/parser.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

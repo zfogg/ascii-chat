@@ -12,9 +12,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include "common.h"
-#include "network/acip/acds.h"
-#include "network/tcp/server.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/tcp/server.h>
 
 /**
  * @brief Relay SDP offer/answer to recipient

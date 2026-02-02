@@ -8,9 +8,9 @@
  * the complexity of the underlying embedded_resources API.
  */
 
-#include "resources.h"
-#include "../../embedded_resources.h"
-#include "../../log/logging.h"
+#include <ascii-chat/options/manpage/resources.h>
+#include <ascii-chat/embedded_resources.h>
+#include <ascii-chat/log/logging.h>
 #include <stdlib.h>
 #include <string.h>
 

@@ -8,14 +8,14 @@
  * YouTube's modern cipher and n-parameter protections.
  */
 
-#include "youtube.h"
-#include "common.h"
-#include "log/logging.h"
-#include "asciichat_errno.h"
-#include "version.h"
-#include "options/options.h"
-#include "platform/process.h"
-#include "platform/system.h"
+#include <ascii-chat/media/youtube.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/process.h>
+#include <ascii-chat/platform/system.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

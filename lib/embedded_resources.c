@@ -7,9 +7,9 @@
  * based on build configuration.
  */
 
-#include "embedded_resources.h"
-#include "common.h"
-#include "log/logging.h"
+#include <ascii-chat/embedded_resources.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

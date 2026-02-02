@@ -4,9 +4,9 @@
  * @ingroup platform
  */
 
-#include "../keyboard.h"
-#include "../../common.h"
-#include "../../platform/init.h"
+#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/init.h>
 
 #include <conio.h>
 #include <windows.h>

@@ -4,16 +4,16 @@
  * @brief 🔌 SSH agent protocol implementation for key authentication via ssh-agent
  */
 
-#include "ssh_agent.h"
-#include "common.h"
-#include "util/bytes.h" // For write_u32_be, read_u32_be
+#include <ascii-chat/crypto/ssh/ssh_agent.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/bytes.h> // For write_u32_be, read_u32_be
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
-#include "platform/pipe.h"
-#include "platform/agent.h"
-#include "log/logging.h"
+#include <ascii-chat/platform/pipe.h>
+#include <ascii-chat/platform/agent.h>
+#include <ascii-chat/log/logging.h>
 
 #ifdef _WIN32
 #include <io.h>

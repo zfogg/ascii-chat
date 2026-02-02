@@ -10,10 +10,10 @@
  * @date January 2026
  */
 
-#include "audio.h"
-#include "common.h"
-#include "audio/audio.h"
-#include "asciichat_errno.h"
+#include <ascii-chat/session/audio.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/asciichat_errno.h>
 
 #include <string.h>
 

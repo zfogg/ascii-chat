@@ -11,10 +11,10 @@
 
 #include "discovery-service/signaling.h"
 #include "discovery-service/server.h"
-#include "discovery/database.h"
-#include "discovery/session.h"
-#include "log/logging.h"
-#include "network/network.h"
+#include <ascii-chat/discovery/database.h>
+#include <ascii-chat/discovery/session.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/network/network.h>
 #include <string.h>
 
 /**

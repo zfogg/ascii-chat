@@ -4,11 +4,11 @@
  * @brief Temporary GPG homedir management implementation
  */
 
-#include "homedir.h"
-#include "../../common.h"
-#include "../../log/logging.h"
-#include "../../platform/util.h"
-#include "../../platform/filesystem.h"
+#include <ascii-chat/crypto/gpg/homedir.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <string.h>
 #include <stdlib.h>
 

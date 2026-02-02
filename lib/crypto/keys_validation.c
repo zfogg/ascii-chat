@@ -4,12 +4,12 @@
  * @brief ✅ Cryptographic key validation: fingerprint computation, format checking, and trust verification
  */
 
-#include "keys_validation.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "util/utf8.h"
-#include "crypto/crypto.h" // Includes <sodium.h>
-#include "platform/filesystem.h"
+#include <ascii-chat/crypto/keys_validation.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

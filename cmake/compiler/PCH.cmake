@@ -26,30 +26,33 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
         )
 
         set(_ascii_chat_pch_headers
-            lib/platform/abstraction.h
-            lib/platform/system.h
-            lib/platform/init.h
-            lib/platform/filesystem.h
-            lib/platform/thread.h
-            lib/platform/string.h
-            lib/platform/socket.h
-            lib/platform/terminal.h
+            <ascii-chat/platform/api.h>
+            <ascii-chat/platform/system.h>
+            <ascii-chat/platform/init.h>
+            <ascii-chat/platform/filesystem.h>
+            <ascii-chat/platform/thread.h>
+            <ascii-chat/platform/string.h>
+            <ascii-chat/platform/socket.h>
+            <ascii-chat/platform/terminal.h>
 
-            lib/log/logging.h
-            lib/options/options.h
-            lib/buffer_pool.h
-            lib/asciichat_errno.h
-            lib/ringbuffer.h
-            lib/video/palette.h
+            <ascii-chat/log/logging.h>
+            <ascii-chat/options/options.h>
+            <ascii-chat/options/enums.h>
+            <ascii-chat/options/layout.h>
+            <ascii-chat/options/colorscheme.h>
+            <ascii-chat/buffer_pool.h>
+            <ascii-chat/asciichat_errno.h>
+            <ascii-chat/ringbuffer.h>
+            <ascii-chat/video/palette.h>
 
-            lib/util/path.h
-            lib/util/format.h
-            lib/util/math.h
-            lib/util/parsing.h
-            lib/util/aspect_ratio.h
-            lib/util/ip.h
+            <ascii-chat/util/path.h>
+            <ascii-chat/util/format.h>
+            <ascii-chat/util/math.h>
+            <ascii-chat/util/parsing.h>
+            <ascii-chat/util/aspect_ratio.h>
+            <ascii-chat/util/ip.h>
 
-            lib/crypto/known_hosts.h
+            <ascii-chat/crypto/known_hosts.h>
 
             <stdio.h>
             <stdlib.h>

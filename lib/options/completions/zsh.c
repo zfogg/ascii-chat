@@ -6,9 +6,9 @@
 
 #include <string.h>
 #include <stdio.h>
-#include "options/completions/zsh.h"
-#include "options/registry.h"
-#include "common.h"
+#include <ascii-chat/options/completions/zsh.h>
+#include <ascii-chat/options/registry.h>
+#include <ascii-chat/common.h>
 
 /**
  * Escape help text for zsh's _arguments command

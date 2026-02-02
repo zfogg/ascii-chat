@@ -6,7 +6,7 @@
  * directly by the database layer (database.c) using SQLite.
  */
 
-#include "discovery/session.h"
+#include <ascii-chat/discovery/session.h>
 
 /**
  * @brief Free a session entry and all its resources

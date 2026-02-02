@@ -4,15 +4,15 @@
  * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
  */
 
-#include "common.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "platform/abstraction.h"
-#include "platform/system.h"
-#include "util/path.h"
-#include "util/string.h"
-#include "util/time.h"
-#include "util/utf8.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/utf8.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,15 +21,15 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "logging.h"
-#include "colorize.h"
-#include "log/mmap.h"
-#include "platform/terminal.h"
-#include "options/colorscheme.h"
-#include "platform/thread.h"
-#include "platform/mutex.h"
-#include "network/packet.h"
-#include "video/ansi.h"
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/log/colorize.h>
+#include <ascii-chat/log/mmap.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/options/colorscheme.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/video/ansi.h>
 
 /* ============================================================================
  * Logging System Internal State

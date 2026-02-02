@@ -28,13 +28,13 @@
  * @date January 2026
  */
 
-#include "network/acip/transport.h"
-#include "network/webrtc/webrtc.h"
-#include "log/logging.h"
-#include "ringbuffer.h"
-#include "buffer_pool.h"
-#include "platform/mutex.h"
-#include "platform/cond.h"
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/webrtc/webrtc.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/cond.h>
 #include <string.h>
 
 /**

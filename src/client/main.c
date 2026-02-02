@@ -70,37 +70,38 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio/analysis.h"
-#include "video/webcam/webcam.h"
-#include "network/mdns/discovery_tui.h"
-#include "network/mdns/discovery.h"
+#include <ascii-chat/session/splash.h>
+#include <ascii-chat/audio/analysis.h>
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/network/mdns/discovery_tui.h>
+#include <ascii-chat/network/mdns/discovery.h>
 
-#include "platform/abstraction.h"
-#include "platform/init.h"
-#include "platform/terminal.h"
-#include "platform/symbols.h"
-#include "platform/system.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "log/logging.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "buffer_pool.h"
-#include "video/palette.h"
-#include "network/network.h"
-#include "network/tcp/client.h"
-#include "network/acip/acds_client.h"
-#include "network/acip/acds.h"
-#include "network/acip/client.h"
-#include "network/webrtc/peer_manager.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/network/webrtc/peer_manager.h>
 #include "webrtc.h"
 #include "connection_state.h"
-#include "util/path.h"
+#include <ascii-chat/util/path.h>
 
 #ifndef NDEBUG
-#include "debug/lock.h"
+#include <ascii-chat/debug/lock.h>
 #ifdef DEBUG_MEMORY
-#include "debug/memory.h"
+#include <ascii-chat/debug/memory.h>
 #endif
 #endif
 
@@ -569,6 +570,10 @@ int client_main(void) {
   // Keep terminal logging enabled so user can see connection attempts
   // It will be disabled after first successful connection
   // Note: No initial terminal reset - display will only be cleared when first frame arrives
+
+  // Start the intro splash screen (non-blocking) - it will display while we initialize
+  // The splash will continue until splash_intro_done() is called when first frame is ready
+  splash_intro_start(NULL);
 
   // Track if we've ever successfully connected during this session
   static bool has_ever_connected = false;

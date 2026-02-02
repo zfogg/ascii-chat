@@ -18,8 +18,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "common.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/abstraction.h>
 
 // Socket implementation (mostly pass-through for POSIX)
 asciichat_error_t socket_init(void) {

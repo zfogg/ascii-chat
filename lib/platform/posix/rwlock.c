@@ -6,7 +6,7 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
+#include <ascii-chat/platform/api.h>
 #include <pthread.h>
 
 /**

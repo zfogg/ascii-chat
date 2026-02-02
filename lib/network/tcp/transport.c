@@ -9,15 +9,15 @@
  * @date January 2026
  */
 
-#include "network/acip/transport.h"
-#include "network/packet.h"
-#include "network/network.h"
-#include "log/logging.h"
-#include "platform/socket.h"
-#include "crypto/crypto.h"
-#include "buffer_pool.h"
-#include "util/endian.h"
-#include "network/crc32.h"
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/network/crc32.h>
 #include <string.h>
 
 /**

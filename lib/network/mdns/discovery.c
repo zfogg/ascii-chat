@@ -13,14 +13,14 @@
  * - TUI wrapper: discovery_tui.c calls discovery_mdns_query() for interactive selection
  */
 
-#include "network/mdns/discovery.h"
-#include "network/mdns/discovery_tui.h" // For discovery_tui_server_t struct only
-#include "network/acip/acds_client.h"
-#include "platform/thread.h"
-#include "platform/mutex.h"
-#include "log/logging.h"
-#include "network/mdns/mdns.h"
-#include "util/time.h"
+#include <ascii-chat/network/mdns/discovery.h>
+#include <ascii-chat/network/mdns/discovery_tui.h> // For discovery_tui_server_t struct only
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/util/time.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>

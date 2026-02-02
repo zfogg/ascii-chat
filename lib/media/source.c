@@ -3,16 +3,16 @@
  * @brief Unified media source implementation
  */
 
-#include "source.h"
-#include "ffmpeg_decoder.h"
-#include "youtube.h"
-#include "video/webcam/webcam.h"
-#include "audio/audio.h"
-#include "log/logging.h"
-#include "asciichat_errno.h"
-#include "platform/abstraction.h"
-#include "common/buffer_sizes.h"
-#include "util/time.h"
+#include <ascii-chat/media/source.h>
+#include <ascii-chat/media/ffmpeg_decoder.h>
+#include <ascii-chat/media/youtube.h>
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/util/time.h>
 #include <stdlib.h>
 #include <string.h>
 

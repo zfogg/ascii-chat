@@ -54,7 +54,7 @@
 #include <unistd.h> // For write() and STDOUT_FILENO (signal-safe I/O)
 #endif
 
-#include "platform/network.h" // Consolidates platform-specific network headers
+#include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers
 
 #include <errno.h>
 #include <limits.h>
@@ -69,48 +69,48 @@
 #include <time.h>
 
 #include "main.h"
-#include "common.h"
-#include "util/endian.h"
-#include "util/ip.h"
-#include "uthash/uthash.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
-#include "platform/init.h"
-#include "platform/question.h"
-#include "video/image.h"
-#include "video/simd/ascii_simd.h"
-#include "video/simd/common.h"
-#include "asciichat_errno.h"
-#include "network/network.h"
-#include "network/tcp/server.h"
-#include "network/acip/acds_client.h"
-#include "network/webrtc/stun.h"
-#include "thread_pool.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "buffer_pool.h"
-#include "audio/mixer.h"
-#include "audio/audio.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/thread_pool.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/audio/audio.h>
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
-#include "platform/string.h"
-#include "platform/symbols.h"
-#include "platform/system.h"
-#include "crypto/keys.h"
-#include "network/rate_limit/rate_limit.h"
-#include "network/mdns/mdns.h"
-#include "network/mdns/discovery.h"
-#include "network/errors.h"
-#include "network/nat/upnp.h"
-#include "network/webrtc/peer_manager.h"
-#include "network/webrtc/webrtc.h"
-#include "network/acip/send.h"
-#include "network/acip/protocol.h"
-#include "network/acip/transport.h"
-#include "network/acip/handlers.h"
-#include "network/acip/server.h"
-#include "network/acip/client.h"
+#include <ascii-chat/platform/string.h>
+#include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/network/rate_limit/rate_limit.h>
+#include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/network/mdns/discovery.h>
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/nat/upnp.h>
+#include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/network/webrtc/webrtc.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/protocol.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/network/acip/server.h>
+#include <ascii-chat/network/acip/client.h>
 
 /* ============================================================================
  * Global State

@@ -7,20 +7,20 @@
  * option parsing modules (client.c, server.c, mirror.c).
  */
 
-#include "options/common.h"
+#include <ascii-chat/options/common.h>
 
-#include "asciichat_errno.h"
-#include "common.h"
-#include "log/logging.h"
-#include "options/levenshtein.h"
-#include "options/validation.h"
-#include "options/builder.h"
-#include "platform/terminal.h"
-#include "platform/stat.h"
-#include "util/parsing.h"
-#include "util/password.h"
-#include "util/path.h"
-#include "util/string.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/levenshtein.h>
+#include <ascii-chat/options/validation.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/util/parsing.h>
+#include <ascii-chat/util/password.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/string.h>
 
 #include <limits.h>
 #include <stdio.h>

@@ -276,7 +276,7 @@ endif()
 # Generate version header to temp file first
 # This will be copied to final location only if content changed
 configure_file(
-    \"${CMAKE_SOURCE_DIR}/lib/version.h.in\"
+    \"${CMAKE_SOURCE_DIR}/include/ascii-chat/version.h.in\"
     \"${CMAKE_BINARY_DIR}/generated/version.h.tmp\"
     @ONLY
 )
@@ -312,14 +312,14 @@ configure_file(
         # This prevents rebuilds from uncommitted changes or staging
         set(VERSION_DEPENDENCIES
             "${_GIT_DIR}/HEAD"
-            "${CMAKE_SOURCE_DIR}/lib/version.h.in"
+            "${CMAKE_SOURCE_DIR}/include/ascii-chat/version.h.in"
         )
     else()
         # Release: Also depend on .git/index for dirty state tracking
         set(VERSION_DEPENDENCIES
             "${_GIT_DIR}/HEAD"
             "${_GIT_DIR}/index"
-            "${CMAKE_SOURCE_DIR}/lib/version.h.in"
+            "${CMAKE_SOURCE_DIR}/include/ascii-chat/version.h.in"
         )
     endif()
 

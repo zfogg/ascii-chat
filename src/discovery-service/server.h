@@ -26,12 +26,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
-#include "network/tcp/server.h"
-#include "network/acip/acds.h"
-#include "options/options.h" // For MAX_IDENTITY_KEYS
-#include "thread_pool.h"
+#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/options/options.h> // For MAX_IDENTITY_KEYS
+#include <ascii-chat/thread_pool.h>
 #include "discovery-service/main.h"
-#include "discovery/session.h" // For host_lost_candidate_t and MAX_PARTICIPANTS
+#include <ascii-chat/discovery/session.h> // For host_lost_candidate_t and MAX_PARTICIPANTS
 
 /**
  * @brief Per-client connection data

@@ -10,12 +10,12 @@
  * @date December 2025
  */
 
-#include "packet_parsing.h"
-#include "network/compression.h"
-#include "util/bytes.h"
-#include "util/format.h"
-#include "util/endian.h"
-#include "logging.h"
+#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/compression.h>
+#include <ascii-chat/util/bytes.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/network/logging.h>
 #include <string.h>
 
 /**

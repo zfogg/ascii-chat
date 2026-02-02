@@ -4,13 +4,13 @@
  * @brief 🔤 String manipulation utilities: ASCII escaping, trimming, case conversion, and formatting
  */
 
-#include "util/string.h"
-#include "util/utf8.h"
-#include "common.h"
-#include "platform/system.h"
-#include "platform/terminal.h"
-#include "options/rcu.h"
-#include "log/logging.h"
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/log/logging.h>
 #include <string.h>
 #include <ctype.h>
 

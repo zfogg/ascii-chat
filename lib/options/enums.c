@@ -5,8 +5,8 @@
  */
 
 #include <string.h>
-#include "options/enums.h"
-#include "common.h"
+#include <ascii-chat/options/enums.h>
+#include <ascii-chat/common.h>
 
 /* Enum value definitions - SINGLE SOURCE OF TRUTH */
 

@@ -7,16 +7,16 @@
  * @date January 2026
  */
 
-#include "crypto/discovery_keys.h"
+#include <ascii-chat/crypto/discovery_keys.h>
 
-#include "asciichat_errno.h"
-#include "common.h"
-#include "crypto/keys.h"
-#include "log/logging.h"
-#include "platform/filesystem.h"
-#include "platform/question.h"
-#include "platform/system.h"
-#include "util/path.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/util/path.h>
 
 #include <ctype.h>
 #include <errno.h>

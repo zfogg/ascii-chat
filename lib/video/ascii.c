@@ -14,18 +14,18 @@
 #include <time.h>
 #include <math.h>
 
-#include "platform/abstraction.h"
-#include "platform/terminal.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/terminal.h>
 
-#include "ascii.h"
-#include "common.h"
-#include "image.h"
-#include "util/aspect_ratio.h"
-#include "util/overflow.h"
-#include "util/time.h"
-#include "video/webcam/webcam.h"
-#include "options/options.h"
-#include "simd/ascii_simd.h"
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/util/aspect_ratio.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
 
 /* ============================================================================
  * ASCII Art Video Processing

@@ -138,18 +138,18 @@
 #include "main.h"
 #include "stream.h"
 #include "client.h"
-#include "common.h"
-#include "util/endian.h"
-#include "buffer_pool.h"
-#include "network/packet_queue.h"
-#include "ringbuffer.h"
-#include "video/video_frame.h"
-#include "video/image.h"
-#include "video/ascii.h"
-#include "video/color_filter.h"
-#include "util/aspect_ratio.h"
-#include "util/endian.h"
-#include "util/image.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/video/video_frame.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/util/aspect_ratio.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/image.h>
 
 /**
  * @brief Previous active video source count for layout change detection

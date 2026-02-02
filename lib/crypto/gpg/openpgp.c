@@ -4,15 +4,15 @@
  * @ingroup crypto
  */
 
-#include "openpgp.h"
-#include "homedir.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../log/logging.h"
-#include "../../platform/question.h"
-#include "../../platform/util.h"
-#include "../../platform/abstraction.h"
-#include "../../platform/filesystem.h"
+#include <ascii-chat/crypto/gpg/openpgp.h>
+#include <ascii-chat/crypto/gpg/homedir.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sodium.h>

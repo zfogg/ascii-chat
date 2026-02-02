@@ -4,17 +4,17 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
-#include "crypto/crypto.h" // Includes <sodium.h>
-#include "ssh_keys.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "util/password.h"
-#include "platform/util.h"
-#include "util/string.h"
-#include "util/path.h"
-#include "util/bytes.h"
-#include "ssh_agent.h"
-#include "../gpg/gpg.h" // For GPG agent signing support
+#include <ascii-chat/crypto/crypto.h> // Includes <sodium.h>
+#include <ascii-chat/crypto/ssh/ssh_keys.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/password.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/bytes.h>
+#include <ascii-chat/crypto/ssh/ssh_agent.h>
+#include <ascii-chat/crypto/gpg/gpg.h> // For GPG agent signing support
 #include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #include <ascii-chat-deps/libsodium-bcrypt-pbkdf/include/sodium_bcrypt_pbkdf.h>
 #include <string.h>

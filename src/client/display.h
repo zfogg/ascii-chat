@@ -13,7 +13,7 @@
 #pragma once
 
 #include <stdbool.h>
-#include "platform/terminal.h"
+#include <ascii-chat/platform/terminal.h>
 
 /**
  * @brief Initialize display subsystem

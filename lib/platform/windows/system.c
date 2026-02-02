@@ -6,19 +6,19 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
-#include "../internal.h"
-#include "../socket.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "asciichat_errno.h"
-#include "util/path.h"
-#include "util/ip.h"
-#include "util/string.h"
-#include "util/time.h"
-#include "util/utf8.h"
-#include "../symbols.h"
-#include "options/options.h"
+#include <ascii-chat/platform/api.h>
+#include <ascii-chat/platform/internal.h>
+#include <ascii-chat/socket.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/options/options.h>
 
 #include <dbghelp.h>
 #include <wincrypt.h>
@@ -1754,6 +1754,6 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 
 // Include cross-platform system utilities (binary PATH detection)
 // Note: Uses uthash for binary PATH cache (included via system.c)
-#include "../system.c"
+#include <ascii-chat/system.c>
 
 #endif // !!_WIN32

@@ -115,35 +115,35 @@
 #include "render.h"
 #include "stream.h"
 #include "crypto.h"
-#include "crypto/handshake/common.h"
-#include "crypto/crypto.h"
-#include "common.h"
-#include "util/endian.h"
-#include "asciichat_errno.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "buffer_pool.h"
-#include "network/network.h"
-#include "network/packet.h"
-#include "network/packet_queue.h"
-#include "network/errors.h"
-#include "network/acip/handlers.h"
-#include "network/acip/transport.h"
-#include "network/acip/send.h"
-#include "network/acip/server.h"
-#include "audio/audio.h"
-#include "audio/mixer.h"
-#include "audio/opus_codec.h"
-#include "video/video_frame.h"
-#include "uthash/uthash.h"
-#include "util/endian.h"
-#include "util/format.h"
-#include "util/time.h"
-#include "platform/abstraction.h"
-#include "platform/string.h"
-#include "platform/socket.h"
-#include "network/crc32.h"
-#include "network/logging.h"
+#include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/errors.h>
+#include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/server.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/video/video_frame.h>
+#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/string.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/network/crc32.h>
+#include <ascii-chat/network/logging.h>
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -170,25 +170,27 @@ static inline int client_dispatch_hash_lookup(const client_dispatch_entry_t *tab
   uint32_t h = CLIENT_DISPATCH_HASH(type);
   for (int i = 0; i < CLIENT_DISPATCH_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % CLIENT_DISPATCH_HASH_SIZE;
-    if (table[slot].key == 0) return -1;
-    if (table[slot].key == type) return table[slot].handler_idx;
+    if (table[slot].key == 0)
+      return -1;
+    if (table[slot].key == type)
+      return table[slot].handler_idx;
   }
   return -1;
 }
 
 // Handler array (indexed by hash lookup result)
 static const client_packet_handler_t g_client_dispatch_handlers[CLIENT_DISPATCH_HANDLER_COUNT] = {
-    (client_packet_handler_t)handle_protocol_version_packet,    // 0
-    (client_packet_handler_t)handle_image_frame_packet,         // 1
-    (client_packet_handler_t)handle_audio_batch_packet,         // 2
-    (client_packet_handler_t)handle_audio_opus_batch_packet,    // 3
-    (client_packet_handler_t)handle_client_join_packet,         // 4
-    (client_packet_handler_t)handle_client_leave_packet,        // 5
-    (client_packet_handler_t)handle_stream_start_packet,        // 6
-    (client_packet_handler_t)handle_stream_stop_packet,         // 7
-    (client_packet_handler_t)handle_client_capabilities_packet, // 8
-    (client_packet_handler_t)handle_ping_packet,                // 9
-    (client_packet_handler_t)handle_pong_packet,                // 10
+    (client_packet_handler_t)handle_protocol_version_packet,       // 0
+    (client_packet_handler_t)handle_image_frame_packet,            // 1
+    (client_packet_handler_t)handle_audio_batch_packet,            // 2
+    (client_packet_handler_t)handle_audio_opus_batch_packet,       // 3
+    (client_packet_handler_t)handle_client_join_packet,            // 4
+    (client_packet_handler_t)handle_client_leave_packet,           // 5
+    (client_packet_handler_t)handle_stream_start_packet,           // 6
+    (client_packet_handler_t)handle_stream_stop_packet,            // 7
+    (client_packet_handler_t)handle_client_capabilities_packet,    // 8
+    (client_packet_handler_t)handle_ping_packet,                   // 9
+    (client_packet_handler_t)handle_pong_packet,                   // 10
     (client_packet_handler_t)handle_remote_log_packet_from_client, // 11
 };
 

@@ -4,17 +4,17 @@
  * @brief Client-side handshake protocol implementation
  */
 
-#include "client.h"
-#include "asciichat_errno.h"
-#include "buffer_pool.h"
-#include "common.h"
-#include "util/endian.h"
-#include "util/ip.h"
-#include "crypto/crypto.h"
-#include "crypto/known_hosts.h"
-#include "crypto/gpg/gpg.h"
-#include "network/packet.h"
-#include "util/password.h"
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/known_hosts.h>
+#include <ascii-chat/crypto/gpg/gpg.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/util/password.h>
 #include <stdio.h>
 #include <string.h>
 #ifndef _WIN32

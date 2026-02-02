@@ -72,18 +72,19 @@
 #include "display.h"
 #include "main.h"
 
-#include "session/display.h"
-#include "session/capture.h"
-#include "session/keyboard_handler.h"
-#include "session/help_screen.h"
-#include "platform/abstraction.h"
-#include "platform/keyboard.h"
-#include "platform/util.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "video/ascii.h"
-#include "media/source.h"
-#include "common.h"
+#include <ascii-chat/session/display.h>
+#include <ascii-chat/session/capture.h>
+#include <ascii-chat/session/keyboard_handler.h>
+#include <ascii-chat/session/help_screen.h>
+#include <ascii-chat/session/splash.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/media/source.h>
+#include <ascii-chat/common.h>
 
 #include <fcntl.h>
 #include <string.h>
@@ -273,6 +274,9 @@ void display_disable_logging_for_first_frame() {
   if (atomic_load(&g_is_first_frame_of_connection)) {
     log_set_terminal_output(false);
     atomic_store(&g_is_first_frame_of_connection, false);
+
+    // Signal the intro splash screen to stop - first frame is ready to render
+    splash_intro_done();
   }
 }
 

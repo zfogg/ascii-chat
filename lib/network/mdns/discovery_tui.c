@@ -6,11 +6,11 @@
  * Provides interactive terminal UI for server selection and address resolution.
  */
 
-#include "network/mdns/discovery_tui.h"
-#include "network/mdns/discovery.h" // For discovery_mdns_query()
-#include "common.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
+#include <ascii-chat/network/mdns/discovery_tui.h>
+#include <ascii-chat/network/mdns/discovery.h> // For discovery_mdns_query()
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
 
 #include <stdio.h>
 #include <stdlib.h>

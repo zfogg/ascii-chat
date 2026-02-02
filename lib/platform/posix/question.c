@@ -4,9 +4,9 @@
  * @brief 💬 POSIX interactive prompting with terminal control for secure input
  */
 
-#include "platform/question.h"
-#include "util/utf8.h"
-#include "log/logging.h"
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/log/logging.h>
 
 #include <stdio.h>
 #include <string.h>

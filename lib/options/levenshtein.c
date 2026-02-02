@@ -12,9 +12,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "options/levenshtein.h"
-#include "util/utf8.h"
-#include "common.h"
+#include <ascii-chat/options/levenshtein.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/common.h>
 
 // Returns a size_t, depicting the difference between `a` and `b`.
 // See <https://en.wikipedia.org/wiki/Levenshtein_distance> for more information.

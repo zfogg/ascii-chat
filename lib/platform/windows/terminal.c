@@ -6,11 +6,11 @@
 
 #ifdef _WIN32
 
-#include "../../options/options.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../util/parsing.h"
-#include "../windows/getopt.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/parsing.h>
+#include <ascii-chat/windows/getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>

@@ -4,10 +4,10 @@
  * @ingroup common
  */
 
-#include "fps.h"
-#include "common.h"
-#include "util/time.h"
-#include "log/logging.h"
+#include <ascii-chat/util/fps.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/log/logging.h>
 
 /**
  * @brief Format and log FPS report in a single line

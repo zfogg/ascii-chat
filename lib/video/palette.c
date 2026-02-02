@@ -16,10 +16,10 @@
 #include <unistd.h>
 #endif
 
-#include "palette.h"
-#include "common.h"
-#include "platform/terminal.h"
-#include "util/utf8.h" // For UTF-8 character width detection
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/util/utf8.h> // For UTF-8 character width detection
 
 /* Default palette constants for legacy functions */
 const char DEFAULT_ASCII_PALETTE[] = PALETTE_CHARS_STANDARD;

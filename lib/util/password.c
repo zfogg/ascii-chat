@@ -4,11 +4,11 @@
  * @brief 🔑 Password prompting utilities with secure input and formatting
  */
 
-#include "util/password.h"
-#include "log/logging.h"
-#include "platform/question.h"
-#include "util/utf8.h"
-#include "common/buffer_sizes.h"
+#include <ascii-chat/util/password.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/common/buffer_sizes.h>
 
 #include <string.h>
 

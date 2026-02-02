@@ -229,7 +229,7 @@ endif()
 # These headers are useful for developers who want to build tools/extensions for ascii-chat
 if(WIN32)
     # Windows: Install all headers except POSIX-specific ones
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/"
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
         DESTINATION include/ascii-chat
         COMPONENT Development
         FILES_MATCHING
@@ -240,7 +240,7 @@ if(WIN32)
     )
 else()
     # Unix/macOS: Install all headers except Windows-specific ones
-    install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/"
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/ascii-chat/"
         DESTINATION include/ascii-chat
         COMPONENT Development
         FILES_MATCHING

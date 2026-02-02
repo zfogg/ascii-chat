@@ -4,15 +4,15 @@
  * @brief 🌐 HTTPS public key fetching from GitHub/GitLab with URL parsing and caching
  */
 
-#include "https_keys.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "platform/string.h"
-#include "platform/util.h"
-#include "platform/process.h"
-#include "platform/filesystem.h"
-#include "util/url.h" // For parse_https_url()
-#include "network/http_client.h"
+#include <ascii-chat/crypto/https_keys.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/string.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/process.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/util/url.h> // For parse_https_url()
+#include <ascii-chat/network/http_client.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

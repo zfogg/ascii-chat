@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Debug instrumentation logging runtime for ascii-chat line tracing
 
-#include "tooling/panic/instrument_log.h"
-#include "common.h"
-#include "platform/util.h"
-#include "platform/mutex.h"
-#include "platform/system.h"
-#include "platform/thread.h"
-#include "util/path.h"
-#include "util/time.h"
+#include <ascii-chat/tooling/panic/instrument_log.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/mutex.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/time.h>
 
 #include <ctype.h>
 #include <errno.h>

@@ -6,10 +6,10 @@
 
 #include <string.h>
 #include <ctype.h>
-#include "options/completions/completions.h"
-#include "options/registry.h"
-#include "common.h"
-#include "log/logging.h"
+#include <ascii-chat/options/completions/completions.h>
+#include <ascii-chat/options/registry.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 
 /* Forward declarations for format-specific generators */
 asciichat_error_t completions_generate_bash(FILE *output);

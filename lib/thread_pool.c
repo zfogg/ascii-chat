@@ -3,10 +3,10 @@
  * @brief 🧵 Generic thread pool implementation for managing worker threads
  */
 
-#include "thread_pool.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/thread.h"
+#include <ascii-chat/thread_pool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/thread.h>
 #include <string.h>
 
 thread_pool_t *thread_pool_create(const char *pool_name) {

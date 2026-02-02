@@ -4,13 +4,13 @@
  * @brief 🔧 Shared SIMD utilities: initialization, cleanup, and architecture-specific resource management
  */
 
-#include "common.h"
-#include "video/simd/common.h"
-#include "uthash/uthash.h"
-#include "video/palette.h"
-#include "util/fnv1a.h"
-#include "util/time.h"
-#include "platform/init.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/uthash/uthash.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/util/fnv1a.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/platform/init.h>
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
@@ -18,15 +18,15 @@
 // Include SIMD architecture headers for cleanup functions
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
 #if SIMD_SUPPORT_NEON
-#include "neon.h"
+#include <ascii-chat/video/simd/neon.h>
 #elif SIMD_SUPPORT_AVX2
-#include "avx2.h"
+#include <ascii-chat/video/simd/avx2.h>
 #elif SIMD_SUPPORT_SSSE3
-#include "ssse3.h"
+#include <ascii-chat/video/simd/ssse3.h>
 #elif SIMD_SUPPORT_SSE2
-#include "sse2.h"
+#include <ascii-chat/video/simd/sse2.h>
 #elif SIMD_SUPPORT_SVE
-#include "sve.h"
+#include <ascii-chat/video/simd/sve.h>
 #endif
 
 // Build 64-entry glyph LUT for vqtbl4q_u8 and other architecture's instrinsics (UTF-8 aware)

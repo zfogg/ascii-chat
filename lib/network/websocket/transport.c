@@ -26,8 +26,8 @@
  * @date January 2026
  */
 
-#include "network/acip/transport.h"
-#include "log/logging.h"
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/log/logging.h>
 
 acip_transport_t *acip_websocket_transport_create(socket_t sockfd, crypto_context_t *crypto_ctx) {
   (void)sockfd;

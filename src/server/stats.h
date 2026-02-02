@@ -13,7 +13,7 @@
  */
 
 #include <stdint.h>
-#include "platform/mutex.h"
+#include <ascii-chat/platform/mutex.h>
 
 /**
  * @brief Server performance statistics structure

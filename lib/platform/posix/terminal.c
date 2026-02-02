@@ -6,14 +6,14 @@
 
 #ifndef _WIN32
 
-#include "../terminal.h"
-#include "../filesystem.h"
-#include "../internal.h"
-#include "../../options/options.h"
-#include "../../options/rcu.h" // For RCU-based options access
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../util/parsing.h"
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/internal.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/parsing.h>
 #include <errno.h>
 #include <unistd.h>
 #include <getopt.h>

@@ -138,12 +138,12 @@
 #include "stats.h"
 #include "client.h"
 #include "render.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "buffer_pool.h"
-#include "network/packet_queue.h"
-#include "debug/lock.h"
-#include "platform/init.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/debug/lock.h>
+#include <ascii-chat/platform/init.h>
 
 /**
  * @brief Global server statistics structure

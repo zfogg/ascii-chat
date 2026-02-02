@@ -10,17 +10,17 @@
  * @date January 2026
  */
 
-#include "options/registry.h"
-#include "options/parsers.h" // For parse_log_level, parse_color_mode, parse_palette_type, parse_palette_chars, etc.
-#include "options/validation.h"
-#include "options/actions.h" // For action_list_webcams, action_list_microphones, action_list_speakers
-#include "options/common.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/terminal.h"
-#include "video/palette.h"
-#include "discovery/strings.h" // For SESSION_STRING_BUFFER_SIZE
-#include "options/parsers.h"
+#include <ascii-chat/options/registry.h>
+#include <ascii-chat/options/parsers.h> // For parse_log_level, parse_color_mode, parse_palette_type, parse_palette_chars, etc.
+#include <ascii-chat/options/validation.h>
+#include <ascii-chat/options/actions.h> // For action_list_webcams, action_list_microphones, action_list_speakers
+#include <ascii-chat/options/common.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/discovery/strings.h> // For SESSION_STRING_BUFFER_SIZE
+#include <ascii-chat/options/parsers.h>
 
 #include <stdlib.h>
 #include <string.h>

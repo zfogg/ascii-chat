@@ -74,25 +74,25 @@
  */
 
 #include <ctype.h>
-#include "options/options.h"
-#include "options/rcu.h" // RCU-based thread-safe options
-#include "options/common.h"
-#include "options/parsers.h"
-#include "options/validation.h"
-#include "options/manpage.h"
-#include "options/presets.h"
-#include "options/actions.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // RCU-based thread-safe options
+#include <ascii-chat/options/common.h>
+#include <ascii-chat/options/parsers.h>
+#include <ascii-chat/options/validation.h>
+#include <ascii-chat/options/manpage.h>
+#include <ascii-chat/options/presets.h>
+#include <ascii-chat/options/actions.h>
 
-#include "options/config.h"
-#include "options/schema.h"
-#include "asciichat_errno.h"
-#include "common.h"
-#include "log/logging.h"
-#include "colorscheme.h"
-#include "platform/system.h"
-#include "platform/util.h"
-#include "util/path.h"
-#include "util/time.h"
+#include <ascii-chat/options/config.h>
+#include <ascii-chat/options/schema.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/colorscheme.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/util/time.h>
 
 #ifdef _WIN32
 #include <io.h>

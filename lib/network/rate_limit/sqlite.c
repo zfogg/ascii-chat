@@ -5,9 +5,9 @@
  * Persistent implementation for acds discovery server where persistence is needed.
  */
 
-#include "network/rate_limit/sqlite.h"
-#include "log/logging.h"
-#include "util/time.h"
+#include <ascii-chat/network/rate_limit/sqlite.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/time.h>
 #include <sqlite3.h>
 #include <string.h>
 

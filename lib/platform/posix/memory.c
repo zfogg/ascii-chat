@@ -4,7 +4,7 @@
  */
 
 #include <stdlib.h>
-#include "../../common.h"
+#include <ascii-chat/common.h>
 
 #ifdef __APPLE__
 #include <malloc/malloc.h>

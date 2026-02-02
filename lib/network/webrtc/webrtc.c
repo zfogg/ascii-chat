@@ -11,11 +11,11 @@
  * @date January 2026
  */
 
-#include "network/webrtc/webrtc.h"
-#include "asciichat_errno.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/init.h"
+#include <ascii-chat/network/webrtc/webrtc.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/init.h>
 
 #include <string.h>
 #include <rtc/rtc.h>

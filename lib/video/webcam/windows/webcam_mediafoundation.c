@@ -7,11 +7,11 @@
 #ifdef _WIN32
 
 #define COBJMACROS
-#include "video/webcam/webcam.h"
-#include "common.h"
-#include "util/time.h"
-#include "util/overflow.h"
-#include "platform/system.h"
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/platform/system.h>
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>

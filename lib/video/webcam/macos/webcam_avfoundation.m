@@ -11,9 +11,9 @@
 #import <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
 
-#include "video/webcam/webcam.h"
-#include "common.h"
-#include "util/image.h"
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/image.h>
 
 // AVFoundation timeout configuration
 #define AVFOUNDATION_FRAME_TIMEOUT_NS 500000000         // 500ms timeout (adjustable for slow cameras)

@@ -4,8 +4,8 @@
  * @brief 📊 Byte size formatting utilities for human-readable output (B, KB, MB, GB, TB)
  */
 
-#include "format.h"
-#include "platform/system.h"
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/platform/system.h>
 
 void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
   const double KB = 1024.0;

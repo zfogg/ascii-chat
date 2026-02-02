@@ -9,17 +9,17 @@
  * @date January 2026
  */
 
-#include "network/acip/send.h"
-#include "network/acip/transport.h"
-#include "network/packet.h"
-#include "buffer_pool.h"
-#include "util/overflow.h"
-#include "util/endian.h"
-#include "asciichat_errno.h"
-#include "log/logging.h"
-#include "audio/audio.h"
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/audio/audio.h>
 #include <string.h>
-#include "network/crc32.h"
+#include <ascii-chat/network/crc32.h>
 #include <time.h>
 // =============================================================================
 // Packet Helper (wraps payload with header and sends via transport)

@@ -6,10 +6,10 @@
  */
 
 #include <errno.h>
-#include "terminal.h"
-#include "abstraction.h"
-#include "../options/options.h"
-#include "../common.h"
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/common.h>
 
 // ============================================================================
 // Common Platform Functions

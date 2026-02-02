@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "crypto/crypto.h"
+#include <ascii-chat/crypto/crypto.h>
 #include "client.h"
 
 // Initialize server crypto handshake

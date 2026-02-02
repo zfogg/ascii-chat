@@ -12,11 +12,11 @@
 
 #include <tmmintrin.h>
 
-#include "ssse3.h"
-#include "ascii_simd.h"
-#include "common.h"
-#include "../output_buffer.h"
-#include "util/overflow.h"
+#include <ascii-chat/video/simd/ssse3.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/output_buffer.h>
+#include <ascii-chat/util/overflow.h>
 
 //=============================================================================
 // Image-based API (matches NEON architecture)

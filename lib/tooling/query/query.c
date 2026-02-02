@@ -10,7 +10,7 @@
  * - Windows: Uses CreateProcess to spawn controller
  */
 
-#include "query.h"
+#include <ascii-chat/tooling/query/query.h>
 
 #include <stdbool.h>
 #include <stdint.h>

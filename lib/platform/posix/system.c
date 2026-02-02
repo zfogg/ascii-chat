@@ -6,17 +6,17 @@
 
 #ifndef _WIN32
 
-#include "../abstraction.h"
-#include "../internal.h"
-#include "../../common.h" // For log_error()
-#include "../../common/buffer_sizes.h"
-#include "../../asciichat_errno.h"
-#include "../../util/ip.h"
-#include "../../util/string.h"
-#include "../../util/time.h"
-#include "../../util/utf8.h"
-#include "../symbols.h"            // For symbol cache
-#include "../../options/options.h" // For options_get()
+#include <ascii-chat/platform/api.h>
+#include <ascii-chat/platform/internal.h>
+#include <ascii-chat/common.h> // For log_error()
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/platform/symbols.h> // For symbol cache
+#include <ascii-chat/options/options.h>  // For options_get()
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -1292,6 +1292,6 @@ asciichat_error_t platform_restore_timer_resolution(void) {
 }
 
 // Include cross-platform system utilities (binary PATH detection)
-#include "../system.c"
+#include <ascii-chat/system.c>
 
 #endif // !_WIN32

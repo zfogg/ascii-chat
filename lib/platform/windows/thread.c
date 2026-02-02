@@ -7,10 +7,10 @@
 #ifdef _WIN32
 
 #include <windows.h>
-#include "../../common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "platform/thread.h"
-#include "util/path.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/util/path.h>
 #include <process.h>
 #include <stdint.h>
 #include <stdlib.h>

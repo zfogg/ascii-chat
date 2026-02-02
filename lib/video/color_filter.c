@@ -4,8 +4,8 @@
  * @ingroup video
  */
 
-#include "color_filter.h"
-#include "common.h"
+#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/common.h>
 #include <string.h>
 
 /**

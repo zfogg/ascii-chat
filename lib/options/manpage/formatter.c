@@ -7,8 +7,8 @@
  * for man pages.
  */
 
-#include "formatter.h"
-#include "../../common.h"
+#include <ascii-chat/options/manpage/formatter.h>
+#include <ascii-chat/common.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

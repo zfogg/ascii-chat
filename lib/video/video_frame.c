@@ -5,10 +5,10 @@
  * @brief 🎬 Video frame buffer management for client-specific ASCII rendering
  */
 
-#include "video_frame.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "buffer_pool.h"
+#include <ascii-chat/video/video_frame.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/buffer_pool.h>
 #include <string.h>
 #include <stdlib.h>
 

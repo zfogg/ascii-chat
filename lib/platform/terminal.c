@@ -4,11 +4,11 @@
  * @brief Cross-platform unified color detection and terminal capabilities
  */
 
-#include "terminal.h"
-#include "abstraction.h"
-#include "../options/options.h"
-#include "../options/rcu.h"
-#include "../common.h"
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/common.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif

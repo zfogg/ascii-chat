@@ -58,9 +58,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "common.h"
-#include "network/webrtc/stun.h"
-#include "network/webrtc/turn.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/network/webrtc/stun.h>
+#include <ascii-chat/network/webrtc/turn.h>
 
 /**
  * @brief Discovery server configuration

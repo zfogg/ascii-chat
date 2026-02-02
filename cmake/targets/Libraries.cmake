@@ -82,8 +82,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
 
     # Include paths
     target_include_directories(${MODULE_NAME} PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
-        $<INSTALL_INTERFACE:include/ascii-chat>
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>  # Public headers during build
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>  # Generated headers during build
+        $<INSTALL_INTERFACE:include>  # Installed headers (relative to prefix)
     )
 
     # Build directory for llvm-symbolizer --debug-file-directory (debug builds only)

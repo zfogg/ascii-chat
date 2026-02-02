@@ -6,8 +6,8 @@
 #pragma once
 
 #include "client.h"
-#include "network/network.h"
-#include "network/packet.h"
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/network/packet.h>
 #include <stdatomic.h>
 
 // Global shutdown flag

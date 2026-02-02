@@ -6,9 +6,9 @@
 
 #include <zstd.h>
 #include <string.h>
-#include "compression.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
+#include <ascii-chat/network/compression.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 
 // Compress data using zstd with configurable compression level
 asciichat_error_t compress_data(const void *input, size_t input_size, void **output, size_t *output_size,

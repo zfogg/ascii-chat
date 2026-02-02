@@ -9,15 +9,15 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-#include "platform/abstraction.h"
+#include <ascii-chat/platform/abstraction.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "ascii_simd.h"
+#include <ascii-chat/video/simd/ascii_simd.h>
 
-#include "common.h"
-#include "../image.h"
-#include "video/palette.h"
-#include "util/number.h" // For write_u8
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/util/number.h> // For write_u8
 
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation

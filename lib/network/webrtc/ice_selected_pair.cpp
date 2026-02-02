@@ -10,8 +10,8 @@
  * @date January 2026
  */
 
-#include "ice.h"
-#include "webrtc.h"
+#include <ascii-chat/network/webrtc/ice.h>
+#include <ascii-chat/network/webrtc/webrtc.h>
 
 #include <rtc/rtc.hpp>
 #include <string>

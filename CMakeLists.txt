@@ -134,10 +134,13 @@ endif()
 # Generate paths.h with baked-in install prefix
 # =============================================================================
 configure_file(
-    "${CMAKE_SOURCE_DIR}/lib/paths.h.in"
+    "${CMAKE_SOURCE_DIR}/include/ascii-chat/paths.h.in"
     "${CMAKE_BINARY_DIR}/generated/paths.h"
     @ONLY
 )
+# Copy generated paths.h back to include/ascii-chat/ for consistency
+file(COPY "${CMAKE_BINARY_DIR}/generated/paths.h"
+     DESTINATION "${CMAKE_SOURCE_DIR}/include/ascii-chat")
 message(STATUS "Generated paths.h with ASCIICHAT_INSTALL_PREFIX=${BoldYellow}${CMAKE_INSTALL_PREFIX}${ColorReset}")
 
 # Only Ninja generator is supported - enforce this requirement

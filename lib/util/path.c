@@ -4,11 +4,11 @@
  * @brief 📂 Cross-platform path manipulation with normalization and Windows/Unix separator handling
  */
 
-#include "path.h"
-#include "common.h"
-#include "common/error_codes.h"
-#include "platform/system.h"
-#include "platform/filesystem.h"
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/error_codes.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>

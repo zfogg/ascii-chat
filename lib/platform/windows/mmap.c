@@ -4,8 +4,8 @@
  * @ingroup platform
  */
 
-#include "platform/mmap.h"
-#include "log/logging.h"
+#include <ascii-chat/platform/mmap.h>
+#include <ascii-chat/log/logging.h>
 
 #include <windows.h>
 

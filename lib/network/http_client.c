@@ -4,12 +4,12 @@
  * @brief 🌐 HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA validation
  */
 
-#include "http_client.h"
-#include "../common.h"
-#include "../crypto/pem_utils.h"
-#include "version.h"
-#include "asciichat_errno.h"
-#include "platform/socket.h"
+#include <ascii-chat/network/http_client.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/crypto/pem_utils.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/socket.h>
 
 #include <ascii-chat-deps/bearssl/inc/bearssl.h>
 #ifndef _WIN32

@@ -6,10 +6,10 @@
 
 #ifdef _WIN32
 
-#include "../filesystem.h"
-#include "../util.h"
-#include "../../common.h"
-#include "../../log/logging.h"
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 #include <windows.h>
 #include <aclapi.h>
 #include <sddl.h>

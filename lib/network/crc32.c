@@ -4,8 +4,8 @@
  * @brief ⚡ Hardware-accelerated CRC32 checksum with ARM64 and x86_64 CPU feature detection
  */
 
-#include "network/crc32.h"
-#include "platform/system.h"
+#include <ascii-chat/network/crc32.h>
+#include <ascii-chat/platform/system.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>

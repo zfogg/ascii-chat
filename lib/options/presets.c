@@ -4,17 +4,17 @@
  * @ingroup options
  */
 
-#include "builder.h"
-#include "options.h"
-#include "parsers.h"
-#include "actions.h"
-#include "config.h"
-#include "common.h"
-#include "platform/terminal.h"
-#include "video/palette.h"
-#include "log/logging.h"
-#include "registry.h"
-#include "discovery/strings.h" // Added for dynamic session string generation
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/parsers.h>
+#include <ascii-chat/options/actions.h>
+#include <ascii-chat/options/config.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/registry.h>
+#include <ascii-chat/discovery/strings.h> // Added for dynamic session string generation
 
 // ============================================================================
 // NOTE: All static parser functions and group helper functions have been

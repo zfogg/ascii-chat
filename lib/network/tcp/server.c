@@ -16,13 +16,13 @@
 #include <netdb.h>
 #endif
 
-#include "network/tcp/server.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/socket.h"
-#include "platform/thread.h"
-#include "thread_pool.h"
-#include "util/ip.h"
+#include <ascii-chat/network/tcp/server.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/thread_pool.h>
+#include <ascii-chat/util/ip.h>
 
 /**
  * @brief Bind and listen on a TCP socket

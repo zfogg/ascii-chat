@@ -11,7 +11,7 @@
 #include <unistd.h>
 #endif
 
-#include "../common.h"
+#include <ascii-chat/common.h>
 
 const char *test_get_binary_path(void) {
   static char binary_path[256];

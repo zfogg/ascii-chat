@@ -4,9 +4,9 @@
  * @ingroup platform
  */
 
-#include "../system.h"
-#include "../../log/logging.h"
-#include "../../asciichat_errno.h"
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/asciichat_errno.h>
 #include <windows.h>
 
 asciichat_error_t platform_enable_keepawake(void) {

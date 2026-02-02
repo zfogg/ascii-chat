@@ -4,11 +4,11 @@
  * @brief ⚡ Fast ANSI color code generation with SIMD-accelerated terminal output
  */
 
-#include "common.h"
-#include "video/simd/ascii_simd.h"
-#include "ansi_fast.h"
-#include "util/math.h"
-#include "platform/init.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/util/math.h>
+#include <ascii-chat/platform/init.h>
 #include <string.h>
 #include <time.h>
 #ifndef _WIN32

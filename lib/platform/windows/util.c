@@ -6,8 +6,8 @@
 
 #ifdef _WIN32
 
-#include "../util.h"
-#include "../../common.h"
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/common.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

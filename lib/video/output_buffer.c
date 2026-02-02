@@ -4,8 +4,8 @@
  * @brief 📝 Output buffer helpers for efficient string building in ASCII rendering pipeline
  */
 
-#include "video/output_buffer.h"
-#include "common.h"
+#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/common.h>
 
 /*****************************************************************************/
 // char* output buffer helpers

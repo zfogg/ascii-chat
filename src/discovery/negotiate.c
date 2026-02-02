@@ -6,9 +6,9 @@
 
 #include "negotiate.h"
 
-#include "common.h"
-#include "log/logging.h"
-#include "network/acip/acds.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/network/acip/acds.h>
 
 #include <string.h>
 

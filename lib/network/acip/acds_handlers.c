@@ -9,13 +9,13 @@
  * @date January 2026
  */
 
-#include "network/acip/acds_handlers.h"
-#include "network/acip/messages.h"
-#include "network/packet.h"
-#include "log/logging.h"
-#include "asciichat_errno.h"
-#include "common.h"
-#include "util/endian.h"
+#include <ascii-chat/network/acip/acds_handlers.h>
+#include <ascii-chat/network/acip/messages.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
 #include <string.h>
 
 // =============================================================================
@@ -31,8 +31,8 @@ typedef asciichat_error_t (*acip_acds_handler_func_t)(const void *payload, size_
 #define ACDS_HANDLER_COUNT 11
 
 typedef struct {
-  packet_type_t key;    // 0 = empty slot
-  uint8_t handler_idx;  // handler index (0-based)
+  packet_type_t key;   // 0 = empty slot
+  uint8_t handler_idx; // handler index (0-based)
 } acds_hash_entry_t;
 
 #define ACDS_HASH(type) ((type) % ACDS_HASH_SIZE)
@@ -41,8 +41,10 @@ static inline int acds_handler_hash_lookup(const acds_hash_entry_t *table, packe
   uint32_t h = ACDS_HASH(type);
   for (int i = 0; i < ACDS_HASH_SIZE; i++) {
     uint32_t slot = (h + i) % ACDS_HASH_SIZE;
-    if (table[slot].key == 0) return -1;
-    if (table[slot].key == type) return table[slot].handler_idx;
+    if (table[slot].key == 0)
+      return -1;
+    if (table[slot].key == type)
+      return table[slot].handler_idx;
   }
   return -1;
 }

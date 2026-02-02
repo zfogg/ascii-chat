@@ -41,9 +41,9 @@
 #pragma once
 
 #include <stdbool.h>
-#include "thread_pool.h"
-#include "network/tcp/client.h"
-#include "crypto/handshake/common.h"
+#include <ascii-chat/thread_pool.h>
+#include <ascii-chat/network/tcp/client.h>
+#include <ascii-chat/crypto/handshake/common.h>
 
 /**
  * @brief Global crypto handshake context for this client connection

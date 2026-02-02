@@ -159,18 +159,18 @@
 #include "main.h"
 #include "stream.h"
 #include "protocol.h"
-#include "common.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "platform/abstraction.h"
-#include "platform/init.h"
-#include "network/packet_queue.h"
-#include "util/time.h"
-#include "audio/mixer.h"
-#include "audio/audio.h"
-#include "audio/opus_codec.h"
-#include "util/format.h"
-#include "util/fps.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/util/fps.h>
 
 /* ============================================================================
  * Cross-Platform Utility Functions

@@ -21,13 +21,13 @@
  */
 
 #include "webrtc.h"
-#include "network/acip/acds.h"
-#include "network/acip/protocol.h"
-#include "network/acip/send.h"
-#include "util/endian.h"
-#include "common.h"
-#include "platform/abstraction.h"
-#include "platform/init.h"
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/acip/protocol.h>
+#include <ascii-chat/network/acip/send.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
 
 #include <string.h>
 

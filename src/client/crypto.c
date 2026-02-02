@@ -149,21 +149,21 @@
 #include "main.h"
 #include "crypto.h"
 #include "server.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "common.h"
-#include "util/endian.h"
-#include "crypto/handshake/common.h"
-#include "crypto/handshake/client.h"
-#include "crypto/crypto.h"
-#include "crypto/keys.h"
-#include "crypto/discovery_keys.h"
-#include "buffer_pool.h"
-#include "network/packet.h"
-#include "network/acip/acds_client.h"
-#include "network/mdns/discovery.h" // For pubkey_to_hex
-#include "util/time.h"
-#include "util/endian.h"
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/crypto/handshake/client.h>
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/crypto/discovery_keys.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/acip/acds_client.h>
+#include <ascii-chat/network/mdns/discovery.h> // For pubkey_to_hex
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/endian.h>
 #include "capture.h"
 
 #include <string.h>
@@ -171,8 +171,8 @@
 #include <sys/stat.h>
 #include <sodium.h>
 
-#include "platform/question.h"
-#include "platform/init.h"
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/init.h>
 
 /**
  * @brief Flag indicating if crypto subsystem has been initialized

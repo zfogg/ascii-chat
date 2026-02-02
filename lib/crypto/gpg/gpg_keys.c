@@ -4,14 +4,14 @@
  * @brief 🔑 GPG public key extraction and validation from GPG keyrings
  */
 
-#include "gpg_keys.h"
-#include "openpgp.h" // For openpgp_parse_armored_pubkey()
-#include "../keys_validation.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "platform/string.h"
-#include "platform/process.h"
-#include "export.h" // For gpg_get_public_key()
+#include <ascii-chat/crypto/gpg/gpg_keys.h>
+#include <ascii-chat/crypto/gpg/openpgp.h> // For openpgp_parse_armored_pubkey()
+#include <ascii-chat/crypto/keys_validation.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/string.h>
+#include <ascii-chat/platform/process.h>
+#include <ascii-chat/crypto/gpg/export.h> // For gpg_get_public_key()
 #include <sodium.h>
 #include <string.h>
 #include <stdlib.h>

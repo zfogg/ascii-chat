@@ -6,9 +6,9 @@
 
 #ifdef _WIN32
 
-#include "../abstraction.h"
-#include "common.h"
-#include "../windows_compat.h"
+#include <ascii-chat/platform/api.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/windows_compat.h>
 
 /**
  * @brief Initialize a read-write lock

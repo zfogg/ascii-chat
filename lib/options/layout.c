@@ -6,11 +6,11 @@
  * Uses utf8proc library for accurate UTF-8 display width calculation.
  */
 
-#include "layout.h"
-#include "log/logging.h"
-#include "util/utf8.h"
-#include "video/ansi.h"
-#include "common.h"
+#include <ascii-chat/options/layout.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/common.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <string.h>
 #include <stdio.h>

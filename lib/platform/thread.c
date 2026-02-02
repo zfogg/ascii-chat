@@ -7,9 +7,9 @@
  * @date December 2025
  */
 
-#include "thread.h"
-#include "common.h"
-#include "log/logging.h"
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 
 asciichat_error_t thread_create_or_fail(asciichat_thread_t *thread, void *(*func)(void *), void *arg,
                                         const char *thread_name, uint32_t client_id) {

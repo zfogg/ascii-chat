@@ -7,7 +7,7 @@
  * and UTF-8 handling.
  */
 
-#include "utf8.h"
+#include <ascii-chat/util/utf8.h>
 #include <ascii-chat-deps/utf8proc/utf8proc.h>
 #include <stdbool.h>
 #include <string.h>

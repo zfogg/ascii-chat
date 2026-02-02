@@ -478,26 +478,26 @@ Test(crypto_options, relative_file_paths) {
 // Help and Usage Tests
 // =============================================================================
 
-// Test that --help calls exit(0) - runs in separate process
-Test(crypto_options, help_display, .exit_code = 0) {
+// Test that --help returns success (previously called exit(0))
+Test(crypto_options, help_display) {
   const char *argv[] = {"program", "--help"};
 
-  // This will call exit(0) after printing help
-  options_init(2, (char **)argv);
+  // options_init now returns a value instead of calling exit()
+  asciichat_error_t result = options_init(2, (char **)argv);
 
-  // Should never reach here due to exit(0)
-  cr_fatal("Should have exited before reaching this line");
+  // Help display should return success (sets help flag in options)
+  cr_assert_eq(result, ASCIICHAT_OK, "Help display should return success");
 }
 
-// Test that --version calls exit(0) - runs in separate process
-Test(crypto_options, version_display, .exit_code = 0) {
+// Test that --version returns success (previously called exit(0))
+Test(crypto_options, version_display) {
   const char *argv[] = {"program", "--version"};
 
-  // This will call exit(0) after printing version
-  options_init(2, (char **)argv);
+  // options_init now returns a value instead of calling exit()
+  asciichat_error_t result = options_init(2, (char **)argv);
 
-  // Should never reach here due to exit(0)
-  cr_fatal("Should have exited before reaching this line");
+  // Version display should return success (sets version flag in options)
+  cr_assert_eq(result, ASCIICHAT_OK, "Version display should return success");
 }
 
 // =============================================================================

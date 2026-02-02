@@ -13,10 +13,10 @@
  * server-side utilities for any ACIP server implementation.
  */
 
-#include "network/acip/acds_server.h"
-#include "network/packet.h"
-#include "log/logging.h"
-#include "common.h"
+#include <ascii-chat/network/acip/acds_server.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
 
 #include <string.h>
 

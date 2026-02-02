@@ -5,10 +5,10 @@
  * @brief 🌐 Cross-platform socket I/O with timeout management and connection handling
  */
 
-#include "network.h"
-#include "common.h"
-#include "asciichat_errno.h"
-#include "platform/socket.h"
+#include <ascii-chat/network/network.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/socket.h>
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

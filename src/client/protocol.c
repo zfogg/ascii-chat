@@ -79,32 +79,32 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio/audio.h"
-#include "audio/analysis.h"
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/analysis.h>
 #include "keepalive.h"
-#include "thread_pool.h"
+#include <ascii-chat/thread_pool.h>
 
-#include "network/packet.h"
-#include "network/packet_parsing.h"
-#include "network/packet_parsing.h"
-#include "network/acip/handlers.h"
-#include "network/acip/transport.h"
-#include "network/acip/client.h"
-#include "network/acip/acds.h"
-#include "network/webrtc/peer_manager.h"
-#include "buffer_pool.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "util/endian.h"
-#include "util/validation.h"
-#include "util/endian.h"
-#include "util/format.h"
-#include "options/options.h"
-#include "options/rcu.h" // For RCU-based options access
-#include "network/crc32.h"
-#include "util/fps.h"
-#include "util/time.h"
-#include "crypto/crypto.h"
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/acip/handlers.h>
+#include <ascii-chat/network/acip/transport.h>
+#include <ascii-chat/network/acip/client.h>
+#include <ascii-chat/network/acip/acds.h>
+#include <ascii-chat/network/webrtc/peer_manager.h>
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/validation.h>
+#include <ascii-chat/util/endian.h>
+#include <ascii-chat/util/format.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/rcu.h> // For RCU-based options access
+#include <ascii-chat/network/crc32.h>
+#include <ascii-chat/util/fps.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/crypto/crypto.h>
 
 // Forward declaration for client crypto functions
 bool crypto_client_is_ready(void);
@@ -113,7 +113,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
                                  size_t plaintext_size, size_t *plaintext_len);
 
 #include "crypto.h"
-#include "util/time.h"
+#include <ascii-chat/util/time.h>
 
 #include <stdatomic.h>
 #include <string.h>
@@ -122,11 +122,11 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include <stdio.h>
 
 #ifdef _WIN32
-#include "platform/windows_compat.h"
+#include <ascii-chat/platform/windows_compat.h>
 #endif
 
-#include "network/compression.h"
-#include "network/packet_parsing.h"
+#include <ascii-chat/network/compression.h>
+#include <ascii-chat/network/packet_parsing.h>
 
 #include <errno.h>
 

@@ -12,8 +12,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "common.h"
-#include "platform/pipe.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/pipe.h>
 
 pipe_t platform_pipe_connect(const char *path) {
   if (!path) {

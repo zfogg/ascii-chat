@@ -11,10 +11,10 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include "common.h"
-#include "uthash/uthash.h" // UBSan-safe uthash wrapper
-#include "log/logging.h"
-#include "util/string.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/uthash/uthash.h> // UBSan-safe uthash wrapper
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/util/string.h>
 
 // Platform-specific binary suffix
 #ifdef _WIN32

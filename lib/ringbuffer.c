@@ -4,12 +4,12 @@
  * @brief 🎯 Lock-free circular buffer for audio streaming with atomic operations
  */
 
-#include "ringbuffer.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "buffer_pool.h"
-#include "util/math.h" // For power-of-two utilities
-#include "util/bits.h" // For is_power_of_two, next_power_of_two
+#include <ascii-chat/ringbuffer.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/buffer_pool.h>
+#include <ascii-chat/util/math.h> // For power-of-two utilities
+#include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>

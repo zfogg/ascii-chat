@@ -3,7 +3,7 @@
  * @brief POSIX error handling implementation
  */
 
-#include "../errno.h"
+#include <ascii-chat/platform/errno.h>
 #include <errno.h>
 
 void platform_clear_error_state(void) {

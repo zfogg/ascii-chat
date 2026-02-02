@@ -10,16 +10,16 @@
  * @date January 2026
  */
 
-#include "capture.h"
-#include "common.h"
-#include "log/logging.h"
-#include "media/source.h"
-#include "options/options.h"
-#include "video/image.h"
-#include "util/time.h"
-#include "util/fps.h"
-#include "audio/audio.h"
-#include "asciichat_errno.h"
+#include <ascii-chat/session/capture.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/media/source.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/fps.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/asciichat_errno.h>
 
 #include <stdio.h>
 #include <string.h>

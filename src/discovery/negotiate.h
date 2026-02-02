@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include "asciichat_errno.h"
+#include <ascii-chat/asciichat_errno.h>
 #include "nat.h"
-#include "platform/socket.h"
+#include <ascii-chat/platform/socket.h>
 #include <stdbool.h>
 #include <stdint.h>
 

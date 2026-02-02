@@ -10,19 +10,19 @@
  * @date January 2026
  */
 
-#include "display.h"
-#include "common.h"
-#include "log/logging.h"
-#include "options/options.h"
-#include "platform/terminal.h"
-#include "platform/abstraction.h"
-#include "video/ansi_fast.h"
-#include "video/palette.h"
-#include "video/ascii.h"
-#include "video/color_filter.h"
-#include "video/image.h"
-#include "audio/audio.h"
-#include "asciichat_errno.h"
+#include <ascii-chat/session/display.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/asciichat_errno.h>
 
 #include <string.h>
 #include <stdio.h>

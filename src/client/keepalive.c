@@ -65,12 +65,12 @@
 #include "main.h"
 #include "server.h"
 #include "crypto.h"
-#include "util/fps.h"
-#include "util/time.h"
+#include <ascii-chat/util/fps.h>
+#include <ascii-chat/util/time.h>
 
-#include "common.h"
-#include "platform/abstraction.h"
-#include "thread_pool.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/thread_pool.h>
 
 #include <stdatomic.h>
 

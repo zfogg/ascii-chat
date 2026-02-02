@@ -16,8 +16,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "crypto/crypto.h"
-#include "platform/socket.h"
+#include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/platform/socket.h>
 
 /**
  * @brief Initialize client crypto handshake

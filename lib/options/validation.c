@@ -4,20 +4,20 @@
  * @brief Implementation of options validation functions
  */
 
-#include "options/validation.h"
+#include <ascii-chat/options/validation.h>
 
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
-#include "log/logging.h"
-#include "platform/terminal.h"
-#include "platform/util.h"
-#include "util/ip.h"
-#include "util/parsing.h"
-#include "video/palette.h"
-#include "options/options.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/util/ip.h>
+#include <ascii-chat/util/parsing.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/options/options.h>
 
 // ============================================================================
 // Generic Integer Range Validator

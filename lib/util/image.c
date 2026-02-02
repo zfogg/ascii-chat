@@ -4,9 +4,9 @@
  * @brief 🖼️ Safe overflow-checked buffer size calculations for images and video frames
  */
 
-#include "image.h"
-#include "common.h"
-#include "video/image.h"
+#include <ascii-chat/util/image.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/image.h>
 #include <limits.h>
 
 asciichat_error_t image_calc_pixel_count(size_t width, size_t height, size_t *out_pixel_count) {

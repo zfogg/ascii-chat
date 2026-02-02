@@ -6,9 +6,9 @@
  * This implementation provides service advertisement and discovery for LAN-based sessions.
  */
 
-#include "network/mdns/mdns.h"
-#include "common.h"
-#include "platform/socket.h"
+#include <ascii-chat/network/mdns/mdns.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/platform/socket.h>
 #include <string.h>
 #include <stdio.h>
 #include <ascii-chat-deps/mdns/mdns.h>

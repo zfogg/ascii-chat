@@ -4,11 +4,11 @@
  * @brief Audio Analysis Implementation
  */
 
-#include "audio/analysis.h"
-#include "common.h"
-#include "log/logging.h"
-#include "audio/wav_writer.h"
-#include "util/time.h"
+#include <ascii-chat/audio/analysis.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/audio/wav_writer.h>
+#include <ascii-chat/util/time.h>
 #include <math.h>
 #include <stdio.h>
 #include <time.h>

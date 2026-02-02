@@ -6,11 +6,11 @@
 
 #ifndef _WIN32
 
-#include "../filesystem.h"
-#include "../system.h"
-#include "../util.h"
-#include "../../common.h"
-#include "../../log/logging.h"
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -471,7 +471,7 @@ asciichat_error_t platform_find_config_file(const char *filename, config_file_li
   // Backward compatibility: Legacy paths
   const char *legacy_dirs[] = {
 #ifdef __APPLE__
-      "/opt/homebrew/etc/ascii-chat",            // macOS Homebrew ARM
+      "/opt/homebrew/etc/ascii-chat", // macOS Homebrew ARM
 #else
       "/home/linuxbrew/.linuxbrew/etc/ascii-chat", // Linux Homebrew (system-wide)
 #endif

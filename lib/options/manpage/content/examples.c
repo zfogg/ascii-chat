@@ -4,10 +4,10 @@
  * @ingroup options_manpage
  */
 
-#include "examples.h"
-#include "../../../log/logging.h"
-#include "../../../common.h"
-#include "options/manpage.h"
+#include <ascii-chat/options/manpage/content/examples.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/options/manpage.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

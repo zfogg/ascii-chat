@@ -3,13 +3,13 @@
  * @brief 🔒 RCU-based thread-safe options state implementation
  */
 
-#include "options/rcu.h"
-#include "options/schema.h"
-#include "asciichat_errno.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/abstraction.h"
-#include "platform/init.h"
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/schema.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
 
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -534,6 +534,10 @@ static void bool_field_updater(options_t *opts, void *context) {
     opts->auto_width = ctx->value;
   else if (strcmp(ctx->field_name, "auto_height") == 0)
     opts->auto_height = ctx->value;
+  else if (strcmp(ctx->field_name, "splash") == 0)
+    opts->splash = ctx->value;
+  else if (strcmp(ctx->field_name, "status_screen") == 0)
+    opts->status_screen = ctx->value;
 }
 
 asciichat_error_t options_set_bool(const char *field_name, bool value) {
@@ -560,7 +564,8 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "require_client_identity") != 0 && strcmp(field_name, "require_server_verify") != 0 &&
       strcmp(field_name, "require_client_verify") != 0 && strcmp(field_name, "palette_custom_set") != 0 &&
       strcmp(field_name, "media_loop") != 0 && strcmp(field_name, "media_from_stdin") != 0 &&
-      strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0) {
+      strcmp(field_name, "auto_width") != 0 && strcmp(field_name, "auto_height") != 0 &&
+      strcmp(field_name, "splash") != 0 && strcmp(field_name, "status_screen") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }

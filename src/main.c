@@ -26,29 +26,29 @@
 #include "client/main.h"
 #include "mirror/main.h"
 #include "discovery-service/main.h"
-#include "discovery/main.h"
+#include <ascii-chat/discovery/main.h>
 
 // Utilities
-#include "util/utf8.h"
-#include "util/time.h"
-#include "util/string.h"
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/util/string.h>
 
 // Common headers for version info and initialization
-#include "common.h"
-#include "version.h"
-#include "options/options.h"
-#include "options/common.h"
-#include "options/rcu.h"
-#include "options/builder.h"
-#include "options/colorscheme.h"
-#include "log/logging.h"
-#include "platform/terminal.h"
-#include "util/path.h"
-#include "options/colorscheme.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/options/common.h>
+#include <ascii-chat/options/rcu.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/options/colorscheme.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/util/path.h>
+#include <ascii-chat/options/colorscheme.h>
 
 #ifndef NDEBUG
-#include "asciichat_errno.h"
-#include "debug/lock.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/debug/lock.h>
 #endif
 
 /* ============================================================================

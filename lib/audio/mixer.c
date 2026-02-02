@@ -4,13 +4,13 @@
  * @brief 🎚️ Real-time audio mixer with ducking, gain control, and multi-stream blending
  */
 
-#include "audio/audio.h"
-#include "audio/mixer.h"
-#include "common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
-#include "util/time.h"       // For timing instrumentation
-#include "util/bits.h"       // For find_first_set_bit
-#include "util/overflow.h"   // For overflow checking
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/audio/mixer.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
+#include <ascii-chat/util/time.h>       // For timing instrumentation
+#include <ascii-chat/util/bits.h>       // For find_first_set_bit
+#include <ascii-chat/util/overflow.h>   // For overflow checking
 #include <math.h>
 #include <string.h>
 #include <stdint.h>

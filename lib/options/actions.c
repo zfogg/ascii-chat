@@ -10,26 +10,26 @@
  * Examples: --list-webcams, --list-microphones, --list-speakers, --show-capabilities
  */
 
-#include "actions.h"
+#include <ascii-chat/options/actions.h>
 #include <string.h>
 #include <stddef.h>
 
-#include "asciichat_errno.h"
-#include "common.h"
-#include "log/logging.h"
-#include "options/manpage.h"
-#include "options/presets.h"
-#include "options/config.h"
-#include "options/completions/completions.h"
-#include "options/schema.h"
-#include "platform/terminal.h"
-#include "platform/question.h"
-#include "platform/stat.h"
-#include "version.h"
-#include "video/webcam/webcam.h"
-#include "audio/audio.h"
-#include "util/string.h"
-#include "util/path.h"
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/options/manpage.h>
+#include <ascii-chat/options/presets.h>
+#include <ascii-chat/options/config.h>
+#include <ascii-chat/options/completions/completions.h>
+#include <ascii-chat/options/schema.h>
+#include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/stat.h>
+#include <ascii-chat/version.h>
+#include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/audio/audio.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/path.h>
 
 #include <stdio.h>
 #include <stdlib.h>

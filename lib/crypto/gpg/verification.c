@@ -4,17 +4,17 @@
  * @brief GPG signature verification implementation
  */
 
-#include "verification.h"
-#include "signing.h"
-#include "../keys.h"
-#include "common.h"
-#include "util/string.h"
-#include "util/validation.h"
-#include "log/logging.h"
-#include "platform/system.h"
-#include "platform/filesystem.h"
-#include "platform/util.h"
-#include "platform/process.h"
+#include <ascii-chat/crypto/gpg/verification.h>
+#include <ascii-chat/crypto/gpg/signing.h>
+#include <ascii-chat/crypto/keys.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/validation.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/process.h>
 
 #include <ctype.h>
 #include <errno.h>

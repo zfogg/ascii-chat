@@ -16,9 +16,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "upnp.h"
-#include "common.h"
-#include "log/logging.h"
+#include <ascii-chat/network/nat/upnp.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
 
 #ifdef __APPLE__
 // Only include natpmp if we're on Apple and miniupnpc is available

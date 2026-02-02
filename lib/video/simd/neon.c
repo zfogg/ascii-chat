@@ -17,15 +17,15 @@
 
 #include <arm_neon.h>
 
-#include "common.h"
-#include "neon.h"
-#include "ascii_simd.h"
-#include "../image.h"
-#include "video/simd/common.h"
-#include "video/output_buffer.h"
-#include "video/ansi_fast.h"
-#include "util/overflow.h"
-#include "platform/init.h"
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/simd/neon.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/platform/init.h>
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance

@@ -13,20 +13,20 @@
  * @date January 2026
  */
 
-#include "participant.h"
-#include "common.h"
-#include "common/buffer_sizes.h"
-#include "options/options.h"
-#include "asciichat_errno.h"
-#include "platform/socket.h"
-#include "platform/thread.h"
-#include "platform/network.h"
-#include "log/logging.h"
-#include "session/capture.h"
-#include "session/audio.h"
-#include "network/packet.h"
-#include "util/time.h"
-#include "audio/opus_codec.h"
+#include <ascii-chat/session/participant.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/common/buffer_sizes.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/platform/socket.h>
+#include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/network.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/session/capture.h>
+#include <ascii-chat/session/audio.h>
+#include <ascii-chat/network/packet.h>
+#include <ascii-chat/util/time.h>
+#include <ascii-chat/audio/opus_codec.h>
 
 #include <string.h>
 #include <stdio.h>

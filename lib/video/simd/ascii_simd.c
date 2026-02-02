@@ -10,17 +10,17 @@
 #include <time.h>
 #include <stdarg.h>
 
-#include "platform/abstraction.h"
-#include "platform/init.h"
-#include "common.h"
-#include "ascii_simd.h"
-#include "video/palette.h"
-#include "../ascii.h"
-#include "video/output_buffer.h"
-#include "avx2.h"
-#include "util/math.h"
-#include "util/overflow.h"
-#include "util/time.h"
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/platform/init.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/video/simd/avx2.h>
+#include <ascii-chat/util/math.h>
+#include <ascii-chat/util/overflow.h>
+#include <ascii-chat/util/time.h>
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 

@@ -11,21 +11,21 @@
  * - Merger: Intelligently merging auto-generated with manual content
  */
 
-#include "manpage.h"
-#include "manpage/resources.h"
-#include "manpage/parser.h"
-#include "manpage/formatter.h"
-#include "manpage/merger.h"
-#include "manpage/content/options.h"
-#include "manpage/content/environment.h"
-#include "manpage/content/usage.h"
-#include "manpage/content/examples.h"
-#include "manpage/content/positional.h"
-#include "builder.h"
-#include "common.h"
-#include "log/logging.h"
-#include "platform/question.h"
-#include "platform/stat.h"
+#include <ascii-chat/options/manpage.h>
+#include <ascii-chat/options/manpage/resources.h>
+#include <ascii-chat/options/manpage/parser.h>
+#include <ascii-chat/options/manpage/formatter.h>
+#include <ascii-chat/options/manpage/merger.h>
+#include <ascii-chat/options/manpage/content/options.h>
+#include <ascii-chat/options/manpage/content/environment.h>
+#include <ascii-chat/options/manpage/content/usage.h>
+#include <ascii-chat/options/manpage/content/examples.h>
+#include <ascii-chat/options/manpage/content/positional.h>
+#include <ascii-chat/options/builder.h>
+#include <ascii-chat/common.h>
+#include <ascii-chat/log/logging.h>
+#include <ascii-chat/platform/question.h>
+#include <ascii-chat/platform/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
