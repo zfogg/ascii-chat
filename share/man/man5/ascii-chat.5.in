@@ -503,7 +503,11 @@ Specify GPG key with format: gpg:<key-id> or gpg:<fingerprint>
 .SH SEE ALSO
 .BR ascii-chat (1),
 .BR ssh-keygen (1),
-.BR gpg (1)
+.BR ssh-keyscan (1),
+.BR ssh-agent (1),
+.BR gpg (1),
+.BR gpgconf (1),
+.BR gpg-agent (1)
 .
 .SH AUTHOR
 ascii-chat developers
