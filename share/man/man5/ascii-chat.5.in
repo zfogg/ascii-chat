@@ -78,29 +78,35 @@ on Windows.
 .SS Structure
 The file is organized into sections:
 .TP
-.B [network]
-Network configuration (port, compression, etc.)
-.TP
-.B [server]
-Server-specific settings (bind addresses, SSL/TLS)
-.TP
-.B [client]
-Client-specific settings (terminal dimensions, media options)
-.TP
-.B [video]
-Video capture and rendering settings
-.TP
-.B [audio]
-Audio capture and playback settings
-.TP
-.B [palette]
-ASCII art rendering palette selection
-.TP
-.B [crypto]
-Encryption and key management settings
-.TP
 .B [logging]
 Log level and output settings
+.TP
+.B [general]
+General application settings (sleep prevention, etc.)
+.TP
+.B [configuration]
+Configuration file paths and creation settings
+.TP
+.B [terminal]
+Terminal display settings (width, height, color scheme)
+.TP
+.B [webcam]
+Webcam input settings (device index, flip, test pattern)
+.TP
+.B [audio]
+Audio capture and playback settings (device indices, codecs)
+.TP
+.B [display]
+Display rendering settings (aspect ratio, framerate, snapshots)
+.TP
+.B [network]
+Network configuration (port, compression, WebRTC, discovery)
+.TP
+.B [security]
+Encryption and authentication settings (keys, passwords, identity verification)
+.TP
+.B [media]
+Media streaming settings (file/URL input, looping, cookies)
 .TP
 .B [database]
 Discovery service database and persistence settings
@@ -122,15 +128,17 @@ or
 .SS Example Section
 .nf
 [network]
-port = 27224                          # Listen port (1-65535)
 compression_level = 3                 # zstd level (1-9)
-no_compress = false                   # Disable compression
+discovery = false                     # Enable discovery session registration
 
-[client]
-width = 0                             # 0 = auto-detect
-height = 0                            # 0 = auto-detect
-color_mode = "auto"                   # auto, mono, 16, 256, truecolor
-render_mode = "foreground"            # foreground, background, half-block
+[terminal]
+color_scheme = "pastel"               # Color scheme (pastel, nord, dracula, etc.)
+
+[display]
+fps = 60                              # Target framerate (1-144)
+
+[security]
+encrypt = true                        # Enable end-to-end encryption
 .fi
 .
 .SH COLORS.TOML FORMAT
