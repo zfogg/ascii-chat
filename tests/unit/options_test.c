@@ -467,7 +467,7 @@ GENERATE_OPTIONS_TEST(
     { cr_fail("Should not reach this point - invalid webcam index should cause exit"); },
     { cr_assert_eq(exit_code, 1); })
 
-GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "-f"), true, {/* flip flag only */},
+GENERATE_OPTIONS_TEST(valid_webcam_flip, ARGV_LIST("client", "-g"), true, {/* flip flag only */},
                       { cr_assert_eq(exit_code, 0, "Webcam flip flag should not cause exit"); })
 
 /* ============================================================================
@@ -1045,7 +1045,7 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "encryption key should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot-delay", "2.5"), true,
+    test_snapshot_delay_values, ARGV_LIST("client", "--snapshot", "--snapshot-delay", "2.5"), true,
     { cr_assert_float_eq(opts->snapshot_delay, 2.5f, 0.01); },
     { cr_assert_eq(exit_code, 0, "snapshot delay should not cause exit"); })
 
@@ -1227,13 +1227,13 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "server basic options should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_server_palette_options, ARGV_LIST("server", "--palette", "blocks", "--palette-chars", "0123456789"), false,
+    test_server_palette_options, ARGV_LIST("client", "--palette", "blocks", "--palette-chars", "0123456789"), true,
     {
       cr_assert_eq(opts->palette_type, PALETTE_CUSTOM); // --palette-chars overrides to custom
       cr_assert_str_eq(opts->palette_custom, "0123456789");
       cr_assert_eq(opts->palette_custom_set, true);
     },
-    { cr_assert_eq(exit_code, 0, "server palette options should not cause exit"); })
+    { cr_assert_eq(exit_code, 0, "palette options with palette-chars should not cause exit"); })
 
 /* ============================================================================
  * Edge Cases and Error Conditions

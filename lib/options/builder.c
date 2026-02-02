@@ -281,6 +281,11 @@ static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, cons
 }
 
 static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const option_descriptor_t *desc) {
+  // Reject empty strings
+  if (!opt_value || opt_value[0] == '\0') {
+    return SET_ERRNO(ERROR_USAGE, "Option --%s requires a numeric value", desc ? desc->long_name : "unknown");
+  }
+
   char *endptr;
   long value = strtol(opt_value, &endptr, 10);
   if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
