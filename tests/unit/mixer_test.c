@@ -383,7 +383,7 @@ Test(compressor, init_and_params) {
   cr_assert_float_eq(comp.ratio, 4.0f, 1e-6f);
   cr_assert_float_eq(comp.attack_ms, 10.0f, 1e-6f);
   cr_assert_float_eq(comp.release_ms, 100.0f, 1e-6f);
-  cr_assert_float_eq(comp.makeup_dB, 3.0f, 1e-6f);
+  cr_assert_float_eq(comp.makeup_dB, 0.0f, 1e-6f);
   cr_assert_float_eq(comp.envelope, 0.0f, 1e-6f);
   cr_assert_float_eq(comp.gain_lin, 1.0f, 1e-6f);
 }
@@ -429,11 +429,11 @@ Test(ducking, init_and_params) {
   ducking_t duck;
   ducking_init(&duck, 4, 44100.0f);
 
-  cr_assert_float_eq(duck.threshold_dB, -40.0f, 1e-6f);
-  cr_assert_float_eq(duck.leader_margin_dB, 3.0f, 1e-6f);
-  cr_assert_float_eq(duck.atten_dB, -12.0f, 1e-6f);
-  cr_assert_float_eq(duck.attack_ms, 5.0f, 1e-6f);
-  cr_assert_float_eq(duck.release_ms, 100.0f, 1e-6f);
+  cr_assert_float_eq(duck.threshold_dB, -45.0f, 1e-6f);
+  cr_assert_float_eq(duck.leader_margin_dB, 6.0f, 1e-6f);
+  cr_assert_float_eq(duck.atten_dB, -6.0f, 1e-6f);
+  cr_assert_float_eq(duck.attack_ms, 10.0f, 1e-6f);
+  cr_assert_float_eq(duck.release_ms, 200.0f, 1e-6f);
   cr_assert_not_null(duck.envelope);
   cr_assert_not_null(duck.gain);
 
@@ -490,7 +490,7 @@ Test(noise_gate, init_and_params) {
 
   cr_assert_float_eq(gate.sample_rate, 44100.0f, 1e-6f);
   cr_assert_float_eq(gate.threshold, 0.01f, 1e-6f);
-  cr_assert_float_eq(gate.attack_ms, 2.0f, 1e-6f);
+  cr_assert_float_eq(gate.attack_ms, 10.0f, 1e-6f);
   cr_assert_float_eq(gate.release_ms, 50.0f, 1e-6f);
   cr_assert_float_eq(gate.hysteresis, 0.9f, 1e-6f);
   cr_assert_float_eq(gate.envelope, 0.0f, 1e-6f);

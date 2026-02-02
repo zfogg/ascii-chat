@@ -9,6 +9,7 @@
 #include "network/packet_queue.h"
 #include "network/crc32.h" // For CRC calculation
 #include "buffer_pool.h"   // For buffer_pool_init_global/cleanup_global
+#include "util/endian.h"   // For HOST_TO_NET_U64
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);
@@ -322,7 +323,7 @@ Test(packet_queue, unlimited_queue) {
 Test(packet_queue, packet_validation) {
   // Create a valid packet
   queued_packet_t valid_packet = {0};
-  valid_packet.header.magic = htonl(PACKET_MAGIC); // Use network byte order
+  valid_packet.header.magic = HOST_TO_NET_U64(PACKET_MAGIC); // Use network byte order
   valid_packet.header.type = htons(PACKET_TYPE_AUDIO_BATCH);
   valid_packet.header.length = htonl(10);
   valid_packet.data_len = 10;
@@ -338,7 +339,7 @@ Test(packet_queue, packet_validation) {
 
   // Test invalid magic
   queued_packet_t invalid_magic = valid_packet;
-  invalid_magic.header.magic = htonl(0xDEADDEAD); // Wrong magic in network order
+  invalid_magic.header.magic = HOST_TO_NET_U64(0xDEADDEADULL); // Wrong magic in network order
   result = packet_queue_validate_packet(&invalid_magic);
   cr_assert(result == false, "Invalid magic should fail validation");
 
@@ -359,7 +360,7 @@ Test(packet_queue, pre_built_packet_enqueue) {
 
   // Create a pre-built packet
   queued_packet_t packet = {0};
-  packet.header.magic = htonl(PACKET_MAGIC); // Use network byte order
+  packet.header.magic = HOST_TO_NET_U64(PACKET_MAGIC); // Use network byte order
   packet.header.type = htons(PACKET_TYPE_CLIENT_CAPABILITIES);
   packet.header.length = htonl(8);
   packet.header.client_id = htonl(111);
@@ -370,7 +371,7 @@ Test(packet_queue, pre_built_packet_enqueue) {
 
   // Calculate and set correct CRC
   packet.header.crc32 = htonl(asciichat_crc32(test_data, 8));
-  packet.owns_data = false; // We own the data
+  packet.owns_data = false; // We own the data (queue doesn't own it)
 
   // Enqueue pre-built packet
   int result = packet_queue_enqueue_packet(queue, &packet);

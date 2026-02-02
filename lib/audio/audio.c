@@ -884,7 +884,9 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   } else {
     buffer_level = AUDIO_RING_BUFFER_SIZE - (int)(read_idx - write_idx);
   }
-  int available = AUDIO_RING_BUFFER_SIZE - buffer_level;
+  // Reserve 1 slot to distinguish between full and empty states
+  // (when buffer is full, write_idx will be just before read_idx, not equal to it)
+  int available = AUDIO_RING_BUFFER_SIZE - 1 - buffer_level;
 
   // HIGH WATER MARK: Drop INCOMING samples to prevent latency accumulation
   // CRITICAL FIX: Writer must NOT modify read_index (race condition with reader!)

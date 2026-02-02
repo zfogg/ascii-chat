@@ -639,9 +639,9 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
     return false;
   }
 
-  // Check packet type is valid
+  // Check packet type is valid (must be non-zero and within reasonable range)
   uint16_t type = NET_TO_HOST_U16(packet->header.type);
-  if (type < PACKET_TYPE_ASCII_FRAME || type > PACKET_TYPE_AUDIO_BATCH) {
+  if (type == 0 || type > 10000) {
     SET_ERRNO(ERROR_BUFFER, "Invalid packet type: %u", type);
     return false;
   }

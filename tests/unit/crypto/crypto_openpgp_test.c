@@ -236,10 +236,9 @@ Test(openpgp, reject_missing_0x40_prefix) {
 // =============================================================================
 
 Test(openpgp, decode_base64_with_newlines) {
-  const char *base64_with_newlines = "bURFYVd4Q09SWUpLd1lCQkFIYVJ3OEJBUWR\n"
-                                     "BT2F5a0lNeWFRaThDQlROaUY5by9OYm02\n"
-                                     "TDVEd1I5aDFtYVMzeXFHNVBGTzBNbUZ6WT\n"
-                                     "JscExXTm9ZWFFnUkdsell\n";
+  // Valid base64 with newlines (PGP armor format)
+  const char *base64_with_newlines = "U29tZSB0ZXN0IGJpbmFyeSBkYXRhIHRoYXQg\n"
+                                     "d2Ugd2lsbCBlbmNvZGUgYXMgYmFzZTY0\n";
 
   uint8_t *binary_out;
   size_t binary_len;
@@ -254,7 +253,8 @@ Test(openpgp, decode_base64_with_newlines) {
 }
 
 Test(openpgp, reject_invalid_base64) {
-  const char *invalid_base64 = "This is not valid base64!!!";
+  // Invalid base64: contains non-base64 characters (spaces, special chars outside base64 alphabet)
+  const char *invalid_base64 = "This is definitely not base64@#$%^&*()";
 
   uint8_t *binary_out;
   size_t binary_len;
