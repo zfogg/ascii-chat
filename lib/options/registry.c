@@ -174,13 +174,6 @@ static const char *g_speakers_examples[] = {"-1", "0", "1", NULL};
 // Seek examples (null-terminated)
 static const char *g_seek_examples[] = {"0", "60", "3:45", NULL};
 
-// Cookies from browser values (null-terminated)
-static const char *g_cookies_values[] = {"chrome", "firefox", "edge",  "safari", "brave",
-                                         "opera",  "vivaldi", "whale", NULL};
-static const char *g_cookies_descs[] = {"Google Chrome",   "Mozilla Firefox", "Microsoft Edge",
-                                        "Apple Safari",    "Brave Browser",   "Opera Browser",
-                                        "Vivaldi Browser", "Naver Whale",     NULL};
-
 // Audio source metadata
 static const char *g_audio_source_values[] = {"auto", "mic", "media", "both"};
 static const int g_audio_source_integers[] = {AUDIO_SOURCE_AUTO, AUDIO_SOURCE_MIC, AUDIO_SOURCE_MEDIA,
@@ -1439,8 +1432,9 @@ static const registry_entry_t g_media_entries[] = {
      offsetof(options_t, cookies_from_browser),
      NULL,
      0,
-     "yt-dlp option (man yt-dlp). Browser for reading cookies from (chrome, firefox, edge, safari, brave, opera, "
-     "vivaldi, whale). Use without argument to default to chrome.",
+     "yt-dlp option (man yt-dlp). Browser/keyring for reading cookies from. Defaults to 'chrome' if no "
+     "argument provided. Any value is accepted and passed to yt-dlp; invalid values will produce an error "
+     "from yt-dlp.",
      "MEDIA",
      NULL,
      false,
@@ -1450,7 +1444,7 @@ static const registry_entry_t g_media_entries[] = {
      false,
      true,
      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
-     {.enum_values = g_cookies_values, .enum_descriptions = g_cookies_descs, .input_type = OPTION_INPUT_ENUM}},
+     {0}},
     {"no-cookies-from-browser",
      '\0',
      OPTION_TYPE_BOOL,

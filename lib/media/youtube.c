@@ -342,24 +342,22 @@ asciichat_error_t youtube_extract_stream_url(const char *youtube_url, char *outp
     youtube_cache_set(youtube_url, NULL);
 
     log_debug("yt-dlp exited with code %d", pclose_ret);
+
+    // Build error message with yt-dlp output if available
+    char error_detail[1024];
     if (url_size > 0) {
       log_debug("yt-dlp output: %s", url_buffer);
+      // Include yt-dlp output in error message to show to user
+      safe_snprintf(error_detail, sizeof(error_detail),
+                    "yt-dlp failed to extract video information. "
+                    "yt-dlp said: %s",
+                    url_buffer);
+    } else {
+      safe_snprintf(error_detail, sizeof(error_detail),
+                    "yt-dlp failed to extract video information. "
+                    "Video may be age-restricted, geo-blocked, or private.");
     }
-
-    // Provide helpful error message
-    const char *help_msg = "";
-    bool disable_cookies = GET_OPTION(no_cookies_from_browser);
-    const char *cookies_value = GET_OPTION(cookies_from_browser);
-
-    // Only suggest cookies if user hasn't already enabled or disabled them
-    bool cookies_enabled = !disable_cookies && cookies_value && cookies_value[0] != '\0';
-    if (!disable_cookies && !cookies_enabled) {
-      help_msg = " (Try: --cookies-from-browser [browser] - see 'man yt-dlp' for details)";
-    }
-    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED,
-              "yt-dlp failed to extract video information. "
-              "Video may be age-restricted, geo-blocked, or private.%s",
-              help_msg);
+    SET_ERRNO(ERROR_YOUTUBE_EXTRACT_FAILED, "%s", error_detail);
     return ERROR_YOUTUBE_EXTRACT_FAILED;
   }
 
