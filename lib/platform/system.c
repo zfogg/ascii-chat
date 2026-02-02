@@ -14,6 +14,7 @@
 #include "common.h"
 #include "uthash/uthash.h" // UBSan-safe uthash wrapper
 #include "log/logging.h"
+#include "util/string.h"
 
 // Platform-specific binary suffix
 #ifdef _WIN32
@@ -293,12 +294,10 @@ bool platform_is_binary_in_path(const char *bin_name) {
   HASH_FIND_STR(g_bin_path_cache, bin_name, entry);
   rwlock_rdunlock(&g_cache_rwlock);
 
-  const char **colors = log_get_color_array();
-
   if (entry) {
     // Cache hit
-    log_debug("Binary '%s' %sfound%s in PATH (%scached%s)", bin_name, colors[LOG_COLOR_INFO], colors[LOG_COLOR_RESET],
-              colors[LOG_COLOR_WARN], colors[LOG_COLOR_RESET]);
+    log_debug("Binary '%s' %s in PATH (%s)", bin_name, colored_string(LOG_COLOR_INFO, "found"),
+              colored_string(LOG_COLOR_WARN, "cached"));
     return entry->in_path;
   }
 
@@ -326,8 +325,9 @@ bool platform_is_binary_in_path(const char *bin_name) {
   HASH_ADD_KEYPTR(hh, g_bin_path_cache, entry->bin_name, strlen(entry->bin_name), entry);
   rwlock_wrunlock(&g_cache_rwlock);
 
-  log_debug("Binary '%s' %s%s%s in PATH", bin_name, colors[found ? LOG_COLOR_INFO : LOG_COLOR_ERROR],
-            found ? "found" : "NOT found", colors[LOG_COLOR_RESET]);
+  log_debug("Binary '%s' %s in PATH", bin_name,
+            colored_string(found ? LOG_COLOR_INFO : LOG_COLOR_ERROR, found ? "found" : "NOT found"));
+
   return found;
 }
 
