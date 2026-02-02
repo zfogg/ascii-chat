@@ -325,21 +325,20 @@ tty_info_t get_current_tty(void) {
     result.fd = STDIN_FILENO;
     result.path = ttyname(STDIN_FILENO);
     result.owns_fd = false;
-    log_debug("POSIX TTY from stdin: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
+    log_dev("POSIX TTY from stdin: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
   }
   if (isatty(STDOUT_FILENO)) {
     result.fd = STDOUT_FILENO;
     result.path = ttyname(STDOUT_FILENO);
     result.owns_fd = false;
-    log_debug("POSIX TTY from stdout: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
   }
   if (isatty(STDERR_FILENO)) {
     result.fd = STDERR_FILENO;
     result.path = ttyname(STDERR_FILENO);
     result.owns_fd = false;
-    log_debug("POSIX TTY from stderr: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
+    log_dev("POSIX TTY from stderr: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
   }
 
@@ -441,21 +440,23 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
       log_debug("Invalid environment terminal dimensions: %s x %s", lines_env, cols_env);
     }
   } else {
-    // stdout is piped/redirected - try /dev/tty directly for dimension detection
-    log_debug("POSIX: stdout is redirected (not a TTY), trying /dev/tty for dimensions");
+    // stdout is piped/redirected - skip /dev/tty detection and use defaults
+    log_debug("POSIX: stdout is redirected (not a TTY), skipping terminal detection and using defaults");
   }
 
-  // Method 2d: Try opening /dev/tty directly (works even when stdout is piped)
-  tty_fd = open("/dev/tty", O_RDONLY);
-  if (tty_fd >= 0) {
-    if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
-      *width = ws.ws_col;
-      *height = ws.ws_row;
+  // Method 2d: Try opening /dev/tty directly (only if stdout IS a TTY - skip for piped output)
+  if (stdout_is_tty) {
+    tty_fd = open("/dev/tty", O_RDONLY);
+    if (tty_fd >= 0) {
+      if (ioctl(tty_fd, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {
+        *width = ws.ws_col;
+        *height = ws.ws_row;
+        close(tty_fd);
+        log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
+        return ASCIICHAT_OK;
+      }
       close(tty_fd);
-      log_debug("POSIX terminal size from /dev/tty ioctl: %dx%d", *width, *height);
-      return ASCIICHAT_OK;
     }
-    close(tty_fd);
   }
 
   // Method 4: Default fallback (match OPT_WIDTH_DEFAULT and OPT_HEIGHT_DEFAULT)
