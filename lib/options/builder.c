@@ -3376,7 +3376,7 @@ void options_print_help_for_mode(const options_config_t *config, asciichat_mode_
 
       if (section->heading) {
         fprintf(desc, "%s%s\n", colored_string(LOG_COLOR_DEBUG, section->heading),
-                colored_string(LOG_COLOR_DEBUG, ","));
+                colored_string(LOG_COLOR_DEBUG, ":"));
       }
 
       if (section->content) {
