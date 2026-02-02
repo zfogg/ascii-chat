@@ -51,12 +51,21 @@ const char *format_mode_names(option_mode_bitmask_t mode_bitmask) {
   option_mode_bitmask_t user_modes_mask = (1 << MODE_SERVER) | (1 << MODE_CLIENT) | (1 << MODE_MIRROR) |
                                           (1 << MODE_DISCOVERY_SERVICE) | (1 << MODE_DISCOVERY);
   if ((mode_bitmask & user_modes_mask) == user_modes_mask) {
+    // If all user modes are set, check if binary-level is also set
+    if (mode_bitmask & OPTION_MODE_BINARY) {
+      return "global, client, server, mirror, discovery-service";
+    }
     return "all modes";
   }
 
   static char mode_str[256];
   mode_str[0] = '\0';
   int pos = 0;
+
+  // Add global if binary-level is set
+  if (mode_bitmask & OPTION_MODE_BINARY) {
+    pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "global");
+  }
 
   if (mode_bitmask & (1 << MODE_DISCOVERY)) {
     pos += safe_snprintf(mode_str + pos, sizeof(mode_str) - pos, "%sascii-chat", pos > 0 ? ", " : "");
