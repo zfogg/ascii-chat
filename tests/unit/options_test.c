@@ -152,7 +152,7 @@ Test(options, default_values) {
   cr_assert_eq(opts->stretch, 0);
   cr_assert_eq(opts->quiet, 0);
   cr_assert_eq(opts->snapshot_mode, 0);
-  cr_assert_eq(opts->encrypt_enabled, 0);
+  cr_assert_eq(opts->encrypt_enabled, 1);
   cr_assert_eq(opts->palette_type, PALETTE_STANDARD);
   cr_assert_eq(opts->palette_custom_set, false);
 
