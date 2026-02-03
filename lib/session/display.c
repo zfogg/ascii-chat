@@ -175,6 +175,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
                                     ctx->luminance_palette);
   }
 
+  // Pre-warm UTF-8 palette cache during initialization (not during rendering)
+  // This is expensive on first use (creates lookup tables), so warm it up now to avoid frame lag
+  // This function is imported from lib/video/simd/common.h
+  extern utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
+  (void)get_utf8_palette_cache((const char *)ctx->palette_chars);
+  log_debug("UTF-8 palette cache pre-warmed during display initialization");
+
   // Initialize ANSI fast lookup tables based on terminal capabilities
   if (ctx->caps.color_level == TERM_COLOR_TRUECOLOR) {
     ansi_fast_init();

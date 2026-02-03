@@ -340,11 +340,8 @@ int mirror_main(void) {
     log_debug("Skipping audio initialization for immediate snapshot (snapshot_delay=0)");
   }
 
-  // Honor --audio flag for media playback control
-  if (should_init_audio && has_media && !GET_OPTION(audio_enabled)) {
-    should_init_audio = false;
-    log_debug("Skipping media audio playback (--audio not enabled)");
-  }
+  // Audio is enabled by default for media playback
+  // (no need to pass --audio flag, use --no-audio-playback or related options to disable)
 
   if (should_init_audio && capture_config.type == MEDIA_SOURCE_FILE && capture_config.path && audio_probe_source) {
     if (media_source_has_audio(audio_probe_source)) {
@@ -432,6 +429,15 @@ int mirror_main(void) {
   if (temp_display) {
     session_display_destroy(temp_display);
     temp_display = NULL;
+  }
+
+  // For HTTP streams, allow prefetch thread to buffer frames before starting render loop
+  // HTTP seeking can destabilize stream state, so give prefetch thread time to produce frames
+  media_source_t *source = capture ? session_capture_get_media_source(capture) : NULL;
+  if (source && GET_OPTION(media_seek_timestamp) > 0.0) {
+    // User specified a seek position, give prefetch thread time to buffer after seek
+    log_debug("Waiting for prefetch thread to buffer frames after seek...");
+    platform_sleep_usec(750000); // 750ms to let prefetch thread produce frames
   }
 
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering

@@ -445,6 +445,10 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     av_dict_set(&options, "reconnect_streamed", "1", 0);
     // Set reasonable I/O timeout (10 seconds)
     av_dict_set(&options, "rw_timeout", "10000000", 0);
+    // Enable HTTP persistent connection (keep-alive) for better performance
+    av_dict_set(&options, "http_persistent", "1", 0);
+    // Reduce connect timeout to fail faster if server is unreachable
+    av_dict_set(&options, "connect_timeout", "5000000", 0);
   }
 
   // Open input file
@@ -485,7 +489,9 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   }
 
   // Open audio codec ONLY if audio is enabled
-  if (GET_OPTION(audio_enabled)) {
+  bool audio_enabled_value = GET_OPTION(audio_enabled);
+  log_debug("DEBUG: audio_enabled=%d (expected 1 for true)", audio_enabled_value);
+  if (audio_enabled_value) {
     err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
                              &decoder->audio_codec_ctx);
     if (err != ASCIICHAT_OK) {
@@ -1185,10 +1191,12 @@ asciichat_error_t ffmpeg_decoder_seek_to_timestamp(ffmpeg_decoder_t *decoder, do
   // Convert seconds to FFmpeg time base units (AV_TIME_BASE = 1,000,000)
   int64_t target_ts = (int64_t)(timestamp_sec * AV_TIME_BASE);
 
-  // Seek to timestamp with frame-based seeking to nearest keyframe
-  int seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
+  // For HTTP streams, use simple keyframe seeking (faster than frame-accurate seeking)
+  // HTTP seeking is expensive and can break stream state, so prefer speed over precision
+  int seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
   if (seek_ret < 0) {
-    seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, AVSEEK_FLAG_BACKWARD);
+    // Fallback: try without backward flag
+    seek_ret = av_seek_frame(decoder->format_ctx, -1, target_ts, 0);
   }
 
   if (seek_ret < 0) {
