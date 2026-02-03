@@ -1290,7 +1290,9 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Load config files - now uses detected_mode directly for bitmask validation
   // Save webcam_flip as it should not be reset by config files
+  // Also save encryption settings - they should only be controlled via CLI, not config file
   bool saved_webcam_flip_from_config = opts.webcam_flip;
+  bool saved_encrypt_enabled = opts.encrypt_enabled;
   asciichat_error_t config_result = config_load_system_and_user(detected_mode, false, &opts);
   (void)config_result; // Continue with defaults and CLI parsing regardless of result
 
@@ -1299,6 +1301,11 @@ asciichat_error_t options_init(int argc, char **argv) {
 
   // Restore webcam_flip - config shouldn't override the default
   opts.webcam_flip = saved_webcam_flip_from_config;
+
+  // Restore encrypt_enabled - it should only be set via CLI, not config file
+  // The config can set key/password which auto-enables encryption, but the encrypt_enabled
+  // flag itself should stay at its default unless the user explicitly passes --encrypt
+  opts.encrypt_enabled = saved_encrypt_enabled;
 
   // ========================================================================
   // STAGE 6: Parse Command-Line Arguments (Unified)

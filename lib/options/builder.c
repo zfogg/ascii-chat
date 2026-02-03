@@ -2135,6 +2135,12 @@ asciichat_error_t options_config_validate(const options_config_t *config, const 
       break;
 
     case DEPENDENCY_CONFLICTS:
+      // Log conflict details for debugging
+      if (strstr(dep->option_name, "encrypt") || strstr(dep->depends_on, "encrypt")) {
+        log_error("CONFLICT CHECK: %s=%d, %s=%d -> conflict=%d", dep->option_name, option_is_set, dep->depends_on,
+                  depends_is_set, option_is_set && depends_is_set);
+      }
+
       if (option_is_set && depends_is_set) {
         if (error_message) {
           if (dep->error_message) {
