@@ -120,6 +120,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Frame capture and timing - mode-dependent
     image_t *image;
     uint64_t capture_start_ns = 0;
+    uint64_t capture_end_ns = 0;
+    uint64_t pre_convert_ns = 0;
+    uint64_t post_convert_ns = 0;
+    uint64_t pre_render_ns = 0;
+    uint64_t post_render_ns = 0;
 
     if (is_synchronous) {
       capture_start_ns = time_get_ns();
@@ -208,6 +213,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         continue;
       }
 
+      // Capture phase complete - record timestamp for phase breakdown
+      capture_end_ns = time_get_ns();
+
       frame_count++;
 
       // Log capture time every 30 frames
@@ -253,9 +261,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
-    START_TIMER("ascii_convert");
+    pre_convert_ns = time_get_ns();
     char *ascii_frame = session_display_convert_to_ascii(display, image);
-    uint64_t conversion_elapsed_ns = STOP_TIMER("ascii_convert");
+    post_convert_ns = time_get_ns();
+    uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (ascii_frame) {
       // Detect when we have a paused frame (first frame after pausing)
@@ -269,9 +278,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // - Piped mode: render all frames without cursor control (for continuous capture)
       // - Snapshot mode on non-TTY: only the display context renders the final frame
       bool should_write = true;
+      uint64_t pre_render_ns = 0, post_render_ns = 0; // Declare outside if block for timing
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         // Profile: render frame
+        pre_render_ns = time_get_ns();
         START_TIMER("render_frame");
 
         // Check if help screen is active - if so, render help instead of frame
@@ -282,10 +293,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
 
         uint64_t render_elapsed_ns = STOP_TIMER("render_frame");
-        uint64_t render_complete_ns = time_get_ns();
+        post_render_ns = time_get_ns();
 
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
-        frame_to_render_ns = time_elapsed_ns(frame_start_ns, render_complete_ns);
+        frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
         if (frame_count % 30 == 0) {
           double total_frame_time_ms = (double)frame_to_render_ns / 1000000.0;
           log_warn("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
@@ -322,6 +333,25 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       SAFE_FREE(ascii_frame);
+
+      // Measure frame completion right after rendering, BEFORE keyboard polling
+      // This gives us accurate timing for just the core frame operations
+      uint64_t frame_end_render_ns = time_get_ns();
+
+      // Calculate each phase duration
+      uint64_t prestart_ms = (capture_start_ns > frame_start_ns) ? (capture_start_ns - frame_start_ns) / 1000000 : 0;
+      uint64_t capture_ms = (capture_end_ns > capture_start_ns) ? (capture_end_ns - capture_start_ns) / 1000000 : 0;
+      uint64_t convert_ms = conversion_elapsed_ns / 1000000;
+      uint64_t render_ms =
+          (post_render_ns > pre_render_ns && post_render_ns > 0) ? (post_render_ns - pre_render_ns) / 1000000 : 0;
+      uint64_t total_ms = (frame_end_render_ns > frame_start_ns) ? (frame_end_render_ns - frame_start_ns) / 1000000 : 0;
+
+      // Log phase breakdown every 5 frames
+      if (frame_count % 5 == 0) {
+        log_info(
+            "PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)",
+            frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
+      }
     } else {
     }
 
