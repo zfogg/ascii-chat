@@ -1497,9 +1497,11 @@ void *client_receive_thread(void *arg) {
         }
       }
 
-      // Other errors - log but don't disconnect immediately
-      log_warn("ACIP receive/dispatch failed for client %u: %s", client->client_id,
-               asciichat_error_string(acip_result));
+      // Any other error - disconnect client to prevent infinite retry loop
+      // This prevents zombie clients when error context is unavailable or error is non-recoverable
+      log_warn("ACIP receive/dispatch failed for client %u: %s (disconnecting client to prevent infinite loop)",
+               client->client_id, asciichat_error_string(acip_result));
+      break;
     } else {
       log_error("RECV_SUCCESS: Client %u dispatch succeeded, looping back", atomic_load(&client->client_id));
     }
