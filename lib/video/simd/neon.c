@@ -252,8 +252,8 @@ static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char
   // STREAMLINED IMPLEMENTATION: Focus on the real bottleneck - RGB->decimal conversion
   // Key insight: ANSI sequences are too variable for effective SIMD, but TBL lookups provide major speedup
 
-  // Ensure NEON decimal table is initialized for fast RGB->decimal conversion
-  init_neon_decimal_table();
+  // NOTE: Ensure NEON decimal table is initialized BEFORE calling this function (done in
+  // render_ascii_neon_unified_optimized)
 
   char *dst = output_buffer;
 
@@ -773,6 +773,9 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 
   // Track which code path is taken
   int chunks_256color = 0, chunks_truecolor = 0;
+
+  // PRE-INITIALIZE: Call init once before loop instead of 1152 times per chunk!
+  init_neon_decimal_table();
 
   // Check if OpenMP is available and enabled
   int omp_available = omp_get_max_threads() > 1;
