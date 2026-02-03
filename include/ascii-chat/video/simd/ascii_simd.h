@@ -411,6 +411,16 @@ void prewarm_sgr256_cache(void);
 char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out);
 
 /**
+ * @brief Get 256-color background ANSI sequence string
+ * @param bg Background palette index (0-255)
+ * @param len_out Output parameter for sequence length
+ * @return Pointer to ANSI sequence string (cached)
+ *
+ * @ingroup video
+ */
+char *get_sgr256_bg_string(uint8_t bg, uint8_t *len_out);
+
+/**
  * @brief Get 256-color foreground/background ANSI sequence string
  * @param fg Foreground palette index (0-255)
  * @param bg Background palette index (0-255)

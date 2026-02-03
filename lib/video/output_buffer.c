@@ -6,6 +6,7 @@
 
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/video/simd/ascii_simd.h>
 
 /*****************************************************************************/
 // char* output buffer helpers
@@ -156,28 +157,24 @@ void emit_rep(outbuf_t *ob, uint32_t extra) {
   ob_putc(ob, 'b');
 }
 
-// 256-color SGR emission (foreground)
+// 256-color SGR emission (foreground) - uses cached sequences for performance
 void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx) {
   if (!ob)
     return;
-  // ESC[38;5;Nm
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_write(ob, "38;5;", 5);
-  ob_u8(ob, color_idx);
-  ob_putc(ob, 'm');
+  // Use pre-cached color sequence instead of building on-demand
+  uint8_t seq_len;
+  const char *seq = get_sgr256_fg_string(color_idx, &seq_len);
+  ob_write(ob, seq, seq_len);
 }
 
-// 256-color SGR emission (background)
+// 256-color SGR emission (background) - uses cached sequences for performance
 void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx) {
   if (!ob)
     return;
-  // ESC[48;5;Nm
-  ob_putc(ob, 0x1b);
-  ob_putc(ob, '[');
-  ob_write(ob, "48;5;", 5);
-  ob_u8(ob, color_idx);
-  ob_putc(ob, 'm');
+  // Use pre-cached color sequence instead of building on-demand
+  uint8_t seq_len;
+  const char *seq = get_sgr256_bg_string(color_idx, &seq_len);
+  ob_write(ob, seq, seq_len);
 }
 
 void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b) {

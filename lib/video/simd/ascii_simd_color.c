@@ -54,13 +54,15 @@ typedef struct {
 } sgr256_seq_t;
 
 static sgr256_seq_t sgr256_fg_cache[256];
+static sgr256_seq_t sgr256_bg_cache[256];
 static bool sgr256_cache_initialized = false;
 
-// Build and cache all 256 foreground color sequences
+// Build and cache all 256 foreground and background color sequences
 static void init_sgr256_cache(void) {
   if (sgr256_cache_initialized)
     return;
 
+  // Cache foreground colors: \e[38;5;NNNm
   for (int i = 0; i < 256; i++) {
     char *p = sgr256_fg_cache[i].seq;
     *p++ = '\033';
@@ -74,6 +76,22 @@ static void init_sgr256_cache(void) {
     *p++ = 'm';
     sgr256_fg_cache[i].len = (uint8_t)(p - sgr256_fg_cache[i].seq);
   }
+
+  // Cache background colors: \e[48;5;NNNm
+  for (int i = 0; i < 256; i++) {
+    char *p = sgr256_bg_cache[i].seq;
+    *p++ = '\033';
+    *p++ = '[';
+    *p++ = '4';
+    *p++ = '8';
+    *p++ = ';';
+    *p++ = '5';
+    *p++ = ';';
+    p = write_u8(p, (uint8_t)i);
+    *p++ = 'm';
+    sgr256_bg_cache[i].len = (uint8_t)(p - sgr256_bg_cache[i].seq);
+  }
+
   sgr256_cache_initialized = true;
 }
 
@@ -132,6 +150,14 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
   }
   *len_out = sgr256_fg_cache[fg].len;
   return sgr256_fg_cache[fg].seq;
+}
+
+char *get_sgr256_bg_string(uint8_t bg, uint8_t *len_out) {
+  if (!sgr256_cache_initialized) {
+    init_sgr256_cache();
+  }
+  *len_out = sgr256_bg_cache[bg].len;
+  return sgr256_bg_cache[bg].seq;
 }
 
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
