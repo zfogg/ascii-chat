@@ -212,15 +212,16 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
  * @param sig The signal number (unused)
  */
 #ifndef _WIN32
-static void sigterm_handler(int sig) {
+static void client_handle_sigterm(int sig) {
   (void)sig; // Unused
+  log_info_nofile("SIGTERM received - shutting down client...");
   // Signal all subsystems to shutdown (async-signal-safe operations only)
   atomic_store(&g_should_exit, true);
   server_connection_shutdown(); // Only uses atomics and socket_shutdown
 }
 #else
 // Windows-compatible signal handler (no-op implementation)
-static void sigterm_handler(int sig) {
+static void client_handle_sigterm(int sig) {
   (void)sig;
   // SIGTERM handled via console_ctrl_handler on Windows
 }
@@ -236,7 +237,7 @@ static void sigterm_handler(int sig) {
  * @param sigwinch The signal number (unused)
  */
 #ifndef _WIN32
-static void sigwinch_handler(int sigwinch) {
+static void client_handle_sigwinch(int sigwinch) {
   (void)(sigwinch);
 
   // Terminal was resized, update dimensions and recalculate aspect ratio
@@ -262,7 +263,7 @@ static void sigwinch_handler(int sigwinch) {
 }
 #else
 // Windows-compatible signal handler (no-op implementation)
-static void sigwinch_handler(int sigwinch) {
+static void client_handle_sigwinch(int sigwinch) {
   (void)(sigwinch);
   log_debug_nofile("SIGWINCH received (Windows no-op implementation)");
 }
@@ -561,8 +562,8 @@ int client_main(void) {
 
   // Register signal handlers for graceful shutdown, terminal resize, and error handling
   platform_signal_handler_t signal_handlers[] = {
-      {SIGWINCH, sigwinch_handler}, // Terminal resize (Unix only)
-      {SIGTERM, sigterm_handler},   // SIGTERM for timeout(1) support
+      {SIGWINCH, client_handle_sigwinch}, // Terminal resize (Unix only)
+      {SIGTERM, client_handle_sigterm},   // SIGTERM for timeout(1) support
       {SIGPIPE, SIG_IGN},           // Ignore broken pipe (we handle write errors ourselves)
   };
   platform_register_signal_handlers(signal_handlers, 3);

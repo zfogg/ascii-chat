@@ -69,8 +69,9 @@ static void acds_signal_exit(void) {
 /**
  * @brief Signal handler for clean shutdown
  */
-static void signal_handler(int sig) {
+static void acds_handle_signal(int sig) {
   (void)sig;
+  log_info_nofile("Signal received - shutting down discovery service...");
   if (g_server) {
     atomic_store(&g_server->tcp_server.running, false);
   }
@@ -403,8 +404,8 @@ int acds_main(void) {
   }
 
   // Install signal handlers for clean shutdown
-  signal(SIGINT, signal_handler);
-  signal(SIGTERM, signal_handler);
+  signal(SIGINT, acds_handle_signal);
+  signal(SIGTERM, acds_handle_signal);
 
   // Display initial status if enabled
   if (GET_OPTION(status_screen)) {

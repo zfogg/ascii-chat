@@ -80,6 +80,7 @@ static void mirror_signal_exit(void) {
  */
 static void mirror_handle_sigterm(int sig) {
   (void)sig; // Unused
+  log_info_nofile("SIGTERM received - shutting down mirror...");
   mirror_signal_exit();
 }
 

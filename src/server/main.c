@@ -462,7 +462,7 @@ size_t g_num_whitelisted_clients = 0;
  *
  * @param sigint The signal number (unused, required by signal handler signature)
  */
-static void sigint_handler(int sigint) {
+static void server_handle_sigint(int sigint) {
   (void)(sigint);
   static _Atomic int sigint_count = 0;
   int count = atomic_fetch_add(&sigint_count, 1) + 1;
@@ -992,7 +992,7 @@ static void *acds_receive_thread(void *arg) {
  *
  * @param sigterm The signal number (unused, required by signal handler signature)
  */
-static void sigterm_handler(int sigterm) {
+static void server_handle_sigterm(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
@@ -1019,7 +1019,7 @@ static void sigterm_handler(int sigterm) {
  *
  * @param sigusr1 The signal number (unused, required by signal handler signature)
  */
-static void sigusr1_handler(int sigusr1) {
+static void server_handle_sigusr1(int sigusr1) {
   (void)(sigusr1);
 
 #ifndef NDEBUG
@@ -1396,14 +1396,14 @@ int server_main(void) {
   log_debug("Setting up simple signal handlers...");
 
   // Handle Ctrl+C for cleanup
-  platform_signal(SIGINT, sigint_handler);
+  platform_signal(SIGINT, server_handle_sigint);
   // Handle termination signal (SIGTERM is defined with limited support on Windows)
-  platform_signal(SIGTERM, sigterm_handler);
+  platform_signal(SIGTERM, server_handle_sigterm);
   // Handle lock debugging trigger signal
 #ifndef _WIN32
-  platform_signal(SIGUSR1, sigusr1_handler);
+  platform_signal(SIGUSR1, server_handle_sigusr1);
 #else
-  UNUSED(sigusr1_handler);
+  UNUSED(server_handle_sigusr1);
 #endif
 #ifndef _WIN32
   // SIGPIPE not supported on Windows
