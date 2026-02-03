@@ -1344,10 +1344,16 @@ asciichat_error_t options_init(int argc, char **argv) {
   // CRITICAL: RESTORE detected_mode BEFORE parsing so mode validation works
   opts.detected_mode = mode_saved_for_parsing;
 
+  // Save webcam_flip before parsing - it should not be reset by the parser
+  bool saved_webcam_flip_for_parse = opts.webcam_flip;
+
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
+
+  // Restore webcam_flip - it should keep the default value unless explicitly overridden
+  opts.webcam_flip = saved_webcam_flip_for_parse;
   if (result != ASCIICHAT_OK) {
     options_config_destroy(config);
     SAFE_FREE(allocated_mode_argv);
