@@ -46,7 +46,9 @@
  *     .bind_ipv6 = true,
  *     .accept_timeout_sec = 1,
  *     .client_handler = my_client_handler,
- *     .user_data = NULL
+ *     .user_data = NULL,
+ *     .status_update_fn = NULL,  // Optional status update callback
+ *     .status_update_data = NULL
  * };
  *
  * tcp_server_t server;
@@ -93,6 +95,16 @@ typedef void (*tcp_client_cleanup_fn)(void *client_data);
 typedef void (*tcp_client_foreach_fn)(socket_t socket, void *client_data, void *user_arg);
 
 /**
+ * @brief Callback for periodic status updates
+ *
+ * Called periodically from the accept loop timeout path.
+ * Use this to update status displays, refresh metrics, or perform housekeeping tasks.
+ *
+ * @param user_data User-provided data from config
+ */
+typedef void (*tcp_status_update_fn)(void *user_data);
+
+/**
  * @brief Per-client connection context
  *
  * Passed to client handler threads with connection information.
@@ -124,14 +136,16 @@ typedef void *(*tcp_client_handler_fn)(void *arg);
  * Configures server binding, timeouts, and client handler.
  */
 typedef struct {
-  int port;                             ///< TCP listen port
-  const char *ipv4_address;             ///< IPv4 bind address (NULL or empty = don't bind)
-  const char *ipv6_address;             ///< IPv6 bind address (NULL or empty = don't bind)
-  bool bind_ipv4;                       ///< Whether to bind IPv4 socket
-  bool bind_ipv6;                       ///< Whether to bind IPv6 socket
-  int accept_timeout_sec;               ///< select() timeout in seconds (for responsive shutdown)
-  tcp_client_handler_fn client_handler; ///< Client handler callback
-  void *user_data;                      ///< User data passed to each client handler
+  int port;                              ///< TCP listen port
+  const char *ipv4_address;              ///< IPv4 bind address (NULL or empty = don't bind)
+  const char *ipv6_address;              ///< IPv6 bind address (NULL or empty = don't bind)
+  bool bind_ipv4;                        ///< Whether to bind IPv4 socket
+  bool bind_ipv6;                        ///< Whether to bind IPv6 socket
+  int accept_timeout_sec;                ///< select() timeout in seconds (for responsive shutdown)
+  tcp_client_handler_fn client_handler;  ///< Client handler callback
+  void *user_data;                       ///< User data passed to each client handler
+  tcp_status_update_fn status_update_fn; ///< Optional status update callback (called on timeout, NULL to disable)
+  void *status_update_data;              ///< User data passed to status update callback
 } tcp_server_config_t;
 
 /**
@@ -184,7 +198,8 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
  * Blocks until server->running is set to false.
  *
  * Uses select() with timeout to handle dual-stack sockets and
- * allow responsive shutdown.
+ * allow responsive shutdown. If a status_update_fn is configured,
+ * it will be called periodically on each select() timeout.
  *
  * @param server Initialized server structure
  * @return ASCIICHAT_OK on success, error code on failure

@@ -203,7 +203,10 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
     }
 
     if (select_result == 0) {
-      // Timeout - check running flag and continue
+      // Timeout - invoke status update callback if configured
+      if (server->config.status_update_fn) {
+        server->config.status_update_fn(server->config.status_update_data);
+      }
       continue;
     }
 
