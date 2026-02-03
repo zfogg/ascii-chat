@@ -1393,12 +1393,6 @@ asciichat_error_t options_init(int argc, char **argv) {
     log_debug("Auto-enabled encryption because --key was provided");
   }
 
-  // Auto-disable encryption if --no-encrypt was provided
-  if (opts.no_encrypt) {
-    opts.encrypt_enabled = 0;
-    log_debug("Auto-disabled encryption because --no-encrypt was provided");
-  }
-
   // Color filter validation and auto-enable
   if (opts.color_filter != COLOR_FILTER_NONE) {
     // Color filter requires color to be enabled

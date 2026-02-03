@@ -891,11 +891,11 @@ typedef struct options_state {
   // ============================================================================
   // Encryption Options
   // ============================================================================
-  unsigned short int encrypt_enabled;      ///< Enable encryption
+  bool encrypt_enabled;                    ///< Enable encryption
   char encrypt_key[OPTIONS_BUFF_SIZE];     ///< SSH/GPG key file path (first --key flag, kept for compatibility)
   char password[OPTIONS_BUFF_SIZE];        ///< Password string
   char encrypt_keyfile[OPTIONS_BUFF_SIZE]; ///< Alternative key file path
-  unsigned short int no_encrypt;           ///< Disable encryption (opt-out)
+  bool no_encrypt;                         ///< Disable encryption (opt-out)
   char server_key[OPTIONS_BUFF_SIZE];      ///< Expected server public key (client)
   char client_keys[OPTIONS_BUFF_SIZE];     ///< Allowed client keys (server)
 
