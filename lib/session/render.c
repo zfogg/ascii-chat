@@ -192,10 +192,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
             max_retries = loop_retry_count;
           }
 
-          // Adaptive sleep: first retry is quick (1ms), subsequent retries use longer delay
-          // to give prefetch thread more time to decode HTTP stream frames
-          uint64_t sleep_us = (loop_retry_count == 1) ? 1000 : 5000; // 1ms first, then 5ms
-          platform_sleep_usec(sleep_us);
+          platform_sleep_usec(10000); // 10ms
           continue;
         }
 

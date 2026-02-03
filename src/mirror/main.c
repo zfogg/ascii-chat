@@ -433,17 +433,6 @@ int mirror_main(void) {
     temp_display = NULL;
   }
 
-  // For HTTP streams with seeking, let prefetch thread sync briefly after seek operation
-  // HTTP seeking can destabilize stream state temporarily
-  // Use brief delay for better stability without excessive startup lag
-  media_source_t *source = capture ? session_capture_get_media_source(capture) : NULL;
-  if (source && GET_OPTION(media_seek_timestamp) > 0.0) {
-    // After seeking on HTTP, give prefetch thread brief time to stabilize stream state
-    // 100ms is a good compromise: fast enough for interactivity, stable enough for smooth playback
-    log_debug("Allowing prefetch thread to stabilize HTTP stream after seek...");
-    platform_sleep_usec(100000); // 100ms - brief stabilization window
-  }
-
   // Run the unified render loop - handles frame capture, ASCII conversion, and rendering
   // Synchronous mode: pass capture context, NULL for callbacks
   // Keyboard support: pass handler and display context for help screen toggle
