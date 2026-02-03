@@ -21,6 +21,7 @@
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/logging.h>
 #include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/tooling/defer/defer.h>
 
@@ -178,6 +179,8 @@ static void format_bool(const char *field_ptr, size_t field_size, const config_o
                         size_t bufsize);
 static void format_double(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
                           size_t bufsize);
+static void format_callback(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                            size_t bufsize);
 
 // Handler registry - indexed by option_type_t
 static const option_type_handler_t g_type_handlers[] = {
@@ -185,7 +188,7 @@ static const option_type_handler_t g_type_handlers[] = {
     [OPTION_TYPE_INT] = {extract_int, parse_validate_int, write_int, format_int},
     [OPTION_TYPE_BOOL] = {extract_bool, parse_validate_bool, write_bool, format_bool},
     [OPTION_TYPE_DOUBLE] = {extract_double, parse_validate_double, write_double, format_double},
-    [OPTION_TYPE_CALLBACK] = {NULL, NULL, NULL, NULL},
+    [OPTION_TYPE_CALLBACK] = {NULL, NULL, NULL, format_callback},
     [OPTION_TYPE_ACTION] = {NULL, NULL, NULL, NULL},
 };
 
@@ -298,6 +301,15 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
   if (meta->field_offset == offsetof(options_t, color_mode)) {
     enum_val = validate_opt_color_mode(value_str, error_msg, error_size);
     is_enum = true;
+  } else if (meta->field_offset == offsetof(options_t, color_filter)) {
+    color_filter_t filter = color_filter_from_cli_name(value_str);
+    if (filter != COLOR_FILTER_NONE || strcmp(value_str, "none") == 0) {
+      enum_val = (int)filter;
+    } else {
+      SAFE_SNPRINTF(error_msg, error_size, "Invalid color filter '%s'", value_str);
+      enum_val = -1;
+    }
+    is_enum = true;
   } else if (meta->field_offset == offsetof(options_t, render_mode)) {
     enum_val = validate_opt_render_mode(value_str, error_msg, error_size);
     is_enum = true;
@@ -309,10 +321,37 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
   if (is_enum) {
     // Enum parsing
     if (enum_val < 0) {
-      if (strlen(error_msg) == 0) {
-        SAFE_SNPRINTF(error_msg, error_size, "Invalid enum value: %s", value_str);
+      // Backward compatibility: accept numeric enum values too.
+      char *endptr = NULL;
+      long raw_enum = strtol(value_str, &endptr, 10);
+      bool parsed_numeric = (value_str && *value_str != '\0' && endptr && *endptr == '\0');
+      bool numeric_valid = false;
+
+      if (parsed_numeric && raw_enum >= INT_MIN && raw_enum <= INT_MAX) {
+        int enum_int = (int)raw_enum;
+        if (meta->field_offset == offsetof(options_t, color_mode)) {
+          numeric_valid =
+              (enum_int == COLOR_MODE_AUTO || enum_int == COLOR_MODE_NONE || enum_int == COLOR_MODE_16_COLOR ||
+               enum_int == COLOR_MODE_256_COLOR || enum_int == COLOR_MODE_TRUECOLOR);
+        } else if (meta->field_offset == offsetof(options_t, color_filter)) {
+          numeric_valid = (enum_int >= COLOR_FILTER_NONE && enum_int < COLOR_FILTER_COUNT);
+        } else if (meta->field_offset == offsetof(options_t, render_mode)) {
+          numeric_valid = (enum_int == RENDER_MODE_FOREGROUND || enum_int == RENDER_MODE_BACKGROUND ||
+                           enum_int == RENDER_MODE_HALF_BLOCK);
+        } else if (meta->field_offset == offsetof(options_t, palette_type)) {
+          numeric_valid = (enum_int >= PALETTE_STANDARD && enum_int < PALETTE_COUNT);
+        }
+        if (numeric_valid) {
+          enum_val = enum_int;
+        }
       }
-      return ERROR_CONFIG;
+
+      if (enum_val < 0) {
+        if (strlen(error_msg) == 0) {
+          SAFE_SNPRINTF(error_msg, error_size, "Invalid enum value: %s", value_str);
+        }
+        return ERROR_CONFIG;
+      }
     }
     parsed->int_value = enum_val;
   } else {
@@ -468,12 +507,24 @@ static asciichat_error_t write_bool(const option_parsed_value_t *parsed, const c
   (void)error_size;
 
   char *field_ptr = ((char *)opts) + meta->field_offset;
+  bool bool_value = parsed->bool_value;
+  bool is_inverted_no_splash = false;
+  if (meta && meta->field_offset == offsetof(options_t, splash) && meta->toml_key) {
+    const char *key = meta->toml_key;
+    size_t key_len = strlen(key);
+    static const char suffix[] = ".no_splash";
+    size_t suffix_len = sizeof(suffix) - 1;
+    is_inverted_no_splash = (key_len >= suffix_len && strcmp(key + (key_len - suffix_len), suffix) == 0);
+  }
+  if (is_inverted_no_splash) {
+    bool_value = !bool_value;
+  }
 
   // Handle unsigned short int bool fields (common in options_t)
   if (meta->field_size == sizeof(unsigned short int)) {
-    *(unsigned short int *)field_ptr = parsed->bool_value ? 1 : 0;
+    *(unsigned short int *)field_ptr = bool_value ? 1 : 0;
   } else {
-    *(bool *)field_ptr = parsed->bool_value;
+    *(bool *)field_ptr = bool_value;
   }
 
   return ASCIICHAT_OK;
@@ -512,7 +563,19 @@ static void format_string(const char *field_ptr, size_t field_size, const config
 
   const char *str_value = (const char *)field_ptr;
   if (str_value && strlen(str_value) > 0) {
-    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", str_value);
+    char escaped_str[BUFFER_SIZE_MEDIUM * 2]; // Max 2x size for escaping '%'
+    size_t j = 0;
+    for (size_t i = 0; i < strlen(str_value) && j < sizeof(escaped_str) - 2; ++i) {
+      if (str_value[i] == '%') {
+        escaped_str[j++] = '%';
+        escaped_str[j++] = '%';
+      } else {
+        escaped_str[j++] = str_value[i];
+      }
+    }
+    escaped_str[j] = '\0';
+
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", escaped_str);
   } else {
     SAFE_SNPRINTF(buf, bufsize, "\"\"");
   }
@@ -523,14 +586,52 @@ static void format_string(const char *field_ptr, size_t field_size, const config
  */
 static void format_int(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
                        size_t bufsize) {
-  (void)meta;
-
   int int_value = 0;
   if (field_size == sizeof(unsigned short int)) {
     int_value = *(unsigned short int *)field_ptr;
   } else {
     int_value = *(int *)field_ptr;
   }
+
+  // Emit symbolic names for enum-backed values in generated config.
+  if (meta && meta->field_offset == offsetof(options_t, color_mode)) {
+    const char *name = "auto";
+    if (int_value == COLOR_MODE_NONE) {
+      name = "none";
+    } else if (int_value == COLOR_MODE_16_COLOR) {
+      name = "16";
+    } else if (int_value == COLOR_MODE_256_COLOR) {
+      name = "256";
+    } else if (int_value == COLOR_MODE_TRUECOLOR) {
+      name = "truecolor";
+    }
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", name);
+    return;
+  }
+
+  if (meta && meta->field_offset == offsetof(options_t, color_filter)) {
+    const char *name = "none";
+    if (int_value > COLOR_FILTER_NONE && int_value < COLOR_FILTER_COUNT) {
+      const color_filter_def_t *def = color_filter_get_metadata((color_filter_t)int_value);
+      if (def && def->cli_name) {
+        name = def->cli_name;
+      }
+    }
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", name);
+    return;
+  }
+
+  if (meta && meta->field_offset == offsetof(options_t, render_mode)) {
+    const char *name = "foreground";
+    if (int_value == RENDER_MODE_BACKGROUND) {
+      name = "background";
+    } else if (int_value == RENDER_MODE_HALF_BLOCK) {
+      name = "half-block";
+    }
+    SAFE_SNPRINTF(buf, bufsize, "\"%s\"", name);
+    return;
+  }
+
   SAFE_SNPRINTF(buf, bufsize, "%d", int_value);
 }
 
@@ -539,13 +640,22 @@ static void format_int(const char *field_ptr, size_t field_size, const config_op
  */
 static void format_bool(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
                         size_t bufsize) {
-  (void)meta;
-
   bool bool_value = false;
   if (field_size == sizeof(unsigned short int)) {
     bool_value = *(unsigned short int *)field_ptr != 0;
   } else {
     bool_value = *(bool *)field_ptr;
+  }
+  bool is_inverted_no_splash = false;
+  if (meta && meta->field_offset == offsetof(options_t, splash) && meta->toml_key) {
+    const char *key = meta->toml_key;
+    size_t key_len = strlen(key);
+    static const char suffix[] = ".no_splash";
+    size_t suffix_len = sizeof(suffix) - 1;
+    is_inverted_no_splash = (key_len >= suffix_len && strcmp(key + (key_len - suffix_len), suffix) == 0);
+  }
+  if (is_inverted_no_splash) {
+    bool_value = !bool_value;
   }
   SAFE_SNPRINTF(buf, bufsize, "%s", bool_value ? "true" : "false");
 }
@@ -566,6 +676,40 @@ static void format_double(const char *field_ptr, size_t field_size, const config
     memcpy(&double_value, field_ptr, sizeof(double));
     SAFE_SNPRINTF(buf, bufsize, "%.1f", double_value);
   }
+}
+
+/**
+ * @brief Format CALLBACK values for TOML output
+ *
+ * Callback-backed options are stored in regular fields in options_t.
+ * For config generation, format them by field width and key semantics.
+ */
+static void format_callback(const char *field_ptr, size_t field_size, const config_option_metadata_t *meta, char *buf,
+                            size_t bufsize) {
+  if (!field_ptr || !buf || !meta) {
+    return;
+  }
+
+  if (meta->field_offset == offsetof(options_t, log_file) ||
+      meta->field_offset == offsetof(options_t, palette_custom) ||
+      meta->field_offset == offsetof(options_t, cookies_from_browser)) {
+    format_string(field_ptr, field_size, meta, buf, bufsize);
+    return;
+  }
+
+  if (meta->field_offset == offsetof(options_t, media_seek_timestamp) ||
+      meta->field_offset == offsetof(options_t, microphone_sensitivity) ||
+      meta->field_offset == offsetof(options_t, speakers_volume)) {
+    format_double(field_ptr, field_size, meta, buf, bufsize);
+    return;
+  }
+
+  if (field_size == sizeof(bool)) {
+    format_bool(field_ptr, field_size, meta, buf, bufsize);
+    return;
+  }
+
+  format_int(field_ptr, field_size, meta, buf, bufsize);
 }
 
 /**
@@ -601,11 +745,12 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
   asciichat_error_t first_error = ASCIICHAT_OK;
 
   // Track which options were set to avoid duplicates (e.g., log_file vs logging.log_file)
-  // Use a simple array on the stack - metadata_count is small (< 50)
-  bool option_set_flags[64] = {0}; // Max expected options
-  if (metadata_count > 64) {
-    CONFIG_WARN("Too many options in schema (%zu), some may be skipped", metadata_count);
+  size_t flags_count = metadata_count > 0 ? metadata_count : 1;
+  bool *option_set_flags = SAFE_CALLOC(flags_count, sizeof(bool), bool *);
+  if (!option_set_flags) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate config option flags");
   }
+  defer(SAFE_FREE(option_set_flags));
 
   for (size_t i = 0; i < metadata_count; i++) {
     const config_option_metadata_t *meta = &metadata[i];
@@ -1011,10 +1156,25 @@ static bool config_builder_append(config_builder_t *builder, const char *fmt, ..
   return true;
 }
 
+static bool config_key_should_be_commented(const char *toml_key) {
+  if (!toml_key) {
+    return false;
+  }
+
+  return strcmp(toml_key, "logging.log_file") == 0 || strcmp(toml_key, "security.password") == 0 ||
+         strcmp(toml_key, "security.key") == 0 || strcmp(toml_key, "security.server_key") == 0 ||
+         strcmp(toml_key, "security.client_keys") == 0 || strcmp(toml_key, "media.file") == 0 ||
+         strcmp(toml_key, "media.url") == 0 || strcmp(toml_key, "media.cookies_from_browser") == 0 ||
+         strcmp(toml_key, "network.turn_secret") == 0;
+}
+
 asciichat_error_t config_create_default(const char *config_path, const options_t *opts) {
   char *config_path_expanded = NULL;
 
   defer(SAFE_FREE(config_path_expanded));
+
+  // Create fresh options with all OPT_*_DEFAULT values
+  options_t defaults = options_t_new();
 
   // Allocate buffer for building config content (256KB should be plenty)
   const size_t BUFFER_CAPACITY = 256 * 1024;
@@ -1135,8 +1295,8 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         continue;
       }
 
-      // Get field pointer
-      const char *field_ptr = ((const char *)opts) + meta->field_offset;
+      // Get field pointer from default options
+      const char *field_ptr = ((const char *)&defaults) + meta->field_offset;
 
       // Add description comment if available
       if (meta->description && strlen(meta->description) > 0) {
@@ -1150,8 +1310,20 @@ asciichat_error_t config_create_default(const char *config_path, const options_t
         char formatted_value[BUFFER_SIZE_MEDIUM] = {0};
         g_type_handlers[meta->type].format_output(field_ptr, meta->field_size, meta, formatted_value,
                                                   sizeof(formatted_value));
-        if (!config_builder_append(&builder, "# %s = %s\n", meta->toml_key, formatted_value)) {
-          return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+        const char *output_key = meta->toml_key;
+        size_t category_len = strlen(category);
+        if (strncmp(meta->toml_key, category, category_len) == 0 && meta->toml_key[category_len] == '.') {
+          output_key = meta->toml_key + category_len + 1; // Strip "<category>."
+        }
+
+        if (config_key_should_be_commented(meta->toml_key)) {
+          if (!config_builder_append(&builder, "# %s = %s\n", output_key, formatted_value)) {
+            return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+          }
+        } else {
+          if (!config_builder_append(&builder, "%s = %s\n", output_key, formatted_value)) {
+            return SET_ERRNO(ERROR_CONFIG, "Config too large to fit in buffer");
+          }
         }
       }
 
