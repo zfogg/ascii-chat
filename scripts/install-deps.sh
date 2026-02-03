@@ -319,7 +319,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo pacman -S --needed \
       pkg-config autoconf automake libtool \
       ccache \
-      clang clang-tools llvm lldb lld \
+      clang llvm lldb lld \
       libc++ libc++abi \
       cmake ninja make \
       musl mimalloc \
@@ -329,19 +329,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       openmp \
       criterion \
       doxygen \
-      dpkg rpm-tools
-
-    # Install yt-dlp for YouTube support
-    echo ""
-    echo "Installing yt-dlp for YouTube URL support..."
-    if command -v pip3 &>/dev/null; then
-      pip3 install --user --quiet --upgrade yt-dlp 2>/dev/null || true
-    elif command -v pip &>/dev/null; then
-      pip install --user --quiet --upgrade yt-dlp 2>/dev/null || true
-    else
-      echo "WARNING: pip not found, skipping yt-dlp installation"
-      echo "Install it manually with: pip3 install yt-dlp"
-    fi
+      dpkg rpm-tools \
+      yt-dlp
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"
