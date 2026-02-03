@@ -23,6 +23,20 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
     return -1;
   }
 
+  // Check for testing environment variable override for password prompts
+  if (opts.mask_char != 0) {
+    const char *test_password = SAFE_GETENV("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+    if (test_password != NULL) {
+      size_t len = strlen(test_password);
+      if (len >= max_len) {
+        return -1; // Password too long
+      }
+      memcpy(buffer, test_password, len);
+      buffer[len] = '\0';
+      return 0;
+    }
+  }
+
   // Check for non-interactive mode
   if (!platform_is_interactive()) {
     return -1;
@@ -201,6 +215,16 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
 bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
   if (!prompt) {
     return false;
+  }
+
+  // Check for testing environment variable override
+  const char *test_response = SAFE_GETENV("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+  if (test_response != NULL) {
+    if (_stricmp(test_response, "yes") == 0 || _stricmp(test_response, "y") == 0) {
+      return true;
+    } else if (_stricmp(test_response, "no") == 0 || _stricmp(test_response, "n") == 0) {
+      return false;
+    }
   }
 
   bool is_interactive = platform_is_interactive();

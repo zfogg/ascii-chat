@@ -23,6 +23,20 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
     return -1;
   }
 
+  // Check for testing environment variable override for password prompts
+  if (opts.mask_char != 0) {
+    const char *test_password = SAFE_GETENV("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+    if (test_password != NULL) {
+      size_t len = strlen(test_password);
+      if (len >= max_len) {
+        return -1; // Password too long
+      }
+      memcpy(buffer, test_password, len);
+      buffer[len] = '\0';
+      return 0;
+    }
+  }
+
   // Check for non-interactive mode
   if (!platform_is_interactive()) {
     return -1;
@@ -250,6 +264,16 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
 
   bool is_interactive = platform_is_interactive();
 
+  // Check for testing environment variable override
+  const char *test_response = SAFE_GETENV("ASCII_CHAT_TESTING_QUESTION_PROMPT_RESPONSE");
+  if (test_response != NULL) {
+    if (strcasecmp(test_response, "yes") == 0 || strcasecmp(test_response, "y") == 0) {
+      return true;
+    } else if (strcasecmp(test_response, "no") == 0 || strcasecmp(test_response, "n") == 0) {
+      return false;
+    }
+  }
+
   // Display prompt with default indicator (only if interactive TTY)
   // Allow piped input to work by showing prompt only in interactive mode
   if (is_interactive) {
@@ -272,28 +296,30 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
 
   bool result = default_yes;
 
-  // Try to read response from stdin (works with both interactive TTY and piped input)
-  char response[16];
-  if (fgets(response, sizeof(response), stdin) != NULL) {
-    // Remove trailing newline
-    size_t len = strlen(response);
-    if (len > 0 && response[len - 1] == '\n') {
-      response[len - 1] = '\0';
-      len--;
-    }
+  // Only try to read response if interactive (non-interactive mode returns default immediately)
+  if (is_interactive) {
+    char response[16];
+    if (fgets(response, sizeof(response), stdin) != NULL) {
+      // Remove trailing newline
+      size_t len = strlen(response);
+      if (len > 0 && response[len - 1] == '\n') {
+        response[len - 1] = '\0';
+        len--;
+      }
 
-    // Check for explicit yes/no, otherwise use default
-    if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0) {
-      result = true;
-    } else if (strcasecmp(response, "no") == 0 || strcasecmp(response, "n") == 0) {
-      result = false;
+      // Check for explicit yes/no, otherwise use default
+      if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0) {
+        result = true;
+      } else if (strcasecmp(response, "no") == 0 || strcasecmp(response, "n") == 0) {
+        result = false;
+      } else {
+        // Empty response or invalid input = use default
+        result = default_yes;
+      }
     } else {
-      // Empty response or invalid input = use default
+      // fgets failed (EOF or error) - return default
       result = default_yes;
     }
-  } else {
-    // fgets failed (EOF or error) - return default
-    result = default_yes;
   }
 
   return result;
