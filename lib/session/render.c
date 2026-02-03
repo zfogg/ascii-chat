@@ -120,8 +120,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Frame capture and timing - mode-dependent
     image_t *image;
     uint64_t capture_start_ns = 0;
-    uint64_t conversion_start_ns = 0;
-    uint64_t render_start_ns = 0;
 
     if (is_synchronous) {
       capture_start_ns = time_get_ns();
@@ -255,12 +253,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
-    log_debug_every(3000000, "RENDER[%lu]: Starting ASCII conversion", frame_count);
-    conversion_start_ns = time_get_ns();
+    START_TIMER("ascii_convert");
     char *ascii_frame = session_display_convert_to_ascii(display, image);
-    uint64_t conversion_elapsed_ns = time_elapsed_ns(conversion_start_ns, time_get_ns());
-    log_debug_every(3000000, "RENDER[%lu]: Conversion done (%.2f ms)", frame_count,
-                    (double)conversion_elapsed_ns / 1000000.0);
+    uint64_t conversion_elapsed_ns = STOP_TIMER("ascii_convert");
 
     if (ascii_frame) {
       // Detect when we have a paused frame (first frame after pausing)
@@ -277,8 +272,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         // Profile: render frame
-        log_debug_every(3000000, "RENDER[%lu]: Starting frame render", frame_count);
-        render_start_ns = time_get_ns();
+        START_TIMER("render_frame");
 
         // Check if help screen is active - if so, render help instead of frame
         if (display && session_display_is_help_active(display)) {
@@ -287,9 +281,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           session_display_render_frame(display, ascii_frame);
         }
 
-        uint64_t render_elapsed_ns = time_elapsed_ns(render_start_ns, time_get_ns());
-        log_debug_every(3000000, "RENDER[%lu]: Frame render done (%.2f ms)", frame_count,
-                        (double)render_elapsed_ns / 1000000.0);
+        uint64_t render_elapsed_ns = STOP_TIMER("render_frame");
         uint64_t render_complete_ns = time_get_ns();
 
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
@@ -310,10 +302,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
+      // Allow keyboard in snapshot mode too (for help screen toggle debugging)
+      // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
+      // when tcsetattr() modifies the tty line discipline
       if (keyboard_enabled && keyboard_handler) {
-        log_debug_every(3000000, "RENDER[%lu]: Starting keyboard read", frame_count);
+        START_TIMER("keyboard_read_%lu", frame_count);
         keyboard_key_t key = keyboard_read_nonblocking();
-        log_debug_every(3000000, "RENDER[%lu]: Keyboard read done (key=%d)", frame_count, key);
+        STOP_TIMER_AND_LOG("keyboard_read_%lu", log_info, "RENDER[%lu] Keyboard read complete (key=%d)", frame_count,
+                           key);
         if (key != KEY_NONE) {
           keyboard_handler(capture, key, user_data);
         }
@@ -344,8 +340,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     if (is_synchronous && capture) {
       uint32_t target_fps = session_capture_get_target_fps(capture);
       if (target_fps > 0) {
-        uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, time_get_ns());
+        uint64_t frame_end_ns = time_get_ns();
+        uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
+
+        log_info("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
+                 (double)frame_elapsed_ns / 1000000.0, (double)frame_target_ns / 1000000.0);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up

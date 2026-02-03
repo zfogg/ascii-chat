@@ -239,6 +239,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   }
 
   // PROFILING: Time image allocation and resize
+  START_TIMER("image_alloc");
   uint64_t prof_alloc_start_ns = time_get_ns();
 
   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
@@ -250,11 +251,15 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   image_clear(resized);
 
   uint64_t prof_alloc_end_ns = time_get_ns();
+  STOP_TIMER_AND_LOG("image_alloc", log_info, "IMAGE_ALLOC: Alloc+clear complete (%.2f ms)");
+
+  START_TIMER("image_resize");
   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
 
   image_resize(original, resized);
 
   uint64_t prof_resize_end_ns = time_get_ns();
+  STOP_TIMER_AND_LOG("image_resize", log_info, "IMAGE_RESIZE: Resize complete (%.2f ms)");
 
   // PROFILING: Time ASCII print
   uint64_t prof_print_start_ns = prof_resize_end_ns;
@@ -265,15 +270,18 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                   original->h, width, height, resized->w, resized->h, pad_width, pad_height, caps->render_mode);
 
   // Use the capability-aware image printing function with client's palette
+  START_TIMER("image_print_with_capabilities");
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
 
   uint64_t prof_print_end_ns = time_get_ns();
+  STOP_TIMER_AND_LOG("image_print_with_capabilities", log_info, "IMAGE_PRINT: Print complete (%.2f ms)");
 
   uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
   uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
   uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
 
   // PROFILING: Time padding
+  START_TIMER("ascii_padding");
   uint64_t prof_pad_start_ns = time_get_ns();
 
   if (!ascii) {
@@ -298,12 +306,13 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   SAFE_FREE(ascii_width_padded);
 
   uint64_t prof_pad_end_ns = time_get_ns();
+  STOP_TIMER_AND_LOG("ascii_padding", log_info, "ASCII_PADDING: Padding complete (%.2f ms)");
 
   uint64_t pad_time_us = time_ns_to_us(time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns));
-  (void)alloc_time_us;
-  (void)resize_time_us;
-  (void)print_time_us;
-  (void)pad_time_us;
+  log_info("ASCII_BREAKDOWN: alloc=%.2f ms, resize=%.2f ms, print=%.2f ms, pad=%.2f ms (total=%.2f ms)",
+           (double)alloc_time_us / 1000.0, (double)resize_time_us / 1000.0, (double)print_time_us / 1000.0,
+           (double)pad_time_us / 1000.0,
+           (double)(alloc_time_us + resize_time_us + print_time_us + pad_time_us) / 1000.0);
 
   image_destroy(resized);
 

@@ -739,33 +739,47 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   case TERM_COLOR_TRUECOLOR:
     // Use existing truecolor printing function with client's palette
 #ifdef SIMD_SUPPORT
+    START_TIMER("print_color_simd_truecolor");
     result = image_print_color_simd((image_t *)image, use_background_mode, false, palette);
+    STOP_TIMER_AND_LOG("print_color_simd_truecolor", log_info, "PRINT_SIMD_TRUECOLOR: Complete (%.2f ms)");
 #else
+    START_TIMER("print_color");
     result = image_print_color(image, palette);
+    STOP_TIMER_AND_LOG("print_color", log_info, "PRINT_COLOR: Complete (%.2f ms)");
 #endif
     break;
 
   case TERM_COLOR_256:
 #ifdef SIMD_SUPPORT
+    START_TIMER("print_color_simd_256");
     result = image_print_color_simd((image_t *)image, use_background_mode, true, palette);
+    STOP_TIMER_AND_LOG("print_color_simd_256", log_info, "PRINT_SIMD_256: Complete (%.2f ms)");
 #else
     // Use 256-color conversion
+    START_TIMER("print_256color");
     result = image_print_256color(image, palette);
+    STOP_TIMER_AND_LOG("print_256color", log_info, "PRINT_256COLOR: Complete (%.2f ms)");
 #endif
     break;
 
   case TERM_COLOR_16:
     // Use 16-color conversion with Floyd-Steinberg dithering for better quality
+    START_TIMER("print_16color_dithered");
     result = image_print_16color_dithered_with_background(image, use_background_mode, palette);
+    STOP_TIMER_AND_LOG("print_16color_dithered", log_info, "PRINT_16COLOR_DITHERED: Complete (%.2f ms)");
     break;
 
   case TERM_COLOR_NONE:
   default:
     // Use grayscale/monochrome conversion with client's custom palette
 #ifdef SIMD_SUPPORT
+    START_TIMER("print_simd");
     result = image_print_simd((image_t *)image, palette);
+    STOP_TIMER_AND_LOG("print_simd", log_info, "PRINT_SIMD: Complete (%.2f ms)");
 #else
+    START_TIMER("print");
     result = image_print(image, palette);
+    STOP_TIMER_AND_LOG("print", log_info, "PRINT: Complete (%.2f ms)");
 #endif
     break;
   }
