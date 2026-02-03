@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <ascii-chat/video/simd/avx2.h>
+#include <ascii-chat/video/simd/common.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/video/ansi_fast.h>
