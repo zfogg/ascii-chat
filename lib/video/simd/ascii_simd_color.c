@@ -415,23 +415,24 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
   // FIXME: my AVX2 implementation is dim and has vertical stripe artifacts. Use scalar until we fix it.
   START_TIMER("render_color_avx2_fallback");
   char *result = image_print_color(image, ascii_chars);
-  STOP_TIMER_AND_LOG(dev, 0, "render_color_avx2_fallback", "RENDER_COLOR_AVX2_FALLBACK: Complete");
+  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "render_color_avx2_fallback",
+                           "RENDER_COLOR_AVX2_FALLBACK: Complete");
   return result;
   // return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif SIMD_SUPPORT_SSSE3
   START_TIMER("render_ssse3");
   char *result = render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
-  STOP_TIMER_AND_LOG(dev, 0, "render_ssse3", "RENDER_SSSE3: Complete");
+  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "render_ssse3", "RENDER_SSSE3: Complete");
   return result;
 #elif SIMD_SUPPORT_SSE2
   START_TIMER("render_sse2");
   char *result = render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
-  STOP_TIMER_AND_LOG(dev, 0, "render_sse2", "RENDER_SSE2: Complete");
+  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "render_sse2", "RENDER_SSE2: Complete");
   return result;
 #elif SIMD_SUPPORT_NEON
   START_TIMER("render_neon");
   char *result = render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
-  STOP_TIMER_AND_LOG(dev, 0, "render_neon", "RENDER_NEON: Complete");
+  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "render_neon", "RENDER_NEON: Complete");
   return result;
 #else
   // Fallback implementation for non-NEON platforms
@@ -439,7 +440,7 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
   (void)use_background_mode; // Suppress unused parameter warning
   START_TIMER("render_color_fallback");
   char *result = image_print_color(image, ascii_chars);
-  STOP_TIMER_AND_LOG(dev, 0, "render_color_fallback", "RENDER_COLOR_FALLBACK: Complete");
+  STOP_TIMER_AND_LOG_EVERY(dev, 0, 3 * NS_PER_SEC_INT, "render_color_fallback", "RENDER_COLOR_FALLBACK: Complete");
   return result;
 #endif
 }
