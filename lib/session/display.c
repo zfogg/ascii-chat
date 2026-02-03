@@ -514,11 +514,10 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   START_TIMER("frame_write");
   if (use_tty_control) {
-    // TTY mode: clear screen and reset cursor before each frame to prevent old content from bleeding through
-    (void)terminal_clear_screen();
+    // TTY mode: just reset cursor to home and redraw frame without clearing
+    // This avoids flashing at high framerates and is more efficient than clearing
     (void)terminal_cursor_home(STDOUT_FILENO);
-    // Send frame data
-    // Ensure clear codes write completely before frame data to avoid cursor misalignment
+    // Send frame data (overwrites previous frame from cursor position)
     (void)platform_write_all(STDOUT_FILENO, frame_data, frame_len);
     (void)terminal_flush(STDOUT_FILENO);
   } else {
