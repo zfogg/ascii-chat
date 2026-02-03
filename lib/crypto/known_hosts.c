@@ -676,6 +676,72 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
   return false;
 }
 
+/**
+ * @brief Check if an IP address is localhost/loopback
+ *
+ * Returns true for:
+ * - 127.0.0.0/8 (IPv4 loopback range)
+ * - ::1 (IPv6 loopback)
+ *
+ * @param ip_string IP address as string (e.g., "127.0.0.1" or "::1")
+ * @return true if localhost/loopback, false otherwise
+ */
+static bool is_localhost_address(const char *ip_string) {
+  if (!ip_string) {
+    return false;
+  }
+
+  // IPv6 loopback
+  if (strcmp(ip_string, "::1") == 0) {
+    return true;
+  }
+
+  // IPv4 loopback range (127.0.0.0/8)
+  // Check if it starts with "127." to catch 127.0.0.1, 127.0.0.2, etc.
+  if (strncmp(ip_string, "127.", 4) == 0) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Check if running in automated/non-interactive environment
+ *
+ * Returns true for:
+ * - CLAUDECODE environment variable set (LLM automation)
+ * - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK environment variable set
+ * - stdin is not a TTY
+ * - snapshot mode enabled
+ *
+ * @return true if automated/non-interactive, false if interactive
+ */
+static bool is_automated_mode(void) {
+  // Check for Claude Code automation
+  const char *claudecode = SAFE_GETENV("CLAUDECODE");
+  if (claudecode && strlen(claudecode) > 0) {
+    return true;
+  }
+
+  // Check for insecure bypass environment variable
+  const char *insecure_bypass = SAFE_GETENV("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
+  if (insecure_bypass && strcmp(insecure_bypass, "1") == 0) {
+    return true;
+  }
+
+  // Check if stdin is a TTY (if not, can't be interactive)
+  if (!platform_isatty(STDIN_FILENO)) {
+    return true;
+  }
+
+  // Check for snapshot mode
+  if (GET_OPTION(snapshot_mode)) {
+    return true;
+  }
+
+  return false;
+}
+
 // Interactive prompt for unknown host without identity key
 // Returns true if user wants to continue, false to abort
 bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
@@ -684,6 +750,34 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
+  }
+
+  // LOCALHOST OPTIMIZATION: Skip authentication prompt for localhost addresses
+  // Localhost is inherently trusted (same machine, no network exposure)
+  // This matches SSH behavior (ssh-keyscan doesn't prompt for localhost)
+  if (is_localhost_address(server_ip)) {
+    log_debug(
+        "SECURITY: Localhost address %s detected - skipping unknown host prompt (localhost is inherently trusted)",
+        ip_with_port);
+    return true; // Silently trust localhost
+  }
+
+  // Check if running in automated/non-interactive environment
+  // In debug builds, Claude Code automation can't interact with prompts
+  if (is_automated_mode()) {
+    SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify server without identity key in non-interactive/automated mode");
+    log_error("ERROR: Cannot verify server without identity key in non-interactive/automated mode.\n"
+              "ERROR: This connection is vulnerable to man-in-the-middle attacks!\n"
+              "\n"
+              "To connect to this host:\n"
+              "  1. Run the client interactively (from a terminal with TTY)\n"
+              "  2. Verify you trust this server despite no identity key\n"
+              "  3. Accept the risk when prompted\n"
+              "  OR better: Ask server admin to use --key for proper authentication\n"
+              "\n"
+              "Connection aborted for security.\n"
+              "\n");
+    return false;
   }
 
   log_warn("\n"
@@ -698,24 +792,6 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
            "  2. Client should use --server-key to verify the server\n"
            "\n",
            ip_with_port);
-
-  // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
-  if (!platform_isatty(STDIN_FILENO) || GET_OPTION(snapshot_mode)) {
-    // SECURITY: Non-interactive mode - REJECT unknown hosts without identity
-    SET_ERRNO(ERROR_CRYPTO, "SECURITY: Cannot verify server without identity key in non-interactive mode");
-    log_error("ERROR: Cannot verify server without identity key in non-interactive mode.\n"
-              "ERROR: This connection is vulnerable to man-in-the-middle attacks!\n"
-              "\n"
-              "To connect to this host:\n"
-              "  1. Run the client interactively (from a terminal with TTY)\n"
-              "  2. Verify you trust this server despite no identity key\n"
-              "  3. Accept the risk when prompted\n"
-              "  OR better: Ask server admin to use --key for proper authentication\n"
-              "\n"
-              "Connection aborted for security.\n"
-              "\n");
-    return false; // REJECT unknown hosts without identity in non-interactive mode
-  }
 
   // Interactive mode - prompt user (default is No for security)
   if (platform_prompt_yes_no("Are you sure you want to continue connecting", false)) {

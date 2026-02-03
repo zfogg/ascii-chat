@@ -1197,11 +1197,17 @@ int remove_client(server_context_t *server_ctx, uint32_t client_id) {
   }
 
   // Unregister client from session_host (for discovery mode support)
+  // NOTE: Client may not be registered if crypto handshake failed before session_host registration
   if (server_ctx->session_host) {
     asciichat_error_t session_result = session_host_remove_client(server_ctx->session_host, client_id);
     if (session_result != ASCIICHAT_OK) {
-      log_warn("Failed to unregister client %u from session_host: %s", client_id,
-               asciichat_error_string(session_result));
+      // ERROR_NOT_FOUND (91) is expected if client failed crypto before being registered with session_host
+      if (session_result == ERROR_NOT_FOUND) {
+        log_debug("Client %u not found in session_host (likely failed crypto before registration)", client_id);
+      } else {
+        log_warn("Failed to unregister client %u from session_host: %s", client_id,
+                 asciichat_error_string(session_result));
+      }
     } else {
       log_debug("Client %u unregistered from session_host", client_id);
     }
