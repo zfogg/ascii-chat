@@ -392,7 +392,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 
       log_dev("TIMING_FILTER_APPLY: %llu us", (t_filter_apply_end - t_filter_apply_start) / 1000);
     }
-    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "color_filter", "COLOR_FILTER: Filter complete (%.2f ms)");
+    STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "color_filter",
+                             "COLOR_FILTER: Filter complete (%.2f ms)");
   }
   uint64_t t_filter_end = time_get_ns();
 
