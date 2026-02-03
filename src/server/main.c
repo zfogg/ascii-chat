@@ -1598,6 +1598,7 @@ int server_main(void) {
   // ACDS Session Creation: Register this server with discovery service
   // This also determines the session string for mDNS (if --acds is enabled)
   char session_string[64] = {0};
+  bool session_is_mdns_only = false;
 
   // ACDS Registration (conditional on --discovery flag)
   if (GET_OPTION(discovery)) {
@@ -1937,6 +1938,9 @@ skip_acds_session:
 
     log_debug("Generated random session string for mDNS: '%s'", session_string);
 
+    // Mark that this session is mDNS-only (not globally discoverable via ACDS)
+    session_is_mdns_only = true;
+
     // Advertise mDNS with random session string
     advertise_mdns_with_session(session_string, (uint16_t)port);
   }
@@ -1949,8 +1953,13 @@ skip_acds_session:
   if (session_string[0] != '\0') {
     log_plain("");
     log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    log_plain("📋 Session String: %s (LAN only via mDNS)", session_string);
-    log_plain("🔗 Share with others on your LAN to join:");
+    if (session_is_mdns_only) {
+      log_plain("📋 Session String: %s (LAN only via mDNS)", session_string);
+      log_plain("🔗 Share with others on your LAN to join:");
+    } else {
+      log_plain("📋 Session String: %s", session_string);
+      log_plain("🔗 Share this globally to join:");
+    }
     log_plain("   ascii-chat %s", session_string);
     log_plain("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     log_plain("");
