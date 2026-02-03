@@ -741,14 +741,14 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
     log_error("Failed to get UTF-8 palette cache for NEON color");
     return NULL;
   }
-  STOP_TIMER_AND_LOG("neon_utf8_cache", log_info, "NEON_UTF8_CACHE: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "neon_utf8_cache", "NEON_UTF8_CACHE: Complete (%.2f ms)");
 
   START_TIMER("neon_lookup_tables");
   // Build NEON lookup table inline (faster than caching - 30ns rebuild vs 50ns lookup)
   uint8x16x4_t tbl, char_lut, length_lut, char_byte0_lut, char_byte1_lut, char_byte2_lut, char_byte3_lut;
   build_neon_lookup_tables(utf8_cache, &tbl, &char_lut, &length_lut, &char_byte0_lut, &char_byte1_lut, &char_byte2_lut,
                            &char_byte3_lut);
-  STOP_TIMER_AND_LOG("neon_lookup_tables", log_info, "NEON_LOOKUP_TABLES: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "neon_lookup_tables", "NEON_LOOKUP_TABLES: Complete (%.2f ms)");
 
   // Suppress unused variable warnings for color mode
   (void)char_lut;
@@ -986,14 +986,14 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 
   uint64_t loop_end_ns = time_get_ns();
   uint64_t loop_time_ms = (loop_end_ns - loop_start_ns) / 1000000;
-  log_info("NEON_MAIN_LOOP_ACTUAL: %llu ms for %d rows, %d width", loop_time_ms, height, width);
+  log_dev("NEON_MAIN_LOOP_ACTUAL: %llu ms for %d rows, %d width", loop_time_ms, height, width);
 
   // Log chunks per mode
-  log_info(
+  log_dev(
       "NEON_MAIN_LOOP processed %d rows x %d width = %d pixels in %llu ms (256color: %d chunks, truecolor: %d chunks)",
       height, width, height * width, loop_time_ms, chunks_256color, chunks_truecolor);
 
-  STOP_TIMER_AND_LOG("neon_main_loop", log_info, "NEON_MAIN_LOOP: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "neon_main_loop", "NEON_MAIN_LOOP: Complete (%.2f ms)");
 
   // Merge all thread buffers into final output
   START_TIMER("neon_buffer_merge");
@@ -1032,7 +1032,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   SAFE_FREE(ob.buf); // Free the main buffer that was allocated but not used
 
   final_buf[write_pos] = '\0';
-  STOP_TIMER_AND_LOG("neon_buffer_merge", log_info, "NEON_BUFFER_MERGE: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "neon_buffer_merge", "NEON_BUFFER_MERGE: Complete (%.2f ms)");
 
   return final_buf;
 }

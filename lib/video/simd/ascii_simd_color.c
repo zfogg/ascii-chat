@@ -95,22 +95,6 @@ static void init_sgr256_cache(void) {
   sgr256_cache_initialized = true;
 }
 
-// Generate "\e[38;5;NNNm" (foreground only) - used for building on-demand
-static inline char *build_sgr256_fg(char *buf, uint8_t fg, uint8_t *len_out) {
-  char *p = buf;
-  *p++ = '\033';
-  *p++ = '[';
-  *p++ = '3';
-  *p++ = '8';
-  *p++ = ';';
-  *p++ = '5';
-  *p++ = ';';
-  p = write_u8(p, fg);
-  *p++ = 'm';
-  *len_out = (uint8_t)(p - buf);
-  return buf;
-}
-
 // Generate "\e[38;5;NNN;48;5;NNNm" (foreground + background)
 static inline char *build_sgr256_fgbg(char *buf, uint8_t fg, uint8_t bg, uint8_t *len_out) {
   char *p = buf;
@@ -431,23 +415,23 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
   // FIXME: my AVX2 implementation is dim and has vertical stripe artifacts. Use scalar until we fix it.
   START_TIMER("render_color_avx2_fallback");
   char *result = image_print_color(image, ascii_chars);
-  STOP_TIMER_AND_LOG("render_color_avx2_fallback", log_info, "RENDER_COLOR_AVX2_FALLBACK: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "render_color_avx2_fallback", "RENDER_COLOR_AVX2_FALLBACK: Complete");
   return result;
   // return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif SIMD_SUPPORT_SSSE3
   START_TIMER("render_ssse3");
   char *result = render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
-  STOP_TIMER_AND_LOG("render_ssse3", log_info, "RENDER_SSSE3: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "render_ssse3", "RENDER_SSSE3: Complete");
   return result;
 #elif SIMD_SUPPORT_SSE2
   START_TIMER("render_sse2");
   char *result = render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
-  STOP_TIMER_AND_LOG("render_sse2", log_info, "RENDER_SSE2: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "render_sse2", "RENDER_SSE2: Complete");
   return result;
 #elif SIMD_SUPPORT_NEON
   START_TIMER("render_neon");
   char *result = render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
-  STOP_TIMER_AND_LOG("render_neon", log_info, "RENDER_NEON: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "render_neon", "RENDER_NEON: Complete");
   return result;
 #else
   // Fallback implementation for non-NEON platforms
@@ -455,7 +439,7 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
   (void)use_background_mode; // Suppress unused parameter warning
   START_TIMER("render_color_fallback");
   char *result = image_print_color(image, ascii_chars);
-  STOP_TIMER_AND_LOG("render_color_fallback", log_info, "RENDER_COLOR_FALLBACK: Complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "render_color_fallback", "RENDER_COLOR_FALLBACK: Complete");
   return result;
 #endif
 }

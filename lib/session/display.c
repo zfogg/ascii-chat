@@ -347,11 +347,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
       uint64_t t_flip_reverse_end = time_get_ns();
       display_image = flipped_image;
 
-      log_warn("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, reverse=%llu us",
-               (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
-               (t_flip_reverse_end - t_flip_reverse_start) / 1000);
+      log_dev("TIMING_FLIP: alloc=%llu us, memcpy=%llu us, reverse=%llu us",
+              (t_flip_alloc_end - t_flip_alloc_start) / 1000, (t_flip_memcpy_end - t_flip_memcpy_start) / 1000,
+              (t_flip_reverse_end - t_flip_reverse_start) / 1000);
     }
-    STOP_TIMER_AND_LOG("image_flip", log_info, "IMAGE_FLIP: Horizontal flip complete (%.2f ms)");
+    STOP_TIMER_AND_LOG(dev, "image_flip", "IMAGE_FLIP: Horizontal flip complete (%.2f ms)");
   }
   uint64_t t_flip_end = time_get_ns();
 
@@ -377,9 +377,8 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
         uint64_t t_filter_memcpy_end = time_get_ns();
         display_image = filter_image;
 
-        log_warn("TIMING_FILTER_COPY: alloc=%llu us, memcpy=%llu us",
-                 (t_filter_alloc_end - t_filter_alloc_start) / 1000,
-                 (t_filter_memcpy_end - t_filter_memcpy_start) / 1000);
+        log_dev("TIMING_FILTER_COPY: alloc=%llu us, memcpy=%llu us", (t_filter_alloc_end - t_filter_alloc_start) / 1000,
+                (t_filter_memcpy_end - t_filter_memcpy_start) / 1000);
       }
     }
 
@@ -390,9 +389,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
                          color_filter);
       uint64_t t_filter_apply_end = time_get_ns();
 
-      log_warn("TIMING_FILTER_APPLY: %llu us", (t_filter_apply_end - t_filter_apply_start) / 1000);
+      log_dev("TIMING_FILTER_APPLY: %llu us", (t_filter_apply_end - t_filter_apply_start) / 1000);
     }
-    STOP_TIMER_AND_LOG("color_filter", log_info, "COLOR_FILTER: Filter complete (%.2f ms)");
+    STOP_TIMER_AND_LOG(dev, "color_filter", "COLOR_FILTER: Filter complete (%.2f ms)");
   }
   uint64_t t_filter_end = time_get_ns();
 
@@ -401,7 +400,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   START_TIMER("ascii_convert_with_capabilities");
   char *result = ascii_convert_with_capabilities(display_image, width, height, &caps_copy, preserve_aspect_ratio,
                                                  stretch, ctx->palette_chars);
-  STOP_TIMER_AND_LOG("ascii_convert_with_capabilities", log_info, "ASCII_CONVERT: Conversion complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "ascii_convert_with_capabilities", "ASCII_CONVERT: Conversion complete (%.2f ms)");
   uint64_t t_convert_end = time_get_ns();
 
   uint64_t t_cleanup_start = time_get_ns();
@@ -414,14 +413,14 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   if (color_filter != COLOR_FILTER_NONE && !flipped_image && display_image != image) {
     image_destroy((image_t *)display_image);
   }
-  STOP_TIMER_AND_LOG("ascii_convert_cleanup", log_info, "ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "ascii_convert_cleanup", "ASCII_CONVERT_CLEANUP: Cleanup complete (%.2f ms)");
   uint64_t t_cleanup_end = time_get_ns();
 
   // Log total breakdown with actual measured times
-  log_warn("CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us",
-           (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
-           (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
-           (t_cleanup_end - t_flip_start) / 1000);
+  log_dev("CONVERT_TIMING: flip=%llu us, filter=%llu us, convert=%llu us, cleanup=%llu us, TOTAL=%llu us",
+          (t_flip_end - t_flip_start) / 1000, (t_filter_end - t_filter_start) / 1000,
+          (t_convert_end - t_convert_start) / 1000, (t_cleanup_end - t_cleanup_start) / 1000,
+          (t_cleanup_end - t_flip_start) / 1000);
 
   return result;
 }
@@ -546,7 +545,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
   }
-  STOP_TIMER_AND_LOG("frame_write", log_info, "FRAME_WRITE: Write and flush complete (%.2f ms)");
+  STOP_TIMER_AND_LOG(dev, "frame_write", "FRAME_WRITE: Write and flush complete (%.2f ms)");
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {

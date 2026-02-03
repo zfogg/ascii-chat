@@ -430,24 +430,26 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size);
  * and a log message is generated with the elapsed time appended in human-readable format.
  *
  * Usage:
- *   STOP_TIMER_AND_LOG("client_handshake", log_info, "Crypto handshake completed successfully");
- *   STOP_TIMER_AND_LOG("process_frame_%d", log_debug, "Frame %d processed", frame_id, frame_id);
+ *   STOP_TIMER_AND_LOG(info, "client_handshake", "Crypto handshake completed successfully");
+ *   STOP_TIMER_AND_LOG(debug, "process_frame_%d", "Frame %d processed", frame_id, frame_id);
+ *   STOP_TIMER_AND_LOG(dev, "render", "Rendering complete");
  *
  * The macro will append " in X.XXms" (or appropriate unit) to your message automatically.
+ * Supported log levels: dev, debug, info, warn, error, fatal
  *
+ * @param log_level Log level name (dev, debug, info, warn, error, fatal - without log_ prefix)
  * @param timer_name Timer name (must match START_TIMER call)
- * @param log_func Logging function to use (log_info, log_debug, etc.)
  * @param msg_fmt Printf-style format string for the message
  * @param ... Format arguments for both timer name and message
  * @ingroup module_utilities
  */
-#define STOP_TIMER_AND_LOG(timer_name, log_func, msg_fmt, ...)                                                         \
+#define STOP_TIMER_AND_LOG(log_level, timer_name, msg_fmt, ...)                                                        \
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0) {                                                                                          \
       char _duration_str[32];                                                                                          \
       format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                           \
-      log_func(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                        \
+      log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                 \
     }                                                                                                                  \
   } while (0)
 

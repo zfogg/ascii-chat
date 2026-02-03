@@ -123,8 +123,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t capture_end_ns = 0;
     uint64_t pre_convert_ns = 0;
     uint64_t post_convert_ns = 0;
-    uint64_t pre_render_ns = 0;
-    uint64_t post_render_ns = 0;
 
     if (is_synchronous) {
       capture_start_ns = time_get_ns();
@@ -221,7 +219,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Log capture time every 30 frames
       if (frame_count % 30 == 0) {
         double capture_ms = (double)capture_elapsed_ns / 1000000.0;
-        log_info_every(5000000, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
+        log_dev_every(5000000, "PROFILE[%lu]: CAPTURE=%.2f ms", frame_count, capture_ms);
       }
 
       // Pause after first frame if requested via --pause flag
@@ -299,16 +297,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
         if (frame_count % 30 == 0) {
           double total_frame_time_ms = (double)frame_to_render_ns / 1000000.0;
-          log_warn("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
-                   total_frame_time_ms);
+          log_dev("ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms", frame_count,
+                  total_frame_time_ms);
         }
 
         // Log render time every 30 frames
         if (frame_count % 150 == 0) {
           double conversion_ms = (double)conversion_elapsed_ns / 1000000.0;
           double render_ms = (double)render_elapsed_ns / 1000000.0;
-          log_info_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
-                         render_ms);
+          log_dev_every(5000000, "PROFILE[%lu]: CONVERT=%.2f ms, RENDER=%.2f ms", frame_count, conversion_ms,
+                        render_ms);
         }
       }
 
@@ -317,10 +315,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Only enable keyboard if BOTH stdin AND stdout are TTYs to avoid buffering issues
       // when tcsetattr() modifies the tty line discipline
       if (keyboard_enabled && keyboard_handler) {
-        START_TIMER("keyboard_read_%lu", frame_count);
+        START_TIMER("keyboard_read_%lu", (unsigned long)frame_count);
         keyboard_key_t key = keyboard_read_nonblocking();
-        STOP_TIMER_AND_LOG("keyboard_read_%lu", log_info, "RENDER[%lu] Keyboard read complete (key=%d)", frame_count,
-                           key);
+        STOP_TIMER_AND_LOG(dev, "keyboard_read_%lu", "RENDER[%lu] Keyboard read complete (key=%d)",
+                           (unsigned long)frame_count, key);
         if (key != KEY_NONE) {
           keyboard_handler(capture, key, user_data);
         }
@@ -348,7 +346,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Log phase breakdown every 5 frames
       if (frame_count % 5 == 0) {
-        log_info(
+        log_dev(
             "PHASE_BREAKDOWN[%lu]: prestart=%llu ms, capture=%llu ms, convert=%llu ms, render=%llu ms (total=%llu ms)",
             frame_count, prestart_ms, capture_ms, convert_ms, render_ms, total_ms);
       }
@@ -374,8 +372,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
         uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
 
-        log_info("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
-                 (double)frame_elapsed_ns / 1000000.0, (double)frame_target_ns / 1000000.0);
+        log_dev("RENDER[%lu] TIMING_TOTAL: frame_time_ms=%.2f target_ms=%.2f", frame_count,
+                (double)frame_elapsed_ns / 1000000.0, (double)frame_target_ns / 1000000.0);
 
         // Only sleep if we have time budget remaining
         // If already behind, skip sleep to catch up

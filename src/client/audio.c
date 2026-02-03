@@ -461,8 +461,8 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   if (g_audio_context.playback_buffer) {
     size_t buffer_samples = audio_ring_buffer_available_read(g_audio_context.playback_buffer);
     float buffer_latency_ms = (float)buffer_samples / 48.0f;
-    log_debug_every(500000, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)", buffer_latency_ms,
-                    buffer_samples);
+    log_dev_every(500000, "LATENCY: Client playback buffer after recv: %.1fms (%zu samples)", buffer_latency_ms,
+                  buffer_samples);
   }
 
 #ifdef DEBUG_AUDIO

@@ -749,15 +749,15 @@ void *client_audio_render_thread(void *arg) {
           float buffer_latency_ms = (float)available / 48.0f; // samples / (48000 / 1000)
 
           // Log source buffer latency
-          log_debug_every(500000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
-                          g_audio_mixer->source_ids[i], buffer_latency_ms, available);
+          log_dev_every(500000, "LATENCY: Server incoming buffer for client %u: %.1fms (%zu samples)",
+                        g_audio_mixer->source_ids[i], buffer_latency_ms, available);
 
           // If buffer is getting too full, read faster to reduce latency
           if (available > 1920) {  // > 40ms buffered - read faster!
             samples_to_read = 960; // Double read to catch up (20ms worth)
-            log_debug_every(LOG_RATE_DEFAULT,
-                            "LATENCY WARNING: Server buffer too full for client %u: %.1fms, reading double",
-                            g_audio_mixer->source_ids[i], buffer_latency_ms);
+            log_dev_every(LOG_RATE_DEFAULT,
+                          "LATENCY WARNING: Server buffer too full for client %u: %.1fms, reading double",
+                          g_audio_mixer->source_ids[i], buffer_latency_ms);
           }
         }
       }
@@ -765,8 +765,8 @@ void *client_audio_render_thread(void *arg) {
       // Log outgoing queue latency
       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
       float queue_latency_ms = (float)queue_depth * 20.0f; // ~20ms per Opus packet
-      log_debug_every(500000, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)", client_id_snapshot,
-                      queue_latency_ms, queue_depth);
+      log_dev_every(500000, "LATENCY: Server send queue for client %u: %.1fms (%zu packets)", client_id_snapshot,
+                    queue_latency_ms, queue_depth);
     }
 
     int samples_mixed = 0;
@@ -814,7 +814,7 @@ void *client_audio_render_thread(void *arg) {
     if (mix_time_ns > 2 * NS_PER_MS_INT) {
       char duration_str[32];
       format_duration_ns((double)mix_time_ns, duration_str, sizeof(duration_str));
-      log_warn_every(LOG_RATE_DEFAULT, "Slow mixer for client %u: took %s", client_id_snapshot, duration_str);
+      log_dev_every(LOG_RATE_DEFAULT, "Slow mixer for client %u: took %s", client_id_snapshot, duration_str);
     }
 
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
@@ -850,7 +850,7 @@ void *client_audio_render_thread(void *arg) {
     if (accum_time_ns > 500 * NS_PER_US_INT) {
       char duration_str[32];
       format_duration_ns((double)accum_time_ns, duration_str, sizeof(duration_str));
-      log_warn_every(LOG_RATE_DEFAULT, "Slow accumulate for client %u: took %s", client_id_snapshot, duration_str);
+      log_dev_every(LOG_RATE_DEFAULT, "Slow accumulate for client %u: took %s", client_id_snapshot, duration_str);
     }
 
     // Only encode and send when we have accumulated a full Opus frame
@@ -896,8 +896,8 @@ void *client_audio_render_thread(void *arg) {
       if (opus_time_ns > 2 * NS_PER_MS_INT) {
         char duration_str[32];
         format_duration_ns((double)opus_time_ns, duration_str, sizeof(duration_str));
-        log_warn_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %s, size=%d", client_id_snapshot,
-                       duration_str, opus_size);
+        log_dev_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %s, size=%d", client_id_snapshot,
+                      duration_str, opus_size);
       }
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
@@ -940,7 +940,7 @@ void *client_audio_render_thread(void *arg) {
         if (queue_time_ns > 500 * NS_PER_US_INT) {
           char duration_str[32];
           format_duration_ns((double)queue_time_ns, duration_str, sizeof(duration_str));
-          log_warn_every(LOG_RATE_DEFAULT, "Slow queue for client %u: took %s", client_id_snapshot, duration_str);
+          log_dev_every(LOG_RATE_DEFAULT, "Slow queue for client %u: took %s", client_id_snapshot, duration_str);
         }
 
         if (result < 0) {
