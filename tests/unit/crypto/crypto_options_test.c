@@ -22,24 +22,9 @@ extern int optind;
 
 // Reset global options between tests to prevent pollution
 static void reset_crypto_options(void) {
-  // Initialize RCU state if not already initialized
+  // Shutdown and reinitialize RCU state to clear all previous state
+  options_state_shutdown();
   options_state_init();
-
-  // Get current options and create a writable copy
-  const options_t *current = options_get();
-  options_t reset_opts;
-  memcpy(&reset_opts, current, sizeof(options_t));
-
-  // Reset crypto-related fields
-  reset_opts.no_encrypt = 0;
-  reset_opts.encrypt_key[0] = '\0';
-  reset_opts.password[0] = '\0';
-  reset_opts.encrypt_keyfile[0] = '\0';
-  reset_opts.server_key[0] = '\0';
-  reset_opts.client_keys[0] = '\0';
-
-  // Write back to RCU
-  options_state_set(&reset_opts);
 
   // Reset optind for getopt_long (critical for multiple test runs)
   optind = 1;

@@ -795,7 +795,8 @@ static asciichat_error_t config_apply_schema(toml_datum_t toptab, asciichat_mode
   toml_datum_t no_encrypt = toml_seek(toptab, "crypto.no_encrypt");
   if (no_encrypt.type == TOML_BOOLEAN && no_encrypt.u.boolean) {
     opts->no_encrypt = 1;
-    opts->encrypt_enabled = 0;
+    // Don't modify encrypt_enabled - they are independent flags
+    // The conflict validation will catch if both are set
   }
 
   // Handle password warning (check both crypto and security sections)
