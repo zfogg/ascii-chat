@@ -264,7 +264,7 @@ static void sigwinch_handler(int sigwinch) {
 // Windows-compatible signal handler (no-op implementation)
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
-  log_debug("SIGWINCH received (Windows no-op implementation)");
+  log_debug_nofile("SIGWINCH received (Windows no-op implementation)");
 }
 #endif
 

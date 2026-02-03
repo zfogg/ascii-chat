@@ -473,12 +473,8 @@ static void sigint_handler(int sigint) {
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_server_should_exit, true);
 
-  // STEP 2: Use write() for output (async-signal-safe)
-  // printf() and fflush() are NOT async-signal-safe and can cause deadlocks
-  // Use write() which is guaranteed to be safe in signal handlers
-  const char *msg = "SIGINT received - shutting down server...\n";
-  ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
-  (void)unused; // Suppress unused variable warning
+  // STEP 2: Log without file I/O (no mutex, avoids deadlocks in signal handlers)
+  log_info_nofile("SIGINT received - shutting down server...");
 
   // STEP 3: Signal TCP server to stop and close listening sockets
   // This interrupts the accept() call in the main loop
@@ -1000,11 +996,8 @@ static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
-  // Use async-signal-safe write() instead of printf()/fflush()
-  // printf() and fflush() are NOT async-signal-safe and can cause deadlocks
-  const char *msg = "SIGTERM received - shutting down server...\n";
-  ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
-  (void)unused; // Suppress unused variable warning
+  // Log without file I/O (no mutex, avoids deadlocks in signal handlers)
+  log_info_nofile("SIGTERM received - shutting down server...");
 
   // CRITICAL: Stop the TCP server accept loop immediately
   // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown

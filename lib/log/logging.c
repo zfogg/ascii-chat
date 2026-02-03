@@ -901,6 +901,26 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   va_end(args_terminal);
 }
 
+void log_terminal_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
+  // Lock-free: only uses atomic loads, no mutex
+  if (!atomic_load(&g_log.initialized)) {
+    return;
+  }
+
+  if (level < (log_level_t)atomic_load(&g_log.level)) {
+    return;
+  }
+
+  // Terminal output only - no file/mmap writing
+  char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+  get_current_time_formatted(time_buf);
+
+  va_list args;
+  va_start(args, fmt);
+  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args);
+  va_end(args);
+}
+
 void log_plain_msg(const char *fmt, ...) {
   if (!atomic_load(&g_log.initialized)) {
     return;
