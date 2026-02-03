@@ -801,7 +801,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   rwlock_rdunlock(&mixer->source_lock);
 
 #ifndef NDEBUG
-  STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 0, "mixer_total", "Mixer took");
+  STOP_TIMER_AND_LOG_EVERY(warn, NS_PER_SEC_INT, 2 * NS_PER_MS_INT, "mixer_total", "Mixer took");
 #endif
 
   return num_samples;
