@@ -997,36 +997,8 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
   }
 
   if (sources_with_video == 1) {
-    // Single source handling: Convert video directly like mirror mode does
-    // This avoids double-padding (composite + ASCII padding)
-    // Find the single source with video
-    for (int i = 0; i < source_count; i++) {
-      if (sources[i].has_video && sources[i].image) {
-        // Get client capabilities
-        client_info_t *render_client = find_client_by_id(target_client_id);
-        if (!render_client) {
-          SET_ERRNO(ERROR_INVALID_STATE, "Client %u not found for ASCII frame generation", target_client_id);
-          *out_size = 0;
-          return NULL;
-        }
-
-        // Convert directly with preserve_aspect_ratio=true (like mirror mode)
-        // This uses client-reported dimensions and lets ASCII conversion handle aspect ratio
-        terminal_capabilities_t caps_snapshot = render_client->terminal_caps;
-        char *ascii_frame = ascii_convert_with_capabilities(sources[i].image, width, height, &caps_snapshot, true,
-                                                            false, render_client->client_palette_chars);
-
-        if (ascii_frame) {
-          *out_size = strlen(ascii_frame);
-        } else {
-          *out_size = 0;
-        }
-        return ascii_frame;
-      }
-    }
-    // Should not reach here if sources_with_video == 1
-    SET_ERRNO(ERROR_INVALID_STATE, "Logic error: sources_with_video=1 but no source found");
-    return NULL;
+    // Single source handling - create composite and convert to ASCII
+    composite = create_single_source_composite(sources, source_count, target_client_id, width, height);
   } else {
     // Multiple sources - create grid layout
     composite =
