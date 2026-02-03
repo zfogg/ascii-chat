@@ -861,14 +861,14 @@ typedef struct options_state {
   // ============================================================================
   // Audio Configuration
   // ============================================================================
-  unsigned short int audio_enabled;          ///< Enable audio streaming
-  audio_source_t audio_source;               ///< Audio source selection (auto/mic/media/both)
-  int microphone_index;                      ///< Microphone device index (-1 = default)
-  int speakers_index;                        ///< Speakers device index (-1 = default)
-  float microphone_sensitivity;              ///< Microphone volume multiplier (0.0-1.0, default 1.0)
-  float speakers_volume;                     ///< Speaker volume multiplier (0.0-1.0, default 1.0)
-  unsigned short int audio_analysis_enabled; ///< Enable audio analysis (debug)
-  unsigned short int audio_no_playback;      ///< Disable speaker playback (debug)
+  bool audio_enabled;           ///< Enable audio streaming
+  audio_source_t audio_source;  ///< Audio source selection (auto/mic/media/both)
+  int microphone_index;         ///< Microphone device index (-1 = default)
+  int speakers_index;           ///< Speakers device index (-1 = default)
+  float microphone_sensitivity; ///< Microphone volume multiplier (0.0-1.0, default 1.0)
+  float speakers_volume;        ///< Speaker volume multiplier (0.0-1.0, default 1.0)
+  bool audio_analysis_enabled;  ///< Enable audio analysis (debug)
+  bool audio_no_playback;       ///< Disable speaker playback (debug)
 
   // ============================================================================
   // Image Options

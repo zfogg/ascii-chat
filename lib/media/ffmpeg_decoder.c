@@ -488,20 +488,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     log_warn("Failed to open video codec (file may be audio-only)");
   }
 
-  // Open audio codec ONLY if audio is enabled
-  bool audio_enabled_value = GET_OPTION(audio_enabled);
-  log_debug("DEBUG: audio_enabled=%d (expected 1 for true)", audio_enabled_value);
-  if (audio_enabled_value) {
-    err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
-                             &decoder->audio_codec_ctx);
-    if (err != ASCIICHAT_OK) {
-      log_warn("Failed to open audio codec (file may be video-only)");
-    }
-  } else {
-    // Audio disabled - skip codec initialization to save bandwidth
+  // Open audio codec - audio is enabled by default (no option needed)
+  // Always try to open audio codec, don't rely on GET_OPTION(audio_enabled) which has a default issue
+  err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_AUDIO, &decoder->audio_stream_idx,
+                           &decoder->audio_codec_ctx);
+  if (err != ASCIICHAT_OK) {
+    log_debug("No audio codec found (file may be video-only or audio codec not available)");
     decoder->audio_stream_idx = -1;
     decoder->audio_codec_ctx = NULL;
-    log_debug("Audio decoding disabled by user option");
   }
 
   // Require at least one stream
