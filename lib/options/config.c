@@ -333,7 +333,15 @@ static asciichat_error_t parse_validate_int(const char *value_str, const config_
     // Check numeric range constraints if defined
     // Constraints are present if max != 0 (max will always be non-zero for bounded integer ranges)
     if (meta && meta->constraints.int_range.max != 0) {
-      if (int_val < meta->constraints.int_range.min || int_val > meta->constraints.int_range.max) {
+      // Allow 0 as special "use default" value for certain fields
+      bool is_auto_detect_field =
+          (meta->field_offset == offsetof(options_t, width) || meta->field_offset == offsetof(options_t, height) ||
+           meta->field_offset == offsetof(options_t, fps) ||
+           meta->field_offset == offsetof(options_t, compression_level));
+
+      if (int_val == 0 && is_auto_detect_field) {
+        // 0 is allowed for these fields (means auto-detect or use default)
+      } else if (int_val < meta->constraints.int_range.min || int_val > meta->constraints.int_range.max) {
         SAFE_SNPRINTF(error_msg, error_size, "Integer %d out of range [%d-%d]: %s", int_val,
                       meta->constraints.int_range.min, meta->constraints.int_range.max, value_str);
         return ERROR_CONFIG;
