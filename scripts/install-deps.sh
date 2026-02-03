@@ -131,7 +131,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libprotobuf-c-dev \
       libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libswresample-dev \
       libabsl-dev \
-      libomp-dev \
+      libomp-dev libomp-20-dev \
       doxygen \
       dpkg-dev rpm
 
