@@ -2,6 +2,9 @@
 /build/*
 /.claude/settings.local.json
 
+# Auto-generated version header (created by CMake)
+/include/ascii-chat/version.h
+
 compile_commands.json
 .env
 *.log
